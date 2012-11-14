@@ -1,13 +1,14 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
 # TEST	sdb020
 # TEST	Tests in-memory subdatabases.
 # TEST	Create an in-memory subdb with one page size.  Close, and
-# TEST	open with a different page size: should fail.
+# TEST	open with a different page size: should succeed, but the underlying
+# TEST  page size is not changed.
 
 proc sdb020 { method { nentries 10 } args } {
 	source ./include.tcl
@@ -74,14 +75,17 @@ proc sdb020 { method { nentries 10 } args } {
 
 	error_check_good db_close [$db close] 0
 
-	# Try to open again with a different page size (should fail).
+	# Try to open again with a different page size (should succeed).
 	puts "\tSubdb$tnum.b: Try to reopen with different page size."
-	set errorCode NONE
-	catch {set db [eval {berkdb_open_noerr} $args -env $env \
-	    -pagesize $psize2 {$omethod $testfile $name}]} res
-	error_check_good expect_error [is_substr $errorCode EINVAL] 1
+	set db [eval {berkdb_open_noerr} $args -env $env \
+	    -pagesize $psize2 {$omethod $testfile $name}]
+	error_check_good dbopen [is_valid_db $db] TRUE
+	error_check_good check_pagesize \
+	    [stat_field $db stat "Page size"] $psize
+	# Close DB
+	error_check_good db_close [$db close] 0
 
-	# Try to open again with the correct pagesize (should succeed).
+	# Try to open again with original pagesize (should succeed).
 	puts "\tSubdb$tnum.c: Reopen with original page size."
 	set db [eval {berkdb_open_noerr} $args -env $env \
 	    -pagesize $psize {$omethod $testfile $name}]
@@ -95,15 +99,18 @@ proc sdb020 { method { nentries 10 } args } {
 	error_check_good dbopen [is_valid_db $db] TRUE
 	error_check_good db_close [$db close] 0
 
-	# Try to open again with a different page size (should fail).
+	# Try to open again with a different page size (should succeed).
 	set psize2 [expr $psize / 2]
 	puts "\tSubdb$tnum.e: Try to reopen with different page size."
-	set errorCode NONE
-	catch {set db [eval {berkdb_open_noerr} $args -env $env \
-	    -pagesize $psize2 {$omethod $testfile $name}]} res
-	error_check_good expect_error [is_substr $errorCode EINVAL] 1
+	set db [eval {berkdb_open_noerr} $args -env $env \
+	    -pagesize $psize2 {$omethod $testfile $name}]
+	error_check_good dbopen [is_valid_db $db] TRUE
+	error_check_good check_pagesize \
+	    [stat_field $db stat "Page size"] $psize
+	# Close DB
+	error_check_good db_close [$db close] 0
 
-	# Try to open again with the correct pagesize (should succeed).
+	# Try to open again with original pagesize (should succeed).
 	puts "\tSubdb$tnum.f: Reopen with original page size."
 	set db [eval {berkdb_open} $args -env $env \
 	    -pagesize $psize {$omethod $testfile $name}]

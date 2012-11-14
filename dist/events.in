@@ -1,20 +1,22 @@
 #
 # dist/events.in - This description of Oracle Berkeley DB's internal
-# events hierarchy is processes by dist/s_perfmon to generate the
-# platform-specific files needed by the configured operating system.
+# events hierarchy is processed by 'dist/s_include' to generate the
+# platform-independant file dist/db_provider.d. The 'configure' step on the
+# target operating system generate platform-specific include file.
 #
-# The entries starting in the first column are event class names, and consist
-# of a single word. The class's individual function-like events follow.
+#	s_include	->	dist/db_provider.d
+#	configure	->	<build_directory>/db_provider.h
 #
-# Some of these are included to enhance consistency; thse calls could be
-# supported by pid$target::<function>:entry (DTrace) or
-# probe process("$LIB").function("<function>").call (SystemTap) probes.
+# There are two kinds of entries in events.in, describing either an event class
+# or an individual event. The entries starting in the first column are class
+# names, consisting of a single word. The class's individual events follow,
+# described as if they were an ANSI C function signature;
 #
-# For DTrace
-#	dist/bdb_provider.d
-# 	util/dtrace/dbdefs.d
-#	
-# Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+# Events are listed grouped by their relation to one another, rather than
+# alphabetically. For instance allocation and free events are adjacent.
+# New, unrelated events are placed at the end of their event class.
+#
+# Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 
 # The alloc class covers the allocation of "on disk" database pages.
@@ -169,6 +171,17 @@ mpool
     alloc_max_buckets(unsigned max, unsigned region_id);
     alloc_max_pages(unsigned max, unsigned region_id);
     alloc_pages(unsigned count, unsigned region_id);
+
+    backup_spins(unsigned spins, char *file, unsigned pgno);`
+
+    # The aggressiveness of a buffer cache allocation increases as more
+    # involved methods are needed in order to free up the requested space
+    # in the cache with the indicated region_id.
+    # aggressive: the agressiveness of an allocation request was increased.
+    # max_aggressive: the agressiveness of an allocation request was increased
+    # to a new maximum.
+    aggressive(unsigned st_alloc_aggressive, unsigned region_id);
+    max_aggressive(unsigned st_alloc_max_aggr, unsigned region_id);
 
 # The mutex category monitors includes shared latches.  The alloc_id value
 # is one of the MTX_XXX definitions from dbinc/mutex.h

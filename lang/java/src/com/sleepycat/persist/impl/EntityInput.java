@@ -1,12 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.impl;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 
 /**
@@ -41,7 +42,8 @@ public interface EntityInput {
      * the primary key field and composite key fields (see readKeyObject
      * below).
      */
-    Object readObject();
+    Object readObject()
+        throws RefreshException;
 
     /**
      * Called for a primary key field or a composite key field with a reference
@@ -50,7 +52,19 @@ public interface EntityInput {
      * <p>For such key fields, no formatId is present nor can the object
      * already be present in the visited object set.</p>
      */
-    Object readKeyObject(Format format);
+    Object readKeyObject(Format format)
+        throws RefreshException;
+
+    /**
+     * Called for a String field, that is not a primary key field or a
+     * composite key field with a reference type.
+     *
+     * <p>For the new String format, no formatId is present nor can the object
+     * already be present in the visited object set.  For the old String
+     * format, this method simply calls readObject for compatibility.</p>
+     */
+    Object readStringObject()
+        throws RefreshException;
 
     /**
      * Called via Accessor.readSecKeyFields for a primary key field with a
@@ -58,6 +72,12 @@ public interface EntityInput {
      * fields.
      */
     void registerPriKeyObject(Object o);
+    
+    /**
+     * Called via Accessor.readSecKeyFields for a primary String key field.  
+     * This method must be called before reading any other fields.
+     */
+    void registerPriStringKeyObject(Object o);
 
     /**
      * Called by ObjectArrayFormat and PrimitiveArrayFormat to read the array
@@ -74,18 +94,31 @@ public interface EntityInput {
      * Called via PersistKeyCreator to skip fields prior to the secondary key
      * field.  Also called during class evolution so skip deleted fields.
      */
-    void skipField(Format declaredFormat);
+    void skipField(Format declaredFormat)
+        throws RefreshException;
 
     /* The following methods are a subset of the methods in TupleInput. */
 
-    String readString();
-    char readChar();
-    boolean readBoolean();
-    byte readByte();
-    short readShort();
-    int readInt();
-    long readLong();
-    float readSortedFloat();
-    double readSortedDouble();
-    BigInteger readBigInteger();
+    String readString()
+        throws RefreshException;
+    char readChar()
+        throws RefreshException;
+    boolean readBoolean()
+        throws RefreshException;
+    byte readByte()
+        throws RefreshException;
+    short readShort()
+        throws RefreshException;
+    int readInt()
+        throws RefreshException;
+    long readLong()
+        throws RefreshException;
+    float readSortedFloat()
+        throws RefreshException;
+    double readSortedDouble()
+        throws RefreshException;
+    BigInteger readBigInteger()
+        throws RefreshException;
+    BigDecimal readSortedBigDecimal()
+        throws RefreshException;
 }

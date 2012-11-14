@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -462,7 +462,7 @@ __ham_replace_recover(env, dbtp, lsnp, op, info)
 		is_plus = 0;
 	}
 	/*
-	 * When chaning from a "regular" record to an off page record
+	 * When chaining from a "regular" record to an off page record
 	 * the old record does not contain a header while the new record
 	 * does and is at an offset of -1 relative to the data part of
 	 * the record. We add this to the amount of the change (which is
@@ -1082,7 +1082,7 @@ __ham_contract_recover(env, dbtp, lsnp, op, info)
 	DBC *dbc;
 	HASH_CURSOR *hcp;
 	HMETA *meta;
-	int cmp_n, cmp_p, ret;
+	int cmp_n, cmp_p, ret, t_ret;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
 	REC_PRINT(__ham_contract_print);
@@ -1120,7 +1120,8 @@ __ham_contract_recover(env, dbtp, lsnp, op, info)
 	}
 	*lsnp = argp->prev_lsn;
 
-out:	ret = __ham_release_meta(dbc);
+out:	if ((t_ret = __ham_release_meta(dbc)) != 0 && ret == 0)
+		ret = t_ret;
 done:	REC_CLOSE;
 }
 

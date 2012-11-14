@@ -11,6 +11,12 @@ namespace BerkeleyDB.Internal {
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate int BDB_AssociateForeignDelegate(IntPtr db, IntPtr key, IntPtr data, IntPtr foreign, ref int changed);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int BDB_BackupCloseDelegate(IntPtr dbenv, string dbname, IntPtr handle);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int BDB_BackupOpenDelegate(IntPtr dbenv, string dbname, string target, IntPtr handle);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    internal delegate int BDB_BackupWriteDelegate(IntPtr dbenv, uint off_gbytes, uint off_bytes, uint size, IntPtr buf, IntPtr handle);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate int BDB_CompareDelegate(IntPtr db, IntPtr dbt1, IntPtr dbt2);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate uint BDB_PrefixCompareDelegate(IntPtr db, IntPtr dbt1, IntPtr dbt2);

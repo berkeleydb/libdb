@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * The following provides the information necessary to build Berkeley
  * DB on native Windows, and other Windows environments such as MinGW.

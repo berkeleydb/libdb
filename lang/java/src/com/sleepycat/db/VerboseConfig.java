@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -13,6 +13,11 @@ import com.sleepycat.db.internal.DbEnv;
 
 /** Specifies the attributes of a verification operation. */
 public final class VerboseConfig {
+    /**
+    Display additional information when performing hot backup.
+    */
+    public static final VerboseConfig BACKUP =
+        new VerboseConfig("BACKUP", DbConstants.DB_VERB_BACKUP);
     /**
     Display additional information when doing deadlock detection.
     */

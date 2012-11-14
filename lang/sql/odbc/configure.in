@@ -171,7 +171,6 @@ else
    fi
 fi
 AC_SUBST(SQLITE3_INC)
-AC_SUBST(SQLITE3_LIB)
 AC_SUBST(SQLITE3_A10N_C)
 AC_SUBST(SQLITE3_A10N_O)
 AC_SUBST(SQLITE3_A10N_FLAGS)
@@ -189,9 +188,9 @@ if test -n "$SQLITE3_A10N_C" ; then
    SQLITE3_PREPARE_V2=1
    SQLITE3_CLEARBINDINGS=1
    SQLITE3_CREATEMODULE_V2=1
-   SQLITE3_LOADEXTENSION=1
    SQLITE3_TABLECOLUMNMETADATA=1
    SQLITE3_VFS=1
+   SQLITE3_STRNICMP=1
 else
    saved_CFLAGS=$CFLAGS
    CFLAGS="$CFLAGS -I$SQLITE3_INC"
@@ -232,6 +231,12 @@ else
    AC_CHECK_LIB(sqlite3,sqlite3_table_column_metadata,
 		SQLITE3_TABLECOLUMNMETADATA=1,
 		SQLITE3_TABLECOLUMNMETADATA=0)
+   AC_CHECK_LIB(sqlite3,sqlite3_profile,
+		SQLITE3_PROFILE=1,
+		SQLITE3_PROFILE=0)
+   AC_CHECK_LIB(sqlite3,sqlite3_strnicmp,
+		SQLITE3_STRNICMP=1,
+		SQLITE3_STRNICMP=0)
    LIBS=$saved_LIBS
    CFLAGS=$saved_CFLAGS
 fi
@@ -253,6 +258,8 @@ AC_SUBST(SQLITE3_CREATEMODULE_V2)
 AC_SUBST(SQLITE3_LOADEXTENSION)
 AC_SUBST(SQLITE3_TABLECOLUMNMETADATA)
 AC_SUBST(SQLITE3_VFS)
+AC_SUBST(SQLITE3_PROFILE)
+AC_SUBST(SQLITE3_STRNICMP)
 AC_SUBST(EXT_BLOBTOXY)
 AC_SUBST(EXT_IMPEXP)
 
@@ -450,6 +457,15 @@ AC_MSG_RESULT(yes)
 ODBC_FLAGS="$ODBC_FLAGS -DSETSTMTOPTION_LAST_ARG_TYPE=SQLULEN"
 ],[AC_MSG_RESULT(no)])
 
+AC_MSG_CHECKING([for SQLWCHAR availability])
+AC_TRY_COMPILE([
+#include <sql.h>
+#include <sqltypes.h>
+],[SQLWCHAR thisiswchar;],[
+AC_MSG_RESULT(yes)
+ODBC_FLAGS="$ODBC_FLAGS -DHAVE_SQLWCHAR=1"
+],[AC_MSG_RESULT(no)])
+
 AC_MSG_CHECKING([for SQLBIGINT availability])
 AC_TRY_COMPILE([
 #include <sql.h>
@@ -552,9 +568,10 @@ else
 fi
 
 ##########
-# Check for usleep()
+# Check for usleep() and nanosleep()
 #
 AC_CHECK_FUNC(usleep, [ODBC_FLAGS="$ODBC_FLAGS -DHAVE_USLEEP=1"])
+AC_CHECK_FUNC(nanosleep, [ODBC_FLAGS="$ODBC_FLAGS -DHAVE_NANOSLEEP=1"])
 
 ##########
 # Check for localeconv()
@@ -581,8 +598,35 @@ AC_ARG_ENABLE(winterface,
    [ ODBC_FLAGS="$ODBC_FLAGS -DWITHOUT_WINTERFACE=1" ])
 
 #########
+# Install directory (on Debian $libdir/odbc)
+if test -r /etc/debian_version ; then
+  DRVDIR="/odbc"
+else
+  DRVDIR=""
+fi
+AC_SUBST(DRVDIR)
+
+##########
+# Experimental: dlopen for resolving SQLite3 symbols
+#
+AC_ARG_WITH(dls,[  --with-dls              dlopen SQLite3 lib],
+   WITH_DLS=1,WITH_DLS=0)
+if test "$DLOPENFORGPPS" = "1" ; then
+   if test "$WITH_DLS" = "1" ; then
+      DL_OPTS="-DSQLITE_DYNLOAD=1"
+      SQLITE3_LIB=""
+      DL_INITFINI="-Wl,-init,dls_init -Wl,-fini,dls_fini"
+   fi
+fi
+AC_SUBST(DL_OPTS)
+AC_SUBST(DL_INITFINI)
+AC_SUBST(SQLITE3_LIB)
+
+#########
 # Generate the output files.
 #
 SPEC_CHANGELOG_TS=`LANG=C date -u "+%a %b %d %Y"`
+DEB_CHANGELOG_TS=`LANG=C date "+%a, %d %b %Y %X %z"`
 AC_SUBST(SPEC_CHANGELOG_TS)
-AC_OUTPUT(Makefile sqliteodbc.spec)
+AC_SUBST(DEB_CHANGELOG_TS)
+AC_OUTPUT(Makefile sqliteodbc.spec debian/changelog)

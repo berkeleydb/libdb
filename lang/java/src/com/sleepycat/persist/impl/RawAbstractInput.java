@@ -1,12 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.impl;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import com.sleepycat.compat.DbCompat;
@@ -34,15 +35,28 @@ abstract class RawAbstractInput extends AbstractInput {
         this.converted = converted;
     }
 
-    public Object readObject() {
+    public Object readObject()
+        throws RefreshException {
+
         return readNext();
     }
 
-    public Object readKeyObject(Format format) {
+    public Object readKeyObject(Format format)
+        throws RefreshException {
+
+        return readNext();
+    }
+
+    public Object readStringObject()
+        throws RefreshException {
+
         return readNext();
     }
 
     public void registerPriKeyObject(Object o) {
+    }
+    
+    public void registerPriStringKeyObject(Object o) {
     }
 
     public int readArrayLength() {
@@ -56,9 +70,12 @@ abstract class RawAbstractInput extends AbstractInput {
     public void skipField(Format declaredFormat) {
     }
 
-    abstract Object readNext();
+    abstract Object readNext()
+        throws RefreshException;
 
-    Object checkAndConvert(Object o, Format declaredFormat) {
+    Object checkAndConvert(Object o, Format declaredFormat)
+        throws RefreshException {
+
         if (o == null) {
             if (declaredFormat.isPrimitive()) {
                 throw new IllegalArgumentException
@@ -122,7 +139,9 @@ abstract class RawAbstractInput extends AbstractInput {
 
     static Format checkRawType(Catalog catalog,
                                Object o,
-                               Format declaredFormat) {
+                               Format declaredFormat)
+        throws RefreshException {
+
         assert declaredFormat != null;
         Format format;
         if (o instanceof RawObject) {
@@ -159,43 +178,69 @@ abstract class RawAbstractInput extends AbstractInput {
 
     /* The following methods are a subset of the methods in TupleInput. */
 
-    public String readString() {
+    public String readString()
+        throws RefreshException {
+
         return (String) readNext();
     }
 
-    public char readChar() {
+    public char readChar()
+        throws RefreshException {
+
         return ((Character) readNext()).charValue();
     }
 
-    public boolean readBoolean() {
+    public boolean readBoolean()
+        throws RefreshException {
+
         return ((Boolean) readNext()).booleanValue();
     }
 
-    public byte readByte() {
+    public byte readByte()
+        throws RefreshException {
+
         return ((Byte) readNext()).byteValue();
     }
 
-    public short readShort() {
+    public short readShort()
+        throws RefreshException {
+
         return ((Short) readNext()).shortValue();
     }
 
-    public int readInt() {
+    public int readInt()
+        throws RefreshException {
+
         return ((Integer) readNext()).intValue();
     }
 
-    public long readLong() {
+    public long readLong()
+        throws RefreshException {
+
         return ((Long) readNext()).longValue();
     }
 
-    public float readSortedFloat() {
+    public float readSortedFloat()
+        throws RefreshException {
+
         return ((Float) readNext()).floatValue();
     }
 
-    public double readSortedDouble() {
+    public double readSortedDouble()
+        throws RefreshException {
+
         return ((Double) readNext()).doubleValue();
     }
+    
+    public BigDecimal readSortedBigDecimal() 
+        throws RefreshException {
+        
+        return (BigDecimal) readNext();
+    }
 
-    public BigInteger readBigInteger() {
+    public BigInteger readBigInteger()
+        throws RefreshException {
+
         return (BigInteger) readNext();
     }
 }

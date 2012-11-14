@@ -1,12 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist;
 
+import java.io.Closeable;
 import java.util.Iterator;
 
 import com.sleepycat.db.DatabaseException;
@@ -26,7 +27,8 @@ import com.sleepycat.db.LockMode;
  *
  * @author Mark Hayes
  */
-public interface ForwardCursor<V> extends Iterable<V> {
+public interface ForwardCursor<V> extends Iterable<V>
+    {
 
     /**
      * Moves the cursor to the next value and returns it, or returns null

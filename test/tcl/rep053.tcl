@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -187,9 +187,13 @@ proc rep053_sub { method niter tnum logset recargs throttle largs } {
 	#
 
 	set expected_msgs 3
-	if { [is_queue $method] } {
-		# Queue database require an extra request
-		# to retrieve the meta page.
+	if { [is_queue $method] || [is_heap $method] } {
+		# Queue databases require an extra request
+		# to retrieve the meta page; heap databases
+		# need extra messages to process the "shadow"
+		# databases we use for the heap Tcl implementation.
+		# Allowing one extra message here automatically 
+		# allows two extra messages when throttling. 
 		incr expected_msgs
 	}
 

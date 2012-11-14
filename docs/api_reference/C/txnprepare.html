@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -82,7 +82,7 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_GID_SIZE]);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3762819"></a>DB_LOCK_DEADLOCK</h4>
+              <h4 class="title"><a id="idp62943184"></a>DB_LOCK_DEADLOCK</h4>
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_GID_SIZE]);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3762322"></a>DB_LOCK_NOTGRANTED</h4>
+              <h4 class="title"><a id="idp62930208"></a>DB_LOCK_NOTGRANTED</h4>
             </div>
           </div>
         </div>
@@ -103,12 +103,19 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_GID_SIZE]);  </pre>
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
             </p>
+        <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a>
+                for more information.
+            </p>
       </div>
       <div class="sect3" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3763067"></a>EINVAL</h4>
+              <h4 class="title"><a id="idp62948192"></a>EINVAL</h4>
             </div>
           </div>
         </div>
@@ -120,7 +127,7 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_GID_SIZE]);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3763075"></a>Parameters</h3>
+              <h3 class="title"><a id="idp62934856"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -128,7 +135,7 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_GID_SIZE]);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3763078"></a>gid</h4>
+                <h4 class="title"><a id="idp62959504"></a>gid</h4>
               </div>
             </div>
           </div>
@@ -145,7 +152,7 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_GID_SIZE]);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3762941"></a>Class</h3>
+              <h3 class="title"><a id="idp62921048"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -157,7 +164,7 @@ DB_TXN-&gt;prepare(DB_TXN *tid, u_int8_t gid[DB_GID_SIZE]);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3762905"></a>See Also</h3>
+              <h3 class="title"><a id="idp62953952"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -120,6 +120,7 @@ db_Cmd(clientData, interp, objc, objv)
 		"get_env",
 		"get_errpfx",
 		"get_flags",
+		"get_heap_regionsize",
 		"get_h_ffactor",
 		"get_h_nelem",
 		"get_join",
@@ -134,6 +135,7 @@ db_Cmd(clientData, interp, objc, objv)
 		"get_type",
 		"is_byteswapped",
 		"join",
+		"get_lk_exclusive",
 		"put",
 		"stat",
 		"stat_print",
@@ -163,6 +165,7 @@ db_Cmd(clientData, interp, objc, objv)
 		DBGETENV,
 		DBGETERRPFX,
 		DBGETFLAGS,
+		DBGETHEAPREGIONSIZE,
 		DBGETHFFACTOR,
 		DBGETHNELEM,
 		DBGETJOIN,
@@ -177,6 +180,7 @@ db_Cmd(clientData, interp, objc, objv)
 		DBGETTYPE,
 		DBSWAPPED,
 		DBJOIN,
+		DBGETLKEXCLUSIVE,
 		DBPUT,
 		DBSTAT,
 		DBSTATPRINT,
@@ -189,7 +193,7 @@ db_Cmd(clientData, interp, objc, objv)
 	DBTCL_INFO *dbip, *ip;
 	DBTYPE type;
 	Tcl_Obj *res, *myobjv[3];
-	int cmdindex, intval, ncache, result, ret;
+	int cmdindex, intval, ncache, result, ret, onoff, nowait;
 	char newname[MSG_SIZE];
 	u_int32_t bytes, gbytes, value;
 	const char *strval, *filename, *dbname, *envid;
@@ -454,6 +458,16 @@ db_Cmd(clientData, interp, objc, objv)
 	case DBGETFLAGS:
 		result = tcl_DbGetFlags(interp, objc, objv, dbp);
 		break;
+	case DBGETHEAPREGIONSIZE:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		ret = dbp->get_heap_regionsize(dbp, &value);
+		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "db get_heap_regionsize")) == TCL_OK)
+			res = Tcl_NewIntObj((int)value);
+		break;
 	case DBGETHFFACTOR:
 		if (objc != 2) {
 			Tcl_WrongNumArgs(interp, 1, objv, NULL);
@@ -551,6 +565,19 @@ db_Cmd(clientData, interp, objc, objv)
 		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 		    "db get_re_source")) == TCL_OK)
 			res = NewStringObj(strval, strlen(strval));
+		break;
+	case DBGETLKEXCLUSIVE:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		ret = dbp->get_lk_exclusive(dbp, &onoff, &nowait);
+		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "db get_lk_exclusive")) == TCL_OK) {
+			myobjv[0] = Tcl_NewIntObj((int)onoff);
+			myobjv[1] = Tcl_NewIntObj((int)nowait);
+			res = Tcl_NewListObj(2, myobjv);
+		}
 		break;
 	case DBTRUNCATE:
 		result = tcl_DbTruncate(interp, objc, objv, dbp);
@@ -697,6 +724,9 @@ tcl_DbStat(interp, objc, objv, dbp)
 		MAKE_STAT_LIST("Page size", hpsp->heap_pagesize);
 		MAKE_STAT_LIST("Page count", hpsp->heap_pagecnt);
 		MAKE_STAT_LIST("Number of records", hpsp->heap_nrecs);
+		MAKE_STAT_LIST("Number of regions", hpsp->heap_nregions);
+		MAKE_STAT_LIST("Number of pages in a region",
+		    hpsp->heap_regionsize);
 	} else if (type == DB_QUEUE) {
 		qsp = (DB_QUEUE_STAT *)sp;
 		MAKE_STAT_LIST("Magic", qsp->qs_magic);
@@ -833,23 +863,26 @@ tcl_DbClose(interp, objc, objv, dbp, dbip)
 	DBTCL_INFO *dbip;		/* Info pointer */
 {
 	static const char *dbclose[] = {
-		"-nosync", "--", NULL
+		"-handle_only", "-nosync", "--", NULL
 	};
 	enum dbclose {
+		TCL_DBCLOSE_HANDLEONLY,
 		TCL_DBCLOSE_NOSYNC,
 		TCL_DBCLOSE_ENDARG
 	};
 	DB *recdbp, *secdbp;
 	DBTCL_INFO *rdbip, *sdbip;
 	u_int32_t flag;
-	int endarg, i, optindex, result, ret;
+	int endarg, handle_only, i, optindex, result, ret;
 	char *arg;
 
 	result = TCL_OK;
 	endarg = 0;
 	flag = 0;
+	handle_only = 0;
+
 	if (objc > 4) {
-		Tcl_WrongNumArgs(interp, 2, objv, "?-nosync?");
+		Tcl_WrongNumArgs(interp, 2, objv, "?-nosync | -handle_only?");
 		return (TCL_ERROR);
 	}
 
@@ -864,6 +897,9 @@ tcl_DbClose(interp, objc, objv, dbp, dbip)
 			break;
 		}
 		switch ((enum dbclose)optindex) {
+		case TCL_DBCLOSE_HANDLEONLY:
+			handle_only = 1;
+			break;
 		case TCL_DBCLOSE_NOSYNC:
 			flag = DB_NOSYNC;
 			break;
@@ -881,38 +917,52 @@ tcl_DbClose(interp, objc, objv, dbp, dbip)
 			break;
 	}
 
-	/* If it looks like there might be aux dbs, try to close them. */
-	recdbp = ((DBTCL_INFO *)dbp->api_internal)->hrdbp; 
-	secdbp = ((DBTCL_INFO *)dbp->api_internal)->hsdbp;
+	/* 
+	 * If it looks like there might be aux dbs, free the DBTCL_INFOs,
+	 * and try to close the dbs if we want.
+	 */
+	recdbp = dbip->hrdbp; 
+	secdbp = dbip->hsdbp;
 	if (recdbp != NULL && secdbp != NULL) {
-		rdbip = recdbp->api_internal;
+		rdbip = _PtrToInfo(recdbp);
 		_DbInfoDelete(interp, rdbip);
-		recdbp->api_internal = NULL;
-		ret = recdbp->close(recdbp, flag);
-
-		sdbip = secdbp->api_internal;
+		sdbip = _PtrToInfo(secdbp);
 		_DbInfoDelete(interp, sdbip);
-		secdbp->api_internal = NULL;
-		ret = secdbp->close(secdbp, flag);
-		result = _ReturnSetup(interp, 
-			ret, DB_RETOK_STD(ret), "db close");
+
+		if (handle_only == 0) {
+			recdbp->api_internal = NULL;
+			ret = recdbp->close(recdbp, flag);
+			result = _ReturnSetup(interp, 
+			    ret, DB_RETOK_STD(ret), "db close");
+
+			secdbp->api_internal = NULL;
+			ret = secdbp->close(secdbp, flag);
+			if (result == TCL_OK)
+				result = _ReturnSetup(interp, 
+				    ret, DB_RETOK_STD(ret), "db close");
+		}
 	}
 
 	if (dbip->i_cdata != NULL)
-		__os_free(dbp->env, dbip->i_cdata);
+		__os_free(handle_only ? NULL : dbp->env, dbip->i_cdata);
 	_DbInfoDelete(interp, dbip);
 	_debug_check();
 
-	/* Paranoia. */
-	dbp->api_internal = NULL;
+	/* Close the db handle if we want. */
+	if (handle_only == 0) {
+		/* Paranoia. */
+		dbp->api_internal = NULL;
+		ret = (dbp)->close(dbp, flag);
 
-	ret = (dbp)->close(dbp, flag);
-	
-	/* As long as the 1st close above was ok, then we check this one. */
-	if (result == TCL_OK)
- 		result = _ReturnSetup(interp, 
-		    ret, DB_RETOK_STD(ret), "db close");
-	
+		/* 
+		 * As long as the first two close(s) above were ok, 
+		 * then we check this one. 
+		 */
+		if (result == TCL_OK)
+ 			result = _ReturnSetup(interp, 
+			    ret, DB_RETOK_STD(ret), "db close");
+	}
+
 	return (result);
 }
 
@@ -936,6 +986,7 @@ tcl_DbPut(interp, objc, objv, dbp)
 		"-nooverwrite",
 		"-overwritedup",
 		"-partial",
+		"-sort_multiple",
 		"-txn",
 		NULL
 	};
@@ -949,6 +1000,7 @@ tcl_DbPut(interp, objc, objv, dbp)
 		DBPUT_NOOVER,
 		DBPUT_OVER,
 		DBPUT_PART,
+		DBPUT_SORT_MULTIPLE,
 		DBPUT_TXN
 	};
 	static const char *dbputapp[] = {
@@ -957,7 +1009,7 @@ tcl_DbPut(interp, objc, objv, dbp)
 		NULL
 	};
 	enum dbputapp { DBPUT_APPEND0, DBPUT_MULTIPLE_KEY0 };
-	DBT data, hkey, key;
+	DBT data, hkey, key, rkey;
 	DBTYPE type;
 	DB *recdbp;
 	DB_HEAP_RID rid;
@@ -966,15 +1018,15 @@ tcl_DbPut(interp, objc, objv, dbp)
 	void *dtmp, *ktmp, *ptr;
 	db_recno_t recno;
 	u_int32_t flag, hflag, multiflag;
-	int delemc, elemc, end, freekey, freedata, skiprecno;
+	int delemc, elemc, end, freekey, freedata, skiprecno, sort_multiple;
 	int dlen, klen, i, optindex, result, ret;
 	char *arg, msg[MSG_SIZE];
 
 	txn = NULL;
 	result = TCL_OK;
-	flag = hflag = multiflag = 0;
-	if (objc <= 2) {
-		Tcl_WrongNumArgs(interp, 2, objv, "?-args? ?key? data");
+	flag = hflag = multiflag = sort_multiple = 0;
+	if (objc <= 3) {
+		Tcl_WrongNumArgs(interp, 3, objv, "?-args? key data");
 		return (TCL_ERROR);
 	}
 
@@ -1055,20 +1107,10 @@ tcl_DbPut(interp, objc, objv, dbp)
 		case DBPUT_MULTIPLE:
 			FLAG_CHECK(multiflag);
 			multiflag = DB_MULTIPLE;
-			if (type == DB_HEAP) {
-				Tcl_SetResult(interp,
-				    "-multiple not supported", TCL_STATIC);
-				result = TCL_ERROR;
-			}
 			break;
 		case DBPUT_MULTIPLE_KEY:
 			FLAG_CHECK(multiflag);
 			multiflag = DB_MULTIPLE_KEY;
-			if (type == DB_HEAP) {
-				Tcl_SetResult(interp,
-				    "-multiple_key not supported", TCL_STATIC);
-				result = TCL_ERROR;
-			}
 			break;
 		case DBPUT_NOOVER:
 			FLAG_CHECK(flag);
@@ -1109,9 +1151,24 @@ tcl_DbPut(interp, objc, objv, dbp)
 			 * lines above and copy that.)
 			 */
 			break;
+		case DBPUT_SORT_MULTIPLE:
+			sort_multiple = 1;
+			break;
 		}
 		if (result != TCL_OK)
 			break;
+	}
+
+	if (sort_multiple != 0 && multiflag == 0) {
+		Tcl_SetResult(interp, 
+	    "-sort_multiple must be used with -multiple and -multiple_key",
+		    TCL_STATIC);
+		result = TCL_ERROR;
+	} else if (sort_multiple != 0 && type != DB_BTREE) {
+		Tcl_SetResult(interp, 
+		    "-sort_multiple must be used on btree database",
+		    TCL_STATIC);
+		result = TCL_ERROR;
 	}
 
 	if (result == TCL_ERROR)
@@ -1141,8 +1198,14 @@ tcl_DbPut(interp, objc, objv, dbp)
 			elemc = delemc;
 
 		memset(&key, 0, sizeof(key));
-		key.ulen = DB_ALIGN((u_int32_t)klen +
-		    (u_int32_t)elemc * sizeof(u_int32_t) * 2, 1024UL);
+		if (type == DB_HEAP)
+			key.ulen = DB_ALIGN(
+			    (u_int32_t)elemc * sizeof(DB_HEAP_RID) +
+			    (u_int32_t)elemc * sizeof(u_int32_t) * 2, 1024UL);
+		else
+			key.ulen = DB_ALIGN((u_int32_t)klen +
+			    (u_int32_t)elemc * sizeof(u_int32_t) * 2, 1024UL);
+
 		key.flags = DB_DBT_USERMEM | DB_DBT_BULK;
 		if ((ret = __os_malloc(dbp->env, key.ulen, &key.data)) != 0)
 			return (ret);
@@ -1164,6 +1227,46 @@ tcl_DbPut(interp, objc, objv, dbp)
 				    dtmp, 0);
 				DB_ASSERT(dbp->env, ptr != NULL);
 			}
+		} else if (type == DB_HEAP) {
+			/* 
+			 * For heap we need to translate each record number in
+			 * the passed in array into an RID.  Bulk put can only
+			 * be used to update existing heap records, so we don't
+			 * need to worry about writing to the aux recno db.
+			 */
+			memset(&hkey, 0, sizeof(hkey));
+			hkey.data = &rid;
+			hkey.ulen = hkey.size = sizeof(DB_HEAP_RID);
+			hkey.flags = DB_DBT_USERMEM;
+			rid.pgno = 0;
+			rid.indx = 0;
+
+			/* set up key for recno auxiliary db */
+			memset(&rkey, 0, sizeof(rkey));
+			rkey.data = &recno;
+			rkey.ulen = rkey.size = sizeof(db_recno_t);
+			rkey.flags = DB_DBT_USERMEM;
+	
+			/* Set up the DB ptr for the recno db */
+			recdbp = ((DBTCL_INFO *)dbp->api_internal)->hrdbp;
+
+			/* The records must exist, don't need the recno put. */
+			skiprecno = 1;
+
+			DB_MULTIPLE_WRITE_INIT(ptr, &key);
+			for (i = 0; i < elemc; i++) {
+				result = _GetUInt32(interp, elemv[i], &recno);
+				ret = recdbp->get(recdbp, txn, &rkey, &hkey, 0);
+				if (ret == 0)
+					DB_MULTIPLE_WRITE_NEXT(ptr,
+					    &key, hkey.data, hkey.size);
+				else {
+					result = _ReturnSetup(interp, ret,
+					    DB_RETOK_DBPUT(ret),
+					    "db put heap bulk");
+					goto out;
+				}
+			}
 		} else {
 			DB_MULTIPLE_WRITE_INIT(ptr, &key);
 			for (i = 0; i < elemc; i++) {
@@ -1180,6 +1283,13 @@ tcl_DbPut(interp, objc, objv, dbp)
 			    &data, dtmp, (u_int32_t)dlen);
 			DB_ASSERT(dbp->env, ptr != NULL);
 		}
+		if (sort_multiple != 0) {
+			ret = dbp->sort_multiple(dbp, &key, &data, multiflag);
+			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "sort_multiple");
+			if (ret != 0)
+				goto out;
+		}
 	} else if (multiflag == DB_MULTIPLE_KEY) {
 		/*
 		 * To work out how big a buffer is needed, we first need to
@@ -1193,8 +1303,16 @@ tcl_DbPut(interp, objc, objv, dbp)
 			return (result);
 
 		memset(&key, 0, sizeof(key));
-		key.ulen = DB_ALIGN((u_int32_t)klen +
-		    (u_int32_t)elemc * sizeof(u_int32_t) * 2, 1024UL);
+		if (type == DB_HEAP) {
+			/* Need to make sure there's room for RIDs. */
+			key.ulen = DB_ALIGN(
+			    (u_int32_t)klen +
+			    (u_int32_t)elemc * sizeof(DB_HEAP_RID) +
+			    (u_int32_t)elemc * sizeof(u_int32_t) * 4, 1024UL);
+		} else {
+			key.ulen = DB_ALIGN((u_int32_t)klen +
+			    (u_int32_t)elemc * sizeof(u_int32_t) * 2, 1024UL);
+		}
 		key.flags = DB_DBT_USERMEM | DB_DBT_BULK;
 		if ((ret = __os_malloc(dbp->env, key.ulen, &key.data)) != 0)
 			return (ret);
@@ -1210,6 +1328,50 @@ tcl_DbPut(interp, objc, objv, dbp)
 				    recno, dtmp, (u_int32_t)dlen);
 				DB_ASSERT(dbp->env, ptr != NULL);
 			}
+		} else if (type == DB_HEAP) {
+			/* 
+			 * For heap we need to translate each record number in
+			 * the passed in array into an RID.  Bulk put can only
+			 * be used to update existing heap records, so we don't
+			 * need to worry about writing to the aux recno db.
+			 */
+			memset(&hkey, 0, sizeof(hkey));
+			hkey.data = &rid;
+			hkey.ulen = hkey.size = sizeof(DB_HEAP_RID);
+			hkey.flags = DB_DBT_USERMEM;
+			rid.pgno = 0;
+			rid.indx = 0;
+
+			/* set up key for recno auxiliary db */
+			memset(&rkey, 0, sizeof(rkey));
+			rkey.data = &recno;
+			rkey.ulen = rkey.size = sizeof(db_recno_t);
+			rkey.flags = DB_DBT_USERMEM;
+	
+			/* Set up the DB ptr for the recno db */
+			recdbp = ((DBTCL_INFO *)dbp->api_internal)->hrdbp;
+
+			/* The records must exist, don't need the recno put. */
+			skiprecno = 1;
+
+			DB_MULTIPLE_WRITE_INIT(ptr, &key);
+			for (i = 0; i + 1 < elemc; i += 2) {
+				result = _GetUInt32(interp, elemv[i], &recno);
+				dtmp = Tcl_GetByteArrayFromObj(elemv[i + 1],
+				    &dlen);
+				ret = recdbp->get(recdbp, txn, &rkey, &hkey, 0);
+				if (ret == 0) {
+					DB_MULTIPLE_KEY_WRITE_NEXT(ptr,
+					    &key, hkey.data, hkey.size,
+					    dtmp, (u_int32_t)dlen);
+					DB_ASSERT(dbp->env, ptr != NULL);
+				} else {
+					result = _ReturnSetup(interp, ret,
+					    DB_RETOK_DBPUT(ret),
+					    "db put heap bulk");
+					goto out;
+				}
+			}
 		} else {
 			DB_MULTIPLE_WRITE_INIT(ptr, &key);
 			for (i = 0; i + 1 < elemc; i += 2) {
@@ -1221,6 +1383,13 @@ tcl_DbPut(interp, objc, objv, dbp)
 				    dtmp, (u_int32_t)dlen);
 				DB_ASSERT(dbp->env, ptr != NULL);
 			}
+		}
+		if (sort_multiple != 0) {
+			ret = dbp->sort_multiple(dbp, &key, NULL, multiflag);
+			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "sort_multiple");
+			if (ret != 0)
+				goto out;
 		}
 	} else if (type == DB_QUEUE || type == DB_RECNO) {
 		/*
@@ -1315,11 +1484,12 @@ tcl_DbPut(interp, objc, objv, dbp)
 		result = _ReturnSetup(interp, ret, DB_RETOK_DBPUT(ret), 
 		    "db put");
 	} else {
-		/* Do put into heap db first, then recno db.  Varieties of
-		 * -multiple are not supported in heap (checked above), so
-		 * multiflag has been removed from the code.
-		 */
-		ret = dbp->put(dbp, txn, &hkey, &data, hflag);
+		/* Do put into heap db first, then recno db. */
+		if (multiflag == 0) {
+			ret = dbp->put(dbp, txn, &hkey, &data, hflag);
+		} else {
+			ret = dbp->put(dbp, txn, &key, &data, hflag | multiflag);
+		}
 		result = _ReturnSetup(interp, ret,
 		    DB_RETOK_DBPUT(ret), "db put heap");
 		if (ret) 
@@ -1334,6 +1504,7 @@ tcl_DbPut(interp, objc, objv, dbp)
 			result = _ReturnSetup(interp, ret, DB_RETOK_DBPUT(ret),
 		    	    "db put");
 		}
+
 		/* 
 		 * If for some reason the recno put does not work and the 
 		 * heap one does, lets try and delete the heap record if
@@ -1490,13 +1661,6 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 			if (result != TCL_OK)
 				goto out;
 			i++;
-			/* heap doesnt support multi yet, just catch here */
-			if (type == DB_HEAP) {
-				Tcl_SetResult(interp,
-				    "Heap doesnt support -multi", TCL_STATIC);
-				result = TCL_ERROR;
-				goto out;
-			}
 			break;
 		case DBGET_NOLEASE:
 			rmw |= DB_IGNORE_LEASE;
@@ -1893,7 +2057,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 			recdbp = ((DBTCL_INFO *)dbp->api_internal)->hrdbp; 
 			FLD_CLR(hflag, DB_GET_BOTH);			
 			ret = recdbp->get(recdbp, 
-			    txn, &key, &rdata, hflag | rmw | mflag);
+			    txn, &key, &rdata, hflag | rmw);
 			if (ret == 0) {
 				/* The rdata will be the key for the heap get. */
 				rid.pgno = ((DB_HEAP_RID *)rdata.data)->pgno;
@@ -1915,7 +2079,7 @@ tcl_DbGet(interp, objc, objv, dbp, ispget)
 			 */
 			if (mflag & DB_MULTIPLE)
 				result = _SetMultiList(interp,
-				    retlist, &key, &data, type, flag);
+				    retlist, &key, &data, type, flag, NULL);
 			else if (type == DB_RECNO || type == DB_QUEUE)
 				if (ispget)
 					result = _Set3DBTList(interp,
@@ -2138,6 +2302,7 @@ tcl_DbDelete(interp, objc, objv, dbp)
 		"-glob",
 		"-multiple",
 		"-multiple_key",
+		"-sort_multiple",
 		"-txn",
 		NULL
 	};
@@ -2146,26 +2311,29 @@ tcl_DbDelete(interp, objc, objv, dbp)
 		DBDEL_GLOB,
 		DBDEL_MULTIPLE,
 		DBDEL_MULTIPLE_KEY,
+		DBDEL_SORT_MULTIPLE,
 		DBDEL_TXN
 	};
 	DB *recdbp;
 	DBC *dbc;
-	DBT key, data, hkey, rdata;
+	DBT key, data, hkey, rdata, rkey;
 	DBTYPE type;
 	DB_HEAP_RID rid;
 	DB_TXN *txn;
 	Tcl_Obj **elemv;
-	void *dtmp, *ktmp, *ptr;
+	void *dtmp, *ktmp, *ptr, *rptr;
 	db_recno_t recno;
-	int dlen, elemc, freekey, i, j, klen, optindex, result, ret;
+	int dlen, elemc, freekey, freerkey, i, j, klen, optindex, result, ret;
+	int sort_multiple;
 	u_int32_t dflag, flag, multiflag;
 	char *arg, *pattern, *prefix, msg[MSG_SIZE];
 
 	COMPQUIET(recdbp, NULL);
 	result = TCL_OK;
-	freekey = 0;
+	freekey = freerkey = 0;
 	dflag = 0;
 	multiflag = 0;
+	sort_multiple = 0;
 	pattern = prefix = NULL;
 	txn = NULL;
 	if (objc < 3) {
@@ -2175,7 +2343,9 @@ tcl_DbDelete(interp, objc, objv, dbp)
 
 	dtmp = ktmp = NULL;
 	memset(&key, 0, sizeof(key));
+	memset(&rkey, 0, sizeof(rkey));
 	memset(&hkey, 0, sizeof(hkey));
+	memset(&rkey, 0, sizeof(rkey));
 	memset(&rdata, 0, sizeof(rdata));
  
 	/*
@@ -2243,9 +2413,26 @@ tcl_DbDelete(interp, objc, objv, dbp)
 			FLAG_CHECK(multiflag);
 			multiflag |= DB_MULTIPLE_KEY;
 			break;
+		case DBDEL_SORT_MULTIPLE:
+			sort_multiple = 1;
+			break;
 		}
 		if (result != TCL_OK)
 			break;
+	}
+
+	(void)dbp->get_type(dbp, &type);
+
+	if (sort_multiple != 0 && multiflag == 0) {
+		Tcl_SetResult(interp, 
+	    "-sort_multiple must be used with -multiple and -multiple_key",
+		    TCL_STATIC);
+		result = TCL_ERROR;
+	} else if (sort_multiple != 0 && type != DB_BTREE) {
+		Tcl_SetResult(interp, 
+		    "-sort_multiple must be used on btree database",
+		    TCL_STATIC);
+		result = TCL_ERROR;
 	}
 
 	if (result != TCL_OK)
@@ -2286,22 +2473,10 @@ tcl_DbDelete(interp, objc, objv, dbp)
 	 * If it is a RECNO database, the key is a record number and must be
 	 * setup up to contain a db_recno_t.  Otherwise the key is a "string".
 	 */
-	(void)dbp->get_type(dbp, &type);
 	ret = 0;
 	while (i < objc && ret == 0) {
 		memset(&key, 0, sizeof(key));
 		if (multiflag == DB_MULTIPLE) {
-			/* 
-			 * Heap is not supporting bulk on initially, so
-			 * check if type is heap and if so throw an error.
-			 */
-			if (type == DB_HEAP) {
-				Tcl_SetResult(interp,
-                                   "Heap doesnt support -multiple", TCL_STATIC);
-                                result = TCL_ERROR;
-                                goto out;
-                        }
-
 			/*
 			 * To work out how big a buffer is needed, we first
 			 * need to find out the total length of the data and
@@ -2314,8 +2489,24 @@ tcl_DbDelete(interp, objc, objv, dbp)
 				return (result);
 
 			memset(&key, 0, sizeof(key));
-			key.ulen = DB_ALIGN((u_int32_t)klen + (u_int32_t)elemc
-			    * sizeof(u_int32_t) * 2, 1024UL);
+			memset(&rkey, 0, sizeof(rkey));
+			if (type == DB_HEAP) {
+				key.ulen = DB_ALIGN((u_int32_t)elemc * 
+				    (sizeof(DB_HEAP_RID) + 
+				    sizeof(u_int32_t) * 2),
+				    1024UL);
+				rkey.ulen = DB_ALIGN((u_int32_t)klen +
+				    (u_int32_t)elemc * sizeof(u_int32_t) * 2,
+				    1024UL);
+				rkey.flags = DB_DBT_USERMEM | DB_DBT_BULK;
+				if ((ret = __os_malloc(
+				    dbp->env, rkey.ulen, &rkey.data)) != 0)
+					return (ret);
+				freerkey = 1;
+			} else
+				key.ulen = DB_ALIGN((u_int32_t)klen +
+				    (u_int32_t)elemc * sizeof(u_int32_t) * 2,
+				    1024UL);
 			key.flags = DB_DBT_USERMEM | DB_DBT_BULK;
 			if ((ret =
 			    __os_malloc(dbp->env, key.ulen, &key.data)) != 0)
@@ -2334,6 +2525,54 @@ tcl_DbDelete(interp, objc, objv, dbp)
 					    &key, recno, dtmp, 0);
 					DB_ASSERT(dbp->env, ptr != NULL);
 				}
+			} else if (type == DB_HEAP) {
+				/* 
+				 * For heap we need to translate each record
+				 * number in the passed in array into an RID.
+				 * Bulk put can only be used to update existing
+				 * heap records, so we don't need to worry about
+				 * writing to the aux recno db. 
+				 */
+				memset(&hkey, 0, sizeof(hkey));
+				hkey.data = &rid;
+				hkey.ulen = hkey.size = sizeof(DB_HEAP_RID);
+				hkey.flags = DB_DBT_USERMEM;
+				rid.pgno = 0;
+				rid.indx = 0;
+
+				/* set up key for recno auxiliary db */
+				memset(&data, 0, sizeof(rdata));
+				data.data = &recno;
+				data.ulen = data.size = sizeof(db_recno_t);
+				data.flags = DB_DBT_USERMEM;
+	
+				/* Set up the DB ptr for the recno db */
+				recdbp = 
+				    ((DBTCL_INFO *)dbp->api_internal)->hrdbp;
+
+				DB_MULTIPLE_WRITE_INIT(ptr, &key);
+				DB_MULTIPLE_RECNO_WRITE_INIT(rptr, &rkey);
+				for (j = 0; j < elemc; j++) {
+					result =
+					    _GetUInt32(interp,
+					    elemv[j], &recno);
+					if (result != TCL_OK)
+						return (result);
+					ret = recdbp->get(
+					    recdbp, txn, &data, &hkey, 0);
+					if (ret != 0) {
+						result = _ReturnSetup(interp,
+						    ret, DB_RETOK_DBPUT(ret),
+						    "db del heap bulk");
+						goto out;
+					}
+					DB_MULTIPLE_WRITE_NEXT(ptr,
+					    &key, hkey.data, hkey.size);
+					DB_ASSERT(dbp->env, ptr != NULL);
+					DB_MULTIPLE_RECNO_WRITE_NEXT(rptr,
+					    &rkey, recno, dtmp, 0);
+					DB_ASSERT(dbp->env, rptr != NULL);
+				}
 			} else {
 				DB_MULTIPLE_WRITE_INIT(ptr, &key);
 				for (j = 0; j < elemc; j++) {
@@ -2344,18 +2583,14 @@ tcl_DbDelete(interp, objc, objv, dbp)
 					DB_ASSERT(dbp->env, ptr != NULL);
 				}
 			}
+			if (sort_multiple != 0) {
+				ret = dbp->sort_multiple(dbp, &key, NULL, multiflag);
+				result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+				    "sort_multiple");
+				if (ret != 0)
+					goto loopend;
+			}
 		} else if (multiflag == DB_MULTIPLE_KEY) {
-			/* 
-			 * Heap is not supporting bulk on initially, so
-			 * check if type is heap and if so throw an error.
-			 */
-			if (type == DB_HEAP) {
-				Tcl_SetResult(interp,
-                              "Heap doesnt support -multiple_key", TCL_STATIC);
-                                result = TCL_ERROR;
-                                goto out;
-                        }
-
 			/*
 			 * To work out how big a buffer is needed, we first
 			 * need to find out the total length of the data (len)
@@ -2368,8 +2603,24 @@ tcl_DbDelete(interp, objc, objv, dbp)
 				return (result);
 
 			memset(&key, 0, sizeof(key));
-			key.ulen = DB_ALIGN((u_int32_t)klen +
-			    (u_int32_t)elemc * sizeof(u_int32_t) * 2, 1024UL);
+			memset(&rkey, 0, sizeof(rkey));
+			if (type == DB_HEAP) {
+				key.ulen = DB_ALIGN((u_int32_t)klen +
+				    (u_int32_t)elemc * sizeof(DB_HEAP_RID) +
+				    (u_int32_t)elemc * sizeof(u_int32_t) * 2,
+				    1024UL);
+				rkey.ulen = DB_ALIGN((u_int32_t)klen +
+				    (u_int32_t)elemc * sizeof(u_int32_t) * 2,
+				    1024UL);
+				rkey.flags = DB_DBT_USERMEM | DB_DBT_BULK;
+				if ((ret = __os_malloc(
+				    dbp->env, rkey.ulen, &rkey.data)) != 0)
+					return (ret);
+				freerkey = 1;
+			} else
+				key.ulen = DB_ALIGN((u_int32_t)klen +
+				    (u_int32_t)elemc * sizeof(u_int32_t) * 2,
+				    1024UL);
 			key.flags = DB_DBT_USERMEM | DB_DBT_BULK;
 			if ((ret =
 			    __os_malloc(dbp->env, key.ulen, &key.data)) != 0)
@@ -2390,6 +2641,57 @@ tcl_DbDelete(interp, objc, objv, dbp)
 					    &key, recno, dtmp, (u_int32_t)dlen);
 					DB_ASSERT(dbp->env, ptr != NULL);
 				}
+			} else if (type == DB_HEAP) {
+				/* 
+				 * For heap we need to translate each record
+				 * number in the passed in array into an RID.
+				 * Bulk put can only be used to update existing
+				 * heap records, so we don't need to worry about
+				 * writing to the aux recno db. 
+				 */
+				memset(&hkey, 0, sizeof(hkey));
+				hkey.data = &rid;
+				hkey.ulen = hkey.size = sizeof(DB_HEAP_RID);
+				hkey.flags = DB_DBT_USERMEM;
+				rid.pgno = 0;
+				rid.indx = 0;
+
+				/* set up key for recno auxiliary db */
+				memset(&data, 0, sizeof(rdata));
+				data.data = &recno;
+				data.ulen = data.size = sizeof(db_recno_t);
+				data.flags = DB_DBT_USERMEM;
+	
+				/* Set up the DB ptr for the recno db */
+				recdbp = 
+				    ((DBTCL_INFO *)dbp->api_internal)->hrdbp;
+
+				DB_MULTIPLE_WRITE_INIT(ptr, &key);
+				DB_MULTIPLE_RECNO_WRITE_INIT(rptr, &rkey);
+				for (j = 0; j + 1 < elemc; j += 2) {
+					result =
+					    _GetUInt32(interp,
+					    elemv[j], &recno);
+					if (result != TCL_OK)
+						return (result);
+					dtmp = Tcl_GetByteArrayFromObj(
+					    elemv[j + 1], &dlen);
+					ret = recdbp->get(
+					    recdbp, txn, &data, &hkey, 0);
+					if (ret != 0) {
+						result = _ReturnSetup(interp,
+						    ret, DB_RETOK_DBPUT(ret),
+						    "db del heap bulk");
+						goto out;
+					}
+					DB_MULTIPLE_KEY_WRITE_NEXT(ptr,
+					    &key, hkey.data, hkey.size,
+					    dtmp, (u_int32_t)dlen);
+					DB_ASSERT(dbp->env, ptr != NULL);
+					DB_MULTIPLE_RECNO_WRITE_NEXT(rptr,
+					    &rkey, recno, dtmp, 0);
+					DB_ASSERT(dbp->env, rptr != NULL);
+				}
 			} else {
 				DB_MULTIPLE_WRITE_INIT(ptr, &key);
 				for (j = 0; j + 1 < elemc; j += 2) {
@@ -2402,6 +2704,13 @@ tcl_DbDelete(interp, objc, objv, dbp)
 					    dtmp, (u_int32_t)dlen);
 					DB_ASSERT(dbp->env, ptr != NULL);
 				}
+			}
+			if (sort_multiple != 0) {
+				ret = dbp->sort_multiple(dbp, &key, NULL, multiflag);
+				result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+				    "sort_multiple");
+				if (ret != 0)
+					goto loopend;
 			}
 		} else if (type == DB_RECNO || type == DB_QUEUE) {
 			result = _GetUInt32(interp, objv[i++], &recno);
@@ -2431,7 +2740,12 @@ tcl_DbDelete(interp, objc, objv, dbp)
 		_debug_check();
 		if (type != DB_HEAP)
 			ret = dbp->del(dbp, txn, &key, dflag | multiflag);
-		else {
+		else if (multiflag == DB_MULTIPLE || 
+		    multiflag == DB_MULTIPLE_KEY) {
+			ret = recdbp->del(
+			    recdbp, txn, &rkey, dflag | DB_MULTIPLE);
+			ret = dbp->del(dbp, txn, &key, dflag | multiflag);
+		} else {
 			/* set up the recno data, which will be heap key */
 			rdata.ulen = sizeof(DB_HEAP_RID);
 			rdata.flags = DB_DBT_USERMEM;
@@ -2485,12 +2799,18 @@ tcl_DbDelete(interp, objc, objv, dbp)
 		 * If we have any error, set up return result and stop
 		 * processing keys.
 		 */
+loopend:
 		if (freekey && key.data != NULL)
 			__os_free(dbp->env, key.data);
+		if (freerkey && rkey.data != NULL)
+			__os_free(dbp->env, rkey.data);
 		if (ret != 0)
 			break;
 	}
-	result = _ReturnSetup(interp, ret, DB_RETOK_DBDEL(ret), "db del");
+	
+	if (result == TCL_OK)
+		result = _ReturnSetup(interp, 
+		    ret, DB_RETOK_DBDEL(ret), "db del");
 
 	/*
 	 * At this point we've either finished or, if we have a pattern,

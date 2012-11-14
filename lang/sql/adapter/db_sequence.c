@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -256,7 +256,7 @@ static void db_seq_create_func(
 	if ((rc = btreeSeqGetHandle(context, p, SEQ_HANDLE_CREATE, &cookie)) !=
 	    SQLITE_OK) {
 		if (rc != SQLITE_ERROR)
-			btreeSeqError(context, dberr2sqlite(rc),
+			btreeSeqError(context, dberr2sqlite(rc, NULL),
 			    "Failed to create sequence %s. Error: %s",
 			    (const char *)sqlite3_value_text(argv[0]),
 			    db_strerror(rc));
@@ -298,10 +298,10 @@ static void db_seq_drop_func(
 	if (rc != SQLITE_OK) {
 		/* If the handle doesn't exist, return an error. */
 		if (rc == DB_NOTFOUND) 
-			btreeSeqError(context, dberr2sqlite(rc),
+			btreeSeqError(context, dberr2sqlite(rc, NULL),
 			    "no such sequence: %s", cookie.name + 4);
 		else if (rc != SQLITE_ERROR)
-			btreeSeqError(context, dberr2sqlite(rc),
+			btreeSeqError(context, dberr2sqlite(rc, NULL),
 			"Fail to drop sequence %s. Error: %s",
 			cookie.name + 4, db_strerror(rc));
 		return;
@@ -322,13 +322,19 @@ static void db_seq_drop_func(
 		goto done;
 	}
 
+	sqlite3_mutex_leave(pBt->mutex);
 	if ((rc = btreeSeqStartTransaction(context, p, 1)) != SQLITE_OK) {
 			btreeSeqError(context, SQLITE_ERROR,
 			    "Could not begin transaction for drop.");
-			rc = SQLITE_ERROR;
-			goto done;
+			return;
 	}
 
+	/*
+	 * Drop the mutex - it's not valid to begin a transaction while
+	 * holding the mutex. We can drop it safely because it's use is to
+	 * protect handle cache changes.
+	 */
+	sqlite3_mutex_enter(pBt->mutex);
 	btreeSeqRemoveHandle(context, p, cache_entry);
 done:	sqlite3_mutex_leave(pBt->mutex);
 
@@ -378,10 +384,10 @@ static void btreeSeqGetVal(
 
 	if (rc != SQLITE_OK) {
 		if (rc == DB_NOTFOUND) 
-			btreeSeqError(context, dberr2sqlite(rc),
+			btreeSeqError(context, dberr2sqlite(rc, NULL),
 			    "no such sequence: %s", name);
 		else if (rc != SQLITE_ERROR)
-			btreeSeqError(context, dberr2sqlite(rc),
+			btreeSeqError(context, dberr2sqlite(rc, NULL),
 			    "Fail to get next value from seq %s. Error: %s",
 			    name, db_strerror(rc));
 		return;
@@ -657,7 +663,7 @@ static int btreeSeqRemoveHandle(
 	if (cache_entry->cookie != NULL)
 		sqlite3_free(cache_entry->cookie);
 	sqlite3_free(cache_entry);
-	return (ret == 0 ? SQLITE_OK : dberr2sqlite(ret));
+	return (ret == 0 ? SQLITE_OK : dberr2sqlite(ret, NULL));
 }
 
 static int btreeSeqOpen(
@@ -898,7 +904,7 @@ static int btreeSeqStartTransaction(
 	vdbe = db->pVdbe;
 
 	if (!sqlite3BtreeIsInTrans(p) &&
-	    (rc = sqlite3BtreeBeginTrans(p, 1)) != SQLITE_OK) {
+	    (rc = btreeBeginTransInternal(p, 1)) != SQLITE_OK) {
 		btreeSeqError(context, SQLITE_ERROR,
 		    "Could not begin transaction.");
 		return (rc);

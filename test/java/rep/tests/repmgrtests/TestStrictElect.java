@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -17,7 +17,6 @@ import org.junit.Before;
 
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
-import com.sleepycat.db.EventHandlerAdapter;
 import com.sleepycat.db.ReplicationConfig;
 import com.sleepycat.db.ReplicationManagerSiteConfig;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
@@ -64,7 +63,7 @@ public class TestStrictElect {
         ReplicationManagerSiteConfig remote = new ReplicationManagerSiteConfig("localhost", masterPort);
         remote.setBootstrapHelper(true);
         ec.addReplicationManagerSite(remote);
-        MyEventHandler mon = new MyEventHandler();
+        EventHandler mon = new EventHandler();
         ec.setEventHandler(mon);
         File clientDir = Util.mkdir("client");
         Environment client = new Environment(clientDir, ec);
@@ -113,7 +112,7 @@ public class TestStrictElect {
         ReplicationManagerSiteConfig remote = new ReplicationManagerSiteConfig("localhost", masterPort);
         remote.setBootstrapHelper(true);
         ec.addReplicationManagerSite(remote);
-        MyEventHandler mon = new MyEventHandler();
+        EventHandler mon = new EventHandler();
         ec.setEventHandler(mon);
         File clientDir = Util.mkdir("client");
         Environment client = new Environment(clientDir, ec);
@@ -156,7 +155,7 @@ public class TestStrictElect {
         ReplicationManagerSiteConfig remote = new ReplicationManagerSiteConfig("localhost", masterPort);
         remote.setBootstrapHelper(true);
         ec.addReplicationManagerSite(remote);
-        MyEventHandler mon = new MyEventHandler();
+        EventHandler mon = new EventHandler();
         ec.setEventHandler(mon);
         File clientDir = Util.mkdir("client");
         Environment client = new Environment(clientDir, ec);
@@ -179,7 +178,7 @@ public class TestStrictElect {
         remote = new ReplicationManagerSiteConfig("localhost", masterPort);
         remote.setBootstrapHelper(true);
         ec.addReplicationManagerSite(remote);
-        mon = new MyEventHandler();
+        mon = new EventHandler();
         ec.setEventHandler(mon);
         clientDir = Util.mkdir("client2");
         Environment client2 = new Environment(clientDir, ec);
@@ -220,27 +219,5 @@ public class TestStrictElect {
         if (Boolean.getBoolean("VERB_REPLICATION"))
             ec.setVerbose(VerboseConfig.REPLICATION, true);
         return (ec);
-    }
-
-    class MyEventHandler extends EventHandlerAdapter {
-        private boolean done = false;
-        private boolean panic = false;
-        
-        @Override synchronized public void handleRepStartupDoneEvent() {
-                done = true;
-                notifyAll();
-            }
-        
-        @Override synchronized public void handlePanicEvent() {
-                done = true;
-                panic = true;
-                notifyAll();
-            }
-        
-        synchronized void await() throws Exception {
-            while (!done) { wait(); }
-            if (panic)
-                throw new Exception("aborted by panic in DB");
-        }
     }
 }

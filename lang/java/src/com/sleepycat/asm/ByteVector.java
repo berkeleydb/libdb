@@ -1,6 +1,6 @@
 /***
  * ASM: a very small and fast Java bytecode manipulation framework
- * Copyright (c) 2000-2005 INRIA, France Telecom
+ * Copyright (c) 2000-2011 INRIA, France Telecom
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -199,10 +199,10 @@ public class ByteVector {
      */
     public ByteVector putUTF8(final String s) {
         int charLength = s.length();
-        if (length + 2 + charLength > data.length) {
+        int len = length;
+        if (len + 2 + charLength > data.length) {
             enlarge(2 + charLength);
         }
-        int len = length;
         byte[] data = this.data;
         // optimistic algorithm: instead of computing the byte length and then
         // serializing the string (which requires two loops), we assume the byte
@@ -211,7 +211,7 @@ public class ByteVector {
         // if we find that this assumption is wrong, we continue with the
         // general method.
         data[len++] = (byte) (charLength >>> 8);
-        data[len++] = (byte) (charLength);
+        data[len++] = (byte) charLength;
         for (int i = 0; i < charLength; ++i) {
             char c = s.charAt(i);
             if (c >= '\001' && c <= '\177') {
@@ -229,7 +229,7 @@ public class ByteVector {
                     }
                 }
                 data[length] = (byte) (byteLength >>> 8);
-                data[length + 1] = (byte) (byteLength);
+                data[length + 1] = (byte) byteLength;
                 if (length + 2 + byteLength > data.length) {
                     length = len;
                     enlarge(2 + byteLength);

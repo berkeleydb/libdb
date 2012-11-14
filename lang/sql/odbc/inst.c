@@ -2,9 +2,9 @@
  * @file inst.c
  * SQLite ODBC Driver installer/uninstaller for WIN32
  *
- * $Id: inst.c,v 1.12 2009/05/03 04:22:18 chw Exp chw $
+ * $Id: inst.c,v 1.16 2011/11/08 17:29:28 chw Exp chw $
  *
- * Copyright (c) 2001-2007 Christian Werner <chw@ch-werner.de>
+ * Copyright (c) 2001-2011 Christian Werner <chw@ch-werner.de>
  *
  * See the file "license.terms" for information on usage
  * and redistribution of this file and for a
@@ -20,20 +20,29 @@
 #include <ctype.h>
 #include <stdio.h>
 
+#ifdef SEEEXT
+#define SEESTR " (SEE)"
+#define SEESTR2 "SEE "
+#else
+#define SEEEXT ""
+#define SEESTR ""
+#define SEESTR2 ""
+#endif
+
 #ifdef _WIN64
 #define NUMDRVS 1
 static char *DriverName[NUMDRVS] = {
-    "SQLite3 ODBC Driver"
+    "SQLite3 ODBC Driver" SEESTR
 };
 static char *DSName[NUMDRVS] = {
-    "SQLite3 Datasource"
+    "SQLite3 " SEESTR2 "Datasource"
 };
 static char *DriverDLL[NUMDRVS] = {
-    "sqlite3odbc.dll"
+    "sqlite3odbc" SEEEXT ".dll"
 };
 #ifdef WITH_SQLITE_DLLS
 static char *EngineDLL[NUMDRVS] = {
-    "sqlite3.dll"
+    "sqlite3" SEEEXT ".dll"
 };
 #endif
 #else
@@ -41,17 +50,17 @@ static char *EngineDLL[NUMDRVS] = {
 static char *DriverName[NUMDRVS] = {
     "SQLite ODBC Driver",
     "SQLite ODBC (UTF-8) Driver",
-    "SQLite3 ODBC Driver"
+    "SQLite3 ODBC Driver" SEESTR
 };
 static char *DSName[NUMDRVS] = {
     "SQLite Datasource",
     "SQLite UTF-8 Datasource",
-    "SQLite3 Datasource"
+    "SQLite3 " SEESTR2 "Datasource"
 };
 static char *DriverDLL[NUMDRVS] = {
     "sqliteodbc.dll",
     "sqliteodbcu.dll",
-    "sqlite3odbc.dll"
+    "sqlite3odbc" SEEEXT ".dll"
 };
 #ifdef WITH_SQLITE_DLLS
 static char *EngineDLL[NUMDRVS] = {
@@ -188,7 +197,7 @@ InUn(int remove, char *drivername, char *dllname, char *dll2name, char *dsname)
 	}
 	if (!remove && usecnt > 0) {
 	    /* first install try: copy over driver dll, keeping DSNs */
-	    if (GetFileAttributes(dllname) != 0xFFFFFFFF &&
+	    if (GetFileAttributes(dllname) != INVALID_FILE_ATTRIBUTES &&
 		CopyFile(dllname, inst, 0) &&
 		CopyOrDelModules(dllname, path, 0)) {
 		if (dll2name != NULL) {
@@ -235,7 +244,7 @@ InUn(int remove, char *drivername, char *dllname, char *dll2name, char *dsname)
 	    SQLConfigDataSource(NULL, ODBC_REMOVE_SYS_DSN, drivername, attr);
 	    goto done;
 	}
-	if (GetFileAttributes(dllname) == 0xFFFFFFFF) {
+	if (GetFileAttributes(dllname) == INVALID_FILE_ATTRIBUTES) {
 	    return FALSE;
 	}
 	if (!CopyFile(dllname, inst, 0)) {

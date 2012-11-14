@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -26,10 +26,14 @@ import java.util.IdentityHashMap;
  */
 class ReadOnlyCatalog implements Catalog {
 
+    private final ClassLoader classLoader;
     private List<Format> formatList;
     private Map<String, Format> formatMap;
 
-    ReadOnlyCatalog(List<Format> formatList, Map<String, Format> formatMap) {
+    ReadOnlyCatalog(ClassLoader classLoader,
+                    List<Format> formatList,
+                    Map<String, Format> formatMap) {
+        this.classLoader = classLoader;
         this.formatList = formatList;
         this.formatMap = formatMap;
     }
@@ -80,5 +84,15 @@ class ReadOnlyCatalog implements Catalog {
 
     public Object convertRawObject(RawObject o, IdentityHashMap converted) {
         throw DbCompat.unexpectedState();
+    }
+
+    public Class resolveClass(String clsName)
+        throws ClassNotFoundException {
+
+        return SimpleCatalog.resolveClass(clsName, classLoader);
+    }
+
+    public Class resolveKeyClass(String clsName) {
+        return SimpleCatalog.resolveKeyClass(clsName, classLoader);
     }
 }

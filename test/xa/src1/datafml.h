@@ -1,3 +1,9 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ */
+
 /*	fname	fldid            */
 /*	-----	-----            */
 #define	SEQ_NO	((FLDID32)33554833)	/* number: 401	 type: long */

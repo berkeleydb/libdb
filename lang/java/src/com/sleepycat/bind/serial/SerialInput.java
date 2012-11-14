@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -13,6 +13,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectStreamClass;
 
 import com.sleepycat.db.DatabaseException;
+import com.sleepycat.util.ClassResolver;
 import com.sleepycat.util.RuntimeExceptionWrapper;
 
 /**
@@ -32,10 +33,9 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  *
  * @author Mark Hayes
  */
-public class SerialInput extends ObjectInputStream {
+public class SerialInput extends ClassResolver.Stream {
 
     private ClassCatalog classCatalog;
-    private ClassLoader classLoader;
 
     /**
      * Creates a serial input stream.
@@ -69,13 +69,11 @@ public class SerialInput extends ObjectInputStream {
                        ClassLoader classLoader)
         throws IOException {
 
-        super(in);
-
+        super(in, classLoader);
         this.classCatalog = classCatalog;
-        this.classLoader = classLoader;
     }
 
-    // javadoc is specified elsewhere
+    @Override
     protected ObjectStreamClass readClassDescriptor()
         throws IOException, ClassNotFoundException {
 
@@ -93,25 +91,6 @@ public class SerialInput extends ObjectInputStream {
              * call here, etc.
              */
             throw RuntimeExceptionWrapper.wrapIfNeeded(e);
-        }
-    }
-
-    // javadoc is specified elsewhere
-    protected Class resolveClass(ObjectStreamClass desc)
-        throws IOException, ClassNotFoundException {
-
-        if (classLoader != null) {
-            try {
-                return Class.forName(desc.getName(), false, classLoader);
-            } catch (ClassNotFoundException e) {
-                try {
-                    return Class.forName(desc.getName());
-                } catch (ClassNotFoundException ee) {
-                    return super.resolveClass(desc);
-                }
-            }
-        } else {
-            return super.resolveClass(desc);
         }
     }
 }

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -545,7 +545,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		DBCGET_SETRANGE,
 		DBCGET_SETRECNO
 	};
-	DB *hrdbp, *hsdbp, *thisdbp;
+	DB *hrdbp, *hsdbp, *pdbp, *phrdbp, *phsdbp, *thisdbp;
 	DB_HEAP_RID rid;
 	DBT hkey, key, data, pdata, rkey, rdata, tmpdata;
 	DBTCL_INFO *dbcip, *dbip;
@@ -565,7 +565,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	result = TCL_OK;
 	flag = heapflag = 0;
 	freekey = freedata = 0;
-	hrdbp = hsdbp = NULL;
+	hrdbp = hsdbp = pdbp = phrdbp = phsdbp = NULL;
 	type = ptype = DB_UNKNOWN;
 	memset(&hkey, 0, sizeof(hkey));
 	memset(&key, 0, sizeof(key));
@@ -755,6 +755,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		goto out;
 	heapflag = flag & ~DB_OPFLAGS_MASK;
 	heapflag &= ~DB_MULTIPLE_KEY;
+	heapflag &= ~DB_MULTIPLE;
 	if (F_ISSET(dbc, DBC_READ_COMMITTED))
 	    heapflag |= DB_READ_COMMITTED;
 	if (F_ISSET(dbc, DBC_READ_UNCOMMITTED))
@@ -776,14 +777,20 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		}
 		thisdbp = dbip->i_dbp;
 		(void)thisdbp->get_type(thisdbp, &type);
-		if (ispget && thisdbp->s_primary != NULL)
-			(void)thisdbp->
-			    s_primary->get_type(thisdbp->s_primary, &ptype);
-		else
+		if (ispget && thisdbp->s_primary != NULL) {
+			pdbp = thisdbp->s_primary;
+			(void)pdbp->get_type(pdbp, &ptype);
+		} else
 			ptype = DB_UNKNOWN;
 		if (type == DB_HEAP) {
 			hrdbp = dbip->hrdbp;
 			hsdbp = dbip->hsdbp;
+		}
+		if (pdbp != NULL && ptype == DB_HEAP) {
+			phrdbp = ((DBTCL_INFO *)
+			    pdbp->api_internal)->hrdbp;
+			phsdbp = ((DBTCL_INFO *)
+			    pdbp->api_internal)->hsdbp;
 		}
 	}
 	/*
@@ -965,7 +972,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 		data.data = &rid;
 		data.size = data.ulen = sizeof(DB_HEAP_RID);
 		data.flags = DB_DBT_USERMEM;
-		ret = hrdbp->get(hrdbp, dbc->txn, &rkey, &data, heapflag);
+		ret = phrdbp->get(phrdbp, dbc->txn, &rkey, &data, heapflag);
 		if (ret != 0) {
 			result = _ReturnSetup(
 			    interp, ret, DB_RETOK_DBGET(ret), "db get");
@@ -983,9 +990,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 			hkey.data = &rid;
 			hkey.ulen = hkey.size = data.size;
 			hkey.flags = DB_DBT_USERMEM;
-			hsdbp = ((DBTCL_INFO *)
-			    dbc->dbp->s_primary->api_internal)->hsdbp;
-			ret = hsdbp->pget(hsdbp,
+			ret = phsdbp->pget(phsdbp,
 			    dbc->txn, &hkey, &data, &tmpdata, 0);
 		} 
 
@@ -1005,7 +1010,7 @@ tcl_DbcGet(interp, objc, objv, dbc, ispget)
 	} else {
 		if (flag & (DB_MULTIPLE|DB_MULTIPLE_KEY))
 			result = _SetMultiList(interp,
-			    retlist, &key, &data, type, flag);
+			    retlist, &key, &data, type, flag, dbc);
 		else if ((type == DB_RECNO || type == DB_QUEUE) &&
 		    key.data != NULL) {
 			if (ispget)
@@ -1067,12 +1072,13 @@ out1:
 out:
 	if (key.data != NULL && F_ISSET(&key, DB_DBT_MALLOC))
 		__os_ufree(dbc->env, key.data);
-	if (type != DB_HEAP && 
-	    key.data != NULL && F_ISSET(&key, DB_DBT_USERMEM))
+	if (key.data != NULL && F_ISSET(&key, DB_DBT_USERMEM) && 
+	    key.data != &rid)
 		__os_free(dbc->env, key.data);
 	if (data.data != NULL && F_ISSET(&data, DB_DBT_MALLOC))
 		__os_ufree(dbc->env, data.data);
-	if (data.data != NULL && F_ISSET(&data, DB_DBT_USERMEM))
+	if (data.data != NULL && F_ISSET(&data, DB_DBT_USERMEM) &&
+	    data.data != &rid)
 		__os_free(dbc->env, data.data);
 	if (pdata.data != NULL && F_ISSET(&pdata, DB_DBT_MALLOC))
 		__os_ufree(dbc->env, pdata.data);

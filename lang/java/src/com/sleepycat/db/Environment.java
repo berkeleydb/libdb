@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -1712,11 +1712,13 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
     /**
     Set the panic state for the database environment.
     Database environments in a panic state normally refuse all attempts to
-    call library functions, throwing a {@link com.sleepycat.db.RunRecoveryException RunRecoveryException}.
+    call library functions, throwing a 
+    {@link com.sleepycat.db.RunRecoveryException RunRecoveryException}.
     <p>
-    This method configures a database environment, including all threads
-of control accessing the database environment, not only the operations
-performed using a specified {@link com.sleepycat.db.Environment Environment} handle.
+    This method configures a database environment, including all threads of
+    control accessing the database environment, not only the operations
+    performed using a specified 
+    {@link com.sleepycat.db.Environment Environment} handle.
     <p>
     This method may be called at any time during the life of the application.
     <p>
@@ -1727,6 +1729,130 @@ performed using a specified {@link com.sleepycat.db.Environment Environment} han
         throws DatabaseException {
 
         dbenv.set_flags(DbConstants.DB_PANIC_ENVIRONMENT, onoff);
+    }
+
+    /**
+     Perform a hot back up of the open environment. 
+     <p>
+     All files used by the environment are backed up, so long as the normal
+     rules for file placement are followed. For information on how files
+     are normally placed relative to the environment directory, see the
+     <a href="{@docRoot}/../programmer_reference/env_naming.html" target="_top">
+         Berkeley DB File Naming
+     </a> section in the <i>Berkeley DB Reference Guide</i>.
+     <p>
+     By default, data directories and the log directory specified relative
+     to the home directory will be recreated relative to the target
+     directory. If absolute path names are used, then 
+     use the {@link com.sleepycat.db.BackupOptions#setSingleDir BackupOptions.setSingleDir}
+     method.
+     <p>
+     This method provides the same functionality as the 
+     <a href="{@docRoot}/../api_reference/C/db_hotbackup.html" target="_top">db_hotbackup</a> 
+     utility.  However, this method does not perform the housekeeping
+     actions performed by that utility. In particular, you may
+     want to run a checkpoint before calling this method. To run a
+     checkpoint, use the 
+     {@link com.sleepycat.db.Environment#checkpoint Environment.checkpoint}
+     method. For more information on checkpoints, see the
+     <a href="{@docRoot}/../programmer_reference/transapp_checkpoint.html" target="_top">Checkpoint</a> 
+     section in the Berkeley DB Reference Guide.
+     <p>
+     To back up a single database file within the environment, use the
+    {@link com.sleepycat.db.Environment#backupDatabase Environment.backupDatabase}
+    method.
+    <p>
+    In addition to the configuration options available using the
+    {@link com.sleepycat.db.BackupOptions BackupOptions}
+    class, additional tuning modifications can be made using the
+    {@link com.sleepycat.db.EnvironmentConfig#setBackupReadCount EnvironmentConfig.setBackupReadCount},
+    {@link com.sleepycat.db.EnvironmentConfig#setBackupReadSleep EnvironmentConfig.setBackupReadSleep},
+    {@link com.sleepycat.db.EnvironmentConfig#setBackupSize EnvironmentConfig.setBackupSize}, and
+    {@link com.sleepycat.db.EnvironmentConfig#setBackupWriteDirect EnvironmentConfig.setBackupWriteDirect}
+    methods. Alternatively, you can write your own custom hot back up facility using the 
+    {@link com.sleepycat.db.BackupHandler BackupHandler} interface.
+    <p>
+    This method may only be called after the environment has been opened.
+    <p>
+    @param target
+    Identifies the directory in which the back up will be placed. Any
+    subdirectories required to contain the back up must be placed relative
+    to this directory. Note that if a
+    {@link com.sleepycat.db.BackupHandler BackupHandler} is configured for the
+    environment, then the
+    value specified to this parameter is passed on to the 
+    {@link com.sleepycat.db.BackupHandler#open BackupHandler.open}
+    method.
+    If this parameter is null, then the target must be specified
+    to the 
+    {@link com.sleepycat.db.BackupHandler#open BackupHandler.open}
+    method.
+    <p>
+    This directory, and any required subdirectories, will be created for
+    you if you specify true for the
+    {@link com.sleepycat.db.BackupOptions#setAllowCreate BackupOptions.setAllowCreate}
+    method.  Otherwise, if the target does not exist, this method 
+    throws a 
+    {@link com.sleepycat.db.DatabaseException DatabaseException} exception.
+    <p>
+    @param opt
+    The {@link com.sleepycat.db.BackupOptions BackupOptions} instance used to
+    configure the hot back up.
+    <p>
+    @throws DatabaseException if a failure occurs at any point during the back up.
+    */
+    public void backup(String target, BackupOptions opt) 
+        throws DatabaseException {
+        dbenv.backup(target, opt.getFlags());
+    }
+
+    /**
+     Perform a hot back up of a single database file contained within the environment.
+     <p>
+     To back up the entire environment, use the
+    {@link com.sleepycat.db.Environment#backup Environment.backup}
+    method.
+    <p>
+    You can make some tuning modifications to the backup process using the
+    {@link com.sleepycat.db.EnvironmentConfig#setBackupReadCount EnvironmentConfig.setBackupReadCount},
+    {@link com.sleepycat.db.EnvironmentConfig#setBackupReadSleep EnvironmentConfig.setBackupReadSleep},
+    {@link com.sleepycat.db.EnvironmentConfig#setBackupSize EnvironmentConfig.setBackupSize}, and
+    {@link com.sleepycat.db.EnvironmentConfig#setBackupWriteDirect EnvironmentConfig.setBackupWriteDirect}
+    methods. Alternatively, you can write your own custom hot back up facility using the 
+    {@link com.sleepycat.db.BackupHandler BackupHandler} interface.
+    <p>
+    This method may only be called after the environment has been opened.
+    <p>
+    @param dbfile
+    The database file that you want to back up.
+    <p>
+    @param target
+    Identifies the directory in which the back up will be placed. 
+    The target must exist; otherwise this method throws a
+    {@link com.sleepycat.db.DatabaseException DatabaseException} exception.
+    Note that if a
+    {@link com.sleepycat.db.BackupHandler BackupHandler} is configured for the
+    environment, then the
+    value specified to this parameter is passed on to the 
+    {@link com.sleepycat.db.BackupHandler#open BackupHandler.open}
+    method.
+    If this parameter is null, then the target must be specified
+    to the 
+    {@link com.sleepycat.db.BackupHandler#open BackupHandler.open}
+    method.
+    <p>
+    @param exclusiveCreate
+    If true, then if the target file exists, this method throws a
+    {@link com.sleepycat.db.DatabaseException DatabaseException} exception.
+    <p>
+    @throws DatabaseException if a failure occurs at any point during the back up.
+    */
+    public void backupDatabase(String dbfile, String target, boolean exclusiveCreate)
+        throws DatabaseException {
+        int flags = 0;
+        flags |= exclusiveCreate ? DbConstants.DB_EXCL : 0;
+
+        dbenv.dbbackup(dbfile, target, flags);
     }
 
     /* Version information */

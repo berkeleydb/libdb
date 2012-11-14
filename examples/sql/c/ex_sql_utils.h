@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997-2010 Oracle.  All rights reserved.
+ * Copyright (c) 1997-2012 Oracle.  All rights reserved.
  *
  */
 

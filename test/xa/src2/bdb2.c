@@ -1,15 +1,13 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ */
+
 /*
-*      Copyright (c) 1997 BEA Systems, Inc.
-*       All Rights Reserved
-*
-*       THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF
-*       BEA Systems, Inc.
-*       The copyright notice above does not evidence any
-*       actual or intended publication of such source code.
-*
-* This server is only called by bdb1.  It takes the data sent by bdb1 and 
-* inserts it into db2.
-*/
+ * This server is only called by bdb1.  It takes the data sent by bdb1 and 
+ * inserts it into db2.
+ */
 
 #include <db.h>
 #include <xa.h>
@@ -21,45 +19,10 @@
 #include <string.h>
 #include <time.h>
 #include <tpadm.h>
+#include "../utilities/bdb_xa_util.h"
 
-#define	DATABASE1	"data1.db"
-#define	DATABASE2	"data2.db"
-
-static DB *dbp1;
-static DB *dbp2;
-
-static int opendb(){
-	int ret;
-	u_int32_t open_flags = DB_CREATE | DB_AUTO_COMMIT;
-
-	/* Create and initialize database object, open the database. */
-	if ((ret = db_create(&dbp1, NULL, DB_XA_CREATE)) != 0) {
-		userlog("db_create: %s", db_strerror(ret));
-		return (EXIT_FAILURE);
-	}
-
-	if ((ret = db_create(&dbp2, NULL, DB_XA_CREATE)) != 0) {
-		userlog("db_create: %s", db_strerror(ret));
-		return (EXIT_FAILURE);
-	}
-
-	if ((ret = dbp1->open(dbp1, NULL, DATABASE1, NULL, DB_BTREE, open_flags, 
-	    0664)) != 0) {
-		userlog("open: %s", db_strerror(ret));
-		return (EXIT_FAILURE);
-	}
-	if ((ret = dbp2->open(dbp2, NULL, DATABASE2, NULL, DB_BTREE, open_flags, 
-	    0664)) != 0) {
-		userlog("open: %s", db_strerror(ret));
-		return (EXIT_FAILURE);
-	}
-	return 0;
-}
-
-static void closedb(){
-	(void)dbp1->close(dbp1, 0);
-	(void)dbp2->close(dbp2, 0);
-}
+#define NUMDB 2
+static char *progname;
 
 /* Write the given data into the given database. */
 static int writedb(DB * dbp, void *buf, u_int32_t size){
@@ -83,7 +46,7 @@ static int writedb(DB * dbp, void *buf, u_int32_t size){
 	        return (EXIT_SUCCESS);
 	default:
 		userlog("put: %s", db_strerror(ret));
-		return -1;
+		return (-1);
 	}
 }
 
@@ -93,25 +56,16 @@ tpsvrinit(argc, argv)
 int argc;
 char **argv;
 {
-	int ret;
-	/* Some compilers warn if argc and argv aren't used. */
-	argc = argc;
-	argv = argv;
+	progname = argv[0];
 
-	tpopen();
-	if (ret = opendb() != 0){
-		userlog("put: %s", db_strerror(ret));
-	}
-
-	return(0);
+	return (init_xa_server(NUMDB, progname, 0));
 }
 
 /* Close the database when the server is shutdown. */
 void
 tpsvrdone(void)
 {
-	closedb();
-	tpclose();
+	close_xa_server(NUMDB,progname);	
 }
 
 /* 
@@ -139,7 +93,7 @@ TPSVCINFO *rqst;
 	data.flags = DB_DBT_MALLOC;
 		
 	/* Get the data that the calling server inserted into db1 */
-	switch (ret = dbp1->get(dbp1, NULL, &key, &data, DB_READ_UNCOMMITTED)){
+	switch (ret = dbs[0]->get(dbs[0], NULL, &key, &data, DB_READ_UNCOMMITTED)){
 	case 0:
 		break;
 	case DB_LOCK_DEADLOCK:
@@ -150,7 +104,7 @@ TPSVCINFO *rqst;
 	}
 	
 	/* Write the data to db2 */
-	if(writedb(dbp2, data.data, data.size) != 0){
+	if(writedb(dbs[1], data.data, data.size) != 0){
 		tpreturn(TPSUCCESS, 1L, rqst->data, 0L, 0);
 	}
 	tpreturn(TPSUCCESS, 0, rqst->data, 0L, 0);

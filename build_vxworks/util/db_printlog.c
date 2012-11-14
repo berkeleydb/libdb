@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -21,7 +21,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.\n";
+    "Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 int db_printlog_print_app_record __P((DB_ENV *, DBT *, DB_LSN *, db_recops));
@@ -116,6 +116,12 @@ db_printlog_main(argc, argv)
 			nflag = 1;
 			break;
 		case 'P':
+			if (passwd != NULL) {
+				fprintf(stderr, DB_STR("5138",
+					"Password may not be specified twice"));
+				free(passwd);
+				return (EXIT_FAILURE);
+			}
 			passwd = strdup(optarg);
 			memset(optarg, 0, strlen(optarg));
 			if (passwd == NULL) {
@@ -318,6 +324,10 @@ db_printlog_main(argc, argv)
 err:		exitval = 1;
 	}
 
+	if (dtab.int_dispatch != NULL)
+		__os_free(env, dtab.int_dispatch);
+	if (dtab.ext_dispatch != NULL)
+		__os_free(env, dtab.ext_dispatch);
 	/*
 	 * Call __db_close to free the dummy DB handles that were used
 	 * by the print routines.
@@ -646,8 +656,8 @@ db_printlog_open_rep_db(dbenv, dbpp, dbcp)
 	}
 
 	dbp = *dbpp;
-	if ((ret =
-	    dbp->open(dbp, NULL, REPDBNAME, NULL, DB_BTREE, 0, 0)) != 0) {
+	if ((ret = dbp->open(dbp, NULL,
+	    REPDBNAME, NULL, DB_BTREE, DB_RDONLY, 0)) != 0) {
 		dbenv->err(dbenv, ret, "DB->open");
 		goto err;
 	}

@@ -20,7 +20,9 @@ typedef	uintptr_t	roff_t;
 typedef u_int32_t uintptr_t;
 typedef int int32_t;
 typedef int64_t db_seq_t;
+typedef int64_t off_t;
 typedef long long int int64_t;
+typedef u_int32_t DB_BACKUP_CONFIG;
 typedef u_int32_t DB_CACHE_PRIORITY;
 typedef u_int32_t DB_MEM_CONFIG;
 
@@ -207,6 +209,10 @@ struct __db_txn_token;	typedef struct __db_txn_token DB_TXN_TOKEN;
 %typemap(csout) int log_file{
 		return $imcall;
 }
+%typemap(csout) void *wrap_umalloc {
+	return $imcall;
+}
+
 
 %typemap(csout) int open {
 	int ret;
@@ -654,6 +660,13 @@ typedef struct __db
 		return self->set_heapsize(self, gbytes, bytes, 0);
 	}
 	
+	int get_heap_regionsize(u_int32_t *npages) {
+		return self->get_heap_regionsize(self, npages);
+	}
+	int set_heap_regionsize(u_int32_t npages) {
+		return self->set_heap_regionsize(self, npages);
+	}
+	
 	int set_h_compare(int (*callback)(DB *dbp, const DBT *dbt1, const DBT *dbt2)) {
 		return self->set_h_compare(self, callback);
 	}
@@ -677,6 +690,13 @@ typedef struct __db
 	}
 	int set_h_nelem(u_int32_t nelem) {
 		return self->set_h_nelem(self, nelem);
+	}
+	
+	int get_lk_exclusive(int *onoff, int *nowait) {
+		return self->get_lk_exclusive(self, onoff, nowait);
+	}
+	int set_lk_exclusive(int nowait) {
+		return self->set_lk_exclusive(self, nowait);
 	}
 	
 	int get_lorder(int *lorder) {
@@ -865,6 +885,9 @@ u_int8_t buf[DB_TXN_TOKEN_SIZE];
 	internal IntPtr dataPtr {
 		get {
 			return $imclassname.DBT_data_get(swigCPtr);
+		}
+		set {
+			$imclassname.DBT_data_set(swigCPtr, value);
 		}
 	}
 %}
@@ -1250,6 +1273,13 @@ typedef struct __dbtxn
 		dir = Marshal.PtrToStringAnsi(dirp);
 		return ret;
 	}
+	internal int get_metadata_dir(out string dir) {
+		int ret;
+		IntPtr dirp;
+		ret = get_metadata_dir(out dirp);
+		dir = Marshal.PtrToStringAnsi(dirp);
+		return ret;
+	}
 	internal int get_tmp_dir(out string dir) {
 		int ret;
 		IntPtr dirp;
@@ -1290,6 +1320,10 @@ typedef struct __dbenv
 	
 	~DB_ENV() { }
 
+	int backup(const char *target, u_int32_t flags) {
+		return self->backup(self, target, flags);
+	}
+
 	%csmethodmodifiers cdsgroup_begin "private"
 	DB_TXN *cdsgroup_begin(int *err) {
 		DB_TXN *group;
@@ -1300,6 +1334,10 @@ typedef struct __dbenv
 	 
 	int close(u_int32_t flags) {
 		return self->close(self, flags);
+	}
+
+	int dbbackup(const char *dbfile, const char *target, u_int32_t flags) {
+		return self->dbbackup(self, dbfile, target, flags);
 	}
 	
 	int dbremove(DB_TXN *txn, const char *file, const char *database, u_int32_t flags) {
@@ -1712,7 +1750,27 @@ typedef struct __dbenv
 	int rep_set_transport(int envid, int (*send)(DB_ENV *dbenv, const DBT *control, const DBT *rec, const DB_LSN *lsnp, int envid, u_int32_t flags)) {
 		return self->rep_set_transport(self, envid, send);
 	}
-	
+
+	%typemap(cstype) int (*)(DB_ENV*, const char *dbname, void *handle) "BDB_BackupCloseDelegate"
+	%typemap(imtype) int (*)(DB_ENV*, const char *dbname, void *handle) "BDB_BackupCloseDelegate"
+	%typemap(csin) int (*close_func)(DB_ENV *, const char *dbname, void *handle) "close_func"
+	%typemap(cstype) int (*)(DB_ENV *, const char *dbname, const char *target, void **handle) "BDB_BackupOpenDelegate"
+	%typemap(imtype) int (*)(DB_ENV *, const char *dbname, const char *target, void **handle) "BDB_BackupOpenDelegate"
+	%typemap(csin) int (*open_func)(DB_ENV *, const char *dbname, const char *target, void **handle) "open_func"
+	%typemap(cstype) int (*)(DB_ENV *, u_int32_t off_gbytes, u_int32_t off_bytes, u_int32_t size, u_int8_t *buf, void *handle) "BDB_BackupWriteDelegate"
+	%typemap(imtype) int (*)(DB_ENV *, u_int32_t off_btytes, u_int32_t off_bytes, u_int32_t size, u_int8_t *buf, void *handle) "BDB_BackupWriteDelegate"
+	%typemap(csin) int (*write_func)(DB_ENV *, u_int32_t off_gbytes, u_int32_t off_bytes, u_int32_t size, u_int8_t *buf, void *handle) "write_func"
+	int set_backup_callbacks(int (*open_func)(DB_ENV *, const char *dbname, const char *target, void **handle), int (*write_func)(DB_ENV *, u_int32_t off_gbytes, u_int32_t off_bytes, u_int32_t size, u_int8_t *buf, void *handle), int (*close_func)(DB_ENV *, const char *dbname, void *handle)) {
+		return self->set_backup_callbacks(self, open_func, write_func, close_func);
+	}
+
+	int get_backup_config(DB_BACKUP_CONFIG cfg, u_int32_t *value) {
+		return self->get_backup_config(self, cfg, value);
+	}
+	int set_backup_config(DB_BACKUP_CONFIG cfg, u_int32_t value) {
+		return self->set_backup_config(self, cfg, value);
+	}
+
 	int get_cachesize(u_int32_t *gbytes, u_int32_t *bytes, int *ncache) {
 		return self->get_cachesize(self, gbytes, bytes, ncache);
 	}
@@ -1918,6 +1976,13 @@ typedef struct __dbenv
 	}
 	int set_memory_max(u_int32_t gbytes, u_int32_t bytes) {
 		return self->set_memory_max(self, gbytes, bytes);
+	}
+	
+	int get_metadata_dir(const char **dir) {
+		return self->get_metadata_dir(self, dir);
+	}
+	int set_metadata_dir(const char *dir) {
+		return self->set_metadata_dir(self, dir);
 	}
 	
 	int get_mp_max_openfd(int *maxopenfd) {
@@ -2194,6 +2259,31 @@ void wrap_ufree(DB_ENV *dbenv, void *ptr) {
 		__os_ufree(dbenv->env, ptr);
 }
 %}
+%typemap(cstype, out="IntPtr") void * "IntPtr"
+%typemap(cstype, out="out IntPtr") void ** "out IntPtr"
+%typemap(csin) void ** "out $csinput"
+%typemap(imtype, out="out IntPtr") void ** "out IntPtr"
+%rename(__os_umalloc) wrap_umalloc;
+%inline %{
+void *wrap_umalloc(DB_ENV *dbenv, size_t size) {
+	void *ptr;
+	if (dbenv == NULL)
+		__os_umalloc(NULL, size, &ptr);
+	else
+		__os_umalloc(dbenv->env, size, &ptr);
+	return ptr;
+}
+size_t alloc_dbt_arr(DB_ENV *dbenv, int num_dbt, void **ptr) {
+	size_t ret = sizeof(DBT);
+	if (dbenv == NULL)
+		__os_umalloc(NULL, num_dbt * ret, ptr);
+	else
+		__os_umalloc(dbenv->env, num_dbt * ret, ptr);
+	return ret;
+}
+%}
+
+
 
 typedef struct __db_preplist {
         %typemap(csvarin) u_int8_t gid[DB_GID_SIZE] %{%}

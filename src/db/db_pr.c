@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -225,6 +225,7 @@ __db_prdb(dbp, flags)
 		__db_msg(env, "gbytes: %lu", (u_long)hp->gbytes);
 		__db_msg(env, "bytes: %lu", (u_long)hp->bytes);
 		__db_msg(env, "curregion: %lu", (u_long)hp->curregion);
+		__db_msg(env, "region_size: %lu", (u_long)hp->region_size);
 		__db_msg(env, "maxpgno: %lu", (u_long)hp->maxpgno);
 		break;
 	case DB_UNKNOWN:
@@ -599,6 +600,7 @@ __db_heapmeta(env, dbp, h, flags)
 	__db_meta(env, dbp, (DBMETA *)h, NULL, flags);
 
 	__db_msg(env, "\tcurregion: %lu", (u_long)h->curregion);
+	__db_msg(env, "\tregion_size: %lu", (u_long)h->region_size);
 	__db_msg(env, "\tnregions: %lu", (u_long)h->nregions);
 	__db_msg(env, "\tgbytes: %lu", (u_long)h->gbytes);
 	__db_msg(env, "\tbytes: %lu", (u_long)h->bytes);
@@ -967,7 +969,7 @@ __db_prpage_int(env, mbp, dbp, lead, h, pagesize, data, flags)
 				     "split: 0x%02x tsize: %lu next: %lu.%lu ",
 				     hh->flags, (u_long)hs->tsize,
 				     (u_long)hs->nextpg, (u_long)hs->nextindx);
-					
+
 				hdata = (u_int8_t *)hh + sizeof(HEAPSPLITHDR);
 			}
 			__db_prbytes(env, mbp, hdata, hh->size);
@@ -1118,6 +1120,28 @@ __db_prflags(env, mbp, flags, fn, prefix, suffix)
 		__db_msgadd(env, mbp, "%s", suffix);
 	if (standalone)
 		DB_MSGBUF_FLUSH(env, mbp);
+}
+
+/*
+ * __db_name_to_val --
+ *	Return the integral value associated with the string, or -1 if missing.
+ *	It is intended for looking up string names of enums and single bit
+ *	in order to get a numeric value.
+ *
+ * PUBLIC: int __db_name_to_val __P((FN const *, char *));
+ */
+int
+__db_name_to_val(strtable, s)
+	FN const *strtable;
+	char *s;
+{
+	if (s != NULL) {
+		do {
+			if (strcasecmp(strtable->name, s) == 0)
+				return ((int)strtable->mask);
+		} while ((++strtable)->name != NULL);
+	}
+	return (-1);
 }
 
 /*
@@ -1287,7 +1311,7 @@ __db_dump(dbp, subname, callback, handle, pflag, keyflag)
 		key.size = key.ulen = sizeof(DB_HEAP_RID);
 		key.flags = DB_DBT_USERMEM;
 	}
-		
+
 retry: while ((ret =
 	    __dbc_get(dbcp, &key, &data,
 	    !is_heap ? DB_NEXT | DB_MULTIPLE_KEY : DB_NEXT )) == 0) {
@@ -1665,10 +1689,21 @@ __db_prheader(dbp, subname, pflag, keyflag, handle, callback, vdp, meta_pgno)
 			if ((ret = callback(handle, buf)) != 0)
 				goto err;
 		}
-
 		if (tmp2_u_int32 != 0) {
 			snprintf(buf,
 			    buflen, "heap_bytes=%lu\n", (u_long)tmp2_u_int32);
+			if ((ret = callback(handle, buf)) != 0)
+				goto err;
+		}
+
+		if ((ret =
+		    __heap_get_heap_regionsize(dbp, &tmp_u_int32)) != 0) {
+			__db_err(env, ret, "DB->get_heap_regionsize");
+			goto err;
+		}
+		if (tmp_u_int32 != 0) {
+			snprintf(buf, buflen,
+			    "heap_regionsize=%lu\n", (u_long)tmp_u_int32);
 			if ((ret = callback(handle, buf)) != 0)
 				goto err;
 		}

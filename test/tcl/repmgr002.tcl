@@ -1,7 +1,7 @@
 #
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -107,10 +107,6 @@ proc basic_repmgr_election_test { niter inmemdb \
 	print_repmgr_headers basic_repmgr_election_test $niter $inmemdb\
 	    $inmemlog $inmemrep $envprivate $bulk
 
-	# Use different connection retry timeout values to handle any
-	# collisions from starting sites at the same time by retrying
-	# at different times.
-
 	puts "\tBasic repmgr election test.a: Start three clients."
 
 	# Open first client
@@ -119,11 +115,10 @@ proc basic_repmgr_election_test { niter inmemdb \
 	    -errpfx CLIENT -home $clientdir -rep -thread $repmemarg"
 	set clientenv [eval $cl_envcmd]
 	set cl1_repmgr_conf "-ack all -pri 100 \
-	    -timeout {connection_retry 20000000} \
-	    -local { localhost [lindex $ports 0] \
+	    -local { 127.0.0.1 [lindex $ports 0] \
 		$creator_flag $legacy_flag } \
-	    -remote { localhost [lindex $ports 1] $legacy_flag } \
-	    -remote { localhost [lindex $ports 2] $legacy_flag } \
+	    -remote { 127.0.0.1 [lindex $ports 1] $legacy_flag } \
+	    -remote { 127.0.0.1 [lindex $ports 2] $legacy_flag } \
 	    -start elect"
 	eval $clientenv repmgr $cl1_repmgr_conf
 
@@ -133,10 +128,9 @@ proc basic_repmgr_election_test { niter inmemdb \
 	    -errpfx CLIENT2 -home $clientdir2 -rep -thread $repmemarg"
 	set clientenv2 [eval $cl2_envcmd]
 	set cl2_repmgr_conf "-ack all -pri 30 \
-	    -timeout {connection_retry 10000000} \
-	    -local { localhost [lindex $ports 1] $legacy_flag } \
-	    -remote { localhost [lindex $ports 0] $legacy_flag } \
-	    -remote { localhost [lindex $ports 2] $legacy_flag } \
+	    -local { 127.0.0.1 [lindex $ports 1] $legacy_flag } \
+	    -remote { 127.0.0.1 [lindex $ports 0] $legacy_flag } \
+	    -remote { 127.0.0.1 [lindex $ports 2] $legacy_flag } \
 	    -start elect"
 	eval $clientenv2 repmgr $cl2_repmgr_conf
 
@@ -152,10 +146,9 @@ proc basic_repmgr_election_test { niter inmemdb \
 	    -errpfx CLIENT3 -home $clientdir3 -rep -thread $repmemarg"
 	set clientenv3 [eval $cl3_envcmd]
 	set cl3_repmgr_conf "-ack all -pri 20 \
-	    -timeout {connection_retry 5000000} \
-	    -local { localhost [lindex $ports 2] $legacy_flag } \
-	    -remote { localhost [lindex $ports 0] $legacy_flag } \
-	    -remote { localhost [lindex $ports 1] $legacy_flag } \
+	    -local { 127.0.0.1 [lindex $ports 2] $legacy_flag } \
+	    -remote { 127.0.0.1 [lindex $ports 0] $legacy_flag } \
+	    -remote { 127.0.0.1 [lindex $ports 1] $legacy_flag } \
 	    -start elect"
 	eval $clientenv3 repmgr $cl3_repmgr_conf
 	await_startup_done $clientenv3

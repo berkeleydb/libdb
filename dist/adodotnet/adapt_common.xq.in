@@ -22,9 +22,7 @@ declare variable $WINDOWS_FLAGS := fn:concat(';',
   $COMMON_FLAGS,
   '_CRT_SECURE_NO_DEPRECATE;',
   '_CRT_NONSTDC_NO_DEPRECATE;',
-  'DB_CREATE_DLL;',
-  'DIAGNOSTIC;',
-  'CONFIG_TEST');
+  'DB_CREATE_DLL;');
 
 declare variable $WINCE_FLAGS := fn:concat(
   $COMMON_FLAGS,
@@ -43,7 +41,7 @@ declare variable $WINCE_FLAGS := fn:concat(
   'HAVE_LOCALTIME;',
   '__NO_SYSTEM_INCLUDES;',
   'SQLITE_THREADSAFE=1;',
-  'BDBSQL_OMIT_SHARING;',
+  'BDBSQL_SINGLE_PROCESS;',
   'CPPSMART_EXPORTS;',
   'SQLITE_ENABLE_COLUMN_METADATA;',
   'SQLITE_ENABLE_FTS3;',
@@ -53,8 +51,13 @@ declare variable $WINCE_FLAGS := fn:concat(
   'SQLITE_OMIT_WAL;',
   'INVALID_FILE_ATTRIBUTES=((DWORD)-1)');
 
+declare variable $DEBUG_ADDITIONAL_FLAGS := fn:concat(
+  'DIAGNOSTIC;',
+  '_DEBUG;',
+  'CONFIG_TEST');
+
 (: Win32/x64 variables :)
-declare variable $WINCE_PROJ_URL := '@BDB_PATH@/build_wince/db.vcproj';
+declare variable $WINCE_PROJ_URL := '@BDB_PATH@/build_wince/VS8/db.vcproj';
 declare variable $WINDOWS_INCLUDE := '..\@BDB_NAME@\build_windows,..\@BDB_NAME@\src';
 declare variable $WINCE_INCLUDE := '..\@BDB_NAME@\build_wince,..\@BDB_NAME@\src';
 declare variable $WIN_SRC := '..\\@BDB_NAME@\\src';

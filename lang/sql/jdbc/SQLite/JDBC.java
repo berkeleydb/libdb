@@ -43,7 +43,7 @@ public abstract class JDBC {
 		} catch (java.lang.Exception e) {
 		    cvers = "SQLite.JDBC2x.JDBCConnection";
 		}
-	    } else {
+	    } else if (jvers.startsWith("1.6")) {
 		cvers = "SQLite.JDBC2z.JDBCConnection";
 		try {
 		    Class.forName(cvers);
@@ -53,6 +53,23 @@ public abstract class JDBC {
 			Class.forName(cvers);
 		    } catch (java.lang.Exception ee) {
 			cvers = "SQLite.JDBC2x.JDBCConnection";
+		    }
+		}
+	    } else {
+		cvers = "SQLite.JDBC2z1.JDBCConnection";
+		try {
+		    Class.forName(cvers);
+		} catch (java.lang.Exception e) {
+		    cvers = "SQLite.JDBC2z.JDBCConnection";
+		    try {
+			Class.forName(cvers);
+		    } catch (java.lang.Exception ee) {
+			cvers = "SQLite.JDBC2y.JDBCConnection";
+			try {
+			    Class.forName(cvers);
+			} catch (java.lang.Exception eee) {
+			    cvers = "SQLite.JDBC2x.JDBCConnection";
+			}
 		    }
 		}
 	    }

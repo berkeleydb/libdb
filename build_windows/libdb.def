@@ -44,54 +44,54 @@ EXPORTS
 	__db_win32_mutex_lock	@41
 	__db_win32_mutex_unlock	@42
 	__env_panic	@43
-	__ham_func2	@44
-	__ham_func3	@45
-	__ham_func4	@46
-	__ham_func5	@47
-	__ham_test	@48
-	__lock_id_set	@49
-	__mutex_alloc	@50
-	__mutex_free	@51
-	__os_calloc	@52
-	__os_closehandle	@53
-	__os_dirfree	@54
-	__os_dirlist	@55
-	__os_free	@56
-	__os_fsync	@57
-	__os_get_syserr	@58
-	__os_getenv	@59
-	__os_ioinfo	@60
-	__os_malloc	@61
-	__os_mkdir	@62
-	__os_open	@63
-	__os_openhandle	@64
-	__os_posix_err	@65
-	__os_read	@66
-	__os_realloc	@67
-	__os_rename	@68
-	__os_strdup	@69
-	__os_umalloc	@70
-	__os_unlink	@71
-	__os_write	@72
-	__txn_id_set	@73
-	__bam_adj_desc	@74
-	__bam_cadjust_desc	@75
-	__bam_cdel_desc	@76
-	__bam_curadj_desc	@77
-	__bam_irep_desc	@78
-	__bam_merge_44_desc	@79
-	__bam_pgin	@80
-	__bam_pgout	@81
-	__bam_rcuradj_desc	@82
-	__bam_relink_43_desc	@83
-	__bam_repl_desc	@84
-	__bam_root_desc	@85
-	__bam_rsplit_desc	@86
-	__bam_split_42_desc	@87
-	__bam_split_48_desc	@88
-	__bam_split_desc	@89
-	__bam_traverse	@90
-	__config_split	@91
+	__env_ref_get	@44
+	__ham_func2	@45
+	__ham_func3	@46
+	__ham_func4	@47
+	__ham_func5	@48
+	__ham_test	@49
+	__lock_id_set	@50
+	__mutex_alloc	@51
+	__mutex_free	@52
+	__os_calloc	@53
+	__os_closehandle	@54
+	__os_dirfree	@55
+	__os_dirlist	@56
+	__os_free	@57
+	__os_fsync	@58
+	__os_get_syserr	@59
+	__os_getenv	@60
+	__os_ioinfo	@61
+	__os_malloc	@62
+	__os_mkdir	@63
+	__os_open	@64
+	__os_openhandle	@65
+	__os_posix_err	@66
+	__os_read	@67
+	__os_realloc	@68
+	__os_rename	@69
+	__os_strdup	@70
+	__os_umalloc	@71
+	__os_unlink	@72
+	__os_write	@73
+	__txn_id_set	@74
+	__bam_adj_desc	@75
+	__bam_cadjust_desc	@76
+	__bam_cdel_desc	@77
+	__bam_curadj_desc	@78
+	__bam_irep_desc	@79
+	__bam_merge_44_desc	@80
+	__bam_pgin	@81
+	__bam_pgout	@82
+	__bam_rcuradj_desc	@83
+	__bam_relink_43_desc	@84
+	__bam_repl_desc	@85
+	__bam_root_desc	@86
+	__bam_rsplit_desc	@87
+	__bam_split_42_desc	@88
+	__bam_split_48_desc	@89
+	__bam_split_desc	@90
+	__bam_traverse	@91
 	__crdel_inmem_create_desc	@92
 	__crdel_inmem_remove_desc	@93
 	__crdel_inmem_rename_desc	@94
@@ -232,3 +232,4 @@ EXPORTS
 	__txn_regop_42_desc	@229
 	__txn_regop_desc	@230
 	__txn_xa_regop_42_desc	@231
+	__repmgr_getaddr	@232

@@ -9,13 +9,13 @@ risk.
 
 The current source can be downloaded from
 
-    http://www.ch-werner.de/sqliteodbc/sqliteodbc-*.*.tar.gz
+    http://www.ch-werner.de/sqliteodbc/sqliteodbc-*.tar.gz
 
 WIN32 binaries (the ODBC driver DLL, install/uninstall programs) are in
 
     http://www.ch-werner.de/sqliteodbc/sqliteodbc.exe
 
-The binaries were made with SQLite 2.8.17, SQLite 3.6.23.1, MingW
+The binaries were made with SQLite 2.8.17, SQLite 3.7.8, MingW
 cross compiler and tested on Windows NT 4.0 with the query tool
 of MS Excel 97, with StarOffice 5.2 and OpenOffice 1.1 and 2.x.
 Execute the sqliteodbc.exe NSIS installer to unpack the necessary
@@ -28,7 +28,7 @@ on as an absolute pathname including the drive letter, eg as
 can be specified in the respective field. If empty a default value
 of 100000 milliseconds is used.
 
-The Win64 installer (sqliteodbc_w64.exe) was made with SQLite 3.6.23.1,
+The Win64 installer (sqliteodbc_w64.exe) was made with SQLite 3.7.8,
 MingW cross compiler and only rudimentary tested on Windows Vista 64.
 
 Other tests were made on Linux with the "isql" command line tool
@@ -199,17 +199,27 @@ Build instructions for MS Visual C++ 6.0:
    This compiles the amalgamation SQLite3 source and the ODBC driver
    first, then and links the ODBC driver and the (un)install program.
 
+
 Names of Win32 Driver DLLs:
 
    sqliteodbc.dll    Driver with ISO8859-1 SQLite2 engine
    sqliteodbcu.dll   Driver with UTF-8/UNICODE SQLite2 engine
    sqlite3odbc.dll   Driver with SQLite3 engine
 
+
 Build instructions for MingW cross compiler for Win32 targets:
 
   A script named mingw-cross-build.sh is provided which contains
   all necessary information. It downloads the required SQLite
   source tarballs and builds SQLite and the ODBC drivers. The
+  final step is creating an NSIS installer.
+
+
+Build instructions for MingW cross compiler for Win64 targets:
+
+  A script named mingw64-cross-build.sh is provided which contains
+  all necessary information. It downloads the required SQLite
+  source tarballs and builds SQLite 3 and the ODBC driver. The
   final step is creating an NSIS installer.
 
 
@@ -238,6 +248,15 @@ Win32 install/remove/shell by RUNDLL32
   ### batch run with given SQL
   C:\> rundll32 [path]sqliteodbc.dll,shell -batch C:\bla\my.db
        "select * from table" <NUL: 2>NUL: >out.txt
+
+
+Win64 notes
+
+  On Win64 (64 bit versions of Vista, Windows 7) both 32 bit and 64 bit
+  drivers can be installed in parallel. The 32 bit drivers are required
+  when using 32 bit applications. In order to manage 32 bit data
+  sources, the 32 bit ODBC admin tool C:\Windows\SysWOW64\odbcad32.exe
+  must be used.
 
 
 DSN-less connection to the driver
@@ -284,13 +303,33 @@ Build Instructions for Alpha/Tru64 (OSF1 V5.1) and HP/UX (B.11.23 U ia64)
     HP/UX: gmake CFLAGS="+DD64" && gmake install
 
 
+Build Instructions for RPM based systems
+
+  rpmbuild -tb sqliteodbc-*.tar.gz
+
+
+Build Instructions for Debian based systems
+
+  tar xzf sqliteodbc-*.tar.gz
+  cd sqliteodbc-*
+  ./configure && make deb
+
+
+Special build to use System.Data.SQLite on Win32/Win64
+
+  A variant of the SQLite3 ODBC driver can be build which uses
+  internal dynamic linking to System.Data.SQLite.dll or sqlite3.dll.
+  This feature is turned on when running the mingw*-cross-build.sh
+  scripts with SQLITE_DLLS=2.
+
+
 
 TODO:
 
 - improve documentation
 
 
-2010-05-26
+2011-11-15
 Christian Werner
 mailto:chw@ch-werner.de
 

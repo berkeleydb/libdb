@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -21,6 +21,8 @@
 #include "dbinc/mp.h"
 #include "dbinc/qam.h"
 #include "dbinc/txn.h"
+
+static int __db_handle_lock __P((DB *));
 
 /*
  * __db_open --
@@ -222,6 +224,16 @@ __db_open(dbp, ip, txn, fname, dname, type, flags, mode, meta_pgno)
 			goto err;
 	}
 
+	/*
+	 * Internal exclusive databases need to use the shared
+	 * memory pool to lock out existing database handles before
+	 * it gets its handle lock.  So getting the lock is delayed
+	 * until after the memory pool is allocated.
+	 */
+	if (F2_ISSET(dbp, DB2_AM_INTEXCL) &&
+	    (ret = __db_handle_lock(dbp)) != 0)
+			goto err;
+
 	switch (dbp->type) {
 		case DB_BTREE:
 			ret = __bam_open(dbp, ip, txn, fname, meta_pgno, flags);
@@ -264,8 +276,11 @@ __db_open(dbp, ip, txn, fname, dname, type, flags, mode, meta_pgno)
 		if (IS_REAL_TXN(txn))
 			ret = __txn_lockevent(env,
 			    txn, dbp, &dbp->handle_lock, dbp->locker);
-		else if (LOCKING_ON(env))
-			/* Trade write handle lock for read handle lock. */
+		else if (LOCKING_ON(env) && !F2_ISSET(dbp, DB2_AM_EXCL))
+			/*
+			 * Trade write handle lock for read handle lock,
+			 * unless this is an exclusive database handle.
+			 */
 			ret = __lock_downgrade(env,
 			    &dbp->handle_lock, DB_LOCK_READ, 0);
 	}
@@ -420,7 +435,7 @@ err:	return (ret);
  *	Take a buffer containing a meta-data page and check it for a valid LSN,
  *	checksum (and verify the checksum if necessary) and possibly decrypt it.
  *
- *	Return 0 on success, >0 (errno) on error, -1 on checksum mismatch.
+ *	Return 0 on success, >0 (errno).
  *
  * PUBLIC: int __db_chk_meta __P((ENV *, DB *, DBMETA *, u_int32_t));
  */
@@ -463,7 +478,7 @@ chk_retry:		if ((ret =
 			    __db_check_chksum(env, NULL, env->crypto_handle,
 			    chksum, meta, DBMETASIZE, is_hmac)) != 0) {
 				if (is_hmac || swapped)
-					return (ret);
+					return (DB_CHKSUM_FAIL);
 
 				M_32_SWAP(orig_chk);
 				swapped = 1;
@@ -475,8 +490,10 @@ chk_retry:		if ((ret =
 		F_CLR(dbp, DB_AM_CHKSUM);
 
 #ifdef HAVE_CRYPTO
-	ret = __crypto_decrypt_meta(env,
-	     dbp, (u_int8_t *)meta, LF_ISSET(DB_CHK_META));
+	if (__crypto_decrypt_meta(env,
+	     dbp, (u_int8_t *)meta, LF_ISSET(DB_CHK_META)) != 0)
+	     	ret = DB_CHKSUM_FAIL;
+	else
 #endif
 
 	/* Now that we're decrypted, we can check LSN. */
@@ -586,9 +603,12 @@ swap_retry:
 	 * checksum and decrypt.  Don't distinguish between configuration and
 	 * checksum match errors here, because we haven't opened the database
 	 * and even a checksum error isn't a reason to panic the environment.
+	 * If DB_SKIP_CHK is set, it means the checksum was already checked
+	 * and the page was already decrypted.
 	 */
-	if ((ret = __db_chk_meta(env, dbp, meta, flags)) != 0) {
-		if (ret == -1)
+	if (!LF_ISSET(DB_SKIP_CHK) && 
+	    (ret = __db_chk_meta(env, dbp, meta, flags)) != 0) {
+		if (ret == DB_CHKSUM_FAIL) 
 			__db_errx(env, DB_STR_A("0640",
 			    "%s: metadata page checksum error", "%s"), name);
 		goto bad_format;
@@ -796,5 +816,42 @@ err:	if (old_page != NULL && (t_ret = __memp_fput(dbp->mpf,
 		if ((t_ret = __txn_commit(txn, 0)) != 0 && ret == 0)
 			ret = t_ret;
 	}
+	return (ret);
+}
+
+static int
+__db_handle_lock(dbp)
+	DB *dbp;
+{
+	ENV *env;
+	int ret;
+	u_int32_t old_flags;
+
+	env = dbp->env;
+	ret = 0;
+	old_flags = dbp->flags;
+
+	/*
+	 * Internal exclusive database handles need to get and hold
+	 * their own handle locks so that the client cannot open any
+	 * external handles on that database.
+	 */
+	F_CLR(dbp, DB_AM_RECOVER);
+	F_SET(dbp, DB_AM_NOT_DURABLE);
+
+	/* Begin exclusive handle lockout. */
+	dbp->mpf->mfp->excl_lockout = 1;
+
+	if ((ret = __lock_id(env, NULL, &dbp->locker)) != 0)
+		goto err;
+	LOCK_INIT(dbp->handle_lock);
+	if ((ret = __fop_lock_handle(env, dbp, dbp->locker, DB_LOCK_WRITE,
+	    NULL, 0))!= 0)
+		goto err;
+
+err:	/* End exclusive handle lockout. */
+	dbp->mpf->mfp->excl_lockout = 0;
+	dbp->flags = old_flags;
+
 	return (ret);
 }

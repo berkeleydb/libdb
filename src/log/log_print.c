@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -125,6 +125,15 @@ __log_print_record(env, recbuf, lsnp, name, spec, info)
 				break;
 			case DBREG_REOPEN:
 				s = "REOPEN";
+				break;
+			case DBREG_XCHKPNT:
+				s = "XCHKPNT";
+				break;
+			case DBREG_XOPEN:
+				s = "XOPEN";
+				break;
+			case DBREG_XREOPEN:
+				s = "XREOPEN";
 				break;
 			default:
 				s = "UNKNOWN";
@@ -319,6 +328,9 @@ __log_print_dbregister(env, recbuf, dblp)
 	case DBREG_CHKPNT:
 	case DBREG_OPEN:
 	case DBREG_REOPEN:
+	case DBREG_XCHKPNT:
+	case DBREG_XOPEN:
+	case DBREG_XREOPEN:
 		if (dbp != NULL) {
 			if (memcmp(dbp->fileid,
 			    argp->uid.data, DB_FILE_ID_LEN) == 0 &&
@@ -344,6 +356,8 @@ __log_print_dbregister(env, recbuf, dblp)
 			F_SET(dbp, DB_AM_CHKSUM);
 		if (FLD_ISSET(argp->opcode, DBREG_ENCRYPT))
 			F_SET(dbp, DB_AM_ENCRYPT);
+		if (FLD_ISSET(argp->opcode, DBREG_EXCL))
+			F2_SET(dbp, DB2_AM_EXCL);
 		dbe->dbp = dbp;
 		break;
 	case DBREG_CLOSE:

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -174,7 +174,8 @@ int db_container::construct_db_file_name(string &filename) const
 
 	// avoid name clash
 	len = _snprintf(name, 64, "tmpdb_db_map_%lu_%d_%u.db", 
-	    (u_long)((uintptr_t)tid + ts.tv_nsec), rand(), g_db_file_suffix_++);
+	    (u_long)((uintptr_t)&tid + ts.tv_nsec),
+	    rand(), g_db_file_suffix_++);
 	filename = name;
 
 	return 0;

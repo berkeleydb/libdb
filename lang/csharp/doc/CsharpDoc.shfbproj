@@ -18,7 +18,7 @@
     <HtmlHelpName>BerkeleyDB</HtmlHelpName>
     <HelpFileFormat>Help1xAndWebsite</HelpFileFormat>
     <KeepLogFile>False</KeepLogFile>
-    <CopyrightText>Copyright %28c%29 2008-2010 Oracle. All rights reserved.</CopyrightText>
+    <CopyrightText>Copyright %28c%29 2008, 2012 Oracle. All rights reserved.</CopyrightText>
     <HelpTitle>Berkeley DB .NET API Documentation</HelpTitle>
     <NamingMethod>MemberName</NamingMethod>
     <MissingTags>AutoDocumentCtors</MissingTags>

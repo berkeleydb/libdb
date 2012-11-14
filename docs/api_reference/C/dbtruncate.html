@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -71,7 +71,7 @@ DB-&gt;truncate(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3694682"></a>Parameters</h3>
+              <h3 class="title"><a id="idp58706248"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -79,7 +79,7 @@ DB-&gt;truncate(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3694757"></a>txnid</h4>
+                <h4 class="title"><a id="idp58706440"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -99,7 +99,7 @@ DB-&gt;truncate(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3694633"></a>countp</h4>
+                <h4 class="title"><a id="idp58621992"></a>countp</h4>
               </div>
             </div>
           </div>
@@ -113,7 +113,7 @@ DB-&gt;truncate(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3694287"></a>flags</h4>
+                <h4 class="title"><a id="idp58691496"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -127,7 +127,7 @@ DB-&gt;truncate(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3694385"></a>Errors</h3>
+              <h3 class="title"><a id="idp58687128"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -143,7 +143,7 @@ DB-&gt;truncate(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3694902"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idp58713984"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -156,7 +156,7 @@ DB-&gt;truncate(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3694870"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp58721672"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -164,12 +164,19 @@ DB-&gt;truncate(DB *db,
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
             </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a>
+                for more information.
+            </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3695018"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp58715320"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -182,7 +189,7 @@ DB-&gt;truncate(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3694847"></a>Class</h3>
+              <h3 class="title"><a id="idp58711784"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -194,7 +201,7 @@ DB-&gt;truncate(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3694906"></a>See Also</h3>
+              <h3 class="title"><a id="idp58716176"></a>See Also</h3>
             </div>
           </div>
         </div>

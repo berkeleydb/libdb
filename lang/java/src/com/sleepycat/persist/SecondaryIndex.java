@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -22,6 +22,7 @@ import com.sleepycat.db.LockMode;
 import com.sleepycat.db.OperationStatus;
 import com.sleepycat.db.SecondaryDatabase;
 import com.sleepycat.db.Transaction;
+import com.sleepycat.db.TransactionConfig;
 import com.sleepycat.persist.model.DeleteAction;
 import com.sleepycat.persist.model.Relationship;
 import com.sleepycat.persist.model.SecondaryKey;
@@ -895,7 +896,7 @@ public class SecondaryIndex<SK, PK, E> extends BasicIndex<SK, E> {
                 config.setAllowCreate(false);
                 config.setExclusiveCreate(false);   
                 keysDb = DbCompat.openDatabase
-                    (db.getEnvironment(), null/*txn*/,
+                    (db.getEnvironment(), null /*txn*/,
                      DbCompat.getDatabaseFile(secDb),
                      secDb.getDatabaseName(),
                      config);
@@ -974,6 +975,17 @@ public class SecondaryIndex<SK, PK, E> extends BasicIndex<SK, E> {
             map = new StoredSortedMap(db, keyBinding, entityBinding, true);
         }
         return map;
+    }
+
+    /**
+     * @hidden
+     * For internal use only.
+     *
+     * Used for obtaining the auto-commit txn config from the store, which
+     * overrides this method to return it.
+     */
+    TransactionConfig getAutoCommitTransactionConfig() {
+        return null;
     }
 
     boolean isUpdateAllowed() {

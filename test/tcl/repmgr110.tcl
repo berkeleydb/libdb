@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST	repmgr110
 # TEST  Multi-process repmgr start-up policies.
@@ -40,7 +40,7 @@ proc repmgr110 { } {
 		"home $dirb"
 		"local $bport"
 		"output $testdir/boutput1"
-		"remote localhost $aport"
+		"remote 127.0.0.1 $aport"
 		"open_env"
 		"start client"
 	}
@@ -70,7 +70,7 @@ proc repmgr110 { } {
 		"home $dirb"
 		"local $bport"
 		"output $testdir/boutput1"
-		"remote localhost $aport"
+		"remote 127.0.0.1 $aport"
 		"open_env"
 		"start election"
 	}
@@ -134,7 +134,7 @@ proc repmgr110 { } {
 		"home $dira"
 		"local $aport"
 		"output $testdir/a2output2"
-		"remote localhost $bport"
+		"remote 127.0.0.1 $bport"
 		"open_env"
 		"start master"
 	}

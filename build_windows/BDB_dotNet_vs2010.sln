@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db", "db.vcxproj", "{FD045D60-ABAD-4A6C-9794-9BFB085FC3E7}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db", "VS10\db.vcxproj", "{FD045D60-ABAD-4A6C-9794-9BFB085FC3E7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_csharp", "db_csharp.vcxproj", "{13DE550F-16FD-4AC2-9EC6-B1A18F41476F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_csharp", "VS10\db_csharp.vcxproj", "{13DE550F-16FD-4AC2-9EC6-B1A18F41476F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "db_dotnet", "..\lang\csharp\src\db_dotnet.csproj", "{4696FB1E-1E5F-40B9-BD8C-A54D3BDA00F6}"
 	ProjectSection(ProjectDependencies) = postProject

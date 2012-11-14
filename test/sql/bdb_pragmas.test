@@ -155,12 +155,15 @@ integrity_check bdb_pragmas-2.99
 reset_db
 # Test bdbsql_error_file pragma
 do_test bdb_pragma-3.1 {
-    execsql {
+    set v [execsql {
     PRAGMA bdbsql_error_file;
-  }
-} {stderr}
+  }]
+    set v1 [file normalize [regsub -all "\[{}]" $v ""]]
+    set v "[pwd]/test.db-journal/sql-errors.txt"
+    set v2 [file normalize $v]   
+    expr {$v1 == $v2}
+} {1}
 
-# Test set bdbql_error_file pragma before opening env.
 # Create a sqequence to generate error.
 do_test bdb_pragma-3.2 {
     execsql {
@@ -215,5 +218,281 @@ do_test bdb_pragma-3.7 {
   set pat {BDB4011 Sequence overflow}
   regexp $pat $res
 } {1}
+
+# Test the WAL pragma works as expected. #20620.
+reset_db
+do_test bdb_pragma-4.0 {
+  execsql {
+    create table t1(x);
+    create temporary table t2(x);
+    PRAGMA journal_mode=delete;
+  }
+} {delete}
+
+# Test that pragma bdbsql_lock_tablesize
+#
+reset_db
+
+# If the handle is not opened, the value is zero
+do_test bdb_pragma-5.1 {
+  execsql {
+    PRAGMA bdbsql_shared_resources;
+  }
+} {16777216}
+
+# Open db handle and set_shared_resources
+do_test bdb_pragma-5.2 {
+  db close
+  sqlite3 db test.db
+  execsql {
+    PRAGMA bdbsql_shared_resources=100;
+  }
+} {100}
+
+# Test get_shared_resources
+do_test bdb_pragma-5.3 {
+  execsql {
+    PRAGMA bdbsql_shared_resources;
+  }
+} {100}
+
+# Test invalid value
+if {$tcl_platform(wordSize) == 4} { 
+  # On 32-bits platform, the max memory size is (4GB - 1),
+  # Too-large size will be truncated.
+  do_test bdb_pragma-5.4 {
+    execsql {
+      PRAGMA bdbsql_shared_resources=4294967296;
+    }
+  } {4294967295}
+} else {
+  # On 64-bits platform, the max acceptable value is
+  # 4611686018427387903 (1G * (UINT32_MAX + 1) - 1)
+  do_test bdb_pragma-5.4 {
+   catchsql {
+      PRAGMA bdbsql_shared_resources=4611686018427387904;
+    }
+  } {1 {Invalid value bdbsql_shared_resources 4611686018427387904}}
+}
+
+# Test negative
+do_test bdb_pragma-5.5 {
+  catchsql {
+    PRAGMA bdbsql_shared_resources=-1;
+  }
+} {1 {Invalid value bdbsql_shared_resources -1}}
+
+# Test invalid value
+if {$tcl_platform(wordSize) == 4} { 
+  # On 32-bits platform, the max memory size is (4GB - 1)
+  do_test bdb_pragma-5.6 {
+    execsql {
+      PRAGMA bdbsql_shared_resources=4294967295;
+    }
+  } {4294967295}
+} else {
+  # On 64-bits platform, the max acceptable value is
+  # 4611686018427387903 (1G * (UINT32_MAX + 1) - 1)
+  do_test bdb_pragma-5.6 {
+    execsql {
+      PRAGMA bdbsql_shared_resources=4611686018427387903;
+    }
+  } {4611686018427387903}
+}
+
+# Create the table and environment
+do_test bdb_pragma-5.7 {
+  db close
+  sqlite3 db test.db
+  execsql {
+    CREATE TABLE t3(x TEXT);
+    INSERT INTO t3 VALUES(randstr(10,400));
+    INSERT INTO t3 VALUES(randstr(10,400));
+    SELECT count(*) FROM t3;
+  }
+} {2}
+
+# Ensure that can not set shared_resources after accessing the database
+do_test bdb_pragma-5.8 {
+  catchsql {
+    PRAGMA bdbsql_shared_resources=100;
+  }
+} {1 {Cannot set bdbsql_shared_resources after accessing the database}}
+
+# Close and reopen the exisiting environment again
+do_test bdb_pragma-5.9 {
+  db close
+  sqlite3 db test.db
+  catchsql {
+    PRAGMA bdbsql_shared_resources=100000;
+  }
+} {1 {Can't set shared_resources for an open or existing environment}}
+
+
+# Test that pragma bdbsql_shared_resources
+#
+reset_db
+
+#If the handle is not opened, the value is zero
+do_test bdb_pragma-6.1 {
+  execsql {
+    PRAGMA bdbsql_lock_tablesize;
+  }
+} {20000}
+
+#Open db handle and set lock_tablesize
+do_test bdb_pragma-6.2 {
+  db close
+  sqlite3 db test.db
+  execsql {
+    PRAGMA bdbsql_lock_tablesize=100;
+  }
+} {100}
+
+#Test get lock_tablesize
+do_test bdb_pragma-6.3 {
+  execsql {
+    PRAGMA bdbsql_lock_tablesize;
+  }
+} {100}
+
+# Return error if the size is too big:
+# The max acceptable value is 2147483647 (INT32_MAX)
+do_test bdb_pragma-6.4 {
+ catchsql {
+    PRAGMA bdbsql_lock_tablesize=2147483648;
+  }
+} {1 {Invalid value bdbsql_lock_tablesize 2147483648}}
+
+# Test negative
+do_test bdb_pragma-6.5 {
+ catchsql {
+    PRAGMA bdbsql_lock_tablesize=-1;
+  }
+} {1 {Invalid value bdbsql_lock_tablesize -1}}
+
+# The max acceptable value is 2147483647(INT32_MAX)
+do_test bdb_pragma-6.6 {
+  execsql {
+    PRAGMA bdbsql_lock_tablesize=2147483647;
+  }
+} {2147483647}
+
+# Create the table and environment
+do_test bdb_pragma-6.7 {
+  db close
+  sqlite3 db test.db
+  execsql {
+    CREATE TABLE t3(x TEXT);
+    INSERT INTO t3 VALUES(randstr(10,400));
+    INSERT INTO t3 VALUES(randstr(10,400));
+    SELECT count(*) FROM t3;
+  }
+} {2}
+
+# Ensure that can not set lk_tablesize after accessing the database
+do_test bdb_pragma-6.8 {
+  catchsql {
+    PRAGMA bdbsql_lock_tablesize=100;
+  }
+} {1 {Cannot set bdbsql_lock_tablesize after accessing the database}}
+
+# Close and reopen the exisiting environment again
+do_test bdb_pragma-6.9 {
+  db close
+  sqlite3 db test.db
+  catchsql {
+    PRAGMA bdbsql_lock_tablesize=100000;
+  }
+} {1 {Can't set lk_tablesize for open or existing environment}}
+
+
+# Test that pragma bdbsql_single_process
+#
+reset_db
+
+# Check the initial value
+do_test bdb_pragma-7.1 {
+  execsql {
+    PRAGMA bdbsql_single_process;
+  }
+} {0}
+
+# Open db handle and set single_process
+do_test bdb_pragma-7.2 {
+  db close
+  sqlite3 db test.db
+  execsql {
+    PRAGMA bdbsql_single_process = 1;
+  }
+} {1}
+
+# Set again with different format
+do_test bdb_pragma-7.3 {
+  execsql {
+    PRAGMA bdbsql_single_process = on;
+  }
+} {1}
+
+# Check result
+do_test bdb_pragma-7.4 {
+ execsql {
+    PRAGMA bdbsql_single_process;
+  }
+} {1}
+
+# Create the table and environment
+do_test bdb_pragma-7.5 {
+  db close
+  sqlite3 db test.db
+  execsql {
+    PRAGMA bdbsql_single_process = 1;
+    CREATE TABLE t3(x TEXT);
+    INSERT INTO t3 VALUES(randstr(10,400));
+    INSERT INTO t3 VALUES(randstr(10,400));
+    SELECT count(*) FROM t3;
+  }
+} {1 2}
+
+# Check if setting take effect
+do_test bdb_pragma-7.6 {
+ execsql {
+    PRAGMA bdbsql_single_process;
+  }
+} {1}
+
+# Ensure that can not set single_process after accessing the database
+do_test bdb_pragma-7.7 {
+  catchsql {
+    PRAGMA bdbsql_single_process = 0;
+  }
+} {1 {Cannot set bdbsql_single_process after accessing the database}}
+
+# Close and reopen the exisiting environment again
+do_test bdb_pragma-7.8 {
+  db close
+  sqlite3 db test.db
+  execsql {
+    PRAGMA bdbsql_single_process = 1;
+  }
+} {1}
+
+
+# Do some actual operations to open db handle
+do_test bdb_pragma-7.9 {
+  db close
+  sqlite3 db test.db
+  execsql {
+    SELECT count(*) FROM t3;
+  }
+} {2}
+
+# Ensure that can not set single_process after accessing the database
+do_test bdb_pragma-7.10 {
+  catchsql {
+    PRAGMA bdbsql_single_process = 1;
+  }
+} {1 {Cannot set bdbsql_single_process after accessing the database}}
+
 
 finish_test

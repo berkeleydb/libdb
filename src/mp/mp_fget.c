@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -483,7 +483,7 @@ freebuf:		MUTEX_LOCK(env, hp->mtx_hash);
 			}
 			goto done;
 		} else if (F_ISSET(bhp, BH_FREED | BH_TRASH)) {
-revive:		 	if (F_ISSET(bhp, BH_FREED))
+revive:			if (F_ISSET(bhp, BH_FREED))
 				makecopy = makecopy ||
 				    (mvcc && !BH_OWNED_BY(env, bhp, txn)) ||
 				    F_ISSET(bhp, BH_FROZEN);
@@ -1161,7 +1161,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 #ifdef DIAGNOSTIC
 		if (dirty && ip->dbth_locker != INVALID_ROFF &&
 		    ip->dbth_check_off == 0) {
-			lt = env->lk_handle; 
+			lt = env->lk_handle;
 			locker = (DB_LOCKER *)
 			    (R_ADDR(&lt->reginfo, ip->dbth_locker));
 			DB_ASSERT(env, __db_has_pagelock(env, locker, dbmfp,
@@ -1172,7 +1172,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 	}
 	/*
 	 * During recovery we can read past the end of the file.  Also
-	 * last_pgno is not versioned, so if this is an older version 
+	 * last_pgno is not versioned, so if this is an older version
 	 * that is ok as well.
 	 */
 	DB_ASSERT(env, IS_RECOVERING(env) ||

@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -83,7 +83,7 @@ DbEnv::set_event_notify(
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3601084"></a>Parameters</h3>
+              <h3 class="title"><a id="idp1884992"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -91,7 +91,7 @@ DbEnv::set_event_notify(
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3601110"></a>db_event_fcn</h4>
+                <h4 class="title"><a id="idp1895592"></a>db_event_fcn</h4>
               </div>
             </div>
           </div>
@@ -205,6 +205,19 @@ DbEnv::set_event_notify(
                                 local site and a remote site has been broken. This event supplies
                                 the EID of the remote site, and an integer error code that
                                 identifies the reason the connection was broken.
+                            </p>
+                      <p>
+                                A non-zero error code indicates an unexpected
+                                condition such as a hardware failure or a
+                                protocol error.  An application might respond
+                                by emitting an informational message or passing
+                                this information to other parts of the
+                                application using the
+                                <code class="literal">app_private</code>
+                                field.  A zero error code indicates that the
+                                connection was cleanly closed by the other end.
+                                Replication Manager retries broken connections
+                                periodically until they are restored.
                             </p>
                     </li>
                     <li>
@@ -450,7 +463,7 @@ DbEnv::set_event_notify(
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3601599"></a>Class</h3>
+              <h3 class="title"><a id="idp1908800"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -462,7 +475,7 @@ DbEnv::set_event_notify(
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3601162"></a>See Also</h3>
+              <h3 class="title"><a id="idp1874336"></a>See Also</h3>
             </div>
           </div>
         </div>

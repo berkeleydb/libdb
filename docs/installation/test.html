@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Chapter 13.  Test Suite</title>
+    <title>Chapter 14.  Test Suite</title>
     <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB Installation and Build Guide" />
@@ -14,11 +14,11 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
-          <th colspan="3" align="center">Chapter 13. 
+          <th colspan="3" align="center">Chapter 14. 
 		Test Suite
         </th>
         </tr>
@@ -34,7 +34,7 @@
       <div class="titlepage">
         <div>
           <div>
-            <h2 class="title"><a id="test"></a>Chapter 13. 
+            <h2 class="title"><a id="test"></a>Chapter 14. 
 		Test Suite
         </h2>
           </div>
@@ -54,12 +54,12 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="test.html#id3653238">Running SQL Test Suite on Unix</a>
+                  <a href="test.html#idp1045528">Running SQL Test Suite on Unix</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="test.html#id3653090">Running SQL Test Suite on Windows</a>
+                  <a href="test.html#idp1036640">Running SQL Test Suite on Windows</a>
                 </span>
               </dt>
             </dl>
@@ -83,12 +83,12 @@
           <dl>
             <dt>
               <span class="sect2">
-                <a href="test.html#id3653238">Running SQL Test Suite on Unix</a>
+                <a href="test.html#idp1045528">Running SQL Test Suite on Unix</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="test.html#id3653090">Running SQL Test Suite on Windows</a>
+                <a href="test.html#idp1036640">Running SQL Test Suite on Windows</a>
               </span>
             </dt>
           </dl>
@@ -135,7 +135,7 @@ failures.</p>
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3653238"></a>Running SQL Test Suite on Unix</h3>
+                <h3 class="title"><a id="idp1045528"></a>Running SQL Test Suite on Unix</h3>
               </div>
             </div>
           </div>
@@ -143,7 +143,7 @@ failures.</p>
  Once the test suite is built (see <a class="xref" href="build_unix_test.html#build_unix_test_sql" title="Building SQL Test Suite on Unix">Building SQL Test Suite on Unix</a> for more information), run the entire test suite by executing the following command in the <code class="literal">../build_unix/sql</code> directory:
  </p>
           <pre class="programlisting">
-sh ../../sql/adapter/bdb-test.sh
+sh ../../test/sql/bdb-test.sh
 </pre>
           <p>
 This runs a set of tests and lists the errors each test encountered, if any.  A detailed list of the test results is written to <code class="literal">test.log</code>.
@@ -151,14 +151,14 @@ This runs a set of tests and lists the errors each test encountered, if any.  A 
           <p>To run an individual test, such as insert.test, execute the following command in the <code class="literal">../build_unix/sql</code> directory:
 </p>
           <pre class="programlisting">
-./textfixture ../../sql/sqlite/test/insert.test 
+./testfixture ../../lang/sql/sqlite/test/insert.test 
 </pre>
         </div>
         <div class="sect2" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3653090"></a>Running SQL Test Suite on Windows</h3>
+                <h3 class="title"><a id="idp1036640"></a>Running SQL Test Suite on Windows</h3>
               </div>
             </div>
           </div>

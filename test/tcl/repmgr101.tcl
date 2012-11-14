@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST repmgr101
 # TEST Repmgr support for multi-process master.
@@ -34,7 +34,7 @@ proc repmgr101 {  } {
 	fconfigure $master -buffering line
 	puts $master "home $masterdir"
 	make_dbconfig $masterdir \
-	    [list [list repmgr_site localhost $master_port db_local_site on] \
+	    [list [list repmgr_site 127.0.0.1 $master_port db_local_site on] \
 	    "rep_set_config db_repmgr_conf_2site_strict off"]
 	puts $master "output $testdir/m1output"
 	puts $master "open_env"
@@ -65,8 +65,8 @@ proc repmgr101 {  } {
 	fconfigure $client -buffering line
 	puts $client "home $clientdir"
 	make_dbconfig $clientdir \
-	    [list [list repmgr_site localhost $client_port db_local_site on] \
-		 [list repmgr_site localhost $master_port db_bootstrap_helper on] \
+	    [list [list repmgr_site 127.0.0.1 $client_port db_local_site on] \
+		 [list repmgr_site 127.0.0.1 $master_port db_bootstrap_helper on] \
 	    "rep_set_config db_repmgr_conf_2site_strict off"]
 	puts $client "output $testdir/coutput"
 	puts $client "open_env"

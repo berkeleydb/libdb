@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 
@@ -50,17 +50,17 @@ set test_names(rep)	[list rep001 rep002 rep003 rep005 rep006 rep007 \
     rep068 rep069 rep070 rep071 rep072 rep073 rep074 rep075 rep076 rep077 \
     rep078 rep079 rep080 rep081 rep082 rep083 rep084 rep085 rep086 rep087 \
     rep088 rep089 rep090 rep091 rep092 rep093 rep094 rep095 rep096 rep097 \
-    rep098]
+    rep098 rep099 rep100 rep101 rep102]
 set test_names(skip_for_env_private) [list rep002 rep003 rep004 rep005 \
     rep014 rep016 rep017 rep018 rep020 rep022 rep026 rep028 rep031 \
     rep033 rep035 rep036 rep038 rep039 rep040 rep041 rep042 rep043 rep044 \
     rep045 rep048 rep054 rep055 rep056 rep057 rep059 rep060 rep061 rep063 \
     rep065 rep066 rep067 rep068 rep069 rep070 rep072 rep076 rep078 \
-    rep079 rep081 rep082 rep083 rep088 rep095 rep096 rep098 ]
+    rep079 rep081 rep082 rep083 rep088 rep095 rep096 rep098 rep100]
 set test_names(skip_for_inmem_db) [list rep002 rep003 rep004 rep008 rep009 \
     rep011 rep015 rep017 rep018 rep027 rep036 rep042 rep043 rep056 rep057 \
     rep058 rep059 rep065 rep068 rep078 rep079 rep081 rep082 rep083 rep084 \
-    rep085 rep086 rep087 rep088 rep090 ]
+    rep085 rep086 rep087 rep088 rep090 rep099 rep100]
 set test_names(skip_for_inmem_rep) [list rep089] 
 set test_names(auto_repmgr) [list repmgr001 repmgr002 repmgr003 ]
 set test_names(basic_repmgr) [list basic_repmgr_test \
@@ -70,7 +70,8 @@ set test_names(multi_repmgr) [list repmgr100 repmgr101 repmgr102 \
     repmgr110 repmgr111 repmgr112]
 set test_names(other_repmgr) [list repmgr007 repmgr009 repmgr010 repmgr011 \
     repmgr012 repmgr013 repmgr017 repmgr018 repmgr023 repmgr024 repmgr025 \
-    repmgr026 repmgr027 repmgr028 repmgr029 repmgr030 repmgr031 repmgr032]
+    repmgr026 repmgr027 repmgr028 repmgr029 repmgr030 repmgr031 repmgr032 \
+    repmgr033 repmgr034]
 set test_names(rsrc)	[list rsrc001 rsrc002 rsrc003 rsrc004]
 set test_names(sdb)	[list sdb001 sdb002 sdb003 sdb004 sdb005 sdb006 \
     sdb007 sdb008 sdb009 sdb010 sdb011 sdb012 sdb013 sdb014 sdb015 sdb016 \
@@ -92,7 +93,8 @@ set test_names(test)	[list test001 test002 test003 test004 test005 \
     test096 test097 test098 test099 test100 test101 test102 test103 test107 \
     test109 test110 test111 test112 test113 test114 test115 test116 test117 \
     test119 test120 test121 test122 test123 test124 test125 test126 test127 \
-    test128 test129 test130 test131 test132 test133 test134]
+    test128 test129 test130 test131 test132 test133 test134 test135 test136 \
+    test137 test138 test139 test140 test141 test142]
 
 set test_names(txn)	[list txn001 txn002 txn003 txn004 txn005 txn006 \
     txn007 txn008 txn009 txn010 txn011 txn012 txn013 txn014]
@@ -111,7 +113,7 @@ foreach test $skip_for_rep_commit {
 	}
 }
 
-# Source all the tests, whether we're running one or many.
+ # Source all the tests, whether we're running one or many.
 foreach sub $subs {
 	foreach test $test_names($sub) {
 		source $test_path/$test.tcl
@@ -146,6 +148,8 @@ source $test_path/sijointest.tcl
 source $test_path/siutils.tcl
 source $test_path/testutils.tcl
 source $test_path/upgrade.tcl
+source $test_path/../tcl_utils/multi_proc_utils.tcl
+source $test_path/../tcl_utils/common_test_utils.tcl
 
 set parms(recd001) 0
 set parms(recd002) 0
@@ -265,6 +269,10 @@ set parms(rep095) {200 "095"}
 set parms(rep096) {20 "096"}
 set parms(rep097) {"097"}
 set parms(rep098) {200 "098"}
+set parms(rep099) {200 "099"}
+set parms(rep100) {10 "100"}
+set parms(rep101) {100 "101"}
+set parms(rep102) {100 "102"}
 set parms(repmgr007) {100 "007"}
 set parms(repmgr009) {10 "009"}
 set parms(repmgr010) {100 "010"}
@@ -281,6 +289,7 @@ set parms(repmgr027) {"027"}
 set parms(repmgr028) {"028"}
 set parms(repmgr030) {100 "030"}
 set parms(repmgr032) {"032"}
+set parms(repmgr034) {3 "034"}
 set parms(repmgr100) ""
 set parms(repmgr101) ""
 set parms(repmgr102) ""
@@ -450,8 +459,8 @@ set parms(test122) {"122"}
 set parms(test123) ""
 set parms(test124) 1000 
 set parms(test125) ""
-set parms(test126) {10000 "126" 1 0 0}
-set parms(test127) {10000 5 "127" 0}
+set parms(test126) {10000 "126" 1 0 0 0}
+set parms(test127) {10000 5 "127" 0 0}
 set parms(test128) {10000 1}
 set parms(test129) {10000 5}
 set parms(test130) {10000 3 "130"}
@@ -459,6 +468,14 @@ set parms(test131) {1000 "131" 5 0 0}
 set parms(test132) {1000 5}
 set parms(test133) {1000 "133" 0}
 set parms(test134) {1000}
+set parms(test135) {10 10 0 "135"}
+set parms(test136) {10 10}
+set parms(test137) {1000 0 0 0 "137" "ds"}
+set parms(test138) {1000 0 0}
+set parms(test139) {512 1000 "139"}
+set parms(test140) {"140"}
+set parms(test141) {10000 "141"}
+set parms(test142) {"142"}
 
 # Shell script tests.  Each list entry is a {directory filename rundir} list,
 # invoked with "/bin/sh filename".

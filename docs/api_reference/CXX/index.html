@@ -12,7 +12,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -30,7 +30,7 @@
       <div class="titlepage">
         <div>
           <div>
-            <h1 class="title"><a id="id2726910"></a>Berkeley DB C++ API Reference</h1>
+            <h1 class="title"><a id="idm554656"></a>Berkeley DB C++ API Reference</h1>
           </div>
           <div class="navtable">
             <table border="1" width="80%">
@@ -280,6 +280,14 @@
                   <td>Set/get the database heap size</td>
                 </tr>
                 <tr>
+                  <td><a class="xref" href="dbset_heap_regionsize.html" title="Db::set_heap_regionsize()">Db::set_heap_regionsize()</a>, <a class="xref" href="dbget_heap_regionsize.html" title="Db::get_heap_regionsize()">Db::get_heap_regionsize()</a></td>
+                  <td>Set/get the database region size</td>
+                </tr>
+                <tr>
+                  <td><a class="xref" href="dbset_lk_exclusive.html" title="Db::set_lk_exclusive()">Db::set_lk_exclusive()</a>, <a class="xref" href="dbget_lk_exclusive.html" title="Db::get_lk_exclusive()">Db::get_lk_exclusive()</a></td>
+                  <td>Set/get exclusive database locking</td>
+                </tr>
+                <tr>
                   <td><a class="xref" href="dbset_lorder.html" title="Db::set_lorder()">Db::set_lorder()</a>, <a class="xref" href="dbget_lorder.html" title="Db::get_lorder()">Db::get_lorder()</a></td>
                   <td>Set/get the database byte order</td>
                 </tr>
@@ -336,6 +344,12 @@
                 <tr>
                   <td><a class="xref" href="dbset_re_source.html" title="Db::set_re_source()">Db::set_re_source()</a>, <a class="xref" href="dbget_re_source.html" title="Db::get_re_source()">Db::get_re_source()</a></td>
                   <td>Set/get the backing Recno text file</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="dbsort_multiple.html" title="Db::sort_multiple()">Db::sort_multiple()</a>
+                  </td>
+                  <td>Sort a set of DBTs</td>
                 </tr>
                 <tr>
                   <td>
@@ -481,15 +495,15 @@
                 </tr>
                 <tr>
                   <td>
-                    <a class="xref" href="dbgetenv.html" title="Db::get_env()">Db::get_env()</a>
-                  </td>
-                  <td>Return the Db's underlying DbEnv handle </td>
-                </tr>
-                <tr>
-                  <td>
                     <a class="xref" href="envadd_data_dir.html" title="DbEnv::add_data_dir()">DbEnv::add_data_dir()</a>
                   </td>
                   <td>add an environment data directory</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="envbackup.html" title="DbEnv::backup()">DbEnv::backup()</a>
+                  </td>
+                  <td>Hot back up an entire environment</td>
                 </tr>
                 <tr>
                   <td>
@@ -502,6 +516,12 @@
                     <a class="xref" href="envcreate.html" title="DbEnv">DbEnv</a>
                   </td>
                   <td>Create an environment handle</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="envdbbackup.html" title="DbEnv::dbbackup()">DbEnv::dbbackup()</a>
+                  </td>
+                  <td>Hot back up a single environment file</td>
                 </tr>
                 <tr>
                   <td>
@@ -538,6 +558,12 @@
                     <a class="xref" href="envfullversion.html" title="DbEnv::full_version()">DbEnv::full_version()</a>
                   </td>
                   <td>Return full version information</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a class="xref" href="dbgetenv.html" title="Db::get_env()">Db::get_env()</a>
+                  </td>
+                  <td>Return the Db's underlying DbEnv handle </td>
                 </tr>
                 <tr>
                   <td>
@@ -586,6 +612,14 @@
                     <a class="xref" href="envset_app_dispatch.html" title="DbEnv::set_app_dispatch()">DbEnv::set_app_dispatch()</a>
                   </td>
                   <td>Configure application recovery callback</td>
+                </tr>
+                <tr>
+                  <td><a class="xref" href="envset_backup_callbacks.html" title="DbEnv::set_backup_callbacks()">DbEnv::set_backup_callbacks()</a>, <a class="xref" href="envget_backup_callbacks.html" title="DbEnv::get_backup_callbacks()">DbEnv::get_backup_callbacks()</a></td>
+                  <td>Set/get callbacks used for environment hot backups</td>
+                </tr>
+                <tr>
+                  <td><a class="xref" href="envset_backup_config.html" title="DbEnv::set_backup_config()">DbEnv::set_backup_config()</a>, <a class="xref" href="envget_backup_config.html" title="DbEnv::get_backup_config()">DbEnv::get_backup_config()</a></td>
+                  <td>Set/get environment hot backup configuration options</td>
                 </tr>
                 <tr>
                   <td><a class="xref" href="envset_data_dir.html" title="DbEnv::set_data_dir()">DbEnv::set_data_dir()</a>, <a class="xref" href="envget_data_dirs.html" title="DbEnv::get_data_dirs()">DbEnv::get_data_dirs()</a></td>
@@ -652,6 +686,10 @@
                 <tr>
                   <td><a class="xref" href="envset_memory_max.html" title="DbEnv::set_memory_max()">DbEnv::set_memory_max()</a>, <a class="xref" href="envget_memory_max.html" title="DbEnv::get_memory_max()">DbEnv::get_memory_max()</a></td>
                   <td>Set/get maximum memory allocation</td>
+                </tr>
+                <tr>
+                  <td><a class="xref" href="envset_metadata_dir.html" title="DbEnv::set_metadata_dir()">DbEnv::set_metadata_dir()</a>, <a class="xref" href="envget_metadata_dir.html" title="DbEnv::get_metadata_dir()">DbEnv::get_metadata_dir()</a></td>
+                  <td>Set/get the directory containing environment metadata </td>
                 </tr>
                 <tr>
                   <td>
@@ -1824,41 +1862,45 @@
           </div>
           <div>
             <div class="legalnotice">
-              <a id="id3556971"></a>
+              <a id="idm1062392"></a>
               <p class="legalnotice-title">
                 <b>Legal Notice</b>
               </p>
-              <p>
-        This documentation is distributed under an open source license.
-        You may review the terms of this license at:
-        <a class="ulink" href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html" target="_top">http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html</a>
-        
-        
-    </p>
-              <p>
-            Oracle, Berkeley DB,
+              <span>
+        <p>
+            This documentation is distributed under an open source license.
+            You may review the terms of this license at:
+            <a class="ulink" href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html" target="_top">http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html</a>
             
             
-            and
-            Sleepycat are trademarks or registered trademarks of
-            Oracle. All rights to these marks are reserved.
-            No third-party use is permitted without the
-            express prior written consent of Oracle.
-    </p>
-              <p>
-        Other names may be trademarks of their respective owners.
-    </p>
-              <p>
-        To obtain a copy of this document's original source code, please
-        submit a request to the Oracle Technology Network forum at:
-        <a class="ulink" href="http://forums.oracle.com/forums/forum.jspa?forumID=271" target="_top">http://forums.oracle.com/forums/forum.jspa?forumID=271</a>
+        </p>
+
+        <p>
+                Oracle, Berkeley DB,
+                
+                
+                and
+                Sleepycat are trademarks or registered trademarks of
+                Oracle. All rights to these marks are reserved.
+                No third-party use is permitted without the
+                express prior written consent of Oracle.
+        </p>
         
-        
-    </p>
+        <p>
+            Other names may be trademarks of their respective owners.
+        </p>
+        <p>
+            To obtain a copy of this document's original source code, please
+            submit a request to the Oracle Technology Network forum at:
+            <a class="ulink" href="http://forums.oracle.com/forums/forum.jspa?forumID=271" target="_top">http://forums.oracle.com/forums/forum.jspa?forumID=271</a>
+            
+            
+        </p>
+    </span>
             </div>
           </div>
           <div>
-            <p class="pubdate">9/14/2011</p>
+            <p class="pubdate">5/11/2012</p>
           </div>
         </div>
         <hr />

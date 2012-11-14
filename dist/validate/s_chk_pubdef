@@ -64,6 +64,7 @@ END_OF_TEXT
 
 cat $d/src/dbinc/db.in $d/src/dbinc_auto/api_flags.in | sed -n \
     -e 's/^#.*[ 	]\(DB_[A-Z_0-9][A-Z_0-9]*\).*/\1/p' \
+    -e 's/^#.*[ 	]\(DB2_[A-Z_0-9][A-Z_0-9]*\).*/\1/p' \
     -e 's/[	 ]\(DB_[A-Z_]*\)=[0-9].*/\1/p' \
     -e d |
 while read name; do

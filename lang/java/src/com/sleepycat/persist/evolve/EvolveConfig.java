@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -23,7 +23,7 @@ import com.sleepycat.persist.EntityStore;
 public class EvolveConfig implements Cloneable {
 
     private Set<String> classesToEvolve;
-    private EvolveListener listener;
+    private EvolveListener evolveListener;
 
     /**
      * Creates an evolve configuration with default properties.
@@ -78,8 +78,16 @@ public class EvolveConfig implements Cloneable {
      * Sets a progress listener that is notified each time an entity is read.
      */
     public EvolveConfig setEvolveListener(EvolveListener listener) {
-        this.listener = listener;
+        setEvolveListenerVoid(listener);
         return this;
+    }
+    
+    /**
+     * @hidden
+     * The void return setter for use by Bean editors.
+     */
+    public void setEvolveListenerVoid(EvolveListener listener) {
+        this.evolveListener = listener;
     }
 
     /**
@@ -87,6 +95,6 @@ public class EvolveConfig implements Cloneable {
      * read.
      */
     public EvolveListener getEvolveListener() {
-        return listener;
+        return evolveListener;
     }
 }

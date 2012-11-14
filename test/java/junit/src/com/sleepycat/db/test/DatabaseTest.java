@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -19,6 +19,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import com.sleepycat.db.Cursor;
@@ -30,6 +31,7 @@ import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.DatabaseType;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.HeapStats;
 import com.sleepycat.db.LockMode;
 import com.sleepycat.db.OperationStatus;
 import com.sleepycat.db.Transaction;
@@ -309,6 +311,107 @@ public class DatabaseTest {
 
     }
 
+    /*
+     * Test setting database handle exclusive lock.
+     */
+    @Test public void test11()
+        throws DatabaseException, FileNotFoundException
+    {
+        TestUtils.removeall(true, true, TestUtils.BASETEST_DBDIR, TestUtils.getDBFileName(DATABASETEST_DBNAME));
+        itemcount = 0;
+        TestOptions options = new TestOptions();
+        options.save_db = true;
+        options.db_config.setErrorPrefix("DatabaseTest::test11 ");
+
+        EnvironmentConfig envc = new EnvironmentConfig();
+        envc.setAllowCreate(true);
+        envc.setInitializeCache(true);
+        envc.setInitializeLogging(true);
+        envc.setInitializeLocking(true);
+        envc.setTransactional(true);
+        envc.setThreaded(false);
+        options.db_env = new Environment(TestUtils.BASETEST_DBFILE, envc);
+
+        rundb(itemcount++, options);
+        assertNull(options.database.getConfig().getNoWaitDbExclusiveLock());
+
+        options.database.close();
+        options.database = null;
+
+        options.db_config.setNoWaitDbExclusiveLock(Boolean.TRUE);
+        rundb(itemcount++, options);
+        assertEquals(options.database.getConfig().getNoWaitDbExclusiveLock(), Boolean.TRUE);
+
+        options.database.close();
+        options.database = null;
+
+        options.db_config.setNoWaitDbExclusiveLock(Boolean.FALSE);
+        rundb(itemcount++, options);
+        assertEquals(options.database.getConfig().getNoWaitDbExclusiveLock(), Boolean.FALSE);
+
+        // Test noWaitDbExclusiveLock can not be set after database is opened.
+        try {
+            DatabaseConfig newConfig = options.database.getConfig();
+            newConfig.setNoWaitDbExclusiveLock(Boolean.TRUE);
+            options.database.setConfig(newConfig);
+        } catch (IllegalArgumentException e) {
+        } finally {
+            options.database.close();
+            options.database = null;
+            options.db_env.close();
+        }
+    }
+
+    /*
+     * Test setting metadata directory
+     */
+    @Test public void test12()
+        throws DatabaseException, FileNotFoundException
+    {
+        TestUtils.removeall(true, true, TestUtils.BASETEST_DBDIR, TestUtils.getDBFileName(DATABASETEST_DBNAME));
+        itemcount = 0;
+        TestOptions options = new TestOptions();
+        options.db_config.setErrorPrefix("DatabaseTest::test12 ");
+
+        EnvironmentConfig envc = new EnvironmentConfig();
+        envc.setAllowCreate(true);
+        envc.setInitializeCache(true);
+
+        options.db_env = new Environment(TestUtils.BASETEST_DBFILE, envc);
+        rundb(itemcount++, options);
+        assertNull(options.db_env.getConfig().getMetadataDir());
+        options.db_env.close();
+
+        String mddir = "metadataDir";
+        envc.setMetadataDir(new java.io.File(mddir));
+        options.db_env = new Environment(TestUtils.BASETEST_DBFILE, envc);
+        rundb(itemcount++, options);
+        assertEquals(options.db_env.getConfig().getMetadataDir().getPath(), mddir);
+        options.db_env.close();
+    }
+
+    /*
+     * Test setting heap region size
+     */
+    @Test public void test13()
+        throws DatabaseException, FileNotFoundException
+    {
+        TestUtils.removeall(true, true, TestUtils.BASETEST_DBDIR, TestUtils.getDBFileName(DATABASETEST_DBNAME));
+        TestOptions options = new TestOptions();
+        options.db_config.setErrorPrefix("DatabaseTest::test13 ");
+        options.db_config.setAllowCreate(true);
+        options.db_config.setType(DatabaseType.HEAP);
+        options.db_config.setHeapRegionSize(4);
+
+        Database db = new Database(TestUtils.getDBFileName(DATABASETEST_DBNAME), null, options.db_config);
+        assertEquals(db.getConfig().getHeapRegionSize(), 4);
+
+        HeapStats stats = (HeapStats)db.getStats(null, null);
+        assertEquals(stats.getHeapRegionSize(), 4);
+
+        db.close();
+    }
+
     // Check that key/data for 0 - count-1 are already present,
     // and write a key/data for count.  The key and data are
     // both "0123...N" where N == count-1.
@@ -336,7 +439,7 @@ public class DatabaseTest {
             if(options.db_env == null)
                 db = new Database(name, null, options.db_config);
             else
-                db = options.db_env.openDatabase(null, name, null, options.db_config);
+                db = options.db_env.openDatabase(options.txn, name, null, options.db_config);
         } else {
             db = options.database;
         }
@@ -358,10 +461,10 @@ public class DatabaseTest {
     	DatabaseEntry data = new DatabaseEntry(outbuf, 0, i);
 
     	TestUtils.DEBUGOUT("Put: " + (char)outbuf[0] + ": " + new String(outbuf, 0, i));
-    	db.putNoOverwrite(null, key, data);
+    	db.putNoOverwrite(options.txn, key, data);
 
     	// Acquire a cursor for the table.
-    	Cursor dbcp = db.openCursor(null, CursorConfig.DEFAULT);
+    	Cursor dbcp = db.openCursor(options.txn, CursorConfig.DEFAULT);
 
     	// Walk through the table, checking
     	DatabaseEntry readkey = new DatabaseEntry();
@@ -438,6 +541,7 @@ class TestOptions
     Environment db_env = null;
     DatabaseConfig db_config;
     Database database = null; // db is saved here by rundb if save_db is true.
+    Transaction txn = null;
 
     public TestOptions()
     {
@@ -445,6 +549,7 @@ class TestOptions
         this.user_buffer = 0;
         this.successcounter = 0;
         this.db_env = null;
+        this.txn = null;
 
         db_config = new DatabaseConfig();
         db_config.setErrorStream(TestUtils.getErrorStream());

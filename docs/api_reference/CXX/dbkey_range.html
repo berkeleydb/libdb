@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -104,7 +104,7 @@ Db::key_range(DbTxn *txnid
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3568020"></a>Parameters</h3>
+              <h3 class="title"><a id="idm4536680"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -112,7 +112,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3567402"></a>txnid</h4>
+                <h4 class="title"><a id="idm2433368"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -134,7 +134,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3568203"></a>key</h4>
+                <h4 class="title"><a id="idm2208208"></a>key</h4>
               </div>
             </div>
           </div>
@@ -146,7 +146,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3568146"></a>key_range</h4>
+                <h4 class="title"><a id="idm5466504"></a>key_range</h4>
               </div>
             </div>
           </div>
@@ -163,7 +163,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3568157"></a>flags</h4>
+                <h4 class="title"><a id="idm6944648"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -177,7 +177,7 @@ Db::key_range(DbTxn *txnid
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3568188"></a>Errors</h3>
+              <h3 class="title"><a id="idm2068136"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -195,7 +195,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3568314"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idm4420256"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -213,13 +213,20 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3568247"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idm1711688"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
           <p>
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="Db::set_lk_exclusive()">Db::set_lk_exclusive()</a>
+                for more information.
             </p>
           <p>
                 <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
@@ -231,7 +238,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3568097"></a> <span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="idm2080008"></a> <span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -253,7 +260,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3568418"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="idm7711768"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -270,7 +277,7 @@ Db::key_range(DbTxn *txnid
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3568436"></a>EINVAL</h4>
+                <h4 class="title"><a id="idm6074184"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -284,7 +291,7 @@ Db::key_range(DbTxn *txnid
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3568241"></a>Class</h3>
+              <h3 class="title"><a id="idm1482312"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -296,7 +303,7 @@ Db::key_range(DbTxn *txnid
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3568454"></a>See Also</h3>
+              <h3 class="title"><a id="idm6489664"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2007, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -55,10 +55,6 @@ proc repmgr009_sub { method niter tnum largs } {
 	file mkdir $clientdir
 	file mkdir $norepdir
 
-	# Use different connection retry timeout values to handle any
-	# collisions from starting sites at the same time by retrying
-	# at different times.
-
 	puts "\tRepmgr$tnum.a: Set up environment without repmgr."
 	set ma_envcmd "berkdb_env_noerr -create $verbargs \
 	    -errpfx MASTER -home $masterdir -txn -rep -thread"
@@ -67,8 +63,7 @@ proc repmgr009_sub { method niter tnum largs } {
 
 	puts "\tRepmgr$tnum.b: Call repmgr without open master (error)."
 	catch {$masterenv repmgr -ack all \
-	    -timeout {connection_retry 20000000} \
-	    -local [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 0]] \
 	    -start master} res
 	error_check_good errchk [is_substr $res "invalid command"] 1
 
@@ -80,8 +75,7 @@ proc repmgr009_sub { method niter tnum largs } {
 	repladd 1
 	set masterenv [eval $ma_envcmd]
 	$masterenv repmgr -ack all \
-	    -timeout {connection_retry 20000000} \
-	    -local [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 0]] \
 	    -start master
 
 	puts "\tRepmgr$tnum.e: Start repmgr with no local sites (error)."
@@ -89,8 +83,7 @@ proc repmgr009_sub { method niter tnum largs } {
 	    -home $clientdir -txn -rep -thread"
 	set clientenv [eval $cl_envcmd]
 	catch {$clientenv repmgr -ack all \
-	    -timeout {connection_retry 10000000} \
-	    -remote [list localhost [lindex $ports 7]] \
+	    -remote [list 127.0.0.1 [lindex $ports 7]] \
 	    -start client} res
 	error_check_good errchk [is_substr $res \
 	    "local site must be named before calling repmgr_start"] 1
@@ -99,9 +92,8 @@ proc repmgr009_sub { method niter tnum largs } {
 	puts "\tRepmgr$tnum.f: Start repmgr with two local sites (error)."
 	set clientenv [eval $cl_envcmd]
 	catch {$clientenv repmgr -ack all \
-	    -timeout {connection_retry 10000000} \
-	    -local [list localhost [lindex $ports 8]] \
-	    -local [list localhost [lindex $ports 9]] \
+	    -local [list 127.0.0.1 [lindex $ports 8]] \
+	    -local [list 127.0.0.1 [lindex $ports 9]] \
 	    -start client} res
 	error_check_good errchk [string match "*already*set*" $res] 1
 	error_check_good client_close [$clientenv close] 0
@@ -110,17 +102,15 @@ proc repmgr009_sub { method niter tnum largs } {
 	repladd 2
 	set clientenv [eval $cl_envcmd -recover]
 	$clientenv repmgr -ack all \
-	    -timeout {connection_retry 10000000} \
-	    -local [list localhost [lindex $ports 1]] \
-	    -remote [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 1]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
 	    -start client
 	await_startup_done $clientenv
 
 	puts "\tRepmgr$tnum.h: Start repmgr a second time (error)."
 	catch {$clientenv repmgr -ack all \
-	    -timeout {connection_retry 10000000} \
-	    -local [list localhost [lindex $ports 1]] \
-	    -remote [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 1]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
 	    -start client} res
 	error_check_good errchk [is_substr $res "repmgr is already started"] 1
 
@@ -161,7 +151,7 @@ proc repmgr009_sub { method niter tnum largs } {
 
 	puts "\tRepmgr$tnum.o: Call repmgr after rep_start (error)."
 	catch {$masterenv2 repmgr -ack all \
-	    -local [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 0]] \
 	    -start master} res
 	# Internal repmgr calls return EINVAL after hitting
 	# base API application test.

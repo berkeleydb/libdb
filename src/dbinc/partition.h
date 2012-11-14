@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * $Id$
@@ -16,7 +16,7 @@ extern "C" {
 typedef struct __db_partition {
 	u_int32_t	nparts;		/* number of partitions. */
 	DBT		*keys;		/* array of range keys. */
-	void		*data;		/* the partion info. */
+	void		*data;		/* the partition info. */
 	const char	**dirs;		/* locations for partitions. */
 	DB		**handles;	/* array of partition handles. */
 	u_int32_t	(*callback) (DB *, DBT *);
@@ -26,7 +26,7 @@ typedef struct __db_partition {
 } DB_PARTITION;
 
 /*
- * Internal part of a partitoned cursor.
+ * Internal part of a partitioned cursor.
  */
 typedef struct __part_internal {
 	__DBC_INTERNAL
@@ -38,6 +38,8 @@ typedef struct __part_internal {
 #define	PART_NAME	"__dbp.%s.%03d"
 #define	PART_LEN	(strlen("__dbp..")+3)
 #define	PART_PREFIX	"__dbp."
+#define IS_PARTITION_DB_FILE(name)	(strncmp(name, PART_PREFIX,	\
+					    sizeof(PART_PREFIX) - 1) == 0)
 
 #define	DB_IS_PARTITIONED(dbp)						\
       (dbp->p_internal != NULL &&					\

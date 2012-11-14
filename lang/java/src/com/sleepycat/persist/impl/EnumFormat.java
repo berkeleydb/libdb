@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -36,8 +36,8 @@ public class EnumFormat extends Format {
     private String[] names;
     private transient Object[] values;
 
-    EnumFormat(Class type) {
-        super(type);
+    EnumFormat(Catalog catalog, Class type) {
+        super(catalog, type);
         values = type.getEnumConstants();
         names = new String[values.length];
         for (int i = 0; i < names.length; i += 1) {
@@ -48,8 +48,8 @@ public class EnumFormat extends Format {
     /**
      * For use in a deserialized CompositeKeyFormat.
      */
-    EnumFormat(Class type, String[] enumData) {
-        super(type);
+    EnumFormat(Catalog catalog, Class type, String[] enumData) {
+        super(catalog, type);
         names = enumData;
     }
 

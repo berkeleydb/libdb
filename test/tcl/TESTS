@@ -21,11 +21,11 @@ backup
 	(2) Test with -data_dir (-d). 
 	(3) Test updating an existing hot backup (-u).
 	(4) Test with absolute path. 
-	(5) Test with DB_CONFIG (-D), setting log_dir (-l)
+	(5) Test with DB_CONFIG, setting log_dir (-l)
 	and data_dir (-d).
 	(6) DB_CONFIG and update.  
-	(7) Repeat hot backup (non-update) with DB_CONFIG and 
-	existing directories. 
+	(7) Repeat hot backup (non-update) with DB_CONFIG, 
+	DB_CONFIG (-D) and existing directories. 
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 bigfile001
@@ -1640,6 +1640,38 @@ rep098
 	remove pages in the database.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep099
+	Test of multiple data dirs and databases, both active replication
+	and internal init.
+
+	One master, two clients using several data_dirs.
+	Create databases in different data_dirs.  Replicate to client.
+	Add 2nd client later to require it to catch up via internal init.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep100
+	Checkpoints and unresolved txns
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep101
+	Test of exclusive access to databases and HA.
+	Confirm basic functionality with master and client.
+	Confirm excl access after checkpoint and archive.
+	Confirm internal init with open excl databases.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+rep102
+	Test of exclusive access to databases and HA.
+	Master creates a database, writes some txns, and closes the db.
+	Client opens the database (in child process).
+	Master opens database exclusively.
+	Client tries to read database and gets HANDLE_DEAD.  Closes db.
+	Client tries to reopen database and is blocked.
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 repmgr001
 	Basic repmgr test.
 
@@ -1825,6 +1857,24 @@ repmgr030
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 repmgr032
 	The (undocumented) AUTOROLLBACK config feature.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr033
+	Under quorum policy, if the number of peers in the group is less than a
+	majority, that's still OK.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+repmgr034
+	Repmgr site removal and restart.
+
+	Start two repmgr sites, master and client1.  The client1 removes
+	itself and restarts, sometimes more than once.  Start a third 
+	repmgr site client2 and make sure it can remove client1 from
+	the group.
+
+	This test must use heartbeats to ensure that a client that has
+	been removed and restarted without recovery can sync up.
+
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 repmgr100
@@ -2108,7 +2158,8 @@ sdb019
 sdb020
 	Tests in-memory subdatabases.
 	Create an in-memory subdb with one page size.  Close, and
-	open with a different page size: should fail.
+	open with a different page size: should succeed, but the underlying
+	page size is not changed.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 sdbtest001
@@ -3278,15 +3329,22 @@ test127
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test128
-	Test database bulk update for sub database and duplicate database.
+	Test database bulk update for non-duplicate databases, with different
+	configurations.
 
-	This is essentially test126 with sub database and secondary database.
+	This is essentially test126 with the following configurations:
+	* sub database.
+	* secondary database.
+	* bulk buffer pre-sort.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test129
-	Test database bulk update for duplicate sub database.
+	Test database bulk update for duplicate database, with different
+	configurations.
 
-	This is essentially test127 with sub database.
+	This is essentially test127 with the following configurations:
+	* sub database.
+	* bulk buffer pre-sort.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test130
@@ -3332,6 +3390,88 @@ test133
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test134
 	Test cursor cleanup for sub databases.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test135
+	Test operations on similar overflow records. [#20329]
+	Open 3 kinds of databases: one is not dup, and one is dup-unsorted
+	while another one is dup-sorted.
+	Then we put some similar but not identical overflow records into 
+	these databases. 
+	Also, we try to remove some records from these databases.
+	We'll verify the records after put and after deletion.
+	Here is how we define the 'similar overflow' in this test:
+	* Both the key.size and data.size are not small than DB's pagesize:
+	The key.size is around 2*pagesize and data.size equals to pagesize.
+	* The keys are of same length, and they only differ in a small piece.
+	The location of difference could be in the start/middle/end.
+	* For dup databases, the dup datas have same rule as the key rule
+	mentioned above.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test136
+	Test operations on similar overflow records. [#20329]
+	Here, we use subdatabases.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test137
+	Test Automatic Resource Management. [#16188][#20281]
+	Open an environment, and open a database in it.
+	Do some operations in the database, including:
+	insert, dump, delete
+	Close the environment without closing the database.
+	Re-open the database and verify the records are the ones we expected.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test138
+	Test Automatic Resource Management. [#16188][#20281]
+	Here, we test the following cases:
+	Non-encrypt for cds
+	Non-encrypt for tds
+	Encrypt for ds
+	Encrypt for cds
+	Encrypt for tds
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test139
+
+	Verify an open database.
+	Create and populate a database, leave open, and run 
+	db->verify. 
+	Delete half the data, verify, compact, verify again. 
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test140
+	Test expansion and contraction of hash chains with
+	deletion, compaction, and recovery.
+
+	On each cycle, populate a database to create reasonably
+	long hash chains, say 8 - 10 entries.  Delete some 
+	entries, check for consistency, compact, and check 
+	for consistency again.  We both commit and abort the 
+	compact, and in the case of the abort, compare 
+	the recovered database to the pre-compact database.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test141
+	Test moving a large part of a hash table to a continguous
+	block of free pages.
+
+	Create a database with a btree and a hash subdb.  Remove
+	all the data from the first (btree) db and then compact
+	to cause the hash db to get moved. 
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+test142
+	Tests exclusive database handles.
+	1. Test that exclusive database handles return an error in incompatible 
+	environments.
+	2. Test that an exclusive subdatabase handle does not block opening a 
+	handle on another database in the same file.
+	3. Run script tests on a subdatabase with both wait and no wait 
+	configuration.
+	4. Run script tests on a database with both wait and no wait 
+	configuration.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 txn001

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2006, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -70,7 +70,7 @@ __repmgr_queue_get(env, msgp, th)
 	db_rep = env->rep_handle;
 
 	while ((m = available_work(env)) == NULL &&
-	    !db_rep->finished && !th->quit_requested) {
+	    db_rep->repmgr_status == running && !th->quit_requested) {
 #ifdef DB_WIN32
 		/*
 		 * On Windows, msg_avail means either there's something in the
@@ -78,7 +78,7 @@ __repmgr_queue_get(env, msgp, th)
 		 * not true.
 		 */
 		if (STAILQ_EMPTY(&db_rep->input_queue.header) &&
-		    !db_rep->finished &&
+		    db_rep->repmgr_status == running &&
 		    !ResetEvent(db_rep->msg_avail)) {
 			ret = GetLastError();
 			goto err;
@@ -99,7 +99,7 @@ __repmgr_queue_get(env, msgp, th)
 			goto err;
 #endif
 	}
-	if (db_rep->finished || th->quit_requested)
+	if (db_rep->repmgr_status == stopped || th->quit_requested)
 		ret = DB_REP_UNAVAIL;
 	else {
 		STAILQ_REMOVE(&db_rep->input_queue.header,
@@ -119,7 +119,7 @@ err:
  * is.  But otherwise skip over any message type that may possibly turn out to
  * be "long-running", so that we avoid starving out the important rep message
  * processing.
- */ 
+ */
 static REPMGR_MESSAGE *
 available_work(env)
 	ENV *env;
@@ -135,7 +135,7 @@ available_work(env)
 	 * currently processing non-replication messages (a.k.a. possibly
 	 * long-running messages, a.k.a. "deferrable").  We always ensure that
 	 * db_rep->nthreads > reserved.
-	 */ 
+	 */
 	if (db_rep->nthreads > db_rep->non_rep_th + RESERVED_MSG_TH(env))
 		return (STAILQ_FIRST(&db_rep->input_queue.header));
 	STAILQ_FOREACH(m, &db_rep->input_queue.header, entries) {

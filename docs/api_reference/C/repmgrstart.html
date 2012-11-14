@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -149,7 +149,7 @@ DB_ENV-&gt;repmgr_start(DB_ENV *env, int nthreads, u_int32_t flags);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3754483"></a>Parameters</h3>
+              <h3 class="title"><a id="idp62445408"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -157,7 +157,7 @@ DB_ENV-&gt;repmgr_start(DB_ENV *env, int nthreads, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3754570"></a>nthreads</h4>
+                <h4 class="title"><a id="idp62446056"></a>nthreads</h4>
               </div>
             </div>
           </div>
@@ -165,20 +165,24 @@ DB_ENV-&gt;repmgr_start(DB_ENV *env, int nthreads, u_int32_t flags);  </pre>
                           Specify the number of threads of control created and dedicated to
                           processing replication messages.  In addition to these message
                           processing threads, the Replication Manager creates and manages a few
-                          of its own threads of control.
+                          of its own threads of control.  The TCP/IP listener
+                          process can change this value after the Replication
+                          Manager is started with a subsequent call to the
+                          <code class="methodname">DB_ENV-&gt;repmgr_start()</code> method.
                      </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3754590"></a>flags</h4>
+                <h4 class="title"><a id="idp62437808"></a>flags</h4>
               </div>
             </div>
           </div>
           <p>
                           The <span class="bold"><strong>flags</strong></span> parameter must be set to
-                          one of the following values:
+                          one of the following values when first starting the
+                          Replication Manager:
                      </p>
           <div class="itemizedlist">
             <ul type="disc">
@@ -211,13 +215,19 @@ DB_ENV-&gt;repmgr_start(DB_ENV *env, int nthreads, u_int32_t flags);  </pre>
               </li>
             </ul>
           </div>
+          <p>
+                          If the Replication Manager is already started, a
+                          <span class="bold"><strong>flags</strong></span> value of 0 can
+                          be used when making a subsequent call to change the
+                          value of <span class="bold"><strong>nthreads</strong></span>.
+                     </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3754751"></a>Errors</h3>
+              <h3 class="title"><a id="idp62441936"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -233,13 +243,30 @@ DB_ENV-&gt;repmgr_start(DB_ENV *env, int nthreads, u_int32_t flags);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3754836"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp62459432"></a>DB_REP_UNAVAIL</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                The local site tried to join the group, but was unable to do
+                so for some reason (because a master site is not available,
+                or because insufficient replicas are running to acknowledge
+                the new site).  When that happens the application should
+                pause and retry adding the site until it completes
+                successfully. 
+            </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="idp62446544"></a>EINVAL</h4>
               </div>
             </div>
           </div>
           <p>
                 If the database environment was not already opened or was
-opened without the <code class="literal">DB_THREAD</code> flag set; a local
+                opened without the <code class="literal">DB_THREAD</code> flag set; a local
                 site has not already been configured, this method is called
                 from a Base API application; or if an invalid
                 flag value or parameter was specified.
@@ -250,7 +277,7 @@ opened without the <code class="literal">DB_THREAD</code> flag set; a local
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3754632"></a>Class</h3>
+              <h3 class="title"><a id="idp62447048"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -262,7 +289,7 @@ opened without the <code class="literal">DB_THREAD</code> flag set; a local
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3753877"></a>See Also</h3>
+              <h3 class="title"><a id="idp62456376"></a>See Also</h3>
             </div>
           </div>
         </div>

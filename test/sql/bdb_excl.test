@@ -1,5 +1,6 @@
 set IGNORE_CASES {
   alter-7.1		{# differences in representing numbers }
+  attach4-1.5	{# differences in wal behavior}
   autovacuum-1.*.3	{# file size }
   autovacuum-[279].*	{# file size, root page }
   autovacuum-3.7	{# file size }
@@ -17,6 +18,10 @@ set IGNORE_CASES {
   cast-3.23		{# differences in representing numbers }
   collate5-2.1.[134]	{# Result order doesn't match with NOCASE collation }
   collate5-2.[23].[13]
+  e_select-7.10.[235689]	{# both answers are correct for NOCASE union}
+  fts3defer-2.*.1.4	{# SR19764 }
+  fts3defer-2.*.5.0.2 {# SR19764 }
+  fts3defer-2.3.5.* {# SR19764 }
   incrblob-7.3.2	{# file size }
   incrvacuum-3.[234]	{# file size }
   incrvacuum-[456].*	{# file size }
@@ -33,6 +38,7 @@ set IGNORE_CASES {
   pagesize-1.[14]	{# different page size defaults }
   nan-*			{# Output is system dependent ("inf"/"Infinity") }
   tempdb-2.[23]		{# Uses open file counts, #17964 }
+  tkt-313723c356.1	{# differences in wal behavior }
   thread003.1.2		{# BDB db file size not accurate until close, #17965 }
   thread1-2.[3467]	{# BDB expects different results for threaded case. }
   thread1-2.11		{# BDB expects different results for threaded case. }

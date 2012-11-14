@@ -11,9 +11,9 @@
   * TBD: describe format in more detail
   -->
 <projects>
-  <variable name="sourcePath">../</variable>
-  <variable name="outputBase.7.10">../build_wince/</variable>
-  <variable name="outputBase.8.00">../build_wince/</variable>
+  <variable name="sourcePath">../../</variable>
+  <variable name="outputBase.7.10">../../build_wince/</variable>
+  <variable name="outputBase.8.00">../../build_wince/</variable>
   <variable name="mobile">true</variable>
   
   <preprocessor config="all">DB_WIN32;DB_WINCE;_WIN32_WCE=$(CEVER);$(CePlatform);ARM;_ARM_;ARMV4;UNDER_CE=$(CEVER);UNICODE;_UNICODE;__NO_SYSTEM_INCLUDES</preprocessor>
@@ -48,9 +48,9 @@
   </library>
   
   <!-- Project includes -->
-  <include name="all">../build_wince,../src</include>
-  <include name="db_sql_src">../lang/sql/generated,../lang/sql/adapter,../lang/sql/sqlite/src</include>
-  <include name="sql_app">../lang/sql/generated</include>
+  <include name="all">../../build_wince,../../src</include>
+  <include name="db_sql_src">../../lang/sql/generated,../../lang/sql/adapter,../../lang/sql/sqlite/src</include>
+  <include name="sql_app">../../lang/sql/generated</include>
   
   
   <!-- db library projects -->
@@ -109,6 +109,7 @@
       <file name="src\db\db.c"/>
       <file name="src\db\db_am.c"/>
       <file name="src\db\db_auto.c"/>
+      <file name="src\db\db_backup.c"/>
       <file name="src\db\db_cam.c"/>
       <file name="src\db\db_cds.c"/>
       <file name="src\db\db_compact.c"/>
@@ -144,6 +145,7 @@
       <file name="src\dbreg\dbreg_stat.c"/>
       <file name="src\dbreg\dbreg_util.c"/>
       <file name="src\env\env_alloc.c"/>
+      <file name="src\env\env_backup.c"/>
       <file name="src\env\env_config.c"/>
       <file name="src\env\env_failchk.c"/>
       <file name="src\env\env_file.c"/>
@@ -176,6 +178,7 @@
       <file name="src\hash\hash_verify.c"/>
       <file name="src/heap/heap.c"/>
       <file name="src/heap/heap_auto.c"/>
+      <file name="src/heap/heap_backup.c"/>
       <file name="src/heap/heap_conv.c"/>
       <file name="src/heap/heap_method.c"/>
       <file name="src/heap/heap_open.c"/>
@@ -208,6 +211,7 @@
       <file name="src\log\log_verify_int.c"/>
       <file name="src\log\log_verify_util.c"/>
       <file name="src\mp\mp_alloc.c"/>
+      <file name="src\mp\mp_backup.c"/>
       <file name="src\mp\mp_bh.c"/>
       <file name="src\mp\mp_fget.c"/>
       <file name="src\mp\mp_fmethod.c"/>
@@ -230,6 +234,7 @@
       <file name="src\mutex\mut_win32.c"/>
       <file name="src\os\os_abort.c"/>
       <file name="src\os\os_alloc.c"/>
+      <file name="src\os\os_path.c"/>
       <file name="src\os\os_pid.c"/>
       <file name="src\os\os_root.c"/>
       <file name="src\os\os_rpath.c"/>
@@ -335,6 +340,7 @@
       <file name="src\db\db.c"/>
       <file name="src\db\db_am.c"/>
       <file name="src\db\db_auto.c"/>
+      <file name="src\db\db_backup.c"/>
       <file name="src\db\db_cam.c"/>
       <file name="src\db\db_cds.c"/>
       <file name="src\db\db_compact.c"/>
@@ -368,6 +374,7 @@
       <file name="src\dbreg\dbreg_stat.c"/>
       <file name="src\dbreg\dbreg_util.c"/>
       <file name="src\env\env_alloc.c"/>
+      <file name="src\env\env_backup.c"/>
       <file name="src\env\env_config.c"/>
       <file name="src\env\env_failchk.c"/>
       <file name="src\env\env_file.c"/>
@@ -409,6 +416,7 @@
       <file name="src\log\log_stat.c"/>
       <file name="src\log\log_verify_stub.c"/>
       <file name="src\mp\mp_alloc.c"/>
+      <file name="src\mp\mp_backup.c"/>
       <file name="src\mp\mp_bh.c"/>
       <file name="src\mp\mp_fget.c"/>
       <file name="src\mp\mp_fmethod.c"/>
@@ -432,6 +440,7 @@
       <file name="src\os\os_abort.c"/>
       <file name="src\os\os_alloc.c"/>
       <file name="src\os\os_ctime.c"/>
+      <file name="src\os\os_path.c"/>
       <file name="src\os\os_pid.c"/>
       <file name="src\os\os_root.c"/>
       <file name="src\os\os_rpath.c"/>
@@ -483,7 +492,7 @@
     <configuration>Static </configuration>
     <include type="ref">all</include>
     <include type="ref">db_sql_src</include>
-    <preprocessor config="all">SQLITE_EXPORTS;SQLITE_CORE;SQLITE_THREADSAFE=1;BDBSQL_OMIT_SHARING;SQLITE_OMIT_WAL;SQLITE_HAS_CODEC</preprocessor>
+    <preprocessor config="all">SQLITE_EXPORTS;SQLITE_CORE;SQLITE_THREADSAFE=1;BDBSQL_SINGLE_PROCESS;SQLITE_OMIT_WAL</preprocessor>
     <preprocessor config="dll">SQLITE_API=__declspec(dllexport)</preprocessor>
     <preprocessor config="Debug">SQLITE_TEST;SQLITE_DEBUG;SQLITE_MEMDEBUG</preprocessor>
     <preprocessor config="Static Debug">SQLITE_TEST;SQLITE_DEBUG;SQLITE_MEMDEBUG</preprocessor>

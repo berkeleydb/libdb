@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -196,7 +196,7 @@ __env_open(dbenv, db_home, flags, mode)
 	 * We don't care if the current environment was private or not, we
 	 * want to remove files left over for any reason, from any session.
 	 */
-	if (LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL))
+retry:	if (LF_ISSET(DB_RECOVER | DB_RECOVER_FATAL))
 #ifdef HAVE_REPLICATION
 		if ((ret = __rep_reset_init(env)) != 0 ||
 		    (ret = __env_remove_env(env)) != 0 ||
@@ -236,6 +236,19 @@ err:	if (ret != 0)
 			ret = t_ret;
 		if (ret != 0)
 			(void)__envreg_unregister(env, 1);
+	}
+
+	/*
+	 * If the open is called with DB_REGISTER we can potentially skip
+	 * running recovery on a panicked environment. We can't check the panic
+	 * bit earlier since checking requires opening the environment.
+	 * Only retry if DB_RECOVER was specified - the register_recovery flag
+	 * indicates that.
+	 */
+	if (ret == DB_RUNRECOVERY && !register_recovery &&
+	    !LF_ISSET(DB_RECOVER) && LF_ISSET(DB_REGISTER)) {
+		LF_SET(DB_RECOVER);
+		goto retry;
 	}
 
 	return (ret);
@@ -610,6 +623,13 @@ __env_close(dbenv, flags)
 	 */
 	while ((dbp = TAILQ_FIRST(&env->dblist)) != NULL) {
 		/*
+		 * Do not close the handle on a database partition, since it
+		 * will be closed when closing the handle on the main database.
+		 */
+		while (dbp != NULL && F_ISSET(dbp, DB_AM_PARTDB))
+			dbp = TAILQ_NEXT(dbp, dblistlinks);
+		DB_ASSERT(env, dbp != NULL);
+		/*
 		 * Note down and ignore the error code. Since we can't do
 		 * anything about the dbp handle anyway if the close
 		 * operation fails. But we want to return the error to the
@@ -657,6 +677,9 @@ __env_close(dbenv, flags)
 	if (dbenv->db_tmp_dir != NULL)
 		__os_free(env, dbenv->db_tmp_dir);
 	dbenv->db_tmp_dir = NULL;
+	if (dbenv->db_md_dir != NULL)
+		__os_free(env, dbenv->db_md_dir);
+	dbenv->db_md_dir = NULL;
 	if (dbenv->db_data_dir != NULL) {
 		for (p = dbenv->db_data_dir; *p != NULL; ++p)
 			__os_free(env, *p);
@@ -669,6 +692,11 @@ __env_close(dbenv, flags)
 	if (env->db_home != NULL) {
 		__os_free(env, env->db_home);
 		env->db_home = NULL;
+	}
+
+	if (env->backup_handle != NULL) {
+		__os_free(env, env->backup_handle);
+		env->backup_handle = NULL;
 	}
 
 	/* Discard the structure. */
@@ -1058,7 +1086,7 @@ __env_attach_regions(dbenv, flags, orig_flags, retry_ok)
 	 */
 	if ((ret = __mutex_open(env, create_ok)) != 0)
 		goto err;
-	/* The MUTEX_REQUIRED() in __env_alloc() expectes this to be set. */
+	/* The MUTEX_REQUIRED() in __env_alloc() expects this to be set. */
 	infop->mtx_alloc = ((REGENV *)infop->primary)->mtx_regenv;
 #endif
 	/*

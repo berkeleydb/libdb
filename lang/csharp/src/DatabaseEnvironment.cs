@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -18,6 +18,7 @@ namespace BerkeleyDB {
     /// </summary>
     public class DatabaseEnvironment {
         internal DB_ENV dbenv;
+        private IBackup backupObj;
         private ErrorFeedbackDelegate errFeedbackHandler;
         private EnvironmentFeedbackDelegate feedbackHandler;
         private ThreadIsAliveDelegate isAliveHandler;
@@ -28,6 +29,9 @@ namespace BerkeleyDB {
         private SetThreadNameDelegate threadNameHandler;
         private string _pfx;
         private DBTCopyDelegate CopyDelegate;
+        private BDB_BackupCloseDelegate doBackupCloseRef;
+        private BDB_BackupOpenDelegate doBackupOpenRef;
+        private BDB_BackupWriteDelegate doBackupWriteRef;
         private BDB_ErrcallDelegate doErrFeedbackRef;
         private BDB_EnvFeedbackDelegate doFeedbackRef;
         private BDB_EventNotifyDelegate doNotifyRef;
@@ -37,7 +41,41 @@ namespace BerkeleyDB {
         private BDB_ThreadIDDelegate doThreadIDRef;
         private BDB_ThreadNameDelegate doThreadNameRef;
 
+        private static long GIGABYTE = (long)(1 << 30);
+
         #region Callbacks
+        private static int doBackupClose(IntPtr env, string dbname, IntPtr handle) {
+            DB_ENV dbenv = new DB_ENV(env, false);
+            return dbenv.api2_internal.backupObj.Close(dbname);
+        }
+        private static int doBackupOpen(IntPtr env, string dbname, string target, IntPtr handle) {
+            DB_ENV dbenv = new DB_ENV(env, false);
+            return dbenv.api2_internal.backupObj.Open(dbname, target);
+        }
+        private static int doBackupWrite(IntPtr env, uint off_gbytes, uint off_bytes, uint usize, IntPtr buf, IntPtr handle) {
+            int ret, size;
+            long offset = off_gbytes * GIGABYTE + off_bytes;
+            DB_ENV dbenv = new DB_ENV(env, false);
+            if (usize > Int32.MaxValue)
+                size = Int32.MaxValue;
+            else
+                size = (int)usize;
+            byte[] data = new byte[size];
+            Marshal.Copy(buf, data, 0, (int)size);
+            ret = dbenv.api2_internal.backupObj.Write(data, offset, (int)size);
+            if (ret == 0 && usize > Int32.MaxValue) {
+                size = (int)(usize - Int32.MaxValue);
+                /* 
+                 * There's no need to re-allocate data, it's already as large as
+                 * we could possibly need it to be.  Advance buf beyond what was
+                 * just copied and write the remaining data.
+                 */
+                buf = new IntPtr(buf.ToInt64() + Int32.MaxValue);
+                Marshal.Copy(buf, data, 0, (int)size);
+                ret = dbenv.api2_internal.backupObj.Write(data, offset, (int)size);
+            }
+            return ret;
+        }
         private static void doNotify(IntPtr env, uint eventcode, byte[] event_info) {
             DB_ENV dbenv = new DB_ENV(env, false);
             
@@ -144,6 +182,8 @@ namespace BerkeleyDB {
             if (cfg.encryptionIsSet)
                 dbenv.set_encrypt(
                     cfg.EncryptionPassword, (uint)cfg.EncryptAlgorithm);
+            if (cfg.MetadataDir != null)
+                dbenv.set_metadata_dir(cfg.MetadataDir);
             if (cfg.ErrorFeedback != null)
                 ErrorFeedback = cfg.ErrorFeedback;
             ErrorPrefix = cfg.ErrorPrefix;
@@ -278,6 +318,8 @@ namespace BerkeleyDB {
                     RepHeartbeatMonitor = cfg.RepSystemCfg.HeartbeatMonitor;
                 if (cfg.RepSystemCfg.heartbeatSendIsSet)
                     RepHeartbeatSend = cfg.RepSystemCfg.HeartbeatSend;
+                if (cfg.RepSystemCfg.InMemory)
+                    dbenv.rep_set_config(DbConstants.DB_REP_CONF_INMEM, 1);
                 if (cfg.RepSystemCfg.leaseTimeoutIsSet)
                     RepLeaseTimeout = cfg.RepSystemCfg.LeaseTimeout;
                 if (!cfg.RepSystemCfg.AutoInit)
@@ -326,6 +368,114 @@ namespace BerkeleyDB {
                 dbenv.set_flags(DbConstants.DB_AUTO_COMMIT, value ? 1 : 0);
             }
         }
+        
+        /// <summary>
+        /// The size of the buffer, in bytes, to read from the database during a
+        /// hot backup.
+        /// </summary>
+        public uint BackupBufferSize {
+            get {
+                uint ret = 0;
+                dbenv.get_backup_config(DbConstants.DB_BACKUP_SIZE, ref ret);
+                return ret;
+            }
+            set {
+                dbenv.set_backup_config(DbConstants.DB_BACKUP_SIZE, value);
+            }
+        }
+        /// <summary>
+        /// Sets the <see cref="IBackup"/> interface to be used when performing
+        /// hot backups.
+        /// <para>
+        /// This interface is used to override the default behavior used by the 
+        /// <see cref="DatabaseEnvironment.Backup"/> and 
+        /// <see cref="DatabaseEnvironment.BackupDatabase"/> methods. 
+        /// </para>
+        /// </summary>
+        public IBackup BackupHandler {
+            get { return backupObj; }
+            set {
+                if (value == null) {
+                    dbenv.set_backup_callbacks(null, null, null);
+                } else if (backupObj == null) {
+                    if (doBackupCloseRef == null)
+                        doBackupCloseRef = 
+                            new BDB_BackupCloseDelegate(doBackupClose);
+                    if (doBackupOpenRef == null)
+                        doBackupOpenRef = 
+                            new BDB_BackupOpenDelegate(doBackupOpen);
+                    if (doBackupWriteRef == null)
+                        doBackupWriteRef = 
+                            new BDB_BackupWriteDelegate(doBackupWrite);
+                    dbenv.set_backup_callbacks(
+                        doBackupOpenRef, doBackupWriteRef, doBackupCloseRef);
+                }
+
+                backupObj = value;
+            }
+        }
+        /// <summary>
+        /// The number of pages to read before pausing during the hot backup.
+        /// <para>
+        /// Increasing this value increases the amount of I/O the backup process
+        /// performs for any given time interval. If your application is already
+        /// heavily I/O bound, setting this value to a lower number may help to 
+        /// improve your overall data throughput by reducing the I/O demands
+        /// placed on your system. By default, all pages are read without a 
+        /// pause.
+        /// </para>
+        /// </summary>
+        public uint BackupReadCount {
+            get {
+                uint ret = 0;
+                dbenv.get_backup_config(DbConstants.DB_BACKUP_READ_COUNT, ref ret);
+                return ret;
+            }
+            set {
+                dbenv.set_backup_config(DbConstants.DB_BACKUP_READ_COUNT, value);
+            }
+        }
+        /// <summary>
+        /// The number of microseconds to sleep between batches of reads during
+        /// a hot backup.
+        /// <para>
+        /// Increasing this value decreases the amount of I/O the backup process
+        /// performs for any given time interval. If your application is already
+        /// heavily I/O bound, setting this value to a higher number may help to
+        /// improve your overall data throughput by reducing the I/O demands 
+        /// placed on your system. 
+        /// </para>
+        /// </summary>
+        public uint BackupReadSleepDuration {
+            get {
+                uint ret = 0;
+                dbenv.get_backup_config(DbConstants.DB_BACKUP_READ_SLEEP, ref ret);
+                return ret;
+            }
+            set {
+                dbenv.set_backup_config(DbConstants.DB_BACKUP_READ_SLEEP, value);
+            }
+        }
+        /// <summary>
+        /// If true, direct I/O is used when writing pages to the disk during a 
+        /// hot backup.
+        /// <para>
+        /// For some environments, direct I/O can provide faster write 
+        /// throughput, but usually it is slower because the OS buffer pool 
+        /// offers asynchronous activity. 
+        /// </para>
+        /// </summary>
+        public bool BackupWriteDirect {
+            get {
+                uint ret = 0;
+                dbenv.get_backup_config(DbConstants.DB_BACKUP_WRITE_DIRECT, ref ret);
+                return ret != 0;
+            }
+            set {
+                dbenv.set_backup_config(DbConstants.DB_BACKUP_WRITE_DIRECT, (uint)(value ? 1 : 0));
+            }
+        }
+        
         /// <summary>
         /// The size of the shared memory buffer pool -- that is, the cache.
         /// </summary>
@@ -1108,6 +1258,27 @@ namespace BerkeleyDB {
             }
         }
         /// <summary>
+        /// The path of directory to store the persistent metadata.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// By default, metadata is stored in the environment home directory.
+        /// See Berkeley DB File Naming in the Programmer's Reference Guide for
+        /// more information.
+        /// </para>
+        /// <para>
+        /// When used in a replicated application, the metadata directory must
+        /// be the same location for all sites within a replication group.
+        /// </para> 
+        /// </remarks>
+        public string MetadataDir {
+            get {
+                string mddir;
+                dbenv.get_metadata_dir(out mddir);
+                return mddir;
+            }
+        }
+        /// <summary>
         /// The maximum file size, in bytes, for a file to be mapped into the
         /// process address space. If no value is specified, it defaults to
         /// 10MB. 
@@ -1517,6 +1688,15 @@ namespace BerkeleyDB {
             set { 
                 dbenv.rep_set_timeout(DbConstants.DB_REP_HEARTBEAT_SEND, value);
             }
+        }
+        /// <summary>
+        /// If true, replication only stores the internal information in-memory
+        /// and cannot keep persistent state across a site crash or reboot. By
+        /// default, it is false and replication creates files in the
+        /// environment home directory to preserve the internal information.
+        /// </summary>
+        public bool RepInMemory {
+            get { return getRepConfig(DbConstants.DB_REP_CONF_INMEM); }
         }
         /// <summary>
         /// The amount of time a client grants its master lease to a master.
@@ -2381,6 +2561,94 @@ namespace BerkeleyDB {
             env.dbenv.remove(db_home, flags);
         }
 
+        /// <summary>
+        /// Perform a hot back up of the open environment.
+        /// <para>
+        /// All files used by the environment are backed up, so long as the 
+        /// normal rules for file placement are followed. For information on how
+        /// files are normally placed relative to the environment directory, see
+        /// the "Berkeley DB File Naming" section in the Berkeley DB Reference 
+        /// Guide.
+        /// </para>
+        /// <para>
+        /// By default, data directories and the log directory specified 
+        /// relative to the home directory will be recreated relative to the 
+        /// target directory. If absolute path names are used, then use the 
+        /// <see cref="BackupOptions.SingleDir"/> method.
+        /// </para>
+        /// <para>
+        /// This method provides the same functionality as the db_hotbackup
+        /// utility.  However, this method does not perform the housekeeping
+        /// actions performed by that utility. In particular, you may want to
+        /// run a checkpoint before calling this method. To run a checkpoint, 
+        /// use the <see cref="DatabaseEnvironment.Checkpoint"/> method. For 
+        /// more information on checkpoints, see the "Checkpoint" section in the
+        /// Berkeley DB Reference Guide.
+        /// </para>
+        /// <para>
+        /// To back up a single database file within the environment, use the
+        /// <see cref="DatabaseEnvironment.BackupDatabase"/> method.
+        /// </para>
+        /// <para>
+        /// In addition to the configuration options available using the 
+        /// <see cref="BackupOptions"/> class, additional tuning modifications 
+        /// can be made using the <see cref="DatabaseEnvironment.BackupReadCount"/>,
+        /// <see cref="DatabaseEnvironment.BackupReadSleepDuration"/>,
+        /// <see cref="DatabaseEnvironment.BackupBufferSize"/>, and
+        /// <see cref="DatabaseEnvironment.BackupWriteDirect"/> properties. 
+        /// Alternatively, you can write your own custom hot back up facility 
+        /// using the <see cref="IBackup"/> interface.
+        /// </para>
+        /// </summary>
+        /// <param name="target">Identifies the directory in which the back up 
+        /// will be placed. Any subdirectories required to contain the back up
+        /// must be placed relative to this directory. Note that if an 
+        /// <see cref="IBackup"/> is configured for the environment, then the
+        /// value specified to this parameter is passed on to the 
+        /// <see cref="IBackup.Open"/> method.  If this parameter is null, then
+        /// the target must be specified to the <see cref="IBackup.Open"/>
+        /// method.
+        /// <para>
+        /// This directory, and any required subdirectories, will be created for
+        /// you if you specify <see cref="CreatePolicy.IF_NEEDED"/> or 
+        /// <see cref="CreatePolicy.ALWAYS"/> for the 
+        /// <see cref="BackupOptions.Creation"/> property.
+        /// </para>
+        /// </param>
+        /// <param name="opt">The <see cref="BackupOptions"/> instance used to
+        /// configure the hot back up.</param>
+        public void Backup(string target, BackupOptions opt) {
+            dbenv.backup(target, opt.flags);
+        }
+        /// <summary>
+        /// Perform a hot back up of a single database file contained within the
+        /// environment.
+        /// <para>
+        /// To back up the entire environment, use the 
+        /// <see cref="DatabaseEnvironment.Backup"/> method.
+        /// </para>
+        /// <para>
+        /// You can make some tuning modifications to the backup process using
+        /// the <see cref="DatabaseEnvironment.BackupReadCount"/>,
+        /// <see cref="DatabaseEnvironment.BackupReadSleepDuration"/>,
+        /// <see cref="DatabaseEnvironment.BackupBufferSize"/>, and
+        /// <see cref="DatabaseEnvironment.BackupWriteDirect"/> properties. 
+        /// Alternatively, you can write your own custom hot back up facility 
+        /// using the <see cref="IBackup"/> interface.
+        /// </para>
+        /// </summary>
+        /// <param name="target">Identifies the directory in which the back up 
+        /// will be placed.</param>
+        /// <param name="database">The database file that you want to back up.
+        /// </param>
+        /// <param name="must_create">If true, then if the target file exists, 
+        /// this method throws an exception.</param>
+        public void BackupDatabase(
+            string target, string database, bool must_create) {
+            dbenv.dbbackup(
+                database, target, must_create ? DbConstants.DB_EXCL : 0);
+        }
+        
         /// <summary>
         /// Hold an election for the master of a replication group.
         /// </summary>

@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -142,7 +142,7 @@ where <a href="../api_reference/C/lockget.html" class="olink">DB_ENV-&gt;lock_ge
 lock that was acquired using <a href="../api_reference/C/lockget.html" class="olink">DB_ENV-&gt;lock_get()</a> or <a href="../api_reference/C/lockvec.html" class="olink">DB_ENV-&gt;lock_vec()</a>.  All
 locks explicitly requested by an application should be released via
 calls to <a href="../api_reference/C/lockput.html" class="olink">DB_ENV-&gt;lock_put()</a> or <a href="../api_reference/C/lockvec.html" class="olink">DB_ENV-&gt;lock_vec()</a>. Using <a href="../api_reference/C/lockvec.html" class="olink">DB_ENV-&gt;lock_vec()</a>
-instead of separate calls to <a href="../api_reference/C/lockput.html" class="olink">DB_ENV-&gt;lock_put()</a> and <a href="../api_reference/C/lockput.html" class="olink">DB_ENV-&gt;lock_put()</a> also
+instead of separate calls to <a href="../api_reference/C/lockput.html" class="olink">DB_ENV-&gt;lock_put()</a> and <a href="../api_reference/C/lockget.html" class="olink">DB_ENV-&gt;lock_get()</a> also
 reduces the synchronization overhead between multiple threads or
 processes.  The three methods are fully compatible, and may be used
 interchangeably.</p>

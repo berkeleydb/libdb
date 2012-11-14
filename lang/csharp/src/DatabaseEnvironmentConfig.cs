@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -289,6 +289,23 @@ namespace BerkeleyDB {
                 maxTxns = value;
             }
         }
+
+        /// <summary>
+        /// The path of a directory to be used as the location to store
+        /// the persistent metadata.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// By default, metadata is stored in the environment home directory.
+        /// See Berkeley DB File Naming in the Programmer's Reference Guide for
+        /// more information.
+        /// </para>
+        /// <para>
+        /// When used in a replicated application, the metadata directory must
+        /// be the same location for all sites within a replication group.
+        /// </para> 
+        /// </remarks>
+        public string MetadataDir;
 
         /// <summary>
         /// The path of a directory to be used as the location of temporary

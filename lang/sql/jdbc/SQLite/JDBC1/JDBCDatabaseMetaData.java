@@ -589,7 +589,7 @@ public class JDBCDatabaseMetaData implements DatabaseMetaData {
 				String columnNamePattern)
 	throws SQLException {
 	if (conn.db == null) {
-	    throw new SQLException("connection closed.");
+	    throw new SQLException("connection closed");
 	}
 	JDBCStatement s = new JDBCStatement(conn);
 	JDBCResultSet rs0 = null;

@@ -1,6 +1,6 @@
 /***
  * ASM: a very small and fast Java bytecode manipulation framework
- * Copyright (c) 2000-2005 INRIA, France Telecom
+ * Copyright (c) 2000-2011 INRIA, France Telecom
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,10 @@ package com.sleepycat.asm;
  */
 public interface Opcodes {
 
+    // ASM API versions
+
+    int ASM4 = 4 << 16 | 0 << 8 | 0;
+
     // versions
 
     int V1_1 = 3 << 16 | 45;
@@ -51,6 +55,7 @@ public interface Opcodes {
     int V1_4 = 0 << 16 | 48;
     int V1_5 = 0 << 16 | 49;
     int V1_6 = 0 << 16 | 50;
+    int V1_7 = 0 << 16 | 51;
 
     // access flags
 
@@ -75,7 +80,7 @@ public interface Opcodes {
 
     // ASM specific pseudo access flags
 
-    int ACC_DEPRECATED = 131072; // class, field, method
+    int ACC_DEPRECATED = 0x20000; // class, field, method
 
     // types for NEWARRAY
 
@@ -87,6 +92,64 @@ public interface Opcodes {
     int T_SHORT = 9;
     int T_INT = 10;
     int T_LONG = 11;
+
+    // tags for Handle
+
+    int H_GETFIELD = 1;
+    int H_GETSTATIC = 2;
+    int H_PUTFIELD = 3;
+    int H_PUTSTATIC = 4;
+    int H_INVOKEVIRTUAL = 5;
+    int H_INVOKESTATIC = 6;
+    int H_INVOKESPECIAL = 7;
+    int H_NEWINVOKESPECIAL = 8;
+    int H_INVOKEINTERFACE = 9;
+
+    // stack map frame types
+
+    /**
+     * Represents an expanded frame. See {@link ClassReader#EXPAND_FRAMES}.
+     */
+    int F_NEW = -1;
+
+    /**
+     * Represents a compressed frame with complete frame data.
+     */
+    int F_FULL = 0;
+
+    /**
+     * Represents a compressed frame where locals are the same as the locals in
+     * the previous frame, except that additional 1-3 locals are defined, and
+     * with an empty stack.
+     */
+    int F_APPEND = 1;
+
+    /**
+     * Represents a compressed frame where locals are the same as the locals in
+     * the previous frame, except that the last 1-3 locals are absent and with
+     * an empty stack.
+     */
+    int F_CHOP = 2;
+
+    /**
+     * Represents a compressed frame with exactly the same locals as the
+     * previous frame and with an empty stack.
+     */
+    int F_SAME = 3;
+
+    /**
+     * Represents a compressed frame with exactly the same locals as the
+     * previous frame and with a single value on the stack.
+     */
+    int F_SAME1 = 4;
+
+    Integer TOP = new Integer(0);
+    Integer INTEGER = new Integer(1);
+    Integer FLOAT = new Integer(2);
+    Integer DOUBLE = new Integer(3);
+    Integer LONG = new Integer(4);
+    Integer NULL = new Integer(5);
+    Integer UNINITIALIZED_THIS = new Integer(6);
 
     // opcodes // visit method (- = idem)
 
@@ -276,7 +339,7 @@ public interface Opcodes {
     int INVOKESPECIAL = 183; // -
     int INVOKESTATIC = 184; // -
     int INVOKEINTERFACE = 185; // -
-    // int UNUSED = 186; // NOT VISITED
+    int INVOKEDYNAMIC = 186; // visitInvokeDynamicInsn
     int NEW = 187; // visitTypeInsn
     int NEWARRAY = 188; // visitIntInsn
     int ANEWARRAY = 189; // visitTypeInsn

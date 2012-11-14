@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -84,7 +84,11 @@ DB_MPOOLFILE-&gt;set_fileid(DB_MPOOLFILE *mpf, u_int8_t *fileid);  </pre>
       <p>
          The <code class="methodname">DB_MPOOLFILE-&gt;set_fileid()</code> method may not be called after the
          <a class="xref" href="mempfopen.html" title="DB_MPOOLFILE-&gt;open()">DB_MPOOLFILE-&gt;open()</a> 
-         method is called.
+         method is called. If the mpool file already exists when
+         <code class="methodname">DB_MPOOLFILE-&gt;open()</code> is called, the information
+         specified to <code class="methodname">DB_MPOOLFILE-&gt;set_fileid()</code> must be
+         the same as that historically used to create the mpool file or
+         corruption can occur.
     </p>
       <p>
          The <code class="methodname">DB_MPOOLFILE-&gt;set_fileid()</code> <span>
@@ -98,7 +102,7 @@ DB_MPOOLFILE-&gt;set_fileid(DB_MPOOLFILE *mpf, u_int8_t *fileid);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3739722"></a>Parameters</h3>
+              <h3 class="title"><a id="idp61547096"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -106,7 +110,7 @@ DB_MPOOLFILE-&gt;set_fileid(DB_MPOOLFILE *mpf, u_int8_t *fileid);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3739708"></a>fileid</h4>
+                <h4 class="title"><a id="idp61546192"></a>fileid</h4>
               </div>
             </div>
           </div>
@@ -121,7 +125,7 @@ DB_MPOOLFILE-&gt;set_fileid(DB_MPOOLFILE *mpf, u_int8_t *fileid);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3739448"></a>Class</h3>
+              <h3 class="title"><a id="idp61540776"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -133,7 +137,7 @@ DB_MPOOLFILE-&gt;set_fileid(DB_MPOOLFILE *mpf, u_int8_t *fileid);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3739774"></a>See Also</h3>
+              <h3 class="title"><a id="idp61550296"></a>See Also</h3>
             </div>
           </div>
         </div>

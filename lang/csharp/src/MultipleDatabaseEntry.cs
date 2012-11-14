@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -177,6 +177,30 @@ namespace BerkeleyDB {
             _data = UserData;
             _recno = recno;
             flags |= DbConstants.DB_DBT_BULK;
+        }
+
+        /// <summary>
+        /// Return the number of records in the DBT.
+        /// </summary>
+        internal int nRecs {
+            get {
+                uint pos = ulen - 4;
+                int ret = 0;
+                if (_recno) {
+                    int recno;
+                    while ((recno = BitConverter.ToInt32(_data, (int)pos)) != 0) {
+                        ret++;
+                        pos -= 12;
+                    }
+                } else {
+                    int off;
+                    while ((off = BitConverter.ToInt32(_data, (int)pos)) >= 0) {
+                        ret++;
+                        pos -= 8;
+                    }
+                }
+                return ret;
+            }
         }
 
         /// <summary>

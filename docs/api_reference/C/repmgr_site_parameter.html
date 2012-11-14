@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -37,7 +37,7 @@
         </div>
       </div>
       <p>
-                Identifies a Replication Manager host site.
+                Identifies a Replication Manager site.
             </p>
       <p>
                  The syntax of this parameter in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a
@@ -77,7 +77,9 @@
                         create the initial membership database contents,
                         defining a "group" of just the one site, rather
                         than trying to join an existing group when it
-                        starts for the first time. 
+                        starts for the first time.  This setting is only
+                        used on the local site, and is ignored when
+                        configured on a remote site.
                     </p>
           </li>
           <li>

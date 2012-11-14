@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.bind.test;
 
 import java.io.Externalizable;
+import java.io.InputStreamReader;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
@@ -386,12 +387,12 @@ public class BindingSpeedTest extends TestCase {
         throws Exception {
 
         fo.reset();
-        OutputStreamWriter writer = new OutputStreamWriter(fo);
+        OutputStreamWriter writer = new OutputStreamWriter(fo, "UTF-8");
         new Data().writeXmlText(writer);
 
         byte[] bytes = fo.toByteArray();
         FastInputStream fi = new FastInputStream(bytes);
-        InputSource input = new InputSource(fi);
+        InputSource input = new InputSource(new InputStreamReader(fi, "UTF-8"));
         parser.parse(input);
 
         //InputStreamReader reader = new InputStreamReader(fi);
@@ -466,6 +467,7 @@ public class BindingSpeedTest extends TestCase {
 
         void writeXmlText(Writer writer) throws IOException {
 
+            writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
             writer.write("<Data><Field1>");
             writer.write(field1);
             writer.write("</Field1><Field2>");

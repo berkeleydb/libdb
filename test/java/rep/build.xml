@@ -109,7 +109,7 @@
     </target>
 
     <target name="test" description="run tests" depends="compile">
-        <junit failureproperty="testsfailed">
+        <junit failureproperty="testsfailed" printsummary="withOutAndErr">
             <classpath refid="class.path"/>
 
             <sysproperty key="java.library.path" value="${jlp}"/>
@@ -127,7 +127,7 @@
 
     <target name="test.upgrades" description="run mixed-version tests" 
     depends="compile,compile.upgrades,compile.upgrades.new,compile.upgrades.v46,compile.upgrades.v47,config.upgrade.classpaths">
-        <junit failureproperty="testsfailed">
+        <junit failureproperty="testsfailed" printsummary="withOutAndErr">
             <classpath refid="upgrades.class.path"/>
             <sysproperty key="java.library.path" value="${jlp}"/>
             <sysproperty key="VERB_REPLICATION" value="${verbose}"/>

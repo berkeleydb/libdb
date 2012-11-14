@@ -28,7 +28,7 @@ JEEXAMPLES="$JEDIR/examples"
 DBSRC="$DBDIR/lang/java/src"
 DBTEST="$DBDIR/test/java/compat/src"
 DBEXAMPLES="$DBDIR/examples/java/src"
-DIRMATCH="com/sleepycat/\(\(asm\)\|\(bind\)\|\(collections\)\|\(persist\)\|\(util\)\)"
+DIRMATCH="com/sleepycat/\(\(asm\)\|\(bind\)\|\(collections\)\|\(persist\)\|\(util\)\)/"
 EXAMPLESMATCH="^\./\(\(collections\)\|\(persist\)\)"
 
 cd "$JESRC"
@@ -57,7 +57,7 @@ E5='s/$Id:.*\$/$Id$/'
 E6='s/TransactionGettingStarted/gsg_txn\/JAVA/'
 E7='s/OperationFailureException/DatabaseException/g'
 EXCLUDESRC="\(\(ClassEnhancerTask\)\|\(DeletedClassException\)\|\(IncompatibleClassException\)\|\(StoreExistsException\)\|\(StoreNotFoundException\)\)"
-EXCLUDETESTS="\(\(ConvertAndAddTest\)\|\(DevolutionTest\)\|\(TestVersionCompatibility\)\|\(XACollectionTest\)\)"
+EXCLUDETESTS="\(\(ConvertAndAddTest\)\|\(DevolutionTest\)\|\(TestVersionCompatibility\)\|\(XACollectionTest\)\|\(AddNewSecKeyToAbstractClassTest\)\|\(EvolveProxyClassTest\)\|\(CreateAbstractClassData\)\|\(CreateSecDupsWithoutComparator\)\|\(CreateSecDupsWithoutComparatorEvolve\)\|\(CreateOldVersionBigDecimalDb\)\|\(CreateStringDataDB\)\|\(ProxyToSimpleTypeTest\)\|\(SecondaryDupOrderEvolveTest\)\|\(SecondaryDupOrderTest\)\|\(StringFormatCompatibilityTest\)\)"
 
 cd "$JESRC"
 for f in `find . -name '*.java' -o -name "package.html" | grep $DIRMATCH | grep -v $EXCLUDESRC` ; do

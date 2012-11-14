@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -231,6 +231,25 @@ namespace BerkeleyDB {
         /// </remarks>
         public bool NonDurableTxns;
 
+        /// <summary>
+        /// Configuration of <see cref="BaseDatabase"/> handle to obtain a write
+        /// lock on the entire database.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If true, configure the <see cref="BaseDatabase"/> handle to obtain a
+        /// write lock on the entire database. When the database is opened it
+        /// will immediately throw <see cref="LockNotGrantedException"/> if it
+        /// cannot obtain the exclusive lock immediately. If False, configure
+        /// the <see cref="BaseDatabase"/> handle to obtain a write lock on the
+        /// entire database. When the database is opened, it will block until it
+        /// can obtain the exclusive lock. If null, do not configure the
+        /// <see cref="BaseDatabase"/> handle to obtain a write lock on the
+        /// entire database.
+        /// </para>
+        /// </remarks>
+        public bool? NoWaitDbExclusiveLock;
+
         internal uint flags {
             get {
                 uint ret = 0;
@@ -326,6 +345,7 @@ namespace BerkeleyDB {
             Feedback = null;
             DoChecksum = false;
             NonDurableTxns = false;
+            NoWaitDbExclusiveLock = null;
             AutoCommit = false;
             FreeThreaded = false;
             NoMMap = false;

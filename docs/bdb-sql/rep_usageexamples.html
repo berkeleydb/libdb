@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -75,7 +75,7 @@
                 Site 1:
             </p>
         <pre class="programlisting"># Start initial master.
-# univ.db should not yet exist.
+# univ.db does not yet exist.
 dbsql univ.db
      pragma replication_local_site="site1:7000";
      pragma replication_initial_master=ON;
@@ -87,7 +87,7 @@ dbsql univ.db
                 Site 2:
             </p>
         <pre class="programlisting"># Start first replica.
-# univ.db should not yet exist.
+# univ.db does not yet exist.
 dbsql univ.db  
      pragma replication_local_site="site2:7001";
      pragma replication_remote_site="site1:7000";
@@ -96,7 +96,7 @@ dbsql univ.db
                 Site 3:
             </p>
         <pre class="programlisting"># Start second replica.
-# univ.db should not yet exist.
+# univ.db does not yet exist.
 dbsql univ.db
      pragma replication_local_site="site3:7002";
      pragma replication_remote_site="site1:7000";
@@ -142,7 +142,7 @@ dbsql univ.db
                     Site 1:
                 </p>
         <pre class="programlisting"># Start initial master.
-# quote.db should not yet exist.
+# quote.db does not yet exist.
 dbsql quote.db
      pragma replication_local_site="site1:7000";
      pragma replication_initial_master=ON;
@@ -154,7 +154,7 @@ dbsql quote.db
                     Site 2:
                 </p>
         <pre class="programlisting"># Start replica.
-# quote.db should not yet exist.
+# quote.db does not yet exist.
 dbsql quote.db 
      pragma replication_local_site="site2:7001";
      pragma replication_remote_site="site1:7000";
@@ -183,7 +183,7 @@ dbsql quote.db
                     Site 2:
                 </p>
         <pre class="programlisting">    ##########
-    ### Now remaining site does not accept write operations until
+    ### Now the remaining site does not accept write operations until
     ### the other site rejoins the replication group.
     ##########
     insert into stock_quote values ("Prudential", 17.25);
@@ -194,10 +194,10 @@ dbsql quote.db
                 </p>
         <pre class="programlisting"># Restart site, will rejoin replication group.
 dbsql quote.db
-    # replication=ON causes replication to be started.
-    # This site may or may not become master after rejoining
-    # replication group.  Check status of site's startup and 
-    # determine whether it is a master or a replica.
+    # The earlier replication=ON causes replication to be 
+    # automatically started.  This site may or may not become master
+    # after rejoining replication group.  Check status of site's 
+    # startup and determine whether it is a master or a replica.
     .stat :rep:
     Replication summary statistics
     Environment configured as a replication master

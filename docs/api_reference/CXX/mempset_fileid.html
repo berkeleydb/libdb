@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -84,7 +84,11 @@ DbMpoolFile::set_fileid(u_int8_t *fileid); </pre>
       <p>
          The <code class="methodname">DbMpoolFile::set_fileid()</code> method may not be called after the
          <a class="xref" href="mempfopen.html" title="DbMpoolFile::open()">DbMpoolFile::open()</a> 
-         method is called.
+         method is called. If the mpool file already exists when
+         <code class="methodname">DbMpoolFile::open()</code> is called, the information
+         specified to <code class="methodname">DbMpoolFile::set_fileid()</code> must be
+         the same as that historically used to create the mpool file or
+         corruption can occur.
     </p>
       <p>
          The <code class="methodname">DbMpoolFile::set_fileid()</code> <span>
@@ -100,7 +104,7 @@ DbMpoolFile::set_fileid(u_int8_t *fileid); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3631027"></a>Parameters</h3>
+              <h3 class="title"><a id="idp3680552"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -108,7 +112,7 @@ DbMpoolFile::set_fileid(u_int8_t *fileid); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3631013"></a>fileid</h4>
+                <h4 class="title"><a id="idp3679432"></a>fileid</h4>
               </div>
             </div>
           </div>
@@ -123,7 +127,7 @@ DbMpoolFile::set_fileid(u_int8_t *fileid); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3631035"></a>Class</h3>
+              <h3 class="title"><a id="idp3674120"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -135,7 +139,7 @@ DbMpoolFile::set_fileid(u_int8_t *fileid); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3631079"></a>See Also</h3>
+              <h3 class="title"><a id="idp3683920"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -1,3 +1,9 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ */
+
 /*
  * #19612 Data not rolled back when transaction aborted after timout.
  */
@@ -18,20 +24,15 @@
 
 #include <db.h>
 
+#include "../utilities/bdb_xa_util.h"
+
 #define HOME	"../data"
 #define	TABLE1	"../data/table1.db"
 #define	TABLE2	"../data/table2.db"
 
-#ifdef VERBOSE
-static int verbose = 1;				/* Debugging output. */
-#else
-static int verbose = 0;
-#endif
-
 DB_ENV *dbenv;
 char *progname;					/* Client run-time name. */
 
-int   check_data();
 int   usage(void);
 
 int
@@ -128,7 +129,7 @@ main(int argc, char* argv[])
 		}
 
 
-		ret = check_data();
+		ret = check_data(dbenv, TABLE1, dbenv, TABLE2, progname);
 	}
 
 	if (0) {
@@ -153,86 +154,6 @@ err:		ret = EXIT_FAILURE;
 		printf("%s: test passed.\n", progname);
 	else if (verbose)
  		printf("%s: test failed.\n", progname);
-	return (ret);
-}
-
-/*
- * check_data --
- *	Check that both databases are empty.
- */
-int
-check_data()
-{
-	DB *dbp1, *dbp2;
-	DBC *dbc1, *dbc2;
-	DBT key1, data1, key2, data2;
-	int ret, ret1, ret2;
-	u_int32_t flags = DB_INIT_MPOOL | DB_INIT_LOG | DB_INIT_TXN |
-	  DB_INIT_LOCK | DB_THREAD;
-
-	dbp1 = dbp2 = NULL;
-	dbc1 = dbc2 = NULL;
-
-	/* Open table #1. */
-	if ((ret = db_create(&dbp1, dbenv, 0)) != 0 ||
-	    (ret = dbp1->open(
-	    dbp1, NULL, TABLE1, NULL, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
-		fprintf(stderr,
-		    "%s: %s: %s\n", progname, TABLE1, db_strerror(ret));
-		goto err;
-	}
-	if (verbose)
-		printf("%s: opened %s OK\n", progname, TABLE1);
-
-        /* Open table #2. */
-	if ((ret = db_create(&dbp2, dbenv, 0)) != 0 ||
-	    (ret = dbp2->open(
-	    dbp2, NULL, TABLE2, NULL, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
-		fprintf(stderr,
-		    "%s: %s: %s\n", progname, TABLE2, db_strerror(ret));
-		goto err;
-	}
-	if (verbose)
-		printf("%s: opened %s OK\n", progname, TABLE2);
-
-	/* Open cursors. */
-	if ((ret = dbp1->cursor(dbp1, NULL, &dbc1, 0)) != 0 ||
-	    (ret = dbp2->cursor(dbp2, NULL, &dbc2, 0)) != 0) {
-		fprintf(stderr,
-		    "%s: DB->cursor: %s\n", progname, db_strerror(ret));
-		goto err;
-	}
-	if (verbose)
-		printf("%s: opened cursors OK\n", progname);
-
-	/* Compare the two databases. */
-	memset(&key1, 0, sizeof(key1));
-	memset(&data1, 0, sizeof(data1));
-	memset(&key2, 0, sizeof(key2));
-	memset(&data2, 0, sizeof(data2));
-	ret1 = dbc1->get(dbc1, &key1, &data1, DB_NEXT);
-	ret2 = dbc2->get(dbc2, &key2, &data2, DB_NEXT);
-	if (ret1 != DB_NOTFOUND || ret2 !=DB_NOTFOUND) {
-		fprintf(stderr, 
-		"%s: DB_ERROR: databases 1 and 2 weren't identical\n", 
-		progname);
-	    ret = 1;
-        }
-
-err:	if (dbc1 != NULL)
-		(void)dbc1->close(dbc1);
-	if (dbc2 != NULL)
-		(void)dbc2->close(dbc2);
-	if (dbp1 != NULL)
-		(void)dbp1->close(dbp1, 0);
-        if (dbp2 != NULL)
-		(void)dbp2->close(dbp2, 0);
-
-	if (verbose && ret == 0)
-		printf("%s: data check passed.\n", progname);
-	else if (verbose)
-		printf("%s: data check failed.\n", progname);
-
 	return (ret);
 }
 

@@ -333,39 +333,56 @@ Initialise the Logging sub-system.
 
 B<DB_INIT_MPOOL>
 
-Initialise the ...
+Initialize the shared memory buffer pool subsystem. This subsystem should be used whenever an application is using any Berkeley DB access method.
 
 B<DB_INIT_TXN>
 
-Initialise the ...
+Initialize the transaction subsystem. This subsystem should be used when recovery and atomicity of multiple operations are important. The DB_INIT_TXN flag implies the DB_INIT_LOG flag.
+
 
 B<DB_MPOOL_PRIVATE>
 
-Initialise the ...
+Create a private memory pool; see memp_open. Ignored unless DB_INIT_MPOOL is also specified.
+
 
 B<DB_INIT_MPOOL> is also specified.
 
-Initialise the ...
 
 B<DB_NOMMAP>
 
-Initialise the ...
+Do not map this database into process memory.
+
 
 B<DB_RECOVER>
 
+Run normal recovery on this environment before opening it for normal use. If this flag is set, the DB_CREATE flag must also be set since the regions will be removed and recreated.
+
+The db_appinit function returns successfully if DB_RECOVER is specified and no log files exist, so it is necessary to ensure all necessary log files are present before running recovery.
 
 
 B<DB_PRIVATE>
 
 B<DB_RECOVER_FATAL>
 
+Run catastrophic recovery on this environment before opening it for normal use. If this flag is set, the DB_CREATE flag must also be set since the regions will be removed and recreated.
+
+The db_appinit function returns successfully if DB_RECOVER_FATAL is specified and no log files exist, so it is necessary to ensure all necessary log files are present before running recovery.
+
 B<DB_THREAD>
+
+Ensure that handles returned by the Berkeley DB subsystems are useable by multiple threads within a single process, i.e., that the system is free-threaded.
 
 B<DB_TXN_NOSYNC>
 
+On transaction commit, do not synchronously flush the log; see txn_open. Ignored unless DB_INIT_TXN is also specified.
+
 B<DB_USE_ENVIRON>
 
+The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see Berkeley DB File Naming. As permitting users to specify which files are used can create security problems, environment information will be used in file naming for all users only if the DB_USE_ENVIRON flag is set.
+
 B<DB_USE_ENVIRON_ROOT>
+
+The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see Berkeley DB File Naming. As permitting users to specify which files are used can create security problems, if the DB_USE_ENVIRON_ROOT flag is set, environment information will be used for file naming only for users with a user-ID matching that of the superuser (specifically, users for whom the getuid(2) system call returns the user-ID 0).
 
 =item -SetFlags
 
@@ -380,11 +397,20 @@ Specifies what to do when a lock conflict occurs. The value should be one of
 
 B<DB_LOCK_DEFAULT> 
 
+Use the default policy as specified by db_deadlock.
+
 B<DB_LOCK_OLDEST>
+
+Abort the oldest transaction.
 
 B<DB_LOCK_RANDOM>
 
+Abort a random transaction involved in the deadlock.
+
 B<DB_LOCK_YOUNGEST>
+
+Abort the youngest transaction.
+
 
 =item -Verbose
 

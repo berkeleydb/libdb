@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -284,10 +284,10 @@ public class ClassEnhancer implements ClassFileTransformer {
     private byte[] enhanceBytes(byte[] bytes) {
 
         /*
-         * The writer is at the end of the visitor chain.  Pass true to
-         * calculate stack size, for safety.
+         * The writer is at the end of the visitor chain.  Pass COMPUTE_FRAMES
+         * to calculate stack size, for safety.
          */
-        ClassWriter writer = new ClassWriter(true);
+        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         ClassVisitor visitor = writer;
 
         /* The enhancer is at the beginning of the visitor chain. */
@@ -301,7 +301,7 @@ public class ClassEnhancer implements ClassFileTransformer {
              * Pass false for skipDebug since we are rewriting the class and
              * should include all information.
              */
-            reader.accept(visitor, false);
+            reader.accept(visitor, 0);
             return writer.toByteArray();
         } catch (BytecodeEnhancer.NotPersistentException e) {
             /* The class is not persistent and should not be enhanced. */

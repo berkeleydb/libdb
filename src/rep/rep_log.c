@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2004, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -604,20 +604,36 @@ __rep_logreq(env, rp, rec, eid)
 		oldfilelsn.offset += logc->len;
 	} else if (ret == DB_NOTFOUND) {
 		/*
-		 * If logc_get races with log_archive, it might return
+		 * If logc_get races with log_archive or the user removing
+		 * files from an earlier call to log_archive, it might return
 		 * DB_NOTFOUND.  We expect there to be some log record
 		 * that is the first one.  Loop until we either get
 		 * a log record or some error.  Since we only expect
-		 * to get this racing log_archive, bound it to a few
+		 * to get this racing log file removal, bound it to a few
 		 * tries.
 		 */
 		count = 0;
 		do {
 			ret = __logc_get(logc, &firstlsn, &data_dbt, DB_FIRST);
+			/*
+			 * If we've raced this many tries and we're still
+			 * getting DB_NOTFOUND, then pause a bit to disrupt
+			 * the timing cycle that we appear to be in.
+			 */
+			if (count > 5)
+				__os_yield(env, 0, 50000);
 			count++;
 		} while (ret == DB_NOTFOUND && count < 10);
-		if (ret != 0)
+		if (ret != 0) {
+			/*
+			 * If we're master we don't want to return DB_NOTFOUND.
+			 * We'll just ignore the error and this message.
+			 * It will get rerequested if needed.
+			 */
+			if (ret == DB_NOTFOUND && F_ISSET(rep, REP_F_MASTER))
+				ret = 0;
 			goto err;
+		}
 		if (LOG_COMPARE(&firstlsn, &rp->lsn) > 0) {
 			/* Case 3 */
 			if (F_ISSET(rep, REP_F_CLIENT)) {

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -107,10 +107,6 @@ proc basic_repmgr_init_test { niter inmemdb inmemlog \
 	print_repmgr_headers basic_repmgr_init_test $niter $inmemdb\
 	    $inmemlog $inmemrep $envprivate $bulk
 
-	# Use different connection retry timeout values to handle any
-	# collisions from starting sites at the same time by retrying
-	# at different times.
-
 	# Open a master.
 	puts "\tBasic repmgr init test.a: Start a master."
 	set ma_envcmd "berkdb_env_noerr -create $verbargs $private \
@@ -118,8 +114,7 @@ proc basic_repmgr_init_test { niter inmemdb inmemlog \
 	    -errpfx MASTER -home $masterdir -rep -thread $repmemarg"
 	set masterenv [eval $ma_envcmd]
 	$masterenv repmgr -ack all \
-	    -timeout {connection_retry 20000000} \
-	    -local [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 0]] \
 	    -start master
 
 	puts "\tBasic repmgr init test.b: Run some transactions at master."
@@ -132,10 +127,9 @@ proc basic_repmgr_init_test { niter inmemdb inmemlog \
 	    -errpfx CLIENT -home $clientdir -rep -thread $repmemarg"
 	set clientenv [eval $cl_envcmd]
 	$clientenv repmgr -ack all \
-	    -timeout {connection_retry 10000000} \
-	    -local [list localhost [lindex $ports 1]] \
-	    -remote [list localhost [lindex $ports 0]] \
-	    -remote [list localhost [lindex $ports 2]] \
+	    -local [list 127.0.0.1 [lindex $ports 1]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
+	    -remote [list 127.0.0.1 [lindex $ports 2]] \
 	    -start client
 	await_startup_done $clientenv
 
@@ -162,10 +156,9 @@ proc basic_repmgr_init_test { niter inmemdb inmemlog \
 	    -errpfx CLIENT2 -home $clientdir2 -rep -thread $repmemarg"
 	set clientenv2 [eval $cl_envcmd]
 	$clientenv2 repmgr -ack all \
-	    -timeout {connection_retry 5000000} \
-	    -local [list localhost [lindex $ports 2]] \
-	    -remote [list localhost [lindex $ports 0]] \
-	    -remote [list localhost [lindex $ports 1]] \
+	    -local [list 127.0.0.1 [lindex $ports 2]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
+	    -remote [list 127.0.0.1 [lindex $ports 1]] \
 	    -start client
 	await_startup_done $clientenv2
 

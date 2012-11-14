@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2004, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -116,9 +116,9 @@ proc rep054_sub { method nentries tnum logset recargs largs } {
 	set c2_logtype [lindex $logset 2]
 
 	# In-memory logs cannot be used with -txn nosync.
-	set m_logargs [adjust_logargs $m_logtype]
-	set c_logargs [adjust_logargs $c_logtype]
-	set c2_logargs [adjust_logargs $c2_logtype]
+	set m_logargs [adjust_logargs $m_logtype 1048576]
+	set c_logargs [adjust_logargs $c_logtype 1048576]
+	set c2_logargs [adjust_logargs $c2_logtype 1048576]
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
 	set c2_txnargs [adjust_txnargs $c2_logtype]

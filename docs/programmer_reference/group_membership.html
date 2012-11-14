@@ -9,12 +9,12 @@
     <link rel="start" href="index.html" title="Berkeley DB Programmer's Reference Guide" />
     <link rel="up" href="rep.html" title="Chapter 12.  Berkeley DB Replication" />
     <link rel="prev" href="rep_newsite.html" title="Connecting to a new site" />
-    <link rel="next" href="rep_mgrmulti.html" title="Running Replication Manager in multiple processes" />
+    <link rel="next" href="rep_filename.html" title="Managing Replication Files" />
   </head>
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -25,7 +25,7 @@
           <th width="60%" align="center">Chapter 12. 
 		Berkeley DB Replication
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="rep_mgrmulti.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="rep_filename.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -79,6 +79,19 @@
         or a majority of sites, to participate before the activity can be
         completed. 
     </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+            If you are configuring your application to keep replication
+            metadata in-memory by specifying the <a href="../api_reference/C/repconfig.html#config_DB_REP_CONF_INMEM" class="olink">DB_REP_CONF_INMEM</a> flag to the
+            <a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method, then the internal database containing group
+            site information is not stored persistently on disk. This
+            severely limits Replication Manager's ability to automatically
+            manage group membership. For more information, including some
+            work-arounds, see
+            <a class="xref" href="rep_filename.html" title="Managing Replication Files">Managing Replication Files</a>.
+        </p>
+      </div>
       <p>
         Because Replication Manager tracks group members, there are some
         administrative activities that you should know about when using BDB
@@ -169,9 +182,15 @@
             Also, be aware that if the new site cannot be added to the
             group for some reason (because a master site is not available,
             or because insufficient replicas are running to acknowledge the
-            new site), the attempt to start the new site will fail. You can
+            new site), the attempt to start the new site via <a href="../api_reference/C/repmgrstart.html" class="olink">DB_ENV-&gt;repmgr_start()</a>
+            will fail and return <code class="literal">DB_REP_UNAVAIL</code>. You can
             then pause and retry the start up attempt until it completes
             successfully.
+        </p>
+        <p>
+            You must use the exact same host string and port number to refer
+            to a given site throughout your application and on each of its
+            sites.
         </p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
@@ -337,8 +356,8 @@
                     Do the following one production machine at a time. Make
                     sure to do this at the master site LAST.
                 </p>
-              <div class="itemizedlist">
-                <ul type="circle">
+              <div class="orderedlist">
+                <ol type="1">
                   <li>
                     <p>
                             Shut down the old replication code.
@@ -376,7 +395,7 @@
                             point.
                         </p>
                   </li>
-                </ul>
+                </ol>
               </div>
               <p>
                     Once you have performed this procedure for each
@@ -405,14 +424,14 @@
           <td width="20%" align="center">
             <a accesskey="u" href="rep.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="rep_mgrmulti.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="rep_filename.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">Connecting to a new site </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> Running Replication Manager in multiple processes</td>
+          <td width="40%" align="right" valign="top"> Managing Replication Files</td>
         </tr>
       </table>
     </div>

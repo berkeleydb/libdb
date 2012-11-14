@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1997, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -72,7 +72,8 @@ print_column_callback(void *data, int n_columns,
 
 	printf("  "); /* Display indent. */
 	for (i = 0; i < n_columns; i++) {
-		printf("%s\t", col_values[i]);
+		printf("%s\t", 
+		    col_values[i] == NULL ? "" : col_values[i]);
 	}
 	printf("\n");
 

@@ -8,20 +8,20 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
     <link rel="up" href="env.html" title="Chapter 5.  The DB_ENV Handle" />
-    <link rel="prev" href="envcreate.html" title="db_env_create" />
+    <link rel="prev" href="envdbbackup.html" title="DB_ENV-&gt;dbbackup()" />
     <link rel="next" href="envdbrename.html" title="DB_ENV-&gt;dbrename()" />
   </head>
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
           <th colspan="3" align="center">DB_ENV-&gt;dbremove()</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="envcreate.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="envdbbackup.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 5. 
                 The DB_ENV Handle
         </th>
@@ -72,7 +72,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3704443"></a>Parameters</h3>
+              <h3 class="title"><a id="idp59329464"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -80,7 +80,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704447"></a>txnid</h4>
+                <h4 class="title"><a id="idp59329656"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -101,7 +101,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704465"></a>file</h4>
+                <h4 class="title"><a id="idp59330712"></a>file</h4>
               </div>
             </div>
           </div>
@@ -114,7 +114,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704168"></a>database</h4>
+                <h4 class="title"><a id="idp59315536"></a>database</h4>
               </div>
             </div>
           </div>
@@ -127,7 +127,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704375"></a>flags</h4>
+                <h4 class="title"><a id="idp59304680"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -157,7 +157,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3704319"></a>Environment Variables</h3>
+              <h3 class="title"><a id="idp59305600"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -170,7 +170,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3704474"></a>Errors</h3>
+              <h3 class="title"><a id="idp59336744"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -186,7 +186,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704661"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idp59342360"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -199,7 +199,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704036"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp59331744"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -207,12 +207,19 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
             </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a>
+                for more information.
+            </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704121"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp59343568"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -225,7 +232,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3704681"></a>ENOENT</h4>
+                <h4 class="title"><a id="idp59344648"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -238,7 +245,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3704629"></a>Class</h3>
+              <h3 class="title"><a id="idp59340416"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -250,7 +257,7 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3704699"></a>See Also</h3>
+              <h3 class="title"><a id="idp59345728"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -263,14 +270,14 @@ DB_ENV-&gt;dbremove(DB_ENV *dbenv, DB_TXN *txnid,
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="envcreate.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="envdbbackup.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="env.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="envdbrename.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">db_env_create </td>
+          <td width="40%" align="left" valign="top">DB_ENV-&gt;dbbackup() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

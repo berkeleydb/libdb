@@ -963,8 +963,102 @@ err:	DBT_COPIED_FREE(1);
 		__dbj_detach();
 	return (ret);
 }
+
+static int __dbj_backup_close(DB_ENV *dbenv, const char *dbname, void *handle) {
+	int detach;
+	JNIEnv *jenv = __dbj_get_jnienv(&detach);
+	jobject jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
+	jobject jdbname;
+	int ret;
+
+	COMPQUIET(handle, NULL);
+
+	if (jdbenv == NULL) {
+		ret = EINVAL;
+		goto err;
+	}
+
+	jdbname = (*jenv)->NewStringUTF(jenv, dbname);
+	ret = (*jenv)->CallNonvirtualIntMethod(jenv, jdbenv, dbenv_class, backup_close_method, jdbname);
+
+	if ((*jenv)->ExceptionOccurred(jenv)) {
+		/* The exception will be thrown, so this could be any error. */
+		ret = EINVAL;
+	}
+
+err:	if (detach)
+		__dbj_detach();
+	return (ret);
+}
+
+static int __dbj_backup_open(DB_ENV *dbenv, const char *target, const char *dbname, void **handle) {
+	int detach;
+	JNIEnv *jenv = __dbj_get_jnienv(&detach);
+	jobject jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
+	jobject jtarget, jdbname;
+	int ret;
+
+	COMPQUIET(handle, NULL);
+
+	if (jdbenv == NULL) {
+		ret = EINVAL;
+		goto err;
+	}
+
+	jtarget = (*jenv)->NewStringUTF(jenv, target);
+	jdbname = (*jenv)->NewStringUTF(jenv, dbname);
+	ret = (*jenv)->CallNonvirtualIntMethod(jenv, jdbenv, dbenv_class, backup_open_method, jtarget, jdbname);
+
+	if ((*jenv)->ExceptionOccurred(jenv)) {
+		/* The exception will be thrown, so this could be any error. */
+		ret = EINVAL;
+	}
+
+err:	if (detach)
+		__dbj_detach();
+	return (ret);
+}
+
+static int __dbj_backup_write(DB_ENV *dbenv, u_int32_t file_pos_gbytes, u_int32_t file_pos_bytes, u_int32_t size, u_int8_t *buf, void *handle) {
+	int detach;
+	JNIEnv *jenv = __dbj_get_jnienv(&detach);
+	jobject jdbenv = (jobject)DB_ENV_INTERNAL(dbenv);
+	jbyteArray jarr;
+	int ret;
+
+	COMPQUIET(handle, NULL);
+
+	if (jdbenv == NULL) {
+		ret = EINVAL;
+		goto err;
+	}
+
+	if ((jarr = (*jenv)->NewByteArray(jenv, (jsize)size)) == NULL) {
+		/* An exception is pending. */
+		ret = ENOMEM;
+		goto err;
+	}
+	(*jenv)->SetByteArrayRegion(jenv, jarr, 0, (jsize)size, (jbyte *)buf);
+	
+	ret = (*jenv)->CallNonvirtualIntMethod(jenv, jdbenv, dbenv_class, backup_write_method, file_pos_gbytes, file_pos_bytes, size, jarr);
+	(*jenv)->DeleteLocalRef(jenv, jarr);
+	if ((*jenv)->ExceptionOccurred(jenv)) {
+		/* The exception will be thrown, so this could be any error. */
+		ret = EINVAL;
+	}
+
+err:	if (detach)
+		__dbj_detach();
+	return (ret);
+}
 %}
 
+JAVA_CALLBACK(int (*backup_close_fcn)(DB_ENV *,
+    const char *, void *), com.sleepycat.db.BackupHandler, backup_close)
+JAVA_CALLBACK(int (*backup_open_fcn)(DB_ENV *,
+    const char *, const char *, void **), com.sleepycat.db.BackupHandler, backup_open)
+JAVA_CALLBACK(int (*backup_write_fcn)(DB_ENV *, u_int32_t,
+    u_int32_t, u_int32_t, u_int8_t *, void *), com.sleepycat.db.BackupHandler, backup_write)
 JAVA_CALLBACK(void (*db_errcall_fcn)(const DB_ENV *,
     const char *, const char *), com.sleepycat.db.ErrorHandler, error)
 JAVA_CALLBACK(void (*env_feedback_fcn)(DB_ENV *, int, int),

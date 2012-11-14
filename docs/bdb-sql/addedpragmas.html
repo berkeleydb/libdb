@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -40,7 +40,22 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="addedpragmas.html#bdbsql_error_file"></a>
+              <a href="addedpragmas.html#bdbsql_error_file">PRAGMA bdbsql_error_file</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="addedpragmas.html#bdbsql_lock_tablesize">PRAGMA bdbsql_lock_tablesize</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="addedpragmas.html#bdbsql_shared_resources">PRAGMA bdbsql_shared_resources</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="addedpragmas.html#bdbsql_single_process">PRAGMA bdbsql_single_process</a>
             </span>
           </dt>
           <dt>
@@ -92,9 +107,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title">
-                <a id="bdbsql_error_file"></a>
-              </h3>
+              <h3 class="title"><a id="bdbsql_error_file"></a>PRAGMA bdbsql_error_file</h3>
             </div>
           </div>
         </div>
@@ -116,6 +129,92 @@
                     This PRAGMA can be issued at any time; initial
                     database access does not have to occur before this
                     PRAGMA can be used.
+                </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="bdbsql_lock_tablesize"></a>PRAGMA bdbsql_lock_tablesize</h3>
+            </div>
+          </div>
+        </div>
+        <pre class="programlisting">PRAGMA bdbsql_lock_tablesize [= N]</pre>
+        <p>
+                    Sets or reports the number of buckets in the Berkeley DB environment's 
+                    lock object hash table.
+                </p>
+        <p>
+                    This pragma must be called prior to opening/creating the
+                    database environment.
+                </p>
+        <p>
+                    For more details, see
+                    <a href="../api_reference/C/envget_lk_tablesize.html" class="olink">get_lk_tablesize</a>
+                    and 
+                    <a href="../api_reference/C/envset_lk_tablesize.html" class="olink">set_lk_tablesize</a>.
+                </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="bdbsql_shared_resources"></a>PRAGMA bdbsql_shared_resources</h3>
+            </div>
+          </div>
+        </div>
+        <pre class="programlisting">PRAGMA bdbsql_shared_resources [= N]</pre>
+        <p>
+                    Sets or reports the maximum amount of memory (bytes) to be
+                    used by shared structures in the main environment region.
+                </p>
+        <p>
+                    This pragma must be called prior to opening/creating the
+                    database environment.
+                </p>
+        <p>
+                    For more details, see
+                    <a href="../api_reference/C/envget_memory_max.html" class="olink">get_memory_max</a>
+                    and 
+                    <a href="../api_reference/C/envset_memory_max.html" class="olink">set_memory_max</a>.
+                </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="bdbsql_single_process"></a>PRAGMA bdbsql_single_process</h3>
+            </div>
+          </div>
+        </div>
+        <pre class="programlisting">PRAGMA bdbsql_single_process = boolean</pre>
+        <p>
+                    To create a private environment rather than a shared
+                    environment, enable this pragma. The cache and other
+                    region files will be created in memory rather than
+                    using file backed shared memory.
+                </p>
+        <p>
+                    In Berkeley DB SQL the default behavior is to allow a
+                    database to be opened and operated on by multiple
+                    processes simultaneously. When this pragma is enabled,
+                    accessing the same database from multiple processes
+                    simultaneously can lead to data corruption. Either
+                    option supports accessing a database using a single
+                    process multi-threaded application.
+                </p>
+        <p>
+                    By default omit sharing is disabled. This pragma must
+                    be called prior to opening/creating the database
+                    environment.  Because the setting is not persistent,
+                    you may need to invoke it before every database open,
+                    or define compile option
+                    <code class="literal">BDBSQL_OMIT_SHARING</code> instead.
+                </p>
+        <p>
+                    For more information, see <a href="../programmer_reference/env_region.html" class="olink">Shared memory region</a>. Note that this
+                    pragma causes the <a href="../api_reference/C/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag to be specified in 
+                    the <a href="../api_reference/C/envopen.html" class="olink">DB_ENV-&gt;open()</a> method.
                 </p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">

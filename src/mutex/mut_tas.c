@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -377,7 +377,7 @@ loop:	/* Attempt to acquire the resource for N spins. */
 		}
 
 		MEMBAR_ENTER();
-		/* For shared lactches the threadid is the last requestor's id.
+		/* For shared latches the threadid is the last requestor's id.
 		 */
 		dbenv->thread_id(dbenv, &mutexp->pid, &mutexp->tid);
 

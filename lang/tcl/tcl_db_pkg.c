@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -541,6 +541,7 @@ bdb_EnvOpen(interp, objc, objv, ip, dbenvp)
 		"-errpfx",
 		"-home",
 		"-log_dir",
+		"-metadata_dir",
 		"-mode",
 		"-msgfile",
 		"-private",
@@ -638,6 +639,7 @@ bdb_EnvOpen(interp, objc, objv, ip, dbenvp)
 		TCL_ENV_ERRPFX,
 		TCL_ENV_HOME,
 		TCL_ENV_LOG_DIR,
+		TCL_ENV_METADATA_DIR,
 		TCL_ENV_MODE,
 		TCL_ENV_MSGFILE,
 		TCL_ENV_PRIVATE,
@@ -1631,6 +1633,19 @@ bdb_EnvOpen(interp, objc, objv, ip, dbenvp)
 			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 			    "set_lg_dir");
 			break;
+		case TCL_ENV_METADATA_DIR:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-metadata_dir dir");
+				result = TCL_ERROR;
+				break;
+			}
+			arg = Tcl_GetStringFromObj(objv[i++], NULL);
+			_debug_check();
+			ret = dbenv->set_metadata_dir(dbenv, arg);
+			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+			    "set_metadata_dir");
+			break;
 		case TCL_ENV_TMP_DIR:
 			if (i >= objc) {
 				Tcl_WrongNumArgs(interp, 2, objv,
@@ -1790,8 +1805,10 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		"-ffactor",
 		"-hash",
 		"-heap",
+		"-heap_regionsize",
 		"-inorder",
 		"-len",
+		"-lk_exclusive",
 		"-maxsize",
 		"-mode",
 		"-msgfile",
@@ -1851,8 +1868,10 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 		TCL_DB_FFACTOR,
 		TCL_DB_HASH,
 		TCL_DB_HEAP,
+		TCL_DB_HEAP_REGIONSIZE,
 		TCL_DB_INORDER,
 		TCL_DB_LEN,
+		TCL_DB_LK_EXCLUSIVE,
 		TCL_DB_MAXSIZE,
 		TCL_DB_MODE,
 		TCL_DB_MSGFILE,
@@ -1882,7 +1901,7 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 
 	Tcl_Obj **myobjv;
 	u_int32_t gbytes, bytes, open_flags, set_flags, uintarg;
-	int endarg, encenble, i, intarg, mode, myobjc, ncaches;
+	int endarg, encenble, i, intarg, mode, myobjc, ncaches, excl, nowait;
 	int optindex, result, ret, set_err, set_msg, set_pfx, subdblen;
 	u_char *subdbtmp;
 	char *arg, *db, *dbr, *passwd, *subdb, *subdbr, msg[MSG_SIZE];
@@ -2087,6 +2106,21 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			ret = (*dbp)->set_h_hash(*dbp, tcl_h_hash);
 			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 			    "set_h_hash");
+			break;
+		case TCL_DB_HEAP_REGIONSIZE:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-heap_regionsize npages");
+				result = TCL_ERROR;
+				break;
+			}
+			result = _GetUInt32(interp, objv[i++], &uintarg);
+			if (result == TCL_OK) {
+				_debug_check();
+				ret = (*dbp)->set_heap_regionsize(*dbp, uintarg);
+				result = _ReturnSetup(interp, ret,
+				    DB_RETOK_STD(ret), "set_heap_regionsize");
+			}
 			break;
 		case TCL_DB_LORDER:
 			if (i >= objc) {
@@ -2426,6 +2460,20 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 				    DB_RETOK_STD(ret), "set_re_len");
 			}
 			break;
+		case TCL_DB_LK_EXCLUSIVE:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-lk_exclusive nowait");
+				break;
+			}
+			result = Tcl_GetIntFromObj(interp, objv[i++], &intarg);
+			if (result == TCL_OK) {
+				_debug_check();
+				ret = (*dbp)->set_lk_exclusive(*dbp, intarg);
+				result = _ReturnSetup(interp, ret,
+				    DB_RETOK_STD(ret), "set_lk_exclusive");
+			}
+			break;
 		case TCL_DB_MAXSIZE:
 			if (i >= objc) {
 				Tcl_WrongNumArgs(interp, 2, objv,
@@ -2744,6 +2792,9 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			else
 				ret = hrdbp->set_encrypt(hrdbp, passwd, 0);
 		}
+		(void)(*dbp)->get_lk_exclusive((*dbp), &excl, &nowait);
+		if (excl) 
+			(void)hrdbp->set_lk_exclusive(hrdbp, nowait);
 		ret = hrdbp->open(hrdbp, 
 		    txn, dbr, subdbr, DB_RECNO, open_flags, mode);
 		if (ret) {
@@ -2795,6 +2846,8 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			else
 				ret = hsdbp->set_encrypt(hsdbp, passwd, 0);
 		}
+		if (excl) 
+			(void)hsdbp->set_lk_exclusive(hsdbp, nowait);
 		ret = hsdbp->open(hsdbp, 
 		    txn, dbr, subdbr, DB_BTREE, open_flags, mode);
 		if (ret) {

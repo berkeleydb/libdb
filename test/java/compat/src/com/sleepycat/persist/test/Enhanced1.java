@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -14,6 +14,7 @@ import com.sleepycat.persist.impl.EnhancedAccessor;
 import com.sleepycat.persist.impl.EntityInput;
 import com.sleepycat.persist.impl.EntityOutput;
 import com.sleepycat.persist.impl.Format;
+import com.sleepycat.persist.impl.RefreshException;
 import com.sleepycat.persist.model.Entity;
 import com.sleepycat.persist.model.PrimaryKey;
 import com.sleepycat.persist.model.SecondaryKey;
@@ -59,15 +60,21 @@ class Enhanced1 implements Enhanced {
         return f1 == null;
     }
 
-    public void bdbWritePriKeyField(EntityOutput output, Format format) {
+    public void bdbWritePriKeyField(EntityOutput output, Format format)
+        throws RefreshException {
+
         output.writeKeyObject(f1, format);
     }
 
-    public void bdbReadPriKeyField(EntityInput input, Format format) {
+    public void bdbReadPriKeyField(EntityInput input, Format format)
+        throws RefreshException {
+
         f1 = (String) input.readKeyObject(format);
     }
 
-    public void bdbWriteSecKeyFields(EntityOutput output) {
+    public void bdbWriteSecKeyFields(EntityOutput output)
+        throws RefreshException {
+
         /* If primary key is an object: */
         output.registerPriKeyObject(f1);
         /* Always: */
@@ -79,7 +86,9 @@ class Enhanced1 implements Enhanced {
     public void bdbReadSecKeyFields(EntityInput input,
                                     int startField,
                                     int endField,
-                                    int superLevel) {
+                                    int superLevel)
+        throws RefreshException {
+
         /* If primary key is an object: */
         input.registerPriKeyObject(f1);
 
@@ -97,7 +106,9 @@ class Enhanced1 implements Enhanced {
         }
     }
 
-    public void bdbWriteNonKeyFields(EntityOutput output) {
+    public void bdbWriteNonKeyFields(EntityOutput output)
+        throws RefreshException {
+
         output.writeInt(f5);
         output.writeObject(f6, null);
         output.writeObject(f7, null);
@@ -111,7 +122,9 @@ class Enhanced1 implements Enhanced {
     public void bdbReadNonKeyFields(EntityInput input,
                                     int startField,
                                     int endField,
-                                    int superLevel) {
+                                    int superLevel)
+        throws RefreshException {
+
         if (superLevel <= 0) {
             switch (startField) {
             case 0:
@@ -255,5 +268,9 @@ class Enhanced1 implements Enhanced {
                 return;
             }
         }
+    }
+    
+    public void bdbSetPriField(Object o, Object value) {
+        f1 = (String) value;
     }
 }

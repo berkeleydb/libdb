@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -79,7 +79,9 @@ class RawAccessor implements Accessor {
         }
     }
 
-    public void writePriKeyField(Object o, EntityOutput output) {
+    public void writePriKeyField(Object o, EntityOutput output)
+        throws RefreshException {
+
         if (priKeyField != null) {
             Object val = getValue(o, priKeyField);
             Format format = priKeyField.getType();
@@ -91,7 +93,9 @@ class RawAccessor implements Accessor {
         }
     }
 
-    public void readPriKeyField(Object o, EntityInput input) {
+    public void readPriKeyField(Object o, EntityInput input)
+        throws RefreshException {
+
         if (priKeyField != null) {
             Format format = priKeyField.getType();
             Object val = input.readKeyObject(format);
@@ -103,8 +107,12 @@ class RawAccessor implements Accessor {
         }
     }
 
-    public void writeSecKeyFields(Object o, EntityOutput output) {
-        if (priKeyField != null && !priKeyField.getType().isPrimitive()) {
+    public void writeSecKeyFields(Object o, EntityOutput output)
+        throws RefreshException {
+
+        if (priKeyField != null && 
+            !priKeyField.getType().isPrimitive() && 
+            priKeyField.getType().getId() != Format.ID_STRING) {
             output.registerPriKeyObject(getValue(o, priKeyField));
         }
         if (superAccessor != null) {
@@ -119,9 +127,16 @@ class RawAccessor implements Accessor {
                                  EntityInput input,
                                  int startField,
                                  int endField,
-                                 int superLevel) {
-        if (priKeyField != null && !priKeyField.getType().isPrimitive()) {
+                                 int superLevel)
+        throws RefreshException {
+
+        if (priKeyField != null && 
+            !priKeyField.getType().isPrimitive() &&
+            priKeyField.getType().getId() != Format.ID_STRING) {
             input.registerPriKeyObject(getValue(o, priKeyField));
+        } else if (priKeyField != null && 
+                   priKeyField.getType().getId() == Format.ID_STRING) {
+            input.registerPriStringKeyObject(getValue(o, priKeyField));
         }
         if (superLevel != 0 && superAccessor != null) {
             superAccessor.readSecKeyFields
@@ -140,7 +155,9 @@ class RawAccessor implements Accessor {
         }
     }
 
-    public void writeNonKeyFields(Object o, EntityOutput output) {
+    public void writeNonKeyFields(Object o, EntityOutput output)
+        throws RefreshException {
+
         if (superAccessor != null) {
             superAccessor.writeNonKeyFields(getSuper(o), output);
         }
@@ -153,7 +170,9 @@ class RawAccessor implements Accessor {
                                  EntityInput input,
                                  int startField,
                                  int endField,
-                                 int superLevel) {
+                                 int superLevel)
+        throws RefreshException {
+
         if (superLevel != 0 && superAccessor != null) {
             superAccessor.readNonKeyFields
                 (getSuper(o), input, startField, endField, superLevel - 1);
@@ -171,13 +190,17 @@ class RawAccessor implements Accessor {
         }
     }
 
-    public void writeCompositeKeyFields(Object o, EntityOutput output) {
+    public void writeCompositeKeyFields(Object o, EntityOutput output)
+        throws RefreshException {
+
         for (int i = 0; i < nonKeyFields.size(); i += 1) {
             writeField(o, nonKeyFields.get(i), output);
         }
     }
 
-    public void readCompositeKeyFields(Object o, EntityInput input) {
+    public void readCompositeKeyFields(Object o, EntityInput input)
+        throws RefreshException {
+
         for (int i = 0; i < nonKeyFields.size(); i += 1) {
             readField(o, nonKeyFields.get(i), input);
         }
@@ -210,6 +233,16 @@ class RawAccessor implements Accessor {
             isSecField ? secKeyFields.get(field) : nonKeyFields.get(field);
         setValue(o, fld, value);
     }
+    
+    public void setPriField(Object o, Object value) {
+        if (priKeyField != null) {
+            setValue(o, priKeyField, value);
+        } else if (superAccessor != null) {
+            superAccessor.setPriField(getSuper(o), value);
+        } else {
+            throw DbCompat.unexpectedState("No primary key field");
+        }
+    }
 
     private RawObject getSuper(Object o) {
         return ((RawObject) o).getSuper();
@@ -223,24 +256,36 @@ class RawAccessor implements Accessor {
         ((RawObject) o).getValues().put(field.getName(), val);
     }
 
-    private void writeField(Object o, FieldInfo field, EntityOutput output) {
+    private void writeField(Object o, FieldInfo field, EntityOutput output)
+        throws RefreshException {
+
         Object val = getValue(o, field);
         Format format = field.getType();
         if (isCompositeKey || format.isPrimitive()) {
             output.writeKeyObject(val, format);
+        } else if (format.getId() == Format.ID_STRING) {
+            output.writeString((String) val);
         } else {
             output.writeObject(val, format);
         }
     }
 
-    private void readField(Object o, FieldInfo field, EntityInput input) {
+    private void readField(Object o, FieldInfo field, EntityInput input)
+        throws RefreshException {
+
         Format format = field.getType();
         Object val;
         if (isCompositeKey || format.isPrimitive()) {
             val = input.readKeyObject(format);
+        } else if (format.getId() == Format.ID_STRING) {
+            val = input.readStringObject();
         } else {
             val = input.readObject();
         }
         setValue(o, field, val);
+    }
+    
+    public FieldInfo getPriKeyField() {
+        return priKeyField;
     }
 }

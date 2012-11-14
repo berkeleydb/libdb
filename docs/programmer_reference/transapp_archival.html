@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -167,8 +167,11 @@
                 directly.  The XFS file system supports atomic reads
                 despite the lack of it in Linux.  On systems that do not
                 support atomic file system reads, the <a href="../api_reference/C/db_hotbackup.html" class="olink">db_hotbackup</a> utility 
-                should be used or a tool can be constructed calling the
-                <a href="../api_reference/C/db_copy.html" class="olink">db_copy()</a> function.
+                should be used or a tool can be constructed 
+                using the <a href="../api_reference/C/envbackup.html" class="olink">DB_ENV-&gt;backup()</a> method. Alternatively, you can
+                construct a tool using the the <a href="../api_reference/C/db_copy.html" class="olink">db_copy()</a> method. You can
+                also perform a hot backup of just a single database in your
+                environment using the <a href="../api_reference/C/envdbbackup.html" class="olink">DB_ENV-&gt;dbbackup()</a> method.
             </p>
           </li>
           <li>

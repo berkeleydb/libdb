@@ -2,9 +2,9 @@
  * @file adddsn.c
  * DSN creation utility for Win32.
  *
- * $Id: adddsn.c,v 1.5 2007/04/14 06:42:58 chw Exp chw $
+ * $Id: adddsn.c,v 1.6 2011/03/09 05:41:15 chw Exp chw $
  *
- * Copyright (c) 2003-2007 Christian Werner <chw@ch-werner.de>
+ * Copyright (c) 2003-2011 Christian Werner <chw@ch-werner.de>
  *
  * See the file "license.terms" for information on usage
  * and redistribution of this file and for a

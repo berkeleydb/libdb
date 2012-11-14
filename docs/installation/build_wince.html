@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -54,17 +54,17 @@
             <dl>
               <dt>
                 <span class="sect2">
-                  <a href="build_wince.html#id3636565">Building Berkeley DB for Windows Mobile</a>
+                  <a href="build_wince.html#idm516512">Building Berkeley DB for Windows Mobile</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_wince.html#id3639582">Changing Build Configuration Type</a>
+                  <a href="build_wince.html#idp180744">Changing Build Configuration Type</a>
                 </span>
               </dt>
               <dt>
                 <span class="sect2">
-                  <a href="build_wince.html#id3639515">Building Berkeley DB for different target platforms</a>
+                  <a href="build_wince.html#idp156256">Building Berkeley DB for different target platforms</a>
                 </span>
               </dt>
             </dl>
@@ -93,17 +93,17 @@
           <dl>
             <dt>
               <span class="sect2">
-                <a href="build_wince.html#id3636565">Building Berkeley DB for Windows Mobile</a>
+                <a href="build_wince.html#idm516512">Building Berkeley DB for Windows Mobile</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="build_wince.html#id3639582">Changing Build Configuration Type</a>
+                <a href="build_wince.html#idp180744">Changing Build Configuration Type</a>
               </span>
             </dt>
             <dt>
               <span class="sect2">
-                <a href="build_wince.html#id3639515">Building Berkeley DB for different target platforms</a>
+                <a href="build_wince.html#idp156256">Building Berkeley DB for different target platforms</a>
               </span>
             </dt>
           </dl>
@@ -141,7 +141,7 @@ project files for Microsoft Visual 2005 with the Mobile SDK installed:</p>
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3636565"></a>Building Berkeley DB for Windows Mobile</h3>
+                <h3 class="title"><a id="idm516512"></a>Building Berkeley DB for Windows Mobile</h3>
               </div>
             </div>
           </div>
@@ -149,7 +149,7 @@ project files for Microsoft Visual 2005 with the Mobile SDK installed:</p>
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3639291"></a>Visual Studio 2005</h4>
+                  <h4 class="title"><a id="idp144872"></a>Visual Studio 2005</h4>
                 </div>
               </div>
             </div>
@@ -167,7 +167,7 @@ and click <code class="literal">Open</code>.</li>
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3639944"></a>Build results</h4>
+                  <h4 class="title"><a id="idp184624"></a>Build results</h4>
                 </div>
               </div>
             </div>
@@ -200,7 +200,7 @@ depending on the configuration that you chose:
 </p>
             <p>When building your application during development, you must
 link against
-<code class="filename">libdb_small51sd.lib</code> or against <code class="filename">libdb_sql51sd.lib</code> for SQL features.  You can
+<code class="filename">libdb_small53sd.lib</code> or against <code class="filename">libdb_sql53sd.lib</code> for SQL features.  You can
 also build using a release version of the Berkeley DB libraries and tools,
 which will be placed in the 
 <code class="filename">build_wince\(Platform)\Release_static </code>directory.
@@ -213,7 +213,7 @@ include files to a location in your Visual Studio include path.</p>
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3639582"></a>Changing Build Configuration Type</h3>
+                <h3 class="title"><a id="idp180744"></a>Changing Build Configuration Type</h3>
               </div>
             </div>
           </div>
@@ -239,22 +239,22 @@ output and configuration in the Release build is as follows:
               <tbody>
                 <tr>
                   <td align="center">db_small_static</td>
-                  <td align="center">libdb_small51s.lib</td>
+                  <td align="center">libdb_small53s.lib</td>
                   <td align="center">Static Library</td>
                 </tr>
                 <tr>
                   <td align="center">db_static</td>
-                  <td align="center">libdb51s.lib</td>
+                  <td align="center">libdb53s.lib</td>
                   <td align="center">Static Library</td>
                 </tr>
                 <tr>
                   <td align="center">db_sql</td>
-                  <td align="center">libdb_sql51.dll</td>
+                  <td align="center">libdb_sql53.dll</td>
                   <td align="center">Dynamic Library</td>
                 </tr>
                 <tr>
                   <td align="center">db_sql_static</td>
-                  <td align="center">libdb_sql51s.lib</td>
+                  <td align="center">libdb_sql53s.lib</td>
                   <td align="center">Static Library</td>
                 </tr>
               </tbody>
@@ -276,7 +276,7 @@ project and do the following:
           <div class="titlepage">
             <div>
               <div>
-                <h3 class="title"><a id="id3639515"></a>Building Berkeley DB for different target platforms</h3>
+                <h3 class="title"><a id="idp156256"></a>Building Berkeley DB for different target platforms</h3>
               </div>
             </div>
           </div>
@@ -301,7 +301,7 @@ project and do the following:
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3640068"></a>Visual Studio 2005</h4>
+                  <h4 class="title"><a id="idp191952"></a>Visual Studio 2005</h4>
                 </div>
               </div>
             </div>
@@ -341,7 +341,7 @@ project and do the following:
             <div class="titlepage">
               <div>
                 <div>
-                  <h4 class="title"><a id="id3640016"></a>BDB SQL Notes</h4>
+                  <h4 class="title"><a id="idp198816"></a>BDB SQL Notes</h4>
                 </div>
               </div>
             </div>

@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -87,7 +87,7 @@ DbEnv::rep_set_timeout(int which, u_int32_t timeout); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3641371"></a>Parameters</h3>
+              <h3 class="title"><a id="idp4306688"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@ DbEnv::rep_set_timeout(int which, u_int32_t timeout); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3641360"></a>timeout</h4>
+                <h4 class="title"><a id="idp4306040"></a>timeout</h4>
               </div>
             </div>
           </div>
@@ -109,7 +109,7 @@ DbEnv::rep_set_timeout(int which, u_int32_t timeout); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3639130"></a>which</h4>
+                <h4 class="title"><a id="idp4231120"></a>which</h4>
               </div>
             </div>
           </div>
@@ -217,8 +217,12 @@ DbEnv::rep_set_timeout(int which, u_int32_t timeout); </pre>
                 <p>
                          The frequency at which the Replication Manager,
                          running at a master site, broadcasts a heartbeat
-                         message in an otherwise idle system.  When 0 (the
-                         default), no heartbeat messages will be sent.
+                         message in an otherwise idle system.  Heartbeat
+                         messages are used at client sites to monitor the
+                         connection to the master and to help request missing
+                         master changes in the absence of master activity.
+                         When 0 (the default), no heartbeat messages will be
+                         sent.
                     </p>
               </li>
               <li>
@@ -246,7 +250,7 @@ DbEnv::rep_set_timeout(int which, u_int32_t timeout); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3641690"></a>Errors</h3>
+              <h3 class="title"><a id="idp4325280"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -264,7 +268,7 @@ DbEnv::rep_set_timeout(int which, u_int32_t timeout); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3641643"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp4322256"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -279,7 +283,7 @@ DbEnv::rep_set_timeout(int which, u_int32_t timeout); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3641585"></a>Class</h3>
+              <h3 class="title"><a id="idp4318768"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -291,7 +295,7 @@ DbEnv::rep_set_timeout(int which, u_int32_t timeout); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3641657"></a>See Also</h3>
+              <h3 class="title"><a id="idp4335960"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -48,34 +48,38 @@
     </p>
       <p>
         Prior to building BDB in an iPhone simulator/iPhone device, set the
-        required environment variables for iOS (iPhone OS).
+        required environment variables for iOS (iPhone OS). For a
+        simulator/iPhone version 4.2 or older, set the LDFLAGS variable as
+        follows:
     </p>
+      <pre class="programlisting">export LDFLAGS="-L$SDKROOT/usr/lib/"</pre>
       <p>
-        The steps to build BDB in an iPhone simulator is as follows:
+        Otherwise, set LDFLAGS as follows:
     </p>
-      <pre class="programlisting">export LDFLAGS="-L$SDKROOT/usr/lib/"
-export CFLAGS="-arch i386 -pipe -no-cpp-precomp --sysroot=$SDKROOT"
+      <pre class="programlisting">export LDFLAGS="-L$SDKROOT/usr/lib/system/"</pre>
+      <p>
+        The steps to build BDB in an iPhone simulator are as follows:
+    </p>
+      <pre class="programlisting">export CFLAGS="-arch i386 -pipe -no-cpp-precomp --sysroot=$SDKROOT"
 export CXXFLAGS="-arch i386 -pipe -no-cpp-precomp --sysroot=$SDKROOT"
 cd $BDB_HOME/build_unix
 ../dist/configure --host=i386-apple-darwin\
                  --prefix=$SDKROOT ...
-make </pre>
+make</pre>
       <p>
-        The steps to build BDB in an iPhone device is as follows:
+        The steps to build BDB in an iPhone device are as follows:
     </p>
-      <pre class="programlisting">export LDFLAGS="-arch armv6 -pipe -Os -gdwarf-2\
-                -no-cpp-precomp -mthumb -isysroot $SDKROOT "
-export CFLAGS="-arch armv6 -pipe -Os -gdwarf-2\
+      <pre class="programlisting">export CFLAGS="-arch armv6 -pipe -Os -gdwarf-2\
                -no-cpp-precomp -mthumb -isysroot $SDKROOT "
 export CXXFLAGS="-arch armv6 -pipe -Os -gdwarf-2\
                  -no-cpp-precomp -mthumb -isysroot $SDKROOT "
 cd $BDB_HOME/build_unix
 ../dist/configure --host=arm-apple-darwin9\
                   --prefix=$SDKROOT ...           
-make </pre>
+make</pre>
       <p>
-        Both set of commands create the BDB dynamic library -
-        libdb-5.1.dylib. To build the static library, libdb-5.1.a, add the
+        Both sets of commands create the BDB dynamic library -
+        libdb-5.3.dylib. To build the static library, libdb-5.3.a, add the
         <code class="literal">--enable-shared=no</code> option while configuring.
     </p>
     </div>

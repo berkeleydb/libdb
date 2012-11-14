@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -21,5 +21,22 @@ public class ModelInternal {
      */
     public static void setCatalog(EntityModel model, PersistCatalog catalog) {
         model.setCatalog(catalog);
+    }
+
+    /**
+     * Internal access method that should not be used by applications.
+     */
+    public static void setClassLoader(EntityModel model, ClassLoader loader) {
+        /* Do not overwrite loader with null value. */
+        if (loader != null) {
+            model.setClassLoader(loader);
+        }
+    }
+
+    /**
+     * Internal access method that should not be used by applications.
+     */
+    public static ClassLoader getClassLoader(EntityModel model) {
+        return model.getClassLoader();
     }
 }

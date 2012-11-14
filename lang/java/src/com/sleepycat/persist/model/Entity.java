@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -32,22 +32,15 @@ import com.sleepycat.persist.evolve.Mutations;
  * however, none of these may themselves be entity classes (annotated with
  * {@code Entity}).</p>
  *
- * <p>Entity superclasses are used to share common definitions and instance
- * data.  For example, fields in an entity superclass may be defined as primary
- * or secondary keys.</p>
+ * <p>Entity superclasses (which must be annotated with {@code Persistent}, not
+ * {@code Entity}) are used to share common definitions among entity classes.
+ * Fields in an entity superclass may be defined as primary or secondary keys.
+ * For example, the following {@code BaseClass} defines the primary key for any
+ * number of entity classes, using a single sequence to assign primary key
+ * values that will be unique across all entity classes that use it.  The
+ * entity class {@code Pet} extends the base class, implicitly defining a
+ * primary index</p>
  *
- * <p>Entity subclasses are used to provide polymorphism within a single {@code
- * PrimaryIndex}.  Instances of the entity class and its subclasses are stored
- * in the same {@code PrimaryIndex}.  Fields in an entity subclass may be
- * defined as secondary keys.</p>
- *
- * <p>For example, the following {@code BaseClass} defines the primary key for
- * any number of entity classes, using a single sequence to assign primary key
- * values.  The entity class {@code Pet} extends the base class, implicitly
- * defining a primary index that will contain instances of it and its
- * subclasses, including {@code Cat} which is defined below.  The primary key
- * ({@code id}) and secondary key ({@code name}) can be used to retrieve any
- * {@code Pet} instance.</p>
  * <pre class="code">
  *  {@literal @Persistent}
  *  class BaseClass {
@@ -63,11 +56,22 @@ import com.sleepycat.persist.evolve.Mutations;
  *      float weight;
  *  }</pre>
  *
- * <p>The entity subclass {@code Cat} defines a secondary key ({@code
- * finickyness}) that only applies to {@code Cat} instances.  Querying by this
- * key will never retrieve a {@code Dog} instance, if such a subclass existed,
- * because a {@code Dog} instance will never contain a {@code finickyness}
- * key.</p>
+ * <p>Entity subclasses (which must be annotated with {@code Persistent}, not
+ * {@code Entity}) are used to provide polymorphism within a single {@code
+ * PrimaryIndex}.  Instances of the entity class and its subclasses are stored
+ * in the same {@code PrimaryIndex}.  For example, the entity class {@code Pet}
+ * defines a primary index that will contain instances of it and its
+ * subclasses, including {@code Cat} which is defined below.</p>
+ *
+ * <p>Fields in an entity subclass may be defined as secondary keys, and such
+ * secondary keys can only be used to query instances of the subclass.  For
+ * example, although the primary key ({@code id}) and secondary key ({@code
+ * name}) can be used to retrieve any {@code Pet} instance, the entity subclass
+ * {@code Cat} defines a secondary key ({@code finickyness}) that only applies
+ * to {@code Cat} instances.  Querying by this key will never retrieve a {@code
+ * Dog} instance, if such a subclass existed, because a {@code Dog} instance
+ * will never contain a {@code finickyness} key.</p>
+ *
  * <pre class="code">
  *  {@literal @Persistent}
  *  class Cat extends Pet {
@@ -114,9 +118,7 @@ import com.sleepycat.persist.evolve.Mutations;
  * <li>Java primitive types: {@code boolean, char, byte, short, int, long,
  * float, double}</p>
  * <li>The wrapper classes for Java primitive types</p>
- * <!--
  * <li>{@link java.math.BigDecimal}</p>
- * -->
  * <li>{@link java.math.BigInteger}</p>
  * <li>{@link java.lang.String}</p>
  * <li>{@link java.util.Date}</p>

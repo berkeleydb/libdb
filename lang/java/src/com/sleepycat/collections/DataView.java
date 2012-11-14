@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -544,24 +544,28 @@ final class DataView implements Cloneable {
      */
     void useValue(Object value, DatabaseEntry valueThang,
                   DatabaseEntry checkKeyThang) {
-        if (value != null) {
-            if (valueBinding != null) {
-                valueBinding.objectToEntry(value, valueThang);
-            } else if (entityBinding != null) {
-                entityBinding.objectToData(value, valueThang);
-                if (checkKeyThang != null) {
-                    DatabaseEntry thang = new DatabaseEntry();
-                    entityBinding.objectToKey(value, thang);
-                    if (!KeyRange.equalBytes(thang, checkKeyThang)) {
-                        throw new IllegalArgumentException
-                            ("cannot change primary key");
-                    }
+        if (valueBinding != null) {
+            /* Allow binding to handle null value. */
+            valueBinding.objectToEntry(value, valueThang);
+        } else if (entityBinding != null) {
+            if (value == null) {
+                throw new IllegalArgumentException
+                    ("null value with entity binding");
+            }
+            entityBinding.objectToData(value, valueThang);
+            if (checkKeyThang != null) {
+                DatabaseEntry thang = new DatabaseEntry();
+                entityBinding.objectToKey(value, thang);
+                if (!KeyRange.equalBytes(thang, checkKeyThang)) {
+                    throw new IllegalArgumentException
+                        ("cannot change primary key");
                 }
-            } else {
+            }
+        } else {
+            if (value != null) {
                 throw new IllegalArgumentException
                     ("non-null value with null value/entity binding");
             }
-        } else {
             valueThang.setData(KeyRange.ZERO_LENGTH_BYTE_ARRAY);
             valueThang.setOffset(0);
             valueThang.setSize(0);

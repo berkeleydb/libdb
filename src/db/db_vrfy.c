@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -13,6 +13,7 @@
 #include "dbinc/db_swap.h"
 #include "dbinc/db_verify.h"
 #include "dbinc/btree.h"
+#include "dbinc/fop.h"
 #include "dbinc/hash.h"
 #include "dbinc/heap.h"
 #include "dbinc/lock.h"
@@ -42,11 +43,14 @@ static int   __db_salvage_unknowns __P((DB *, VRFY_DBINFO *, void *,
 static int   __db_verify_arg __P((DB *, const char *, void *, u_int32_t));
 static int   __db_vrfy_freelist
 		__P((DB *, VRFY_DBINFO *, db_pgno_t, u_int32_t));
+static int   __db_vrfy_getpagezero
+		__P((DB *, DB_FH *, const char *, u_int8_t *, u_int32_t));
 static int   __db_vrfy_invalid
 		__P((DB *, VRFY_DBINFO *, PAGE *, db_pgno_t, u_int32_t));
 static int   __db_vrfy_orderchkonly __P((DB *,
 		VRFY_DBINFO *, const char *, const char *, u_int32_t));
-static int   __db_vrfy_pagezero __P((DB *, VRFY_DBINFO *, DB_FH *, u_int32_t));
+static int   __db_vrfy_pagezero __P((DB *,
+		VRFY_DBINFO *, DB_FH *, const char *, u_int32_t));
 static int   __db_vrfy_subdbs
 		__P((DB *, VRFY_DBINFO *, const char *, u_int32_t));
 static int   __db_vrfy_structure __P((DB *, VRFY_DBINFO *,
@@ -241,27 +245,32 @@ __db_verify(dbp, ip, name, subdb, handle, callback, lp, rp, flags)
 	if (LF_ISSET(DB_PRINTABLE))
 		F_SET(vdp, SALVAGE_PRINTABLE);
 
-	/* Find the real name of the file. */
-	if ((ret = __db_appname(env,
-	    DB_APP_DATA, name, &dbp->dirname, &real_name)) != 0)
-		goto err;
+	if (name != NULL) {
+		/* Find the real name of the file. */
+		if ((ret = __db_appname(env,
+		    DB_APP_DATA, name, &dbp->dirname, &real_name)) != 0)
+			goto err;
 
-	/*
-	 * Our first order of business is to verify page 0, which is
-	 * the metadata page for the master database of subdatabases
-	 * or of the only database in the file.  We want to do this by hand
-	 * rather than just calling __db_open in case it's corrupt--various
-	 * things in __db_open might act funny.
-	 *
-	 * Once we know the metadata page is healthy, I believe that it's
-	 * safe to open the database normally and then use the page swapping
-	 * code, which makes life easier.
-	 */
-	if ((ret = __os_open(env, real_name, 0, DB_OSO_RDONLY, 0, &fhp)) != 0)
-		goto err;
+		/*
+		 * Our first order of business is to verify page 0, which is the
+		 * metadata page for the master database of subdatabases or of
+		 * the only database in the file.  We want to do this by hand
+		 * rather than just calling __db_open in case it's
+		 * corrupt--various things in __db_open might act funny.
+		 *
+		 * Once we know the metadata page is healthy, I believe that
+		 * it's safe to open the database normally and then use the page
+		 * swapping code, which makes life easier.
+		 */
+		if ((ret = __os_open(env,
+		    real_name, 0, DB_OSO_RDONLY, 0, &fhp)) != 0)
+			goto err;
+	} else {
+		MAKE_INMEM(dbp);
+	}
 
 	/* Verify the metadata page 0; set pagesize and type. */
-	if ((ret = __db_vrfy_pagezero(dbp, vdp, fhp, flags)) != 0) {
+	if ((ret = __db_vrfy_pagezero(dbp, vdp, fhp, subdb, flags)) != 0) {
 		if (ret == DB_VERIFY_BAD)
 			isbad = 1;
 		else
@@ -286,19 +295,23 @@ __db_verify(dbp, ip, name, subdb, handle, callback, lp, rp, flags)
 
 	/*
 	 * Set our name in the Queue subsystem;  we may need it later
-	 * to deal with extents.
+	 * to deal with extents.  In-memory databases are not allowed to have
+	 * extents.
 	 */
-	if (dbp->type == DB_QUEUE &&
+	if (dbp->type == DB_QUEUE && name != NULL &&
 	    (ret = __qam_set_ext_data(dbp, name)) != 0)
 		goto err;
 
 	/* Mark the dbp as opened, so that we correctly handle its close. */
 	F_SET(dbp, DB_AM_OPEN_CALLED);
 
-	/* Find out the page number of the last page in the database. */
+	/*
+	 * Find out the page number of the last page in the database.  We'll
+	 * use this later to verify the metadata page.  We don't verify now
+	 * because the data from __db_vrfy_pagezero could be stale.
+	 */
 	if ((ret = __memp_get_last_pgno(dbp->mpf, &vdp->last_pgno)) != 0)
 		goto err;
-
 	/*
 	 * DB_ORDERCHKONLY is a special case;  our file consists of
 	 * several subdatabases, which use different hash, bt_compare,
@@ -429,6 +442,84 @@ done: err:
 }
 
 /*
+ * __db_vrfy_getpagezero --
+ *      Store the master metadata page into a local buffer.  For safety, skip
+ *      the DB paging code and read the page directly from disk (via seek and
+ *      read) or the mpool.
+ */
+static int
+__db_vrfy_getpagezero(dbp, fhp, name, mbuf, flags)
+	DB *dbp;
+	DB_FH *fhp;
+	const char *name;
+	u_int8_t *mbuf;
+	u_int32_t flags;
+{
+	DB_MPOOLFILE *mpf;
+	ENV *env;
+	PAGE *h;
+	db_pgno_t pgno;
+	int ret, t_ret;
+	size_t nr;
+
+	env = dbp->env;
+
+	if (F_ISSET(dbp, DB_AM_INMEM)) {
+		/*
+		 * Now get the metadata page from the cache, if possible.  If
+		 * we're verifying an in-memory db, this is the only metadata
+		 * page we have.
+		 *
+		 *
+		 * Open the in-memory db file and get the metadata page.
+		 */
+		if ((ret = __memp_fcreate_pp(env->dbenv, &mpf, DB_VERIFY)) != 0)
+			return (ret);
+		if ((ret = __memp_set_flags(mpf, DB_MPOOL_NOFILE, 1)) != 0)
+			goto mpf_err;
+		if ((ret = __memp_fopen_pp(mpf,
+		    name, DB_ODDFILESIZE | DB_RDONLY, 0, 0)) != 0)
+			goto mpf_err;
+		pgno = PGNO_BASE_MD;
+		if ((ret = __memp_fget_pp(mpf, &pgno, NULL, 0, &h)) != 0) {
+			__db_err(env, ret, DB_STR_A("0747",
+			    "Metadata page %lu cannot be read from mpool",
+			    "%lu"), (u_long)pgno);
+			goto mpf_err;
+		}
+		memcpy(mbuf, (u_int8_t *)h, DBMETASIZE);
+		ret = __memp_fput_pp(mpf, h, DB_PRIORITY_UNCHANGED, 0);
+mpf_err:	if ((t_ret = __memp_fclose_pp(mpf, 0)) != 0 || ret != 0) {
+			return (ret == 0 ? t_ret : ret);
+		}
+	} else {
+		/*
+		 * Seek to the metadata page.
+		 *
+		 * Note that if we're just starting a verification, dbp->pgsize
+		 * may be zero;  this is okay, as we want page zero anyway and
+		 * 0*0 == 0.
+		 */
+		if ((ret = __os_seek(env, fhp, 0, 0, 0)) != 0 ||
+		    (ret = __os_read(env, fhp, mbuf, DBMETASIZE, &nr)) != 0) {
+			__db_err(env, ret, DB_STR_A("0520",
+			    "Metadata page %lu cannot be read", "%lu"),
+			    (u_long)PGNO_BASE_MD);
+			return (ret);
+		}
+
+		if (nr != DBMETASIZE) {
+			EPRINT((env, DB_STR_A("0521",
+			    "Page %lu: Incomplete metadata page", "%lu"),
+			    (u_long)PGNO_BASE_MD));
+			return (DB_VERIFY_FATAL);
+		}
+	}
+
+	return (ret);
+}
+
+/*
  * __db_vrfy_pagezero --
  *	Verify the master metadata page.  Use seek, read, and a local buffer
  *	rather than the DB paging code, for safety.
@@ -436,17 +527,17 @@ done: err:
  *	Must correctly (or best-guess) set dbp->type and dbp->pagesize.
  */
 static int
-__db_vrfy_pagezero(dbp, vdp, fhp, flags)
+__db_vrfy_pagezero(dbp, vdp, fhp, name, flags)
 	DB *dbp;
 	VRFY_DBINFO *vdp;
 	DB_FH *fhp;
+	const char *name;
 	u_int32_t flags;
 {
 	DBMETA *meta;
 	ENV *env;
 	VRFY_PAGEINFO *pip;
 	db_pgno_t freelist;
-	size_t nr;
 	int isbad, ret, swapped;
 	u_int8_t mbuf[DBMETASIZE];
 
@@ -456,36 +547,18 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 	meta = (DBMETA *)mbuf;
 	dbp->type = DB_UNKNOWN;
 
+	if ((ret = __db_vrfy_getpagezero(dbp, fhp, name, mbuf, flags)) != 0)
+		return (ret);
+
 	if ((ret = __db_vrfy_getpageinfo(vdp, PGNO_BASE_MD, &pip)) != 0)
 		return (ret);
-
-	/*
-	 * Seek to the metadata page.
-	 * Note that if we're just starting a verification, dbp->pgsize
-	 * may be zero;  this is okay, as we want page zero anyway and
-	 * 0*0 == 0.
-	 */
-	if ((ret = __os_seek(env, fhp, 0, 0, 0)) != 0 ||
-	    (ret = __os_read(env, fhp, mbuf, DBMETASIZE, &nr)) != 0) {
-		__db_err(env, ret, DB_STR_A("0520",
-		    "Metadata page %lu cannot be read", "%lu"),
-		    (u_long)PGNO_BASE_MD);
-		return (ret);
-	}
-
-	if (nr != DBMETASIZE) {
-		EPRINT((env, DB_STR_A("0521",
-		    "Page %lu: Incomplete metadata page", "%lu"),
-		    (u_long)PGNO_BASE_MD));
-		return (DB_VERIFY_FATAL);
-	}
 
 	if ((ret = __db_chk_meta(env, dbp, meta, 1)) != 0) {
 		EPRINT((env, DB_STR_A("0522",
 		    "Page %lu: metadata page corrupted", "%lu"),
 		    (u_long)PGNO_BASE_MD));
 		isbad = 1;
-		if (ret != -1) {
+		if (ret != DB_CHKSUM_FAIL) {
 			EPRINT((env, DB_STR_A("0523",
 			    "Page %lu: could not check metadata page", "%lu"),
 			    (u_long)PGNO_BASE_MD));
@@ -641,6 +714,7 @@ __db_vrfy_pagezero(dbp, vdp, fhp, flags)
 
 	/* Set up the dbp's fileid.  We don't use the regular open path. */
 	memcpy(dbp->fileid, meta->uid, DB_FILE_ID_LEN);
+	dbp->preserve_fid = 1;
 
 	if (swapped == 1)
 		F_SET(dbp, DB_AM_SWAP);
@@ -690,13 +764,16 @@ __db_vrfy_walkpages(dbp, vdp, handle, callback, flags)
 		 */
 		if ((t_ret = __memp_fget(mpf, &i,
 		    vdp->thread_info, NULL, 0, &h)) != 0) {
-			if (dbp->type == DB_HASH) {
+			if (dbp->type == DB_HASH ||
+			    (dbp->type == DB_QUEUE &&
+			    F_ISSET(dbp, DB_AM_INMEM))) {
 				if ((t_ret =
 				    __db_vrfy_getpageinfo(vdp, i, &pip)) != 0)
 					goto err1;
 				pip->type = P_INVALID;
 				pip->pgno = i;
 				F_CLR(pip, VRFY_IS_ALLZEROES);
+				F_SET(pip, VRFY_NONEXISTENT);
 				if ((t_ret = __db_vrfy_putpageinfo(
 				    env, vdp, pip)) != 0)
 					goto err1;
@@ -1356,7 +1433,7 @@ __db_vrfy_datapage(dbp, vdp, h, pgno, flags)
 }
 
 /*
- * __db_vrfy_meta--
+ * __db_vrfy_meta --
  *	Verify the access-method common parts of a meta page, using
  *	normal mpool routines.
  *
@@ -1472,9 +1549,9 @@ __db_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	}
 
 	/* Can correctly be PGNO_INVALID--that's just the end of the list. */
-	if (meta->free != PGNO_INVALID && IS_VALID_PGNO(meta->free))
+	if (IS_VALID_PGNO(meta->free))
 		pip->free = meta->free;
-	else if (!IS_VALID_PGNO(meta->free)) {
+	else {
 		isbad = 1;
 		EPRINT((env, DB_STR_A("0551",
 		    "Page %lu: nonsensical free list pgno %lu", "%lu %lu"),
@@ -1485,9 +1562,10 @@ __db_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	 * Check that the meta page agrees with what we got from mpool.
 	 * If we don't have FTRUNCATE then mpool could include some
 	 * zeroed pages at the end of the file, we assume the meta page
-	 * is correct.
+	 * is correct.  Queue does not update the meta page's last_pgno.
 	 */
-	if (pgno == PGNO_BASE_MD && meta->last_pgno != vdp->last_pgno) {
+	if (pgno == PGNO_BASE_MD &&
+	    dbtype != DB_QUEUE && meta->last_pgno != vdp->last_pgno) {
 #ifdef HAVE_FTRUNCATE
 		isbad = 1;
 		EPRINT((env, DB_STR_A("0552",
@@ -1537,8 +1615,8 @@ __db_vrfy_freelist(dbp, vdp, meta, flags)
 	for (next_pgno = pip->free;
 	    next_pgno != PGNO_INVALID; next_pgno = pip->next_pgno) {
 		cur_pgno = pip->pgno;
-		if ((ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0)
-			return (ret);
+		if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0)
+			return (t_ret);
 
 		/* This shouldn't happen, but just in case. */
 		if (!IS_VALID_PGNO(next_pgno)) {
@@ -1548,22 +1626,29 @@ __db_vrfy_freelist(dbp, vdp, meta, flags)
 			return (DB_VERIFY_BAD);
 		}
 
+		if (next_pgno > vdp->last_pgno) {
+			EPRINT((env, DB_STR_A("0713",
+			 "Page %lu: page %lu on free list beyond last_pgno %lu",
+			    "%lu %lu %lu"), (u_long)cur_pgno,
+			    (u_long)next_pgno, (u_long)vdp->last_pgno));
+			ret = DB_VERIFY_BAD;
+		}
 		/* Detect cycles. */
-		if ((ret = __db_vrfy_pgset_get(pgset,
+		if ((t_ret = __db_vrfy_pgset_get(pgset,
 		    vdp->thread_info, vdp->txn, next_pgno, &p)) != 0)
-			return (ret);
+			return (t_ret);
 		if (p != 0) {
 			EPRINT((env, DB_STR_A("0554",
 		    "Page %lu: page %lu encountered a second time on free list",
 			    "%lu %lu"), (u_long)cur_pgno, (u_long)next_pgno));
 			return (DB_VERIFY_BAD);
 		}
-		if ((ret = __db_vrfy_pgset_inc(pgset,
+		if ((t_ret = __db_vrfy_pgset_inc(pgset,
 		    vdp->thread_info, vdp->txn, next_pgno)) != 0)
-			return (ret);
+			return (t_ret);
 
-		if ((ret = __db_vrfy_getpageinfo(vdp, next_pgno, &pip)) != 0)
-			return (ret);
+		if ((t_ret = __db_vrfy_getpageinfo(vdp, next_pgno, &pip)) != 0)
+			return (t_ret);
 
 		if (pip->type != P_INVALID) {
 			EPRINT((env, DB_STR_A("0555",
@@ -1574,7 +1659,7 @@ __db_vrfy_freelist(dbp, vdp, meta, flags)
 		}
 	}
 
-	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0)
+	if ((t_ret = __db_vrfy_putpageinfo(env, vdp, pip)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }

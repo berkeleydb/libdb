@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -1352,6 +1352,27 @@ __db_open_arg(dbp, txn, fname, dname, type, flags)
 	if (LF_ISSET(DB_THREAD) && !F_ISSET(env, ENV_DBLOCAL | ENV_THREAD)) {
 		__db_errx(env, DB_STR("0596",
 		    "environment not created using DB_THREAD"));
+		return (EINVAL);
+	}
+
+	/* Exclusive database handles cannot be threaded.*/
+	if (LF_ISSET(DB_THREAD) && F2_ISSET(dbp, DB2_AM_EXCL)) {
+		__db_errx(env, DB_STR("0744",
+		    "Exclusive database handles cannot be threaded."));
+		return (EINVAL);
+	}
+
+	/* Exclusive database handles require transactional environments. */
+	if (F2_ISSET(dbp, DB2_AM_EXCL) && !TXN_ON(env)) {
+		__db_errx(env, DB_STR("0745",
+	"Exclusive database handles require transactional environments."));
+		return (EINVAL);
+	}
+
+	/* Replication clients cannot open exclusive database handles. */
+	if (F2_ISSET(dbp, DB2_AM_EXCL) && IS_REP_CLIENT(env)) {
+		__db_errx(env, DB_STR("0746",
+"Exclusive database handles cannot be opened on replication clients."));
 		return (EINVAL);
 	}
 

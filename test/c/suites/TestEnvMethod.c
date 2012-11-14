@@ -1,16 +1,18 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
 
 #include "db.h"
 #include "CuTest.h"
+#include "test_util.h"
 
 int TestSetThreadCount(CuTest *ct) { /* SKIP */
-
+/* Run this test only when hash is supported. */
+#ifdef HAVE_HASH
 	DB_ENV *dbenv;
 	DB *db;
 
@@ -28,6 +30,8 @@ int TestSetThreadCount(CuTest *ct) { /* SKIP */
 
 	db->close(db, 0);
 	dbenv->close(dbenv, 0);
-
+#else
+	printf("TestSetThreadCount is not supported by the build.\n");
+#endif /* HAVE_HASH */
 	return (0);
 }

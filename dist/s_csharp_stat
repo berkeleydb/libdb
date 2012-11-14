@@ -8,7 +8,7 @@ msgcsharp="/*-
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  */"
 
 f=../lang/csharp/src/Internal/StatStructs.cs
@@ -69,18 +69,6 @@ EOF
 
 txn_active()
 {
-    (echo "internal enum DB_TXN_XA_STATUS : uint {"
-        sed -n "/struct __db_txn_active {/,/^}/p" < ../src/dbinc/db.in |
-	sed -n "/^#define/p" | sed -n "/XA/p" | awk '{print "        " $2 " = " $3 ","}'
-	echo "}"
-	echo ) >> $t
-
-    (echo "internal enum DB_TXN_ACTIVE_STATUS : uint {"
-        sed -n "/struct __db_txn_active {/,/^}/p" < ../src/dbinc/db.in |
-	sed -n "/^#define/p" | sed -n "/XA/!p" | awk '{print "        " $2 " = " $3 ","}'
-	echo "}"
-	echo ) >> $t
-
     (cat <<EOF
     [StructLayout(LayoutKind.Sequential)]
     internal struct DB_TXN_ACTIVE {
@@ -106,8 +94,6 @@ EOF
 	    -e 's:\troff_t:\tinternal IntPtr:' \
 	    -e 's:\tsize_t:\tinternal IntPtr:' \
 	    -e 's:\ttime_t:\tinternal long:' \
-	    -e 's:\tu_int32_t status:\tinternal DB_TXN_ACTIVE_STATUS status:' \
-	    -e 's:\tu_int32_t xa_status:\tinternal DB_TXN_XA_STATUS xa_status:' \
 	    -e 's:\tu_int32_t:\tinternal uint:' \
 	    -e 's:\tuintmax_t:\tinternal ulong:' \
 	    -e "s:/\*.*\*/::"

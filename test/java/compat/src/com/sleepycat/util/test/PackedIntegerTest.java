@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -12,8 +12,7 @@ import junit.framework.TestCase;
 
 import com.sleepycat.util.PackedInteger;
 
-public class PackedIntegerTest extends TestCase
-{
+public class PackedIntegerTest extends TestCase {
     static final long V119 = 119L;
     static final long MAX_1 = 0xFFL;
     static final long MAX_2 = 0xFFFFL;
@@ -106,6 +105,7 @@ public class PackedIntegerTest extends TestCase
 
         testLongRange(Long.MIN_VALUE, Long.MIN_VALUE + 99, 9);
         testLongRange(Long.MAX_VALUE - 99, Long.MAX_VALUE - 1, 9);
+
     }
 
     private void testIntRange(long firstValue,
@@ -187,4 +187,5 @@ public class PackedIntegerTest extends TestCase
             off += bytes;
         }
     }
+
 }

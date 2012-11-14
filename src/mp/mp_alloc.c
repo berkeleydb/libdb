@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -46,7 +46,7 @@ __memp_alloc(dbmp, infop, mfp, len, offsetp, retp)
 	MPOOLFILE *bh_mfp;
 	size_t freed_space;
 	u_int32_t buckets, bucket_priority, buffers, cache_reduction;
-	u_int32_t dirty_eviction, high_priority, priority;
+	u_int32_t dirty_eviction, high_priority, priority, versions;
 	u_int32_t priority_saved, put_counter, lru_generation, total_buckets;
 	int aggressive, alloc_freeze, b_lock, giveup;
 	int h_locked, need_free, obsolete, ret, write_error;
@@ -61,7 +61,7 @@ __memp_alloc(dbmp, infop, mfp, len, offsetp, retp)
 	priority_saved = 0;
 	write_error = 0;
 
-	buckets = buffers = put_counter = total_buckets = 0;
+	buckets = buffers = put_counter = total_buckets = versions = 0;
 	aggressive = alloc_freeze = giveup = h_locked = 0;
 
 	/*
@@ -311,9 +311,17 @@ retry_search:	bhp = NULL;
 			 * aggressive), and is better than the best candidate
 			 * we have found so far in this bucket.
 			 */
+#ifdef MPOOL_ALLOC_SEARCH_DYN
+			if (aggressive == 0 &&
+			     ++high_priority >= c_mp->lru_priority)
+				aggressive = 1;
+#endif
+
 			if (SH_CHAIN_SINGLETON(current_bhp, vc)) {
-				if (BH_REFCOUNT(current_bhp) == 0 &&
-				    bucket_priority > current_bhp->priority) {
+				if (BH_REFCOUNT(current_bhp) != 0)
+					continue;
+				buffers++;
+				if (bucket_priority > current_bhp->priority) {
 					bucket_priority = current_bhp->priority;
 					if (bhp != NULL)
 						atomic_dec(env, &bhp->ref);
@@ -332,11 +340,19 @@ retry_search:	bhp = NULL;
 			    mvcc_bhp != NULL;
 			    oldest_bhp = mvcc_bhp,
 			    mvcc_bhp = SH_CHAIN_PREV(mvcc_bhp, vc, __bh)) {
+#ifdef MPOOL_ALLOC_SEARCH_DYN
+				if (aggressive == 0 &&
+				     ++high_priority >= c_mp->lru_priority)
+					aggressive = 1;
+#endif
 				DB_ASSERT(env, mvcc_bhp !=
 				    SH_CHAIN_PREV(mvcc_bhp, vc, __bh));
-				if (aggressive > 1 &&
-				    BH_REFCOUNT(mvcc_bhp) == 0 &&
-				    !F_ISSET(mvcc_bhp, BH_FROZEN) &&
+				if ((aggressive < 2 &&
+				    ++versions < (buffers >> 2)) ||
+				    BH_REFCOUNT(mvcc_bhp) != 0)
+					continue;
+				buffers++;
+				if (!F_ISSET(mvcc_bhp, BH_FROZEN) &&
 				    (bhp == NULL ||
 				    bhp->priority > mvcc_bhp->priority)) {
 					if (bhp != NULL)
@@ -349,9 +365,9 @@ retry_search:	bhp = NULL;
 			/*
 			 * oldest_bhp is the last buffer on the MVCC chain, and
 			 * an obsolete buffer at the end of the MVCC chain gets
-			 * used without further search. Before checking for 
+			 * used without further search. Before checking for
 			 * obsolescence, update the cached oldest reader LSN in
-			 * the bucket if it is older than oldest_reader.
+			 * the bucket if it is older than call's oldest_reader.
 			 */
 			if (BH_REFCOUNT(oldest_bhp) != 0)
 				continue;
@@ -371,6 +387,8 @@ retry_search:	bhp = NULL;
 			}
 
 			if (BH_OBSOLETE(oldest_bhp, hp->old_reader, vlsn)) {
+				if (aggressive < 2)
+					buffers++;
 				obsolete = 1;
 				if (bhp != NULL)
 					atomic_dec(env, &bhp->ref);
@@ -453,9 +471,7 @@ retry_search:	bhp = NULL;
 			goto search;
 		}
 
-this_buffer:	buffers++;
-
-		/*
+this_buffer:	/*
 		 * Discard any previously remembered hash bucket, we've got
 		 * a winner.
 		 */
@@ -501,7 +517,7 @@ this_buffer:	buffers++;
 			 * buffer again by maximizing its priority.
 			 */
 			if (ret != 0) {
-				if (ret != EPERM) {
+				if (ret != EPERM && ret != EAGAIN) {
 					write_error++;
 					__db_errx(env, DB_STR_A("3018",
 		"%s: unwritable page %d remaining in the cache after error %d",

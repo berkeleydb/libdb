@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -28,8 +28,8 @@ public class TupleMarshalledBinding<E extends MarshalledTupleEntry>
      * Creates a tuple marshalled binding object.
      *
      * <p>The given class is used to instantiate key or data objects using
-     * {@link Class#forName}, and therefore must be a public class and have a
-     * public no-arguments constructor.  It must also implement the {@link
+     * {@link Class#newInstance}, and therefore must be a public class and have
+     * a public no-arguments constructor.  It must also implement the {@link
      * MarshalledTupleEntry} interface.</p>
      *
      * @param cls is the class of the key or data objects.

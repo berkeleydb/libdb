@@ -1,7 +1,7 @@
 /* 
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
  * 
  * $Id$
  * 
@@ -24,7 +24,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.\n";
+    "Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 #define	BUFFER_LEN		30     /* Buffer size to hold data */
@@ -90,13 +90,13 @@ main(argc, argv)
 	DB *dbp;
 	u_int32_t cachesize, ghpsize, hpsize, pgsize;
 	char *home;
-	int ch, ret, set_ghpsize, set_hpsize, test_btree, test_var_data;
+	int ch, ret, ret_t, set_ghpsize, set_hpsize, test_btree, test_var_data;
 	int recs_per_rep, repeats;
 
 	dbenv = NULL;
 	dbp = NULL;
 	cachesize = 0;
-	ret = set_ghpsize = set_hpsize = test_btree = 0;
+	ret = ret_t = set_ghpsize = set_hpsize = test_btree = 0;
 	home = NULL;
 
 	recs_per_rep = DEF_RECS_PER_REP;
@@ -200,13 +200,15 @@ main(argc, argv)
 		}
 	}
 err:
-	if (dbp != NULL && (ret = dbp->close(dbp, 0)) != 0)
-		dbenv->err(dbenv, ret, "DB->close");
-	dbp = NULL;
+	if (dbp != NULL && (ret_t = dbp->close(dbp, 0)) != 0) {
+		dbenv->err(dbenv, ret_t, "DB->close");
+		ret = (ret == 0 ? ret_t : ret);
+	}
 
-	if (dbenv != NULL && (ret = dbenv->close(dbenv, 0)) != 0) {
+	if (dbenv != NULL && (ret_t = dbenv->close(dbenv, 0)) != 0) {
 		fprintf(stderr, "%s: dbenv->close: %s", progname,
-		    db_strerror(ret));
+		    db_strerror(ret_t));
+		ret = (ret == 0 ? ret_t : ret);
 	}
 
 	return (ret);
@@ -456,7 +458,7 @@ generate_data(buf, rec_no, test_var)
 	int rec_no, test_var;
 {
 	const char *str = "abcdefghijklmnopqrst";
-	size_t len = strlen(str);
+	int len = (int)strlen(str);
 
 	/*
 	 * Default use the fix-length data,

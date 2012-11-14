@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -130,11 +130,164 @@ __heap_bulk(dbc, data, flags)
 	DBT *data;
 	u_int32_t flags;
 {
-	COMPQUIET(dbc, NULL);
-	COMPQUIET(data, NULL);
-	COMPQUIET(flags, 0);
+	DB *dbp;
+	DB_HEAP_RID prev_rid, rid;
+	DBT sdata;
+	HEAP_CURSOR *cp;
+	HEAPHDR *hdr;
+	HEAPSPLITHDR *shdr;
+	PAGE *pg;
+	db_lockmode_t lock_type;
+	int is_key, ret;
+	int32_t *offp;
+	u_int32_t data_size, key_size, needed, space;
+	u_int8_t *dbuf, *np;
 
-	return (EINVAL);
+	ret = 0;
+	dbp = dbc->dbp;
+	cp = (HEAP_CURSOR *)dbc->internal;
+	hdr = NULL;
+	shdr = NULL;
+
+	/* Check for additional bits for locking */
+	if (F_ISSET(dbc, DBC_RMW))
+		lock_type = DB_LOCK_WRITE;
+	else
+		lock_type = DB_LOCK_READ;
+
+	/*
+	 * np is the next place to copy things into the buffer.
+	 * dbuf always stays at the beginning of the buffer.
+	 */
+	dbuf = data->data;
+	np = dbuf;
+
+	/* Keep track of space that is left.  There is a termination entry */
+	space = data->ulen;
+	space -= sizeof(*offp);
+
+	/* Build the offset/size table from the end up. */
+	offp = (int32_t *)((u_int8_t *)dbuf + data->ulen);
+	offp--;
+
+	/*
+	 * key_size and data_size hold the 32-bit aligned size of the key and
+	 * data values written to the buffer.
+	 */
+	key_size = DB_ALIGN(DB_HEAP_RID_SZ, sizeof(u_int32_t));
+	data_size = 0;
+
+	/* is_key indicates whether keys are returned. */
+	is_key = LF_ISSET(DB_MULTIPLE_KEY) ? 1 : 0;
+
+next_pg:
+	rid.indx = cp->indx;
+	rid.pgno = cp->pgno;
+	pg = cp->page;
+
+	/*
+	 * Write records to the buffer, in the format needed by the DB_MULTIPLE
+	 * macros.  For a description of the data layout, see db.h.
+	 */
+	do {
+		if (HEAP_OFFSETTBL(dbp, pg)[rid.indx] == 0)
+			continue;
+		hdr = (HEAPHDR *)P_ENTRY(dbp, pg, rid.indx);
+		/*
+		 * If this is a split record and not the first piece of the
+		 * record, skip it.
+		 */
+		if (F_ISSET(hdr, HEAP_RECSPLIT) &&
+		    !F_ISSET(hdr, HEAP_RECFIRST))
+			continue;
+
+		/*
+		 * Calculate how much space is needed to add this record.  If
+		 * there's not enough, we're done.  If we haven't written any
+		 * data to the buffer, or if we are doing a DBP->get, return
+		 * DB_BUFFER_SMALL.
+		 */
+		needed = 0;
+		if (is_key)
+			needed = 2 * sizeof(*offp) + key_size;
+		if (F_ISSET(hdr, HEAP_RECSPLIT)) {
+			shdr = (HEAPSPLITHDR *)hdr;
+			data_size = DB_ALIGN(shdr->tsize, sizeof(u_int32_t));
+		} else
+			data_size = DB_ALIGN(hdr->size, sizeof(u_int32_t));
+		needed += 2 * sizeof(*offp) + data_size;
+
+		if (needed > space) {
+			if (np == dbuf || F_ISSET(dbc, DBC_FROM_DB_GET)) {
+				data->size = (u_int32_t)DB_ALIGN(
+				    needed + data->ulen - space, 1024);
+				return (DB_BUFFER_SMALL);
+			}
+			break;
+		}
+
+		if (is_key) {
+			memcpy(np, &rid, key_size);
+			*offp-- = (int32_t)(np - dbuf);
+			*offp-- = (int32_t)DB_HEAP_RID_SZ;
+			np += key_size;
+		}
+
+		if (F_ISSET(hdr, HEAP_RECSPLIT)) {
+			/*
+			 * Use __heapc_gsplit to write a split record to the
+			 * return buffer.  gsplit will return any fetched pages
+			 * to the cache, but will leave the cursor's current
+			 * page alone.
+			 */
+			memset(&sdata, 0, sizeof(DBT));
+			sdata.data = np;
+			sdata.size = sdata.ulen = shdr->tsize;
+			sdata.flags = DB_DBT_USERMEM;
+			/* gsplit expects the cursor to be positioned. */
+			cp->pgno = rid.pgno;
+			cp->indx = rid.indx;
+			if ((ret = __heapc_gsplit(
+			    dbc, &sdata, NULL, NULL)) != 0)
+				return (ret);
+		} else {
+			memcpy(np,
+			    (u_int8_t *)hdr + sizeof(HEAPHDR), hdr->size);
+		}
+		*offp-- = (int32_t)(np - dbuf);
+		if (F_ISSET(hdr, HEAP_RECSPLIT))
+			*offp-- = (int32_t)shdr->tsize;
+		else
+			*offp-- = (int32_t)hdr->size;
+		np += data_size;
+		space -= needed;
+		prev_rid = rid;
+
+		/*
+		 * The data and "metadata" ends of the buffer should never
+		 * overlap.
+		 */
+		DB_ASSERT(dbp->env, (void *)np <= (void *)offp);
+	} while (++rid.indx < NUM_ENT(pg));
+
+	/* If we are off the page then try the next page. */
+	if (rid.indx >= NUM_ENT(pg)) {
+		rid.pgno++;
+		ACQUIRE_CUR(dbc, lock_type, rid.pgno, 0, 0, ret);
+		if (ret == 0) {
+			cp->indx = 0;
+			goto next_pg;
+		} else if (ret != DB_PAGE_NOTFOUND)
+			return (ret);
+	}
+
+	DB_ASSERT(dbp->env, (ret == 0 || ret == DB_PAGE_NOTFOUND));
+	cp->indx = prev_rid.indx;
+	cp->pgno = prev_rid.pgno;
+
+	*offp = -1;
+
+	return (0);
 }
 
 static int
@@ -491,7 +644,7 @@ first:		pgno = FIRST_HEAP_DPAGE;
 		break;
 	case DB_LAST:
 		/*
-		 * Grab the metedata page to find the last page, and start
+		 * Grab the metadata page to find the last page, and start
 		 * there looking backwards for the record with the highest
 		 * index and return that one.
 		 */
@@ -724,7 +877,7 @@ last:		pgno = PGNO_BASE_MD;
 
 		/* Lock the data page and get it. */
 		ACQUIRE_CUR(dbc, lock_type, pgno, 0, 0, ret);
-		
+
 		if (ret != 0) {
 			if (ret == DB_PAGE_NOTFOUND)
 				ret = DB_NOTFOUND;
@@ -806,6 +959,8 @@ err:	if (ret == 0 ) {
 	return (ret);
 }
 
+#undef	IS_FIRST
+#define	IS_FIRST (last_rid.pgno == PGNO_INVALID)
 /*
  * __heapc_reloc_partial --
  *	 Move data from a too-full page to a new page.  The old data page must
@@ -823,7 +978,7 @@ __heapc_reloc_partial(dbc, key, data)
 	HEAPHDR *old_hdr;
 	HEAPSPLITHDR new_hdr;
 	HEAP_CURSOR *cp;
-	int add_bytes, is_first, ret;
+	int add_bytes, ret;
 	u_int32_t buflen, data_size, dlen, doff, left, old_size;
 	u_int32_t remaining, size;
 	u_int8_t *buf, *olddata;
@@ -861,8 +1016,8 @@ __heapc_reloc_partial(dbc, key, data)
 			dlen = data->dlen;
 		data_size = old_size - dlen + data->size;
 	}
-		
-	/* 
+
+	/*
 	 * We don't need a buffer large enough to hold the data_size
 	 * bytes, just one large enough to hold the bytes that will be
 	 * written to an individual page.  We'll realloc to the necessary size
@@ -871,7 +1026,7 @@ __heapc_reloc_partial(dbc, key, data)
 	buflen = 0;
 	buf = NULL;
 
-	/* 
+	/*
 	 * We are updating an existing record, which will grow into a split
 	 * record.  The strategy is to overwrite the existing record (or each
 	 * piece of the record if the record is already split.)  If the new
@@ -880,9 +1035,11 @@ __heapc_reloc_partial(dbc, key, data)
 	 * data.
 	 *
 	 * We start each loop with old_hdr pointed at the header for the old
-	 * record and the necessary page write locked in cp->page. 
+	 * record and the necessary page write locked in cp->page.
 	 */
-	add_bytes = is_first = 1;
+	last_rid.pgno = PGNO_INVALID;
+	last_rid.indx = 0;
+	add_bytes = 1;
 	left = data_size;
 	memset(&t_data, 0, sizeof(DBT));
 	remaining = 0;
@@ -895,15 +1052,15 @@ __heapc_reloc_partial(dbc, key, data)
 			next_rid.pgno = PGNO_INVALID;
 			next_rid.indx = 0;
 		}
-		
-		/* 
+
+		/*
 		 * Before we delete the old data, use it to construct the new
 		 * data. First figure out the size of the new piece, including
 		 * any remaining data from the last piece.
 		 */
 		if (doff >= old_hdr->size)
 			if (F_ISSET(old_hdr, HEAP_RECLAST) ||
-			    !F_ISSET(old_hdr, HEAP_RECSPLIT)) {			    
+			    !F_ISSET(old_hdr, HEAP_RECSPLIT)) {
 				/* Post-pending. */
 				data_size = doff + data->size;
 			} else {
@@ -911,10 +1068,10 @@ __heapc_reloc_partial(dbc, key, data)
 				data_size = old_hdr->size;
 			}
 		else if (doff + dlen > old_hdr->size)
-			/* 
+			/*
 			 * Some of the to-be-overwritten bytes are on the next
 			 * piece, but we'll append all the new bytes to this
-			 * piece if we haven't already written them. 
+			 * piece if we haven't already written them.
 			 */
 			data_size = doff + (add_bytes ? data->size : 0);
 		else
@@ -929,9 +1086,9 @@ __heapc_reloc_partial(dbc, key, data)
 		}
 		t_data.data = buf;
 
-		/* 
+		/*
 		 * Adjust past any remaining bytes, they've already been moved
-		 * to the beginning of the buffer. 
+		 * to the beginning of the buffer.
 		 */
 		buf += remaining;
 		remaining = 0;
@@ -969,7 +1126,7 @@ __heapc_reloc_partial(dbc, key, data)
 				/*
 				 * The data to be removed spills over onto the
 				 * following page(s).  Adjust dlen to account
-				 * for the bytes removed from this page. 
+				 * for the bytes removed from this page.
 				 */
 				dlen = doff + dlen - old_hdr->size;
 			doff = 0;
@@ -999,11 +1156,58 @@ __heapc_reloc_partial(dbc, key, data)
 			goto err;
 
 		if (left == 0)
-			/* 
+			/*
 			 * We've finished writing the new record, we're just
 			 * cleaning up the old record now.
 			 */
 			goto next_pg;
+
+		if (data_size == 0 && !IS_FIRST) {
+			/*
+			 * This piece is being completely removed.  We need to
+			 * adjust the header of the previous piece now.
+			 */
+			ACQUIRE_CUR(dbc, DB_LOCK_WRITE,
+			    last_rid.pgno, 0, DB_MPOOL_DIRTY, ret);
+			if (ret != 0)
+				goto err;
+
+			cp->indx = last_rid.indx;
+			old_hdr = (HEAPHDR *)(P_ENTRY(dbp, cp->page, cp->indx));
+
+			if (DBC_LOGGING(dbc)) {
+				old_size = DB_ALIGN(old_hdr->size +
+				    HEAP_HDRSIZE(old_hdr), sizeof(u_int32_t));
+				hdr_dbt.data = old_hdr;
+				hdr_dbt.size = HEAP_HDRSIZE(old_hdr);
+				log_dbt.data =
+				    (u_int8_t *)old_hdr + hdr_dbt.size;
+				log_dbt.size = DB_ALIGN(
+				    old_hdr->size, sizeof(u_int32_t));
+				if ((ret = __heap_addrem_log(dbp, dbc->txn,
+				    &LSN(cp->page), 0, DB_REM_HEAP, cp->pgno,
+				    (u_int32_t)cp->indx, old_size,
+				    &hdr_dbt, &log_dbt, &LSN(cp->page))) != 0)
+					goto err;
+			} else
+				LSN_NOT_LOGGED(LSN(cp->page));
+
+			((HEAPSPLITHDR *)old_hdr)->nextpg = next_rid.pgno;
+			((HEAPSPLITHDR *)old_hdr)->nextindx = next_rid.indx;
+
+			if (DBC_LOGGING(dbc)) {
+				if ((ret = __heap_addrem_log(dbp, dbc->txn,
+				    &LSN(cp->page), 0, DB_ADD_HEAP, cp->pgno,
+				    (u_int32_t)cp->indx, old_size,
+				    &hdr_dbt, &log_dbt, &LSN(cp->page))) != 0)
+					goto err;
+			} else
+				LSN_NOT_LOGGED(LSN(cp->page));
+
+			DISCARD(dbc, cp->page, cp->lock, 1, ret);
+
+			goto next_pg;
+		}
 
 		/* Set up the header for the new record. */
 		memset(&new_hdr, 0, sizeof(HEAPSPLITHDR));
@@ -1015,15 +1219,15 @@ __heapc_reloc_partial(dbc, key, data)
 		 */
 		new_hdr.nextpg = next_rid.pgno;
 		new_hdr.nextindx = next_rid.indx;
-		/* 
+		/*
 		 * Figure out how much we can fit on the page, rounding down to
 		 * a multiple of 4.  If we will have to expand the offset table,
 		 * account for that. It needs to be enough to at least fit the
-		 * split header. 
+		 * split header.
 		 */
 		size = HEAP_FREESPACE(dbp, cp->page);
 		if (NUM_ENT(cp->page) == 0 ||
-		    HEAP_FREEINDX(cp->page) > HEAP_HIGHINDX(cp->page))
+		    cp->indx > HEAP_HIGHINDX(cp->page))
 			size -= sizeof(db_indx_t);
 		/* Round down to a multiple of 4. */
 		size = DB_ALIGN(
@@ -1044,12 +1248,11 @@ __heapc_reloc_partial(dbc, key, data)
 			new_hdr.nextpg = PGNO_INVALID;
 			new_hdr.nextindx = 0;
 		}
-		if (is_first) {
+		if (IS_FIRST) {
 			new_hdr.std_hdr.flags |= HEAP_RECFIRST;
 			new_hdr.tsize = left;
-			is_first = 0;
 		}
-		
+
 		/* Now write the new data to the page. */
 		t_data.size = new_hdr.std_hdr.size;
 		hdr_dbt.data = &new_hdr;
@@ -1071,30 +1274,32 @@ __heapc_reloc_partial(dbc, key, data)
 		/*
 		 * If any data couldn't fit on this page, it has to go onto the
 		 * next.  Copy it to the front of the buffer and it will be
-		 * preserved in the next loop. 
+		 * preserved in the next loop.
 		 */
 		if (new_hdr.std_hdr.size < data_size) {
 			remaining = data_size - new_hdr.std_hdr.size;
 			memmove(buf, buf + new_hdr.std_hdr.size, remaining);
 		}
 
+		/*
+		 * Remember this piece's RID, we may need to update the header
+		 * if the next data piece is removed, or if this is the final
+		 * piece and we add data to the end of the record.
+		 */
+next_pg:	last_rid.pgno = cp->pgno;
+		last_rid.indx = cp->indx;
 		/* Get the next page, if any. */
-next_pg:	if (next_rid.pgno != PGNO_INVALID) {
+		if (next_rid.pgno != PGNO_INVALID) {
 			ACQUIRE_CUR(dbc, DB_LOCK_WRITE,
 			    next_rid.pgno, 0, DB_MPOOL_DIRTY, ret);
 			if (ret != 0)
 				goto err;
 			cp->indx = next_rid.indx;
 			old_hdr = (HEAPHDR *)(P_ENTRY(dbp, cp->page, cp->indx));
-			DB_ASSERT(dbp->env, HEAP_HIGHINDX(cp->page) <= cp->indx);
+			DB_ASSERT(dbp->env,
+			    HEAP_HIGHINDX(cp->page) <= cp->indx);
 			DB_ASSERT(dbp->env, F_ISSET(old_hdr, HEAP_RECSPLIT));
 		} else {
-			/*
-			 * Remember the final piece's RID, we may need to update
-			 * the header after writing the rest of the record.
-			 */
-			last_rid.pgno = cp->pgno;
-			last_rid.indx = cp->indx;
 			/* Discard the page and drop the lock, txn-ally. */
 			DISCARD(dbc, cp->page, cp->lock, 1, ret);
 			if (ret != 0)
@@ -1103,10 +1308,10 @@ next_pg:	if (next_rid.pgno != PGNO_INVALID) {
 		}
 	}
 
-	/* 
+	/*
 	 * If there is more work to do, let heapc_split do it.  After
 	 * heapc_split returns we need to update nextpg and nextindx in the
-	 * header of the last piece we wrote above.  
+	 * header of the last piece we wrote above.
 	 *
 	 * For logging purposes, we "delete" the old record and then "add" the
 	 * record.  This makes redo/undo work as-is, but we won't actually
@@ -1121,7 +1326,7 @@ next_pg:	if (next_rid.pgno != PGNO_INVALID) {
 		if ((ret = __heapc_split(dbc, &t_key, &t_data, 0)) != 0)
 			goto err;
 
-		ACQUIRE_CUR(dbc, 
+		ACQUIRE_CUR(dbc,
 		    DB_LOCK_WRITE, last_rid.pgno, 0, DB_MPOOL_DIRTY, ret);
 		if (ret != 0)
 			goto err;
@@ -1151,7 +1356,7 @@ next_pg:	if (next_rid.pgno != PGNO_INVALID) {
 		if (DBC_LOGGING(dbc)) {
 			if ((ret = __heap_addrem_log(dbp, dbc->txn,
 			    &LSN(cp->page), 0, DB_ADD_HEAP, cp->pgno,
-			    (u_int32_t)cp->indx,old_size,
+			    (u_int32_t)cp->indx, old_size,
 			    &hdr_dbt, &log_dbt, &LSN(cp->page))) != 0)
 				goto err;
 		} else
@@ -1193,7 +1398,7 @@ __heapc_reloc(dbc, key, data)
 	memset(&log_dbt, 0, sizeof(DBT));
 	COMPQUIET(key, NULL);
 
-	/* 
+	/*
 	 * We are updating an existing record, which will grow into a split
 	 * record.  The strategy is to overwrite the existing record (or each
 	 * piece of the record if the record is already split.)  If the new
@@ -1203,7 +1408,7 @@ __heapc_reloc(dbc, key, data)
 	 *
 	 * We start each loop with t_data.data positioned to the next byte to be
 	 * written, old_hdr pointed at the header for the old record and the
-	 * necessary page write locked in cp->page. 
+	 * necessary page write locked in cp->page.
 	 */
 	is_first = 1;
 	left = data->size;
@@ -1242,7 +1447,7 @@ __heapc_reloc(dbc, key, data)
 			goto err;
 
 		if (left == 0)
-			/* 
+			/*
 			 * We've finished writing the new record, we're just
 			 * cleaning up the old record now.
 			 */
@@ -1254,15 +1459,15 @@ __heapc_reloc(dbc, key, data)
 		/* We'll set this later if next_rid.pgno == PGNO_INVALID. */
 		new_hdr.nextpg = next_rid.pgno;
 		new_hdr.nextindx = next_rid.indx;
-		/* 
+		/*
 		 * Figure out how much we can fit on the page, rounding down to
 		 * a multiple of 4.  If we will have to expand the offset table,
 		 * account for that.It needs to be enough to at least fit the
-		 * split header. 
+		 * split header.
 		 */
 		size = HEAP_FREESPACE(dbp, cp->page);
 		if (NUM_ENT(cp->page) == 0 ||
-		    HEAP_FREEINDX(cp->page) > HEAP_HIGHINDX(cp->page))
+		    cp->indx > HEAP_HIGHINDX(cp->page))
 			size -= sizeof(db_indx_t);
 		/* Round down to a multiple of 4. */
 		size = DB_ALIGN(
@@ -1281,7 +1486,7 @@ __heapc_reloc(dbc, key, data)
 			new_hdr.tsize = left;
 			is_first = 0;
 		}
-		
+
 		/* Now write the new data to the page. */
 		t_data.size = new_hdr.std_hdr.size;
 		hdr_dbt.data = &new_hdr;
@@ -1325,10 +1530,10 @@ next_pg:	if (next_rid.pgno != PGNO_INVALID) {
 		}
 	}
 
-	/* 
+	/*
 	 * If there is more work to do, let heapc_split do it.  After
 	 * heapc_split returns we need to update nextpg and nextindx in the
-	 * header of the last piece we wrote above.  
+	 * header of the last piece we wrote above.
 	 *
 	 * For logging purposes, we "delete" the old record and then "add" the
 	 * record.  This makes redo/undo work as-is, but we won't actually
@@ -1343,7 +1548,7 @@ next_pg:	if (next_rid.pgno != PGNO_INVALID) {
 		if ((ret = __heapc_split(dbc, &t_key, &t_data, 0)) != 0)
 			goto err;
 
-		ACQUIRE_CUR(dbc, 
+		ACQUIRE_CUR(dbc,
 		    DB_LOCK_WRITE, last_rid.pgno, 0, DB_MPOOL_DIRTY, ret);
 		if (ret != 0)
 			goto err;
@@ -1390,7 +1595,7 @@ err:	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
  * __heapc_put --
  *
  * Put using a cursor.  If the given key exists, update the associated data.  If
- * the given key does not exsit, return an error.
+ * the given key does not exsist, return an error.
  */
 static int
 __heapc_put(dbc, key, data, flags, pgnop)
@@ -1486,8 +1691,9 @@ __heapc_put(dbc, key, data, flags, pgnop)
 		new_size = sizeof(HEAPSPLITHDR);
 
 	/* Check whether we actually have enough space on this page. */
-	if (new_size > old_size &&
-	    new_size - old_size > HEAP_FREESPACE(dbp, cp->page)) {
+	if (F_ISSET(old_hdr, HEAP_RECSPLIT) ||
+	    (new_size > old_size &&
+	    new_size - old_size > HEAP_FREESPACE(dbp, cp->page))) {
 		/*
 		 * We've got to split the record, not enough room on the
 		 * page.  Splitting the record will remove old_size bytes and
@@ -1510,9 +1716,9 @@ __heapc_put(dbc, key, data, flags, pgnop)
 			goto err;
 		new_data.data = buf;
 
-		/* 
+		/*
 		 * Preserve data->doff bytes at the start, or all of the old
-		 * record plus padding, if post-pending. 
+		 * record plus padding, if post-pending.
 		 */
 		olddata = (u_int8_t *)old_hdr + sizeof(HEAPHDR);
 		if (data->doff > old_hdr->size) {
@@ -1532,7 +1738,7 @@ __heapc_put(dbc, key, data, flags, pgnop)
 		/* Fill in remaining data from the old record, skipping dlen. */
 		if (data->doff < old_hdr->size) {
 			olddata += data->doff + data->dlen;
-			memcpy(buf, 
+			memcpy(buf,
 			    olddata, old_hdr->size - data->doff - data->dlen);
 		}
 	} else {
@@ -1570,7 +1776,7 @@ __heapc_put(dbc, key, data, flags, pgnop)
 	if ((ret = __heap_pitem(dbc,
 	    (PAGE *)cp->page, cp->indx, new_size, &hdr_dbt, &new_data)) != 0)
 		goto err;
-	
+
 	/* Check whether we need to update the space bitmap. */
 	HEAP_CALCSPACEBITS(dbp, HEAP_FREESPACE(dbp, cp->page), space);
 
@@ -1666,13 +1872,13 @@ find:	while ((ret = __memp_fget(mpf, &region_pgno,
 	    dbc->thread_info, NULL, lk_mode, &rpage)) != 0 ||
 	    TYPE(rpage) != P_IHEAP) {
 		if (ret == DB_LOCK_NOTGRANTED)
-			goto next;
+			goto next_region;
 		if (ret != 0 && ret != DB_PAGE_NOTFOUND)
 			return (ret);
 		/*
 		 * The region page doesn't exist, or hasn't been initialized,
 		 * create it, then try again.  If the page exists, we have to
-		 * drop it before initializing the region. 
+		 * drop it before initializing the region.
 		 */
 		if (ret == 0 && (ret = __memp_fput(
 		    mpf, dbc->thread_info, rpage, dbc->priority)) != 0)
@@ -1747,7 +1953,7 @@ find:	while ((ret = __memp_fget(mpf, &region_pgno,
 		 * around to the first region page.  There is not currently a
 		 * data page locked.
 		 */
-next:		region_pgno += HEAP_REGION_SIZE(dbp) + 1;
+next_region:	region_pgno += HEAP_REGION_SIZE(dbp) + 1;
 
 		if (region_pgno > h->maxpgno)
 			region_pgno = FIRST_HEAP_RPAGE;
@@ -1810,19 +2016,19 @@ next:		region_pgno += HEAP_REGION_SIZE(dbp) + 1;
 			p = cp->page != NULL;
 			DISCARD(dbc, cp->page, cp->lock, 0, t_ret);
 			if (t_ret != 0 ||
-		    	     (ret != DB_LOCK_NOTGRANTED &&
+			     (ret != DB_LOCK_NOTGRANTED &&
 			     ret != DB_LOCK_DEADLOCK))
 				goto pg_err;
 			if ((ret = __db_lget(dbc, LCK_ALWAYS, meta_pgno,
 			    DB_LOCK_WRITE, 0, &meta_lock)) != 0)
-			    	goto pg_err;
+				goto pg_err;
 			ACQUIRE_CUR(dbc, DB_LOCK_WRITE,
 			    data_pgno, 0, DB_MPOOL_CREATE, ret);
 			/*
 			 * We can race, having read this page when it was
 			 * less than last_pgno but now an aborted
 			 * allocation can make this page beyond last_pgno
-			 * so we must free it. If we can't get the 
+			 * so we must free it. If we can't get the
 			 * lock on the page again, then some other
 			 * thread will handle the issue.
 			 */
@@ -1832,11 +2038,11 @@ pg_err:				if (p != 0) {
 					    data_pgno, 0, 0, t_ret);
 					if (t_ret == 0 &&
 					     PGNO(cp->page) == PGNO_INVALID) {
-					     	(void)__memp_fput(mpf,
+						(void)__memp_fput(mpf,
 						     dbc->thread_info,
 						     cp->page, dbc->priority);
 						(void)__memp_fget(mpf,
-						     &data_pgno, 
+						     &data_pgno,
 						     dbc->thread_info, dbc->txn,
 						     DB_MPOOL_FREE, &cp->page);
 					}
@@ -1852,6 +2058,40 @@ pg_err:				if (p != 0) {
 				goto check;
 			}
 		}
+
+		/*
+		 * Before creating a new page in this region, check that the
+		 * region page still exists.  By this point, the transaction
+		 * that created the region must have aborted or committed,
+		 * because we now hold the metadata lock.  If we can't get the
+		 * latch, the page must exist.
+		 */
+		ret = __memp_fget(mpf, &region_pgno,
+		    dbc->thread_info, NULL, DB_MPOOL_TRY, &rpage);
+		if (ret == DB_LOCK_NOTGRANTED)
+			ret = 0;
+		else if (ret != 0) {
+			/* 
+			 * Free up the metadata lock.  If this was an error
+			 * other than a missing region page, bail.
+			 */
+			if ((t_ret = __LPUT(dbc, meta_lock)) != 0)
+				ret = t_ret;
+			if (ret != DB_PAGE_NOTFOUND)
+				goto err;
+			/*
+			 * The region no longer exists.  Release the page's lock
+			 * (we haven't created the page yet) and find a new page
+			 * on a different region.
+			 */
+			DISCARD(dbc, cp->page, cp->lock, 0, t_ret);
+			goto find;
+		} else
+			ret = __memp_fput(mpf,
+			    dbc->thread_info, rpage, dbc->priority);
+		rpage = NULL;
+		if (ret != 0)
+			goto meta_unlock;
 
 		if ((ret = __memp_fget(mpf, &meta_pgno,
 		    dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &meta)) != 0)
@@ -2093,7 +2333,7 @@ __heapc_split(dbc, key, data, is_first)
 			 * 33% free.
 			 */
 			size = DB_ALIGN(dbp->pgsize / 3, sizeof(u_int32_t));
-		else 
+		else
 			hdrs.std_hdr.flags |= HEAP_RECFIRST;
 
 		if ((ret = __heap_getpage(dbc, size, &availbits)) != 0)
@@ -2108,12 +2348,12 @@ __heapc_split(dbc, key, data, is_first)
 			/*
 			 * If we're called from heapc_reloc, we are only writing
 			 * a piece of the full record and shouldn't set
-			 * HEAP_RECFIRST. 
+			 * HEAP_RECFIRST.
 			 */
 			if (!is_first)
 				F_CLR(&(hdrs.std_hdr), HEAP_RECFIRST);
 		} else {
-			/* 
+			/*
 			 * Figure out how much room is on the page.  If we will
 			 * have to expand the offset table, account for that.
 			 */
@@ -2145,7 +2385,8 @@ __heapc_split(dbc, key, data, is_first)
 		DB_ASSERT(dbp->env, (F_ISSET(data, DB_DBT_PARTIAL) ||
 		    t_data.data >= data->data));
 		t_data.size = hdrs.std_hdr.size;
-		if (F_ISSET(data, DB_DBT_PARTIAL) && t_data.size > left - doff) {
+		if (F_ISSET(data, DB_DBT_PARTIAL) &&
+		    t_data.size > left - doff) {
 			if (buflen < t_data.size) {
 				if (__os_realloc(
 				    dbp->env, t_data.size, &buf) != 0)
@@ -2165,7 +2406,7 @@ __heapc_split(dbc, key, data, is_first)
 			memcpy(buf, data->data, left - doff);
 			doff -= t_data.size - left + doff;
 			buf = t_data.data;
-		}			
+		}
 		hdr_dbt.data = &hdrs;
 		hdr_dbt.size = sizeof(HEAPSPLITHDR);
 		indx = HEAP_FREEINDX(cp->page);
@@ -2263,7 +2504,7 @@ __heap_pitem(dbc, pagep, indx, nbytes, hdr, data)
 	DB_ASSERT(dbp->env, IS_DIRTY(pagep));
 	DB_ASSERT(dbp->env, nbytes == DB_ALIGN(nbytes, sizeof(u_int32_t)));
 	DB_ASSERT(dbp->env, DB_ALIGN(((HEAPHDR *)hdr->data)->size,
-	    sizeof (u_int32_t)) >= data->size);
+	    sizeof(u_int32_t)) >= data->size);
 	DB_ASSERT(dbp->env, nbytes >= hdr->size + data->size);
 
 	/*
@@ -2299,7 +2540,7 @@ __heap_pitem(dbc, pagep, indx, nbytes, hdr, data)
 		else if (HEAP_FREEINDX(pagep) >= indx) {
 			if (indx > (u_int32_t)HEAP_HIGHINDX(pagep) + 1)
 				HEAP_FREEINDX(pagep) = HEAP_HIGHINDX(pagep) + 1;
-			else 
+			else
 				HEAP_FREEINDX(pagep) = indx + 1;
 		}
 		while (++HEAP_HIGHINDX(pagep) < indx)
@@ -2525,12 +2766,12 @@ skip_alloc:
 			/*
 			 * If we have the last piece of this record and we're
 			 * reading the entire record, then what we need should
-			 * equal what is remaining. 
+			 * equal what is remaining.
 			 */
 			if (F_ISSET((HEAPHDR *)hdr, HEAP_RECLAST) &&
 			    !F_ISSET(dbt, DB_DBT_PARTIAL) &&
 			    (hdr->std_hdr.size != needed)) {
-				__db_errx(env, DB_STR_A("1168",
+				__db_errx(env, DB_STR_A("1167",
 			     "Incorrect record size in header: %s: rid %lu.%lu",
 				    "%s %lu %lu"), dbc->dbp->fname,
 				    (u_long)(cp->pgno), (u_long)(cp->indx));
@@ -2543,7 +2784,7 @@ skip_alloc:
 err:	DB_ASSERT(dbp->env, ret != DB_PAGE_NOTFOUND);
 	if (putpage && dpage != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, dpage, dbp->priority)) != 0 && ret == 0)
-	    	ret = t_ret;
+		ret = t_ret;
 	if ((t_ret = __TLPUT(dbc, data_lock)) != 0 && ret == 0)
 		ret = t_ret;
 

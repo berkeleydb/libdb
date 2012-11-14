@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -112,6 +112,8 @@ _NameToInfo(name)
 {
 	DBTCL_INFO *p;
 
+	if (name == NULL)
+		return (NULL);
 	LIST_FOREACH(p, &__db_infohead, entries)
 		if (strcmp(name, p->i_name) == 0)
 			return (p);
@@ -372,25 +374,46 @@ _Set3DBTList(interp, list, elem1, is1recno, elem2, is2recno, elem3)
  * _SetMultiList -- build a list for return from multiple get.
  *
  * PUBLIC: int _SetMultiList __P((Tcl_Interp *,
- * PUBLIC:	    Tcl_Obj *, DBT *, DBT*, DBTYPE, u_int32_t));
+ * PUBLIC:	    Tcl_Obj *, DBT *, DBT*, DBTYPE, u_int32_t, DBC*));
  */
 int
-_SetMultiList(interp, list, key, data, type, flag)
+_SetMultiList(interp, list, key, data, type, flag, dbc)
 	Tcl_Interp *interp;
 	Tcl_Obj *list;
 	DBT *key, *data;
 	DBTYPE type;
 	u_int32_t flag;
+	DBC *dbc;
 {
+	DB *hsdbp;
+	DB_TXN *txn;
+	DBT hkey, rkey, rdata;
+	DBTCL_INFO *dbcip;
 	db_recno_t recno;
 	u_int32_t dlen, klen;
-	int result;
+	int result, ret;
 	void *pointer, *dp, *kp;
 
 	recno = 0;
 	dlen = 0;
 	kp = NULL;
+	hsdbp = NULL;
+	txn = NULL;
 
+	if (type == DB_HEAP) {
+		memset(&hkey, 0, sizeof(DBT));
+		memset(&rkey, 0, sizeof(DBT));
+		rkey.data = &recno;
+		rkey.size = rkey.ulen = sizeof(recno);
+		rkey.flags = DB_DBT_USERMEM;
+		memset(&rdata, 0, sizeof(DBT));
+		rdata.flags = DB_DBT_USERMEM | DB_DBT_PARTIAL;
+
+		dbcip = _PtrToInfo(dbc);
+		hsdbp = (dbcip != NULL) ? dbcip->i_parent->hsdbp : NULL;
+		txn = (dbc != NULL) ? dbc->txn : NULL;
+	}
+	
 	DB_MULTIPLE_INIT(pointer, data);
 	result = TCL_OK;
 
@@ -413,7 +436,20 @@ _SetMultiList(interp, list, key, data, type, flag)
 		if (pointer == NULL)
 			break;
 
-		if (type == DB_RECNO || type == DB_QUEUE) {
+		if (type == DB_HEAP || type == DB_RECNO || type == DB_QUEUE) {
+			if (type == DB_HEAP) {
+				if (flag & DB_MULTIPLE_KEY) {
+					hkey.data = kp;
+					hkey.size = klen;
+					ret = hsdbp->pget(hsdbp, txn,
+					    &hkey, &rkey, &rdata, 0);
+					result = _ReturnSetup(interp,
+					    ret, DB_RETOK_DBGET(ret), "db get");
+					if (result == TCL_ERROR)
+						return (result);
+				} else
+					recno = 0;
+			}
 			result =
 			    _SetListRecnoElem(interp, list, recno, dp, dlen);
 			recno++;

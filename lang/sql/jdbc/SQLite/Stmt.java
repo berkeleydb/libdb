@@ -263,6 +263,14 @@ public class Stmt {
     public native String column_decltype(int col) throws SQLite.Exception;
 
     /**
+     * Return column name of column of SQLite3 statement.
+     * @param col column number, 0-based
+     * @return String or null
+     */
+
+    public native String column_name(int col) throws SQLite.Exception;
+
+    /**
      * Return origin column name of column of SQLite3 statement.
      * @param col column number, 0-based
      * @return String or null

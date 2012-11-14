@@ -8,6 +8,10 @@ extern "C" {
 
 int __memp_alloc __P((DB_MPOOL *, REGINFO *, MPOOLFILE *, size_t, roff_t *, void *));
 void __memp_free __P((REGINFO *, void *));
+int __memp_backup_open __P((ENV *, DB_MPOOLFILE *, const char *, const char *, u_int32_t, DB_FH **, void**));
+int __memp_backup_mpf __P((ENV *, DB_MPOOLFILE *, DB_THREAD_INFO *, db_pgno_t, db_pgno_t, DB_FH *, void *,  u_int32_t));
+int __memp_backup_close __P((ENV *, DB_MPOOLFILE *, const char *, DB_FH *, void *HANDLE));
+int __memp_failchk __P((ENV *));
 int __memp_bhwrite __P((DB_MPOOL *, DB_MPOOL_HASH *, MPOOLFILE *, BH *, int));
 int __memp_pgread __P((DB_MPOOLFILE *, BH *, int));
 int __memp_pg __P((DB_MPOOLFILE *, db_pgno_t, void *, int));

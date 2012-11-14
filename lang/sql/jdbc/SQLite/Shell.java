@@ -571,7 +571,8 @@ public class Shell implements Callback {
 	    System.exit(1);
 	}
 	try {
-	    s.db.open(dbname, 0);
+	    s.db.open(dbname, SQLite.Constants.SQLITE_OPEN_READWRITE |
+		      SQLite.Constants.SQLITE_OPEN_CREATE);
 	} catch (Exception e) {
 	    System.err.println("Unable to open database: " + e);
 	    System.exit(1);

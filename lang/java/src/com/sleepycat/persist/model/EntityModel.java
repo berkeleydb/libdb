@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -12,13 +12,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import com.sleepycat.compat.DbCompat;
 import com.sleepycat.persist.EntityStore;
 import com.sleepycat.persist.PrimaryIndex;
 import com.sleepycat.persist.SecondaryIndex;
 import com.sleepycat.persist.impl.Format;
 import com.sleepycat.persist.impl.PersistCatalog;
+import com.sleepycat.persist.impl.RefreshException;
 import com.sleepycat.persist.raw.RawObject;
 import com.sleepycat.persist.raw.RawType;
+import com.sleepycat.util.ClassResolver;
 
 /**
  * The base class for classes that provide entity model metadata.  An {@link
@@ -52,6 +55,7 @@ import com.sleepycat.persist.raw.RawType;
 public abstract class EntityModel {
 
     private volatile PersistCatalog catalog;
+    private ClassLoader classLoader;
 
     /**
      * The default constructor for use by subclasses.
@@ -78,17 +82,22 @@ public abstract class EntityModel {
 
     /**
      * Registers a persistent class, most importantly, a {@link
-     * PersistentProxy} class or entity subclass.
+     * PersistentProxy} class or entity subclass. Also registers an enum or 
+     * array class.
      *
-     * <p>Any persistent class may be registered in advance of using it, to
-     * avoid the overhead of updating the catalog database when an instance of
-     * the class is first stored.  This method <em>must</em> be called in two
-     * cases:</p>
+     * <p>Any persistent class , enum class or array may be registered in 
+     * advance of using it, to avoid the overhead of updating the catalog 
+     * database when an instance of the class is first stored.  This method 
+     * <em>must</em> be called in three cases:</p>
      * <ol>
      * <li>to register all {@link PersistentProxy} classes, and</li>
      * <li>to register an entity subclass defining a secondary key, if {@link
      * EntityStore#getSubclassIndex getSubclassIndex} is not called for the
-     * subclass.</li>
+     * subclass, and</li>
+     * <li>to register all new enum or array classes, if the these enum or 
+     * array classes are unknown for DPL but will be used in a Converter
+     * mutation.
+     * </li>
      * </ol>
      *
      * <p>For example:</p>
@@ -97,6 +106,8 @@ public abstract class EntityModel {
      * EntityModel model = new AnnotationModel();
      * model.registerClass(MyProxy.class);
      * model.registerClass(MyEntitySubclass.class);
+     * model.registerClass(MyEnum.class);
+     * model.registerClass(MyArray[].class);
      *
      * StoreConfig config = new StoreConfig();
      * ...
@@ -119,9 +130,12 @@ public abstract class EntityModel {
         } else {
             String className = persistentClass.getName();
             ClassMetadata meta = getClassMetadata(className);
-            if (meta == null) {
+            if (meta == null &&
+                !persistentClass.isEnum() &&
+                !persistentClass.isArray()) {
                 throw new IllegalArgumentException
-                    ("Class is not persistent: " + className);
+                    ("Class is not persistent, or is not an enum or array: " + 
+                     className);
             }
         }
     }
@@ -135,6 +149,23 @@ public abstract class EntityModel {
      */
     protected void setCatalog(final PersistCatalog newCatalog) {
         this.catalog = newCatalog;
+    }
+
+    /**
+     * Internal access method that should not be used by applications.
+     *
+     * This method is called during EntityStore construction, before using the
+     * model.
+     */
+    void setClassLoader(final ClassLoader loader) {
+        this.classLoader = loader;
+    }
+
+    /**
+     * Internal access method that should not be used by applications.
+     */
+    ClassLoader getClassLoader() {
+        return classLoader;
     }
 
     /**
@@ -165,6 +196,21 @@ public abstract class EntityModel {
      * is not associated with an open store.
      */
     public abstract Set<String> getKnownClasses();
+    
+    /**
+     * Returns the names of all known persistent enum and array classes that
+     * may be used to store persistent data.  This differs from 
+     * {@link #getKnownClasses}, which does not return enum and array classes 
+     * because they have no metadata.
+     *
+     * @return an unmodifiable set of enum and array class names.
+     *
+     * @throws IllegalStateException if this method is called for a model that
+     * is not associated with an open store.
+     */
+    public Set<String> getKnownSpecialClasses() {
+        return Collections.emptySet();
+    }
 
     /**
      * Returns the type information for the current version of a given class,
@@ -265,13 +311,33 @@ public abstract class EntityModel {
      * objects in another store, for example, in a conversion program.</p>
      */
     public final Object convertRawObject(RawObject raw) {
-        return catalog.convertRawObject(raw, null);
+        try {
+            return catalog.convertRawObject(raw, null);
+        } catch (RefreshException e) {
+            e.refresh();
+            try {
+                return catalog.convertRawObject(raw, null);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
+        }
     }
 
     /**
-     * Calls Class.forName with the current thread context class loader.  This
-     * method should be called by entity model implementations instead of
-     * calling Class.forName whenever loading an application class.
+     * Should be called by entity model implementations instead of calling
+     * Class.forName whenever loading an application class.  This method honors
+     * the BDB JE environment's ClassLoader property and uses {@link
+     * ClassResolver} to implement the class loading policy.
+     */
+    public Class resolveClass(String className)
+        throws ClassNotFoundException {
+
+        return ClassResolver.resolveClass(className, classLoader);
+    }
+
+    /**
+     * @deprecated use {@link #resolveClass} instead.  This method does not
+     * use the environment's ClassLoader property.
      */
     public static Class classForName(String className)
         throws ClassNotFoundException {

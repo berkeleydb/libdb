@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -33,7 +33,9 @@ class RawComplexInput extends RawAbstractInput {
     }
 
     @Override
-    Object readNext() {
+    Object readNext()
+        throws RefreshException {
+
         RawObject raw = objects[index];
         FieldInfo field = fields[index];
         index += 1;

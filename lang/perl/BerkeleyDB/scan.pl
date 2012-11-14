@@ -37,7 +37,7 @@ chdir "libraries" || die "Cannot chdir into './libraries': $!\n";
 
 foreach my $name (sort tuple glob "[2-9]*")
 {
-    next if $name =~ /(NC|private)$/;
+    next if $name =~ /(NOHEAP|NC|private)$/;
 
     my $inc = "$name/include/db.h" ;
     next unless -f $inc ;

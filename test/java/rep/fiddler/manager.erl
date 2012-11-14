@@ -30,15 +30,14 @@ recv_loop(Sock, Config) ->
             {ok,Tokens,_} = erl_scan:string(ValidInput),
             {ok, Result} = erl_parse:parse_term(Tokens),
             case Result of
-                {Path, shutdown} ->
-                    %%
-                    %% TODO: I think maybe instead of this, the path_mgr should be told
-                    %% to do the actual socket closing.  Then we wouldn't even need
-                    %% the registry to know about the sockets at all.
-                    %% 
-                    {ok, {_,_,PathSock,PathFwdSock,_}} = registry:lookup(Path),
-                    gen_tcp:close(PathSock),
-                    gen_tcp:close(PathFwdSock);
+                {init, Path, Opt} ->
+                    {ok, Num} = optstore:install(Path, Opt),
+                    send(Sock, integer_to_list(Num)),
+                    send(Sock, "\r\n");
+
+                {Path, Command} when is_tuple(Path) ->
+                    Pids = registry:lookup(Path),
+                    lists:foreach(fun(Pid) -> Pid ! Command end, Pids);
                 shutdown ->
                     send(Sock, "ok\r\n"),
                     halt();                     % first try is rather crude
@@ -60,9 +59,6 @@ recv_loop(Sock, Config) ->
                                           send(Sock, integer_to_list(To)),
                                           send(Sock, "}\r\n")
                                   end, registry:all());
-                {Path, Command} ->
-                    {ok, {_,_,_,_,Process}} = registry:lookup(Path),
-                    path_mgr:update(Process, Path, Command);
 
                 Command ->
                     %%

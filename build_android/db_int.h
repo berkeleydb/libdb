@@ -2,7 +2,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -263,6 +263,9 @@ typedef struct __fn {
 #define	F_CLR(p, f)		(p)->flags &= ~(f)
 #define	F_ISSET(p, f)		((p)->flags & (f))
 #define	F_SET(p, f)		(p)->flags |= (f)
+#define	F2_CLR(p, f)		((p)->flags2 &= ~(f))
+#define	F2_ISSET(p, f)		((p)->flags2 & (f))
+#define	F2_SET(p, f)		((p)->flags2 |= (f))
 #define	LF_CLR(f)		((flags) &= ~(f))
 #define	LF_ISSET(f)		((flags) & (f))
 #define	LF_SET(f)		((flags) |= (f))
@@ -334,6 +337,12 @@ typedef struct __fn {
 #define	STAT_DEC(env, cat, subcat, val, id)			NOP_STATEMENT
 #define	STAT_SET(env, cat, subcat, val, newval, id)		NOP_STATEMENT
 #define	STAT_SET_VERB(env, cat, subcat, val, newval, id1, id2)	NOP_STATEMENT
+#endif
+
+#if defined HAVE_SIMPLE_THREAD_TYPE
+#define DB_THREADID_INIT(t)	COMPQUIET((t), 0)
+#else
+#define DB_THREADID_INIT(t)	memset(&(t), 0, sizeof(t))
 #endif
 
 /*
@@ -536,8 +545,9 @@ typedef enum {
 	DB_APP_NONE=0,			/* No type (region). */
 	DB_APP_DATA,			/* Data file. */
 	DB_APP_LOG,			/* Log file. */
-	DB_APP_TMP,			/* Temporary file. */
-	DB_APP_RECOVER			/* We are in recovery. */
+	DB_APP_META,			/* Persistent metadata file. */
+	DB_APP_RECOVER,			/* We are in recovery. */
+	DB_APP_TMP			/* Temporary file. */
 } APPNAME;
 
 /*
@@ -738,6 +748,18 @@ typedef struct __flag_map {
 	u_int32_t inflag, outflag;
 } FLAG_MAP;
 
+typedef struct __db_backup_handle {
+	int	(*open) __P((DB_ENV *, const char *, const char *, void **));
+	int	(*write) __P((DB_ENV *,
+		    u_int32_t, u_int32_t, u_int32_t, u_int8_t *, void *));
+	int	(*close) __P((DB_ENV *, const char *, void *));
+	u_int32_t	size;
+	u_int32_t	read_count;
+	u_int32_t	read_sleep;
+#define	BACKUP_WRITE_DIRECT	0x0001
+	int	flags;
+} DB_BACKUP;
+
 /*
  * Internal database environment structure.
  *
@@ -811,6 +833,8 @@ struct __env {
 	DB_MUTEXMGR	*mutex_handle;	/* Mutex handle */
 	DB_REP		*rep_handle;	/* Replication handle */
 	DB_TXNMGR	*tx_handle;	/* Txn handle */
+
+	DB_BACKUP	*backup_handle;	/* database copy configuration. */
 
 	/*
 	 * XA support.

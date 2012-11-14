@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -48,11 +48,11 @@ import com.sleepycat.persist.StoreConfig;
  * #onRelatedEntityDelete}.  This establishes <em>foreign key constraints</em>
  * for the secondary key.</p>
  *
- * <p>The secondary key field type must be an array or collection type when a
- * <em>x-to-many</em> relationship is used or a singular type when an
+ * <p>The secondary key field type must be a Set, Collection or array type when
+ * a <em>x-to-many</em> relationship is used or a singular type when an
  * <em>x-to-one</em> relationship is used; see {@link #relate}.</p>
  *
- * <p>The field type (or element type, when an array or collection type is
+ * <p>The field type (or element type, when a Set, Collection or array type is
  * used) of a secondary key field must follow the same rules as for a {@link
  * <a href="PrimaryKey.html#keyTypes">primary key type</a>}.  The {@link <a
  * href="PrimaryKey.html#sortOrder">key sort order</a>} is also the same.</p>
@@ -91,12 +91,12 @@ public @interface SecondaryKey {
      *         <td>A person record with a non-unique employer key.</td>
      *     </tr>
      *     <tr><td>{@link Relationship#ONE_TO_MANY}</td>
-     *         <td>Array/Collection</td>
+     *         <td>Set/Collection/array</td>
      *         <td>Unique</td>
      *         <td>A person record with multiple unique email address keys.</td>
      *     </tr>
      *     <tr><td>{@link Relationship#MANY_TO_MANY}</td>
-     *         <td>Array/Collection</td>
+     *         <td>Set/Collection/array</td>
      *         <td>Duplicates</td>
      *         <td>A person record with multiple non-unique organization
      *             keys.</td>
@@ -110,10 +110,18 @@ public @interface SecondaryKey {
      * will have unique keys.</p>
      *
      * <p>For a <em>x-to-one</em> relationship, the secondary key field is
-     * singular; in other words, it may not be an array or collection type.
+     * singular; in other words, it may not be a Set, Collection or array type.
      * Conversely, for a <em>x-to-many</em> relationship, the secondary key
-     * field must be an array or collection type.  A collection type is any
+     * field must be a Set, Collection or array type.  A collection type is any
      * implementation of {@link java.util.Collection}.</p>
+     *
+     * <p>For a <em>x-to-many</em> relationship, the field type should normally
+     * be {@link java.util.Set} (or a subtype of this interface).  This
+     * accurately expresses the fact that an Entity may not have two identical
+     * secondary keys.  For flexibility, a {@link java.util.Collection} (or a
+     * subtype of this interface) or an array type may also be used.  In that
+     * case, any duplicate key values in the Collection or array are
+     * ignored.</p>
      */
     Relationship relate();
 

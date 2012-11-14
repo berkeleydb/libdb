@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST repmgr112
 # TEST Multi-process repmgr ack policies.
@@ -55,7 +55,7 @@ proc repmgr112 { } {
 	make_dbconfig $clientdir {}
 	puts $client "output $testdir/coutput"
 	puts $client "open_env"
-	puts $client "remote localhost $master_port"
+	puts $client "remote 127.0.0.1 $master_port"
 	puts $client "start client"
 	error_check_match start_client [gets $client] "*Successful*"
 
@@ -74,7 +74,7 @@ proc repmgr112 { } {
 	make_dbconfig $clientdir2 {}
 	puts $client2 "output $testdir/c2output"
 	puts $client2 "open_env"
-	puts $client2 "remote localhost $master_port"
+	puts $client2 "remote 127.0.0.1 $master_port"
 	puts $client2 "start client"
 	error_check_match start_client2 [gets $client2] "*Successful*"
 

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -46,16 +46,16 @@ proc sql001 { {nentries 1000} {tnum "001"} args} {
 	puts $confa "add_data_dir .."
 	puts $confa "set_create_dir .."
 	puts $confa "set_open_flags db_init_rep"
-	puts $confa "repmgr_site localhost $porta db_local_site on db_group_creator on "
-	puts $confa "repmgr_site localhost $portb"
+	puts $confa "repmgr_site 127.0.0.1 $porta db_local_site on db_group_creator on "
+	puts $confa "repmgr_site 127.0.0.1 $portb"
 	puts $confa "set_open_flags db_thread"
 	puts $confa "set_open_flags db_register"
 
 	puts $confb "add_data_dir .."
 	puts $confb "set_create_dir .."
 	puts $confb "set_open_flags db_init_rep"
-	puts $confb "repmgr_site localhost $portb db_local_site on"
-	puts $confb "repmgr_site localhost $porta db_bootstrap_helper on"
+	puts $confb "repmgr_site 127.0.0.1 $portb db_local_site on"
+	puts $confb "repmgr_site 127.0.0.1 $porta db_bootstrap_helper on"
 	puts $confb "set_open_flags db_thread"
 	puts $confb "set_open_flags db_register"
 

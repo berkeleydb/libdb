@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -355,7 +355,8 @@ proc repl_envsetup { envargs largs test {nclients 1} {droppct 0} { oob 0 } } {
 	error_check_good env_close [$env close] 0
 	berkdb envremove -home $testdir
 
-	set small_pagesize_tests [list test035 test096 test112 test113 test114]
+	set small_pagesize_tests [list test035 test096 test112 test113 \
+	    test114 test135 test136]
 	if { [lsearch -exact $small_pagesize_tests $test] != -1  } {
 		set pagesize 512
 	}
@@ -374,7 +375,7 @@ proc repl_envsetup { envargs largs test {nclients 1} {droppct 0} { oob 0 } } {
 	set logregion 2097152
 
 	set ma_cmd "berkdb_env_noerr -create -log_max $logmax $envargs \
-	    -cachesize { 0 4194304 1 } -log_regionmax $logregion \
+	    -cachesize { 0 16777216 1 } -log_regionmax $logregion \
 	    -lock_max_objects $lockmax -lock_max_locks $lockmax \
 	    -errpfx $masterdir $verbargs -pagesize $pagesize \
 	    -home $masterdir -txn nosync -rep_master -rep_transport \
@@ -388,7 +389,7 @@ proc repl_envsetup { envargs largs test {nclients 1} {droppct 0} { oob 0 } } {
 		set envid [expr $i + 2]
 		repladd $envid
                 set cl_cmd "berkdb_env_noerr -create $envargs -txn nosync \
-		    -cachesize { 0 10000000 0 } -log_regionmax $logregion \
+		    -cachesize { 0 16777216 0 } -log_regionmax $logregion \
 		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
 		    -errpfx $clientdir($i) $verbargs -pagesize $pagesize \
 		    -home $clientdir($i) -rep_client -rep_transport \
@@ -1734,6 +1735,14 @@ proc rep_test { method env repdb {nentries 10000} \
 		incr count
 	}
 	close $did
+	set privateindx [lsearch [$env get_open_flags] "-private"]
+	if { $databases_in_memory == 1 && $privateindx == -1 } {
+	    set inmemfile [lindex [$db get_dbname] 1]
+	    set inmemdir [$env get_home]
+	    # Don't dump/load, we don't have a replicated environment handle
+	    error_check_good dbverify_inmem \
+		[dbverify_inmem $inmemfile $inmemdir "" 0 1 0 1] 0
+	}
 	if { $repdb == "NULL" } {
 		error_check_good rep_close [$db close] 0
 	}
@@ -1858,6 +1867,14 @@ proc rep_test_bulk { method env repdb {nentries 10000} \
 	error_check_good txn [$t commit] 0
 	error_check_good txn_checkpoint [$env txn_checkpoint] 0
 	close $did
+	set privateindx [lsearch [$env get_open_flags] "-private"]
+	if { $databases_in_memory == 1 && $privateindx == -1 } {
+	    set inmemfile [lindex [$db get_dbname] 1]
+	    set inmemdir [$env get_home]
+	    # Don't dump/load, we don't have a replicated environment handle
+	    error_check_good dbverify_inmem \
+		[dbverify_inmem $inmemfile $inmemdir "" 0 1 0 1] 0
+	}
 	if { $repdb == "NULL" } {
 		error_check_good rep_close [$db close] 0
 	}
@@ -2275,8 +2292,21 @@ proc rep_verify { masterdir masterenv clientdir clientenv \
 
 	# Check locations of dbs, repfiles, region files.
 	if { $dbname != "NULL" } {
-		check_db_location $masterenv $dbname $datadir
-		check_db_location $clientenv $dbname $datadir
+		#
+		# check_db_location assumes the path through the env_home
+		# to the datadir, when one is given.  Construct that here.
+		#
+		if { $datadir != "" } {
+			set mhome [get_home $masterenv]
+			set chome [get_home $clientenv]
+			set mdatadir $mhome/$datadir
+			set cdatadir $chome/$datadir
+		} else {
+			set mdatadir ""
+			set cdatadir ""
+		}
+		check_db_location $masterenv $dbname $mdatadir
+		check_db_location $clientenv $dbname $cdatadir
 	}
 
 	if { $repfiles_in_memory } {
@@ -2377,65 +2407,6 @@ proc rep_verify_inmem { masterenv clientenv mdb cdb } {
 	set mrecs [stat_field $mdb stat "Number of records"]
 	set crecs [stat_field $cdb stat "Number of records"]
 	error_check_good recs $mrecs $crecs
-}
-
-# NOTE: This routine has been copied to ../test/sql/bdb_util.tcl
-# and changes to it should be made in both places because the SQL
-# tests are currently independent of the core tests. 
-#
-# Return a list of TCP port numbers that are not currently in use on
-# the local system.  Note that this doesn't actually reserve the
-# ports, so it's possible that by the time the caller tries to use
-# them, another process could have taken one of them.  But for our
-# purposes that's unlikely enough that this is still useful: it's
-# still better than trying to find hard-coded port numbers that will
-# always be available.
-#
-# Using a starting baseport value that falls in the non-ephemeral port
-# range on most platforms.  Can override starting baseport by setting
-# environment variable BDBBASEPORT. 
-#
-proc available_ports { n { rangeincr 10 } } {
-	global env
-
-	if { [info exists env(BDBBASEPORT)] } {
-		set baseport $env(BDBBASEPORT)
-	} else {
-		set baseport 30100
-	}
-
-	# Try sets of contiguous ports ascending from baseport.
-	for { set i $baseport } { $i < $baseport + $rangeincr * 100 } \
-	    { incr i $rangeincr } {
-		set ports {}
-		set socks {}
-		set numports $n
-		set curport $i
-
-		# Try one set of contiguous ports.
-		while { [incr numports -1] >= 0 } {
-			incr curport
-			if [catch { socket -server Unused \
-			    -myaddr localhost $curport } sock] {
-				# A port is unavailable, try another set.
-				break
-			}
-			lappend socks $sock
-			lappend ports $curport
-		}
-		foreach sock $socks {
-			close $sock
-		}
-		if { $numports == -1 } {
-			# We have all the ports we need.
-			break
-		}
-	}
-	if { $numports == -1 } {
-		return $ports
-	} else {
-		error "available_ports: could not get ports for $baseport"
-	}
 }
 
 # Return the corresponding site number for an individual port number
@@ -2921,4 +2892,22 @@ proc replicate_make_config { sitedir i pri } {
 		puts $cid "$carg $cval"
 	}
 	close $cid
+}
+
+#
+# Proc for checking exclusive access to databases on clients.
+#
+proc rep_client_access { env testfile result } {
+	set t [$env txn -nowait]
+	set ret [catch {eval {berkdb_open} -env $env -txn $t $testfile} res]
+	$t abort
+	if { $result == "FAIL" } {
+		error_check_good clacc_fail $ret 1
+		error_check_good clacc_fail_err \
+		    [is_substr $res "DB_LOCK_NOTGRANTED"] 1
+	} else {
+		error_check_good clacc_good $ret 0
+		error_check_good clacc_good1 [is_valid_db $res] TRUE
+		error_check_good clacc_close [$res close] 0
+	}
 }

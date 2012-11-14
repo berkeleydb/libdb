@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -12,6 +12,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.sleepycat.compat.DbCompat;
+
 /**
  * The btree comparator for persistent key classes.  The serialized form of
  * this comparator is stored in the BDB JE database descriptor so that the
@@ -19,7 +21,8 @@ import java.util.Map;
  *
  * @author Mark Hayes
  */
-public class PersistComparator implements Comparator<byte[]>, Serializable {
+public class PersistComparator implements
+    Comparator<byte[]>, Serializable {
 
     private static final long serialVersionUID = 5221576538843355317L;
 
@@ -50,50 +53,76 @@ public class PersistComparator implements Comparator<byte[]>, Serializable {
         }
     }
 
+    /**
+     * In BDB JE this method will be called after the comparator is
+     * deserialized, including during recovery.  We must construct the binding
+     * here, without access to the stored catalog since recovery is not
+     * complete.
+     */
+    public void initialize(ClassLoader loader) {
+        final Catalog catalog;
+        if (fieldFormatData == null) {
+            catalog = new ComparatorCatalog(loader, null);
+        } else {
+            final Map<String, Format> enumFormats =
+                new HashMap<String, Format>();
+            catalog = new ComparatorCatalog(loader, enumFormats);
+            for (Map.Entry<String, String[]> entry :
+                 fieldFormatData.entrySet()) {
+                final String fldClassName = entry.getKey();
+                final String[] enumNames = entry.getValue();
+                final Class fldClass;
+                try {
+                    fldClass = catalog.resolveClass(fldClassName);
+                } catch (ClassNotFoundException e) {
+                    throw new IllegalStateException(e);
+                }
+                enumFormats.put(fldClassName,
+                                new EnumFormat(catalog, fldClass, enumNames));
+            }
+            for (Format fldFormat : enumFormats.values()) {
+                fldFormat.initializeIfNeeded(catalog, null /*model*/);
+            }
+        }
+        final Class keyClass;
+        try {
+            keyClass = catalog.resolveClass(keyClassName);
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException(e);
+        }
+        binding = new PersistKeyBinding(catalog, keyClass,
+                                        comositeFieldOrder);
+    }
+
     public int compare(byte[] b1, byte[] b2) {
 
         /*
-         * The binding will be null after the comparator is deserialized, i.e.,
-         * during BDB JE recovery.  We must construct it here, without access
-         * to the stored catalog since recovery is not complete.
+         * In BDB JE, the binding is initialized by the initialize method.  In
+         * BDB, the binding is intialized by the constructor.
          */
         if (binding == null) {
-            Catalog catalog = SimpleCatalog.getInstance();
-            Map<String, Format> enumFormats = null;
-            if (fieldFormatData != null) {
-                enumFormats = new HashMap<String, Format>();
-                for (Map.Entry<String, String[]> entry :
-                     fieldFormatData.entrySet()) {
-                    final String fldClassName = entry.getKey();
-                    final String[] enumNames = entry.getValue();
-                    final Class fldClass;
-                    try {
-                        fldClass = SimpleCatalog.classForName(fldClassName);
-                    } catch (ClassNotFoundException e) {
-                        throw new IllegalStateException(e);
-                    }
-                    enumFormats.put(fldClassName,
-                                    new EnumFormat(fldClass, enumNames));
-                }
-                catalog = new ComparatorCatalog(enumFormats);
-                for (Format fldFormat : enumFormats.values()) {
-                    fldFormat.initializeIfNeeded(catalog, null /*model*/);
-                }
-            }
-            final Class keyClass;
-            try {
-                keyClass = SimpleCatalog.classForName(keyClassName);
-            } catch (ClassNotFoundException e) {
-                throw new IllegalStateException(e);
-            }
-            binding = new PersistKeyBinding(catalog, keyClass,
-                                            comositeFieldOrder);
+            throw DbCompat.unexpectedState("Not initialized");
         }
 
-        Comparable k1 = (Comparable) binding.bytesToObject(b1, 0, b1.length);
-        Comparable k2 = (Comparable) binding.bytesToObject(b2, 0, b2.length);
+        try {
+            Comparable k1 =
+                (Comparable) binding.bytesToObject(b1, 0, b1.length);
+            Comparable k2 =
+                (Comparable) binding.bytesToObject(b2, 0, b2.length);
 
-        return k1.compareTo(k2);
+            return k1.compareTo(k2);
+        } catch (RefreshException e) {
+
+            /*
+             * Refresh is not applicable to PersistComparator, which is used
+             * during recovery.  All field formats used by the comparator are
+             * guaranteed to be predefined, because they must be primitive or
+             * primitive wrapper types.  So they are always present in the
+             * catalog, and cannot change as the result of class evolution or
+             * replication.
+             */
+            throw DbCompat.unexpectedException(e);
+        }
     }
 
     @Override

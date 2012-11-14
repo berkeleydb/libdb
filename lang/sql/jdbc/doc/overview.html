@@ -25,9 +25,9 @@ be generated to include support for both SQLite 2.x and 3.x and detects at
 runtime the type of the database.
 <P>
 The current source tarball can be downloaded from
-<A HREF="http://www.ch-werner.de/javasqlite/javasqlite-20110430.tar.gz">
-javasqlite-20110430.tar.gz</A>.
-It has been tested on Linux, using SQLite 2.8.17 and 3.7.0,
+<A HREF="http://www.ch-werner.de/javasqlite/javasqlite-20120209.tar.gz">
+javasqlite-20120209.tar.gz</A>.
+It has been tested on Linux, using SQLite 2.8.17 and 3.7.9,
 and JDK 1.4/1.5/1.6 from
 <A HREF="http://java.sun.com" TARGET="_blank">Sun</A>.
 The change log starting from August 2007 is <A HREF="ChangeLog">here</A>.
@@ -72,14 +72,15 @@ For Win32 (NT4 or above) the makefiles <TT>javasqlite.mak</TT>,
 in the source archive. These makefiles contain some build
 instructions and use the J2SE 1.4.2 from Sun and MS Visual C++ 6.0.
 <P>
-A DLL with the native JNI part (including SQLite 3.7.6.2)
+A DLL with the native JNI part (including SQLite 3.7.7.1)
 and the JAR file with the Java part can be downloaded from
-<A HREF="http://www.ch-werner.de/javasqlite/javasqlite-20110430-win32.zip">
-javasqlite-20110430-win32.zip</A>.
+<A HREF="http://www.ch-werner.de/javasqlite/javasqlite-20110827-win32.zip">
+javasqlite-20110827-win32.zip</A>.
 <P>
 After successful build and installation a small
 <A HREF="test.java">test program</A> can be run by invoking the
-following commands:
+following commands (on OJEC replace the <TT>java</TT> command by
+<TT>cvm</TT>):
 <P>
 <PRE>
    $ make test
@@ -99,6 +100,7 @@ and incremental blob I/O through <A HREF="SQLite/Blob.html">SQLite.Blob</A>
 class) refer to another <A HREF="test3.java">test program</A>.
 <P>
 A simple shell modelled after that of SQLite can be invoked as
+(on OJEC replace the <TT>java</TT> command by <TT>cvm</TT>):
 <PRE>
    $ java SQLite.Shell [options] database [sql string]
 </PRE>
@@ -150,7 +152,7 @@ determines, how date/time/timestamp data is interpreted.
 If set to <TT>daterepr=julian</TT>, on INSERT/UPDATE these
 datatypes are converted to a floating point number
 expressing a julian day number as described in the
-<A href="http://www.sqlite.org/cvstrac/wiki?p=DateAndTimeFunctions">
+<A href="http://www.sqlite.org/cvstrac/wiki?p=DateAndTimeFunctions" TARGET="_blank">
 SQLite Wiki</A>. On retrieval (SELECT), the floating point
 representation is preferred. All other values of the <TT>daterepr</TT>
 property use the string formats <TT>YYYY-mm-dd</TT> for date,
@@ -172,7 +174,7 @@ If using a non OJEC version of Java it can be invoked by
 </PRE>
 If using an OJEC version of Java it can be invoked by
 <PRE>
-   $ java -cp sqlite.jar SQLite.BenchmarkDataSource ...
+   $ cvm -cp sqlite.jar SQLite.BenchmarkDataSource ...
 </PRE>
 For further details see the usage information when invoked without
 arguments and consult the source code.
@@ -183,7 +185,7 @@ ARM Linux can be found in
 How To compile SQLite with JDBC for the iPAQ</A>.
 <P>
 Tim Anderson has some notes on compiling in his
-<A HREF="http://www.itwriting.com/sqlitenotes.php">sqlitenotes</A>.
+<A HREF="http://www.itwriting.com/sqlitenotes.php" TARGET="_blank">sqlitenotes</A>.
 <P>
 Stanislaw Ciszewski had also success on MacOSX, see his
 <A HREF="scnotes.txt">remarks here</A>.

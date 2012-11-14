@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -737,14 +737,6 @@ __log_newfile(dblp, lsnp, logfile, version)
 	if ((ret =
 	    __log_encrypt_record(env, &t, &hdr, (u_int32_t)tsize)) != 0)
 		goto err;
-#ifdef HAVE_LOG_CHECKSUM
-	if (lp->persist.version != DB_LOGVERSION)
-		__db_chksum(NULL, t.data, t.size,
-		    (CRYPTO_ON(env)) ? db_cipher->mac_key : NULL, hdr.chksum);
-	else
-		__db_chksum(&hdr, t.data, t.size,
-		    (CRYPTO_ON(env)) ? db_cipher->mac_key : NULL, hdr.chksum);
-#endif
 
 	if ((ret = __log_putr(dblp, &lsn,
 	    &t, lastoff == 0 ? 0 : lastoff - lp->len, &hdr)) != 0)
@@ -811,6 +803,7 @@ __log_putr(dblp, lsn, dbt, prev, h)
 	hdr->prev = prev;
 	hdr->len = (u_int32_t)hdr->size + dbt->size;
 
+#ifdef HAVE_LOG_CHECKSUM
 	/*
 	 * If we were passed in a nonzero checksum, our caller calculated
 	 * the checksum before acquiring the log mutex, as an optimization.
@@ -820,8 +813,7 @@ __log_putr(dblp, lsn, dbt, prev, h)
 	 * here.
 	 */
 	if (hdr->chksum[0] == 0) {
-#ifdef HAVE_LOG_CHECKSUM
-		if (lp->persist.version != DB_LOGVERSION)
+		if (lp->persist.version < DB_LOGCHKSUM)
 			__db_chksum(NULL, dbt->data, dbt->size,
 			    (CRYPTO_ON(env)) ? db_cipher->mac_key : NULL,
 			    hdr->chksum);
@@ -829,14 +821,13 @@ __log_putr(dblp, lsn, dbt, prev, h)
 			__db_chksum(hdr, dbt->data, dbt->size,
 			    (CRYPTO_ON(env)) ? db_cipher->mac_key : NULL,
 			    hdr->chksum);
-#endif
-	} else if (lp->persist.version == DB_LOGVERSION) {
+	} else if (lp->persist.version >= DB_LOGCHKSUM)
 		/*
-		 * We need to correct for prev and len since they are not
-		 * set before here.
+		 * We need to include hdr->prev and len here, since they were
+		 * still zero at the time of the caller's __db_chksum() call.
 		 */
 		LOG_HDR_SUM(CRYPTO_ON(env), hdr, hdr->chksum);
-	}
+#endif
 
 	if (lp->db_log_inmemory && (ret = __log_inmem_chkspace(dblp,
 	    (u_int32_t)hdr->size + dbt->size)) != 0)
@@ -1610,10 +1601,6 @@ __log_rep_put(env, lsnp, rec, flags)
 
 	if ((ret = __log_encrypt_record(env, dbt, &hdr, rec->size)) != 0)
 		goto err;
-#ifdef HAVE_LOG_CHECKSUM
-	__db_chksum(&hdr, t.data, t.size,
-	    (CRYPTO_ON(env)) ? db_cipher->mac_key : NULL, hdr.chksum);
-#endif
 
 	DB_ASSERT(env, LOG_COMPARE(lsnp, &lp->lsn) == 0);
 	ret = __log_putr(dblp, lsnp, dbt, lp->lsn.offset - lp->len, &hdr);

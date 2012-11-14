@@ -1,12 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.impl;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import com.sleepycat.compat.DbCompat;
@@ -16,11 +17,11 @@ import com.sleepycat.compat.DbCompat;
  * Used to cause an Accessor to read a widened value.
  *
  * For non-key fields we support all Java primitive widening:
- * - byte to short, int, long, float, double or BigInteger
- * - short to int, long, float, double or BigInteger
- * - char to int, long, float, double or BigInteger
- * - int to long, float, double or BigInteger
- * - long to float, double or BigInteger
+ * - byte to short, int, long, float, double, BigInteger and BigDecimal
+ * - short to int, long, float, double, BigInteger and BigDecimal
+ * - char to int, long, float, double, BigInteger and BigDecimal
+ * - int to long, float, double, BigInteger and BigDecimal
+ * - long to float, double, BigInteger and BigDecimal
  * - float to double
  *
  * For non-key fields we also support:
@@ -223,6 +224,13 @@ class WidenerInput extends AbstractInput {
             default:
                 return false;
             }
+        case Format.ID_STRING:
+            switch (toFormatId) {
+            case Format.ID_OBJECT:
+                return !isSecKeyField;
+            default:
+                return false;
+            }
         default:
             return false;
         }
@@ -237,6 +245,10 @@ class WidenerInput extends AbstractInput {
 
     public void registerPriKeyObject(Object o) {
         input.registerPriKeyObject(o);
+    }
+
+    public void registerPriStringKeyObject(Object o) {
+        input.registerPriStringKeyObject(o);
     }
 
     public int readArrayLength() {
@@ -255,11 +267,15 @@ class WidenerInput extends AbstractInput {
         throw DbCompat.unexpectedState();
     }
 
-    public Object readKeyObject(Format fromFormat) {
+    public Object readKeyObject(Format fromFormat)
+        throws RefreshException {
+
         return readObject();
     }
 
-    public Object readObject() {
+    public Object readObject()
+        throws RefreshException {
+
         switch (fromFormatId) {
         case Format.ID_BOOL:
             checkToFormat(Format.ID_BOOL_W);
@@ -297,6 +313,9 @@ class WidenerInput extends AbstractInput {
         case Format.ID_CHAR_W:
             Character c = (Character) input.readObject();
             return (c != null) ? charToObject(c) : null;
+        case Format.ID_STRING:
+            checkToFormat(Format.ID_OBJECT);
+            return input.readStringObject();
         default:
             throw DbCompat.unexpectedState(String.valueOf(fromFormatId));
         }
@@ -441,7 +460,9 @@ class WidenerInput extends AbstractInput {
         throw DbCompat.unexpectedState(String.valueOf(fromFormatId));
     }
 
-    public short readShort() {
+    public short readShort()
+        throws RefreshException {
+
         checkToFormat(Format.ID_SHORT);
         switch (fromFormatId) {
         case Format.ID_BYTE:
@@ -451,7 +472,9 @@ class WidenerInput extends AbstractInput {
         }
     }
 
-    public int readInt() {
+    public int readInt()
+        throws RefreshException {
+
         checkToFormat(Format.ID_INT);
         switch (fromFormatId) {
         case Format.ID_BYTE:
@@ -465,7 +488,9 @@ class WidenerInput extends AbstractInput {
         }
     }
 
-    public long readLong() {
+    public long readLong()
+        throws RefreshException {
+
         checkToFormat(Format.ID_LONG);
         switch (fromFormatId) {
         case Format.ID_BYTE:
@@ -481,7 +506,9 @@ class WidenerInput extends AbstractInput {
         }
     }
 
-    public float readSortedFloat() {
+    public float readSortedFloat()
+        throws RefreshException {
+
         checkToFormat(Format.ID_FLOAT);
         switch (fromFormatId) {
         case Format.ID_BYTE:
@@ -499,7 +526,9 @@ class WidenerInput extends AbstractInput {
         }
     }
 
-    public double readSortedDouble() {
+    public double readSortedDouble()
+        throws RefreshException {
+
         checkToFormat(Format.ID_DOUBLE);
         switch (fromFormatId) {
         case Format.ID_BYTE:
@@ -519,7 +548,9 @@ class WidenerInput extends AbstractInput {
         }
     }
 
-    public BigInteger readBigInteger() {
+    public BigInteger readBigInteger()
+        throws RefreshException {
+
         checkToFormat(Format.ID_BIGINT);
         switch (fromFormatId) {
         case Format.ID_BYTE:
@@ -536,10 +567,33 @@ class WidenerInput extends AbstractInput {
             throw DbCompat.unexpectedState(String.valueOf(fromFormatId));
         }
     }
+    
+    public BigDecimal readSortedBigDecimal() 
+        throws RefreshException {
+        checkToFormat(Format.ID_BIGDEC);
+        switch (fromFormatId) {
+        case Format.ID_BYTE:
+            return BigDecimal.valueOf(input.readByte());
+        case Format.ID_SHORT:
+            return BigDecimal.valueOf(input.readShort());
+        case Format.ID_INT:
+            return BigDecimal.valueOf(input.readInt());
+        case Format.ID_LONG:
+            return BigDecimal.valueOf(input.readLong());
+        case Format.ID_CHAR:
+            return BigDecimal.valueOf(input.readChar());
+        default:
+            throw DbCompat.unexpectedState(String.valueOf(fromFormatId));
+        }
+    }
 
     private void checkToFormat(int id) {
         if (toFormatId != id) {
             throw DbCompat.unexpectedState(String.valueOf(toFormatId));
         }
+    }
+
+    public Object readStringObject(){
+        throw DbCompat.unexpectedState();
     }
 }

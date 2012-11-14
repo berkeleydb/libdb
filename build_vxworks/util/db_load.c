@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -14,7 +14,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.\n";
+    "Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 typedef struct {			/* XXX: Globals. */
@@ -91,9 +91,7 @@ db_load_main(argc, argv)
 	else
 		++progname;
 
-	if ((exitval = db_load_version_check()) != 0)
-		goto done;
-
+	clist = NULL;
 	ldg.progname = progname;
 	ldg.lineno = 0;
 	ldg.endodata = ldg.endofile = 0;
@@ -102,6 +100,9 @@ db_load_main(argc, argv)
 	ldg.hdrbuf = NULL;
 	ldg.home = NULL;
 	ldg.passwd = NULL;
+
+	if ((exitval = db_load_version_check()) != 0)
+		goto done;
 
 	mode = NOTSET;
 	ldf = 0;
@@ -224,7 +225,8 @@ db_load_main(argc, argv)
 			goto done;
 		case 'V':
 			printf("%s\n", db_version(NULL, NULL, NULL));
-			return (EXIT_SUCCESS);
+			exitval = (EXIT_SUCCESS);
+			goto done;
 		case '?':
 		default:
 			exitval = db_load_usage();
@@ -278,7 +280,10 @@ err:		exitval = 1;
 
 	/* Resend any caught signal. */
 	__db_util_sigresend();
-	free(clist);
+
+done:
+	if (clist != NULL)
+		free(clist);
 	if (ldg.passwd != NULL)
 		free(ldg.passwd);
 
@@ -289,7 +294,6 @@ err:		exitval = 1;
 	 * 0 is implementation-defined by the ANSI C standard.  I don't see
 	 * any good solutions that don't involve API changes.
 	 */
-done:
 	return (exitval == 0 ? (existed == 0 ? 0 : 1) : 2);
 }
 
@@ -770,6 +774,7 @@ err:	dbenv->err(dbenv, ret, "DB_ENV->open");
 	NUMBER(name, value, "extentsize", set_q_extentsize, u_int32_t);	\
 	NUMBER(name, value, "h_ffactor", set_h_ffactor, u_int32_t);	\
 	NUMBER(name, value, "h_nelem", set_h_nelem, u_int32_t);		\
+	NUMBER(name, value, "heap_regionsize", set_heap_regionsize, u_int32_t);\
 	NUMBER(name, value, "re_len", set_re_len, u_int32_t);		\
 	STRING(name, value, "re_pad", set_re_pad);			\
 	  FLAG(name, value, "recnum", DB_RECNUM);			\

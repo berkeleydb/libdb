@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.impl;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -72,35 +73,33 @@ public class Store {
     private static final String DB_NAME_PREFIX = "com.sleepycat.persist.";
     private static final String CATALOG_DB = DB_NAME_PREFIX + "formats";
     private static final String SEQUENCE_DB = DB_NAME_PREFIX + "sequences";
-    private static final TransactionConfig NO_WAIT_TXN_CONFIG;
-    static {
-        NO_WAIT_TXN_CONFIG = new TransactionConfig();
-        NO_WAIT_TXN_CONFIG.setNoWait(true);
-    }
 
     private static Map<Environment, Map<String, PersistCatalog>> catalogPool =
         new WeakHashMap<Environment, Map<String, PersistCatalog>>();
 
     /* For unit testing. */
     private static SyncHook syncHook;
+    public static boolean expectFlush;
 
-    private Environment env;
-    private boolean rawAccess;
+    private final Environment env;
+    private final boolean rawAccess;
     private volatile PersistCatalog catalog;
     private EntityModel model;
-    private StoreConfig storeConfig;
-    private String storeName;
-    private String storePrefix;
-    private Map<String, InternalPrimaryIndex> priIndexMap;
-    private Map<String, InternalSecondaryIndex> secIndexMap;
-    private Map<String, DatabaseConfig> priConfigMap;
-    private Map<String, SecondaryConfig> secConfigMap;
-    private Map<String, PersistKeyBinding> keyBindingMap;
-    private Map<String, Sequence> sequenceMap;
-    private Map<String, SequenceConfig> sequenceConfigMap;
+    private final StoreConfig storeConfig;
+    private final String storeName;
+    private final String storePrefix;
+    private final Map<String, InternalPrimaryIndex> priIndexMap;
+    private final Map<String, InternalSecondaryIndex> secIndexMap;
+    private final Map<String, DatabaseConfig> priConfigMap;
+    private final Map<String, SecondaryConfig> secConfigMap;
+    private final Map<String, PersistKeyBinding> keyBindingMap;
     private Database sequenceDb;
-    private IdentityHashMap<Database, Object> deferredWriteDatabases;
-    private Map<String, Set<String>> inverseRelatedEntityMap;
+    private final Map<String, Sequence> sequenceMap;
+    private final Map<String, SequenceConfig> sequenceConfigMap;
+    private final IdentityHashMap<Database, Object> deferredWriteDatabases;
+    private final Map<String, Set<String>> inverseRelatedEntityMap;
+    private final TransactionConfig autoCommitTxnConfig;
+    private final TransactionConfig autoCommitNoWaitTxnConfig;
 
     public Store(Environment env,
                  String storeName,
@@ -119,9 +118,15 @@ public class Store {
             throw new NullPointerException
                 ("env and storeName parameters must not be null");
         }
+
         storeConfig = (config != null) ?
-            config.cloneConfig() :
+            config.clone() :
             StoreConfig.DEFAULT;
+
+        autoCommitTxnConfig = new TransactionConfig();
+        autoCommitNoWaitTxnConfig = new TransactionConfig();
+        autoCommitNoWaitTxnConfig.setNoWait(true);
+
         model = config.getModel();
 
         storePrefix = NAME_PREFIX + storeName + NAME_SEPARATOR;
@@ -145,7 +150,7 @@ public class Store {
             dbConfig.setTransactional
                 (storeConfig.getTransactional());
             catalog = new PersistCatalog
-                (null, env, storePrefix, storePrefix + CATALOG_DB, dbConfig,
+                (env, storePrefix, storePrefix + CATALOG_DB, dbConfig,
                  null /*model*/, config.getMutations(), rawAccess, this);
         } else {
             /* Open the shared catalog that uses the current model. */
@@ -159,44 +164,18 @@ public class Store {
                 if (catalog != null) {
                     catalog.openExisting();
                 } else {
-                    Transaction txn = null;
-                    if (storeConfig.getTransactional() &&
-                        DbCompat.getThreadTransaction(env) == null) {
-                        txn = env.beginTransaction(null, null);
-                    }
-                    boolean success = false;
-                    try {
-                        DatabaseConfig dbConfig = new DatabaseConfig();
-                        dbConfig.setAllowCreate(storeConfig.getAllowCreate());
-                        dbConfig.setExclusiveCreate
-                            (storeConfig.getExclusiveCreate());
-                        dbConfig.setReadOnly(storeConfig.getReadOnly());
-                        dbConfig.setTransactional
-                            (storeConfig.getTransactional());
-                        DbCompat.setTypeBtree(dbConfig);
-                        catalog = new PersistCatalog
-                            (txn, env, storePrefix, storePrefix + CATALOG_DB,
-                             dbConfig, model, config.getMutations(), rawAccess,
-                             this);
-                        catalogMap.put(storeName, catalog);
-                        success = true;
-                    } finally {
-
-                        /*
-                         * If the catalog is read-only we abort rather than
-                         * commit, because a ReplicaWriteException may have
-                         * occurred.  ReplicaWriteException invalidates the
-                         * transaction, and there are no writes to commit
-                         * anyway. [#16655]
-                         */
-                        if (txn != null) {
-                            if (success && !catalog.isReadOnly()) {
-                                txn.commit();
-                            } else {
-                                txn.abort();
-                            }
-                        }
-                    }
+                    DatabaseConfig dbConfig = new DatabaseConfig();
+                    dbConfig.setAllowCreate(storeConfig.getAllowCreate());
+                    dbConfig.setExclusiveCreate
+                        (storeConfig.getExclusiveCreate());
+                    dbConfig.setReadOnly(storeConfig.getReadOnly());
+                    dbConfig.setTransactional
+                        (storeConfig.getTransactional());
+                    DbCompat.setTypeBtree(dbConfig);
+                    catalog = new PersistCatalog
+                        (env, storePrefix, storePrefix + CATALOG_DB, dbConfig,
+                         model, config.getMutations(), rawAccess, this);
+                    catalogMap.put(storeName, catalog);
                 }
             }
         }
@@ -244,13 +223,20 @@ public class Store {
     }
 
     public StoreConfig getConfig() {
-        return storeConfig.cloneConfig();
+        return storeConfig.clone();
     }
 
     public String getStoreName() {
         return storeName;
     }
 
+
+    /**
+     * For unit testing.
+     */
+    public boolean isReplicaUpgradeMode() {
+        return catalog.isReplicaUpgradeMode();
+    }
 
     public EntityModel getModel() {
         return model;
@@ -327,7 +313,7 @@ public class Store {
             DatabaseConfig dbConfig = getPrimaryConfig(entityMeta);
             if (dbConfig.getTransactional() &&
                 DbCompat.getThreadTransaction(env) == null) {
-                txn = env.beginTransaction(null, NO_WAIT_TXN_CONFIG);
+                txn = env.beginTransaction(null, autoCommitNoWaitTxnConfig);
             }
             PrimaryOpenState priOpenState =
                 new PrimaryOpenState(entityClassName);
@@ -357,7 +343,8 @@ public class Store {
                     final String[] fileAndDbNames =
                         parseDbName(storePrefix + dbClassName);
                         db = DbCompat.openDatabase(env, txn, fileAndDbNames[0],
-                                                   fileAndDbNames[1], dbConfig);
+                                                   fileAndDbNames[1],
+                                                   dbConfig);
                 }
                 if (db == null) {
                     throw new IndexNotAvailableException
@@ -495,7 +482,7 @@ public class Store {
                 relatedKeyClsName = null;
             } else {
                 try {
-                    relatedCls = EntityModel.classForName(relatedClsName);
+                    relatedCls = catalog.resolveClass(relatedClsName);
                 } catch (ClassNotFoundException e) {
                     throw new IllegalArgumentException
                         ("Related entity class not found: " +
@@ -503,8 +490,7 @@ public class Store {
                 }
                 relatedKeyClsName = SimpleCatalog.keyClassName
                     (relatedEntityMeta.getPrimaryKey().getClassName());
-                relatedKeyCls =
-                    SimpleCatalog.keyClassForName(relatedKeyClsName);
+                relatedKeyCls = catalog.resolveKeyClass(relatedKeyClsName);
             }
 
             /*
@@ -560,8 +546,18 @@ public class Store {
              * catalog, even if no instances of the subclass are stored.
              * [#16399]
              */
-            catalog.getFormat(entityClass,
-                              false /*checkEntitySubclassIndexes*/);
+            try {
+                catalog.getFormat(entityClass,
+                                  false /*checkEntitySubclassIndexes*/);
+            } catch (RefreshException e) {
+                e.refresh();
+                try {
+                    catalog.getFormat(entityClass,
+                                      false /*checkEntitySubclassIndexes*/);
+                } catch (RefreshException e2) {
+                    throw DbCompat.unexpectedException(e2);
+                }
+            }
         }
 
         /*
@@ -611,7 +607,8 @@ public class Store {
                 Transaction txn = null;
                 if (getPrimaryConfig(entityMeta).getTransactional() &&
                     DbCompat.getThreadTransaction(env) == null) {
-                    txn = env.beginTransaction(null, NO_WAIT_TXN_CONFIG);
+                    txn = env.beginTransaction(null,
+                                               autoCommitNoWaitTxnConfig);
                 }
                 boolean success = false;
                 try {
@@ -675,8 +672,7 @@ public class Store {
             if (secIndex == null) {
                 String keyClassName = getSecKeyClass(secKeyMeta);
                 /* RawMode: should not require class. */
-                Class keyClass =
-                    SimpleCatalog.keyClassForName(keyClassName);
+                Class keyClass = catalog.resolveKeyClass(keyClassName);
 
                 /*
                  * Account for database renaming.  The dbClassName or dbKeyName
@@ -753,7 +749,8 @@ public class Store {
         PersistKeyBinding keyBinding = getKeyBinding(keyClassName);
 
         SecondaryDatabase db = openSecondaryDatabase
-            (txn, fileAndDbNames, priDb, config, doNotCreate);
+            (txn, fileAndDbNames, primaryIndex, 
+             secKeyMeta.getKeyName(), config, doNotCreate);
         if (db == null) {
             assert doNotCreate;
             return null;
@@ -781,6 +778,9 @@ public class Store {
      * true or all to false.  This ensures that we only populate a database
      * when it is created, never if it just happens to be empty.  [#16399]
      *
+     * We also handle correction of a bug in duplicate ordering.  See
+     * ComplexFormat.incorrectlyOrderedSecKeys.
+     *
      * @param doNotCreate is true when StoreConfig.getSecondaryBulkLoad is true
      * and we are opening a secondary as a side effect of opening a primary,
      * i.e., getSecondaryIndex is not being called.  If doNotCreate is true and
@@ -792,14 +792,20 @@ public class Store {
     private SecondaryDatabase
         openSecondaryDatabase(final Transaction txn,
                               final String[] fileAndDbNames,
-                              final Database priDb,
+                              final PrimaryIndex priIndex,
+                              final String keyName,
                               final SecondaryConfig config,
                               final boolean doNotCreate)
         throws DatabaseException {
 
         assert config.getAllowPopulate();
         assert !config.getExclusiveCreate();
+        final Database priDb = priIndex.getDatabase();
+        final ComplexFormat entityFormat = (ComplexFormat)
+            ((PersistEntityBinding) priIndex.getEntityBinding()).entityFormat;
         final boolean saveAllowCreate = config.getAllowCreate();
+        final Comparator<byte[]> saveDupComparator = 
+            config.getDuplicateComparator();
         try {
             if (doNotCreate) {
                 config.setAllowCreate(false);
@@ -807,11 +813,26 @@ public class Store {
             /* First try creating a new database, populate if needed. */
             if (config.getAllowCreate()) {
                 config.setExclusiveCreate(true);
-                /* AllowPopulate is already set to true. */
+                /* AllowPopulate is true; comparators are set. */
                 final SecondaryDatabase db = DbCompat.openSecondaryDatabase
                     (env, txn, fileAndDbNames[0], fileAndDbNames[1], priDb,
                      config);
                 if (db != null) {
+                    /* For unit testing. */ 
+                    boolean doFlush = false;
+                    /* Update dup ordering bug info. [#17252] */
+                    if (config.getDuplicateComparator() != null &&
+                        entityFormat.setSecKeyCorrectlyOrdered(keyName)) {
+                        catalog.flush(txn);
+                        doFlush = true;
+                    }
+                    
+                    /* 
+                     * expectFlush is false except when set by
+                     * SecondaryDupOrderTest.
+                     */
+                    assert !expectFlush || doFlush;
+                    
                     return db;
                 }
             }
@@ -819,6 +840,12 @@ public class Store {
             config.setAllowCreate(false);
             config.setAllowPopulate(false);
             config.setExclusiveCreate(false);
+            
+            /* Account for dup ordering bug. [#17252] */
+            if (config.getDuplicateComparator() != null &&
+                entityFormat.isSecKeyIncorrectlyOrdered(keyName)) {
+                config.setDuplicateComparator((Comparator<byte[]>) null);
+            }
             final SecondaryDatabase db = DbCompat.openSecondaryDatabase
                 (env, txn, fileAndDbNames[0], fileAndDbNames[1], priDb,
                  config);
@@ -827,6 +854,7 @@ public class Store {
             config.setAllowPopulate(true);
             config.setExclusiveCreate(false);
             config.setAllowCreate(saveAllowCreate);
+            config.setDuplicateComparator(saveDupComparator);
         }
     }
 
@@ -881,24 +909,45 @@ public class Store {
         String clsName = entityClass.getName();
         EntityMetadata entityMeta = checkEntityClass(clsName);
 
+        boolean autoCommit = false;
+        if (storeConfig.getTransactional() &&
+            txn == null &&
+            DbCompat.getThreadTransaction(env) == null) {
+            txn = env.beginTransaction(null, autoCommitTxnConfig);
+            autoCommit = true;
+        }
+
         /*
          * Truncate the primary first and let any exceptions propogate
          * upwards.  Then remove each secondary, only throwing the first
          * exception.
          */
-        boolean primaryExists = truncateIfExists(txn, storePrefix + clsName);
-        if (primaryExists) {
-            DatabaseException firstException = null;
-            for (SecondaryKeyMetadata keyMeta :
-                 entityMeta.getSecondaryKeys().values()) {
-                /* Ignore secondaries that do not exist. */
-                removeIfExists
-                    (txn,
-                     storePrefix +
-                     makeSecName(clsName, keyMeta.getKeyName()));
+        boolean success = false;
+        try {
+            boolean primaryExists =
+                truncateIfExists(txn, storePrefix + clsName);
+            if (primaryExists) {
+                DatabaseException firstException = null;
+                for (SecondaryKeyMetadata keyMeta :
+                     entityMeta.getSecondaryKeys().values()) {
+                    /* Ignore secondaries that do not exist. */
+                    removeIfExists
+                        (txn,
+                         storePrefix +
+                         makeSecName(clsName, keyMeta.getKeyName()));
+                }
+                if (firstException != null) {
+                    throw firstException;
+                }
             }
-            if (firstException != null) {
-                throw firstException;
+            success = true;
+        } finally {
+            if (autoCommit) {
+                if (success) {
+                    txn.commit();
+                } else {
+                    txn.abort();
+                }
             }
         }
     }
@@ -1027,13 +1076,14 @@ public class Store {
                 dbConfig.setAllowCreate(true);
                 DbCompat.setTypeBtree(dbConfig);
                 sequenceDb = DbCompat.openDatabase
-                    (env, null/*txn*/, fileAndDbNames[0],
-                     fileAndDbNames[1], dbConfig);
+                    (env, null /*txn*/, fileAndDbNames[0], fileAndDbNames[1],
+                     dbConfig);
                 assert sequenceDb != null;
             }
+
             DatabaseEntry entry = new DatabaseEntry();
             StringBinding.stringToEntry(name, entry);
-                seq = sequenceDb.openSequence(null, entry,
+                seq = sequenceDb.openSequence(null /*txn*/, entry,
                                               getSequenceConfig(name));
             sequenceMap.put(name, seq);
         }
@@ -1063,6 +1113,10 @@ public class Store {
             throw new IllegalArgumentException
                 ("One of these properties was illegally changed: " +
                  "AllowCreate, ExclusiveCreate");
+        }
+        if (sequenceMap.containsKey(name)) {
+            throw new IllegalStateException
+                ("Cannot set config after Sequence is open");
         }
         sequenceConfigMap.put(name, config);
     }
@@ -1146,6 +1200,7 @@ public class Store {
             config.setSortedDuplicates(rel == Relationship.MANY_TO_ONE ||
                                        rel == Relationship.MANY_TO_MANY);
             setBtreeComparator(config, keyClassName);
+            config.setDuplicateComparator(priConfig.getBtreeComparator());
             PersistKeyCreator keyCreator = new PersistKeyCreator
                 (catalog, entityMeta, keyClassName, secKeyMeta, rawAccess);
             if (rel == Relationship.ONE_TO_MANY ||
@@ -1376,6 +1431,16 @@ public class Store {
 
         checkOpen();
         checkWriteAllowed();
+
+        /*
+         * Before starting, ensure that we are not in Replica Upgrade Mode and
+         * the catalog metadata is not stale.  If this node is a Replica, a
+         * ReplicaWriteException will occur further below.
+         */
+        if (catalog.isReplicaUpgradeMode() || catalog.isMetadataStale(null)) {
+            attemptRefresh();
+        }
+
         /* To ensure consistency use a single catalog instance. [#16655] */
         final PersistCatalog useCatalog = catalog;
         List<Format> toEvolve = new ArrayList<Format>();
@@ -1402,7 +1467,7 @@ public class Store {
             if (format.getEvolveNeeded()) {
                 evolveIndex(format, event, config.getEvolveListener());
                 format.setEvolveNeeded(false);
-                useCatalog.flush();
+                useCatalog.flush(null);
             }
         }
 
@@ -1435,7 +1500,7 @@ public class Store {
         CursorConfig cursorConfig = null;
         Transaction txn = null;
         if (dbConfig.getTransactional()) {
-            txn = env.beginTransaction(null, null);
+            txn = env.beginTransaction(null, autoCommitTxnConfig);
             cursorConfig = CursorConfig.READ_COMMITTED;
         }
 
@@ -1464,7 +1529,7 @@ public class Store {
                     cursor = null;
                     txn.commit();
                     txn = null;
-                    txn = env.beginTransaction(null, null);
+                    txn = env.beginTransaction(null, autoCommitTxnConfig);
                     cursor = db.openCursor(txn, cursorConfig);
                     DatabaseEntry saveKey = KeyRange.copy(key);
                     status = cursor.getSearchKeyRange(key, data, null);
@@ -1522,7 +1587,7 @@ public class Store {
      * For unit testing.
      */
     public interface SyncHook {
-        void onSync(Database db, boolean flushLog);
+        void onSync(Database db);
     }
 
     /**
@@ -1568,7 +1633,7 @@ public class Store {
      * the need for a refresh may be detected, causing another call to this
      * method.  In most cases the redundant refresh will be avoided (see check
      * below), but in some cases an extra unnecessary refresh may be performed.
-     * This is undesriable, but is not dangerous.  Sychrnoization must be
+     * This is undesirable, but is not dangerous.  Synchronization must be
      * avoided to prevent blocking during read/write operations.
      *
      * [#16655]
@@ -1590,29 +1655,10 @@ public class Store {
          * First refresh the catalog information, then check that the new
          * metadata contains the format ID we're interested in using.
          */
-        Transaction txn = null;
-        boolean success = false;
         try {
-            if (storeConfig.getTransactional() &&
-                DbCompat.getThreadTransaction(env) == null) {
-                txn = env.beginTransaction(null, null);
-            }
-            catalog = new PersistCatalog(txn, oldCatalog, storePrefix);
-            success = true;
+            catalog = new PersistCatalog(oldCatalog, storePrefix);
         } catch (DatabaseException e) {
             throw RuntimeExceptionWrapper.wrapIfNeeded(e);
-        } finally {
-            if (txn != null) {
-                try {
-                    if (success && !catalog.isReadOnly()) {
-                        txn.commit();
-                    } else {
-                        txn.abort();
-                    }
-                } catch (DatabaseException e) {
-                    throw RuntimeExceptionWrapper.wrapIfNeeded(e);
-                }
-            }
         }
 
         if (errorFormatId >= catalog.getNFormats()) {
@@ -1662,6 +1708,7 @@ public class Store {
         void refresh(final PersistCatalog newCatalog) {
             entityBinding.refresh(newCatalog);
         }
+
     }
 
     private class InternalSecondaryIndex<SK, PK, E>
@@ -1684,5 +1731,11 @@ public class Store {
         void refresh(final PersistCatalog newCatalog) {
             keyCreator.refresh(newCatalog);
         }
+
     }
+
+    TransactionConfig getAutoCommitTxnConfig() {
+        return autoCommitTxnConfig;
+    }
+
 }

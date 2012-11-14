@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * Some parts of this code originally written by Adam Stubblefield,
  * -- astubble@rice.edu.
@@ -186,7 +186,7 @@ __db_check_chksum(env, hdr, db_cipher, chksum, data, data_len, is_hmac)
 	} else {
 		if (db_cipher == NULL) {
 			__db_errx(env, DB_STR("0196",
-    "Encrypted checksum: no encryption key specified"));
+			    "Encrypted checksum: no encryption key specified"));
 			return (EINVAL);
 		}
 		sum_len = DB_MAC_KEY;
@@ -200,7 +200,6 @@ __db_check_chksum(env, hdr, db_cipher, chksum, data, data_len, is_hmac)
 	 * it out, just like we do in __db_chksum above.
 	 * If there is a log header, XOR the prev and len fields.
 	 */
-retry:
 	if (hdr == NULL) {
 		memcpy(old, chksum, sum_len);
 		memset(chksum, 0, sum_len);
@@ -218,16 +217,6 @@ retry:
 		if (hdr != NULL)
 			LOG_HDR_SUM(1, hdr, new);
 		ret = memcmp(chksum, new, sum_len) ? -1 : 0;
-	}
-	/*
-	 * !!!
-	 * We might be looking at an old log even with the new
-	 * code.  So, if we have a hdr, and the checksum doesn't
-	 * match, try again without a hdr.
-	 */
-	if (hdr != NULL && ret != 0) {
-		hdr = NULL;
-		goto retry;
 	}
 
 	return (ret);

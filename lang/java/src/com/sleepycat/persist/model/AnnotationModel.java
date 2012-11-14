@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -49,6 +49,12 @@ public class AnnotationModel extends EntityModel {
 
     private Map<String, ClassMetadata> classMap;
     private Map<String, EntityInfo> entityMap;
+    
+    /*
+     * This set records the special classes, i.e., enum and array type. 
+     * [#19377]
+     */
+    private Set<String> registeredSpecialClasses;
 
     /**
      * Constructs a model for annotated entity classes.
@@ -57,6 +63,7 @@ public class AnnotationModel extends EntityModel {
         super();
         classMap = new HashMap<String, ClassMetadata>();
         entityMap = new HashMap<String, EntityInfo>();
+        registeredSpecialClasses = new HashSet<String>();
     }
 
     /* EntityModel methods */
@@ -65,6 +72,11 @@ public class AnnotationModel extends EntityModel {
     public synchronized Set<String> getKnownClasses() {
         return Collections.unmodifiableSet
             (new HashSet<String>(classMap.keySet()));
+    }
+    
+    @Override
+    public Set<String> getKnownSpecialClasses() {
+        return Collections.unmodifiableSet(registeredSpecialClasses);
     }
 
     @Override
@@ -88,10 +100,20 @@ public class AnnotationModel extends EntityModel {
         if (metadata == null) {
             Class<?> type;
             try {
-                type = EntityModel.classForName(className);
+                type = resolveClass(className);
             } catch (ClassNotFoundException e) {
                 return null;
             }
+            
+            /* 
+             * Adds enum or array types to registeredSpecialClasses set, and
+             * does not create metadata for them. [#19377]
+             */
+            if (type.isEnum() ||
+                type.isArray()) {
+                registeredSpecialClasses.add(className);
+            }
+            
             /* Get class annotation. */
             Entity entity = type.getAnnotation(Entity.class);
             Persistent persistent = type.getAnnotation(Persistent.class);
@@ -380,7 +402,7 @@ public class AnnotationModel extends EntityModel {
             /* Load superclass metadata. */
             Class cls;
             try {
-                cls = EntityModel.classForName(data.getClassName());
+                cls = resolveClass(data.getClassName());
             } catch (ClassNotFoundException e) {
                 throw DbCompat.unexpectedException(e);
             }

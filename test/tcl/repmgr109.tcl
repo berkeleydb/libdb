@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST repmgr109
 # TEST Test repmgr's internal juggling of peer EID's.
@@ -68,7 +68,7 @@ proc repmgr109_sub { {a_too false} {while_active true} } {
 		"home $dira"
 		"local $aport"
 		"output $testdir/aoutput"
-		"remote localhost $mport"
+		"remote 127.0.0.1 $mport"
 		"open_env"
 		"start client"
 	}
@@ -78,7 +78,7 @@ proc repmgr109_sub { {a_too false} {while_active true} } {
 		"home $dirb"
 		"local $bport"
 		"output $testdir/boutput"
-		"remote localhost $mport"
+		"remote 127.0.0.1 $mport"
 		"open_env"
 		"start client"
 	}
@@ -100,8 +100,8 @@ proc repmgr109_sub { {a_too false} {while_active true} } {
 		"home $dirc"
 		"local $cport"
 		"output $testdir/c1output"
-		"remote $peer_flag localhost $aport"
-		"remote localhost $mport"
+		"remote $peer_flag 127.0.0.1 $aport"
+		"remote 127.0.0.1 $mport"
 		"open_env"
 	}
 	set c1 [open_site_prog [subst $cmds]]
@@ -110,8 +110,8 @@ proc repmgr109_sub { {a_too false} {while_active true} } {
 		"home $dirc"
 		"local $cport"
 		"output $testdir/c2output"
-		"remote -p localhost $bport"
-		"remote localhost $aport"
+		"remote -p 127.0.0.1 $bport"
+		"remote 127.0.0.1 $aport"
 		"open_env"
 	}
 	set c2 [open_site_prog [subst $cmds]]
@@ -159,16 +159,16 @@ proc repmgr109_sub { {a_too false} {while_active true} } {
 			"home $dirc"
 			"output $testdir/c1output2"
 			"open_env"
-			"remote localhost $bport"
-			"remote -p localhost $aport"
+			"remote 127.0.0.1 $bport"
+			"remote -p 127.0.0.1 $aport"
 			"start client"
 		}
 	} else {
 		set cmds {
 			"home $dirc"
 			"output $testdir/c1output2"
-			"remote localhost $bport"
-			"remote -p localhost $aport"
+			"remote 127.0.0.1 $bport"
+			"remote -p 127.0.0.1 $aport"
 			"open_env"
 			"start client"
 		}

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -1849,7 +1849,7 @@ __dbc_put_primary(dbc, key, data, flags)
 		if ((ret = __dbc_put_append(dbc,
 		    key, data, &put_state, flags)) != 0)
 			goto err;
-	}	
+	}
 
 	/*
 	 * PUT_NOOVERWRITE with secondaries is a troublesome case. We need
@@ -1968,17 +1968,19 @@ err:
 	    (t_ret = __db_s_done(sdbp, dbc->txn)) != 0 && ret == 0)
 		ret = t_ret;
 
-	for (skeyp = all_skeys; skeyp - all_skeys < s_count; skeyp++) {
-		if (F_ISSET(skeyp, DB_DBT_MULTIPLE)) {
-			for (nskey = skeyp->size, tskeyp = (DBT *)skeyp->data;
-			    nskey > 0;
-			    nskey--, tskeyp++)
-				FREE_IF_NEEDED(env, tskeyp);
+	if (all_skeys != NULL) {
+		for (skeyp = all_skeys; skeyp - all_skeys < s_count; skeyp++) {
+			if (F_ISSET(skeyp, DB_DBT_MULTIPLE)) {
+				for (nskey = skeyp->size,
+				    tskeyp = (DBT *)skeyp->data;
+				    nskey > 0;
+				    nskey--, tskeyp++)
+					FREE_IF_NEEDED(env, tskeyp);
+			}
+			FREE_IF_NEEDED(env, skeyp);
 		}
-		FREE_IF_NEEDED(env, skeyp);
-	}
-	if (all_skeys != NULL)
 		__os_free(env, all_skeys);
+	}
 	return (ret);
 }
 
@@ -2456,13 +2458,14 @@ __dbc_pget(dbc, skey, pkey, data, flags)
 {
 	DB *pdbp, *sdbp;
 	DBC *dbc_n, *pdbc;
-	DBT nullpkey;
+	DBT nullpkey, *save_data;
 	u_int32_t save_pkey_flags, tmp_flags, tmp_read_locking, tmp_rmw;
 	int pkeymalloc, ret, t_ret;
 
 	sdbp = dbc->dbp;
 	pdbp = sdbp->s_primary;
 	dbc_n = NULL;
+	save_data = NULL;
 	pkeymalloc = t_ret = 0;
 
 	/*
@@ -2564,13 +2567,17 @@ __dbc_pget(dbc, skey, pkey, data, flags)
 		break;
 	}
 
-	if (F_ISSET(dbc, DBC_PARTITIONED | DBC_TRANSIENT))
+	if (dbc->internal->opd != NULL ||
+	     F_ISSET(dbc, DBC_PARTITIONED | DBC_TRANSIENT)) {
 		dbc_n = dbc;
-	else {
+		save_data = dbc_n->rdata;
+	} else {
 		if ((ret = __dbc_dup(dbc, &dbc_n, tmp_flags)) != 0)
 			return (ret);
 		F_SET(dbc_n, DBC_TRANSIENT);
 	}
+	dbc_n->rdata = dbc->rkey;
+	dbc_n->rkey = dbc->rskey;
 
 	if (tmp_rmw)
 		F_SET(dbc_n, DBC_RMW);
@@ -2585,8 +2592,6 @@ __dbc_pget(dbc, skey, pkey, data, flags)
 		SWAP_IF_NEEDED(sdbp, pkey);
 
 retry:	/* Step 1. */
-	dbc_n->rdata = dbc->rkey;
-	dbc_n->rkey = dbc->rskey;
 	ret = __dbc_get(dbc_n, skey, pkey, flags);
 	/* Restore pkey's flags in case we stomped the PARTIAL flag. */
 	pkey->flags = save_pkey_flags;
@@ -2683,7 +2688,7 @@ retry:	/* Step 1. */
 		ret = t_ret;
 
 	else if (ret == DB_NOTFOUND) {
-		if (!F_ISSET(pdbc, DBC_READ_UNCOMMITTED))
+		if (!F_ISSET(dbc, DBC_READ_UNCOMMITTED))
 			ret = __db_secondary_corrupt(pdbp);
 		else switch (flags) {
 		case DB_GET_BOTHC:
@@ -2693,7 +2698,7 @@ retry:	/* Step 1. */
 		case DB_PREV:
 		case DB_PREV_DUP:
 		case DB_PREV_NODUP:
-			PERFMON5(env, race, dbc_get,
+			PERFMON5(pdbp->env, race, dbc_get,
 			    sdbp->fname, sdbp->dname, ret, flags, pkey);
 			goto retry;
 		default:
@@ -2702,6 +2707,10 @@ retry:	/* Step 1. */
 	}
 
 err:	/* Cleanup and cursor resolution. */
+	if (dbc_n == dbc) {
+		dbc_n->rkey = dbc_n->rdata;
+		dbc_n->rdata = save_data;
+	}
 	if ((t_ret = __dbc_cleanup(dbc, dbc_n, ret)) != 0 && ret == 0)
 		ret = t_ret;
 	if (pkeymalloc) {

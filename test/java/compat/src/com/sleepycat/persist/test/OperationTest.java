@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -16,8 +16,10 @@ import static com.sleepycat.persist.model.Relationship.ONE_TO_ONE;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import junit.framework.Test;
@@ -1467,7 +1469,7 @@ public class OperationTest extends TxnTestCase {
         entities = secIndex.entities(txn, null);
         for (StoredComparatorEntity.MyEnum myEnum :
              EnumSet.allOf(StoredComparatorEntity.MyEnum.class)) {
-            for (int i = 0; i < nEntities; i += 1) {
+            for (int i = nEntities - 1; i >= 0; i -= 1) {
                 if (secKeys[i] == myEnum) {
                     StoredComparatorEntity e = entities.next();
                     assertNotNull(e);
@@ -1557,6 +1559,51 @@ public class OperationTest extends TxnTestCase {
         @Override
         public String toString() {
             return "[pri = " + key + " sec = " + secKey + ']';
+        }
+    }
+    
+    public void testEmbeddedMapTypes()
+        throws DatabaseException {
+        open();
+        PrimaryIndex<Integer, EmbeddedMapTypes> pri =
+            store.getPrimaryIndex(Integer.class, EmbeddedMapTypes.class);
+        pri.put(null, new EmbeddedMapTypes());
+        close();
+        
+        open();
+        pri = store.getPrimaryIndex(Integer.class, EmbeddedMapTypes.class);
+        EmbeddedMapTypes entity = pri.get(1);
+        assertNotNull(entity);
+        EmbeddedMapTypes entity2 = new EmbeddedMapTypes();
+        assertEquals(entity.getF1(), entity2.getF1()); 
+        close();
+    }
+    
+    enum MyEnum { ONE, TWO };
+    
+    @Entity
+    static class EmbeddedMapTypes {
+
+        @PrimaryKey
+        private final int f0 = 1;
+        private final Map<MyEnum, HashMap<MyEnum, MyEnum>> f1;
+
+        EmbeddedMapTypes() {
+            f1 = new HashMap<MyEnum, HashMap<MyEnum, MyEnum>>();
+            HashMap<MyEnum, MyEnum> f2 = new HashMap<MyEnum, MyEnum>();
+            f2.put(MyEnum.ONE, MyEnum.ONE);
+            f1.put(MyEnum.ONE, f2);
+            f2 = new HashMap<MyEnum, MyEnum>();
+            f2.put(MyEnum.TWO, MyEnum.TWO);
+            f1.put(MyEnum.TWO, f2);
+        }
+
+        public int getPriKey() {
+            return f0;
+        }
+        
+        public Map<MyEnum, HashMap<MyEnum, MyEnum>> getF1() {
+            return f1;
         }
     }
 }

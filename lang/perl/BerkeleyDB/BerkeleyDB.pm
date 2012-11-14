@@ -17,7 +17,7 @@ use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD
 		$use_XSLoader);
 
-$VERSION = '0.47';
+$VERSION = '0.50';
 
 require Exporter;
 #require DynaLoader;
@@ -41,6 +41,9 @@ BEGIN {
 
 # NOTE -- Do not add to @EXPORT directly. It is written by mkconsts
 @EXPORT = qw(
+	DB2_AM_EXCL
+	DB2_AM_INTEXCL
+	DB2_AM_NOWAIT
 	DB_AFTER
 	DB_AGGRESSIVE
 	DB_ALREADY_ABORTED
@@ -54,6 +57,15 @@ BEGIN {
 	DB_ASSOC_CREATE
 	DB_ASSOC_IMMUTABLE_KEY
 	DB_AUTO_COMMIT
+	DB_BACKUP_CLEAN
+	DB_BACKUP_FILES
+	DB_BACKUP_NO_LOGS
+	DB_BACKUP_READ_COUNT
+	DB_BACKUP_READ_SLEEP
+	DB_BACKUP_SINGLE_DIR
+	DB_BACKUP_SIZE
+	DB_BACKUP_UPDATE
+	DB_BACKUP_WRITE_DIRECT
 	DB_BEFORE
 	DB_BOOTSTRAP_HELPER
 	DB_BTREE
@@ -170,6 +182,7 @@ BEGIN {
 	DB_EVENT_REP_SITE_ADDED
 	DB_EVENT_REP_SITE_REMOVED
 	DB_EVENT_REP_STARTUPDONE
+	DB_EVENT_REP_WOULD_ROLLBACK
 	DB_EVENT_WRITE_FAILED
 	DB_EXCL
 	DB_EXTENT
@@ -222,6 +235,8 @@ BEGIN {
 	DB_INIT_TXN
 	DB_INORDER
 	DB_INTERNAL_DB
+	DB_INTERNAL_PERSISTENT_DB
+	DB_INTERNAL_TEMPORARY_DB
 	DB_JAVA_CALLBACK
 	DB_JOINENV
 	DB_JOIN_ITEM
@@ -246,6 +261,7 @@ BEGIN {
 	DB_LOCK_FREE_LOCKER
 	DB_LOCK_GET
 	DB_LOCK_GET_TIMEOUT
+	DB_LOCK_IGNORE_REC
 	DB_LOCK_INHERIT
 	DB_LOCK_MAXLOCKS
 	DB_LOCK_MAXWRITE
@@ -441,6 +457,7 @@ BEGIN {
 	DB_REP_CHECKPOINT_DELAY
 	DB_REP_CLIENT
 	DB_REP_CONF_AUTOINIT
+	DB_REP_CONF_AUTOROLLBACK
 	DB_REP_CONF_BULK
 	DB_REP_CONF_DELAYCLIENT
 	DB_REP_CONF_INMEM
@@ -481,6 +498,7 @@ BEGIN {
 	DB_REP_REREQUEST
 	DB_REP_STARTUPDONE
 	DB_REP_UNAVAIL
+	DB_REP_WOULDROLLBACK
 	DB_REVSPLITOFF
 	DB_RMW
 	DB_RPCCLIENT
@@ -596,6 +614,7 @@ BEGIN {
 	DB_USERCOPY_SETDATA
 	DB_USE_ENVIRON
 	DB_USE_ENVIRON_ROOT
+	DB_VERB_BACKUP
 	DB_VERB_CHKPOINT
 	DB_VERB_DEADLOCK
 	DB_VERB_FILEOPS
@@ -898,6 +917,7 @@ sub new
 					Config		=> undef,
 					Encrypt		=> undef,
 					SharedMemKey	=> undef,
+					Set_Lk_Exclusive	=> undef,
 					ThreadCount	=> 0,
 					}, @_) ;
 
@@ -986,6 +1006,18 @@ sub DESTROY
 {
     my $self = shift ;
     $self->_DESTROY() ;
+}
+
+sub STORABLE_freeze
+{
+    my $type = ref shift;
+    croak "Cannot freeze $type object\n";
+}
+
+sub STORABLE_thaw
+{
+    my $type = ref shift;
+    croak "Cannot thaw $type object\n";
 }
 
 package BerkeleyDB::Hash ;
@@ -1740,6 +1772,19 @@ package BerkeleyDB::Common ;
 
 
 use Carp ;
+
+
+sub STORABLE_freeze
+{
+    my $type = ref shift;
+    croak "Cannot freeze $type object\n";
+}
+
+sub STORABLE_thaw
+{
+    my $type = ref shift;
+    croak "Cannot thaw $type object\n";
+}
 
 sub DESTROY
 {

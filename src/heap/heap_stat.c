@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -66,6 +66,7 @@ __heap_stat(dbc, spp, flags)
 	sp->heap_magic = meta->dbmeta.magic;
 	sp->heap_version = meta->dbmeta.version;
 	sp->heap_nregions = meta->nregions;
+	sp->heap_regionsize = meta->region_size;
 
 	if (LF_ISSET(DB_FAST_STAT)) {
 		sp->heap_nrecs = meta->dbmeta.record_count;
@@ -148,6 +149,8 @@ __heap_stat_print(dbc, flags)
 	    "Number of records in the database", (u_long)sp->heap_nrecs);
 	__db_dl(env, "Number of database pages", (u_long)sp->heap_pagecnt);
 	__db_dl(env, "Number of database regions", (u_long)sp->heap_nregions);
+	__db_dl(env,
+	    "Number of pages in a region", (u_long)sp->heap_regionsize);
 
 	__os_ufree(env, sp);
 
@@ -193,8 +196,8 @@ __heap_stat_callback(dbc, h, cookie, putp)
 
 	switch (TYPE(h)) {
 	case P_HEAP:
-		/* 
-		 * We can't just use NUM_ENT, otherwise we'd mis-count split 
+		/*
+		 * We can't just use NUM_ENT, otherwise we'd mis-count split
 		 * records.
 		 */
 		for (i = 0; i < NUM_ENT(h); i++) {

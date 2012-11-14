@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -58,6 +58,18 @@ __qam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		EPRINT((env, DB_STR_A("1146",
 		    "Page %lu: queue databases must be one-per-file",
 		    "%lu"), (u_long)pgno));
+
+	/*
+	 * We have already checked the common fields in __db_vrfy_pagezero.
+	 * However, we used the on-disk metadata page, it may have been stale.
+	 * We now have the page from mpool, so check that.
+	 */
+	if ((ret = __db_vrfy_meta(dbp, vdp, &meta->dbmeta, pgno, flags)) != 0) {
+		if (ret == DB_VERIFY_BAD)
+			isbad = 1;
+		else
+			goto err;
+	}
 
 	/*
 	 * Because the metapage pointers are rolled forward by
@@ -136,25 +148,30 @@ __qam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	__os_free(env, buf);
 	buf = NULL;
 
-	len = strlen(QUEUE_EXTENT_HEAD) + strlen(qp->name) + 1;
-	if ((ret = __os_malloc(env, len, &buf)) != 0)
-		goto err;
-	len = (size_t)snprintf(buf, len, QUEUE_EXTENT_HEAD, qp->name);
-	for (i = nextents = 0; i < count; i++) {
-		if (strncmp(names[i], buf, len) == 0) {
-			/* Only save extents out of bounds. */
-			extid = (db_pgno_t)strtoul(&names[i][len], NULL, 10);
-			if (qp->page_ext != 0 &&
-			    (last > first ?
-			    (extid >= first && extid <= last) :
-			    (extid >= first || extid <= last)))
-				continue;
-			if (extents == NULL && (ret = __os_malloc(
-			     env, (size_t)(count - i) * sizeof(extid),
-			     &extents)) != 0)
-				goto err;
-			extents[nextents] = extid;
-			nextents++;
+	/* In-memory dbs cannot have extents. */
+	nextents = 0;
+	if (!F_ISSET(dbp, DB_AM_INMEM)) {
+		len = strlen(QUEUE_EXTENT_HEAD) + strlen(qp->name) + 1;
+		if ((ret = __os_malloc(env, len, &buf)) != 0)
+			goto err;
+		len = (size_t)snprintf(buf, len, QUEUE_EXTENT_HEAD, qp->name);
+		for (i = 0; i < count; i++) {
+			if (strncmp(names[i], buf, len) == 0) {
+				/* Only save extents out of bounds. */
+				extid = (db_pgno_t)strtoul(
+				    &names[i][len], NULL, 10);
+				if (qp->page_ext != 0 &&
+				    (last > first ?
+					(extid >= first && extid <= last) :
+					(extid >= first || extid <= last)))
+					continue;
+				if (extents == NULL && (ret = __os_malloc(
+				    env, (size_t)(count - i) * sizeof(extid),
+				    &extents)) != 0)
+					goto err;
+				extents[nextents] = extid;
+				nextents++;
+			}
 		}
 	}
 	if (nextents > 0)
@@ -382,7 +399,7 @@ __qam_vrfy_structure(dbp, vdp, flags)
 		    (ret = __db_vrfy_getpageinfo(vdp, i, &pip)) != 0)
 			return (ret);
 		if (!F_ISSET(pip, VRFY_IS_ALLZEROES) &&
-		    pip->type != P_QAMDATA) {
+		    pip->type != P_QAMDATA && !F_ISSET(pip, VRFY_NONEXISTENT)) {
 			EPRINT((dbp->env, DB_STR_A("1153",
 		    "Page %lu: queue database page of incorrect type %lu",
 			    "%lu %lu"), (u_long)i, (u_long)pip->type));

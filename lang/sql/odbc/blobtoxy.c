@@ -4,9 +4,9 @@
  * using SQLite 3.3.x virtual table API plus some useful
  * scalar and aggregate functions.
  *
- * $Id: blobtoxy.c,v 1.15 2007/09/03 12:22:37 chw Exp chw $
+ * $Id: blobtoxy.c,v 1.19 2011/08/21 10:11:24 chw Exp chw $
  *
- * Copyright (c) 2007 Christian Werner <chw@ch-werner.de>
+ * Copyright (c) 2007-2011 Christian Werner <chw@ch-werner.de>
  *
  * See the file "license.terms" for information on usage
  * and redistribution of this file and for a
@@ -39,18 +39,18 @@
  *
  *  Arguments to "blobtoxy" module:
  *
- *  0. master table name (required)
- *  1. key column in master table (required)
- *  2. blob column in master table (required)
- *  3. type code (optional), defaults to "char"
+ *  0. master table name (required).
+ *  1. key column in master table (required).
+ *  2. blob column in master table (required).
+ *  3. type code (optional), defaults to "char".
  *  4. X scale column in master table (optional),
  *     may be specified as integer or float constant, too,
  *     to explicitely omit scale, use an empty string ('')
- *     or 'null'
+ *     or null.
  *  5. X offset column in master table (optional),
  *     may be specified as integer or float constant, too,
  *     to explicitely omit offset, use an empty string ('')
- *     or 'null'
+ *     or null.
  *  6. Y scale column in master table (optional), see point 4.
  *  7. Y offset column in master table (optional), see point 5.
  *  8. other columns of the master table to appear in the
@@ -58,7 +58,11 @@
  *     single or double quoted string with comma
  *     separated column names as a sequence of named
  *     columns as it would be written in a SELECT
- *     statement
+ *     statement.
+ *  9. X start index (optional), specified as integer
+ *     in type specific blob units, zero based.
+ * 10. X length (optional), specified as integer,
+ *     number of blob units (= number of rows).
  *
  *  Supported data types:
  *
@@ -72,6 +76,8 @@
  *  "int_be"     -> BLOB is a int array big endian
  *  "uint_le"    -> BLOB is an unsigned int array little endian
  *  "uint_be"    -> BLOB is an unsigned int array big endian
+ *  "bigint_le"  -> BLOB is an large integer array little endian
+ *  "bigint_be"  -> BLOB is an large integer array big endian
  *  "float"      -> BLOB is a float array
  *  "double"     -> BLOB is a double array
  *
@@ -199,7 +205,7 @@ SQLITE_EXTENSION_INIT1
 #define TYPE_SIZE(code)      ((code) & 0xFF)
 
 #define TYPE_CHAR      TYPE_CODE( 0, char)
-#define TYPE_UCHAR     TYPE_CODE( 1, short)
+#define TYPE_UCHAR     TYPE_CODE( 1, char)
 #define TYPE_SHORT_LE  TYPE_CODE( 2, short)
 #define TYPE_USHORT_LE TYPE_CODE( 3, short)
 #define TYPE_SHORT_BE  TYPE_CODE( 4, short)
@@ -208,8 +214,10 @@ SQLITE_EXTENSION_INIT1
 #define TYPE_UINT_LE   TYPE_CODE( 7, int)
 #define TYPE_INT_BE    TYPE_CODE( 8, int)
 #define TYPE_UINT_BE   TYPE_CODE( 9, int)
-#define TYPE_FLOAT     TYPE_CODE(10, float)
-#define TYPE_DOUBLE    TYPE_CODE(11, double)
+#define TYPE_BIGINT_LE TYPE_CODE(10, sqlite_int64)
+#define TYPE_BIGINT_BE TYPE_CODE(11, sqlite_int64)
+#define TYPE_FLOAT     TYPE_CODE(12, float)
+#define TYPE_DOUBLE    TYPE_CODE(13, double)
 
 typedef struct b2xy_table {
     sqlite3_vtab base;		/* SQLite's base virtual table struct */
@@ -224,6 +232,8 @@ typedef struct b2xy_table {
     char *y_offset_column;	/* Name of column giving Y offset or NULL */
     char *other_columns;	/* Other columns or empty string */
     int type;			/* Data type of BLOB */
+    int do_x_sl;		/* If true, apply X start/length */
+    int x_start, x_length;	/* X start/length */
     int argc;			/* Number arguments from b2xy_create() call */
     char **argv;		/* Argument vector from b2xy_create() call */
 } b2xy_table;
@@ -245,6 +255,8 @@ typedef struct b2xy_cursor {
     double y_scale, y_offset;	/* Current X scale and offset */
     int do_x_scale;		/* If true, use X scale and offset */
     int do_y_scale;		/* If true, use Y scale and offset */
+    int do_x_sl;		/* If true, apply X start/length */
+    int x_start, x_length;	/* X start/length */
     int type;			/* Data type of BLOB */
     int index;			/* Current index in BLOB */
     int rowid_from_key;		/* When true, ROWID used from key column */
@@ -284,6 +296,12 @@ string_to_type(const char *str)
     if (strcasecmp(str, "uint_be") == 0) {
 	return TYPE_UINT_BE;
     }
+    if (strcasecmp(str, "bigint_le") == 0) {
+	return TYPE_BIGINT_LE;
+    }
+    if (strcasecmp(str, "bigint_be") == 0) {
+	return TYPE_BIGINT_BE;
+    }
     if (strcasecmp(str, "float") == 0) {
 	return TYPE_FLOAT;
     }
@@ -304,11 +322,12 @@ b2xy_destroy(sqlite3_vtab *vtab)
 
 static int
 b2xy_create(sqlite3 *db, void *userdata, int argc,
-	   const char *const*argv, sqlite3_vtab **vtabret, char **errp)
+	    const char * const *argv, sqlite3_vtab **vtabret, char **errp)
 {
     int rc = SQLITE_NOMEM;
     b2xy_table *bt;
     int i, size, type = TYPE_CHAR;
+    int x_start = -1, x_length = 0;
 
     /*
      * argv[0]  - module name
@@ -323,6 +342,8 @@ b2xy_create(sqlite3 *db, void *userdata, int argc,
      * argv[9]  - Y scale column (optional)
      * argv[10] - Y offset column (optional)
      * argv[11] - other columns (optional)
+     * argv[12] - X start (optional)
+     * argv[13] - X length (optional)
      */
     if (argc < 6) {
 	*errp = sqlite3_mprintf("need at least 3 arguments");
@@ -341,6 +362,32 @@ b2xy_create(sqlite3 *db, void *userdata, int argc,
 	    return SQLITE_ERROR;
 	}
     }
+    if (argc > 12) {
+	char *endp = 0;
+
+	x_start = strtol(argv[12], &endp, 10);
+	if (endp == argv[12] || (endp && endp[0] != '\0')) {
+	    *errp = sqlite3_mprintf("X start index must be integer");
+	    return SQLITE_ERROR;
+	}
+	if (x_start < 0) {
+	    *errp = sqlite3_mprintf("X start index must be >= 0");
+	    return SQLITE_ERROR;
+	}
+    }
+    if (argc > 13) {
+	char *endp = 0;
+
+	x_length = strtol(argv[13], &endp, 10);
+	if (endp == argv[13] || (endp && endp[0] != '\0')) {
+	    *errp = sqlite3_mprintf("X length must be integer");
+	    return SQLITE_ERROR;
+	}
+	if (x_length <= 0) {
+	    *errp = sqlite3_mprintf("X length must be > 0");
+	    return SQLITE_ERROR;
+	}
+    }
     size = sizeof (char *) * argc;
     for (i = 0; i < argc; i++) {
 	size += argv[i] ? (strlen(argv[i]) + 1) : 0;
@@ -355,6 +402,12 @@ b2xy_create(sqlite3 *db, void *userdata, int argc,
 	memset(bt, 0, sizeof (b2xy_table) + size);
 	bt->db = db;
 	bt->type = type;
+	bt->x_start = x_start;
+	bt->x_length = x_length;
+	bt->do_x_sl = (x_start >= 0) || (x_length > 0);
+	if (bt->x_start < 0) {
+	    bt->x_start = 0;
+	}
 	bt->argc = argc;
 	bt->argv = (char **) (bt + 1);
 	p = (char *) (bt->argv + argc);
@@ -526,6 +579,9 @@ b2xy_open(sqlite3_vtab *vtab, sqlite3_vtab_cursor **curret)
 	memset(bc, 0, sizeof(b2xy_cursor));
 	bc->table = bt;
 	bc->type = bt->type;
+	bc->do_x_sl = bt->do_x_sl;
+	bc->x_start = bt->x_start;
+	bc->x_length = bt->x_length;
 	*curret = (sqlite3_vtab_cursor *) bc;
 	rc = SQLITE_OK;
     }
@@ -562,7 +618,7 @@ b2xy_column(sqlite3_vtab_cursor *cur, sqlite3_context *ctx, int i)
 	}
 	break;
     case 2:
-	if (!bc->val || bc->index * TYPE_SIZE(bc->type) >= bc->val_len) {
+	if (!bc->val || (bc->index + 1) * TYPE_SIZE(bc->type) > bc->val_len) {
 	    goto put_null;
 	}
 	p = bc->val + bc->index * TYPE_SIZE(bc->type);
@@ -653,6 +709,40 @@ b2xy_column(sqlite3_vtab_cursor *cur, sqlite3_context *ctx, int i)
 				 ((p[1] & 0xFF) << 16) |
 				 ((p[0] & 0xFF) << 24));
 	    break;
+	case TYPE_BIGINT_LE:
+	    if (bc->do_y_scale) {
+		v = (p[0] & 0xFFLL) | ((p[1] & 0xFFLL) << 8) |
+		    ((p[2] & 0xFFLL) << 16) | ((p[3] & 0xFFLL) << 24) |
+		    ((p[4] & 0xFFLL) << 32) | ((p[5] & 0xFFLL) << 40) |
+		    ((p[6] & 0xFFLL) << 48) | ((p[6] & 0xFFLL) << 56);
+		goto scale_it;
+	    }
+	    sqlite3_result_int64(ctx,  (p[0] & 0xFFLL) |
+				 ((p[1] & 0xFFLL) << 8) |
+				 ((p[2] & 0xFFLL) << 16) |
+				 ((p[3] & 0xFFLL) << 24) |
+				 ((p[4] & 0xFFLL) << 32) |
+				 ((p[5] & 0xFFLL) << 40) |
+				 ((p[6] & 0xFFLL) << 48) |
+				 ((p[7] & 0xFFLL) << 56));
+	    break;
+	case TYPE_BIGINT_BE:
+	    if (bc->do_y_scale) {
+		v = (p[7] & 0xFFLL) | ((p[6] & 0xFFLL) << 8) |
+		    ((p[5] & 0xFFLL) << 16) | ((p[4] & 0xFFLL) << 24) |
+		    ((p[3] & 0xFFLL) << 32) | ((p[2] & 0xFFLL) << 40) |
+		    ((p[1] & 0xFFLL) << 48) | ((p[0] & 0xFFLL) << 56);
+		goto scale_it;
+	    }
+	    sqlite3_result_int64(ctx,  (p[7] & 0xFFLL) |
+				 ((p[6] & 0xFFLL) << 8) |
+				 ((p[5] & 0xFFLL) << 16) |
+				 ((p[4] & 0xFFLL) << 24) |
+				 ((p[3] & 0xFFLL) << 32) |
+				 ((p[2] & 0xFFLL) << 40) |
+				 ((p[1] & 0xFFLL) << 48) |
+				 ((p[0] & 0xFFLL) << 56));
+	    break;
 	case TYPE_FLOAT:
 	    v = ((float *) p)[0];
 	    goto scale_it;
@@ -704,6 +794,7 @@ b2xy_next(sqlite3_vtab_cursor *cur)
 {
     b2xy_cursor *bc = (b2xy_cursor *) cur;
     b2xy_table *bt = bc->table;
+    int rc, dofetch = 0;
 
     if (!bc->select) {
 	return SQLITE_OK;
@@ -711,9 +802,18 @@ b2xy_next(sqlite3_vtab_cursor *cur)
     if (bc->val) {
 	bc->index += 1;
     }
+    if (!bc->val) {
+	dofetch = 1;
+    } else if (bc->do_x_sl && bc->x_length) {
+	if (bc->index >= bc->x_start + bc->x_length) {
+	    dofetch = 1;
+	}
+    } else if ((bc->index + 1) * TYPE_SIZE(bc->type) > bc->val_len) {
+	dofetch = 1;
+    }
+    if (dofetch) {
 refetch:
-    if (!bc->val || bc->index * TYPE_SIZE(bc->type) >= bc->val_len) {
-	int rc = sqlite3_step(bc->select);
+	rc = sqlite3_step(bc->select);
 
 	if (rc == SQLITE_SCHEMA) {
 	    rc = sqlite3_step(bc->select);
@@ -724,10 +824,21 @@ refetch:
 	    return SQLITE_OK;
 	}
 	bc->rowid_from_key = 0;
-	bc->index = 0;
+	bc->index = bc->x_start;
 	bc->val = (char *) sqlite3_column_blob(bc->select, 1);
 	bc->val_len = sqlite3_column_bytes(bc->select, 1);
-	if (!bc->val || bc->val_len <= 0) {
+	if (!bc->val) {
+	    if (bc->do_x_sl && bc->x_length) {
+		bc->val = (char *) sqlite3_column_text(bc->select, 1);
+		if (!bc->val) {
+		    goto refetch;
+		}
+	    } else {
+		goto refetch;
+	    }
+	}
+	if (!(bc->do_x_sl && bc->x_length) &&
+	    ((bc->index + 1) * TYPE_SIZE(bc->type) > bc->val_len)) {
 	    goto refetch;
 	}
 	bc->key = sqlite3_column_value(bc->select, 0);
@@ -766,7 +877,7 @@ refetch:
 
 static int
 b2xy_filter(sqlite3_vtab_cursor *cur, int idxNum, const char *idxStr,
-	   int argc, sqlite3_value **argv)
+	    int argc, sqlite3_value **argv)
 {
     b2xy_cursor *bc = (b2xy_cursor *) cur;
     b2xy_table *bt = bc->table;
@@ -956,8 +1067,16 @@ b2xy_bestindex(sqlite3_vtab *tab, sqlite3_index_info *info)
     return SQLITE_OK;
 }
 
+#if (SQLITE_VERSION_NUMBER > 3004000)
+static int
+b2xy_rename(sqlite3_vtab *tab, const char *newname)
+{
+    return SQLITE_OK;
+}
+#endif
+
 static const sqlite3_module b2xy_module = {
-    0,              /* iVersion */
+    1,              /* iVersion */
     b2xy_create,    /* xCreate */		      
     b2xy_create,    /* xConnect */
     b2xy_bestindex, /* xBestIndex */
@@ -975,7 +1094,10 @@ static const sqlite3_module b2xy_module = {
     0,              /* xSync */
     0,              /* xCommit */
     0,              /* xRollback */
-    0,              /* xFindMethod */
+    0,              /* xFindFunction */
+#if (SQLITE_VERSION_NUMBER > 3004000)
+    b2xy_rename,    /* xRename */
+#endif
 };
 
 typedef struct {

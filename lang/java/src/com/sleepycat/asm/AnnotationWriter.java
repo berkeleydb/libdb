@@ -1,6 +1,6 @@
 /***
  * ASM: a very small and fast Java bytecode manipulation framework
- * Copyright (c) 2000-2005 INRIA, France Telecom
+ * Copyright (c) 2000-2011 INRIA, France Telecom
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,7 @@ package com.sleepycat.asm;
  * @author Eric Bruneton
  * @author Eugene Kuleshov
  */
-final class AnnotationWriter implements AnnotationVisitor {
+final class AnnotationWriter extends AnnotationVisitor {
 
     /**
      * The class writer to which this annotation must be added.
@@ -104,6 +104,7 @@ final class AnnotationWriter implements AnnotationVisitor {
         final ByteVector parent,
         final int offset)
     {
+        super(Opcodes.ASM4);
         this.cw = cw;
         this.named = named;
         this.bv = bv;
@@ -112,9 +113,10 @@ final class AnnotationWriter implements AnnotationVisitor {
     }
 
     // ------------------------------------------------------------------------
-    // Implementation of the AnnotationVisitor interface
+    // Implementation of the AnnotationVisitor abstract class
     // ------------------------------------------------------------------------
 
+    @Override
     public void visit(final String name, final Object value) {
         ++size;
         if (named) {
@@ -187,6 +189,7 @@ final class AnnotationWriter implements AnnotationVisitor {
         }
     }
 
+    @Override
     public void visitEnum(
         final String name,
         final String desc,
@@ -199,6 +202,7 @@ final class AnnotationWriter implements AnnotationVisitor {
         bv.put12('e', cw.newUTF8(desc)).putShort(cw.newUTF8(value));
     }
 
+    @Override
     public AnnotationVisitor visitAnnotation(
         final String name,
         final String desc)
@@ -212,6 +216,7 @@ final class AnnotationWriter implements AnnotationVisitor {
         return new AnnotationWriter(cw, true, bv, bv, bv.length - 2);
     }
 
+    @Override
     public AnnotationVisitor visitArray(final String name) {
         ++size;
         if (named) {
@@ -222,6 +227,7 @@ final class AnnotationWriter implements AnnotationVisitor {
         return new AnnotationWriter(cw, false, bv, bv, bv.length - 2);
     }
 
+    @Override
     public void visitEnd() {
         if (parent != null) {
             byte[] data = parent.data;
@@ -281,15 +287,20 @@ final class AnnotationWriter implements AnnotationVisitor {
      * Puts the given annotation lists into the given byte vector.
      *
      * @param panns an array of annotation writer lists.
+     * @param off index of the first annotation to be written.
      * @param out where the annotations must be put.
      */
-    static void put(final AnnotationWriter[] panns, final ByteVector out) {
-        int size = 1 + 2 * panns.length;
-        for (int i = 0; i < panns.length; ++i) {
+    static void put(
+        final AnnotationWriter[] panns,
+        final int off,
+        final ByteVector out)
+    {
+        int size = 1 + 2 * (panns.length - off);
+        for (int i = off; i < panns.length; ++i) {
             size += panns[i] == null ? 0 : panns[i].getSize();
         }
-        out.putInt(size).putByte(panns.length);
-        for (int i = 0; i < panns.length; ++i) {
+        out.putInt(size).putByte(panns.length - off);
+        for (int i = off; i < panns.length; ++i) {
             AnnotationWriter aw = panns[i];
             AnnotationWriter last = null;
             int n = 0;

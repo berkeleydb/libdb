@@ -63,7 +63,7 @@ public class JDBCStatement implements java.sql.Statement {
     }
 
     public int getQueryTimeout() throws SQLException {
-	return conn.timeout;
+	return conn.timeout / 1000;
     }
 
     public ResultSet getResultSet() throws SQLException {

@@ -355,17 +355,6 @@ do_test replication-3.1.1 {
   } db
 } {0 0}
 
-do_test replication-3.1.2 {
-  execsql {
-    create table reptab (a);
-  } db
-  catchsql {
-    pragma replication_initial_master=true; 
-  } db
-} {1 {Cannot set initial master because database already exists}}
-
-catch {db close}
-
 ## Cases 3.2.* test replication_remote_site by itself.
 setup_rep_sites
 
@@ -538,7 +527,7 @@ do_test replication-3.6 {
   catchsql "
     pragma replication_local_site='$site2addr';
   "
-} {1 {Cannot set local site because database already exists}}
+} {1 {Cannot change local site after replication is turned on}}
 
 catch {db close}
 
@@ -551,18 +540,6 @@ do_test replication-3.7.0 {
 } {1 {Replication site not removed}}
 
 execsql { create table reptab (a); } db
-
-do_test replication-3.7.1 {
-  catchsql "
-    pragma replication_local_site='$site2addr';
-  "
-} {1 {Cannot set local site because database already exists}}
-
-do_test replication-3.7.2 {
-  catchsql "
-    pragma replication=ON;
-  "
-} {1 {Cannot start replication because database already exists}}
 
 catch {db close}
 
@@ -1108,118 +1085,181 @@ catch {db close}
 
 ##
 ## Test cases replication-6.*
-## Verify the delayed effects of turning automatic replication off and back
-## on.
+## Verify adding replication to an existing database and permanently turning
+## off replication.
 ##
+
+## Cases 6.0.* test turning replication on in an existing database.
 setup_rep_sites
 
+# Create database without replication.
+do_test replication-6.0.1 {
+  execsql {
+    create table reptab(a);
+    insert into reptab values (1);
+    select * from reptab;
+  } db
+} {1}
+
+# Turn on replication on existing database.
 db eval "
   pragma replication_local_site='$site1addr';
   pragma replication_initial_master=ON;
   pragma replication=ON;
-  create table reptab(a);
-  insert into reptab values (1);
 "
+
+# Create client.
 db2 eval "
   pragma replication_local_site='$site2addr';
+  pragma replication_remote_site='$site1addr';
+  pragma replication=ON;
+"
+db3 eval "
+  pragma replication_local_site='$site3addr';
   pragma replication_remote_site='$site1addr';
   pragma replication=ON;
 "
 
 after $client_sync_delay
 
-# Turn off replication on db2, then shut it down and restart it.  When
-# restarting db2 without replication, do not need to allow for client sync.
-do_test replication-6.0 {
-  execsql {
-    pragma replication=OFF;
-  } db2
-} {0}
-catch {db2 close}
-sqlite3 db2 $site2dir/rep.db
-
-# Do some operations on the master.
-do_test replication-6.1 {
+# Do more operations on the master and ensure replication is occurring.
+do_test replication-6.0.2 {
   execsql {
     insert into reptab values (2);
     select * from reptab order by a;
   } db
 } {1 2}
-
 after $replication_delay
-
-# Ensure that the content in db2 is not changed.
-do_test replication-6.2 {
+do_test replication-6.0.3 {
   execsql {
     select * from reptab order by a;
   } db2
-} {1}
-
-# Turn on replication on db2.
-do_test replication-6.3 {
+} {1 2}
+do_test replication-6.0.4 {
   execsql {
-    pragma replication=ON;
-  } db2
-} {1}
+    select * from reptab order by a;
+  } db3
+} {1 2}
 
-# Do more operations on master, wait replication_delay, make sure db2's
-# contents still haven't changed.
-do_test replication-6.4 {
+# Remove db2 from replication group.
+do_test replication-6.0.5 {
+  execsql "pragma replication_remove_site='$site2addr';"
+} {{Replication site removed}}
+
+
+# Turn off replication on db2 client.
+do_test replication-6.0.6 {
+  set ::DB db2
+  execsql {
+    pragma replication=OFF;
+  } db2
+} {{Replication stopped}}
+set ::DB db
+
+# Do more operations on the master and ensure replication is occurring
+# only to db3 remaining client.
+do_test replication-6.0.7 {
   execsql {
     insert into reptab values (3);
     select * from reptab order by a;
   } db
 } {1 2 3}
-
 after $replication_delay
-
-do_test replication-6.5 {
+do_test replication-6.0.8 {
   execsql {
     select * from reptab order by a;
   } db2
+} {1 2}
+do_test replication-6.0.9 {
+  execsql {
+    select * from reptab order by a;
+  } db3
+} {1 2 3}
+
+# Make sure db2 is no longer a client and can accept new data.
+do_test replication-6.0.10 {
+  execsql {
+    insert into reptab values (222);
+    select * from reptab order by a;
+  } db2
+} {1 2 222}
+
+# Make sure db2 is usable after turning off replication and restarting.
+catch {db2 close}
+sqlite3 db2 $site2dir/rep.db
+do_test replication-6.0.11 {
+  execsql {
+    insert into reptab values (223);
+    select * from reptab order by a;
+  } db2
+} {1 2 222 223}
+
+catch {db3 close}
+catch {db2 close}
+catch {db close}
+
+## Cases 6.1.* test error paths starting replication on an existing database.
+setup_rep_sites
+
+# Create database without replication.
+do_test replication-6.1.1 {
+  execsql {
+    create table reptab(a);
+    insert into reptab values (1);
+    select * from reptab;
+  } db
 } {1}
 
-# Shut down db2.
-catch {db2 close}
-
-# Do more operations on the master.
-do_test replication-6.6 {
-  execsql {
-    insert into reptab values (4);
-    select * from reptab order by a;
+# Test error when starting without a local site.
+do_test replication-6.1.2 {
+  catchsql {
+    pragma replication=on;
   } db
-} {1 2 3 4}
+} {1 {Must specify local site before starting replication}}
 
-# Now restart db2.
-sqlite3 db2 $site2dir/rep.db
-
-execsql {select * from reptab order by a;} db2
-after $client_sync_delay
-
-# Make sure db2 has all new master contents.
-do_test replication-6.7 {
-  execsql {
-    select * from reptab order by a;
-  } db2
-} {1 2 3 4}
-
-# Make sure live replication is restored on db2.
-do_test replication-6.8 {
-  execsql {
-    insert into reptab values (5);
-    select * from reptab order by a;
+# Test turning off replication when it isn't already on.
+do_test replication-6.1.3 {
+  catchsql {
+    pragma replication=off;
   } db
-} {1 2 3 4 5}
+} {1 {Replication is not currently running}}
 
-after $replication_delay
+# Set wrong local site address that will be changed before it is used.
+db eval "
+  pragma replication_local_site='$site2addr';
+"
 
-do_test replication-6.9 {
+# Test error when not starting as initial master.
+do_test replication-6.1.4 {
+  catchsql {
+    pragma replication=on;
+  } db
+} {1 {Must be initial master to start replication on an existing database}}
+
+# Change local site address before replication started.
+db eval "
+  pragma replication_local_site='$site1addr';
+  "
+
+do_test replication-6.1.5 {
   execsql {
-    select * from reptab order by a;
-  } db2
-} {1 2 3 4 5}
+    pragma replication_initial_master=on;
+    pragma replication=on;
+  } db
+} {1 {Replication started}}
 
-catch {db2 close}
+# Test error turning on replication when it is already on.
+do_test replication-6.1.6 {
+  catchsql {
+    pragma replication=on;
+  } db
+} {1 {Replication is already running}}
+
+# Test error changing local site address after replication started.
+do_test replication-6.1.7 {
+  catchsql "pragma replication_local_site='$site1addr';"
+} {1 {Cannot change local site after replication is turned on}}
+
 catch {db close}
 
 ##

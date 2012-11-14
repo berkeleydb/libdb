@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -58,7 +58,8 @@ interface Catalog {
      * @throws IllegalStateException if the formatId does not correspond to a
      * persistent class.  This is an internal consistency error.
      */
-    Format getFormat(int formatId, boolean expectStored);
+    Format getFormat(int formatId, boolean expectStored)
+        throws RefreshException;
 
     /**
      * Returns a format for a given class, or throws an exception.  This method
@@ -71,7 +72,8 @@ interface Catalog {
      * @throws IllegalArgumentException if the class is not persistent.  This
      * is a user error.
      */
-    Format getFormat(Class cls, boolean checkEntitySubclassIndexes);
+    Format getFormat(Class cls, boolean checkEntitySubclassIndexes)
+        throws RefreshException;
 
     /**
      * Returns a format by class name.  Unlike {@link #getFormat(Class)}, the
@@ -97,5 +99,17 @@ interface Catalog {
     /**
      * @see PersistCatalog#convertRawObject
      */
-    Object convertRawObject(RawObject o, IdentityHashMap converted);
+    Object convertRawObject(RawObject o, IdentityHashMap converted)
+        throws RefreshException;
+
+    /**
+     * @see PersistCatalog#resolveClass
+     */
+    Class resolveClass(String clsName)
+        throws ClassNotFoundException;
+
+    /**
+     * @see PersistCatalog#resolveKeyClass
+     */
+    Class resolveKeyClass(String clsName);
 }

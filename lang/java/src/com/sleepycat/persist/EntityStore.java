@@ -1,12 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist;
 
+import java.io.Closeable;
 import java.util.Set;
 
 import com.sleepycat.db.Database; // for javadoc
@@ -76,7 +77,8 @@ import com.sleepycat.persist.model.SecondaryKey;
  *
  * @author Mark Hayes
  */
-public class EntityStore {
+public class EntityStore
+    {
 
     private Store store;
 
@@ -138,6 +140,7 @@ public class EntityStore {
         return store.getStoreName();
     }
 
+    
 
     /**
      * Returns the current entity model for this store.  The current model is
@@ -354,9 +357,13 @@ public class EntityStore {
      * all secondary databases will be removed.  The primary and secondary
      * databases associated with the entity class must not be open except by
      * this store, since database truncation/removal is only possible when the
-     * database is not open.  The databases to be truncated/removed will be
-     * closed before performing this operation, if they were previously opened
-     * by this store.</p>
+     * database is not open.</p>
+     *
+     * <p>The primary and secondary databases for the entity class will be
+     * closed by this operation and the existing {@link PrimaryIndex} and
+     * {@link SecondaryIndex} objects will be invalidated.  To access the
+     * indexes, the user must call {@link #getPrimaryIndex} and {@link
+     * #getSecondaryIndex} after this operation is complete.</p>
      *
      * <p>Auto-commit is used implicitly if the store is transactional.</p>
      *
@@ -379,9 +386,13 @@ public class EntityStore {
      * all secondary databases will be removed.  The primary and secondary
      * databases associated with the entity class must not be open except by
      * this store, since database truncation/removal is only possible when the
-     * database is not open.  The databases to be truncated/removed will be
-     * closed before performing this operation, if they were previously opened
-     * by this store.</p>
+     * database is not open.</p>
+     *
+     * <p>The primary and secondary databases for the entity class will be
+     * closed by this operation and the existing {@link PrimaryIndex} and
+     * {@link SecondaryIndex} objects will be invalidated.  To access the
+     * indexes, the user must call {@link #getPrimaryIndex} and {@link
+     * #getSecondaryIndex} after this operation is complete.</p>
      *
      * @param txn the transaction used to protect this operation, null to use
      * auto-commit, or null if the store is non-transactional.
@@ -401,8 +412,14 @@ public class EntityStore {
     /**
      * Closes the primary and secondary databases for the given entity class
      * that were opened via this store.  The caller must ensure that the
-     * primary and secondary indices obtained from this store are no longer in
+     * primary and secondary indices for the entity class are no longer in
      * use.
+     *
+     * <p>The primary and secondary databases for the entity class will be
+     * closed by this operation and the existing {@link PrimaryIndex} and
+     * {@link SecondaryIndex} objects will be invalidated.  To access the
+     * indexes, the user must call {@link #getPrimaryIndex} and {@link
+     * #getSecondaryIndex} after this operation is complete.</p>
      *
      * @param entityClass the entity class whose databases are to be closed.
      *
@@ -417,6 +434,13 @@ public class EntityStore {
     /**
      * Closes all databases and sequences that were opened via this store.  The
      * caller must ensure that no databases opened via this store are in use.
+     *
+     * <p>WARNING: To guard against memory leaks, the application should
+     * discard all references to the closed handle.  While BDB makes an effort
+     * to discard references from closed objects to the allocated memory for an
+     * environment, this behavior is not guaranteed.  The safe course of action
+     * for an application is to discard all references to closed BDB
+     * objects.</p>
      *
      * @throws DatabaseException the base class for all BDB exceptions.
      */

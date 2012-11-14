@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -104,12 +104,20 @@ proc rep045_sub { method tnum logset largs } {
 	set c_txnargs [adjust_txnargs $c_logtype]
 	set c2_txnargs [adjust_txnargs $c2_logtype]
 
+	# Increase cache size for in-memory databases.
+	set cacheargs ""
+	if { $databases_in_memory } {
+		set cachesize [expr 2 * (1024 * 1024)]
+		set cacheargs "-cachesize { 0 $cachesize 1 }"
+	}
+
 	set omethod [convert_method $method]
 
 	# Open a master.
 	repladd 1
 	set envcmd(M0) "berkdb_env_noerr -create $m_txnargs \
 	    $m_logargs -errpfx ENV.M0 $verbargs $repmemargs \
+	    $cacheargs \
 	    -errfile /dev/stderr -lock_detect default \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set menv [eval $envcmd(M0) -rep_master]
@@ -118,6 +126,7 @@ proc rep045_sub { method tnum logset largs } {
 	repladd 2
 	set envcmd(C0) "berkdb_env_noerr -create $c_txnargs \
 	    $c_logargs -errpfx ENV.C0 $verbargs $repmemargs \
+	    $cacheargs \
 	    -errfile /dev/stderr -lock_detect default \
 	    -home $clientdir0 -rep_transport \[list 2 replsend\]"
 	set cenv0 [eval $envcmd(C0) -rep_client]
@@ -126,6 +135,7 @@ proc rep045_sub { method tnum logset largs } {
 	repladd 3
 	set envcmd(C1) "berkdb_env_noerr -create $c2_txnargs \
 	    $c2_logargs -errpfx ENV.C1 $verbargs $repmemargs \
+	    $cacheargs \
 	    -errfile /dev/stderr -lock_detect default \
 	    -home $clientdir1 -rep_transport \[list 3 replsend\]"
 	set cenv1 [eval $envcmd(C1) -rep_client]

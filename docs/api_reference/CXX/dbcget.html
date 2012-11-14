@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -92,7 +92,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3586060"></a>Parameters</h3>
+              <h3 class="title"><a id="idp808648"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -100,7 +100,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3586063"></a>key</h4>
+                <h4 class="title"><a id="idp843256"></a>key</h4>
               </div>
             </div>
           </div>
@@ -123,7 +123,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3586138"></a>pkey</h4>
+                <h4 class="title"><a id="idp847712"></a>pkey</h4>
               </div>
             </div>
           </div>
@@ -139,7 +139,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3585966"></a>data</h4>
+                <h4 class="title"><a id="idp833656"></a>data</h4>
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3586004"></a>flags</h4>
+                <h4 class="title"><a id="idp839824"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -600,22 +600,30 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
                          the buffer.  Subsequent calls with both the DB_NEXT_DUP and
                          DB_MULTIPLE flags specified will return additional duplicate data
                          items associated with the current key or 
-                         <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if
-                         there are no additional duplicate data items to return.  Subsequent
-                         calls with both the DB_NEXT and DB_MULTIPLE flags specified will
-                         return additional duplicate data items associated with the current key
-                         or if there are no additional duplicate data items will return the
-                         next key and its data items or 
+                         <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> 
+                         if there are no additional duplicate data items to
+                         return.  Subsequent calls with both the DB_NEXT
+                         and DB_MULTIPLE flags specified will return
+                         additional duplicate data items associated with
+                         the current key or if there are no additional
+                         duplicate data items will return the next key and
+                         its data items or 
                          <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> 
                          if there are no additional keys in the database.
                     </p>
                 <p>
-                         In the case of Queue or Recno databases, data items starting at the
-                         current cursor position are entered into the buffer.  The record
-                         number of the first record will be returned in the <span class="bold"><strong>key</strong></span> parameter.  The record number of each
-                         subsequent returned record must be calculated from this value. 
-                         Subsequent calls with the DB_MULTIPLE flag specified will return
-                         additional data items or 
+                         In the case of Queue, Recno, or Heap databases,
+                         data items starting at the current cursor position
+                         are entered into the buffer.  The record number
+                         (or the RID, in the case of Heap) of
+                         the first record will be returned in the 
+                         <span class="bold"><strong>key</strong></span> parameter.
+                         For Queue and Recno, the record number of each
+                         subsequent returned record must be calculated from
+                         this value.  For Heap databases, the RID of
+                         subsequent returned records cannot be known. Subsequent
+                         calls with the DB_MULTIPLE flag specified will
+                         return additional data items or 
                          <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> 
                          if there are no additional data items to return.
                     </p>
@@ -664,7 +672,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
                          if there are no additional key and data items to return.
                     </p>
                 <p>
-                         In the case of Btree or Hash databases, the multiple key and data
+                         In the case of Btree, Hash or Heap databases, the multiple key and data
                          pairs can be iterated over using the 
                          
                          <span>
@@ -672,8 +680,9 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
                         </span>
                     </p>
                 <p>
-                         In the case of Queue or Recno databases, the multiple record number
-                         and data pairs can be iterated over using the 
+                         In the case of Queue or Recno databases,
+                         the multiple record number and data pairs can be
+                         iterated over using the 
                          
                          <span>
                              <a class="xref" href="dbmultiplerecnodataiterator.html" title="DbMultipleRecnoDataIterator">DbMultipleRecnoDataIterator</a> class.
@@ -723,7 +732,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3587399"></a>Errors</h3>
+              <h3 class="title"><a id="idp923536"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -741,7 +750,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3587536"></a><span>DbMemoryException or </span>DB_BUFFER_SMALL</h4>
+                <h4 class="title"><a id="idp931816"></a><span>DbMemoryException or </span>DB_BUFFER_SMALL</h4>
               </div>
             </div>
           </div>
@@ -758,7 +767,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3587182"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idp928832"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -776,13 +785,20 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3586009"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp890768"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
           <p>
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="Db::set_lk_exclusive()">Db::set_lk_exclusive()</a>
+                for more information.
             </p>
           <p>
                 <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
@@ -794,7 +810,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3585416"></a> <span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="idp804792"></a> <span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -816,7 +832,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3585961"></a>DB_REP_LEASE_EXPIRED</h4>
+                <h4 class="title"><a id="idp845176"></a>DB_REP_LEASE_EXPIRED</h4>
               </div>
             </div>
           </div>
@@ -828,7 +844,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3586346"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="idp838072"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -845,7 +861,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3585397"></a>DB_SECONDARY_BAD</h4>
+                <h4 class="title"><a id="idp858408"></a>DB_SECONDARY_BAD</h4>
               </div>
             </div>
           </div>
@@ -857,7 +873,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3586036"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp842464"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -874,7 +890,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3587509"></a>Class</h3>
+              <h3 class="title"><a id="idp930112"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -886,7 +902,7 @@ Dbc::pget(Dbt *key, Dbt *pkey, Dbt *data, u_int32_t flags); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3586042"></a>See Also</h3>
+              <h3 class="title"><a id="idp841928"></a>See Also</h3>
             </div>
           </div>
         </div>

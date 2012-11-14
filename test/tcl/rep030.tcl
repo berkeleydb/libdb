@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2004, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -121,6 +121,9 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	set maxpg 16384
 	set log_max [expr $maxpg * 8]
 	set cache [expr $maxpg * 32 ]
+	if { $databases_in_memory } {
+		set cache [expr $maxpg * 64]
+	}
 
 	set m_logtype [lindex $logset 0]
 	set c_logtype [lindex $logset 1]
@@ -132,7 +135,6 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	set c_txnargs [adjust_txnargs $c_logtype]
 
 	# Run internal init using a data directory
-	#
 	file mkdir $masterdir/data
 	file mkdir $masterdir/data2
 	file mkdir $clientdir/data
@@ -321,11 +323,11 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	}
 
 	rep_verify $masterdir $masterenv $clientdir $clientenv\
-	    1 1 1 test.db $masterdir/data
+	    1 1 1 test.db data
 	for { set i 0 } { $i < $nfiles } { incr i } {
 		set dbname "test.$i.db"
 		rep_verify $masterdir $masterenv $clientdir $clientenv \
-		    1 1 0 $dbname $masterdir/data
+		    1 1 0 $dbname data
 	}
 
 	# Close the database held open on master for initialization.
@@ -350,11 +352,11 @@ proc rep030_sub { method niter tnum logset recargs opts largs } {
 	process_msgs $envlist 0 NONE err
 
 	rep_verify $masterdir $masterenv $clientdir $clientenv \
-	    1 1 0 test.db $masterdir/data
+	    1 1 0 test.db data
 	for { set i 0 } { $i < $nfiles } { incr i } {
 		set dbname "test.$i.db"
 		rep_verify $masterdir $masterenv $clientdir $clientenv \
-		    1 1 0 $dbname $masterdir/data
+		    1 1 0 $dbname data
 	}
 	set bulkxfer [stat_field $masterenv rep_stat "Bulk buffer transfers"]
 	if { $opts == "bulk" } {

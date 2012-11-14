@@ -205,6 +205,12 @@ struct Db
 		return ret;
 	}
 
+	int get_lk_exclusive() {
+		int onoff = 0, nowait = 0;
+		errno = self->get_lk_exclusive(self, &onoff, &nowait);
+		return onoff ? nowait + 1 : 0;
+	}
+
 	int get_lorder() {
 		int ret = 0;
 		errno = self->get_lorder(self, &ret);
@@ -238,6 +244,12 @@ struct Db
 		u_int32_t gbytes = 0, bytes = 0;
 		errno = self->get_heapsize(self, &gbytes, &bytes);
 		return (jlong)gbytes * GIGABYTE + bytes;
+	}
+
+	u_int32_t get_heap_regionsize() {
+		u_int32_t ret = 0;
+		errno = self->get_heap_regionsize(self, &ret);
+		return ret;
 	}
 
 	u_int32_t get_h_ffactor() {
@@ -440,6 +452,10 @@ struct Db
 		    (u_int32_t)(bytes % GIGABYTE), 0);
 	}
 
+	db_ret_t set_heap_regionsize(u_int32_t npages) {
+		return self->set_heap_regionsize(self, npages);
+	}
+
 	db_ret_t set_h_compare(
 	    int (*h_compare_fcn)(DB *, const DBT *, const DBT *)) {
 		return self->set_h_compare(self, h_compare_fcn);
@@ -456,6 +472,10 @@ struct Db
 
 	db_ret_t set_h_nelem(u_int32_t h_nelem) {
 		return self->set_h_nelem(self, h_nelem);
+	}
+
+	db_ret_t set_lk_exclusive(int nowait) {
+		return self->set_lk_exclusive(self, nowait);
 	}
 
 	db_ret_t set_lorder(int lorder) {
@@ -762,6 +782,12 @@ struct DbEnv
 		return ret;
 	}
 
+	const char *get_metadata_dir() {
+		const char *ret;
+		errno = self->get_metadata_dir(self, &ret);
+		return ret;
+	
+}
 	long get_shm_key() {
 		long ret;
 		errno = self->get_shm_key(self, &ret);
@@ -816,8 +842,8 @@ struct DbEnv
 		return self->set_create_dir(self, dir);
 	}
 
-	db_ret_t set_data_dir(const char *dir) {
-		return self->set_data_dir(self, dir);
+	db_ret_t add_data_dir(const char *dir) {
+		return self->add_data_dir(self, dir);
 	}
 
 	db_ret_t set_intermediate_dir_mode(const char *mode) {
@@ -847,6 +873,10 @@ struct DbEnv
 
 	db_ret_t set_feedback(void (*env_feedback_fcn)(DB_ENV *, int, int)) {
 		return self->set_feedback(self, env_feedback_fcn);
+	}
+
+	db_ret_t set_metadata_dir(const char *dir) {
+		return self->set_metadata_dir(self, dir);
 	}
 
 	db_ret_t set_mp_max_openfd(int maxopenfd) {
@@ -1592,6 +1622,35 @@ struct DbEnv
 		DB_REPMGR_STAT *statp = NULL;
 		errno = self->repmgr_stat(self, &statp, flags);
 		return statp;
+	}
+
+	u_int32_t get_backup_config(u_int32_t config_type) {
+		u_int32_t ret;
+		errno = self->get_backup_config(self, (DB_BACKUP_CONFIG)config_type, &ret);
+		return ret;
+	}
+
+	JAVA_EXCEPT(DB_RETOK_STD, JDBENV)
+	db_ret_t backup(const char *target, u_int32_t flags) {
+		return self->backup(self, target, flags);
+	}
+
+	db_ret_t dbbackup(const char *dbfile, const char *target, u_int32_t flags) {
+		return self->dbbackup(self, dbfile, target, flags);
+	}
+
+	db_ret_t set_backup_callbacks(int (*backup_open_fcn)(DB_ENV *,
+		const char *dbname, const char *target, void **handle),
+		int (*backup_write_fcn)(DB_ENV *, u_int32_t file_pos_gbytes,
+		u_int32_t file_pos_bytes, u_int32_t size, u_int8_t *buf,
+		void *handle), int (*backup_close_fcn)(
+		DB_ENV *, const char *dbname, void *handle)) {
+		return self->set_backup_callbacks(
+		    self, backup_open_fcn, backup_write_fcn, backup_close_fcn);
+	}
+
+	db_ret_t set_backup_config(u_int32_t config_type, u_int32_t value) {
+		return self->set_backup_config(self, (DB_BACKUP_CONFIG)config_type, value);
 	}
 
 	/* Convert DB errors to strings */

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2010 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -28,8 +28,6 @@ import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseType;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
-import com.sleepycat.db.EventHandlerAdapter;
-import com.sleepycat.db.ReplicationConfig;
 import com.sleepycat.db.ReplicationManagerAckPolicy;
 import com.sleepycat.db.ReplicationManagerSiteConfig;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
@@ -37,9 +35,8 @@ import com.sleepycat.db.ReplicationTimeoutType;
 import com.sleepycat.db.VerboseConfig;
 
 /**
- * Get a connection hopelessly clogged, and then kill the connection
- * (via fiddler closing socket, I guess).  Verify that the blocked
- * thread is immediately freed.
+ * Get a connection hopelessly clogged, and then kill the connection.
+ * Verify that the blocked thread is immediately freed.
  */
 public class TestDrainAbandon {
     private static final String TEST_DIR_NAME = "TESTDIR";
@@ -51,49 +48,6 @@ public class TestDrainAbandon {
     private int client2Port;
     private int client3Port;
     private int mgrPort;
-
-    class MyEventHandler extends EventHandlerAdapter {
-        private boolean done;
-        private boolean panic;
-        private boolean gotNewmaster;
-		
-        @Override
-            synchronized public void handleRepStartupDoneEvent() {
-                done = true;
-                notifyAll();
-            }
-
-        @Override
-            synchronized public void handleRepNewMasterEvent(int unused) {
-                gotNewmaster = true;
-                notifyAll();
-            }
-
-        @Override
-            synchronized public void handlePanicEvent() {
-                panic = true;
-                notifyAll();
-            }
-
-        synchronized void await() throws Exception {
-            while (!done) {
-                checkPanic();
-                wait();
-            }
-        }
-
-        private void checkPanic() throws Exception {
-            if (panic)
-                throw new Exception("aborted by DB panic");
-        }
-
-        synchronized void awaitNewmaster() throws Exception {
-            while (!gotNewmaster) {
-                checkPanic();
-                wait();
-            }
-        }
-    }
 
     @Before public void setUp() throws Exception {
         testdir = new File(TEST_DIR_NAME);
@@ -124,7 +78,6 @@ public class TestDrainAbandon {
             clientPort = p.getRealPort(1);
             client2Port = p.getRealPort(2);
             client3Port = p.getRealPort(3);
-            System.out.println("setUp: " + mgrPort + "/" + p.getFiddlerConfig());
             Util.startFiddler(p, getClass().getName(), mgrPort);
         }
     }
@@ -148,8 +101,6 @@ public class TestDrainAbandon {
         site.setLegacy(true);
         masterConfig.addReplicationManagerSite(site);
 
-        MyEventHandler masterMonitor = new MyEventHandler();
-        masterConfig.setEventHandler(masterMonitor);
         Environment master = new Environment(mkdir("master"), masterConfig);
         setTimeouts(master);
         // Prevent connection retries, so that all connections
@@ -170,7 +121,7 @@ public class TestDrainAbandon {
         value.setData(data);
 
         for (int i=0;
-             ((BtreeStats)db.getStats(null, null)).getPageCount() < 50;
+             ((BtreeStats)db.getStats(null, null)).getPageCount() < 500;
              i++)
         {
             String k = "The record number is: " + i;
@@ -178,7 +129,17 @@ public class TestDrainAbandon {
             db.put(null, key, value);
         }
 
-        // create client, but don't sync yet
+        // tell fiddler to stop reading once it sees a PAGE message
+        Socket s = new Socket("localhost", mgrPort);
+        OutputStreamWriter w = new OutputStreamWriter(s.getOutputStream());
+
+        String path1 = "{" + masterPort + "," + clientPort + "}"; // looks like {6000,6001}
+        w.write("{init," + path1 + ",page_clog}\r\n");
+        w.flush();
+        BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
+        br.readLine();
+        assertEquals("ok", br.readLine());
+        // create client
         // 
         EnvironmentConfig ec = makeBasicConfig();
         site = new ReplicationManagerSiteConfig("localhost", clientPort);
@@ -194,25 +155,9 @@ public class TestDrainAbandon {
         site = new ReplicationManagerSiteConfig("localhost", client3Port);
         site.setLegacy(true);
         ec.addReplicationManagerSite(site);
-        MyEventHandler clientMonitor = new MyEventHandler();
-        ec.setEventHandler(clientMonitor);
         Environment client = new Environment(mkdir("client"), ec);
         setTimeouts(client);
-        client.setReplicationConfig(ReplicationConfig.DELAYCLIENT, true);
         client.replicationManagerStart(1, ReplicationManagerStartPolicy.REP_CLIENT);
-        clientMonitor.awaitNewmaster();
-
-        // tell fiddler to stop reading once it sees a PAGE message
-        Socket s = new Socket("localhost", mgrPort);
-        OutputStreamWriter w = new OutputStreamWriter(s.getOutputStream());
-
-        String path1 = "{" + masterPort + "," + clientPort + "}"; // looks like {6000,6001}
-        w.write("{" + path1 + ",page_clog}\r\n");
-        w.flush();
-        BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
-        assertEquals("ok", br.readLine());
-
-        client.syncReplication();
 
         // wait til it gets stuck
         Thread.sleep(5000);     // FIXME
@@ -220,6 +165,13 @@ public class TestDrainAbandon {
         // Do the same for another client, because the master has 2
         // msg processing threads.  (It's no longer possible to
         // configure just 1.)
+        String path2 = "{" + masterPort + "," + client2Port + "}";
+        w.write("{init," + path2 + ",page_clog}\r\n");
+        w.flush();
+        br = new BufferedReader(new InputStreamReader(s.getInputStream()));
+        br.readLine();
+        assertEquals("ok", br.readLine());
+
         ec = makeBasicConfig();
         site = new ReplicationManagerSiteConfig("localhost", client2Port);
         site.setLocalSite(true);
@@ -234,22 +186,9 @@ public class TestDrainAbandon {
         site = new ReplicationManagerSiteConfig("localhost", client3Port);
         site.setLegacy(true);
         ec.addReplicationManagerSite(site);
-        clientMonitor = new MyEventHandler();
-        ec.setEventHandler(clientMonitor);
         Environment client2 = new Environment(mkdir("client2"), ec);
         setTimeouts(client2);
-        client2.setReplicationConfig(ReplicationConfig.DELAYCLIENT, true);
         client2.replicationManagerStart(1, ReplicationManagerStartPolicy.REP_CLIENT);
-        clientMonitor.awaitNewmaster();
-
-        // tell fiddler to stop reading once it sees a PAGE message
-        String path2 = "{" + masterPort + "," + client2Port + "}";
-        w.write("{" + path2 + ",page_clog}\r\n");
-        w.flush();
-        br = new BufferedReader(new InputStreamReader(s.getInputStream()));
-        assertEquals("ok", br.readLine());
-
-        client2.syncReplication();
 
         // wait til it gets stuck
         Thread.sleep(5000);
@@ -301,7 +240,7 @@ public class TestDrainAbandon {
         site.setLegacy(true);
         ec.addReplicationManagerSite(site);
         
-        clientMonitor = new MyEventHandler();
+        EventHandler clientMonitor = new EventHandler();
         ec.setEventHandler(clientMonitor);
         Environment client3 = new Environment(mkdir("client3"), ec);
         setTimeouts(client3);
@@ -329,11 +268,8 @@ public class TestDrainAbandon {
         ec.setInitializeReplication(true);
         ec.setTransactional(true);
         ec.setThreaded(true);
-        /*
-         * Use ack policy NONE, so that we have no trouble/delay
-         * starting 3rd site when 2nd site hasn't yet completed sync.
-         */ 
-        ec.setReplicationManagerAckPolicy(ReplicationManagerAckPolicy.NONE);
+        ec.setReplicationInMemory(true);
+        ec.setCacheSize(256 * 1024 * 1024);
         if (Boolean.getBoolean("VERB_REPLICATION"))
             ec.setVerbose(VerboseConfig.REPLICATION, true);
         return (ec);
@@ -342,10 +278,6 @@ public class TestDrainAbandon {
     private void setTimeouts(Environment e) throws Exception {
         e.setReplicationTimeout(ReplicationTimeoutType.ACK_TIMEOUT,
                                      30000000);
-        e.setReplicationTimeout(ReplicationTimeoutType.HEARTBEAT_SEND,
-                                     2000000);
-        e.setReplicationTimeout(ReplicationTimeoutType.HEARTBEAT_MONITOR,
-                                     10000000);
     }
 
     public File mkdir(String dname) {

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -53,6 +53,18 @@ __heap_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		    "%lu"), (u_long)pgno));
 
 	/*
+	 * We have already checked the common fields in __db_vrfy_pagezero.
+	 * However, we used the on-disk metadata page, it may have been stale.
+	 * We now have the page from mpool, so check that.
+	 */
+	if ((ret = __db_vrfy_meta(dbp, vdp, &meta->dbmeta, pgno, flags)) != 0) {
+		if (ret == DB_VERIFY_BAD)
+			isbad = 1;
+		else
+			goto err;
+	}
+
+	/*
 	 * Check that nregions is correct.  The last page in the database must
 	 * belong to the nregion-th page.
 	 */
@@ -87,7 +99,7 @@ __heap_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		}
 	}
 
-	if (LF_ISSET(DB_SALVAGE))
+err:	if (LF_ISSET(DB_SALVAGE))
 		ret = __db_salvage_markdone(vdp, pgno);
 
 	return (ret == 0 && isbad == 1 ? DB_VERIFY_BAD : ret);
@@ -285,7 +297,7 @@ __heap_vrfy_structure(dbp, vdp, flags)
 			high_pgno = pip->prev_pgno;
 			next_region += HEAP_REGION_SIZE(dbp) + 1;
 		} else if (pip->type != P_INVALID && i > high_pgno) {
-			EPRINT((dbp->env, DB_STR_A("1166", 
+			EPRINT((dbp->env, DB_STR_A("1166",
 		"Page %lu heap database page beyond high page in region",
 			"%lu"), (u_long) i));
 			isbad = 1;

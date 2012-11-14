@@ -1,15 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.test;
 
-/*
 import java.math.BigDecimal;
-*/
 import java.math.BigInteger;
 import java.util.Date;
 
@@ -18,6 +16,7 @@ import com.sleepycat.persist.impl.EnhancedAccessor;
 import com.sleepycat.persist.impl.EntityInput;
 import com.sleepycat.persist.impl.EntityOutput;
 import com.sleepycat.persist.impl.Format;
+import com.sleepycat.persist.impl.RefreshException;
 import com.sleepycat.persist.model.KeyField;
 import com.sleepycat.persist.model.Persistent;
 
@@ -52,9 +51,7 @@ class Enhanced3 implements Enhanced {
     @KeyField(18) String str;
     @KeyField(19) MyEnum e;
     @KeyField(20) BigInteger bigint;
-    /*
     @KeyField(21) BigDecimal bigdec;
-    */
 
     static {
         EnhancedAccessor.registerClass(null, new Enhanced3());
@@ -97,7 +94,9 @@ class Enhanced3 implements Enhanced {
     }
 
     public void bdbWriteCompositeKeyFields(EntityOutput output,
-                                           Format[] formats) {
+                                           Format[] formats)
+        throws RefreshException {
+
         output.writeBoolean(z);
         output.writeChar(c);
         output.writeByte(b);
@@ -120,10 +119,13 @@ class Enhanced3 implements Enhanced {
         output.writeString(str);
         output.writeKeyObject(e, formats[18]);
         output.writeBigInteger(bigint);
+        output.writeSortedBigDecimal(bigdec);
     }
 
     public void bdbReadCompositeKeyFields(EntityInput input,
-                                          Format[] formats) {
+                                          Format[] formats)
+        throws RefreshException {
+
         z = input.readBoolean();
         c = input.readChar();
         b = input.readByte();
@@ -146,6 +148,7 @@ class Enhanced3 implements Enhanced {
         str = input.readString();
         e = (MyEnum) input.readKeyObject(formats[18]);
         bigint = input.readBigInteger();
+        bigdec = input.readSortedBigDecimal();
     }
 
     public boolean bdbNullifyKeyField(Object o,
@@ -170,6 +173,10 @@ class Enhanced3 implements Enhanced {
                             int superLevel,
                             boolean isSecField,
                             Object value) {
+        // Didn't bother with this one.
+    }
+    
+    public void bdbSetPriField(Object o, Object value) {
         // Didn't bother with this one.
     }
 }

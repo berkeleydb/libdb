@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -83,7 +83,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3681524"></a>Parameters</h3>
+              <h3 class="title"><a id="idp57876872"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -91,7 +91,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3681408"></a>txnid</h4>
+                <h4 class="title"><a id="idp57870880"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -122,7 +122,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3681823"></a>file</h4>
+                <h4 class="title"><a id="idp57881520"></a>file</h4>
               </div>
             </div>
           </div>
@@ -148,7 +148,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3680532"></a>database</h4>
+                <h4 class="title"><a id="idp57822920"></a>database</h4>
               </div>
             </div>
           </div>
@@ -186,7 +186,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3681746"></a>type</h4>
+                <h4 class="title"><a id="idp57877688"></a>type</h4>
               </div>
             </div>
           </div>
@@ -213,7 +213,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3681772"></a>flags</h4>
+                <h4 class="title"><a id="idp57877896"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -324,6 +324,11 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
                             concurrently usable by multiple threads in the
                             address space.
                         </p>
+                <p>
+                            Note that this flag is incompatible with the 
+                            <a class="link" href="dbset_lk_exclusive.html" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a>
+                            method.
+                        </p>
               </li>
               <li>
                 <p><a id="open_DB_TRUNCATE"></a>
@@ -349,7 +354,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3682300"></a>mode</h4>
+                <h4 class="title"><a id="idp57909672"></a>mode</h4>
               </div>
             </div>
           </div>
@@ -373,7 +378,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3681573"></a>Environment Variables</h3>
+              <h3 class="title"><a id="idp57884624"></a>Environment Variables</h3>
             </div>
           </div>
         </div>
@@ -411,7 +416,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3682634"></a>Errors</h3>
+              <h3 class="title"><a id="idp57929304"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -427,7 +432,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3681404"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idp57905384"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -440,7 +445,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3682310"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp57873096"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -448,12 +453,19 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
             </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a>
+                for more information.
+            </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3682368"></a>ENOENT</h4>
+                <h4 class="title"><a id="idp57882328"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -465,7 +477,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3682436"></a>ENOENT</h4>
+                <h4 class="title"><a id="idp57932168"></a>ENOENT</h4>
               </div>
             </div>
           </div>
@@ -477,7 +489,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3681833"></a>DB_OLD_VERSION</h4>
+                <h4 class="title"><a id="idp57926520"></a>DB_OLD_VERSION</h4>
               </div>
             </div>
           </div>
@@ -489,7 +501,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3682671"></a>EEXIST</h4>
+                <h4 class="title"><a id="idp57933392"></a>EEXIST</h4>
               </div>
             </div>
           </div>
@@ -502,7 +514,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3682588"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp57927856"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -525,15 +537,16 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
                transaction processing; a Heap database is in use and 
                <a class="xref" href="dbset_heapsize.html" title="DB-&gt;set_heapsize()">DB-&gt;set_heapsize()</a>
                was used to set a heap size that is different from the value
-               used to create the database; or if an invalid flag value or
-               parameter was specified.
+               used to create the database or an invalid heap region size was
+	       set using <a class="xref" href="dbset_heap_regionsize.html" title="DB-&gt;set_heap_regionsize()">DB-&gt;set_heap_regionsize()</a>; 
+	       or if an invalid flag value or parameter was specified.
          </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3681838"></a>  DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="idp57926736"></a>  DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -552,7 +565,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3682625"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="idp57907680"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -565,7 +578,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3682612"></a>Class</h3>
+              <h3 class="title"><a id="idp57906648"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -577,7 +590,7 @@ DB-&gt;open(DB *db, DB_TXN *txnid, const char *file,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3681783"></a>See Also</h3>
+              <h3 class="title"><a id="idp57838264"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -141,7 +141,7 @@
 </p>
       <p>
     The list of available events may be displayed by running 'make listprobes'
-    after building the libdb-5.1 shared library.
+    after building the libdb-5.3 shared library.
 </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -155,14 +155,12 @@
 	 The DTrace probe provider for Berkeley DB is named 'bdb'. A simple
 	 dtrace command to monitor all dtrace-enabled Berkeley DB activity
 	 in the system is:
-	 </p>
+    </p>
         <p>
 	 <code class="code">
 	 dtrace -Zn 'bdb*::: { printf("%s", probename); }'
 	 </code>
 	 </p>
-        <p>
-    </p>
         <p>
 	DTrace requires elevated privileges in order to run. On Solaris you can
 	avoid running as root by giving any users who need to run
@@ -191,14 +189,12 @@
 	specified in the <span class="command"><strong>stap</strong></span> script.
 	A simple <span class="command"><strong>stap</strong></span> command to list the probes
 	of the default Berkeley DB installation is:
-	 </p>
+    </p>
         <p>
 	 <code class="code">
-	 stap -l 'process("/usr/local/BerkeleyDB.5.1/lib/libdb-5.1.so").mark("*")'
+	 stap -l 'process("/usr/local/BerkeleyDB.5.3/lib/libdb-5.3.so").mark("*")'
 	 </code>
 	 </p>
-        <p>
-    </p>
         <p>
     Berkeley DB supports SystemTap version 1.1 or later.  Building with
     userspace marker support requires <code class="filename">sys/sdt.h</code>,
@@ -271,7 +267,7 @@
 		data structures returned from probe points.
 		There is no Linux equivalent; SystemTap can obtain type
 		information directly from the debugging symbols compiled
-		into the libdb*-5.1.so shared library.
+		into the libdb*-5.3.so shared library.
 	    </dd>
             <dt>
               <span class="term"> locktimes </span>

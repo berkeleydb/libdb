@@ -387,6 +387,7 @@ set INCLUDE {
   bdb_exclusive.test
   bdb_inmem_memleak.test
   bdb_logsize.test
+  bdb_multi_proc.test
   bdb_mvcc.test
   bdb_persistent_pragma.test
   bdb_replication.test

@@ -35,6 +35,9 @@
 /* Define to 1 if you have the `atol' function. */
 #define HAVE_ATOL 1
 
+/* Define to 1 if platform reads and writes files atomically. */
+/* #undef HAVE_ATOMICFILEREAD */
+
 /* Define to 1 to use Solaris library routes for atomic operations. */
 /* #undef HAVE_ATOMIC_SOLARIS */
 
@@ -557,16 +560,16 @@
 #define PACKAGE_NAME "Berkeley DB"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Berkeley DB 5.2.36"
+#define PACKAGE_STRING "Berkeley DB 5.3.21"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "db-5.2.36"
+#define PACKAGE_TARNAME "db-5.3.21"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL "http://www.oracle.com/technology/software/products/berkeley-db/index.html"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.2.36"
+#define PACKAGE_VERSION "5.3.21"
 
 /* The size of `char', as computed by sizeof. */
 #define SIZEOF_CHAR 1

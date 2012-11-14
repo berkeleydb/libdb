@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -55,10 +55,7 @@ public interface RawType {
     /**
      * Returns whether this is a 
      * {@link <a href="{@docRoot}/com/sleepycat/persist/model/Entity.html#simpleTypes">simple type</a>}:
-     * primitive, primitive wrapper, BigInteger, String or Date.
-     * <!--
      * primitive, primitive wrapper, BigInteger, BigDecimal, String or Date.
-     * -->
      *
      * <p>If true is returned, {@link #isPrimitive} can be called for more
      * information, and a raw value of this type is represented as a simple

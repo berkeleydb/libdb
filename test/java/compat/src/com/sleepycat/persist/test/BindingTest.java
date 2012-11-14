@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +25,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -49,7 +51,7 @@ import com.sleepycat.persist.impl.PersistComparator;
 import com.sleepycat.persist.impl.PersistEntityBinding;
 import com.sleepycat.persist.impl.PersistKeyBinding;
 import com.sleepycat.persist.impl.PersistKeyCreator;
-import com.sleepycat.persist.impl.SimpleCatalog;
+import com.sleepycat.persist.impl.RefreshException;
 import com.sleepycat.persist.model.AnnotationModel;
 import com.sleepycat.persist.model.ClassMetadata;
 import com.sleepycat.persist.model.Entity;
@@ -129,8 +131,8 @@ public class BindingTest extends TestCase {
         dbConfig.setAllowCreate(true);
         DbCompat.setTypeBtree(dbConfig);
         catalog = new PersistCatalog
-            (null, env, STORE_PREFIX, STORE_PREFIX + "catalog", dbConfig,
-             model, null, false /*rawAccess*/, null /*Store*/);
+            (env, STORE_PREFIX, STORE_PREFIX + "catalog", dbConfig, model,
+             null, false /*rawAccess*/, null /*Store*/);
     }
 
     private void close()
@@ -206,9 +208,6 @@ public class BindingTest extends TestCase {
             TestCase.assertTrue(nullOrEqual(one, o.one));
             TestCase.assertEquals(two, o.two);
             TestCase.assertTrue(nullOrEqual(three, o.three));
-            if (one == three) {
-                TestCase.assertSame(o.one, o.three);
-            }
         }
 
         @Override
@@ -235,7 +234,7 @@ public class BindingTest extends TestCase {
                           {"f7", "double"},
                           {"f8", "java.lang.String"},
                           {"f9", "java.math.BigInteger"},
-                          //{"f10", "java.math.BigDecimal"},
+                          {"f10", "java.math.BigDecimal"},
                           {"f11", "java.util.Date"},
                           {"f12", "java.lang.Boolean"},
                           {"f13", "java.lang.Character"},
@@ -265,7 +264,7 @@ public class BindingTest extends TestCase {
         private final double f7 = 123.4;
         private final String f8 = "xxx";
         private final BigInteger f9 = BigInteger.valueOf(123);
-        //private BigDecimal f10 = BigDecimal.valueOf(123.4);
+        private BigDecimal f10 = new BigDecimal("123.1234000");
         private final Date f11 = new Date();
         private final Boolean f12 = true;
         private final Character f13 = 'a';
@@ -294,7 +293,10 @@ public class BindingTest extends TestCase {
             TestCase.assertEquals(f7, o.f7);
             TestCase.assertEquals(f8, o.f8);
             TestCase.assertEquals(f9, o.f9);
-            //TestCase.assertEquals(f10, o.f10);
+            /* The sorted BigDecimal cannot preserve the precision. */
+            TestCase.assertTrue(!f10.equals(o.f10));
+            TestCase.assertEquals(f10.compareTo(o.f10), 0);
+            TestCase.assertEquals(f10.stripTrailingZeros(), o.f10);
             TestCase.assertEquals(f11, o.f11);
             TestCase.assertEquals(f12, o.f12);
             TestCase.assertEquals(f13, o.f13);
@@ -414,6 +416,8 @@ public class BindingTest extends TestCase {
                           {"f1", Thread.State.class.getName()},
                           {"f2", MyEnum.class.getName()},
                           {"f3", Object.class.getName()},
+                          {"f4", MyEnumCSM.class.getName()},
+                          {"f5", Object.class.getName()},
                       },
                       0 /*priKeyIndex*/, null);
 
@@ -421,6 +425,33 @@ public class BindingTest extends TestCase {
     }
 
     enum MyEnum { ONE, TWO };
+    
+    enum MyEnumCSM {
+
+        A {
+            void Foo() {
+                System.out.println("This is A!");
+            }
+        },
+        
+        B(true) {
+            void Foo() {
+                System.out.println("This is B!");
+            }
+        };
+
+        private boolean b;
+        
+        MyEnumCSM() {
+            this(false);
+        }
+        
+        MyEnumCSM(boolean b) {
+            this.b = b;
+        }
+
+        abstract void Foo();
+    };
 
     @Entity
     static class EnumTypes implements MyEntity {
@@ -430,6 +461,8 @@ public class BindingTest extends TestCase {
         private final Thread.State f1 = Thread.State.RUNNABLE;
         private final MyEnum f2 = MyEnum.ONE;
         private final Object f3 = MyEnum.TWO;
+        private final MyEnumCSM f4 = MyEnumCSM.A;
+        private final Object f5 = MyEnumCSM.B;
 
         EnumTypes() { }
 
@@ -443,6 +476,47 @@ public class BindingTest extends TestCase {
             TestCase.assertSame(f1, o.f1);
             TestCase.assertSame(f2, o.f2);
             TestCase.assertSame(f3, o.f3);
+            TestCase.assertSame(f4, o.f4);
+            TestCase.assertSame(f5, o.f5);
+        }
+    }
+    
+    public void testEnumObjectTypes()
+        throws FileNotFoundException, DatabaseException {
+    
+        open();
+    
+        checkEntity(EnumObjectTypes.class, new EnumObjectTypes());
+    
+        checkMetadata(EnumObjectTypes.class.getName(), new String[][] {
+                          {"f0", "int"},
+                          {"f1", Object.class.getName()},
+                          {"f2", Object.class.getName()},
+                      },
+                      0 /*priKeyIndex*/, null);
+    
+        close();
+    }
+    
+    @Entity
+    static class EnumObjectTypes implements MyEntity {
+
+        @PrimaryKey
+        private final int f0 = 1;
+        private final Object f1 = MyEnum.ONE;
+        private final Object f2 = MyEnumCSM.A;
+
+        EnumObjectTypes() { }
+
+        public Object getPriKeyObject() {
+            return f0;
+        }
+
+        public void validate(Object other) {
+            EnumObjectTypes o = (EnumObjectTypes) other;
+            TestCase.assertEquals(f0, o.f0);
+            TestCase.assertSame(f1, o.f1);
+            TestCase.assertSame(f2, o.f2);
         }
     }
 
@@ -464,6 +538,7 @@ public class BindingTest extends TestCase {
                           {"f7", List.class.getName()},
                           {"f8", LinkedList.class.getName()},
                           {"f9", LocalizedText.class.getName()},
+                          {"f10", LinkedHashMap.class.getName()},
                       },
                       0 /*priKeyIndex*/, null);
 
@@ -486,6 +561,8 @@ public class BindingTest extends TestCase {
         private final List<Integer> f7 = new ArrayList<Integer>();
         private final LinkedList<Integer> f8 = new LinkedList<Integer>();
         private final LocalizedText f9 = new LocalizedText(f1, "xyz");
+        private final LinkedHashMap<String, Integer> f10 =
+            new LinkedHashMap<String, Integer>();
 
         ProxyTypes() {
             f2.add(123);
@@ -506,6 +583,9 @@ public class BindingTest extends TestCase {
             f7.add(456);
             f8.add(123);
             f8.add(456);
+            f10.put("one", 111);
+            f10.put("two", 222);
+            f10.put("three", 333);
         }
 
         public Object getPriKeyObject() {
@@ -524,6 +604,7 @@ public class BindingTest extends TestCase {
             TestCase.assertEquals(f7, o.f7);
             TestCase.assertEquals(f8, o.f8);
             TestCase.assertEquals(f9, o.f9);
+            TestCase.assertEquals(f10, o.f10);
         }
     }
 
@@ -651,7 +732,6 @@ public class BindingTest extends TestCase {
             } else {
                 assertNull(o.two);
             }
-            TestCase.assertSame(o.id, o.idShadow);
             if (one == two) {
                 TestCase.assertSame(o.one, o.two);
             }
@@ -752,9 +832,6 @@ public class BindingTest extends TestCase {
             Subclass o = (Subclass) other;
             TestCase.assertTrue(nullOrEqual(one, o.one));
             TestCase.assertEquals(two, o.two);
-            if (one == getBasicOne()) {
-                TestCase.assertSame(o.one, o.getBasicOne());
-            }
         }
     }
 
@@ -959,8 +1036,6 @@ public class BindingTest extends TestCase {
             EntityUseAbstract o = (EntityUseAbstract) other;
             TestCase.assertEquals(id, o.id);
             f1.validate(o.f1);
-            assertSame(o.one, o.f1.one);
-            assertSame(o.f1.one, o.f1.two);
             f2.validate(o.f2);
             ((Abstract) f3).validate(o.f3);
             f4.validate(o.f4);
@@ -990,8 +1065,9 @@ public class BindingTest extends TestCase {
         open();
 
         CompositeKey key =
-            new CompositeKey(123, 456L, "xyz", BigInteger.valueOf(789),
-                             MyEnum.ONE);
+            new CompositeKey(123, 456L, "xyz", BigInteger.valueOf(789), 
+                             MyEnum.ONE, MyEnumCSM.A,
+                             BigDecimal.valueOf(123.123));
         checkEntity(UseCompositeKey.class,
                     new UseCompositeKey(key, "one"));
 
@@ -1007,6 +1083,8 @@ public class BindingTest extends TestCase {
                         {"f3", "java.lang.String"},
                         {"f4", "java.math.BigInteger"},
                         {"f5", MyEnum.class.getName()},
+                        {"f6", MyEnumCSM.class.getName()},
+                        {"f7", BigDecimal.class.getName()},
                       },
                       -1 /*priKeyIndex*/, null);
 
@@ -1025,15 +1103,27 @@ public class BindingTest extends TestCase {
         private BigInteger f4;
         @KeyField(5)
         private MyEnum f5;
+        @KeyField(6)
+        private MyEnumCSM f6;
+        @KeyField(7)
+        private BigDecimal f7;
 
         private CompositeKey() {}
 
-        CompositeKey(int f1, Long f2, String f3, BigInteger f4, MyEnum f5) {
+        CompositeKey(int f1, 
+                     Long f2, 
+                     String f3, 
+                     BigInteger f4, 
+                     MyEnum f5, 
+                     MyEnumCSM f6,
+                     BigDecimal f7) {
             this.f1 = f1;
             this.f2 = f2;
             this.f3 = f3;
             this.f4 = f4;
             this.f5 = f5;
+            this.f6 = f6;
+            this.f7 = f7;
         }
 
         void validate(CompositeKey o) {
@@ -1043,6 +1133,9 @@ public class BindingTest extends TestCase {
             TestCase.assertTrue(nullOrEqual(f4, o.f4));
             TestCase.assertEquals(f5, o.f5);
             TestCase.assertTrue(nullOrEqual(f5, o.f5));
+            TestCase.assertEquals(f5, o.f5);
+            TestCase.assertTrue(nullOrEqual(f6, o.f6));
+            TestCase.assertTrue(nullOrEqual(f7, o.f7));
         }
 
         @Override
@@ -1052,7 +1145,9 @@ public class BindingTest extends TestCase {
                    nullOrEqual(f2, o.f2) &&
                    nullOrEqual(f3, o.f3) &&
                    nullOrEqual(f4, o.f4) &&
-                   nullOrEqual(f5, o.f5);
+                   nullOrEqual(f5, o.f5) &&
+                   nullOrEqual(f6, o.f6) &&
+                   nullOrEqual(f7, o.f7);
         }
 
         @Override
@@ -1062,7 +1157,8 @@ public class BindingTest extends TestCase {
 
         @Override
         public String toString() {
-            return "" + f1 + ' ' + f2 + ' ' + f3 + ' ' + f4 + ' ' + f5;
+            return "" + f1 + ' ' + f2 + ' ' + f3 + ' ' + f4 + ' ' + f5 + ' ' + 
+                   f6 + ' ' + f7;
         }
     }
 
@@ -1250,8 +1346,8 @@ public class BindingTest extends TestCase {
                           {"g8", "java.lang.String"},
                           {"f9", "java.math.BigInteger"},
                           {"g9", "java.math.BigInteger"},
-                          //{"f10", "java.math.BigDecimal"},
-                          //{"g10", "java.math.BigDecimal"},
+                          {"f10", "java.math.BigDecimal"},
+                          {"g10", "java.math.BigDecimal"},
                           {"f11", "java.util.Date"},
                           {"g11", "java.util.Date"},
                           {"f12", "java.lang.Boolean"},
@@ -1298,6 +1394,12 @@ public class BindingTest extends TestCase {
                           {"f38", "java.lang.Float"},
                           {"f39", "java.lang.Double"},
                           {"f40", CompositeKey.class.getName()},
+                          {"f41", MyEnumCSM.class.getName()},
+                          {"g41", MyEnumCSM.class.getName()},
+                          {"f42", MyEnumCSM[].class.getName()},
+                          {"g42", MyEnumCSM[].class.getName()},
+                          {"f43", Set.class.getName()},
+                          {"g43", Set.class.getName()},
                       },
                       0 /*priKeyIndex*/, null);
 
@@ -1311,7 +1413,7 @@ public class BindingTest extends TestCase {
         checkSecKey(obj, "f7", obj.f7, Double.class);
         checkSecKey(obj, "f8", obj.f8, String.class);
         checkSecKey(obj, "f9", obj.f9, BigInteger.class);
-        //checkSecKey(obj, "f10", obj.f10, BigDecimal.class);
+        checkSecKey(obj, "f10", obj.f10, BigDecimal.class);
         checkSecKey(obj, "f11", obj.f11, Date.class);
         checkSecKey(obj, "f12", obj.f12, Boolean.class);
         checkSecKey(obj, "f13", obj.f13, Character.class);
@@ -1323,6 +1425,7 @@ public class BindingTest extends TestCase {
         checkSecKey(obj, "f19", obj.f19, Double.class);
         checkSecKey(obj, "f20", obj.f20, CompositeKey.class);
         checkSecKey(obj, "f26", obj.f26, MyEnum.class);
+        checkSecKey(obj, "f41", obj.f41, MyEnumCSM.class);
 
         checkSecMultiKey(obj, "f21", toSet(obj.f21), Integer.class);
         checkSecMultiKey(obj, "f22", toSet(obj.f22), Integer.class);
@@ -1331,10 +1434,12 @@ public class BindingTest extends TestCase {
         checkSecMultiKey(obj, "f25", toSet(obj.f25), CompositeKey.class);
         checkSecMultiKey(obj, "f27", toSet(obj.f27), MyEnum.class);
         checkSecMultiKey(obj, "f28", toSet(obj.f28), MyEnum.class);
+        checkSecMultiKey(obj, "f42", toSet(obj.f42), MyEnumCSM.class);
+        checkSecMultiKey(obj, "f43", toSet(obj.f43), MyEnumCSM.class);
 
         nullifySecKey(obj, "f8", obj.f8, String.class);
         nullifySecKey(obj, "f9", obj.f9, BigInteger.class);
-        //nullifySecKey(obj, "f10", obj.f10, BigDecimal.class);
+        nullifySecKey(obj, "f10", obj.f10, BigDecimal.class);
         nullifySecKey(obj, "f11", obj.f11, Date.class);
         nullifySecKey(obj, "f12", obj.f12, Boolean.class);
         nullifySecKey(obj, "f13", obj.f13, Character.class);
@@ -1346,6 +1451,7 @@ public class BindingTest extends TestCase {
         nullifySecKey(obj, "f19", obj.f19, Double.class);
         nullifySecKey(obj, "f20", obj.f20, CompositeKey.class);
         nullifySecKey(obj, "f26", obj.f26, MyEnum.class);
+        nullifySecKey(obj, "f41", obj.f41, MyEnumCSM.class);
 
         nullifySecMultiKey(obj, "f21", obj.f21, Integer.class);
         nullifySecMultiKey(obj, "f22", obj.f22, Integer.class);
@@ -1354,6 +1460,8 @@ public class BindingTest extends TestCase {
         nullifySecMultiKey(obj, "f25", obj.f25, CompositeKey.class);
         nullifySecMultiKey(obj, "f27", obj.f27, MyEnum.class);
         nullifySecMultiKey(obj, "f28", obj.f28, MyEnum.class);
+        nullifySecMultiKey(obj, "f42", obj.f42, MyEnumCSM.class);
+        nullifySecMultiKey(obj, "f43", obj.f43, MyEnumCSM.class);
 
         nullifySecKey(obj, "f31", obj.f31, Date.class);
         nullifySecKey(obj, "f32", obj.f32, Boolean.class);
@@ -1431,9 +1539,9 @@ public class BindingTest extends TestCase {
         private BigInteger f9;
         private BigInteger g9;
 
-        //@SecondaryKey(relate=MANY_TO_ONE)
-        //private BigDecimal f10;
-        //private BigDecimal g10;
+        @SecondaryKey(relate=MANY_TO_ONE)
+        private BigDecimal f10;
+        private BigDecimal g10;
 
         @SecondaryKey(relate=MANY_TO_ONE)
         private final Date f11 = new Date(11);
@@ -1474,10 +1582,12 @@ public class BindingTest extends TestCase {
         @SecondaryKey(relate=MANY_TO_ONE)
         private final CompositeKey f20 =
             new CompositeKey(20, 20L, "20", BigInteger.valueOf(20),
-                             MyEnum.ONE);
+                             MyEnum.ONE, MyEnumCSM.A, 
+                             BigDecimal.valueOf(123.123));
         private final CompositeKey g20 =
             new CompositeKey(20, 20L, "20", BigInteger.valueOf(20),
-                             MyEnum.TWO);
+                             MyEnum.TWO, MyEnumCSM.B,
+                             BigDecimal.valueOf(123.123));
 
         private static int[] arrayOfInt = { 100, 101, 102 };
 
@@ -1485,15 +1595,21 @@ public class BindingTest extends TestCase {
 
         private static CompositeKey[] arrayOfCompositeKey = {
             new CompositeKey(100, 100L, "100", BigInteger.valueOf(100),
-                             MyEnum.ONE),
+                             MyEnum.ONE, MyEnumCSM.A, 
+                             BigDecimal.valueOf(123.123)),
             new CompositeKey(101, 101L, "101", BigInteger.valueOf(101),
-                             MyEnum.TWO),
+                             MyEnum.TWO, MyEnumCSM.B, 
+                             BigDecimal.valueOf(123.123)),
             new CompositeKey(102, 102L, "102", BigInteger.valueOf(102),
-                             MyEnum.TWO),
+                             MyEnum.TWO, MyEnumCSM.B, 
+                             BigDecimal.valueOf(123.123)),
         };
 
         private static MyEnum[] arrayOfEnum =
             new MyEnum[] { MyEnum.ONE, MyEnum.TWO };
+        
+        private static MyEnumCSM[] arrayOfEnumCSM =
+            new MyEnumCSM[] { MyEnumCSM.A, MyEnumCSM.B };
 
         @SecondaryKey(relate=ONE_TO_MANY)
         private final int[] f21 = arrayOfInt;
@@ -1526,6 +1642,18 @@ public class BindingTest extends TestCase {
         @SecondaryKey(relate=ONE_TO_MANY)
         private final Set<MyEnum> f28 = toSet(arrayOfEnum);
         private final Set<MyEnum> g28 = f28;
+        
+        @SecondaryKey(relate=MANY_TO_ONE)
+        private final MyEnumCSM f41 = MyEnumCSM.B;
+        private final MyEnumCSM g41 = f41;
+
+        @SecondaryKey(relate=ONE_TO_MANY)
+        private final MyEnumCSM[] f42 = arrayOfEnumCSM;
+        private final MyEnumCSM[] g42 = f42;
+
+        @SecondaryKey(relate=ONE_TO_MANY)
+        private final Set<MyEnumCSM> f43 = toSet(arrayOfEnumCSM);
+        private final Set<MyEnumCSM> g43 = f43;
 
         /* Repeated key values to test shared references. */
 
@@ -1577,7 +1705,7 @@ public class BindingTest extends TestCase {
             TestCase.assertEquals(f7, o.f7);
             TestCase.assertEquals(f8, o.f8);
             TestCase.assertEquals(f9, o.f9);
-            //TestCase.assertEquals(f10, o.f10);
+            TestCase.assertEquals(f10, o.f10);
             TestCase.assertEquals(f11, o.f11);
             TestCase.assertEquals(f12, o.f12);
             TestCase.assertEquals(f13, o.f13);
@@ -1593,6 +1721,12 @@ public class BindingTest extends TestCase {
             TestCase.assertEquals(f23, o.f23);
             TestCase.assertTrue(Arrays.equals(f24, o.f24));
             TestCase.assertEquals(f25, o.f25);
+            TestCase.assertEquals(f26, o.f26);
+            TestCase.assertTrue(Arrays.equals(f27, o.f27));
+            TestCase.assertEquals(f28, o.f28);
+            TestCase.assertEquals(f41, o.f41);
+            TestCase.assertTrue(Arrays.equals(f42, o.f42));
+            TestCase.assertEquals(f43, o.f43);
 
             TestCase.assertEquals(g0, o.g0);
             TestCase.assertEquals(g1, o.g1);
@@ -1604,7 +1738,7 @@ public class BindingTest extends TestCase {
             TestCase.assertEquals(g7, o.g7);
             TestCase.assertEquals(g8, o.g8);
             TestCase.assertEquals(g9, o.g9);
-            //TestCase.assertEquals(g10, o.g10);
+            TestCase.assertEquals(g10, o.g10);
             TestCase.assertEquals(g11, o.g11);
             TestCase.assertEquals(g12, o.g12);
             TestCase.assertEquals(g13, o.g13);
@@ -1620,6 +1754,12 @@ public class BindingTest extends TestCase {
             TestCase.assertEquals(g23, o.g23);
             TestCase.assertTrue(Arrays.equals(g24, o.g24));
             TestCase.assertEquals(g25, o.g25);
+            TestCase.assertEquals(g26, o.g26);
+            TestCase.assertTrue(Arrays.equals(g27, o.g27));
+            TestCase.assertEquals(g28, o.g28);
+            TestCase.assertEquals(g41, o.g41);
+            TestCase.assertTrue(Arrays.equals(g42, o.g42));
+            TestCase.assertEquals(g43, o.g43);
 
             TestCase.assertEquals(f31, o.f31);
             TestCase.assertEquals(f32, o.f32);
@@ -1700,9 +1840,6 @@ public class BindingTest extends TestCase {
             TestCase.assertNotNull(o.secKey1);
             TestCase.assertEquals(1, o.secKey2.length);
             TestCase.assertEquals(1, o.secKey3.size());
-            TestCase.assertSame(o.secKey1, o.priKey);
-            TestCase.assertSame(o.secKey2[0], o.priKey);
-            TestCase.assertSame(o.secKey3.iterator().next(), o.priKey);
         }
     }
 
@@ -1879,7 +2016,11 @@ public class BindingTest extends TestCase {
         assertEquals(keyEntry, keyEntry2);
 
         /* Check that raw entity can be converted to a regular entity. */
-        entity2 = catalog.convertRawObject(rawEntity, null);
+        try {
+            entity2 = catalog.convertRawObject(rawEntity, null);
+        } catch (RefreshException e) {
+            fail(e.toString());
+        }
         entity.validate(entity2);
 
         /* Check raw key binding. */
@@ -2167,9 +2308,10 @@ public class BindingTest extends TestCase {
         /*
          * Open a catalog that uses the stored model.
          */
-        PersistCatalog storedCatalog = new PersistCatalog
-            (null, env, STORE_PREFIX, STORE_PREFIX + "catalog", null, null,
-             null, false /*useCurrentModel*/, null /*Store*/);
+        PersistCatalog storedCatalog = null;
+        storedCatalog = new PersistCatalog
+            (env, STORE_PREFIX, STORE_PREFIX + "catalog", new DatabaseConfig(),
+             null, null, false /*useCurrentModel*/, null /*Store*/);
         EntityModel storedModel = storedCatalog.getResolvedModel();
 
         /* Check metadata/types against the stored catalog/model. */
@@ -2232,7 +2374,7 @@ public class BindingTest extends TestCase {
             String fieldType = pair[1];
             Class fieldCls;
             try {
-                fieldCls = SimpleCatalog.classForName(fieldType);
+                fieldCls = checkCatalog.resolveClass(fieldType);
             } catch (ClassNotFoundException e) {
                 fail(e.toString());
                 return; /* For compiler */
@@ -2344,7 +2486,7 @@ public class BindingTest extends TestCase {
                clsName.equals("java.lang.Double") ||
                clsName.equals("java.lang.String") ||
                clsName.equals("java.math.BigInteger") ||
-               //clsName.equals("java.math.BigDecimal") ||
+               clsName.equals("java.math.BigDecimal") ||
                clsName.equals("java.util.Date");
     }
 

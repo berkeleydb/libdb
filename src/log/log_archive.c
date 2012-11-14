@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1997, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -17,7 +17,6 @@
 static int __absname __P((ENV *, char *, char *, char **));
 static int __build_data __P((ENV *, char *, char ***));
 static int __cmpfunc __P((const void *, const void *));
-static int __log_archive __P((ENV *, char **[], u_int32_t));
 static int __usermem __P((ENV *, char ***));
 
 /*
@@ -65,8 +64,9 @@ __log_archive_pp(dbenv, listp, flags)
 /*
  * __log_archive --
  *	ENV->log_archive.  Internal.
+ * PUBLIC: int __log_archive __P((ENV *, char **[], u_int32_t));
  */
-static int
+int
 __log_archive(env, listp, flags)
 	ENV *env;
 	char ***listp;

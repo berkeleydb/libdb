@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -132,7 +132,9 @@
                     the master site using heartbeat messages.  If the client
                     receives no messages from the master for a certain amount of
                     time, it considers the connection to be broken, and calls for
-                    an election to choose a new master.
+                    an election to choose a new master.  Heartbeat messages
+                    also help clients request missing master changes in the
+                    absence of master activity.
                 </p>
           </dd>
           <dt>

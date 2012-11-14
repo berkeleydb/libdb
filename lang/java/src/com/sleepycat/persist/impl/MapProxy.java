@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.impl;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -69,4 +70,14 @@ abstract class MapProxy<K, V> implements PersistentProxy<Map<K, V>> {
             return new TreeMap<K, V>();
         }
     }
+     
+    @Persistent(proxyFor=LinkedHashMap.class) 
+    static class LinkedHashMapProxy<K, V> extends MapProxy<K, V> { 
+ 
+        protected LinkedHashMapProxy() {} 
+ 
+        protected Map<K, V> newInstance(int size) { 
+            return new LinkedHashMap<K, V>(); 
+        } 
+    } 
 }

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -9,6 +9,7 @@ package com.sleepycat.persist.impl;
 
 import com.sleepycat.bind.EntityBinding;
 import com.sleepycat.bind.tuple.TupleBase;
+import com.sleepycat.compat.DbCompat;
 import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.persist.raw.RawObject;
 
@@ -28,18 +29,23 @@ public class PersistEntityBinding implements EntityBinding {
     /**
      * Creates a key binding for a given entity class.
      */
-    public PersistEntityBinding(final PersistCatalog newCatalog,
+    public PersistEntityBinding(final PersistCatalog catalogParam,
                                 final String entityClassName,
                                 final boolean rawAccess) {
-        catalog = newCatalog;
+        catalog = catalogParam;
 
         try {
             entityFormat = getOrCreateFormat(catalog, entityClassName,
                                              rawAccess);
         } catch (RefreshException e) {
+            /* Must assign catalog field in constructor. */
             catalog = e.refresh();
-            entityFormat = getOrCreateFormat(catalog, entityClassName,
-                                             rawAccess);
+            try {
+                entityFormat = getOrCreateFormat(catalog, entityClassName,
+                                                 rawAccess);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
         }
         if (!entityFormat.isEntity()) {
             throw new IllegalArgumentException
@@ -55,10 +61,37 @@ public class PersistEntityBinding implements EntityBinding {
     public Object entryToObject(final DatabaseEntry key,
                                 final DatabaseEntry data) {
         try {
-            return entryToObjectInternal(key, data);
+            return entryToObjectInternal(key, null, data);
         } catch (RefreshException e) {
             e.refresh();
-            return entryToObjectInternal(key, data);
+            try {
+                return entryToObjectInternal(key, null, data);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
+        }
+    }
+    
+    /**
+     * This method will be used in PrimaryIndex.get, where the primary key is 
+     * known to DPL. This method will force to call readEntityWithPriKey to 
+     * directly assign primary key to the de-serialized object.
+     */     
+    public Object entryToObjectWithPriKey(final Object priKey,
+                                          final DatabaseEntry data) {
+        try {
+            if (priKey == null) {
+                throw new 
+                    IllegalArgumentException("Primary key cannot be null.");
+            }
+            return entryToObjectInternal(null, priKey, data);
+        } catch (RefreshException e) {
+            e.refresh();
+            try {
+                return entryToObjectInternal(null, priKey, data);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
         }
     }
 
@@ -67,8 +100,11 @@ public class PersistEntityBinding implements EntityBinding {
      * needed, we detect that in PersistCatalog.getFormat(int).
      */
     private Object entryToObjectInternal(final DatabaseEntry key,
-                                         final DatabaseEntry data) {
-        return readEntity(catalog, key, data, rawAccess);
+                                         final Object priKey,
+                                         final DatabaseEntry data)
+        throws RefreshException {
+        
+        return readEntity(catalog, key, priKey, data, rawAccess);
     }
 
     /**
@@ -79,25 +115,51 @@ public class PersistEntityBinding implements EntityBinding {
      * Special treatments are:
      * - The formatId must be >= 0; since this is the top level instance, it
      *   cannot refer to a visited object nor be a null reference.
-     * - The resulting entity is not added to the visited object set; entities
-     *   cannot be referenced by another (or the same) entity.
+     * - The entity is not checked for existence in the visited object set;
+     *   entities cannot be referenced by another entity.
      * - Reader.readPriKey must be called prior to calling Reader.readObject.
      */
     static Object readEntity(Catalog useCatalog,
                              DatabaseEntry key,
+                             Object priKey,
                              DatabaseEntry data,
-                             boolean rawAccess) {
-        RecordInput keyInput = new RecordInput
-            (useCatalog, rawAccess, null, 0,
-             key.getData(), key.getOffset(), key.getSize());
+                             boolean rawAccess)
+        throws RefreshException {
+
         RecordInput dataInput = new RecordInput
             (useCatalog, rawAccess, null, 0,
              data.getData(), data.getOffset(), data.getSize());
+        int initialOffset = dataInput.getBufferOffset();
         int formatId = dataInput.readPackedInt();
         Format format = useCatalog.getFormat(formatId, true /*expectStored*/);
+        dataInput.registerEntityFormat(format);
         Reader reader = format.getReader();
         Object entity = reader.newInstance(dataInput, rawAccess);
-        reader.readPriKey(entity, keyInput, rawAccess);
+        if (priKey == null) {
+            /* If priKey is null, need to deserialize the primary key. */
+            RecordInput keyInput = new RecordInput
+                (useCatalog, rawAccess, null, 0,
+                 key.getData(), key.getOffset(), key.getSize());
+            reader.readPriKey(entity, keyInput, rawAccess);
+        } else {
+        
+            /* 
+             * If priKey is not null, directly assign it to the primary key 
+             * field. [#19248]
+             */
+            Accessor accessor = 
+                reader.getAccessor(entity instanceof RawObject ?
+                                   true :
+                                   rawAccess);
+            if (accessor == null) {
+                accessor = format.getLatestVersion().getReader().
+                               getAccessor(entity instanceof RawObject ?
+                                           true :
+                                           rawAccess);
+            }
+            accessor.setPriField(entity, priKey);
+        }
+        dataInput.registerEntity(entity, initialOffset);
         entity = reader.readObject(entity, dataInput, rawAccess);
         return entity;
     }
@@ -107,7 +169,11 @@ public class PersistEntityBinding implements EntityBinding {
             objectToDataInternal(entity, data);
         } catch (RefreshException e) {
             e.refresh();
-            objectToDataInternal(entity, data);
+            try {
+                objectToDataInternal(entity, data);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
         }
     }
 
@@ -116,7 +182,9 @@ public class PersistEntityBinding implements EntityBinding {
      * needed, we detect that here.
      */
     private void objectToDataInternal(final Object entity,
-                                      final DatabaseEntry data) {
+                                      final DatabaseEntry data)
+        throws RefreshException {
+
         Format format = getValidFormat(entity);
         /* Before a write, check whether a refresh is needed. [#16655] */
         catalog.checkWriteInReplicaUpgradeMode();
@@ -129,16 +197,18 @@ public class PersistEntityBinding implements EntityBinding {
      * This is a special case of EntityOutput.writeObject for a top level
      * entity.  Special treatments are:
      * - The entity may not be null.
-     * - The entity is not added to the visited object set nor checked for
-     *   existence in the visited object set; entities cannot be referenced by
-     *   another (or the same) entity.
+     * - The entity is not checked for existence in the visited object set;
+     *   entities cannot be referenced by another entity.
      */
     static void writeEntity(Format format,
                             Catalog catalog,
                             Object entity,
                             DatabaseEntry data,
-                            boolean rawAccess) {
+                            boolean rawAccess)
+        throws RefreshException {
+
         RecordOutput output = new RecordOutput(catalog, rawAccess);
+        output.registerEntity(entity);
         output.writePackedInt(format.getId());
         format.writeObject(entity, output, rawAccess);
         TupleBase.outputToEntry(output, data);
@@ -149,12 +219,17 @@ public class PersistEntityBinding implements EntityBinding {
             objectToKeyInternal(entity, key);
         } catch (RefreshException e) {
             e.refresh();
-            objectToKeyInternal(entity, key);
+            try {
+                objectToKeyInternal(entity, key);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
         }
     }
 
     private void objectToKeyInternal(final Object entity,
-                                     final DatabaseEntry key) {
+                                     final DatabaseEntry key)
+        throws RefreshException {
 
         /*
          * Write the primary key field as a special case since the output
@@ -172,7 +247,8 @@ public class PersistEntityBinding implements EntityBinding {
      * Returns the format for the given entity and validates it, throwing an
      * exception if it is invalid for this binding.
      */
-    private Format getValidFormat(Object entity) {
+    private Format getValidFormat(Object entity)
+        throws RefreshException {
 
         /* A null entity is not allowed. */
         if (entity == null) {
@@ -212,7 +288,9 @@ public class PersistEntityBinding implements EntityBinding {
      */
     static Format getOrCreateFormat(Catalog useCatalog,
                                     String clsName,
-                                    boolean rawAccess) {
+                                    boolean rawAccess)
+        throws RefreshException {
+
         if (rawAccess) {
             Format format = useCatalog.getFormat(clsName);
             if (format == null) {
@@ -221,7 +299,7 @@ public class PersistEntityBinding implements EntityBinding {
             }
             return format;
         } else {
-            Class cls = SimpleCatalog.keyClassForName(clsName);
+            Class cls = useCatalog.resolveKeyClass(clsName);
             return useCatalog.getFormat(cls,
                                         true /*checkEntitySubclassIndexes*/);
         }

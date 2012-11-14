@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 
@@ -642,15 +642,6 @@ proc r { args } {
 					set tindex 0
 				}
 				set clist [lrange $test_names(test) $tindex end]
-				set skip_list [list test126 test127 test128 \
-				    test129 test131 test132 test133 test134]
-				foreach stest $skip_list {
-					set sindx [lsearch -exact $clist $stest]
-					if {$sindx == -1} {
-						continue
-					}
-					set clist [lreplace $clist $sindx $sindx]
-				}
 				foreach test $clist {
 					eval run_compressed btree $test $display $run
 				}
@@ -1245,10 +1236,9 @@ proc run_replicate_test { method test {nsites 2} {largs "" } } {
 
 	# Test124 can't be run under reptest because we delete all 
 	# the test files at the end of the test to avoid triggering 
-	# verification failures (it uses a non-standard sort).
-
+	# verification failures (it uses a non-standard sort).    
 	if { $test == "test124" } {
-		puts "Skipping test124 under run_replicate"
+		puts "Skipping $test under run_replicate"
 		return
 	}
 		
@@ -1469,9 +1459,8 @@ proc run_reptest { method test {droppct 0} {nclients 1} {do_del 0} \
 	# Test124 can't be run under reptest because we delete all 
 	# the test files at the end of the test to avoid triggering 
 	# verification failures (it uses a non-standard sort).
-
-	if { $test == "test124" } {
-		puts "Skipping test124 under run_repmethod"
+	if { $test == "test124"} {
+		puts "Skipping $test under run_repmethod"
 		return
 	}
 		

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -52,7 +52,7 @@ __ham_reclaim(dbp, ip, txn, flags)
 	F_SET(dbc, DBC_DONTLOCK);
 
 	if ((ret = __ham_traverse(dbc, DB_LOCK_WRITE,
-	    __db_reclaim_callback, (void *)(uintptr_t)flags, 1)) != 0)
+	    __db_reclaim_callback, &flags, 1)) != 0)
 		goto err;
 	if ((ret = __dbc_close(dbc)) != 0)
 		goto err;

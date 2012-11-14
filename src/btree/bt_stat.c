@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -99,6 +99,14 @@ __bam_stat(dbc, spp, flags)
 	if (ret != 0)
 		goto err;
 
+	/* Discard the metadata page. */
+	ret = __memp_fput(mpf, dbc->thread_info, meta, dbc->priority);
+	meta = NULL;
+	if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
+		ret = t_ret;
+	if (ret != 0)
+		goto err;
+
 	/* Walk the tree. */
 	if ((ret = __bam_traverse(dbc,
 	    DB_LOCK_READ, PGNO_INVALID, __bam_stat_callback, sp)) != 0)
@@ -117,13 +125,16 @@ __bam_stat(dbc, spp, flags)
 	write_meta = !F_ISSET(dbp, DB_AM_RDONLY) &&
 	    (!MULTIVERSION(dbp) || dbc->txn != NULL);
 meta_only:
-	if (t->bt_meta != PGNO_BASE_MD || write_meta) {
-		ret = __memp_fput(mpf, dbc->thread_info, meta, dbc->priority);
-		meta = NULL;
-		if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
-			ret = t_ret;
-		if (ret != 0)
-			goto err;
+	if (meta == NULL || t->bt_meta != PGNO_BASE_MD || write_meta) {
+		if (meta != NULL) {
+			ret = __memp_fput(mpf,
+			    dbc->thread_info, meta, dbc->priority);
+			meta = NULL;
+			if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
+				ret = t_ret;
+			if (ret != 0)
+				goto err;
+		}
 
 		if ((ret = __db_lget(dbc,
 		    0, t->bt_meta, write_meta ? DB_LOCK_WRITE : DB_LOCK_READ,
@@ -176,17 +187,17 @@ meta_only:
 	*(DB_BTREE_STAT **)spp = sp;
 
 err:	/* Discard the second page. */
-	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
-		ret = t_ret;
 	if (h != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
+	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
+		ret = t_ret;
 
 	/* Discard the metadata page. */
-	if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
-		ret = t_ret;
 	if (meta != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, meta, dbc->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	if ((t_ret = __LPUT(dbc, metalock)) != 0 && ret == 0)
 		ret = t_ret;
 
 	if (ret != 0 && sp != NULL) {

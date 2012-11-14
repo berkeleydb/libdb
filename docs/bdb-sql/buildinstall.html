@@ -9,12 +9,12 @@
     <link rel="start" href="index.html" title="Getting Started with the Oracle Berkeley DB SQL APIs" />
     <link rel="up" href="dbsqlbasics.html" title="Chapter 1. Berkeley DB SQL: The Absolute Basics" />
     <link rel="prev" href="dbsqlbasics.html" title="Chapter 1. Berkeley DB SQL: The Absolute Basics" />
-    <link rel="next" href="journaldirectory.html" title="The Journal Directory" />
+    <link rel="next" href="accessing_bdb_sql_databases.title.html" title="Accessing BDB SQL Databases" />
   </head>
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -23,7 +23,7 @@
         <tr>
           <td width="20%" align="left"><a accesskey="p" href="dbsqlbasics.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 1. Berkeley DB SQL: The Absolute Basics</th>
-          <td width="20%" align="right"> <a accesskey="n" href="journaldirectory.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="accessing_bdb_sql_databases.title.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -59,10 +59,6 @@
                 The BDB SQL interface comes as a part of the Oracle Berkeley DB
                 download. This can be downloaded from the 
                 <a class="ulink" href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/index.html" target="_top">Oracle Berkeley DB download page</a>.
-            </p>
-      <p>
-                How you install the BDB SQL interface differs depending on whether you are
-                using a Unix or a Windows system.
             </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -227,11 +223,43 @@
           <div class="itemizedlist">
             <ul type="disc">
               <li>
-                        The package contains two Visual Studio solution files.
-                        One for Visual Studio 2008, the other for Visual Studio
-                        2010. Open the appropriate solution file in Visual
-                        Studio.
-                        </li>
+                <p>
+                                The package contains Visual Studio solution files:
+                            </p>
+                <div class="itemizedlist">
+                  <ul type="circle">
+                    <li>
+                      <p>
+                                        <code class="literal">SQLite.NET.2008.sln</code>
+                                        and
+                                        <code class="literal">SQLite.NET.2010.sln</code>
+                                    </p>
+                      <p>
+                                        For use by with Visual Studio 2008
+                                        or 2010.  Note that these solution
+                                        files do not build support for Linq
+                                        or SQLite Designer.
+                                    </p>
+                    </li>
+                    <li>
+                      <p>
+                                        <code class="literal">SQLite.NET.2008.MSBuild.sln</code>
+                                        and 
+                                        <code class="literal">SQLite.NET.2010.MSBuild.sln</code>
+                                    </p>
+                      <p>
+                                        For use with MSBuild (Microsoft
+                                        Build Engine). These can also be
+                                        used with Visual Studio. These
+                                        solutions exclude SQLite Designer
+                                        and CompactFramework. By default,
+                                        these do not build support for
+                                        Linq.
+                                    </p>
+                    </li>
+                  </ul>
+                </div>
+              </li>
               <li>
                             Change the current platform target to
                             <code class="literal">ReleaseNativeOnly</code> choose either
@@ -254,23 +282,59 @@
               </div>
             </div>
           </div>
+          <p>
+                        Building BDB SQL ADO.NET for Windows Mobile
+                        requires Windows Mobile 6.5.3 Professional DTK.
+                        Typical requirements for installing this toolkit
+                        are:
+                    </p>
           <div class="itemizedlist">
             <ul type="disc">
               <li>
-                        Open the <code class="literal">SQLite.NET.2008.WinCE.sln</code>
-                        solution file in Visual Studio 2008.
+                <p>
+                                Visual Studio 2005 SP1 or Later
+                            </p>
+              </li>
+              <li>
+                <p>
+                                ActiveSync 4.5
+                            </p>
+              </li>
+              <li>
+                <p>
+                                .NET CompactFramework 2.0 SP1
+                            </p>
+              </li>
+              <li>
+                <p>
+                                Windows Mobile 6 SDK
+                            </p>
+              </li>
+            </ul>
+          </div>
+          <p>
+                        To build BDB SQL ADO.NET for Windows Mobile, do
+                        the following:
+                    </p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                            Open the <code class="literal">SQLite.NET.2008.WinCE.sln</code>
+                            solution file in Visual Studio 2008.
                         </li>
               <li>
-                        Select <code class="literal">Load Project Normally</code></li>
+                            Select <code class="literal">Load Project Normally</code></li>
               <li>
-                        Change the current platform to <code class="literal">ReleaseNativeOnly</code>.
+                            Change the current platform to <code class="literal">ReleaseNativeOnly</code>.
                         </li>
               <li>
-                        Select <code class="literal">Configuration Manager</code>-&gt;<code class="literal">new</code>,
-                        then type or select the platform <code class="literal">Windows Mobile 6.5.3 Professional DTK (ARMV4I)</code>. Choose to copy settings from
-                        <code class="literal">Pocket PC 2003 (ARMV4I)</code></li>
+                            Select <code class="literal">Configuration Manager</code>-&gt;<code class="literal">new</code>,
+                            then type or select the platform
+                            <code class="literal">Windows Mobile 6.5.3 Professional DTK (ARMV4I)</code>. 
+                            Choose to copy settings from
+                            <code class="literal">Pocket PC 2003 (ARMV4I)</code></li>
               <li>
-                        Build the solution.
+                            Build the solution.
                         </li>
             </ul>
           </div>
@@ -285,14 +349,14 @@
           <td width="20%" align="center">
             <a accesskey="u" href="dbsqlbasics.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="journaldirectory.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="accessing_bdb_sql_databases.title.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">Chapter 1. Berkeley DB SQL: The Absolute Basics </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> The Journal Directory</td>
+          <td width="40%" align="right" valign="top"> Accessing BDB SQL Databases</td>
         </tr>
       </table>
     </div>

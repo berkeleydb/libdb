@@ -31,7 +31,7 @@ createAndroidMk()
     do # NOTE: keep the tab as the first char of the echo below
 	echo "	\$(BDB_TOP)/$file \\" >> $u
     done
-    sed -e "/@SOURCE_FILES@/r$u" -e "/@SOURCE_FILES@/d" < $template
+    sed -e "/@SOURCE_FILES@/r$u" -e "/@SOURCE_FILES@/d" < $mk_template
     rm -f $u
 }
 
@@ -40,13 +40,30 @@ sed -e '/^$/d' -e '/^[	 #]/d' srcfiles.in |
     egrep -w android |
     sed 's/[	 ].*//' > $androidfilelist
 
-# create Android.mk substituting relevant version strings
-createAndroidMk | sed -e "s/@DB_VERSION@/$DB_VERSION/g" \
-    -e "s/@DB_VERSION_FULL_STRING@/$DB_VERSION_FULL_STRING/g" > $t
+for mode in "drop-in" "jdbc"
+do
+    # Generate "drop-in" make file on build_android/
+    # Generate "JDBC" make file on build_android/jdbc/jni. The name "jni" 
+    # is required by Android ndk toolchain.
+    if [ "$mode" = "drop-in" ]; then
+        mk_outdir=../build_android
+        mk_template=android/Android.mk.template
+    elif [ "$mode" = "jdbc" ]; then
+        mk_outdir=../build_android/jdbc/jni
+        mk_template=android/jdbc/Android.mk.template
+    else
+        echo "Unknown mode $mode"
+        exit 1
+    fi
 
-f=$outdir/Android.mk
-cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f)
+    # create Android.mk substituting relevant version strings
+    createAndroidMk | sed -e "s/@DB_VERSION@/$DB_VERSION/g" \
+        -e "s/@DB_VERSION_FULL_STRING@/$DB_VERSION_FULL_STRING/g" > $t
+
+    f=$mk_outdir/Android.mk
+    cmp $t $f > /dev/null 2>&1 ||
+        (echo "Building $f" && rm -f $f && cp $t $f)
+done
 
 # Build other required header files usually created by configure
 #    db.h db_config.h, sql/config.h, db_int.h and clib_port.h

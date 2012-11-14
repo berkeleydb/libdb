@@ -90,8 +90,8 @@ esac
 
 # !!! END COPIED from autoconf distribution
 
-sqlite_dir=$abs_srcdir/../lang/sql/sqlite
-(cd sql && eval "\$SHELL $sqlite_dir/configure --disable-option-checking $ac_sub_configure_args CPPFLAGS=\"-I.. $CPPFLAGS\" --enable-amalgamation=$db_cv_sql_amalgamation --enable-readline=$with_readline" && cat build_config.h >> config.h) || exit 1
+sqlite_dir=$srcdir/../lang/sql/sqlite
+(cd sql && eval "\$SHELL ../$sqlite_dir/configure --disable-option-checking $ac_sub_configure_args CPPFLAGS=\"-I.. $CPPFLAGS\" --enable-amalgamation=$db_cv_sql_amalgamation --enable-readline=$with_readline" && cat build_config.h >> config.h) || exit 1
 
 # Configure JDBC if --enable-jdbc
 if test "$db_cv_jdbc" != "no"; then
@@ -121,15 +121,15 @@ if test "$db_cv_jdbc" != "no"; then
   test "$prefix" != "" && jdbc_args="--prefix=$prefix --with-jardir=$prefix/jar"
   test "$enable_shared" != "" && jdbc_args="$jdbc_args --enable-shared=$enable_shared"
   test "$enable_static" != "" && jdbc_args="$jdbc_args --enable-static=$enable_static"
-  test "$cross_compiling" = yes && jdbc_args="$jdbc_args --build=$build --host=$host "
+  test "$cross_compiling" = "yes" && jdbc_args="$jdbc_args --build=$build --host=$host "
 
   # 1. The build directory is build_unix/jdbc, so the include paths are relative
   #    to that.
   # 2. The JDBC driver does not accept CPPFLAGS. So we move the CPPFLAGS options
   #    into CFLAGS for the JDBC driver.
-  jdbc_flags="$jdbc_flags HOST_CFLAGS=\"$HOST_CFLAGS\" \
-    CFLAGS=\"-I.. -I../../src/dbinc -I../sql -DHAVE_ERRNO_H \
-    -DHAVE_SQLITE_CONFIG_H -DHAVE_SQLITE3_MALLOC $CFLAGS $CPPFLAGS\""
+  jdbc_flags="$jdbc_flags CFLAGS=\"-I.. -I../../src/dbinc -I../sql \
+    -DHAVE_ERRNO_H -D_HAVE_SQLITE_CONFIG_H -DHAVE_SQLITE3_MALLOC \
+    $CFLAGS $CPPFLAGS\""
   # Set LDFLAGS for JDBC driver
   test "$LDFLAGS" != "" && jdbc_flags="$jdbc_flags LDFLAGS=\"$LDFLAGS\""
 
@@ -143,15 +143,7 @@ if test "$db_cv_jdbc" != "no"; then
   # Run the jdbc/configure
   cd jdbc
   test ! -e Makefile.in.tmp && mv Makefile.in Makefile.in.tmp
-  # JAVAC_FLAGS - compiling jdbc - to be passed from configure
-  sed "{s/@BDB_LIB@/$BDB_LIB/g;s,@JAVAC_FLAGS@,$JAVAC_FLAGS,g}" \
-    Makefile.in.tmp > Makefile.in
-
-  echo "jdbc_path=$jdbc_path with_sqlite3=$with_sqlite3 \
-    abs_srcdir=$abs_srcdir tmp=$tmp"
-  sqlite3_path="$abs_srcdir/../lang/sql/generated"
-  echo "\$SHELL ./configure --with-sqlite3=$sqlite3_path $jdbc_args $jdbc_flags"
-  eval "\$SHELL ./configure --with-sqlite3=$sqlite3_path $jdbc_args $jdbc_flags"
-
+  sed "s/@BDB_LIB@/$BDB_LIB/g" Makefile.in.tmp > Makefile.in
+  eval "\$SHELL ./configure --with-sqlite3=../../lang/sql/generated $jdbc_args $jdbc_flags"
 fi
 ])

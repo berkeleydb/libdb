@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2006, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -244,6 +244,9 @@ proc rep062_sub { method tnum logset recargs largs } {
 		puts "\tRep$tnum.c: Add a few records to test db."
 		set nentries 10
 		set start 0
+		if { $encryptenv == 1 } {
+			set encrypt 1
+		}
 		eval rep_test $method1 \
 		    $masterenv $db1 $nentries $start $start 0 $args1
 		incr start $nentries

@@ -46,6 +46,9 @@
 /* Define to 1 if you have the `atol' function. */
 #define HAVE_ATOL 1
 
+/* Define to 1 if platform reads and writes files atomically. */
+/* #undef HAVE_ATOMICFILEREAD */
+
 /* Define to 1 to use Solaris library routes for atomic operations. */
 /* #undef HAVE_ATOMIC_SOLARIS */
 

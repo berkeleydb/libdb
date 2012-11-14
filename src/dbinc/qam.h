@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -122,17 +122,21 @@ typedef struct __qam_filelist {
     (DB_ALIGN((uintmax_t)SSZA(QAMDATA, data) +				\
     ((QUEUE *)(dbp)->q_internal)->re_len, sizeof(u_int32_t)) * index))))
 
+#define QAM_OUTSIDE_QUEUE(meta, recno)					\
+	(((meta)->cur_recno >= (meta)->first_recno ?			\
+	    ((recno) < (meta)->first_recno ||				\
+	         (recno) > (meta)->cur_recno) :				\
+	    ((recno) > (meta)->cur_recno && 				\
+	        (recno) < (meta)->first_recno)))
+
 #define	QAM_AFTER_CURRENT(meta, recno)					\
-    ((recno) >= (meta)->cur_recno &&					\
-    ((meta)->first_recno <= (meta)->cur_recno ||			\
-    ((recno) < (meta)->first_recno &&					\
-    (recno) - (meta)->cur_recno < (meta)->first_recno - (recno))))
+	((recno) == (meta)->cur_recno ||				\
+	(QAM_OUTSIDE_QUEUE(meta, recno) &&				\
+        ((recno) - (meta)->cur_recno) <= ((meta)->first_recno - (recno))))
 
 #define	QAM_BEFORE_FIRST(meta, recno)					\
-    ((recno) < (meta)->first_recno &&					\
-    ((meta)->first_recno <= (meta)->cur_recno ||			\
-    ((recno) > (meta)->cur_recno &&					\
-    (recno) - (meta)->cur_recno > (meta)->first_recno - (recno))))
+	(QAM_OUTSIDE_QUEUE(meta, recno) &&				\
+	((meta)->first_recno - (recno)) < ((recno) - (meta)->cur_recno))
 
 #define	QAM_NOT_VALID(meta, recno)					\
     (recno == RECNO_OOB ||						\

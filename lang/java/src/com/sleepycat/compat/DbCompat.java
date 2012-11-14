@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -66,6 +66,10 @@ public class DbCompat {
     } 
 
     /* Methods used by the collections package. */
+
+    public static ClassLoader getClassLoader(Environment env) {
+        return null;
+    }
 
     public static boolean getInitializeCache(EnvironmentConfig config) {
         return config.getInitializeCache();

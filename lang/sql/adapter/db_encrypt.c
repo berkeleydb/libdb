@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 
 /*
@@ -52,7 +52,7 @@ int sqlite3CodecAttach(sqlite3 *db, int backend, const void *key, int nkey) {
 	 * since it will never be written to disk.
 	 */
 	if (nkey == 0 || pBt->env_opened || pBt->dbStorage != DB_STORE_NAMED)
-		return dberr2sqlite(0);
+		return dberr2sqlite(0, db->aDb[backend].pBt);
 
 	sqlite3_mutex_enter(db->mutex);
 
@@ -87,7 +87,7 @@ int sqlite3CodecAttach(sqlite3 *db, int backend, const void *key, int nkey) {
 
 err:	sqlite3_mutex_leave(db->mutex);
 
-	return dberr2sqlite(ret);
+	return dberr2sqlite(ret, db->aDb[backend].pBt);
 }
 
 /*

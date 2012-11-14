@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -47,7 +47,7 @@
           </dt>
           <dt>
             <span class="sect2">
-              <a href="build_unix_sql.html#id3640464">Enabling Extensions</a>
+              <a href="build_unix_sql.html#idp249752">Enabling Extensions</a>
             </span>
           </dt>
           <dt>
@@ -57,12 +57,12 @@
           </dt>
           <dt>
             <span class="sect2">
-              <a href="build_unix_sql.html#id3642322">Using the JDBC Driver</a>
+              <a href="build_unix_sql.html#idp327120">Using the JDBC Driver</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="build_unix_sql.html#id3642683">Building the ODBC Driver</a>
+              <a href="build_unix_sql.html#idp349152">Building the ODBC Driver</a>
             </span>
           </dt>
           <dt>
@@ -173,8 +173,12 @@
             <span class="term">--enable-jdbc</span>
           </dt>
           <dd>
-            Causes the JDBC driver to be built.
-        </dd>
+            <p>
+                Causes the JDBC driver to be built. Setting this option
+                implies that <code class="literal">--enable-sql</code> is set, which
+                means that the Berkeley DB SQL API will be built too.
+            </p>
+          </dd>
         </dl>
       </div>
       <p>
@@ -294,7 +298,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3640464"></a>Enabling Extensions</h3>
+              <h3 class="title"><a id="idp249752"></a>Enabling Extensions</h3>
             </div>
           </div>
         </div>
@@ -365,7 +369,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3642322"></a>Using the JDBC Driver</h3>
+              <h3 class="title"><a id="idp327120"></a>Using the JDBC Driver</h3>
             </div>
           </div>
         </div>
@@ -377,7 +381,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3642330"></a>Downloading JDBC Sample Code</h4>
+                <h4 class="title"><a id="idp327616"></a>Downloading JDBC Sample Code</h4>
               </div>
             </div>
           </div>
@@ -394,7 +398,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3642119"></a>Modifying Sample Code</h4>
+                <h4 class="title"><a id="idp322288"></a>Modifying Sample Code</h4>
               </div>
             </div>
           </div>
@@ -454,7 +458,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3642260"></a>Building and Running the JDBC Sample code</h4>
+                <h4 class="title"><a id="idp323472"></a>Building and Running the JDBC Sample code</h4>
               </div>
             </div>
           </div>
@@ -520,7 +524,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3642683"></a>Building the ODBC Driver</h3>
+              <h3 class="title"><a id="idp349152"></a>Building the ODBC Driver</h3>
             </div>
           </div>
         </div>
@@ -531,7 +535,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3642676"></a>Configuring Your System</h4>
+                <h4 class="title"><a id="idp342536"></a>Configuring Your System</h4>
               </div>
             </div>
           </div>
@@ -558,7 +562,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3642764"></a>Building the Library</h4>
+                <h4 class="title"><a id="idp353984"></a>Building the Library</h4>
               </div>
             </div>
           </div>
@@ -566,12 +570,12 @@ Default value is 10 MB for the Berkeley DB SQL interface.
                 To build the library, do the following:
             </p>
           <pre class="programlisting">
-    $ cd db-5.1.XX/build_unix
+    $ cd db-5.3.XX/build_unix
     $ CFLAGS="-fPIC" ../dist/configure --enable-sql_compat --disable-shared
     $ make
     $ cd ../lang/sql/odbc
     $ CFLAGS="-DHAVE_ERRNO_H -I../../../build_unix -I../../../src/dbinc \
-             -I../sqlite/src" LDFLAGS="../../../build_unix/libdb-5.1.a" \ 
+             -I../sqlite/src" LDFLAGS="../../../build_unix/libdb-5.3.a" \ 
              ./configure --with-sqlite3=../generated
     $ make
     </pre>
@@ -584,7 +588,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
                 NOTE: The final <code class="literal">make</code> command above is known
                 to generate a warning when using GCC. The warning states:
                 <code class="literal">Warning: Linking the shared library libsqlite3odbc.la
-                    against the static library ../../build_unix/libdb-5.1.a is
+                    against the static library ../../build_unix/libdb-5.3.a is
                     not portable!</code>. It is generally safe to ignore the
                 warning when using the generated library.
             </p>
@@ -593,7 +597,7 @@ Default value is 10 MB for the Berkeley DB SQL interface.
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3642823"></a>Testing the ODBC Driver</h4>
+                <h4 class="title"><a id="idp357536"></a>Testing the ODBC Driver</h4>
               </div>
             </div>
           </div>

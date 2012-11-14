@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -23,6 +23,7 @@ import com.sleepycat.db.Environment;
 import com.sleepycat.db.LockMode;
 import com.sleepycat.db.OperationStatus;
 import com.sleepycat.db.Transaction;
+import com.sleepycat.db.TransactionConfig;
 import com.sleepycat.persist.impl.PersistEntityBinding;
 import com.sleepycat.persist.impl.PersistKeyAssigner;
 import com.sleepycat.persist.model.Entity;
@@ -351,7 +352,7 @@ public class PrimaryIndex<PK, E> extends BasicIndex<PK, E> {
         if (transactional &&
             txn == null &&
             DbCompat.getThreadTransaction(env) == null) {
-            txn = env.beginTransaction(null, null);
+            txn = env.beginTransaction(null, getAutoCommitTransactionConfig());
             autoCommit = true;
         }
         
@@ -540,7 +541,12 @@ public class PrimaryIndex<PK, E> extends BasicIndex<PK, E> {
         OperationStatus status = db.get(txn, keyEntry, dataEntry, lockMode);
 
         if (status == OperationStatus.SUCCESS) {
-            return entityBinding.entryToObject(keyEntry, dataEntry);
+            if (entityBinding instanceof PersistEntityBinding) {
+                return (E)((PersistEntityBinding) entityBinding).
+                           entryToObjectWithPriKey(key, dataEntry);
+            } else {
+                return entityBinding.entryToObject(keyEntry, dataEntry);
+            }
         } else {
             return null;
         }
@@ -555,6 +561,17 @@ public class PrimaryIndex<PK, E> extends BasicIndex<PK, E> {
             map = new StoredSortedMap(db, keyBinding, entityBinding, true);
         }
         return map;
+    }
+
+    /**
+     * @hidden
+     * For internal use only.
+     *
+     * Used for obtaining the auto-commit txn config from the store, which
+     * overrides this method to return it.
+     */
+    TransactionConfig getAutoCommitTransactionConfig() {
+        return null;
     }
 
     boolean isUpdateAllowed() {

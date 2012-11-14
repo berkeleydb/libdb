@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -328,6 +328,39 @@ namespace CsharpAPITest {
             StatsInTxn(testHome, testName, true);
         }
 
+        [Test]
+        public void TestHeapRegionsize() {
+            /*
+             * Check that with a very small region size, the number of regions
+             * grows quickly.
+             */
+            testName = "TestHeapRegionsize";
+            SetUpTest(true);
+
+            Random r = new Random();
+            byte[] buf = new byte[1024];
+            r.NextBytes(buf);
+
+            HeapDatabaseConfig cfg = new HeapDatabaseConfig();
+            cfg.Creation = CreatePolicy.ALWAYS;
+            cfg.PageSize = 512;
+            cfg.RegionSize = 4;
+
+            HeapDatabase db = HeapDatabase.Open(
+                testHome + "/" + testName + ".db", cfg);
+            DatabaseEntry dbt = new DatabaseEntry(buf);
+            for (int i = 0; i < 10; i++)
+                db.Append(dbt);
+
+            Assert.AreEqual(db.RegionSize, 4);
+
+            HeapStats stats = db.Stats();
+            db.Close();
+
+            Assert.AreEqual(stats.RegionSize, 4);
+            Assert.Greater(stats.nRegions, 1);
+        }
+
         public void StatsInTxn(string home, string name, bool ifIsolation) {
             DatabaseEnvironmentConfig envConfig =
                 new DatabaseEnvironmentConfig();
@@ -404,6 +437,7 @@ namespace CsharpAPITest {
         public void ConfirmStatsPart1Case1(HeapStats stats) {
             Assert.AreNotEqual(0, stats.MagicNumber);
             Assert.AreEqual(4096, stats.PageSize);
+            Assert.AreNotEqual(0, stats.RegionSize);
             Assert.AreNotEqual(0, stats.Version);
         }
 

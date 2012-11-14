@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -72,7 +72,7 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3582804"></a>Parameters</h3>
+              <h3 class="title"><a id="idp646984"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -80,7 +80,7 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3582810"></a>txnid</h4>
+                <h4 class="title"><a id="idp589704"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -100,7 +100,7 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3582639"></a>countp</h4>
+                <h4 class="title"><a id="idp634744"></a>countp</h4>
               </div>
             </div>
           </div>
@@ -114,7 +114,7 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3582823"></a>flags</h4>
+                <h4 class="title"><a id="idp631576"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -128,7 +128,7 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3582246"></a>Errors</h3>
+              <h3 class="title"><a id="idp640096"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -146,7 +146,7 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3582930"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idp655480"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -164,13 +164,20 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3583004"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp627368"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
           <p>
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="Db::set_lk_exclusive()">Db::set_lk_exclusive()</a>
+                for more information.
             </p>
           <p>
                 <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
@@ -182,7 +189,7 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3582814"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp647200"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -195,7 +202,7 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3582872"></a>Class</h3>
+              <h3 class="title"><a id="idp650816"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -207,7 +214,7 @@ Db::truncate(DbTxn *txnid, u_int32_t *countp, u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3582859"></a>See Also</h3>
+              <h3 class="title"><a id="idp648016"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -1,11 +1,12 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using BerkeleyDB.Internal;
 
@@ -231,15 +232,50 @@ namespace BerkeleyDB {
             DBT key = new DBT(keyp, false);
             DBT data = new DBT(datap, false);
             DBT skey = new DBT(skeyp, false);
+            IntPtr dataPtr, sdataPtr;
+            int nrecs, dbt_sz;
 
-            DatabaseEntry s = 
+            DatabaseEntry s =
                 ((SecondaryDatabase)db.api_internal).KeyGen(
                 DatabaseEntry.fromDBT(key), DatabaseEntry.fromDBT(data));
 
             if (s == null)
                 return DbConstants.DB_DONOTINDEX;
-            
-            skey.data = s.Data;
+            if (s is MultipleDatabaseEntry) {
+                MultipleDatabaseEntry mde = (MultipleDatabaseEntry)s;
+                nrecs = mde.nRecs;
+                /* 
+                 * Allocate an array of nrecs DBT in native memory.  The call 
+                 * returns sizeof(DBT), so that we know where one DBT ends and 
+                 * the next begins.
+                 */
+                dbt_sz = (int)libdb_csharp.alloc_dbt_arr(null, nrecs, out sdataPtr);
+                /* 
+                 * We need a managed array to copy each DBT into and then we'll
+                 * copy the managed array to the native array we just allocated.
+                 * We're not able to copy native -> native.
+                 */
+                byte[] arr = new byte[nrecs * dbt_sz];
+                IntPtr p;
+                int off = 0;
+                /* Copy each DBT into the array. */
+                foreach (DatabaseEntry dbt in mde) {
+                    /* Allocate room for the data in native memory. */
+                    dataPtr = libdb_csharp.__os_umalloc(null, dbt.size);
+                    Marshal.Copy(dbt.Data, 0, dataPtr, (int)dbt.size);
+                    dbt.dbt.dataPtr = dataPtr;
+                    dbt.flags |= DbConstants.DB_DBT_APPMALLOC;
+
+                    p = DBT.getCPtr(DatabaseEntry.getDBT(dbt)).Handle;
+                    Marshal.Copy(p, arr, off, dbt_sz);
+                    off += dbt_sz;
+                }
+                Marshal.Copy(arr, 0, sdataPtr, nrecs * dbt_sz);
+                skey.dataPtr = sdataPtr;
+                skey.size = (uint)mde.nRecs;
+                skey.flags = DbConstants.DB_DBT_MULTIPLE | DbConstants.DB_DBT_APPMALLOC;
+            } else
+                skey.data = s.Data;
             return 0;
         }
 

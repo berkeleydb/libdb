@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -3031,6 +3031,73 @@ proc fileextract { superset subset outfile } {
 	return 0
 }
 
+# Verify an in-memory database
+proc dbverify_inmem { filename {directory $testdir} \
+    { pref "" } { quiet 0 } { nodump 0 } { cachesize 0 } { unref 1 } } {
+	global encrypt
+	global passwd
+
+	set ret 0
+	
+	# We need to have an env in order to share in-memory dbs.  Pick
+	# a fairly generous default cachesize if we haven't specified something
+	# else.   
+
+	if { $cachesize == 0 } {
+		set cachesize [expr 1024 * 1024]
+	}
+	set encarg ""
+	if { $encrypt != 0 } {
+		set encarg " -encryptaes $passwd"
+	}
+
+	set env [eval {berkdb_env -create -home $directory} $encarg \
+	    {-cachesize [list 0 $cachesize 0]}]
+	set earg " -env $env "
+
+	# The 'unref' flag means that we report unreferenced pages
+	# at all times.  This is the default behavior.
+	# If we have a test which leaves unreferenced pages on systems
+	# where HAVE_FTRUNCATE is not on, then we call verify_dir with
+	# unref == 0.
+	set uflag "-unref"
+	if { $unref == 0 } {
+		set uflag ""
+	}
+
+	set db " \"\" $filename"
+	if { [catch {eval {berkdb dbverify} $uflag $earg $db} res] != 0 } {
+		puts $res
+		puts "FAIL:[timestamp] Verification of $filename failed."
+		set ret 1
+		continue
+	} else {
+		error_check_good verify:$db $res 0
+		if { $quiet == 0 } {
+			puts "${pref}Verification of $filename succeeded."
+		}
+	}
+
+	# Skip the dump if it's dangerous to do it.
+	if { $nodump == 0 } {
+		if { [catch {eval dumploadtest_inmem $filename $directory} res] != 0 } {
+			puts $res
+			puts "FAIL:[timestamp] Dump/load of $filename failed."
+			set ret 1
+			continue
+		} else {
+			error_check_good dumpload:$db $res 0
+			if { $quiet == 0 } {
+				puts "${pref}Dump/load of $filename succeeded."
+			}
+		}
+	}
+
+	error_check_good vrfyenv_close [$env close] 0
+
+	return $ret
+}
+
 # Verify all .db files in the specified directory.
 proc verify_dir { {directory $testdir} { pref "" } \
     { noredo 0 } { quiet 0 } { nodump 0 } { cachesize 0 } { unref 1 } } {
@@ -3180,6 +3247,72 @@ proc db_compare { olddb newdb olddbname newdbname } {
 	error_check_good new_cursor_close($newdbname) [$nc close] 0
 
 	return 0
+}
+
+proc dumploadtest_inmem { db envdir } {
+	global util_path
+	global encrypt
+	global passwd
+
+	set newdbname $db-dumpload.db
+
+	set encarg ""
+	set utilflag "-h $envdir"
+   	set keyflag "-k"
+	set heapdb 0
+
+	if { $encrypt != 0 } {
+		set encarg "-encryptany $passwd"
+		set utilflag "$utilflag -P $passwd"
+	}
+
+	# Open original database to find dbtype.
+	set env [eval {berkdb_env -home $envdir} $encarg]
+	set earg " -env $env "
+
+	set olddb [eval {berkdb_open -rdonly} $encarg $earg {"" $db}]
+	error_check_good olddb($db) [is_valid_db $olddb] TRUE
+    	if { [is_heap [$olddb get_type]] } {
+		set heapdb 1
+	    	set keyflag ""
+	}
+	error_check_good orig_db_close($db) [$olddb close] 0
+	error_check_good env_close [$env close] 0
+
+	set dumpflags "$utilflag $keyflag -m $db"
+
+	# Dump/load the whole file, including all subdbs.
+	set rval [catch {eval {exec $util_path/db_dump} $dumpflags | \
+	    $util_path/db_load $utilflag $newdbname} res]
+	error_check_good db_dump/db_load($db:$res) $rval 0
+
+	# If the old file was empty, there's no new file and we're done.
+	if { [file exists $newdbname] == 0 } {
+		return 0
+	}
+    
+	# Dump/load doesn't preserve order in a heap db, don't run db_compare
+    	if { $heapdb == 1 } {
+		eval berkdb dbremove $encarg $newdbname
+		return 0
+	}
+
+	# Open original database.
+	set env [eval {berkdb_env -create -home $envdir} $encarg \
+	    {-cachesize [list 0 $cachesize 0]}]
+
+	set olddb [eval {berkdb_open -rdonly} $encarg $earg {"" $db}]
+	error_check_good olddb($db) [is_valid_db $olddb] TRUE
+
+	# Open the new database.
+	set newdb [eval {berkdb_open -rdonly} $encarg $earg $newdbname]
+	error_check_good newdb($db) [is_valid_db $newdb] TRUE
+	db_compare $olddb $newdb $db $newdbname
+	error_check_good new_db_close($db) [$newdb close] 0
+
+	error_check_good orig_db_close($db) [$olddb close] 0
+	eval berkdb dbremove $encarg -env $env $newdbname
+	error_check_good env_close [$env close] 0
 }
 
 proc dumploadtest { db } {
@@ -3642,7 +3775,20 @@ proc sanitized_pid { } {
 	return $mypid
 }
 
+# Determine the native page size of the OS for on-disk dbs.
 #
+proc get_native_pagesize { } {
+	set stat [catch {set db [berkdb_open -create -btree native.db] } res]
+	if { $stat == 0 } {
+		set native_pagesize [$db get_pagesize]
+		error_check_good db_close [$db close] 0
+		fileremove -f native.db
+		return $native_pagesize
+	} else {
+		puts "FAIL: Could not determine on-disk page size: $res"
+	}
+}
+
 # Extract the page size field from a stat record.  Return -1 if
 # none is found.
 #
@@ -3837,7 +3983,7 @@ proc is_debug { } {
 proc adjust_logargs { logtype {lbufsize 0} } {
 	if { $logtype == "in-memory" } {
 		if { $lbufsize == 0 } {
-			set lbuf [expr 1 * [expr 1024 * 1024]]
+			set lbuf [expr 2 * [expr 1024 * 1024]]
 			set logargs " -log_inmemory -log_buffer $lbuf "
 		} else {
 			set logargs " -log_inmemory -log_buffer $lbufsize "

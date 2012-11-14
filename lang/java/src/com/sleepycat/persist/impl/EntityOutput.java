@@ -1,12 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.impl;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import com.sleepycat.bind.tuple.TupleOutput;
@@ -32,13 +33,15 @@ public interface EntityOutput {
      * the primary key field and composite key fields (see writeKeyObject
      * below).
      */
-    void writeObject(Object o, Format fieldFormat);
+    void writeObject(Object o, Format fieldFormat)
+        throws RefreshException;
 
     /**
      * Called for a primary key field or composite key field with a reference
      * type.
      */
-    void writeKeyObject(Object o, Format fieldFormat);
+    void writeKeyObject(Object o, Format fieldFormat)
+        throws RefreshException;
 
     /**
      * Called via Accessor.writeSecKeyFields for a primary key field with a
@@ -70,4 +73,5 @@ public interface EntityOutput {
     TupleOutput writeSortedFloat(float val);
     TupleOutput writeSortedDouble(double val);
     TupleOutput writeBigInteger(BigInteger val);
+    TupleOutput writeSortedBigDecimal(BigDecimal val);
 }

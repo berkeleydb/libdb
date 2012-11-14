@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -142,7 +142,9 @@ abstract class CollectionProxy<E>
     static void copyElements(RecordInput input,
                              Format format,
                              Format keyFormat,
-                             Set results) {
+                             Set results)
+        throws RefreshException {
+
         /*
          * This could be optimized by traversing the byte format of the
          * collection's elements array.

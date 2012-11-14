@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -11,15 +11,19 @@ import static com.sleepycat.persist.model.Relationship.ONE_TO_MANY;
 import static com.sleepycat.persist.model.Relationship.ONE_TO_ONE;
 import static com.sleepycat.persist.model.DeleteAction.NULLIFY;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Locale;
 
 import junit.framework.Test;
 
+import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.SecondaryConfig;
+import com.sleepycat.db.SequenceConfig;
 import com.sleepycat.persist.EntityStore;
 import com.sleepycat.persist.PrimaryIndex;
+import com.sleepycat.persist.SecondaryIndex;
 import com.sleepycat.persist.StoreConfig;
 import com.sleepycat.persist.model.AnnotationModel;
 import com.sleepycat.persist.model.Entity;
@@ -151,7 +155,7 @@ public class NegativeTest extends TxnTestCase {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().indexOf
                 ("A composite key class used with a sequence may contain " +
-                 "only a single integer key field")>= 0);
+                 "only a single key field")>= 0);
         }
         close();
     }
@@ -315,6 +319,28 @@ public class NegativeTest extends TxnTestCase {
     }
 
     /**
+     * Disallow storing null entities. [#19085]
+     */
+    public void testNullEntity()
+        throws DatabaseException {
+
+        open();
+        PrimaryIndex<Integer, EntitySuperClass> index = store.getPrimaryIndex
+            (Integer.class, EntitySuperClass.class);
+        try {
+            index.put(null);
+            fail();
+        } catch (IllegalArgumentException expected) {
+        }
+        try {
+            index.sortedMap().put(1, null);
+            fail();
+        } catch (IllegalArgumentException expected) {
+        }
+        close();
+    }
+
+    /**
      * Disallow embedded entity classes and subclasses.  [#16077]
      */
     public void testEmbeddedEntity()
@@ -359,9 +385,13 @@ public class NegativeTest extends TxnTestCase {
 
         private EntitySuperClass y;
 
+        /* References to self are allowed. [#17525] */
+        private EmbeddingEntity self;
+
         EmbeddingEntity(int x, EntitySuperClass y) {
             this.x = x;
             this.y = y;
+            this.self = this;
         }
 
         private EmbeddingEntity() {}
@@ -466,19 +496,23 @@ public class NegativeTest extends TxnTestCase {
         }
     }
 
-    @Persistent(proxyFor=BigDecimal.class)
+    @Persistent(proxyFor=Locale.class)
     static class ProxyExtendsEntity
         extends EntitySuperClass
-        implements PersistentProxy<BigDecimal> {
+        implements PersistentProxy<Locale> {
 
-        private String rep;
+        String language;
+        String country;
+        String variant;
 
-        public BigDecimal convertProxy() {
-            return new BigDecimal(rep);
+        public void initializeProxy(Locale object) {
+            language = object.getLanguage();
+            country = object.getCountry();
+            variant = object.getVariant();
         }
 
-        public void initializeProxy(BigDecimal o) {
-            rep = o.toString();
+        public Locale convertProxy() {
+            return new Locale(language, country, variant);
         }
     }
 
@@ -617,26 +651,59 @@ public class NegativeTest extends TxnTestCase {
     /**
      * Disallow @Entity inner class.
      */
-    public void testEntityInnerClass()
+    public void testSetConfigAfterOpen()
         throws DatabaseException {
 
         open();
-        try {
+        PrimaryIndex<Integer, SetConfigAfterOpenEntity> priIndex =
             store.getPrimaryIndex(Integer.class,
-                                  EntityInnerClassEntity.class);
+                                  SetConfigAfterOpenEntity.class);
+        SecondaryIndex<Integer, Integer, SetConfigAfterOpenEntity> secIndex =
+            store.getSecondaryIndex(priIndex, Integer.class, "skey");
+
+        DatabaseConfig priConfig =
+            store.getPrimaryConfig(SetConfigAfterOpenEntity.class);
+        assertNotNull(priConfig);
+        try {
+            store.setPrimaryConfig(SetConfigAfterOpenEntity.class, priConfig);
             fail();
-        } catch (IllegalArgumentException expected) {
+        } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage().indexOf
-                ("Inner classes not allowed") >= 0);
+                ("Cannot set config after DB is open") >= 0);
         }
+
+        SecondaryConfig secConfig =
+            store.getSecondaryConfig(SetConfigAfterOpenEntity.class, "skey");
+        assertNotNull(secConfig);
+        try {
+            store.setSecondaryConfig(SetConfigAfterOpenEntity.class, "skey",
+                                     secConfig);
+            fail();
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().indexOf
+                ("Cannot set config after DB is open") >= 0);
+        }
+
+        SequenceConfig seqConfig = store.getSequenceConfig("foo");
+        assertNotNull(seqConfig);
+        try {
+            store.setSequenceConfig("foo", seqConfig);
+            fail();
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().indexOf
+                ("Cannot set config after Sequence is open") >= 0);
+        }
+
         close();
     }
 
-    /* An inner (non-static) class is illegal. */
     @Entity
-    class EntityInnerClassEntity {
+    static class SetConfigAfterOpenEntity {
 
-        @PrimaryKey
+        @PrimaryKey(sequence="foo")
         private int key;
+
+        @SecondaryKey(relate=ONE_TO_ONE)
+        int skey;
     }
 }

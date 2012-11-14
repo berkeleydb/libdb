@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -686,9 +686,13 @@ __txn_commit(txn, flags)
 	 * should always be a perm record in the log because the master updates
 	 * the LSN history system database in rep_start() (with IGNORE_LEASE
 	 * set).
+	 *
+	 * Only check leases if this txn writes to the log file
+	 * (i.e. td->last_lsn).
 	 */
 	if (txn->parent == NULL && IS_REP_MASTER(env) &&
 	    IS_USING_LEASES(env) && !F_ISSET(txn, TXN_IGNORE_LEASE) &&
+	    !IS_ZERO_LSN(td->last_lsn) &&
 	    (ret = __rep_lease_check(env, 1)) != 0) {
 		DB_ASSERT(env, ret != DB_NOTFOUND);
 		goto err;
@@ -841,9 +845,13 @@ __txn_commit(txn, flags)
 	 * If we're a child, that is not a perm record.  If we are a
 	 * master and cannot get valid leases now, something happened
 	 * during the commit.  The only thing to do is panic.
+	 *
+	 * Only check leases if this txn writes to the log file
+	 * (i.e. td->last_lsn).
 	 */
 	if (txn->parent == NULL && IS_REP_MASTER(env) &&
 	    IS_USING_LEASES(env) && !F_ISSET(txn, TXN_IGNORE_LEASE) &&
+	    !IS_ZERO_LSN(td->last_lsn) &&
 	    (ret = __rep_lease_check(env, 1)) != 0)
 		return (__env_panic(env, ret));
 

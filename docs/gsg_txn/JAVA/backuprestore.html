@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -256,9 +256,17 @@
                 at the time of the backup.
             </p>
         <p>
-                You can use the <span class="command"><strong>db_hotbackup</strong></span> command line utility to create a hot backup. 
-                This program optionally runs a checkpoint, and then copies all necessary files to a 
-				target directory.                      
+                You can use the <span class="command"><strong>db_hotbackup</strong></span> command
+                line utility to create a hot backup.  This program
+                optionally runs a checkpoint, and then copies all necessary
+                files to a target directory.                      
+            </p>
+        <p>
+                You can also create your own hot backup facility using the 
+                
+                
+                <code class="methodname">Environment.backup()</code>
+                method.
             </p>
         <p>
                 Alternatively, you can manually create a hot backup as follows:
@@ -269,7 +277,8 @@
               <p>
 		    
 		     <span>
-              Specify <code class="literal">true</code> to the <code class="literal">EnvironmentConfig.setHotbackupInProgress()</code> method.
+                 Specify <code class="literal">true</code> to the 
+                 <code class="literal">EnvironmentConfig.setHotbackupInProgress()</code> method.
               </span>  
                  
                 

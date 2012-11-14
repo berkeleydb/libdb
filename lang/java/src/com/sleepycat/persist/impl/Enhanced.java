@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -91,7 +91,8 @@ public interface Enhanced {
      *
      * @see Accessor#writePriKeyField
      */
-    void bdbWritePriKeyField(EntityOutput output, Format format);
+    void bdbWritePriKeyField(EntityOutput output, Format format)
+        throws RefreshException;
 
     /**
      * Calls the super class method if this class does not contain the primary
@@ -99,12 +100,14 @@ public interface Enhanced {
      *
      * @see Accessor#readPriKeyField
      */
-    void bdbReadPriKeyField(EntityInput input, Format format);
+    void bdbReadPriKeyField(EntityInput input, Format format)
+        throws RefreshException;
 
     /**
      * @see Accessor#writeSecKeyFields
      */
-    void bdbWriteSecKeyFields(EntityOutput output);
+    void bdbWriteSecKeyFields(EntityOutput output)
+        throws RefreshException;
 
     /**
      * @see Accessor#readSecKeyFields
@@ -112,12 +115,14 @@ public interface Enhanced {
     void bdbReadSecKeyFields(EntityInput input,
                              int startField,
                              int endField,
-                             int superLevel);
+                             int superLevel)
+        throws RefreshException;
 
     /**
      * @see Accessor#writeNonKeyFields
      */
-    void bdbWriteNonKeyFields(EntityOutput output);
+    void bdbWriteNonKeyFields(EntityOutput output)
+        throws RefreshException;
 
     /**
      * @see Accessor#readNonKeyFields
@@ -125,17 +130,20 @@ public interface Enhanced {
     void bdbReadNonKeyFields(EntityInput input,
                              int startField,
                              int endField,
-                             int superLevel);
+                             int superLevel)
+        throws RefreshException;
 
     /**
      * @see Accessor#writeCompositeKeyFields
      */
-    void bdbWriteCompositeKeyFields(EntityOutput output, Format[] formats);
+    void bdbWriteCompositeKeyFields(EntityOutput output, Format[] formats)
+        throws RefreshException;
 
     /**
      * @see Accessor#readCompositeKeyFields
      */
-    void bdbReadCompositeKeyFields(EntityInput input, Format[] formats);
+    void bdbReadCompositeKeyFields(EntityInput input, Format[] formats)
+        throws RefreshException;
 
     /**
      * @see Accessor#getField
@@ -153,4 +161,9 @@ public interface Enhanced {
                      int superLevel,
                      boolean isSecField,
                      Object value);
+    
+    /**
+     * @see Accessor#setPriField
+     */
+    void bdbSetPriField(Object o, Object value);
 }

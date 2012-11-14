@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -73,7 +73,8 @@ interface Accessor {
      *
      * @param output the output data to write to.
      */
-    void writePriKeyField(Object o, EntityOutput output);
+    void writePriKeyField(Object o, EntityOutput output)
+        throws RefreshException;
 
     /**
      * Reads the primary key field value from the given EntityInput.
@@ -85,7 +86,8 @@ interface Accessor {
      *
      * @param input the input data to read from.
      */
-    void readPriKeyField(Object o, EntityInput input);
+    void readPriKeyField(Object o, EntityInput input)
+        throws RefreshException;
 
     /**
      * Writes all secondary key field values to the given EntityOutput,
@@ -98,7 +100,8 @@ interface Accessor {
      *
      * @param output the output data to write to.
      */
-    void writeSecKeyFields(Object o, EntityOutput output);
+    void writeSecKeyFields(Object o, EntityOutput output)
+        throws RefreshException;
 
     /**
      * Reads a range of secondary key field values from the given EntityInput,
@@ -133,7 +136,8 @@ interface Accessor {
                           EntityInput input,
                           int startField,
                           int endField,
-                          int superLevel);
+                          int superLevel)
+        throws RefreshException;
 
     /**
      * Writes all non-key field values to the given EntityOutput, writing
@@ -143,7 +147,8 @@ interface Accessor {
      *
      * @param output the output data to write to.
      */
-    void writeNonKeyFields(Object o, EntityOutput output);
+    void writeNonKeyFields(Object o, EntityOutput output)
+        throws RefreshException;
 
     /**
      * Reads a range of non-key field values from the given EntityInput,
@@ -175,7 +180,8 @@ interface Accessor {
                           EntityInput input,
                           int startField,
                           int endField,
-                          int superLevel);
+                          int superLevel)
+        throws RefreshException;
 
     /**
      * Writes all composite key field values to the given EntityOutput, writing
@@ -185,7 +191,8 @@ interface Accessor {
      *
      * @param output the output data to write to.
      */
-    void writeCompositeKeyFields(Object o, EntityOutput output);
+    void writeCompositeKeyFields(Object o, EntityOutput output)
+        throws RefreshException;
 
     /**
      * Reads all composite key field values from the given EntityInput,
@@ -195,7 +202,8 @@ interface Accessor {
      *
      * @param input the input data to read from.
      */
-    void readCompositeKeyFields(Object o, EntityInput input);
+    void readCompositeKeyFields(Object o, EntityInput input)
+        throws RefreshException;
 
     /**
      * Returns the value of a given field, representing primitives as primitive
@@ -243,4 +251,21 @@ interface Accessor {
                   int superLevel,
                   boolean isSecField,
                   Object value);
+    
+    /**
+     * Changes the value of the primary key field, representing primitives as 
+     * primitive wrapper objects.
+     *
+     * @param o is the object containing the primary key field.
+     *
+     * @param field is the field index.
+     *
+     * @param superLevel is a positive number to identify the field of the
+     * class that is the Nth super instance; or zero to identify the field in
+     * this class.
+     *
+     * @param value is the new value of the field, or null to set a reference
+     * type field to null.
+     */
+    void setPriField(Object o, Object value); 
 }

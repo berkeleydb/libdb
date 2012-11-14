@@ -5,7 +5,7 @@ all: dbtest.jar
 
 dbtest.jar: classesdir
 	# Compile the tests and build the test jar
-	javac -classpath "${DB_JAR}${CP_SEP}${REQUIRED_JARS}" \
+	javac -classpath "${DB_JAR}${CP_SEP}${REQUIRED_JARS}${CP_SEP}${CLASSPATH}" \
 		-d ./classes ${TESTCLASSES}
 	jar cf ./dbtest.jar -C ./classes ./com/sleepycat
 

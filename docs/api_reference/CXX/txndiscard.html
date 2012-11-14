@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -74,7 +74,7 @@ DbTxn::discard(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3654332"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+              <h4 class="title"><a id="idp5096544"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
             </div>
           </div>
         </div>
@@ -92,13 +92,20 @@ DbTxn::discard(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3654339"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+              <h4 class="title"><a id="idp5086328"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
             </div>
           </div>
         </div>
         <p>
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+        <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="Db::set_lk_exclusive()">Db::set_lk_exclusive()</a>
+                for more information.
             </p>
         <p>
                 <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
@@ -110,7 +117,7 @@ DbTxn::discard(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3654356"></a>EINVAL</h4>
+              <h4 class="title"><a id="idp5087392"></a>EINVAL</h4>
             </div>
           </div>
         </div>
@@ -127,7 +134,7 @@ DbTxn::discard(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3654696"></a>Parameters</h3>
+              <h3 class="title"><a id="idp5108432"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -135,7 +142,7 @@ DbTxn::discard(u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3654699"></a>flags</h4>
+                <h4 class="title"><a id="idp5108624"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -149,7 +156,7 @@ DbTxn::discard(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3653188"></a>Errors</h3>
+              <h3 class="title"><a id="idp5078464"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -167,7 +174,7 @@ DbTxn::discard(u_int32_t flags);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3654744"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp5111192"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -182,7 +189,7 @@ DbTxn::discard(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3654726"></a>Class</h3>
+              <h3 class="title"><a id="idp5110112"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -194,7 +201,7 @@ DbTxn::discard(u_int32_t flags);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3654766"></a>See Also</h3>
+              <h3 class="title"><a id="idp5000624"></a>See Also</h3>
             </div>
           </div>
         </div>

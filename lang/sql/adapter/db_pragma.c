@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 
 /*
@@ -18,6 +18,7 @@ extern int __os_mkdir (ENV *, const char *, int);
 extern void __db_chksum (void *, u_int8_t *, size_t, u_int8_t *, u_int8_t *);
 extern int __db_check_chksum (ENV *, void *, DB_CIPHER *, u_int8_t *, void *,
     size_t, int);
+extern int __env_ref_get (DB_ENV *, u_int32_t *);
 
 static const char *PRAGMA_FILE = "pragma";
 static const char *PRAGMA_VERSION = "1.0";
@@ -119,22 +120,33 @@ int bdbsqlPragmaMultiversion(Parse *pParse, Btree *p, u8 on)
 	return ret;
 }
 
-static int supportsReplication(Parse *pParse, Db *pDb)
+static int supportsReplication(Btree *p)
 {
-	char *value = NULL;
-	int retVal = 0;
+	DB_ENV *dbenv;
+	u_int32_t val = 0;
 
-	/* 
-	 * See if we have ever started replication.  Cannot use replication
-	 * stats because replication may currently be turned off even if
-	 * environment was originally created with replication.
-	 */
-	if (getPersistentPragma(pDb->pBt,
-	    "replication_init", &value, pParse) == SQLITE_OK && value) {
-		retVal = 1;
-		sqlite3_free(value);
+	if (p->pBt->env_opened) {
+		dbenv = p->pBt->dbenv;
+		dbenv->get_open_flags(dbenv, &val);
 	}
-	return (retVal);
+	return (val & DB_INIT_REP);
+}
+
+static int hasDatabaseConnections(Btree *p)
+{
+	u_int32_t refCount;
+	int ret;
+
+	/*
+	 * We are using __env_ref_get() to spot check whether there are
+	 * any other processes or threads using the underlying BDB environment
+	 * for this SQL database.  It gets the value of the environment
+	 * shared region's refcnt.  Note that this does not prevent another
+	 * thread or process from accessing the environment immediately after
+	 * this call.
+	 */
+	ret = __env_ref_get(p->pBt->dbenv, &refCount);
+	return (refCount > 1);
 }
 
 int setRepVerboseFile(BtShared *pBt, DB_ENV *dbenv, const char *fname,
@@ -213,13 +225,21 @@ int getHostPort(const char *hpstr, char **host, u_int *port)
 
 static int bdbsqlPragmaStartReplication(Parse *pParse, Db *pDb)
 {
+	Btree *pBt;
 	char *value;
 	int rc = SQLITE_OK;
 	u8 hadRemSite = 0;
 
+	pBt = pDb->pBt;
+
+	if (supportsReplication(pBt)) {
+		sqlite3ErrorMsg(pParse, "Replication is already running");
+		goto done;
+	}
+
 	/* Make sure there is a default local site value. */
 	value = NULL;
-	if ((rc = getPersistentPragma(pDb->pBt,
+	if ((rc = getPersistentPragma(pBt,
 	    "replication_local_site", &value, pParse)) == SQLITE_OK &&
 	    value)
 		sqlite3_free(value);
@@ -229,25 +249,98 @@ static int bdbsqlPragmaStartReplication(Parse *pParse, Db *pDb)
 		goto done;
 	}
 
-	/*
-	 * Must either be starting as initial master or have a remote
-	 * site defined to join an existing replication group.
-	 */
-	value = NULL;
-	if ((rc = getPersistentPragma(pDb->pBt,
-	    "replication_remote_site", &value, pParse)) == SQLITE_OK &&
-	    value) {
-		hadRemSite = 1;
-		sqlite3_free(value);
+	if (dbExists) {
+		/*
+		 * Turning on replication requires recovery on the underlying
+		 * BDB environment, which requires single-threaded access.
+		 * Make sure there are no other processes or threads accessing
+		 * it.  This is not foolproof, because there is a small chance
+		 * that another process or thread could slip in there between
+		 * this call and the recovery, but it should cover most cases.
+		 */
+		if (hasDatabaseConnections(pBt)) {
+			sqlite3ErrorMsg(pParse, "Close all database "
+			    "connections before turning on replication");
+			goto done;
+		}
+
+		if (pBt->pBt->repStartMaster != 1) {
+			sqlite3ErrorMsg(pParse, "Must be initial master to "
+			    "start replication on an existing database");
+			goto done;
+		}
+
+		/*
+		 * Close and reopen SQL database to add replication.  Opening
+		 * the underlying BDB environment with replication always
+		 * performs a recovery.
+		 */
+		pBt->pBt->repStartMaster = 1;
+		if ((rc = btreeReopenEnvironment(pBt, 0)) != SQLITE_OK)
+			sqlite3ErrorMsg(pParse, "Could not "
+			    "start replication on an existing database");
+	} else {
+		/*
+		 * When starting replication without an existing database,
+		 * must either start as initial master or have a remote
+		 * site defined to join an existing replication group.
+		 */
+		value = NULL;
+		if ((rc = getPersistentPragma(pBt,
+		    "replication_remote_site", &value, pParse)) == SQLITE_OK &&
+		    value) {
+			hadRemSite = 1;
+			sqlite3_free(value);
+		}
+		if (!dbExists && !hadRemSite &&
+		    pBt->pBt->repStartMaster != 1) {
+			sqlite3ErrorMsg(pParse, "Must either be initial "
+			    "master or specify a remote site");
+			goto done;
+		}
+
+		/* Create replication environment for new SQL database. */
+		rc = btreeOpenEnvironment(pBt, 1);
 	}
-	if (!dbExists && !hadRemSite && pDb->pBt ->pBt->repStartMaster != 1) {
-		sqlite3ErrorMsg(pParse, "Must either be initial master "
-		    "or specify a remote site");
+
+done:
+	return rc;
+}
+
+static int bdbsqlPragmaStopReplication(Parse *pParse, Db *pDb)
+{
+	Btree *pBt;
+	int rc = SQLITE_OK;
+
+	pBt = pDb->pBt;
+
+	if (!supportsReplication(pBt)) {
+		sqlite3ErrorMsg(pParse, "Replication is not currently "
+		    "running");
 		goto done;
 	}
 
-	/* Cpen/create the environment, which also starts replication. */
-	rc = btreeOpenEnvironment(pDb->pBt, 1);
+	/*
+	 * Turning off replication requires recovery on the underlying
+	 * BDB environment, which requires single-threaded access.
+	 * Make sure there are no other processes or threads accessing
+	 * it.  This is not foolproof, because there is a small chance
+	 * that another process or thread could slip in there between
+	 * this call and the recovery, but it should cover most cases.
+	 */
+	if (hasDatabaseConnections(pBt)) {
+		sqlite3ErrorMsg(pParse, "Close all database connections "
+		    "before turning off replication");
+		goto done;
+	}
+
+	/*
+	 * Close and reopen SQL database to remove replication.  This
+	 * forces a recovery on the underlying BDB environment to remove
+	 * replication region and prepare for use of FAILCHK.
+	 */
+	pBt->pBt->repForceRecover = 1;
+	rc = btreeReopenEnvironment(pBt, 1);
 
 done:
 	return rc;
@@ -375,9 +468,9 @@ int bdbsqlPragma(Parse *pParse, char *zLeft, char *zRight, int iDb)
 		value = NULL;
 		rc = SQLITE_OK;
 		if (zRight) {
-			if (isLSite && dbExists) {
-				sqlite3ErrorMsg(pParse, "Cannot set local "
-				    "site because database already exists");
+			if (isLSite && supportsReplication(pBt)) {
+				sqlite3ErrorMsg(pParse, "Cannot change local "
+				    "site after replication is turned on");
 				rc = SQLITE_ERROR;
 			}
 			if (rc == SQLITE_OK && (isLSite || isRSite)) {
@@ -429,43 +522,51 @@ int bdbsqlPragma(Parse *pParse, char *zLeft, char *zRight, int iDb)
 	    (isVerb = sqlite3StrNICmp(zLeft,
 	    "replication_verbose_output", 26) == 0)) {
 		DB_ENV *dbenv;
-		int rc, startedRep,turningOn;
+		int rc, startedRep, stoppedRep, turningOn;
 		char setValue[2], *value;
 
 		value = NULL;
 		rc = SQLITE_OK;
 		setValue[0] = '\0';
-		startedRep = turningOn = 0;
+		startedRep = stoppedRep = turningOn = 0;
 		if (zRight) {
 			turningOn = (getBoolean(zRight) == 1);
 			strcpy(setValue, turningOn ? "1" : "0");
 			rc = setPersistentPragma(pDb->pBt, zLeft,
 			    setValue, pParse);
-			/*
-			 * Start replication only on database that doesn't yet
-			 * exist or is known to be configured for replication.
-			 * Starting and stopping replication is deferred until
-			 * the next time the env is opened.
-			 */
-			dbenv = pBt->pBt->dbenv;
-			if (isRep && turningOn && rc == SQLITE_OK) {
-				if (dbExists && 
-				    !supportsReplication(pParse, pDb)) {
-					sqlite3ErrorMsg(pParse, "Cannot start "
-					    "replication because database "
-					    "already exists");
+
+			if (rc == SQLITE_OK) {
+				if (isRep && turningOn) {
+					if (bdbsqlPragmaStartReplication(
+					    pParse, pDb) == SQLITE_OK)
+						startedRep = 1;
+					else {
+						sqlite3ErrorMsg(pParse,
+						    "Error starting "
+						    "replication");
+						rc = SQLITE_ERROR;
+					}
+				}
+				if (isRep && !turningOn) {
+					if (bdbsqlPragmaStopReplication(
+					    pParse, pDb) == SQLITE_OK)
+						stoppedRep = 1;
+					else {
+						sqlite3ErrorMsg(pParse,
+						    "Error stopping "
+						    "replication");
+						rc = SQLITE_ERROR;
+					}
+				}
+
+				dbenv = pDb->pBt->pBt->dbenv;
+				if (isVerb && dbExists &&
+				    dbenv->set_verbose(dbenv,
+					DB_VERB_REPLICATION, turningOn) != 0) {
+					sqlite3ErrorMsg(pParse, "Error "
+					    "in replication set_verbose call");
 					rc = SQLITE_ERROR;
-				} else if (!dbExists && (rc =
-				    bdbsqlPragmaStartReplication(pParse, pDb))
-				    == SQLITE_OK)
-					startedRep = 1;
-			}
-			if (isVerb && rc == SQLITE_OK && dbExists &&
-			    dbenv->set_verbose(dbenv,
-			    DB_VERB_REPLICATION, turningOn) != 0) {
-				sqlite3ErrorMsg(pParse, "Error "
-				    "in replication set_verbose call");
-				rc = SQLITE_ERROR;
+				}
 			}
 		} else
 			rc = getPersistentPragma(pDb->pBt, zLeft,
@@ -475,8 +576,10 @@ int bdbsqlPragma(Parse *pParse, char *zLeft, char *zRight, int iDb)
 			sqlite3VdbeSetColName(pParse->pVdbe, 0, COLNAME_NAME,
 			    zLeft, SQLITE_STATIC);
 			sqlite3VdbeAddOp4(pParse->pVdbe, OP_String8, 0, 1, 0,
-			    (value ? value : (startedRep ?
-			    "Replication started" : setValue)), 0);
+			    (value ? value :
+			    (startedRep ? "Replication started" :
+			    (stoppedRep ? "Replication stopped" : setValue))),
+			    0);
 			sqlite3VdbeAddOp2(pParse->pVdbe, OP_ResultRow, 1, 1);
 		} else {
 			if (pDb->pBt->db->errCode != SQLITE_OK)
@@ -488,34 +591,20 @@ int bdbsqlPragma(Parse *pParse, char *zLeft, char *zRight, int iDb)
 		parsed = 1;
 	} else if (sqlite3StrNICmp(zLeft,
 	    "replication_initial_master", 26) == 0) {
-		int rc;
 		char outValue[2];
 
-		rc = SQLITE_OK;
 		outValue[0] = '\0';
-		if (zRight) {
-			if (dbExists) {
-				sqlite3ErrorMsg(pParse, "Cannot set initial "
-				    "master because database already exists");
-				rc = SQLITE_ERROR;
-			} else
-				pDb->pBt->pBt->repStartMaster =
-				    getBoolean(zRight) == 1 ? 1 : 0;
-		}
-		if (rc == SQLITE_OK) {
-			strcpy(outValue,
-			    pDb->pBt->pBt->repStartMaster == 1 ? "1" : "0");
-			sqlite3VdbeSetNumCols(pParse->pVdbe, 1);
-			sqlite3VdbeSetColName(pParse->pVdbe, 0, COLNAME_NAME,
-			    zLeft, SQLITE_STATIC);
-			sqlite3VdbeAddOp4(pParse->pVdbe, OP_String8, 0, 1, 0,
-			    outValue, 0);
-			sqlite3VdbeAddOp2(pParse->pVdbe, OP_ResultRow, 1, 1);
-		} else {
-			if (pDb->pBt->db->errCode != SQLITE_OK)
-				sqlite3Error(pDb->pBt->db, rc, "error in ",
-				    zLeft);
-		}
+		if (zRight)
+			pDb->pBt->pBt->repStartMaster =
+			    getBoolean(zRight) == 1 ? 1 : 0;
+		strcpy(outValue,
+		    pDb->pBt->pBt->repStartMaster == 1 ? "1" : "0");
+		sqlite3VdbeSetNumCols(pParse->pVdbe, 1);
+		sqlite3VdbeSetColName(pParse->pVdbe, 0, COLNAME_NAME,
+		    zLeft, SQLITE_STATIC);
+		sqlite3VdbeAddOp4(pParse->pVdbe, OP_String8, 0, 1, 0,
+		    outValue, 0);
+		sqlite3VdbeAddOp2(pParse->pVdbe, OP_ResultRow, 1, 1);
 		parsed = 1;
 	} else if (sqlite3StrNICmp(zLeft,
 	    "replication_remove_site", 23) == 0) {
@@ -644,6 +733,39 @@ int bdbsqlPragma(Parse *pParse, char *zLeft, char *zRight, int iDb)
 		    pDb->pBt->txn_priority);
 		parsed = 1;
 	/*
+	 * PRAGMA bdbsql_single_process = boolean;
+	 *   Turn on/off omit sharing.
+	 */
+	} else if (sqlite3StrNICmp(zLeft, "bdbsql_single_process", 19) == 0) {
+		int new_value, is_changed, rc;
+		is_changed = 0;
+		rc = 0;
+
+		if (zRight &&
+		    envIsClosed(pParse, pDb->pBt, "bdbsql_single_process")) {
+			new_value = getBoolean(zRight);
+			if (new_value != pDb->pBt->pBt->single_process)
+				is_changed = 1;
+		}
+
+		/* Only do actual change when the value has been changed */
+		if (is_changed) {
+#ifdef BDBSQL_SINGLE_PROCESS
+			if (pDb->pBt->pBt->single_process != 0) {
+				sqlite3ErrorMsg(pParse, "Can not turn off "
+				    "SINGLE_PROCESS since compiler flag "
+				    "BDBSQL_SINGLE_PROCESS has been defined");
+				rc = 1;
+			}
+#endif
+			if (rc == 0)
+				pDb->pBt->pBt->single_process = new_value;
+		}
+
+		returnSingleInt(pParse, "bdbsql_single_process",
+				(i64)pDb->pBt->pBt->single_process);
+		parsed = 1;
+	/*
 	 * PRAGMA bdbsql_vacuum_fillpercent = N;
 	 *   Set fill percent for Vacuum.
 	 *   N provides the goal for filling pages, specified as a percentage
@@ -718,8 +840,7 @@ int bdbsqlPragma(Parse *pParse, char *zLeft, char *zRight, int iDb)
 
 		if (err_file == NULL) {
 			err_file = filename;
-			if (btreeGetErrorFile(pDb->pBt->pBt, err_file) != 0)
-				err_file = "stderr";
+			btreeGetErrorFile(pDb->pBt->pBt, err_file);
 		}
 		sqlite3VdbeSetNumCols(pParse->pVdbe, 1);
 		sqlite3VdbeSetColName(pParse->pVdbe, 0, COLNAME_NAME,
@@ -732,7 +853,104 @@ int bdbsqlPragma(Parse *pParse, char *zLeft, char *zRight, int iDb)
 			    "NULL", 0);
 		sqlite3VdbeAddOp2(pParse->pVdbe, OP_ResultRow, 1, 1);
 		parsed = 1;
+	/*
+	 * PRAGMA bdbsql_shared_resources; -- get_shared_resources
+	 * PRAGMA bdbsql_shared_resources = N; -- set_shared_resources
+	 *   Set maximum memory allocation.
+	 *   N provides the size of the maximum amount of memory to be used by
+	 *   shared structures in the main environment region.
+	 */
+	} else if (sqlite3StrNICmp(zLeft, "bdbsql_shared_resources", 23) == 0) {
+    		i64 iLimit = -2;
+		u_int32_t gbyte, byte;
+		gbyte = 0;
+		byte = 0;
+
+		if (zRight &&
+		    envIsClosed(pParse, pDb->pBt, "bdbsql_shared_resources")) {
+			if (pDb->pBt->pBt->need_open) {
+				/*
+				 * The DBENV->set_memory_max() method must be
+				 * called prior to opening/creating the database
+				 * environment.
+				 */
+				sqlite3ErrorMsg(pParse, 
+				    "Can't set shared_resources for an open "
+				    "or existing environment");
+      			} else if (sqlite3Atoi64(zRight, &iLimit, 100000,
+			    SQLITE_UTF8) ||
+			    iLimit > (GIGABYTE * (SQLITE_MAX_U32 + 1) - 1))
+				sqlite3ErrorMsg(pParse,
+				    "Invalid value bdbsql_shared_resources %s",
+				    zRight);
+			else {
+				/*
+				 * We need to calculate gbyte and byte for
+				 * DBENV->set_memory_max.
+				 */
+				gbyte = (u_int32_t)(iLimit / GIGABYTE);
+				byte  = (u_int32_t)(iLimit % GIGABYTE);
+				if ((ret = pDb->pBt->pBt->dbenv->set_memory_max(
+				    pDb->pBt->pBt->dbenv, gbyte, byte)) != 0) {
+					sqlite3ErrorMsg(pParse,
+					    "Failed to set memory max "
+					    "error: %d.", ret);
+				}
+			}
+		}
+
+		/* Get existing value */
+		pDb->pBt->pBt->dbenv->get_memory_max(
+		    pDb->pBt->pBt->dbenv, &gbyte, &byte);
+
+		iLimit = (i64)gbyte * GIGABYTE + byte;
+		returnSingleInt(pParse, "bdbsql_shared_resources", iLimit);
+		parsed = 1;
+	/*
+	 * PRAGMA bdbsql_lock_tablesize; -- DB_ENV->get_lk_tablesize
+	 * PRAGMA bdbsql_lock_tablesize = N; -- DB_ENV->set_lk_tablesize
+	 *   N provides the size of the lock object hash table to be 
+	 *   configured in the Berkeley DB environment.
+	 */
+	} else if (sqlite3StrNICmp(zLeft, "bdbsql_lock_tablesize", 19) == 0) {
+    		int iLimit = -2;
+		u_int32_t val;
+
+		if (zRight &&
+		    envIsClosed(pParse, pDb->pBt, "bdbsql_lock_tablesize")) {
+			if (pDb->pBt->pBt->need_open) {
+				/*
+				 * The DB_ENV->set_lk_tablesize() method must be
+				 * called prior to opening/creating the database
+				 * environment.
+				 */
+				sqlite3ErrorMsg(pParse, "Can't set lk_tablesize"
+				    " for open or existing environment");
+      			} else if (!sqlite3GetInt32(zRight, &iLimit) ||
+			    iLimit < 0)
+				sqlite3ErrorMsg(pParse,
+				    "Invalid value bdbsql_lock_tablesize %s",
+				    zRight);
+			else {
+				val = iLimit;
+				if ((ret =
+				    pDb->pBt->pBt->dbenv->set_lk_tablesize(
+				    pDb->pBt->pBt->dbenv, val)) != 0) {
+					sqlite3ErrorMsg(pParse,
+					    "Failed to set lk_tablesize "
+					    "error: %d.", ret);
+				}
+			}
+		}
+
+		/* Get existing value */
+		pDb->pBt->pBt->dbenv->get_lk_tablesize(
+			pDb->pBt->pBt->dbenv, &val);
+
+		returnSingleInt(pParse, "bdbsql_lock_tablesize", val);
+		parsed = 1;
 	}
+
 	/* Return semantics to match strcmp. */
 	return (!parsed);
 }
@@ -785,13 +1003,13 @@ static int openPragmaFile(Btree *p, sqlite3_file **file, int flags,
 	ret = __os_exists(NULL, p->pBt->dir_name, &is_dir);
 	if ((ret != ENOENT && ret != EFAULT && ret != 0) ||
 	    (ret == 0 && !is_dir))
-		return dberr2sqlite(ret);
+		return dberr2sqlite(ret, p);
 	else
 		dir_exists = !ret;
 	ret = 0;
 	if (!dir_exists) {
 		if ((ret = __os_mkdir(NULL, p->pBt->dir_name, 0777)) != 0)
-			return dberr2sqlite(ret);
+			return dberr2sqlite(ret, p);
 
 	}
 	sqlite3_snprintf(sizeof(buf), buf, "%s/%s", p->pBt->dir_name,
@@ -1041,7 +1259,7 @@ err:	if (corrupted)
 		removeCorruptedRecords(p, NULL, 0, pragma_file, pParse);
 	if (data)
 		sqlite3_free(data);
-	return MAP_ERR(rc, ret);
+	return MAP_ERR(rc, ret, p);
 }
 
 /*
@@ -1185,7 +1403,7 @@ err:	if (num_corrupted != 0) {
 	}
 	if (data != NULL && data != buf)
 		sqlite3_free(data);
-	return MAP_ERR(rc, ret);
+	return MAP_ERR(rc, ret, p);
 }
 
 /*
@@ -1319,7 +1537,7 @@ int setPersistentPragma(Btree *p, const char *pragma_name, const char *value,
 		    PRAGMA_FILE);
 		rc = __os_exists(NULL, buf, &attrs);
 		if (rc != ENOENT && rc != EFAULT && rc != 0)
-			return dberr2sqlite(rc);
+			return dberr2sqlite(rc, p);
 		exists = !rc;
 		rc = SQLITE_OK;
 		/* Open or create the pragma file and lock it exclusively. */

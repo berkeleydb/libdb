@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -75,6 +75,45 @@
               <a href="reppragma.html">Replication PRAGMAs</a>
             </span>
           </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="reppragma.html#pragma_replication">PRAGMA replication</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="reppragma.html#pragma_replication_initial_master">PRAGMA replication_initial_master</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="reppragma.html#pragma_replication_local_site">PRAGMA replication_local_site</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="reppragma.html#pragma_replication_remote_site">PRAGMA replication_remote_site</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="reppragma.html#pragma_replication_remove_site">PRAGMA replication_remove_site</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="reppragma.html#pragma_replication_verbose_output">PRAGMA replication_verbose_output</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="reppragma.html#pragma_replication_verbose_file">PRAGMA replication_verbose_file</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
           <dt>
             <span class="sect1">
               <a href="repstatistics.html">Displaying Replication Statistics</a>
@@ -128,6 +167,13 @@
                 </p>
           </li>
         </ul>
+      </div>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                You cannot access a BDB SQL database using multiple
+                processes if you enable replication for that database.
+            </p>
       </div>
       <div class="sect1" lang="en" xml:lang="en">
         <div class="titlepage">
@@ -228,6 +274,13 @@
                     hold an election. When the old master comes back
                     online, it rejoins the replication group as a read-only
                     replica site.
+                </p>
+          <p>
+                    Also, if you are enabling replication for an existing
+                    database, then that database must be designated as the
+                    master. Doing this is required; otherwise the entire
+                    contents of the existing database might be deleted
+                    during the replication startup process.
                 </p>
         </div>
         <div class="sect2" lang="en" xml:lang="en">

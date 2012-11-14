@@ -9,12 +9,12 @@
     <link rel="start" href="index.html" title="Berkeley DB C API Reference" />
     <link rel="up" href="env.html" title="Chapter 5.  The DB_ENV Handle" />
     <link rel="prev" href="envset_memory_init.html" title="DB_ENV-&gt;set_memory_init()" />
-    <link rel="next" href="envset_msgcall.html" title="DB_ENV-&gt;set_msgcall()" />
+    <link rel="next" href="envset_metadata_dir.html" title="DB_ENV-&gt;set_metadata_dir()" />
   </head>
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -25,7 +25,7 @@
           <th width="60%" align="center">Chapter 5. 
                 The DB_ENV Handle
         </th>
-          <td width="20%" align="right"> <a accesskey="n" href="envset_msgcall.html">Next</a></td>
+          <td width="20%" align="right"> <a accesskey="n" href="envset_metadata_dir.html">Next</a></td>
         </tr>
       </table>
       <hr />
@@ -41,7 +41,7 @@
       <pre class="programlisting">#include &lt;db.h&gt;
 
 int
-DB_ENV-&gt;set_memory_max(DB_ENV *dbenv, roff_t size); </pre>
+DB_ENV-&gt;set_memory_max(DB_ENV *dbenv, u_int32_t gbytes, u_int32_t bytes); </pre>
       <p>
         This method sets the maximum amount of memory to be used by shared
         structures in the main environment region.  These are the
@@ -85,7 +85,7 @@ DB_ENV-&gt;set_memory_max(DB_ENV *dbenv, roff_t size); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3716155"></a>Parameters</h3>
+              <h3 class="title"><a id="idp60112840"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -93,13 +93,28 @@ DB_ENV-&gt;set_memory_max(DB_ENV *dbenv, roff_t size); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3714350"></a>size</h4>
+                <h4 class="title"><a id="idp60127648"></a>gbytes</h4>
               </div>
             </div>
           </div>
           <p>
-                    The <span class="bold"><strong>size</strong></span> parameter
-                    identifies the maximum number of bytes to allocate.
+                    The maximum memory is set to 
+                    <span class="bold"><strong>gbytes</strong></span> gigabytes plus
+                    <span class="bold"><strong>bytes</strong></span>.
+                </p>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="idp60099512"></a>bytes</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                    The maximum memory is set to 
+                    <span class="bold"><strong>gbytes</strong></span> gigabytes plus
+                    <span class="bold"><strong>bytes</strong></span>.
                 </p>
         </div>
       </div>
@@ -107,7 +122,7 @@ DB_ENV-&gt;set_memory_max(DB_ENV *dbenv, roff_t size); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3716229"></a>Errors</h3>
+              <h3 class="title"><a id="idp60089280"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -123,7 +138,7 @@ DB_ENV-&gt;set_memory_max(DB_ENV *dbenv, roff_t size); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3716563"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp60138328"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -137,7 +152,7 @@ DB_ENV-&gt;set_memory_max(DB_ENV *dbenv, roff_t size); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3716580"></a>Class</h3>
+              <h3 class="title"><a id="idp60149408"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -149,7 +164,7 @@ DB_ENV-&gt;set_memory_max(DB_ENV *dbenv, roff_t size); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3715986"></a>See Also</h3>
+              <h3 class="title"><a id="idp60150744"></a>See Also</h3>
             </div>
           </div>
         </div>
@@ -166,14 +181,14 @@ DB_ENV-&gt;set_memory_max(DB_ENV *dbenv, roff_t size); </pre>
           <td width="20%" align="center">
             <a accesskey="u" href="env.html">Up</a>
           </td>
-          <td width="40%" align="right"> <a accesskey="n" href="envset_msgcall.html">Next</a></td>
+          <td width="40%" align="right"> <a accesskey="n" href="envset_metadata_dir.html">Next</a></td>
         </tr>
         <tr>
           <td width="40%" align="left" valign="top">DB_ENV-&gt;set_memory_init() </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
-          <td width="40%" align="right" valign="top"> DB_ENV-&gt;set_msgcall()</td>
+          <td width="40%" align="right" valign="top"> DB_ENV-&gt;set_metadata_dir()</td>
         </tr>
       </table>
     </div>

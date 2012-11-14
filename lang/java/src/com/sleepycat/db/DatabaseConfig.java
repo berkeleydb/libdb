@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -46,7 +46,9 @@ public class DatabaseConfig implements Cloneable {
     private int hashFillFactor = 0;
     private int hashNumElements = 0;
     private long heapSize = 0L;
+    private int heapRegionSize = 0;
     private java.io.OutputStream messageStream = null;
+    private Boolean noWaitDbExclusiveLock = null;
     private int pageSize = 0;
     private java.io.File[] partitionDirs = null;
     private DatabaseEntry partitionKeys = null;
@@ -967,6 +969,37 @@ The estimate of the final size of the hash table.
     }
 
     /**
+    Sets the number of pages in a region of a database configured to use
+    the Heap access method. If this method is never called, the default region
+    size for the database's page size will be used. You can set the database
+    page size using {@link #setPageSize}.
+    <p>
+    This method may not be called after the database is opened. Further, if this
+    method is called on an existing Heap database, the value specified here will
+    be ignored. If the specified region size is larger than the maximum region
+    size for the database's page size, an error will be returned when the
+    database is opened. The maximum allowable region size will be included in
+    the error message. 
+    @param npages
+    The size of the region, in pages.
+    */
+    public void setHeapRegionSize(final int npages) {
+        this.heapRegionSize = npages;
+    }
+
+    /**
+    Return the number of pages in a region of the database.
+    <p>
+    This method may be called at any time during the life of the application.
+    <p>
+    @return
+    The size of the region, in pages.
+    */
+    public long getHeapRegionSize() {
+        return heapRegionSize;
+    }
+
+    /**
     Set a function to be called with an informational message.
 <p>
 There are interfaces in the Berkeley DB library which either directly
@@ -1139,6 +1172,51 @@ True if the library is configured to not map this database into
     */
     public boolean getNoMMap() {
         return noMMap;
+    }
+
+    /**
+Configure the {@link com.sleepycat.db.Database Database} handle to obtain a 
+write lock on the entire database.
+<p>
+This method may not be called after the database is opened.
+<p>
+@param noWaitDbExclLock
+If True, configure the {@link com.sleepycat.db.Database Database} handle to
+obtain a write lock on the entire database. When the database is opened it will
+immediately throw
+{@link com.sleepycat.db.LockNotGrantedException LockNotGrantedException} if it
+cannot obtain the exclusive lock immediately. If False, configure the
+{@link com.sleepycat.db.Database Database} handle to obtain a write lock on the
+entire database. When the database is opened, it will block until it can obtain
+the exclusive lock. If null, do not configure the
+{@link com.sleepycat.db.Database Database} handle to obtain a write lock on the
+entire database.
+<p>
+Handles configured for a write lock on the entire database can only have one 
+active transaction at a time.
+    */
+    public void setNoWaitDbExclusiveLock(Boolean noWaitDbExclLock) {
+        this.noWaitDbExclusiveLock = noWaitDbExclLock;
+    }
+
+    /**
+Return whether the {@link com.sleepycat.db.Database Database} handle is
+configured to obtain a write lock on the entire database.
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+True if the {@link com.sleepycat.db.Database Database} handle is configured for
+immediate exclusive database locking. In this case, the locking operation will 
+error out if it cannot immediately obtain an exclusive lock. False if the
+{@link com.sleepycat.db.Database Database} handle is configured for exclusive
+database locking. In this case, it will block until it can obtain the exclusive 
+database lock when database is opened. Null if the
+{@link com.sleepycat.db.Database Database} handle is not configured for
+exclusive locking.
+    */
+    public Boolean getNoWaitDbExclusiveLock() {
+        return noWaitDbExclusiveLock;
     }
 
     /**
@@ -2207,6 +2285,8 @@ database has been opened.
             db.set_h_nelem(hashNumElements);
         if (heapSize != oldConfig.heapSize)
             db.set_heapsize(heapSize);
+        if (heapRegionSize != oldConfig.heapRegionSize)
+            db.set_heap_regionsize(heapRegionSize);
         if (messageStream != oldConfig.messageStream)
             db.set_message_stream(messageStream);
         if (pageSize != oldConfig.pageSize)
@@ -2234,6 +2314,9 @@ database has been opened.
         if (recordSource != oldConfig.recordSource)
             db.set_re_source(
                 (recordSource == null) ? null : recordSource.toString());
+        if (noWaitDbExclusiveLock != null &&
+            oldConfig.noWaitDbExclusiveLock != noWaitDbExclusiveLock)
+            db.set_lk_exclusive(noWaitDbExclusiveLock ? 1 : 0);
 
         if (btreeComparator != oldConfig.btreeComparator)
             db.set_bt_compare(btreeComparator);
@@ -2305,6 +2388,7 @@ database has been opened.
         }
 	if (type == DatabaseType.HEAP) {
             heapSize = db.get_heapsize();
+	    heapRegionSize = db.get_heap_regionsize();
 	}
         messageStream = db.get_message_stream();
         pageSize = db.get_pagesize();
@@ -2335,6 +2419,13 @@ database has been opened.
             for (int i = 0; i < partitionDirArray.length; i++)
                 partitionDirs[i] = new java.io.File(partitionDirArray[i]);
         }
+
+        int noWaitDbExclLock = db.get_lk_exclusive();
+        if (noWaitDbExclLock == 2) 
+            noWaitDbExclusiveLock = Boolean.TRUE;
+        else if (noWaitDbExclLock == 1)
+            noWaitDbExclusiveLock = Boolean.FALSE;
+        else noWaitDbExclusiveLock = null;
 
         btreeComparator = db.get_bt_compare();
         btreeCompressor = db.get_bt_compress();

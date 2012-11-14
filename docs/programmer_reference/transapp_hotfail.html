@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -65,11 +65,15 @@
         with the primary environment.
     </p>
       <p>
+        Note that you can also create your own hot backup solution using
+        the <a href="../api_reference/C/envbackup.html" class="olink">DB_ENV-&gt;backup()</a> or <a href="../api_reference/C/envdbbackup.html" class="olink">DB_ENV-&gt;dbbackup()</a> methods.
+    </p>
+      <p>
         To implement your own hot fail over system, the steps below can be
         followed. However, care should be taken on non-UNIX based systems
         when copying the database files to be sure that they are either
-        quiescent or that the <a href="../api_reference/C/db_copy.html" class="olink">db_copy()</a> routine is used to ensure atomic
-        reads of the database pages.
+        quiescent, or that either the <a href="../api_reference/C/envbackup.html" class="olink">DB_ENV-&gt;backup()</a> or <a href="../api_reference/C/db_copy.html" class="olink">db_copy()</a> routine is
+        used to ensure atomic reads of the database pages.
     </p>
       <div class="orderedlist">
         <ol type="1">
@@ -83,7 +87,7 @@
                 If the database files are stored in a separate directory from
                 the other Berkeley DB files, it will be simpler (and much
                 faster!) to copy the directory itself instead of the individual
-                files (see <a href="../api_reference/C/envset_data_dir.html" class="olink">DB_ENV-&gt;set_data_dir()</a> for additional information).
+                files (see <a href="../api_reference/C/envadd_data_dir.html" class="olink">DB_ENV-&gt;add_data_dir()</a> for additional information).
             </p>
             <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
               <h3 class="title">Note</h3>

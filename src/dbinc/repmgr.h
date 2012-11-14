@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2006, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -55,6 +55,7 @@ extern "C" {
 #define	REPMGR_MAX_V4_MSG_TYPE	8
 #define	HEARTBEAT_MIN_VERSION	2
 #define	CHANNEL_MIN_VERSION	4
+#define	CONN_COLLISION_VERSION	4
 #define	GM_MIN_VERSION		4
 #define	OWN_MIN_VERSION		4
 
@@ -203,7 +204,7 @@ struct __repmgr_runnable {
  */
 struct __repmgr_retry {
 	TAILQ_ENTRY(__repmgr_retry) entries;
-	u_int eid;
+	int eid;
 	db_timespec time;
 };
 
@@ -342,9 +343,6 @@ struct __repmgr_connection {
 #define	CONN_PARAMETERS	5	/* Awaiting parameters handshake. */
 #define	CONN_READY	6	/* Everything's fine. */
 	int state;
-
-#define	CONN_INCOMING		0x01
-	u_int32_t	flags;
 
 	/*
 	 * Input: while we're reading a message, we keep track of what phase
@@ -488,8 +486,8 @@ typedef struct {
 	    (((u_int)(e)) < db_rep->site_cnt))
 #define	FOR_EACH_REMOTE_SITE_INDEX(i)                    \
 	for ((i) = (db_rep->self_eid == 0 ? 1 : 0);	\
-	     (i) < db_rep->site_cnt;			 \
-	     ((int)++(i)) == db_rep->self_eid ? ++(i) : i)
+	     ((u_int)i) < db_rep->site_cnt;		 \
+	     (int)(++(i)) == db_rep->self_eid ? ++(i) : i)
 
 struct __repmgr_site {
 	repmgr_netaddr_t net_addr;
@@ -513,8 +511,20 @@ struct __repmgr_site {
 	db_timespec last_rcvd_timestamp;
 
 	/* Contents depends on state. */
-	union {
-		REPMGR_CONNECTION *conn; /* when CONNECTED */
+	struct {
+		struct {		 /* when CONNECTED */
+			/*
+			 * The only time we ever have two connections is in case
+			 * of a "collision" on the "server" side.  In that case,
+			 * the incoming connection either will be closed
+			 * promptly by the remote "client", or it is a half-open
+			 * connection due to the remote client system having
+			 * crashed and rebooted, in which case KEEPALIVE will
+			 * eventually clear it.
+			 */ 
+			REPMGR_CONNECTION *in; /* incoming connection */
+			REPMGR_CONNECTION *out; /* outgoing connection */
+		} conn;
 		REPMGR_RETRY *retry; /* when PAUSING */
 		/* Unused when CONNECTING. */
 	} ref;
@@ -735,12 +745,6 @@ typedef struct {
 #define	IS_PEER_POLICY(p) ((p) == DB_REPMGR_ACKS_ALL_PEERS ||		\
     (p) == DB_REPMGR_ACKS_QUORUM ||		\
     (p) == DB_REPMGR_ACKS_ONE_PEER)
-
-#define IS_SITE_AVAILABLE(s) ((s)->state == SITE_CONNECTED &&		\
-    (s)->ref.conn->state == CONN_READY)
-
-#define	IS_SITE_HANDSHAKEN(s) ((s)->state == SITE_CONNECTED &&		\
-	    IS_READY_STATE((s)->ref.conn->state))
 
 /*
  * Most of the code in repmgr runs while holding repmgr's main mutex, which

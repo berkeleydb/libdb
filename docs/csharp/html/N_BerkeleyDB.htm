@@ -14,6 +14,8 @@
             replication group configure the same acknowledgement policy. 
             </div></td></tr><tr data="class; public"><td><img src="../icons/pubclass.gif" title="Public class" /></td><td><a href="T_BerkeleyDB_ActiveTransaction.htm">ActiveTransaction</a></td><td><div class="summary">
             The ActiveTransaction class describes a currently active transaction.
+            </div></td></tr><tr data="class; public"><td><img src="../icons/pubclass.gif" title="Public class" /></td><td><a href="T_BerkeleyDB_BackupOptions.htm">BackupOptions</a></td><td><div class="summary">
+            Configuration parameters for hot backup.
             </div></td></tr><tr data="class; public"><td><img src="../icons/pubclass.gif" title="Public class" /></td><td><a href="T_BerkeleyDB_BadSecondaryException.htm">BadSecondaryException</a></td><td><div class="summary">
             A secondary index has been corrupted. This is likely the result of an
             application operating on related databases without first associating
@@ -285,6 +287,16 @@
             </div></td></tr><tr data="class; public"><td><img src="../icons/pubclass.gif" title="Public class" /></td><td><a href="T_BerkeleyDB_VersionMismatchException.htm">VersionMismatchException</a></td><td><div class="summary">
             The version of the Berkeley DB library doesn't match the version that
             created the database environment.
+            </div></td></tr></table></div><h1 class="heading"><span onclick="ExpandCollapse(interfaceToggle)" style="cursor:default;" onkeypress="ExpandCollapse_CheckKey(interfaceToggle, event)" tabindex="0"><img id="interfaceToggle" class="toggle" name="toggleSwitch" src="../icons/collapse_all.gif" />Interfaces</span></h1><div id="interfaceSection" class="section" name="collapseableSection" style=""><table id="typeList" class="members" frame="lhs" cellpadding="2"><col width="10%" /><tr><th class="iconColumn">
+           
+       </th><th class="nameColumn">Interface</th><th class="descriptionColumn">Description</th></tr><tr data="interface; public"><td><img src="../icons/pubinterface.gif" title="Public interface" /></td><td><a href="T_BerkeleyDB_IBackup.htm">IBackup</a></td><td><div class="summary">
+            An interface that can optionally be used to override the default 
+            behavior performed by the <a href="M_BerkeleyDB_DatabaseEnvironment_Backup.htm">Backup(String, BackupOptions)</a> and 
+            <a href="M_BerkeleyDB_DatabaseEnvironment_BackupDatabase.htm">BackupDatabase(String, String, Boolean)</a> methods. Implementation 
+            of this interface is required if the DatabaseEnvironment.backup or 
+            DatabaseEnvironment.backupDatabase target parameter is null.  You 
+            configure the environment with this handler via 
+            <a href="P_BerkeleyDB_DatabaseEnvironment_BackupHandler.htm">BackupHandler</a>.
             </div></td></tr></table></div><h1 class="heading"><span onclick="ExpandCollapse(delegateToggle)" style="cursor:default;" onkeypress="ExpandCollapse_CheckKey(delegateToggle, event)" tabindex="0"><img id="delegateToggle" class="toggle" name="toggleSwitch" src="../icons/collapse_all.gif" />Delegates</span></h1><div id="delegateSection" class="section" name="collapseableSection" style=""><table id="typeList" class="members" frame="lhs" cellpadding="2"><col width="10%" /><tr><th class="iconColumn">
            
        </th><th class="nameColumn">Delegate</th><th class="descriptionColumn">Description</th></tr><tr data="delegate; public"><td><img src="../icons/pubdelegate.gif" title="Public delegate" /></td><td><a href="T_BerkeleyDB_AppendRecordDelegate.htm">AppendRecordDelegate</a></td><td><div class="summary">
@@ -319,7 +331,8 @@
             communication infrastructure.
             </div></td></tr><tr data="delegate; public"><td><img src="../icons/pubdelegate.gif" title="Public delegate" /></td><td><a href="T_BerkeleyDB_SecondaryKeyGenDelegate.htm">SecondaryKeyGenDelegate</a></td><td><div class="summary">
             The function that creates the set of secondary keys corresponding to a
-            given primary key and data pair. 
+            given primary key and data pair.  To create multiple secondary keys,
+            return a <a href="T_BerkeleyDB_MultipleDatabaseEntry.htm">MultipleDatabaseEntry</a>.
             </div></td></tr><tr data="delegate; public"><td><img src="../icons/pubdelegate.gif" title="Public delegate" /></td><td><a href="T_BerkeleyDB_SetThreadIDDelegate.htm">SetThreadIDDelegate</a></td><td><div class="summary">
             A function which returns a unique identifier pair for a thread of
             control in a Berkeley DB application.
@@ -331,11 +344,7 @@
             <span class="parameter">info</span>, is still running.
             </div></td></tr></table></div><h1 class="heading"><span onclick="ExpandCollapse(enumerationToggle)" style="cursor:default;" onkeypress="ExpandCollapse_CheckKey(enumerationToggle, event)" tabindex="0"><img id="enumerationToggle" class="toggle" name="toggleSwitch" src="../icons/collapse_all.gif" />Enumerations</span></h1><div id="enumerationSection" class="section" name="collapseableSection" style=""><table id="typeList" class="members" frame="lhs" cellpadding="2"><col width="10%" /><tr><th class="iconColumn">
            
-       </th><th class="nameColumn">Enumeration</th><th class="descriptionColumn">Description</th></tr><tr data="enumeration; public"><td><img src="../icons/pubenumeration.gif" title="Public enumeration" /></td><td><a href="T_BerkeleyDB_ActiveTransaction_TransactionStatus.htm">ActiveTransaction<span class="languageSpecificText"><span class="cs">.</span><span class="vb">.</span><span class="cpp">::</span><span class="nu">.</span></span>TransactionStatus</a></td><td><div class="summary">
-            The status of an active transaction.
-            </div></td></tr><tr data="enumeration; public"><td><img src="../icons/pubenumeration.gif" title="Public enumeration" /></td><td><a href="T_BerkeleyDB_ActiveTransaction_XATransactionStatus.htm">ActiveTransaction<span class="languageSpecificText"><span class="cs">.</span><span class="vb">.</span><span class="cpp">::</span><span class="nu">.</span></span>XATransactionStatus</a></td><td><div class="summary">
-            Enum of XA transaction status.
-            </div></td></tr><tr data="enumeration; public"><td><img src="../icons/pubenumeration.gif" title="Public enumeration" /></td><td><a href="T_BerkeleyDB_CreatePolicy.htm">CreatePolicy</a></td><td><div class="summary">
+       </th><th class="nameColumn">Enumeration</th><th class="descriptionColumn">Description</th></tr><tr data="enumeration; public"><td><img src="../icons/pubenumeration.gif" title="Public enumeration" /></td><td><a href="T_BerkeleyDB_CreatePolicy.htm">CreatePolicy</a></td><td><div class="summary">
             The policy for how to handle database creation.
             </div></td></tr><tr data="enumeration; public"><td><img src="../icons/pubenumeration.gif" title="Public enumeration" /></td><td><a href="T_BerkeleyDB_Cursor_InsertLocation.htm">Cursor<span class="languageSpecificText"><span class="cs">.</span><span class="vb">.</span><span class="cpp">::</span><span class="nu">.</span></span>InsertLocation</a></td><td><div class="summary">
             Specifies where to place duplicate data elements of the key to which
@@ -367,4 +376,4 @@
             </div></td></tr><tr data="enumeration; public"><td><img src="../icons/pubenumeration.gif" title="Public enumeration" /></td><td><a href="T_BerkeleyDB_TransactionConfig_LogFlush.htm">TransactionConfig<span class="languageSpecificText"><span class="cs">.</span><span class="vb">.</span><span class="cpp">::</span><span class="nu">.</span></span>LogFlush</a></td><td><div class="summary">
             Specifies the log flushing behavior on transaction commit
             </div></td></tr></table></div></div><div id="footer"><div class="footerLine"><img width="100%" height="3px" src="../icons/footer.gif" title="Footer image" /></div><A NAME="feedback"></A><span id="fb" class="feedbackcss"> </span>
-Report Feedback on this item in the Oracle Technology Network Forum <p />Copyright (c) 2008-2010 Oracle. All rights reserved.</div></div></body></html>
+Report Feedback on this item in the Oracle Technology Network Forum <p />Copyright (c) 2008, 2012 Oracle. All rights reserved.</div></div></body></html>

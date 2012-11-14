@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2010 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -17,8 +17,6 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -31,15 +29,12 @@ import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseType;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
-import com.sleepycat.db.EventHandlerAdapter;
-import com.sleepycat.db.LogSequenceNumber;
-import com.sleepycat.db.ReplicationConfig;
 import com.sleepycat.db.ReplicationManagerAckPolicy;
+import com.sleepycat.db.ReplicationManagerConnectionStatus;
 import com.sleepycat.db.ReplicationManagerSiteConfig;
 import com.sleepycat.db.ReplicationManagerSiteInfo;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
 import com.sleepycat.db.ReplicationTimeoutType;
-import com.sleepycat.db.ReplicationTransport;
 import com.sleepycat.db.VerboseConfig;
 
 /**
@@ -59,63 +54,6 @@ public class TestDrainCommitx {
     private int clientPort;
     private int masterSpoofPort;
     private int mgrPort;
-
-    class MyEventHandler extends EventHandlerAdapter {
-        private boolean done = false;
-        private boolean panic = false;
-        private int permFailCount = 0;
-        private int newmasterCount = 0;
-		
-        @Override
-            synchronized public void handleRepStartupDoneEvent() {
-                done = true;
-                notifyAll();
-            }
-
-        @Override
-            synchronized public void handleRepPermFailedEvent() {
-                permFailCount++;
-            }
-
-        synchronized public int getPermFailCount() { return permFailCount; }
-		
-        @Override
-            synchronized public void handlePanicEvent() {
-                done = true;
-                panic = true;
-                notifyAll();
-            }
-
-        @Override synchronized public void handleRepNewMasterEvent(int eid) {
-            newmasterCount++;
-            notifyAll();
-        }
-
-        synchronized public int getNewmasterCount() {
-            return newmasterCount;
-        }
-
-        synchronized void awaitNewmasterCountExceeds(int count, long deadline)
-            throws Exception
-        {
-            long now;
-
-            while (newmasterCount <= count) {
-                if ((now = System.currentTimeMillis()) >= deadline)
-                    throw new Exception("aborted by timeout");
-                long waitTime = deadline-now;
-                wait(waitTime);
-                if (panic)
-                    throw new Exception("aborted by panic in DB");
-            }
-        }
-		
-        synchronized void await() throws Exception {
-            while (!done) { wait(); }
-            if (panic)
-                throw new Exception("aborted by panic in DB");
-        }
-    }
 
     @Before
 	public void setUp() throws Exception {
@@ -167,11 +105,11 @@ public class TestDrainCommitx {
             = new ReplicationManagerSiteConfig("localhost", masterPort);
         site.setLocalSite(true);
         masterConfig.addReplicationManagerSite(site);
-        MyEventHandler masterMonitor = new MyEventHandler();
+        EventHandler masterMonitor = new EventHandler();
         masterConfig.setEventHandler(masterMonitor);
         File masterDir = mkdir("master");
         Environment master = new Environment(masterDir, masterConfig);
-        master.setReplicationTimeout(ReplicationTimeoutType.CONNECTION_RETRY, 3000000);
+        master.setReplicationTimeout(ReplicationTimeoutType.ACK_TIMEOUT, 5000000);
         master.replicationManagerStart(3, ReplicationManagerStartPolicy.REP_MASTER);
 		
         DatabaseConfig dc = new DatabaseConfig(); 
@@ -185,7 +123,7 @@ public class TestDrainCommitx {
         DatabaseEntry value = new DatabaseEntry();
         value.setData(data);
         for (int i=0;
-             ((BtreeStats)db.getStats(null, null)).getPageCount() < 50;
+             ((BtreeStats)db.getStats(null, null)).getPageCount() < 500;
              i++)
         {
             String k = "The record number is: " + i;
@@ -194,18 +132,18 @@ public class TestDrainCommitx {
         }
         db.close();
 
-
-        // create client, but don't sync yet.  Wait a moment so that
-        // the connection gets established.  Once it is (I should
-        // probably have polled repmgr-stats for this, rather than the
-        // stupid, slow 2 second assumption), we can send the fiddler
-        // command.
-        //    This is a workaround for what we really wanted to do,
-        // which was to use regular immediate sync, telling the
-        // fiddler in advance (of having established the connection)
-        // what we wanted to do.  But fiddler can't handle that at the
-        // moment.
+        // tell fiddler to stop reading once it sees a PAGE message
         // 
+        Socket s = new Socket("localhost", mgrPort);
+        OutputStreamWriter w = new OutputStreamWriter(s.getOutputStream());
+
+        String path1 = "{" + masterPort + "," + clientPort + "}"; // looks like {6000,6001}
+        w.write("{init," + path1 + ",page_clog}\r\n");
+        w.flush();
+        BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
+        br.readLine();          // for now, ignore returned serial number
+        assertEquals("ok", br.readLine());
+
         EnvironmentConfig ec = makeBasicConfig();
         site = new ReplicationManagerSiteConfig("localhost", clientPort);
         site.setLocalSite(true);
@@ -214,10 +152,9 @@ public class TestDrainCommitx {
         site.setBootstrapHelper(true);
         ec.addReplicationManagerSite(site);
         
-        MyEventHandler clientMonitor = new MyEventHandler();
+        EventHandler clientMonitor = new EventHandler();
         ec.setEventHandler(clientMonitor);
         Environment client = new Environment(mkdir("client"), ec);
-        client.setReplicationConfig(ReplicationConfig.DELAYCLIENT, true);
         client.setReplicationTimeout(ReplicationTimeoutType.CONNECTION_RETRY, 3000000);
         client.replicationManagerStart(1, ReplicationManagerStartPolicy.REP_CLIENT);
         
@@ -225,30 +162,18 @@ public class TestDrainCommitx {
             if (System.currentTimeMillis() > deadline)
                 throw new Exception("what's taking so long to connect?");
             ReplicationManagerSiteInfo[] connections = master.getReplicationManagerSiteList();
-            if (connections.length == 1 && connections[0].isConnected()) {
+            if (connections.length == 1 && 
+                connections[0].getConnectionStatus() == ReplicationManagerConnectionStatus.CONNECTED) {
                 assertEquals("localhost", connections[0].addr.host);
                 assertEquals(clientPort, connections[0].addr.port);
                 break;
             }
         }
 
-        // tell fiddler to stop reading once it sees a PAGE message
-        // 
-        Socket s = new Socket("localhost", mgrPort);
-        OutputStreamWriter w = new OutputStreamWriter(s.getOutputStream());
-
-        String path1 = "{" + masterPort + "," + clientPort + "}"; // looks like {6000,6001}
-        w.write("{" + path1 + ",page_clog}\r\n");
-        w.flush();
-        BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
-        assertEquals("ok", br.readLine());
-
-        clientMonitor.awaitNewmasterCountExceeds(0, System.currentTimeMillis() + 2000);
-        client.syncReplication();
-
-        // wait til it gets stuck
-        Thread.sleep(5000);     // FIXME
-
+        // Wait until it gets stuck.  (For now, the best we know how
+        // to do is to pause for 5 seconds.  It would be better if we
+        // could figure out a way to check for this more reliably.)
+        Thread.sleep(5000);
 
         // do another new live transaction at the master, make sure
         // that can work.  Instead of writing into an existing
@@ -263,18 +188,14 @@ public class TestDrainCommitx {
 
         // In this case, the master should be able to realize that
         // there's no hope of an ack, so it shouldn't wait for the
-        // timeout.  But currently it does (bug #15827), so skip this
-        // part of the test.
+        // timeout.
         // 
-//         assertTrue("duration: " + duration, duration < 1000);
+        assertTrue("duration: " + duration, duration < 1000);
         db.close(false);
 
-        // TODO: check timing too.
-		
-
         // Hey, this is good.  I get for free a test of releasing the
-        // thread on db_rep->finished; right?  Make sure it doesn't
-        // take too long (is this too undependable?).
+        // thread on db_rep->finished.  Make sure it doesn't take too
+        // long (although this might be too undependable).
         //
         start = System.currentTimeMillis();
         master.close();
@@ -302,6 +223,8 @@ public class TestDrainCommitx {
         ec.setInitializeReplication(true);
         ec.setTransactional(true);
         ec.setThreaded(true);
+        ec.setReplicationInMemory(true);
+        ec.setCacheSize(256 * 1024 * 1024);
         ec.setReplicationManagerAckPolicy(ReplicationManagerAckPolicy.ONE);
         if (Boolean.getBoolean("VERB_REPLICATION"))
             ec.setVerbose(VerboseConfig.REPLICATION, true);

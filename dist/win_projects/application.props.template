@@ -5,7 +5,7 @@
     <BDB_VERSION>@DB_VERSION_MAJOR@@DB_VERSION_MINOR@</BDB_VERSION>
   </PropertyGroup>
   <PropertyGroup>
-    <OutDir>..\build_windows\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir>..\..\build_windows\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>./$(OutDir)$(ProjectName)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.exe</TargetExt>
@@ -14,7 +14,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <MinimalRebuild>true</MinimalRebuild>
-      <AdditionalIncludeDirectories>../build_windows;../src;../src/dbinc;../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../build_windows;../../src;../../src/dbinc;../../include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <StringPooling>true</StringPooling>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -37,7 +37,7 @@
     <Link>
       <AdditionalOptions>/machine:x86 /FIXED:NO %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>libdb$(BDB_VERSION)d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir);../../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)$(ProjectName).pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -58,7 +58,7 @@
     <Link>
       <AdditionalOptions>/machine:x86 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>libdb$(BDB_VERSION).lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir);../../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)$(ProjectName).pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -78,7 +78,7 @@
     <Link>
       <AdditionalOptions>/machine:x64 /FIXED:NO %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>libdb$(BDB_VERSION)d.lib;%(AdditionalDependencies)</AdditionalDependencies>	    
-      <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir);../../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)$(ProjectName).pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -99,7 +99,7 @@
     <Link>
       <AdditionalOptions>/machine:x64 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>libdb$(BDB_VERSION).lib;%(AdditionalDependencies)</AdditionalDependencies>	    
-      <AdditionalLibraryDirectories>$(OutDir);../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutDir);../../lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ProgramDatabaseFile>$(OutDir)$(ProjectName).pdb</ProgramDatabaseFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>

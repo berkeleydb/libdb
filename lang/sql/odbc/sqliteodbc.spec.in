@@ -21,6 +21,7 @@ http://www.iodbc.org     -  iODBC Driver Manager
 
 %prep
 %setup -q
+mv configure.in DONT-configure.in # RPM 3.x, don't run libtoolize
 
 %build
 %configure

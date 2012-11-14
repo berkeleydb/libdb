@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -44,7 +44,7 @@ int
 DbSite::set_config(u_int32_t which, u_int32_t value);</pre>
       <p>
          The <code class="methodname">DbSite::set_config()</code> method configures 
-         a replication site.
+         a Replication Manager site.
     </p>
       <p>
          The <code class="methodname">DbSite::set_config()</code> <span>
@@ -56,11 +56,17 @@ DbSite::set_config(u_int32_t which, u_int32_t value);</pre>
             </span>
         </span>
     </p>
+      <p>
+        The Replication Manager site may also be configured using the
+        environment's DB_CONFIG file. The syntax of the entry in that file
+        is described in
+        <a class="xref" href="repmgr_site_parameter.html" title="repmgr_site">repmgr_site</a>.
+    </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3637054"></a>Parameters</h3>
+              <h3 class="title"><a id="idp4057464"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -68,7 +74,7 @@ DbSite::set_config(u_int32_t which, u_int32_t value);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3637234"></a>which</h4>
+                <h4 class="title"><a id="idp4057656"></a>which</h4>
               </div>
             </div>
           </div>
@@ -102,7 +108,8 @@ DbSite::set_config(u_int32_t which, u_int32_t value);</pre>
                         time.
                     </p>
                 <p>
-                        This setting can only be applied to the local site.
+                        This setting can only be used on the local site and
+                        is ignored when configured for a remote site.
                     </p>
               </li>
               <li>
@@ -151,7 +158,7 @@ DbSite::set_config(u_int32_t which, u_int32_t value);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3637383"></a>value</h4>
+                <h4 class="title"><a id="idp4064040"></a>value</h4>
               </div>
             </div>
           </div>
@@ -165,7 +172,7 @@ DbSite::set_config(u_int32_t which, u_int32_t value);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3637401"></a>Errors</h3>
+              <h3 class="title"><a id="idp4065120"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -183,7 +190,7 @@ DbSite::set_config(u_int32_t which, u_int32_t value);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3637351"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp4072840"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -196,7 +203,7 @@ DbSite::set_config(u_int32_t which, u_int32_t value);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3637314"></a>Class</h3>
+              <h3 class="title"><a id="idp4068608"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -208,7 +215,7 @@ DbSite::set_config(u_int32_t which, u_int32_t value);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3637416"></a>See Also</h3>
+              <h3 class="title"><a id="idp4065584"></a>See Also</h3>
             </div>
           </div>
         </div>

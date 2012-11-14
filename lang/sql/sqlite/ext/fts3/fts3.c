@@ -3230,7 +3230,7 @@ static int fts3RollbackMethod(sqlite3_vtab *pVtab){
 /*
 ** Load the doclist associated with expression pExpr to pExpr->aDoclist.
 ** The loaded doclist contains positions as well as the document ids.
-** This is used by the matchinfo(), snippet() and offsets() auxiliary
+** This is used by the matchinfo(), snippet() and offsets() auxillary
 ** functions.
 */
 int sqlite3Fts3ExprLoadDoclist(Fts3Cursor *pCsr, Fts3Expr *pExpr){

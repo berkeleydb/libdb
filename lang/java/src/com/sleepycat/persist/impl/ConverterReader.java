@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -34,17 +34,23 @@ public class ConverterReader implements Reader {
         this.oldFormat = oldFormat;
     }
 
-    public Object newInstance(EntityInput input, boolean rawAccess) {
+    public Object newInstance(EntityInput input, boolean rawAccess)
+        throws RefreshException {
+
         /* Create the old format RawObject. */
         return oldFormat.newInstance(input, true);
     }
 
-    public void readPriKey(Object o, EntityInput input, boolean rawAccess) {
+    public void readPriKey(Object o, EntityInput input, boolean rawAccess)
+        throws RefreshException {
+        
         /* Read the old format RawObject's primary key. */
         oldFormat.readPriKey(o, input, true);
     }
 
-    public Object readObject(Object o, EntityInput input, boolean rawAccess) {
+    public Object readObject(Object o, EntityInput input, boolean rawAccess)
+        throws RefreshException {
+
         Catalog catalog = input.getCatalog();
 
         /* Read the old format RawObject and convert it. */
@@ -61,5 +67,9 @@ public class ConverterReader implements Reader {
             o = catalog.convertRawObject((RawObject) o, null);
         }
         return o;
+    }
+    
+    public Accessor getAccessor(boolean rawAccess) {
+        return oldFormat.getAccessor(rawAccess);
     }
 }

@@ -1,6 +1,72 @@
 SQLite ODBC Driver
 ------------------
 
+Tue Nov 15 2011 version 0.93 released
+
+	* update to SQLite 3.7.9
+	* fixes regarding SQLULEN in Win64
+	* added infrastructure for building with SEE
+	* added compile option in SQLite3 driver to perform
+	  dynamic linking to SQLite engine internally in order
+	  to use System.data.SQLite (EXPERIMENTAL)
+	* SQL_ATTR_METADATA_ID partial support (stmt/conn level)
+	* reverted to SQLSetPos() fix of 0.91
+	* SQL_ATTR_CURRENT_CATALOG fix, thanks Stanislav Povolotsky
+
+Wed Sep 21 2011 version 0.92 released
+
+	* update to SQLite 3.7.8
+	* another SQLSetPos() fix
+	* added "Always BIGINT" DSN option
+	* bug fixes in blobtoxy extension module
+	* segfault in SQLite 2 driver fixed, thanks Dave Peticolas
+
+Thu Jul 07 2011 version 0.91 released
+
+	* update to SQLite 3.7.7.1
+	* updated blobtoxy module interface (xRename was missing)
+	* support URI names in SQLite 3 driver when available
+	* SQLite 3 driver now uses SQLite memory management routines
+	* fixed BIGINT signed/unsigned flag
+
+Thu Jun 09 2011 version 0.90 released
+
+	* update to SQLite 3.7.6.3
+	* added packaging infrastructure for Debian
+	* update sqlite+tcc module to TCC 0.9.25
+	* added blob_import/blob_export functions to SQLite 3 driver
+	* fixes in SQLSetPos()
+	* made SQLEndTran() logic simpler, no more automatic rollback
+	* reviewed Win32 installer, SQLite 2 now an optional component
+
+Fri Mar 25 2011 version 0.89 released
+
+	* update to SQLite 3.7.5
+	* fixes regarding parameter binding (conversions)
+	* added JSON output to impexp extension module
+	* improved Win32 cross build script
+
+Thu Dec 30 2010 version 0.88 released
+
+	* update to SQLite 3.7.4
+	* added logic to parse date/timestamps in MM/DD/YYYY format
+	* included Matthew Kirkwood's patch for handling
+	  SQL_ATTR_PARAMS_PROCESSED_PTR
+	* on Windows use CP_OEMCP transcoding for SQL_C_CHAR data
+	  (DSN option, default is on)
+	* further fixes in parameter binding (NULL pointer handling)
+
+Thu Sep 02 2010 version 0.87 released
+
+	* update to SQLite 3.7.2
+	* various fixes in parameter set handling
+	* again fixes in SQL_TIMESTAMP handling
+	* fixes in buffer length handling in SQLBindParameter()
+	* basic support for SQLTablePrivileges()
+	* support SQL_C_WCHAR for non-wide drivers (POSIX platforms)
+	* use sqlite3_profile() for tracing if available
+	* more fixes when calling internal variadic functions
+
 Wed May 26 2010 version 0.86 released
 
 	* update to SQLite 3.6.23.1

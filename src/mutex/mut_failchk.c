@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -27,9 +27,12 @@ __mut_failchk(env)
 	db_mutex_t i;
 	int ret;
 	char buf[DB_THREADID_STRLEN];
+	db_threadid_t unused;
 
 	if (F_ISSET(env, ENV_PRIVATE))
 		return (0);
+
+	DB_THREADID_INIT(unused);
 
 	dbenv = env->dbenv;
 	mtxmgr = env->mutex_handle;
@@ -53,12 +56,12 @@ __mut_failchk(env)
 		 * we cannot reclaim the mutex if the process is still alive.
 		 */
 		if (dbenv->is_alive(
-		    dbenv, mutexp->pid, 0, DB_MUTEX_PROCESS_ONLY))
+		    dbenv, mutexp->pid, unused, DB_MUTEX_PROCESS_ONLY))
 			continue;
 
 		__db_msg(env, DB_STR_A("2017",
 		    "Freeing mutex for process: %s", "%s"),
-		    dbenv->thread_id_string(dbenv, mutexp->pid, 0, buf));
+		    dbenv->thread_id_string(dbenv, mutexp->pid, unused, buf));
 
 		/* Unlock and free the mutex. */
 		if (F_ISSET(mutexp, DB_MUTEX_LOCKED))

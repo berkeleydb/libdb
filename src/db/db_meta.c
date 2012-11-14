@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -445,21 +445,17 @@ no_sort:
 		ldbt.data = h;
 		ldbt.size = P_OVERHEAD(dbp);
 		/*
-		 * If we are truncating the file, we need to make sure
-		 * the logging happens before the truncation.  If we
+		 * If we are removing pages from the file, we need to make
+		 * sure the logging happens before the truncation.  If we
 		 * are truncating multiple pages we don't need to flush the
 		 * log here as it will be flushed by __db_truncate_freelist.
-		 * If we are zeroing pages rather than truncating we still
-		 * need to flush since they will not have valid LSNs.
 		 */
 		lflag = 0;
 
-		if (h->pgno == last_pgno
 #ifdef HAVE_FTRUNCATE
-		    && do_truncate == 0
-#endif
-		)
+		if (h->pgno == last_pgno && do_truncate == 0)
 			lflag = DB_FLUSH;
+#endif
 		switch (h->type) {
 		case P_HASH:
 		case P_IBTREE:
@@ -508,9 +504,7 @@ logged:
 		ret = __db_truncate_freelist(
 		      dbc, meta, h, list, start, nelem);
 		h = NULL;
-	} else
-#endif
-	if (h->pgno == last_pgno) {
+	} else if (h->pgno == last_pgno) {
 		/*
 		 * We are going to throw this page away, but if we are
 		 * using MVCC then this version may stick around and we
@@ -534,7 +528,6 @@ logged:
 		DB_ASSERT(dbp->env, meta->pgno == PGNO_BASE_MD);
 		meta->last_pgno--;
 	} else {
-#ifdef HAVE_FTRUNCATE
 		if (list != NULL) {
 			/* Put the page number into the list. */
 			if ((ret =
@@ -549,6 +542,8 @@ logged:
 				    ((u_int8_t*)&list[nelem] - (u_int8_t*)lp));
 			*lp = h->pgno;
 		}
+#else
+	{
 #endif
 		/*
 		 * If we are not truncating the page then we
@@ -735,7 +730,7 @@ again:	if (DBC_LOGGING(dbc)) {
 				lpgno = lp[elems - 1].pgno;
 		}
 		/*
-		 * If this is not the begining of the list fetch the end
+		 * If this is not the beginning of the list fetch the end
 		 * of the previous segment.  This page becomes the last_free
 		 * page and will link to this segment if it is not truncated.
 		 */

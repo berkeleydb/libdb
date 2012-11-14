@@ -47,13 +47,14 @@ will be ordered last.
 <li>Zero (0x0000) character values are UTF encoded as non-zero values, and
 therefore embedded zeros in the string are supported.  The sequence { 0xC0,
 0x80 } is used to encode a zero character.  This UTF encoding is the same one
-used by the native Java UTF libraries.  However, this encoding of zero does
-impact the lexicographical ordering, and zeros will not be sorted first (the
-natural order) or last.
+used by the native Java UTF libraries and is called 
+<a href="http://download.oracle.com/javase/6/docs/api/java/io/DataInput.html#modified-utf-8">Modified UTF-8</a>.
+However, this encoding of zero does impact the lexicographical ordering, and
+zeros will not be sorted first (the natural order) or last.
 </li>
-<li>For all character values other than zero, the default UTF encoding is used,
-and the default sorting is the same as the Unicode lexicographical character
-ordering.
+<li>For all character values other than zero, the standard UTF encoding is
+used, and the default sorting is the same as the Unicode lexicographical
+character ordering.
 </li>
 </ul>
 
@@ -84,7 +85,7 @@ String} values.</li>
 <p>All fixed size integer formats support default natural sorting.</p>
 
 <p>The size of the stored value depends on the type, and ranges (as one would
-expect) from 1 byte for type {@code byte} and class {code Byte}, to 8 bytes for
+expect) from 1 byte for type {@code byte} and class {@code Byte}, to 8 bytes for
 type {@code long} and class {@code Long}.</p>
 
 <p>Signed numbers are stored in the buffer in MSB (most significant byte first)
@@ -374,10 +375,6 @@ natural sorting.</li>
     <li>{@link com.sleepycat.bind.tuple.TupleInput#getBigDecimalByteLength}</li>
     </ul>
 </ul>
- * @see <a href="package-summary.html#stringFormats">String Formats</a>
- * @see <a href="package-summary.html#integerFormats">Integer Formats</a>
- * @see <a href="package-summary.html#floatFormats">Floating Point Formats</a>
- * @see <a href="package-summary.html#bigDecimalFormats">BigDecimal Formats</a>
 
 </body>
 </html>

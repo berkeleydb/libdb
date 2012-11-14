@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -20,6 +20,7 @@ namespace CsharpAPITest {
     {
         DatabaseEnvironment testLockStatsEnv;
         BTreeDatabase testLockStatsDb;
+        int DeadlockDidPut = 0;
 
         [TestFixtureSetUp]
         public void SetUpTestFixture() {
@@ -124,20 +125,21 @@ namespace CsharpAPITest {
             testLockStatsEnv = env;
             testLockStatsDb = db;
 
-            Thread thread1 = new Thread(new ThreadStart(Write));
-            Thread thread2 = new Thread(new ThreadStart(Read));
-            thread1.Start();
-            Thread.Sleep(10);
-            thread2.Start();
-            thread1.Join();
-            thread2.Join();
+            // Use some locks, to ensure  the stats work when populated.
+            txn = testLockStatsEnv.BeginTransaction();
+            for (int i = 0; i < 500; i++)
+            {
+                testLockStatsDb.Put(
+                    new DatabaseEntry(BitConverter.GetBytes(i)),
+                    new DatabaseEntry(ASCIIEncoding.ASCII.GetBytes(
+                    Configuration.RandomString(i))), txn);
+                testLockStatsDb.Sync();
+            }
+            txn.Commit();
 
             env.PrintLockingSystemStats();
             stats = env.LockingSystemStats();
             Assert.Less(0, stats.LastAllocatedLockerID);
-            Assert.Less(0, stats.LockConflictsNoWait);
-            Assert.LessOrEqual(0, stats.LockConflictsWait);
-            Assert.LessOrEqual(0, stats.LockDeadlocks);
             Assert.Less(0, stats.LockDowngrades);
             Assert.LessOrEqual(0, stats.LockerNoWait);
             Assert.Less(0, stats.Lockers);
@@ -159,7 +161,7 @@ namespace CsharpAPITest {
             Assert.LessOrEqual(0, stats.MaxPartitionLockNoWait);
             Assert.LessOrEqual(0, stats.MaxPartitionLockWait);
             Assert.Less(0, stats.MaxUnusedID);
-            Assert.Less(0, stats.ObjectNoWait);
+            Assert.LessOrEqual(0, stats.ObjectNoWait);
             Assert.Less(0, stats.Objects);
             Assert.LessOrEqual(0, stats.ObjectSteals);
             Assert.LessOrEqual(0, stats.ObjectWait);
@@ -167,37 +169,54 @@ namespace CsharpAPITest {
             Assert.LessOrEqual(0, stats.PartitionLockWait);
             Assert.Less(0, stats.RegionNoWait);
             Assert.LessOrEqual(0, stats.RegionWait);
-            Assert.Less(0, stats.TxnTimeouts);
+            Assert.LessOrEqual(0, stats.TxnTimeouts);
+
+            // Force a deadlock to ensure the stats work.
+            txn = testLockStatsEnv.BeginTransaction();
+            testLockStatsDb.Put(new DatabaseEntry(BitConverter.GetBytes(10)),
+                new DatabaseEntry(ASCIIEncoding.ASCII.GetBytes(
+                Configuration.RandomString(200))), txn);
+
+            Thread thread1 = new Thread(GenerateDeadlock);
+            thread1.Start();
+            while (DeadlockDidPut == 0)
+                Thread.Sleep(10);
+
+            try
+            {
+                testLockStatsDb.Get(new DatabaseEntry(
+                    BitConverter.GetBytes(100)), txn);
+            }
+            catch (DeadlockException) { }
+            // Abort unconditionally - we don't care about the transaction
+            txn.Abort();
+            thread1.Join();
+
+            stats = env.LockingSystemStats();
+            Assert.Less(0, stats.LockConflictsNoWait);
+            Assert.LessOrEqual(0, stats.LockConflictsWait);
 
             db.Close(); 
             env.Close();
         }
 
-        public void Write() {
+        public void GenerateDeadlock()
+        {
             Transaction txn = testLockStatsEnv.BeginTransaction();
-            for (int i = 0; i < 500; i++) {
-                testLockStatsDb.Put(new DatabaseEntry(BitConverter.GetBytes(i)),
+            try
+            {
+                testLockStatsDb.Put(
+                    new DatabaseEntry(BitConverter.GetBytes(100)),
                     new DatabaseEntry(ASCIIEncoding.ASCII.GetBytes(
-                    Configuration.RandomString(i))), txn);
-                testLockStatsDb.Sync();
-            }
-            txn.Commit();
-        }
+                    Configuration.RandomString(200))), txn);
+                DeadlockDidPut = 1;
+                testLockStatsDb.Get(new DatabaseEntry(
+                BitConverter.GetBytes(10)), txn);
 
-        public void Read() {
-            Transaction txn = testLockStatsEnv.BeginTransaction();
-            for (int i = 0; i < 500; ) {
-                try {
-                    testLockStatsDb.Get(new DatabaseEntry(
-                        BitConverter.GetBytes(i)), txn);
-                    i++;
-                } catch (DeadlockException) {
-                    Thread.Sleep(500);
-                } catch (NotFoundException) {
-                    Thread.Sleep(500);
-                }
             }
-            txn.Commit();
+            catch (DeadlockException) { }
+            // Abort unconditionally - we don't care about the transaction
+            txn.Abort();
         }
 
         public static void LockingEnvSetUp(string testHome,

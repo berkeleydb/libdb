@@ -8,20 +8,20 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB Programmer's Reference Guide" />
     <link rel="up" href="rep.html" title="Chapter 12.  Berkeley DB Replication" />
-    <link rel="prev" href="repmgr_channels.html" title="Using Replication Manager message channels" />
+    <link rel="prev" href="rep_twosite.html" title="Special considerations for two-site replication groups" />
     <link rel="next" href="rep_faq.html" title="Replication FAQ" />
   </head>
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
           <th colspan="3" align="center">Network partitions</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="repmgr_channels.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="rep_twosite.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 12. 
 		Berkeley DB Replication
         </th>
@@ -111,15 +111,15 @@ elections even when partitioned, while the other one could not.  This
 would allow one of the systems to continue accepting write
 queries after the partition.</p>
       <p>In a 2-site group, Replication Manager by default reacts to the loss of
-communication with the master by assuming the master has crashed: the
-surviving client simply declares itself to be master.  Thus it avoids
-the problem of the survivor never being able to get enough votes to
-prevail.  But it does leave the group vulnerable to the risk of
-multiple masters, if both sites are running but cannot communicate.
-If this risk of multiple masters is unacceptable, there is a
-configuration option to observe a strict majority rule that
-prevents the survivor from taking over. See the <a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method
-<a href="../api_reference/C/repconfig.html#config_DB_REPMGR_CONF_2SITE_STRICT" class="olink">DB_REPMGR_CONF_2SITE_STRICT</a> flag for more information.</p>
+communication with the master by observing a strict majority rule that
+prevents the survivor from taking over.  Thus it avoids multiple masters and
+the need to unroll some transactions if both sites are running but cannot
+communicate.  But it does leave the group in a read-only state until both
+sites are available.  If application availability while one site is down is a 
+priority and it is acceptable to risk unrolling some transactions, there
+is a configuration option to turn off the strict majority rule and allow
+the surviving client to declare itself to be master.  See the <a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a>
+method <a href="../api_reference/C/repconfig.html#config_DB_REPMGR_CONF_2SITE_STRICT" class="olink">DB_REPMGR_CONF_2SITE_STRICT</a> flag for more information.</p>
       <p>These scenarios stress the importance of good network infrastructure in
 Berkeley DB replicated environments.  When replicating database environments
 over sufficiently lossy networking, the best solution may well be to
@@ -130,14 +130,14 @@ has determined the selected master is unable to recover at all.</p>
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="repmgr_channels.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="rep_twosite.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="rep.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="rep_faq.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">Using Replication Manager message channels </td>
+          <td width="40%" align="left" valign="top">Special considerations for two-site replication groups </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>

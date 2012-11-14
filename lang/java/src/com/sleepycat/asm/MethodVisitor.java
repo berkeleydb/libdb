@@ -1,6 +1,6 @@
 /***
  * ASM: a very small and fast Java bytecode manipulation framework
- * Copyright (c) 2000-2005 INRIA, France Telecom
+ * Copyright (c) 2000-2011 INRIA, France Telecom
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,21 +30,61 @@
 package com.sleepycat.asm;
 
 /**
- * A visitor to visit a Java method. The methods of this interface must be
+ * A visitor to visit a Java method. The methods of this class must be
  * called in the following order: [ <tt>visitAnnotationDefault</tt> ] (
  * <tt>visitAnnotation</tt> | <tt>visitParameterAnnotation</tt> |
- * <tt>visitAttribute</tt> )* [ <tt>visitCode</tt> ( <tt>visit</tt><i>X</i>Insn</tt> |
- * <tt>visitLabel</tt> | <tt>visitTryCatchBlock</tt> | <tt>visitLocalVariable</tt> |
- * <tt>visitLineNumber</tt>)* <tt>visitMaxs</tt> ] <tt>visitEnd</tt>. In
- * addition, the <tt>visit</tt><i>X</i>Insn</tt> and <tt>visitLabel</tt>
- * methods must be called in the sequential order of the bytecode instructions
- * of the visited code, and the <tt>visitLocalVariable</tt> and <tt>visitLineNumber</tt>
+ * <tt>visitAttribute</tt> )* [ <tt>visitCode</tt> ( <tt>visitFrame</tt> |
+ * <tt>visit</tt><i>X</i>Insn</tt> | <tt>visitLabel</tt> | <tt>visitTryCatchBlock</tt> |
+ * <tt>visitLocalVariable</tt> | <tt>visitLineNumber</tt> )* <tt>visitMaxs</tt> ]
+ * <tt>visitEnd</tt>. In addition, the <tt>visit</tt><i>X</i>Insn</tt>
+ * and <tt>visitLabel</tt> methods must be called in the sequential order of
+ * the bytecode instructions of the visited code, <tt>visitTryCatchBlock</tt>
+ * must be called <i>before</i> the labels passed as arguments have been
+ * visited, and the <tt>visitLocalVariable</tt> and <tt>visitLineNumber</tt>
  * methods must be called <i>after</i> the labels passed as arguments have been
  * visited.
  *
  * @author Eric Bruneton
  */
-public interface MethodVisitor {
+public abstract class MethodVisitor {
+
+    /**
+     * The ASM API version implemented by this visitor. The value of this field
+     * must be one of {@link Opcodes#ASM4}.
+     */
+    protected final int api;
+
+    /**
+     * The method visitor to which this visitor must delegate method calls. May
+     * be null.
+     */
+    protected MethodVisitor mv;
+
+    /**
+     * Constructs a new {@link MethodVisitor}.
+     *
+     * @param api the ASM API version implemented by this visitor. Must be one
+     *        of {@link Opcodes#ASM4}.
+     */
+    public MethodVisitor(final int api) {
+        this(api, null);
+    }
+
+    /**
+     * Constructs a new {@link MethodVisitor}.
+     *
+     * @param api the ASM API version implemented by this visitor. Must be one
+     *        of {@link Opcodes#ASM4}.
+     * @param mv the method visitor to which this visitor must delegate method
+     *        calls. May be null.
+     */
+    public MethodVisitor(final int api, final MethodVisitor mv) {
+        /*if (api != Opcodes.ASM4) {
+            throw new IllegalArgumentException();
+        }*/
+        this.api = api;
+        this.mv = mv;
+    }
 
     // -------------------------------------------------------------------------
     // Annotations and non standard attributes
@@ -53,22 +93,34 @@ public interface MethodVisitor {
     /**
      * Visits the default value of this annotation interface method.
      *
-     * @return a non null visitor to the visit the actual default value of this
-     *         annotation interface method. The 'name' parameters passed to the
-     *         methods of this annotation visitor are ignored. Moreover, exacly
-     *         one visit method must be called on this annotation visitor,
-     *         followed by visitEnd.
+     * @return a visitor to the visit the actual default value of this
+     *         annotation interface method, or <tt>null</tt> if this visitor
+     *         is not interested in visiting this default value. The 'name'
+     *         parameters passed to the methods of this annotation visitor are
+     *         ignored. Moreover, exacly one visit method must be called on this
+     *         annotation visitor, followed by visitEnd.
      */
-    AnnotationVisitor visitAnnotationDefault();
+    public AnnotationVisitor visitAnnotationDefault() {
+        if (mv != null) {
+            return mv.visitAnnotationDefault();
+        }
+        return null;
+    }
 
     /**
      * Visits an annotation of this method.
      *
      * @param desc the class descriptor of the annotation class.
      * @param visible <tt>true</tt> if the annotation is visible at runtime.
-     * @return a non null visitor to visit the annotation values.
+     * @return a visitor to visit the annotation values, or <tt>null</tt> if
+     *         this visitor is not interested in visiting this annotation.
      */
-    AnnotationVisitor visitAnnotation(String desc, boolean visible);
+    public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
+        if (mv != null) {
+            return mv.visitAnnotation(desc, visible);
+        }
+        return null;
+    }
 
     /**
      * Visits an annotation of a parameter this method.
@@ -76,24 +128,102 @@ public interface MethodVisitor {
      * @param parameter the parameter index.
      * @param desc the class descriptor of the annotation class.
      * @param visible <tt>true</tt> if the annotation is visible at runtime.
-     * @return a non null visitor to visit the annotation values.
+     * @return a visitor to visit the annotation values, or <tt>null</tt> if
+     *         this visitor is not interested in visiting this annotation.
      */
-    AnnotationVisitor visitParameterAnnotation(
+    public AnnotationVisitor visitParameterAnnotation(
         int parameter,
         String desc,
-        boolean visible);
+        boolean visible)
+    {
+        if (mv != null) {
+            return mv.visitParameterAnnotation(parameter, desc, visible);
+        }
+        return null;
+    }
 
     /**
      * Visits a non standard attribute of this method.
      *
      * @param attr an attribute.
      */
-    void visitAttribute(Attribute attr);
+    public void visitAttribute(Attribute attr) {
+        if (mv != null) {
+            mv.visitAttribute(attr);
+        }
+    }
 
     /**
      * Starts the visit of the method's code, if any (i.e. non abstract method).
      */
-    void visitCode();
+    public void visitCode() {
+        if (mv != null) {
+            mv.visitCode();
+        }
+    }
+
+    /**
+     * Visits the current state of the local variables and operand stack
+     * elements. This method must(*) be called <i>just before</i> any
+     * instruction <b>i</b> that follows an unconditional branch instruction
+     * such as GOTO or THROW, that is the target of a jump instruction, or that
+     * starts an exception handler block. The visited types must describe the
+     * values of the local variables and of the operand stack elements <i>just
+     * before</i> <b>i</b> is executed. <br> <br> (*) this is mandatory only
+     * for classes whose version is greater than or equal to
+     * {@link Opcodes#V1_6 V1_6}. <br> <br> Packed frames are basically
+     * "deltas" from the state of the previous frame (very first frame is
+     * implicitly defined by the method's parameters and access flags): <ul>
+     * <li>{@link Opcodes#F_SAME} representing frame with exactly the same
+     * locals as the previous frame and with the empty stack.</li> <li>{@link Opcodes#F_SAME1}
+     * representing frame with exactly the same locals as the previous frame and
+     * with single value on the stack (<code>nStack</code> is 1 and
+     * <code>stack[0]</code> contains value for the type of the stack item).</li>
+     * <li>{@link Opcodes#F_APPEND} representing frame with current locals are
+     * the same as the locals in the previous frame, except that additional
+     * locals are defined (<code>nLocal</code> is 1, 2 or 3 and
+     * <code>local</code> elements contains values representing added types).</li>
+     * <li>{@link Opcodes#F_CHOP} representing frame with current locals are
+     * the same as the locals in the previous frame, except that the last 1-3
+     * locals are absent and with the empty stack (<code>nLocals</code> is 1,
+     * 2 or 3). </li> <li>{@link Opcodes#F_FULL} representing complete frame
+     * data.</li> </li> </ul>
+     *
+     * @param type the type of this stack map frame. Must be
+     *        {@link Opcodes#F_NEW} for expanded frames, or
+     *        {@link Opcodes#F_FULL}, {@link Opcodes#F_APPEND},
+     *        {@link Opcodes#F_CHOP}, {@link Opcodes#F_SAME} or
+     *        {@link Opcodes#F_APPEND}, {@link Opcodes#F_SAME1} for compressed
+     *        frames.
+     * @param nLocal the number of local variables in the visited frame.
+     * @param local the local variable types in this frame. This array must not
+     *        be modified. Primitive types are represented by
+     *        {@link Opcodes#TOP}, {@link Opcodes#INTEGER},
+     *        {@link Opcodes#FLOAT}, {@link Opcodes#LONG},
+     *        {@link Opcodes#DOUBLE},{@link Opcodes#NULL} or
+     *        {@link Opcodes#UNINITIALIZED_THIS} (long and double are
+     *        represented by a single element). Reference types are represented
+     *        by String objects (representing internal names), and uninitialized
+     *        types by Label objects (this label designates the NEW instruction
+     *        that created this uninitialized value).
+     * @param nStack the number of operand stack elements in the visited frame.
+     * @param stack the operand stack types in this frame. This array must not
+     *        be modified. Its content has the same format as the "local" array.
+     * @throws IllegalStateException if a frame is visited just after another
+     *        one, without any instruction between the two (unless this frame
+     *        is a Opcodes#F_SAME frame, in which case it is silently ignored).
+     */
+    public void visitFrame(
+        int type,
+        int nLocal,
+        Object[] local,
+        int nStack,
+        Object[] stack)
+    {
+        if (mv != null) {
+            mv.visitFrame(type, nLocal, local, nStack, stack);
+        }
+    }
 
     // -------------------------------------------------------------------------
     // Normal instructions
@@ -117,25 +247,32 @@ public interface MethodVisitor {
      *        FRETURN, DRETURN, ARETURN, RETURN, ARRAYLENGTH, ATHROW,
      *        MONITORENTER, or MONITOREXIT.
      */
-    void visitInsn(int opcode);
+    public void visitInsn(int opcode) {
+        if (mv != null) {
+            mv.visitInsn(opcode);
+        }
+    }
 
     /**
      * Visits an instruction with a single int operand.
      *
      * @param opcode the opcode of the instruction to be visited. This opcode is
      *        either BIPUSH, SIPUSH or NEWARRAY.
-     * @param operand the operand of the instruction to be visited.<br>
-     *        When opcode is BIPUSH, operand value should be between
-     *        Byte.MIN_VALUE and Byte.MAX_VALUE.<br>
-     *        When opcode is SIPUSH, operand value should be between
-     *        Short.MIN_VALUE and Short.MAX_VALUE.<br>
-     *        When opcode is NEWARRAY, operand value should be one of
+     * @param operand the operand of the instruction to be visited.<br> When
+     *        opcode is BIPUSH, operand value should be between Byte.MIN_VALUE
+     *        and Byte.MAX_VALUE.<br> When opcode is SIPUSH, operand value
+     *        should be between Short.MIN_VALUE and Short.MAX_VALUE.<br> When
+     *        opcode is NEWARRAY, operand value should be one of
      *        {@link Opcodes#T_BOOLEAN}, {@link Opcodes#T_CHAR},
      *        {@link Opcodes#T_FLOAT}, {@link Opcodes#T_DOUBLE},
      *        {@link Opcodes#T_BYTE}, {@link Opcodes#T_SHORT},
      *        {@link Opcodes#T_INT} or {@link Opcodes#T_LONG}.
      */
-    void visitIntInsn(int opcode, int operand);
+    public void visitIntInsn(int opcode, int operand) {
+        if (mv != null) {
+            mv.visitIntInsn(opcode, operand);
+        }
+    }
 
     /**
      * Visits a local variable instruction. A local variable instruction is an
@@ -147,19 +284,27 @@ public interface MethodVisitor {
      * @param var the operand of the instruction to be visited. This operand is
      *        the index of a local variable.
      */
-    void visitVarInsn(int opcode, int var);
+    public void visitVarInsn(int opcode, int var) {
+        if (mv != null) {
+            mv.visitVarInsn(opcode, var);
+        }
+    }
 
     /**
      * Visits a type instruction. A type instruction is an instruction that
-     * takes a type descriptor as parameter.
+     * takes the internal name of a class as parameter.
      *
      * @param opcode the opcode of the type instruction to be visited. This
      *        opcode is either NEW, ANEWARRAY, CHECKCAST or INSTANCEOF.
-     * @param desc the operand of the instruction to be visited. This operand is
-     *        must be a fully qualified class name in internal form, or the type
-     *        descriptor of an array type (see {@link Type Type}).
+     * @param type the operand of the instruction to be visited. This operand
+     *        must be the internal name of an object or array class (see {@link
+     *        Type#getInternalName() getInternalName}).
      */
-    void visitTypeInsn(int opcode, String desc);
+    public void visitTypeInsn(int opcode, String type) {
+        if (mv != null) {
+            mv.visitTypeInsn(opcode, type);
+        }
+    }
 
     /**
      * Visits a field instruction. A field instruction is an instruction that
@@ -172,21 +317,47 @@ public interface MethodVisitor {
      * @param name the field's name.
      * @param desc the field's descriptor (see {@link Type Type}).
      */
-    void visitFieldInsn(int opcode, String owner, String name, String desc);
+    public void visitFieldInsn(int opcode, String owner, String name, String desc) {
+        if (mv != null) {
+            mv.visitFieldInsn(opcode, owner, name, desc);
+        }
+    }
 
     /**
      * Visits a method instruction. A method instruction is an instruction that
      * invokes a method.
      *
      * @param opcode the opcode of the type instruction to be visited. This
-     *        opcode is either INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC or
-     *        INVOKEINTERFACE.
+     *        opcode is either INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC
+     *        or INVOKEINTERFACE.
      * @param owner the internal name of the method's owner class (see {@link
      *        Type#getInternalName() getInternalName}).
      * @param name the method's name.
      * @param desc the method's descriptor (see {@link Type Type}).
      */
-    void visitMethodInsn(int opcode, String owner, String name, String desc);
+    public void visitMethodInsn(int opcode, String owner, String name, String desc) {
+        if (mv != null) {
+            mv.visitMethodInsn(opcode, owner, name, desc);
+        }
+    }
+
+    /**
+     * Visits an invokedynamic instruction.
+     *
+     * @param name the method's name.
+     * @param desc the method's descriptor (see {@link Type Type}).
+     * @param bsm the bootstrap method.
+     * @param bsmArgs the bootstrap method constant arguments. Each argument
+     *        must be an {@link Integer}, {@link Float}, {@link Long},
+     *        {@link Double}, {@link String}, {@link Type} or {@link Handle}
+     *        value. This method is allowed to modify the content of the array
+     *        so a caller should expect that this array may change.
+     */
+    public void visitInvokeDynamicInsn(String name, String desc, Handle bsm, Object... bsmArgs) {
+        if (mv != null) {
+            mv.visitInvokeDynamicInsn(name, desc, bsm, bsmArgs);
+        }
+    }
 
     /**
      * Visits a jump instruction. A jump instruction is an instruction that may
@@ -200,7 +371,11 @@ public interface MethodVisitor {
      *        is a label that designates the instruction to which the jump
      *        instruction may jump.
      */
-    void visitJumpInsn(int opcode, Label label);
+    public void visitJumpInsn(int opcode, Label label) {
+        if (mv != null) {
+            mv.visitJumpInsn(opcode, label);
+        }
+    }
 
     /**
      * Visits a label. A label designates the instruction that will be visited
@@ -208,22 +383,62 @@ public interface MethodVisitor {
      *
      * @param label a {@link Label Label} object.
      */
-    void visitLabel(Label label);
+    public void visitLabel(Label label) {
+        if (mv != null) {
+            mv.visitLabel(label);
+        }
+    }
 
     // -------------------------------------------------------------------------
     // Special instructions
     // -------------------------------------------------------------------------
 
     /**
-     * Visits a LDC instruction.
+     * Visits a LDC instruction. Note that new constant types may be added in
+     * future versions of the Java Virtual Machine. To easily detect new
+     * constant types, implementations of this method should check for
+     * unexpected constant types, like this:
+     * <pre>
+     * if (cst instanceof Integer) {
+     *   // ...
+     * } else if (cst instanceof Float) {
+     *   // ...
+     * } else if (cst instanceof Long) {
+     *   // ...
+     * } else if (cst instanceof Double) {
+     *   // ...
+     * } else if (cst instanceof String) {
+     *   // ...
+     * } else if (cst instanceof Type) {
+     *   int sort = ((Type) cst).getSort();
+     *   if (sort == Type.OBJECT) {
+     *     // ...
+     *   } else if (sort == Type.ARRAY) {
+     *     // ...
+     *   } else if (sort == Type.METHOD) {
+     *     // ...
+     *   } else {
+     *     // throw an exception
+     *   }
+     * } else if (cst instanceof Handle) {
+     *   // ...
+     * } else {
+     *   // throw an exception
+     * }</pre>
      *
      * @param cst the constant to be loaded on the stack. This parameter must be
      *        a non null {@link Integer}, a {@link Float}, a {@link Long}, a
-     *        {@link Double} a {@link String} (or a {@link Type} for
-     *        <tt>.class</tt> constants, for classes whose version is 49.0 or
-     *        more).
+     *        {@link Double}, a {@link String}, a {@link Type} of OBJECT or ARRAY
+     *        sort for <tt>.class</tt> constants, for classes whose version is
+     *        49.0, a {@link Type} of METHOD sort or a {@link Handle} for
+     *        MethodType and MethodHandle constants, for classes whose version
+     *        is 51.0.
      */
-    void visitLdcInsn(Object cst);
+    public void visitLdcInsn(Object cst) {
+        if (mv != null) {
+            mv.visitLdcInsn(cst);
+        }
+    }
 
     /**
      * Visits an IINC instruction.
@@ -231,7 +446,11 @@ public interface MethodVisitor {
      * @param var index of the local variable to be incremented.
      * @param increment amount to increment the local variable by.
      */
-    void visitIincInsn(int var, int increment);
+    public void visitIincInsn(int var, int increment) {
+        if (mv != null) {
+            mv.visitIincInsn(var, increment);
+        }
+    }
 
     /**
      * Visits a TABLESWITCH instruction.
@@ -242,7 +461,11 @@ public interface MethodVisitor {
      * @param labels beginnings of the handler blocks. <tt>labels[i]</tt> is
      *        the beginning of the handler block for the <tt>min + i</tt> key.
      */
-    void visitTableSwitchInsn(int min, int max, Label dflt, Label labels[]);
+    public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
+        if (mv != null) {
+            mv.visitTableSwitchInsn(min, max, dflt, labels);
+        }
+    }
 
     /**
      * Visits a LOOKUPSWITCH instruction.
@@ -252,7 +475,11 @@ public interface MethodVisitor {
      * @param labels beginnings of the handler blocks. <tt>labels[i]</tt> is
      *        the beginning of the handler block for the <tt>keys[i]</tt> key.
      */
-    void visitLookupSwitchInsn(Label dflt, int keys[], Label labels[]);
+    public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
+        if (mv != null) {
+            mv.visitLookupSwitchInsn(dflt, keys, labels);
+        }
+    }
 
     /**
      * Visits a MULTIANEWARRAY instruction.
@@ -260,11 +487,14 @@ public interface MethodVisitor {
      * @param desc an array type descriptor (see {@link Type Type}).
      * @param dims number of dimensions of the array to allocate.
      */
-    void visitMultiANewArrayInsn(String desc, int dims);
+    public void visitMultiANewArrayInsn(String desc, int dims) {
+        if (mv != null) {
+            mv.visitMultiANewArrayInsn(desc, dims);
+        }
+    }
 
     // -------------------------------------------------------------------------
-    // Exceptions table entries, debug information,
-    // max stack size and max locals
+    // Exceptions table entries, debug information, max stack and max locals
     // -------------------------------------------------------------------------
 
     /**
@@ -276,8 +506,15 @@ public interface MethodVisitor {
      * @param type internal name of the type of exceptions handled by the
      *        handler, or <tt>null</tt> to catch any exceptions (for "finally"
      *        blocks).
+     * @throws IllegalArgumentException if one of the labels has already been
+     *         visited by this visitor (by the {@link #visitLabel visitLabel}
+     *         method).
      */
-    void visitTryCatchBlock(Label start, Label end, Label handler, String type);
+    public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
+        if (mv != null) {
+            mv.visitTryCatchBlock(start, end, handler, type);
+        }
+    }
 
     /**
      * Visits a local variable declaration.
@@ -296,13 +533,18 @@ public interface MethodVisitor {
      *         been visited by this visitor (by the
      *         {@link #visitLabel visitLabel} method).
      */
-    void visitLocalVariable(
+    public void visitLocalVariable(
         String name,
         String desc,
         String signature,
         Label start,
         Label end,
-        int index);
+        int index)
+    {
+        if (mv != null) {
+            mv.visitLocalVariable(name, desc, signature, start, end, index);
+        }
+    }
 
     /**
      * Visits a line number declaration.
@@ -314,7 +556,11 @@ public interface MethodVisitor {
      *         visited by this visitor (by the {@link #visitLabel visitLabel}
      *         method).
      */
-    void visitLineNumber(int line, Label start);
+    public void visitLineNumber(int line, Label start) {
+        if (mv != null) {
+            mv.visitLineNumber(line, start);
+        }
+    }
 
     /**
      * Visits the maximum stack size and the maximum number of local variables
@@ -323,12 +569,20 @@ public interface MethodVisitor {
      * @param maxStack maximum stack size of the method.
      * @param maxLocals maximum number of local variables for the method.
      */
-    void visitMaxs(int maxStack, int maxLocals);
+    public void visitMaxs(int maxStack, int maxLocals) {
+        if (mv != null) {
+            mv.visitMaxs(maxStack, maxLocals);
+        }
+    }
 
     /**
      * Visits the end of the method. This method, which is the last one to be
      * called, is used to inform the visitor that all the annotations and
      * attributes of the method have been visited.
      */
-    void visitEnd();
+    public void visitEnd() {
+        if (mv != null) {
+            mv.visitEnd();
+        }
+    }
 }

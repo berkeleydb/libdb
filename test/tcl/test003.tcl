@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -130,6 +130,7 @@ proc test003 { method args} {
 		set txn "-txn $t"
 	}
 	dump_bin_file $db $txn $t1 $checkfunc
+
 	if { $txnenv == 1 } {
 		error_check_good txn [$t commit] 0
 	}
@@ -143,7 +144,12 @@ proc test003 { method args} {
 			puts $oid $i
 		}
 		close $oid
-		file rename -force $t1 $t3
+	        if { [is_heap $method] == 1 } {
+		        # There's no ordering in a heap database
+		        filesort $t1 $t3 -n
+		} else {
+		        file rename -force $t1 $t3
+		}
 	} else {
 		set oid [open $t2.tmp w]
 		foreach f $file_list {

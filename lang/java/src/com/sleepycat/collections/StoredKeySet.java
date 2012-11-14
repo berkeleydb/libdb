@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -60,9 +60,12 @@ public class StoredKeySet<K> extends StoredCollection<K> implements Set<K> {
     /**
      * Adds the specified key to this set if it is not already present
      * (optional operation).
-     * When a key is added the value in the underlying data store will be
-     * empty.
      * This method conforms to the {@link Set#add} interface.
+     *
+     * <p>WARNING: When a key is added the value in the underlying data store
+     * will be empty, i.e., the byte array will be zero length.  Such a record
+     * cannot be accessed using the Map interface unless the value binding
+     * supports zero length byte arrays.</p>
      *
      *
      * @throws UnsupportedOperationException if the collection is indexed, or

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -120,8 +120,16 @@ public class StoredClassCatalog implements ClassCatalog {
         } else {
             /* Add the initial class ID record if it doesn't exist.  */
             data.setData(new byte[1]); // zero ID
-            /* Use putNoOverwrite to avoid phantoms. */
-            db.putNoOverwrite(null, key, data);
+
+            /*
+             * Query the record before writing it to the database, to avoid
+             * ReplicaWriteException while opening a StoredClassCatalog on the
+             * replicas.
+             */
+            OperationStatus status = db.get(null, key, data, null);
+            if (status == OperationStatus.NOTFOUND) {
+                db.putNoOverwrite(null, key, data);
+            }
         }
     }
 
@@ -484,5 +492,27 @@ public class StoredClassCatalog implements ClassCatalog {
         ObjectOutputStream oos = new ObjectOutputStream(baos);
         oos.writeObject(o);
         return baos.toByteArray();
+    }
+
+    /**
+     * For BDB JE, returns the ClassLoader property of the catalog database
+     * environment.  This ensures that the Environment's ClassLoader property
+     * is used for loading all user-supplied classes.
+     *
+     * <p>For BDB, this method returns null because no Environment ClassLoader
+     * property is available.  This method may be overridden to return a
+     * ClassLoader.</p>
+     */
+    public ClassLoader getClassLoader() {
+        try {
+            return DbCompat.getClassLoader(db.getEnvironment());
+        } catch (DatabaseException e) {
+
+            /*
+             * DatabaseException is declared to be thrown by getEnvironment in
+             * DB (not JE), but this should never happen in practice.
+             */
+            throw new RuntimeException(e);
+        }
     }
 }

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -362,6 +362,7 @@ struct __db_mpool_fstat_int { /* SHARED */
 	uintmax_t st_page_create;	/* Pages created in the cache. */
 	uintmax_t st_page_in;		/* Pages read in. */
 	uintmax_t st_page_out;		/* Pages written out. */
+	uintmax_t st_backup_spins;	/* Number of spins by a backup. */
 #endif
 };
 
@@ -394,14 +395,29 @@ struct __db_mpool_fstat_int { /* SHARED */
 struct __mpoolfile { /* SHARED */
 	db_mutex_t mutex;		/* MPOOLFILE mutex. */
 
+#ifndef HAVE_ATOMICFILEREAD
+	/* Information to synchronize backups. */
+	u_int32_t   backup_in_progress;	/* Backup running. */
+	pid_t       pid;		/* Process doing backup. */
+	db_threadid_t tid;		/* Thread doing backup. */
+	db_atomic_t writers;		/* Number of current writers. */
+	db_mutex_t  mtx_write;		/* block writers while updating.*/
+	db_pgno_t   low_pgno, high_pgno;/* Low and high backup range.*/
+#endif
+	
 	/* Protected by MPOOLFILE mutex. */
 	u_int32_t revision;		/* Bumped on any movement subdbs. */
 	u_int32_t mpf_cnt;		/* Ref count: DB_MPOOLFILEs. */
+	u_int32_t neutral_cnt;		/* Ref count: refs that don't care about
+					 * MVCC or DURABLE.  That is, read-only
+					 * or write behind references.
+					 */
 	u_int32_t block_cnt;		/* Ref count: blocks in cache. */
 	db_pgno_t last_pgno;		/* Last page in the file. */
 	db_pgno_t last_flushed_pgno;	/* Last page flushed to disk. */
 	db_pgno_t orig_last_pgno;	/* Original last page in the file. */
 	db_pgno_t maxpgno;		/* Maximum page number. */
+	u_int8_t excl_lockout;		/* Internal exclusive db lockout. */
 
 	roff_t	  path_off;		/* File name location. */
 

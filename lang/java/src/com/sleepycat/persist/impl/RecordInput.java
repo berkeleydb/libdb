@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -47,6 +47,7 @@ class RecordInput extends TupleInput implements EntityInput {
     private Map<Integer, Object> visited;
     private DatabaseEntry priKeyEntry;
     private int priKeyFormatId;
+    private boolean newStringFormat;
 
     /**
      * Creates a new input with a empty/null visited map.
@@ -63,6 +64,7 @@ class RecordInput extends TupleInput implements EntityInput {
         this.rawAccess = rawAccess;
         this.priKeyEntry = priKeyEntry;
         this.priKeyFormatId = priKeyFormatId;
+        this.visited = new HashMap<Integer, Object>(VISITED_INIT_SIZE);
     }
 
     /**
@@ -110,7 +112,8 @@ class RecordInput extends TupleInput implements EntityInput {
     /**
      * @see EntityInput#readObject
      */
-    public Object readObject() {
+    public Object readObject()
+        throws RefreshException {
 
         /* Save the current offset before reading the format ID. */
         Integer visitedOffset = off;
@@ -126,9 +129,7 @@ class RecordInput extends TupleInput implements EntityInput {
         /* For a negative format ID, lookup an already visited instance. */
         if (formatId < 0) {
             int offset = (-(formatId + 1));
-            if (visited != null) {
-                o = visited.get(offset);
-            }
+            o = visited.get(offset);
             if (o == RecordInput.PROHIBIT_REF_OBJECT) {
                 throw new IllegalArgumentException
                     (RecordInput.PROHIBIT_NESTED_REF_MSG);
@@ -163,9 +164,6 @@ class RecordInput extends TupleInput implements EntityInput {
          * conditions, but under these conditions we do not support nested
          * references to the parent object. [#15815]
          */
-        if (visited == null) {
-            visited = new HashMap<Integer, Object>(VISITED_INIT_SIZE);
-        }
         visited.put(visitedOffset, RecordInput.PROHIBIT_REF_OBJECT);
 
         /* Create the object using the format indicated. */
@@ -194,7 +192,8 @@ class RecordInput extends TupleInput implements EntityInput {
     /**
      * @see EntityInput#readKeyObject
      */
-    public Object readKeyObject(Format format) {
+    public Object readKeyObject(Format format)
+        throws RefreshException {
 
         /* Create and read the object using the given key format. */
         Reader reader = format.getReader();
@@ -203,13 +202,41 @@ class RecordInput extends TupleInput implements EntityInput {
     }
 
     /**
+     * @see EntityInput#readStringObject
+     */
+    public Object readStringObject()
+        throws RefreshException {
+
+        if (!newStringFormat) {
+            return readObject();
+        }
+        return readString();
+    }
+
+    /**
      * Called when copying secondary keys, for an input that is positioned on
      * the secondary key field.  Handles references to previously occurring
      * objects, returning a different RecordInput than this one if appropriate.
      */
-    KeyLocation getKeyLocation(Format fieldFormat) {
+    KeyLocation getKeyLocation(Format fieldFormat)
+        throws RefreshException {
+
         RecordInput input = this;
-        if (!fieldFormat.isPrimitive()) {
+        if (fieldFormat.getId() == Format.ID_STRING && newStringFormat) {
+            
+            /*
+             * In new JE version, we do not store format ID for String data,
+             * So we have to read the real String data to see if the String
+             * data is null or not. [#19247]
+             */
+            int len = input.getStringByteLength();
+            String strKey = input.readString();
+            input.skipFast(0 - len);
+            if(strKey == null) {
+                /* String key field is null. */
+                return null;
+            }
+        } else if (!fieldFormat.isPrimitive()) {
             int formatId = input.readPackedInt();
             if (formatId == Format.ID_NULL) {
                 /* Key field is null. */
@@ -241,17 +268,57 @@ class RecordInput extends TupleInput implements EntityInput {
          * PRI_KEY_VISITED_OFFSET is used as the visited offset to indicate
          * that the visited object is stored in the primary key byte array.
          */
-        if (visited == null) {
-            visited = new HashMap<Integer, Object>(VISITED_INIT_SIZE);
-        }
         visited.put(RecordInput.PRI_KEY_VISITED_OFFSET, o);
+    }
+
+    /**
+     * @see EntityInput#registerPriKeyObject
+     */
+    public void registerPriStringKeyObject(Object o) {
+
+        /*
+         * In JE 5.0 and later, String is treated as a primitive type, so a
+         * String object does not need to be registered. But in earlier
+         * versions, Strings are treated as any other object and must be
+         * registered. [#19247]
+         */
+        if (!newStringFormat) {
+            visited.put(RecordInput.PRI_KEY_VISITED_OFFSET, o);
+        }
+    }
+
+    /**
+     * Registers the top level entity before reading it, to allow nested fields
+     * to reference their parent entity. [#17525]
+     */
+    public void registerEntity(Object entity, int initialOffset) {
+        visited.put(initialOffset, entity);
+    }
+
+    /**
+     * Registers the entity format before reading it, so that old-format String
+     * fields can be read properly. [#19247]
+     */
+    public void registerEntityFormat(Format entityFormat) {
+        newStringFormat = entityFormat.getNewStringFormat();
     }
 
     /**
      * @see EntityInput#skipField
      */
-    public void skipField(Format declaredFormat) {
+    public void skipField(Format declaredFormat)
+        throws RefreshException {
+
         if (declaredFormat != null && declaredFormat.isPrimitive()) {
+            declaredFormat.skipContents(this);
+        } else if (declaredFormat != null &&
+                   declaredFormat.getId() == Format.ID_STRING && 
+                   newStringFormat) {
+            
+            /* 
+             * In the new JE version, we treat String as primitive, and will 
+             * not store format ID for String data. [#19247]
+             */
             declaredFormat.skipContents(this);
         } else {
             int formatId = readPackedInt();

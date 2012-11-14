@@ -1,30 +1,23 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ */
+
 /*
-*      Copyright (c) 1997 BEA Systems, Inc.
-*       All Rights Reserved
-*
-*       THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF
-*       BEA Systems, Inc.
-*       The copyright notice above does not evidence any
-*       actual or intended publication of such source code.
-*
-* This client is part of Test 2 of the XA test suite.  It calls bdb1, which
-* in turn calls bdb2.  In the test several clients are executed at once to test
-* how XA performs with multiple processes.
-*/
+ * This client is part of Test 2 of the XA test suite.  It calls bdb1, which
+ * in turn calls bdb2.  In the test several clients are executed at once to test
+ * how XA performs with multiple processes.
+ */
 
 #include <stdio.h>
 #include <string.h>
 #include "atmi.h"		/* TUXEDO  Header File */
+#include "../utilities/bdb_xa_util.h"
 
 
 void my_exit();
 char *sendbuf, *rcvbuf;
-
-#ifdef VERBOSE
-static int verbose = 1;				/* Debugging output. */
-#else
-static int verbose = 0;
-#endif
 
 void
 my_exit(string)

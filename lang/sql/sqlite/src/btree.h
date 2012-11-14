@@ -94,6 +94,14 @@ int sqlite3BtreeCopyFile(Btree *, Btree *);
 
 int sqlite3BtreeIncrVacuum(Btree *);
 
+/*
+ * BEGIN Berkeley DB specific btree APIs.
+ */
+int sqlite3BtreeHandleCacheUpdate(Btree *p, int schema_changed);
+/*
+ * END Berkeley DB specific btree APIs.
+ */
+
 /* The flags parameter to sqlite3BtreeCreateTable can be the bitwise OR
 ** of the flags shown below.
 **

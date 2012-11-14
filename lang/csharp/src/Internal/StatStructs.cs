@@ -3,7 +3,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2010 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 
 using System;
@@ -65,6 +65,7 @@ namespace BerkeleyDB.Internal {
 	internal uint heap_pagecnt;		
 	internal uint heap_pagesize;	
 	internal uint heap_nregions;	
+	internal uint heap_regionsize;	
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -159,6 +160,7 @@ namespace BerkeleyDB.Internal {
 	internal ulong st_page_create;	
 	internal ulong st_page_in;		
 	internal ulong st_page_out;		
+	internal ulong st_backup_spins;	
 	internal string file_name;	
     }
 
@@ -409,22 +411,6 @@ namespace BerkeleyDB.Internal {
         internal uint offset;
     }
 
-internal enum DB_TXN_XA_STATUS : uint {
-        TXN_XA_ACTIVE = 1,
-        TXN_XA_DEADLOCKED = 2,
-        TXN_XA_IDLE = 3,
-        TXN_XA_PREPARED = 4,
-        TXN_XA_ROLLEDBACK = 5,
-}
-
-internal enum DB_TXN_ACTIVE_STATUS : uint {
-        TXN_ABORTED = 1,
-        TXN_COMMITTED = 2,
-        TXN_NEED_ABORT = 3,
-        TXN_PREPARED = 4,
-        TXN_RUNNING = 5,
-}
-
     [StructLayout(LayoutKind.Sequential)]
     internal struct DB_TXN_ACTIVE {
 	internal uint txnid;		
@@ -439,9 +425,9 @@ internal enum DB_TXN_ACTIVE_STATUS : uint {
 
 	internal uint priority;		
 
-	internal DB_TXN_ACTIVE_STATUS status;		
+	internal uint status;		
 
-	internal DB_TXN_XA_STATUS xa_status;		
+	internal uint xa_status;		
 
     }
 

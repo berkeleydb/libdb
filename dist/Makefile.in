@@ -1,7 +1,6 @@
 # $Id$
 
 topdir=		@topdir@
-abs_topdir=	@abs_topdir@
 srcdir=		$(topdir)/src
 langdir=	$(topdir)/lang
 exampledir=	$(topdir)/examples
@@ -156,7 +155,7 @@ JAVA_EXCLASSTOP=./classes.ex
 JAVA_SRCDIR=	$(langdir)/java/src
 JAVA_EXDIR=	$(exampledir)/java/src
 JAVA_SLEEPYCAT=	$(langdir)/java/src/com/sleepycat
-JAVA_MANIFEST=	$(abs_topdir)/lang/java/jarManifestEntries
+JAVA_MANIFEST=	$(langdir)/java/jarManifestEntries
 
 libj_jarfile=	db.jar
 libj_exjarfile=	dbexamples.jar
@@ -224,8 +223,8 @@ HASH_OBJS=\
 HASH_VRFY_OBJS=\
 	hash_verify@o@
 HEAP_OBJS=\
-	heap@o@ heap_auto@o@ heap_conv@o@ heap_method@o@ heap_open@o@ \
-	heap_rec@o@ heap_reclaim@o@ heap_stat@o@
+	heap@o@ heap_auto@o@ heap_backup@o@ heap_conv@o@ heap_method@o@ \
+	heap_open@o@ heap_rec@o@ heap_reclaim@o@ heap_stat@o@
 HEAP_VRFY_OBJS=\
 	heap_verify@o@
 QUEUE_OBJS=\
@@ -264,39 +263,41 @@ XA_OBJS=\
 # object files in order to generate the additional objects in @FINAL_OBJS@.
 
 DTRACE_OBJS= @ADDITIONAL_OBJS@ @REPLACEMENT_OBJS@ @CRYPTO_OBJS@ \
-	clock@o@ crdel_auto@o@ crdel_rec@o@ db@o@ db_am@o@ \
-	db_auto@o@ db_byteorder@o@ db_cam@o@ db_cds@o@ db_compact@o@ \
-	db_compint@o@ db_conv@o@ db_copy@o@ db_dispatch@o@ db_dup@o@ db_err@o@ \
-	db_getlong@o@ db_idspace@o@ db_iface@o@ db_join@o@ db_log2@o@ \
-	db_meta@o@ db_method@o@ db_open@o@ db_overflow@o@ db_pr@o@ db_rec@o@ \
-	db_reclaim@o@ db_remove@o@ db_rename@o@ db_ret@o@ db_setid@o@ \
-	db_setlsn@o@ db_shash@o@ db_sort_multiple@o@ db_stati@o@ \
-	db_truncate@o@ db_upg@o@ db_upg_opd@o@ dbreg@o@ dbreg_stat@o@ \
-	dbreg_auto@o@ dbreg_rec@o@ dbreg_util@o@ dbt@o@ env_alloc@o@ \
-	env_config@o@ env_failchk@o@ env_file@o@ env_globals@o@ env_open@o@ \
-	env_method@o@ env_name@o@ env_recover@o@ env_region@o@ env_register@o@ \
-	env_sig@o@ env_stat@o@ fileops_auto@o@ fop_basic@o@ fop_rec@o@ \
-	fop_util@o@ hash_func@o@ hmac@o@ log@o@ log_archive@o@ \
-	log_compare@o@ log_debug@o@ log_get@o@ log_method@o@ log_print@o@ \
-	log_put@o@ log_stat@o@ mkpath@o@ mp_alloc@o@ mp_bh@o@ mp_fget@o@ \
+	clock@o@ crdel_auto@o@ crdel_rec@o@ db@o@ db_am@o@ db_auto@o@ \
+	db_backup@o@ db_byteorder@o@ db_cam@o@ db_cds@o@ db_compact@o@ \
+	db_compint@o@ db_conv@o@ db_copy@o@ db_dispatch@o@ db_dup@o@ \
+	db_err@o@ db_getlong@o@ db_idspace@o@ db_iface@o@ db_join@o@ \
+	db_log2@o@ db_meta@o@ db_method@o@ db_open@o@ db_overflow@o@ \
+	db_pr@o@ db_rec@o@ db_reclaim@o@ db_remove@o@ db_rename@o@ \
+	db_ret@o@ db_setid@o@ db_setlsn@o@ db_shash@o@ db_sort_multiple@o@ \
+	db_stati@o@ db_truncate@o@ db_upg@o@ db_upg_opd@o@ dbreg@o@ \
+	dbreg_stat@o@ dbreg_auto@o@ dbreg_rec@o@ dbreg_util@o@ \
+	dbt@o@ env_alloc@o@ env_config@o@ env_backup@o@ env_failchk@o@ \
+	env_file@o@ env_globals@o@ env_open@o@ env_method@o@ env_name@o@ \
+	env_recover@o@ env_region@o@ env_register@o@ env_sig@o@ \
+	env_stat@o@ fileops_auto@o@ fop_basic@o@ fop_rec@o@ fop_util@o@ \
+	hash_func@o@ hmac@o@ log@o@ log_archive@o@ log_compare@o@ \
+	log_debug@o@ log_get@o@ log_method@o@ log_print@o@ log_put@o@ \
+	log_stat@o@ mkpath@o@ mp_alloc@o@ mp_backup@o@ mp_bh@o@ mp_fget@o@ \
 	mp_fmethod@o@ mp_fopen@o@ mp_fput@o@ mp_fset@o@ mp_method@o@ \
 	mp_mvcc@o@ mp_region@o@ mp_register@o@ mp_resize@o@ mp_stat@o@ \
 	mp_sync@o@ mp_trickle@o@ openflags@o@ os_abort@o@ os_abs@o@ \
 	os_alloc@o@ os_clock@o@ os_cpu@o@ os_ctime@o@ os_config@o@ \
 	os_dir@o@ os_errno@o@ os_fid@o@ os_flock@o@ os_fsync@o@ \
 	os_getenv@o@ os_handle@o@ os_map@o@ os_method@o@ os_mkdir@o@ \
-	os_open@o@ os_pid@o@ os_rename@o@ os_root@o@ os_rpath@o@ \
-	os_rw@o@ os_seek@o@ os_stack@o@ os_stat@o@ os_tmpdir@o@ \
-	os_truncate@o@ os_uid@o@ os_unlink@o@ os_yield@o@ partition@o@ \
-	seq_stat@o@ sequence@o@ sha1@o@ snprintf@o@ txn@o@ txn_auto@o@ \
-	txn_chkpt@o@ txn_failchk@o@ txn_method@o@ txn_rec@o@ txn_recover@o@ \
-	txn_region@o@ txn_stat@o@ txn_util@o@ xa@o@ xa_map@o@ zerofill@o@
+	os_open@o@ os_path@o@ os_pid@o@ os_rename@o@ os_root@o@ \
+	os_rpath@o@ os_rw@o@ os_seek@o@ os_stack@o@ os_stat@o@ \
+	os_tmpdir@o@ os_truncate@o@ os_uid@o@ os_unlink@o@ os_yield@o@ \
+	partition@o@ seq_stat@o@ sequence@o@ sha1@o@ snprintf@o@ txn@o@ \
+	txn_auto@o@ txn_chkpt@o@ txn_failchk@o@ txn_method@o@ txn_rec@o@ \
+	txn_recover@o@ txn_region@o@ txn_stat@o@ txn_util@o@ xa@o@ \
+	xa_map@o@ zerofill@o@ \
 
 C_OBJS=	$(DTRACE_OBJS) @FINAL_OBJS@
 
 CUTEST_OBJS=\
-	CuTest@o@ CuTests@o@ Runner@o@ TestChannel@o@ TestDbTuner@o@ \
-	TestEncryption@o@ TestEnvConfig@o@ TestEnvMethod@o@ \
+	CuTest@o@ CuTests@o@ Runner@o@ TestChannel@o@ TestDbHotBackup@o@ \
+	TestDbTuner@o@ TestEncryption@o@ TestEnvConfig@o@ TestEnvMethod@o@ \
 	TestKeyExistErrorReturn@o@ TestPartial@o@ TestQueue@o@ \
 
 CXX_OBJS=\
@@ -316,13 +317,14 @@ JAVA_DBSRCS=\
 	$(JAVA_SLEEPYCAT)/asm/AnnotationWriter.java \
 	$(JAVA_SLEEPYCAT)/asm/Attribute.java \
 	$(JAVA_SLEEPYCAT)/asm/ByteVector.java \
-	$(JAVA_SLEEPYCAT)/asm/ClassAdapter.java \
 	$(JAVA_SLEEPYCAT)/asm/ClassReader.java \
 	$(JAVA_SLEEPYCAT)/asm/ClassVisitor.java \
 	$(JAVA_SLEEPYCAT)/asm/ClassWriter.java \
 	$(JAVA_SLEEPYCAT)/asm/Edge.java \
 	$(JAVA_SLEEPYCAT)/asm/FieldVisitor.java \
 	$(JAVA_SLEEPYCAT)/asm/FieldWriter.java \
+	$(JAVA_SLEEPYCAT)/asm/Frame.java \
+	$(JAVA_SLEEPYCAT)/asm/Handle.java \
 	$(JAVA_SLEEPYCAT)/asm/Handler.java \
 	$(JAVA_SLEEPYCAT)/asm/Item.java \
 	$(JAVA_SLEEPYCAT)/asm/Label.java \
@@ -402,6 +404,8 @@ JAVA_DBSRCS=\
 	$(JAVA_SLEEPYCAT)/collections/TransactionWorker.java \
 	$(JAVA_SLEEPYCAT)/collections/TupleSerialFactory.java \
 	$(JAVA_SLEEPYCAT)/compat/DbCompat.java \
+	$(JAVA_SLEEPYCAT)/db/BackupHandler.java \
+	$(JAVA_SLEEPYCAT)/db/BackupOptions.java \
 	$(JAVA_SLEEPYCAT)/db/BtreeCompressor.java \
 	$(JAVA_SLEEPYCAT)/db/BtreePrefixCalculator.java \
 	$(JAVA_SLEEPYCAT)/db/BtreeStats.java \
@@ -479,6 +483,7 @@ JAVA_DBSRCS=\
 	$(JAVA_SLEEPYCAT)/db/ReplicationLeaseExpiredException.java \
 	$(JAVA_SLEEPYCAT)/db/ReplicationLockoutException.java \
 	$(JAVA_SLEEPYCAT)/db/ReplicationManagerAckPolicy.java \
+	$(JAVA_SLEEPYCAT)/db/ReplicationManagerConnectionStatus.java \
 	$(JAVA_SLEEPYCAT)/db/ReplicationManagerMessageDispatch.java \
 	$(JAVA_SLEEPYCAT)/db/ReplicationManagerSite.java \
 	$(JAVA_SLEEPYCAT)/db/ReplicationManagerSiteConfig.java \
@@ -540,6 +545,7 @@ JAVA_DBSRCS=\
 	$(JAVA_SLEEPYCAT)/persist/PrimaryKeyValueAdapter.java \
 	$(JAVA_SLEEPYCAT)/persist/SecondaryIndex.java \
 	$(JAVA_SLEEPYCAT)/persist/StoreConfig.java \
+	$(JAVA_SLEEPYCAT)/persist/StoreConfigBeanInfo.java \
 	$(JAVA_SLEEPYCAT)/persist/StoreExistsException.java \
 	$(JAVA_SLEEPYCAT)/persist/StoreNotFoundException.java \
 	$(JAVA_SLEEPYCAT)/persist/SubIndex.java \
@@ -551,6 +557,7 @@ JAVA_DBSRCS=\
 	$(JAVA_SLEEPYCAT)/persist/evolve/Deleter.java \
 	$(JAVA_SLEEPYCAT)/persist/evolve/EntityConverter.java \
 	$(JAVA_SLEEPYCAT)/persist/evolve/EvolveConfig.java \
+	$(JAVA_SLEEPYCAT)/persist/evolve/EvolveConfigBeanInfo.java \
 	$(JAVA_SLEEPYCAT)/persist/evolve/EvolveEvent.java \
 	$(JAVA_SLEEPYCAT)/persist/evolve/EvolveInternal.java \
 	$(JAVA_SLEEPYCAT)/persist/evolve/EvolveListener.java \
@@ -628,6 +635,8 @@ JAVA_DBSRCS=\
 	$(JAVA_SLEEPYCAT)/persist/raw/RawObject.java \
 	$(JAVA_SLEEPYCAT)/persist/raw/RawStore.java \
 	$(JAVA_SLEEPYCAT)/persist/raw/RawType.java \
+	$(JAVA_SLEEPYCAT)/util/ClassResolver.java \
+	$(JAVA_SLEEPYCAT)/util/ConfigBeanInfoBase.java \
 	$(JAVA_SLEEPYCAT)/util/ErrorBuffer.java \
 	$(JAVA_SLEEPYCAT)/util/ExceptionUnwrapper.java \
 	$(JAVA_SLEEPYCAT)/util/ExceptionWrapper.java \
@@ -968,7 +977,7 @@ $(libj_jarfile): $(JAVA_DBSRCS)
 	$(JAVA) -classpath $(JAVA_CLASSTOP) \
 	    com.sleepycat.persist.model.ClassEnhancer $(JAVA_CLASSTOP)
 	cd $(JAVA_CLASSTOP) && \
-	     $(JAR) cfm ../$(libj_jarfile) $(JAVA_MANIFEST) ./com/sleepycat
+	     $(JAR) cfm ../$(libj_jarfile) ../$(JAVA_MANIFEST) ./com/sleepycat
 
 $(libj_exjarfile): $(libj_jarfile) $(JAVA_EXSRCS)
 	@test -d $(JAVA_EXCLASSTOP) || \
@@ -1307,9 +1316,11 @@ CuTests@o@: $(testdir)/c/cutest/CuTests.c
 	$(CC) $(CUTEST_FLAGS) $?
 Runner@o@: $(testdir)/c/cutest/Runner.c
 	$(CC) $(CUTEST_FLAGS) $?
-TestDbTuner@o@: $(testdir)/c/suites/TestDbTuner.c
-	$(CC) $(CUTEST_FLAGS) $?
 TestChannel@o@: $(testdir)/c/suites/TestChannel.c
+	$(CC) $(CUTEST_FLAGS) $?
+TestDbHotBackup@o@: $(testdir)/c/suites/TestDbHotBackup.c
+	$(CC) $(CUTEST_FLAGS) $?
+TestDbTuner@o@: $(testdir)/c/suites/TestDbTuner.c
 	$(CC) $(CUTEST_FLAGS) $?
 TestEncryption@o@: $(testdir)/c/suites/TestEncryption.c
 	$(CC) $(CUTEST_FLAGS) $?
@@ -1900,6 +1911,8 @@ db_autop@o@: $(srcdir)/db/db_autop.c
 	 $(CC) $(CFLAGS) $?
 db_byteorder@o@: $(srcdir)/common/db_byteorder.c
 	 $(CC) $(CFLAGS) $?
+db_backup@o@: $(srcdir)/db/db_backup.c
+	 $(CC) $(CFLAGS) $?
 db_cam@o@: $(srcdir)/db/db_cam.c
 	 $(CC) $(CFLAGS) $?
 db_cds@o@: $(srcdir)/db/db_cds.c
@@ -1992,6 +2005,8 @@ env_alloc@o@: $(srcdir)/env/env_alloc.c
 	 $(CC) $(CFLAGS) $?
 env_config@o@: $(srcdir)/env/env_config.c
 	 $(CC) $(CFLAGS) $?
+env_backup@o@: $(srcdir)/env/env_backup.c
+	 $(CC) $(CFLAGS) $?
 env_failchk@o@: $(srcdir)/env/env_failchk.c
 	 $(CC) $(CFLAGS) $?
 env_file@o@: $(srcdir)/env/env_file.c
@@ -2063,6 +2078,8 @@ heap@o@: $(srcdir)/heap/heap.c
 heap_auto@o@: $(srcdir)/heap/heap_auto.c
 	 $(CC) $(CFLAGS) $?
 heap_autop@o@: $(srcdir)/heap/heap_autop.c
+	 $(CC) $(CFLAGS) $?
+heap_backup@o@: $(srcdir)/heap/heap_backup.c
 	 $(CC) $(CFLAGS) $?
 heap_conv@o@: $(srcdir)/heap/heap_conv.c
 	 $(CC) $(CFLAGS) $?
@@ -2141,6 +2158,8 @@ mkpath@o@: $(srcdir)/common/mkpath.c
 mp_alloc@o@: $(srcdir)/mp/mp_alloc.c
 	 $(CC) $(CFLAGS) $?
 mp_bh@o@: $(srcdir)/mp/mp_bh.c
+	 $(CC) $(CFLAGS) $?
+mp_backup@o@: $(srcdir)/mp/mp_backup.c
 	 $(CC) $(CFLAGS) $?
 mp_fget@o@: $(srcdir)/mp/mp_fget.c
 	 $(CC) $(CFLAGS) $?
@@ -2229,6 +2248,8 @@ os_method@o@: $(srcdir)/common/os_method.c
 os_mkdir@o@: $(srcdir)/@OSDIR@/os_mkdir.c
 	 $(CC) $(CFLAGS) $?
 os_open@o@: $(srcdir)/@OSDIR@/os_open.c
+	 $(CC) $(CFLAGS) $?
+os_path@o@: $(srcdir)/os/os_path.c
 	 $(CC) $(CFLAGS) $?
 os_pid@o@: $(srcdir)/os/os_pid.c
 	 $(CC) $(CFLAGS) $?

@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -92,7 +92,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3696765"></a>Parameters</h3>
+              <h3 class="title"><a id="idp58880888"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -100,7 +100,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697664"></a>key</h4>
+                <h4 class="title"><a id="idp58881080"></a>key</h4>
               </div>
             </div>
           </div>
@@ -123,7 +123,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697739"></a>pkey</h4>
+                <h4 class="title"><a id="idp58885536"></a>pkey</h4>
               </div>
             </div>
           </div>
@@ -139,7 +139,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697314"></a>data</h4>
+                <h4 class="title"><a id="idp58873176"></a>data</h4>
               </div>
             </div>
           </div>
@@ -151,7 +151,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697282"></a>flags</h4>
+                <h4 class="title"><a id="idp58861264"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -600,22 +600,30 @@ DBcursor-&gt;pget(DBC *DBcursor,
                          the buffer.  Subsequent calls with both the DB_NEXT_DUP and
                          DB_MULTIPLE flags specified will return additional duplicate data
                          items associated with the current key or 
-                         <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if
-                         there are no additional duplicate data items to return.  Subsequent
-                         calls with both the DB_NEXT and DB_MULTIPLE flags specified will
-                         return additional duplicate data items associated with the current key
-                         or if there are no additional duplicate data items will return the
-                         next key and its data items or 
+                         <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> 
+                         if there are no additional duplicate data items to
+                         return.  Subsequent calls with both the DB_NEXT
+                         and DB_MULTIPLE flags specified will return
+                         additional duplicate data items associated with
+                         the current key or if there are no additional
+                         duplicate data items will return the next key and
+                         its data items or 
                          <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> 
                          if there are no additional keys in the database.
                     </p>
                 <p>
-                         In the case of Queue or Recno databases, data items starting at the
-                         current cursor position are entered into the buffer.  The record
-                         number of the first record will be returned in the <span class="bold"><strong>key</strong></span> parameter.  The record number of each
-                         subsequent returned record must be calculated from this value. 
-                         Subsequent calls with the DB_MULTIPLE flag specified will return
-                         additional data items or 
+                         In the case of Queue, Recno, or Heap databases,
+                         data items starting at the current cursor position
+                         are entered into the buffer.  The record number
+                         (or the RID, in the case of Heap) of
+                         the first record will be returned in the 
+                         <span class="bold"><strong>key</strong></span> parameter.
+                         For Queue and Recno, the record number of each
+                         subsequent returned record must be calculated from
+                         this value.  For Heap databases, the RID of
+                         subsequent returned records cannot be known. Subsequent
+                         calls with the DB_MULTIPLE flag specified will
+                         return additional data items or 
                          <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> 
                          if there are no additional data items to return.
                     </p>
@@ -664,7 +672,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
                          if there are no additional key and data items to return.
                     </p>
                 <p>
-                         In the case of Btree or Hash databases, the multiple key and data
+                         In the case of Btree, Hash or Heap databases, the multiple key and data
                          pairs can be iterated over using the 
                          <span>
                              <a class="xref" href="DB_MULTIPLE_KEY_NEXT.html" title="DB_MULTIPLE_KEY_NEXT">DB_MULTIPLE_KEY_NEXT</a> macro.
@@ -672,8 +680,9 @@ DBcursor-&gt;pget(DBC *DBcursor,
                          
                     </p>
                 <p>
-                         In the case of Queue or Recno databases, the multiple record number
-                         and data pairs can be iterated over using the 
+                         In the case of Queue or Recno databases,
+                         the multiple record number and data pairs can be
+                         iterated over using the 
                          <span>
                              <a class="xref" href="DB_MULTIPLE_RECNO_NEXT.html" title="DB_MULTIPLE_RECNO_NEXT">DB_MULTIPLE_RECNO_NEXT</a> macro.
                         </span>
@@ -723,7 +732,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3699160"></a>Errors</h3>
+              <h3 class="title"><a id="idp58969984"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -739,7 +748,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3699077"></a>DB_BUFFER_SMALL</h4>
+                <h4 class="title"><a id="idp58964512"></a>DB_BUFFER_SMALL</h4>
               </div>
             </div>
           </div>
@@ -751,7 +760,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697886"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idp58895728"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -764,7 +773,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697649"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp58843160"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -772,12 +781,19 @@ DBcursor-&gt;pget(DBC *DBcursor,
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
             </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a>
+                for more information.
+            </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3699151"></a>  DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="idp58968088"></a>  DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -796,7 +812,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3699109"></a>DB_REP_LEASE_EXPIRED</h4>
+                <h4 class="title"><a id="idp58969768"></a>DB_REP_LEASE_EXPIRED</h4>
               </div>
             </div>
           </div>
@@ -808,7 +824,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3699080"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="idp58968784"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -820,7 +836,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3698300"></a>DB_SECONDARY_BAD</h4>
+                <h4 class="title"><a id="idp58972488"></a>DB_SECONDARY_BAD</h4>
               </div>
             </div>
           </div>
@@ -832,7 +848,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3697442"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp58881432"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -849,7 +865,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3699127"></a>Class</h3>
+              <h3 class="title"><a id="idp58971704"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -861,7 +877,7 @@ DBcursor-&gt;pget(DBC *DBcursor,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3698999"></a>See Also</h3>
+              <h3 class="title"><a id="idp58947072"></a>See Also</h3>
             </div>
           </div>
         </div>

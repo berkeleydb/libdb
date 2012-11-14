@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -81,16 +81,10 @@ proc test131 {method {nentries 1000} {tnum "131"} {ndups 5} {subdb 0}
 
 	cleanup $testdir $env
 
-
 	# To simplify the case, just set the type of foreign database as 
 	# btree or hash. And for the secondary database, the type is dupsort
-	# hash/btree. For foreign and secondary databases, we just pass
-	# the original args, since the converted args does not work for them.
-	# For example, if the primary database is rbtree, convert_args will
-	# generate "-recnum" which is invalid to the foreign and secondary
-	# databases. 
+	# hash/btree. 
 	set origargs $args
-	set secargs $args
 	set args [convert_args $method $args]
 	set omethod [convert_method $method]
 
@@ -132,8 +126,8 @@ proc test131 {method {nentries 1000} {tnum "131"} {ndups 5} {subdb 0}
 			set foreign_proc [lindex $subtest 0]
 			set foreign_arg [lindex $subtest 1]
 			set foreign_vrfy [lindex $subtest 2]
-			set foreign_dbtype [lindex $typepair 0]
-			set sec_dbtype [lindex $typepair 1]
+			set foreign_method [lindex $typepair 0]
+			set sec_method [lindex $typepair 1]
 			if {$subdb} {
 				set pri_subname "primary_db$i"
 				set sec_subname "secondary_db$i"
@@ -149,8 +143,8 @@ proc test131 {method {nentries 1000} {tnum "131"} {ndups 5} {subdb 0}
 
 			# Skip partition range test and compression test
 			# when there are non-btree databases.
-			if {![is_btree $foreign_dbtype] || \
-			    ![is_btree $sec_dbtype]} {
+			if {![is_btree $foreign_method] || \
+			    ![is_btree $sec_method]} {
 				set skip 0
 				if {[is_partitioned $origargs] && \
 				    ![is_partition_callback $origargs]} {
@@ -174,8 +168,9 @@ proc test131 {method {nentries 1000} {tnum "131"} {ndups 5} {subdb 0}
 			}
 			# Open the foreign database.
 			puts "\tTest$tnum.$i.a Open and truncate the databases."
+			set foreign_args [convert_args $foreign_method $origargs]
 			set foreign_db [eval berkdb_open_noerr -create \
-			    -mode 0644 $foreign_dbtype $origargs \
+			    -mode 0644 $foreign_method $foreign_args \
 			    {$foreign_file} $foreign_subname]
 			error_check_good foreign_db_open \
 			    [is_valid_db $foreign_db] TRUE
@@ -187,8 +182,9 @@ proc test131 {method {nentries 1000} {tnum "131"} {ndups 5} {subdb 0}
 			    [is_valid_db $pri_db] TRUE
 
 			# Open the secondary database.
+			set secargs [convert_args $sec_method $origargs]
 			set sec_db [eval berkdb_open_noerr -create -mode 0644 \
-			    $sec_dbtype $secargs -dup -dupsort \
+			    $sec_method $secargs -dup -dupsort \
 			    {$sec_file} $sec_subname]
 			error_check_good sec_db_open \
 			    [is_valid_db $sec_db] TRUE

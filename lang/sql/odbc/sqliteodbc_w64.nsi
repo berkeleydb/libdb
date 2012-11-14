@@ -15,10 +15,19 @@
 ; Start
 
 BrandingText " "
+!ifdef WITH_SEE
+Name "SQLite3 ODBC Driver (SEE) for Win64"
+!else
 Name "SQLite3 ODBC Driver for Win64"
+!endif
 
+!ifdef WITH_SEE
+!define PROD_NAME  "SQLite3 ODBC Driver (SEE) for Win64"
+!define PROD_NAME0 "SQLite3 ODBC Driver (SEE) for Win64"
+!else
 !define PROD_NAME  "SQLite3 ODBC Driver for Win64"
 !define PROD_NAME0 "SQLite3 ODBC Driver for Win64"
+!endif
 CRCCheck On
 !include "MUI.nsh"
 !include "Sections.nsh"
@@ -67,10 +76,20 @@ Section "-Main (required)" InstallationInfo
  
 ; Add files
  SetOutPath "$INSTDIR"
+!ifdef WITH_SEE
+ File "sqlite3odbc${WITH_SEE}.dll"
+!else
  File "sqlite3odbc.dll"
+!endif
 ; unsupported non-WCHAR driver for SQLite3
+!ifdef WITH_SEE
+ File "sqlite3odbc${WITH_SEE}nw.dll"
+!else
  File "sqlite3odbcnw.dll"
+!endif
+!ifndef WITHOUT_SQLITE3_EXE
  File "sqlite3.exe"
+!endif
  File "inst.exe"
  File "instq.exe"
  File "uninst.exe"
@@ -103,12 +122,10 @@ Section "-Main (required)" InstallationInfo
  CreateShortCut "$SMPROGRAMS\${PROD_NAME0}\View README.lnk" \
    "$INSTDIR\readme.txt"
  SetOutPath "$SMPROGRAMS\${PROD_NAME0}\Shells"
+!ifndef WITHOUT_SQLITE3_EXE
  CreateShortCut "$SMPROGRAMS\${PROD_NAME0}\Shells\SQLite 3.lnk" \
    "$INSTDIR\sqlite3.exe"
- CreateShortCut "$SMPROGRAMS\${PROD_NAME0}\Shells\SQLite 2.lnk" \
-   "$INSTDIR\sqlite.exe"
- CreateShortCut "$SMPROGRAMS\${PROD_NAME0}\Shells\SQLite 2 (UTF-8).lnk" \
-   "$INSTDIR\sqliteu.exe"
+!endif
  
 ; Write uninstall information to the registry
  WriteRegStr HKLM \

@@ -4,7 +4,7 @@
 -export([start/0, start3/0, startn/1]).
 
 start() ->
-    fiddler:start([{7001,6001},{7000,6000}]).
+    fiddler:start(8000,[{7001,6001},{7000,6000}]).
 
 start3() ->
     fiddler:start([{7001,6001},{7000,6000},{7002,6002}]).
@@ -19,7 +19,6 @@ start3() ->
 %%% pass-through configuration.
 %%%
 startn([MP|[Cfg|[]]]) ->
-    io:format("we got ~p and ~p~n", [MP,Cfg]),
     MgrPort = list_to_integer(atom_to_list(MP)),
     {ok,Tokens,_} = erl_scan:string(lists:append(atom_to_list(Cfg), ".")),
     {ok,Config} = erl_parse:parse_term(Tokens),

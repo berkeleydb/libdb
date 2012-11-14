@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2007, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -80,31 +80,26 @@ proc repmgr025_sub { method niter tnum largs } {
 	set cl_envcmd "$common -errpfx CLIENT -home $clientdir"
 	set cl2_envcmd "$common -errpfx CLIENT2 -home $clientdir2"
 	set masterenv [eval $ma_envcmd]
-	$masterenv repmgr -local [list localhost [lindex $ports 0]] \
+	$masterenv repmgr -local [list 127.0.0.1 [lindex $ports 0]] \
 	    -start master
 	set clientenv [eval $cl_envcmd]
-	$clientenv repmgr -local [list localhost [lindex $ports 1]] \
-	    -remote [list localhost [lindex $ports 0]] -start client
+	$clientenv repmgr -local [list 127.0.0.1 [lindex $ports 1]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] -start client
 	await_startup_done $clientenv
 	set clientenv2 [eval $cl2_envcmd]
-	$clientenv2 repmgr -local [list localhost [lindex $ports 2]] \
-	    -remote [list localhost [lindex $ports 0]] -start client
+	$clientenv2 repmgr -local [list 127.0.0.1 [lindex $ports 2]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] -start client
 	await_startup_done $clientenv2
 	$clientenv close
 	$clientenv2 close
 	$masterenv close
-
-	# Use different connection retry timeout values to handle any
-	# collisions from starting sites at the same time by retrying
-	# at different times.
 
 	# Open a master.
 	puts "\tRepmgr$tnum.b: Start a master."
 	set masterenv [eval $ma_envcmd]
 	$masterenv repmgr -timeout {heartbeat_send 500000}
 	$masterenv repmgr -ack all \
-	    -timeout {connection_retry 20000000} \
-	    -local [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 0]] \
 	    -start master
 
 	# Open first client
@@ -112,8 +107,7 @@ proc repmgr025_sub { method niter tnum largs } {
 	set clientenv [eval $cl_envcmd]
 	$clientenv repmgr -timeout {heartbeat_monitor 1100000}
 	$clientenv repmgr -ack all \
-	    -timeout {connection_retry 10000000} \
-	    -local [list localhost [lindex $ports 1]] \
+	    -local [list 127.0.0.1 [lindex $ports 1]] \
 	    -start client
 	await_startup_done $clientenv
 
@@ -149,8 +143,7 @@ proc repmgr025_sub { method niter tnum largs } {
 	set clientenv2 [eval $cl2_envcmd]
 	$clientenv2 repmgr -timeout {heartbeat_monitor 1100000}
 	$clientenv2 repmgr -ack all \
-	    -timeout {connection_retry 5000000} \
-	    -local [list localhost [lindex $ports 2]] \
+	    -local [list 127.0.0.1 [lindex $ports 2]] \
 	    -start client
 
 	puts "\tRepmgr$tnum.g: Test for page requests from rerequest thread."

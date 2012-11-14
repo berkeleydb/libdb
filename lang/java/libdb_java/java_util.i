@@ -162,6 +162,7 @@ static jfieldID heap_stat_heap_nrecs_fid;
 static jfieldID heap_stat_heap_pagecnt_fid;
 static jfieldID heap_stat_heap_pagesize_fid;
 static jfieldID heap_stat_heap_nregions_fid;
+static jfieldID heap_stat_heap_regionsize_fid;
 static jfieldID lock_stat_st_id_fid;
 static jfieldID lock_stat_st_cur_maxid_fid;
 static jfieldID lock_stat_st_initlocks_fid;
@@ -244,6 +245,7 @@ static jfieldID mpool_fstat_st_cache_miss_fid;
 static jfieldID mpool_fstat_st_page_create_fid;
 static jfieldID mpool_fstat_st_page_in_fid;
 static jfieldID mpool_fstat_st_page_out_fid;
+static jfieldID mpool_fstat_st_backup_spins_fid;
 static jfieldID mpool_fstat_file_name_fid;
 static jfieldID mpool_stat_st_gbytes_fid;
 static jfieldID mpool_stat_st_bytes_fid;
@@ -415,8 +417,6 @@ static jfieldID txn_active_lsn_fid;
 static jfieldID txn_active_read_lsn_fid;
 static jfieldID txn_active_mvcc_ref_fid;
 static jfieldID txn_active_priority_fid;
-static jfieldID txn_active_status_fid;
-static jfieldID txn_active_xa_status_fid;
 static jfieldID txn_active_gid_fid;
 static jfieldID txn_active_name_fid;
 /* END-STAT-FIELD-DECLS */
@@ -463,7 +463,8 @@ static jmethodID rep_startup_done_event_notify_method;
 static jmethodID repmgr_msg_dispatch_method;
 static jmethodID write_failed_event_notify_method;
 
-static jmethodID append_recno_method, bt_compare_method, bt_compress_method;
+static jmethodID append_recno_method, backup_close_method, backup_open_method;
+static jmethodID backup_write_method, bt_compare_method, bt_compress_method;
 static jmethodID bt_decompress_method, bt_prefix_method;
 static jmethodID db_feedback_method, dup_compare_method;
 static jmethodID foreignkey_nullify_method, h_compare_method, h_hash_method;
@@ -619,6 +620,7 @@ const struct {
 	{ &heap_stat_heap_pagecnt_fid, &heap_stat_class, "heap_pagecnt", "I" },
 	{ &heap_stat_heap_pagesize_fid, &heap_stat_class, "heap_pagesize", "I" },
 	{ &heap_stat_heap_nregions_fid, &heap_stat_class, "heap_nregions", "I" },
+	{ &heap_stat_heap_regionsize_fid, &heap_stat_class, "heap_regionsize", "I" },
 	{ &lock_stat_st_id_fid, &lock_stat_class, "st_id", "I" },
 	{ &lock_stat_st_cur_maxid_fid, &lock_stat_class, "st_cur_maxid", "I" },
 	{ &lock_stat_st_initlocks_fid, &lock_stat_class, "st_initlocks", "I" },
@@ -701,6 +703,7 @@ const struct {
 	{ &mpool_fstat_st_page_create_fid, &mpool_fstat_class, "st_page_create", "J" },
 	{ &mpool_fstat_st_page_in_fid, &mpool_fstat_class, "st_page_in", "J" },
 	{ &mpool_fstat_st_page_out_fid, &mpool_fstat_class, "st_page_out", "J" },
+	{ &mpool_fstat_st_backup_spins_fid, &mpool_fstat_class, "st_backup_spins", "J" },
 	{ &mpool_fstat_file_name_fid, &mpool_fstat_class, "file_name", "Ljava/lang/String;" },
 	{ &mpool_stat_st_gbytes_fid, &mpool_stat_class, "st_gbytes", "I" },
 	{ &mpool_stat_st_bytes_fid, &mpool_stat_class, "st_bytes", "I" },
@@ -872,8 +875,6 @@ const struct {
 	{ &txn_active_read_lsn_fid, &txn_active_class, "read_lsn", "L" DB_PKG "LogSequenceNumber;" },
 	{ &txn_active_mvcc_ref_fid, &txn_active_class, "mvcc_ref", "I" },
 	{ &txn_active_priority_fid, &txn_active_class, "priority", "I" },
-	{ &txn_active_status_fid, &txn_active_class, "status", "I" },
-	{ &txn_active_xa_status_fid, &txn_active_class, "xa_status", "I" },
 	{ &txn_active_gid_fid, &txn_active_class, "gid", "[B" },
 	{ &txn_active_name_fid, &txn_active_class, "name", "Ljava/lang/String;" },
 /* END-STAT-FIELDS */
@@ -958,6 +959,12 @@ const struct {
 
 	{ &app_dispatch_method, &dbenv_class, "handle_app_dispatch",
 	    "(L" DB_PKG "DatabaseEntry;L" DB_PKG "LogSequenceNumber;I)I" },
+	{ &backup_close_method, &dbenv_class, "handle_backup_close", 
+	    "(Ljava/lang/String;)I" },
+	{ &backup_open_method, &dbenv_class, "handle_backup_open", 
+	    "(Ljava/lang/String;Ljava/lang/String;)I" },
+	{ &backup_write_method, &dbenv_class, "handle_backup_write", 
+	    "(III[B)I" },
 	{ &panic_event_notify_method, &dbenv_class, "handle_panic_event_notify",
 	    "()V" },
 	{ &rep_connect_broken_event_notify_method, &dbenv_class, 

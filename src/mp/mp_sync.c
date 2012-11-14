@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -539,10 +539,6 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 			continue;
 		}
 
-		/* we will dispose of this buffer. */
-		--remaining;
-		bharray[i].track_hp = NULL;
-
 		/*
 		 * If we've switched files, check to see if we're configured
 		 * to close file descriptors.
@@ -568,6 +564,12 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 				++wrote_cnt;
 				++wrote_total;
 			} else {
+				/* The buffer is being backed up, try again. */
+				if (t_ret == EAGAIN) {
+					atomic_dec(env, &bhp->ref);
+					MUTEX_UNLOCK(env, bhp->mtx_buf);
+					continue;
+				}
 				if (ret == 0)
 					ret = t_ret;
 				__db_errx(env, DB_STR_A("3027",
@@ -576,6 +578,10 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 
 			}
 		}
+
+		/* we disposed of this buffer. */
+		--remaining;
+		bharray[i].track_hp = NULL;
 
 		/* Discard our buffer reference. */
 		DB_ASSERT(env, atomic_read(&bhp->ref) > 0);
@@ -674,6 +680,7 @@ __memp_sync_file(env, mfp, argp, countp, flags)
 		return (0);
 	}
 	++mfp->mpf_cnt;
+	++mfp->neutral_cnt;
 	MUTEX_UNLOCK(env, mfp->mutex);
 
 	/*
@@ -753,6 +760,8 @@ __memp_sync_file(env, mfp, argp, countp, flags)
 		ret = t_ret;
 
 	--mfp->mpf_cnt;
+	DB_ASSERT(env, mfp->neutral_cnt != 0);
+	--mfp->neutral_cnt;
 
 	/* Unlock the MPOOLFILE. */
 	MUTEX_UNLOCK(env, mfp->mutex);
@@ -919,7 +928,7 @@ retry:	MUTEX_LOCK(env, dbmp->mutex);
 				if ((ret = __os_fsync(env, dbmfp->fhp)) != 0)
 					return (ret);
 			}
-			if ((ret = __memp_fclose(dbmfp, 0)) != 0)
+			if ((ret = __memp_fclose(dbmfp, DB_FLUSH)) != 0)
 				return (ret);
 			goto retry;
 		}

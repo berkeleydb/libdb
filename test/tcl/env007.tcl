@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -212,6 +212,7 @@ proc env007 { } {
 	set cfglist {
 	{ "set_data_dir" "." "get_data_dirs" "." }
 	{ "add_data_dir" "." "get_data_dirs" "." }
+	{ "set_metadata_dir" "." "get_metadata_dir" "."}
 	{ "set_create_dir" "." "get_create_dir" "."}
 	{ "set_flags" "db_auto_commit" "get_flags" "-auto_commit" }
 	{ "set_flags" "db_cdb_alldb" "get_flags" "-cdb_alldb" }
@@ -620,9 +621,6 @@ proc env007 { } {
 	puts "\tEnv007.f: Test that bad config values are rejected."
 	set cfglist {
 	{ "set_cache_max" "1" }
-	{ "set_data_dir" "dir1 dir2" }
-	{ "add_data_dir" "dir1 dir2" }
-	{ "set_create_dir" "dir1 dir2" }
 	{ "set_intermediate_dir_mode" "0644 0666" }
 	{ "set_cachesize" "1048576" }
 	{ "set_flags" "db_xxx" }
@@ -634,7 +632,6 @@ proc env007 { } {
 	{ "log_set_config" "db_log_auto_remove x x1" }
 	{ "set_lg_bsize" "db_xxx" }
 	{ "set_lg_max" "db_xxx" }
-	{ "set_lg_dir" "dir1 dir2" }
 	{ "set_lg_regionmax" "db_xxx" }
 	{ "set_lock_timeout" "lock 500"}
 	{ "set_lk_detect" "db_xxx" }
@@ -657,7 +654,6 @@ proc env007 { } {
 	{ "set_shm_key" ""}
 	{ "set_shm_key" "11 12 13"}
 	{ "set_tas_spins" "db_xxx" }
-	{ "set_tmp_dir" "dir1 dir2" }
 	{ "set_tx_max" "db_xxx" }
 	{ "set_txn_timeout" "txn 5000" }
 	{ "set_verbose" "db_xxx" }
@@ -728,6 +724,7 @@ proc env007 { } {
 	{ "-len" "20" "-recno" "get_re_len" }
 	{ "-pad" "0" "-recno" "get_re_pad" }
 	{ "-source" "include.tcl" "-recno" "get_re_source" }
+	{ "-heap_regionsize" "1000" "-heap" "get_heap_regionsize" }
 	}
 
 	set o "berkdb_open_noerr -create -mode 0644"

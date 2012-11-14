@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -888,8 +888,12 @@ __db_check_txn(dbp, txn, assoc_locker, read_op)
 
 	return (0);
 open_err:
-	__db_errx(env, DB_STR("0101",
-	    "Transaction that opened the DB handle is still active"));
+	if (F2_ISSET(dbp, DB2_AM_EXCL))
+	    __db_errx(env, DB_STR("0209",
+"Exclusive database handles can only have one active transaction at a time."));
+	else
+		__db_errx(env, DB_STR("0101",
+		    "Transaction that opened the DB handle is still active"));
 	return (EINVAL);
 }
 

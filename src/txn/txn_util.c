@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -180,7 +180,10 @@ __txn_lockevent(env, txn, dbp, lock, locker)
 	e->u.t.locker = locker;
 	e->u.t.lock = *lock;
 	e->u.t.dbp = dbp;
-	e->op = TXN_TRADE;
+	if (F2_ISSET(dbp, DB2_AM_EXCL))
+		e->op = TXN_XTRADE;
+	else
+		e->op = TXN_TRADE;
 	/* This event goes on the current transaction, not its parent. */
 	TAILQ_INSERT_TAIL(&txn->events, e, links);
 	dbp->cur_txn = txn;
@@ -206,7 +209,8 @@ __txn_remlock(env, txn, lock, locker)
 
 	for (e = TAILQ_FIRST(&txn->events); e != NULL; e = next_e) {
 		next_e = TAILQ_NEXT(e, links);
-		if ((e->op != TXN_TRADE && e->op != TXN_TRADED) ||
+		if ((e->op != TXN_TRADE && e->op != TXN_TRADED && 
+		    e->op != TXN_XTRADE) ||
 		    (e->u.t.lock.off != lock->off && e->u.t.locker != locker))
 			continue;
 		TAILQ_REMOVE(&txn->events, e, links);
@@ -275,8 +279,13 @@ __txn_doevents(env, txn, opcode, preprocess)
 		for (e = TAILQ_FIRST(&txn->events);
 		    e != NULL; e = enext) {
 			enext = TAILQ_NEXT(e, links);
-			if (e->op != TXN_TRADE ||
-			    IS_WRITELOCK(e->u.t.lock.mode))
+			/*
+			 * Move all exclusive handle locks and 
+			 * read handle locks to the handle locker.
+			 */
+			if (!(opcode == TXN_COMMIT && e->op == TXN_XTRADE) &&
+			    (e->op != TXN_TRADE || 
+			    IS_WRITELOCK(e->u.t.lock.mode)))
 				continue;
 			DO_TRADE;
 			if (txn->parent != NULL) {
@@ -297,12 +306,13 @@ __txn_doevents(env, txn, opcode, preprocess)
 		TAILQ_REMOVE(&txn->events, e, links);
 		/*
 		 * Most deferred events should only happen on
-		 * commits, not aborts or prepares.  The one exception
-		 * is a close which gets done on commit and abort, but
+		 * commits, not aborts or prepares.  The two exceptions are
+		 * close and xtrade which gets done on commit and abort, but
 		 * not prepare. If we're not doing operations, then we
 		 * can just go free resources.
 		 */
-		if (opcode == TXN_ABORT && e->op != TXN_CLOSE)
+		if (opcode == TXN_ABORT && (e->op != TXN_CLOSE &&
+		    e->op != TXN_XTRADE))
 			goto dofree;
 		switch (e->op) {
 		case TXN_CLOSE:
@@ -324,6 +334,7 @@ __txn_doevents(env, txn, opcode, preprocess)
 				ret = t_ret;
 			break;
 		case TXN_TRADE:
+		case TXN_XTRADE:
 			DO_TRADE;
 			if (txn->parent != NULL) {
 				TAILQ_INSERT_HEAD(
@@ -332,10 +343,25 @@ __txn_doevents(env, txn, opcode, preprocess)
 			}
 			/* Fall through */
 		case TXN_TRADED:
-			/* Downgrade the lock. */
-			if ((t_ret = __lock_downgrade(env,
-			    &e->u.t.lock, DB_LOCK_READ, 0)) != 0 && ret == 0)
-				ret = t_ret;
+			/*
+			 * Downgrade the lock if it is not an exclusive
+			 * database handle lock.  An exclusive database
+			 * should not have any locks other than the
+			 * handle lock.
+			 */
+			if (ret == 0 && !F2_ISSET(e->u.t.dbp, DB2_AM_EXCL)) {
+				if ((t_ret = __lock_downgrade(env,
+				    &e->u.t.lock, DB_LOCK_READ, 0)) != 0 &&
+				    ret == 0)
+					ret = t_ret;
+				/* Update the handle lock mode. */
+				if (ret == 0 && e->u.t.lock.off ==
+				    e->u.t.dbp->handle_lock.off &&
+				    e->u.t.lock.ndx ==
+				    e->u.t.dbp->handle_lock.ndx)
+					e->u.t.dbp->handle_lock.mode =
+					    DB_LOCK_READ;
+			}
 			break;
 		default:
 			/* This had better never happen. */
@@ -352,6 +378,7 @@ dofree:
 			__os_free(env, e->u.r.name);
 			break;
 		case TXN_TRADE:
+		case TXN_XTRADE:
 			if (opcode == TXN_ABORT)
 				e->u.t.dbp->cur_txn = NULL;
 			break;
@@ -452,11 +479,11 @@ __txn_dref_fname(env, txn)
 	ptd = txn->parent != NULL ? txn->parent->td : NULL;
 
 	np = R_ADDR(&mgr->reginfo, td->log_dbs);
-	/* 
+	/*
 	 * The order in which FNAMEs are cleaned up matters.  Cleaning up
 	 * in the wrong order can result in database handles leaking.  If
-	 * we are passing the FNAMEs to the parent transaction make sure 
-	 * they are passed in order.  If we are cleaning up the FNAMEs, 
+	 * we are passing the FNAMEs to the parent transaction make sure
+	 * they are passed in order.  If we are cleaning up the FNAMEs,
 	 * make sure that is done in reverse order.
 	 */
 	if (ptd != NULL) {

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -665,7 +665,9 @@ public interface EntityIndex<K, V> {
      * <p>This operation is faster than obtaining a count by scanning the index
      * manually, and will not perturb the current contents of the cache.
      * However, the count is not guaranteed to be accurate if there are
-     * concurrent updates.</p>
+     * concurrent updates. Note that this method does scan a significant
+     * portion of the index and should be considered a fairly expensive
+     * operation.</p>
      *
      * @return the number of entities in this index.
      *

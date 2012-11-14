@@ -11,7 +11,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>(Library Version 11.2.5.2)</p>
+        <p>(Library Version 11.2.5.3)</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -24,45 +24,49 @@
       <div class="titlepage">
         <div>
           <div>
-            <h1 class="title"><a id="id2828761"></a>Berkeley DB Message Reference for Stripped Libraries</h1>
+            <h1 class="title"><a id="idp855976"></a>Berkeley DB Message Reference for Stripped Libraries</h1>
           </div>
           <div>
             <div class="legalnotice">
-              <a id="id3664645"></a>
+              <a id="idp51042440"></a>
               <p class="legalnotice-title">
                 <b>Legal Notice</b>
               </p>
-              <p>
-        This documentation is distributed under an open source license.
-        You may review the terms of this license at:
-        <a class="ulink" href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html" target="_top">http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html</a>
-        
-        
-    </p>
-              <p>
-            Oracle, Berkeley DB,
+              <span>
+        <p>
+            This documentation is distributed under an open source license.
+            You may review the terms of this license at:
+            <a class="ulink" href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html" target="_top">http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html</a>
             
             
-            and
-            Sleepycat are trademarks or registered trademarks of
-            Oracle. All rights to these marks are reserved.
-            No third-party use is permitted without the
-            express prior written consent of Oracle.
-    </p>
-              <p>
-        Other names may be trademarks of their respective owners.
-    </p>
-              <p>
-        To obtain a copy of this document's original source code, please
-        submit a request to the Oracle Technology Network forum at:
-        <a class="ulink" href="http://forums.oracle.com/forums/forum.jspa?forumID=271" target="_top">http://forums.oracle.com/forums/forum.jspa?forumID=271</a>
+        </p>
+
+        <p>
+                Oracle, Berkeley DB,
+                
+                
+                and
+                Sleepycat are trademarks or registered trademarks of
+                Oracle. All rights to these marks are reserved.
+                No third-party use is permitted without the
+                express prior written consent of Oracle.
+        </p>
         
-        
-    </p>
+        <p>
+            Other names may be trademarks of their respective owners.
+        </p>
+        <p>
+            To obtain a copy of this document's original source code, please
+            submit a request to the Oracle Technology Network forum at:
+            <a class="ulink" href="http://forums.oracle.com/forums/forum.jspa?forumID=271" target="_top">http://forums.oracle.com/forums/forum.jspa?forumID=271</a>
+            
+            
+        </p>
+    </span>
             </div>
           </div>
           <div>
-            <p class="pubdate">9/14/2011</p>
+            <p class="pubdate">5/11/2012</p>
           </div>
         </div>
         <hr />
@@ -937,8 +941,28 @@
                 <td>Page %lu heap database page beyond high page in region</td>
               </tr>
               <tr>
-                <td>1168</td>
+                <td>1167</td>
                 <td>Incorrect record size in header: %s: rid %lu.%lu</td>
+              </tr>
+              <tr>
+                <td>1168</td>
+                <td>region size may not be 0</td>
+              </tr>
+              <tr>
+                <td>1169</td>
+                <td>region size may not be larger than %lu</td>
+              </tr>
+              <tr>
+                <td>1170</td>
+                <td>The key/data pairs in the buffer are not sorted.</td>
+              </tr>
+              <tr>
+                <td>1171</td>
+                <td>The key/data pairs in the buffer are not sorted.</td>
+              </tr>
+              <tr>
+                <td>1172</td>
+                <td>The DBT items in the buffer are not sorted</td>
               </tr>
             </tbody>
           </table>
@@ -2495,26 +2519,6 @@
                 <td>Deadlock while opening %s, retrying</td>
               </tr>
               <tr>
-                <td>0703</td>
-                <td>Cannot allocate space for path: %s</td>
-              </tr>
-              <tr>
-                <td>0704</td>
-                <td>Cannot open traget file: %s</td>
-              </tr>
-              <tr>
-                <td>0705</td>
-                <td>Cannot allocate space for path: %s</td>
-              </tr>
-              <tr>
-                <td>0706</td>
-                <td>Cannot open traget file: %s</td>
-              </tr>
-              <tr>
-                <td>0707</td>
-                <td>Failed to write page %lu output to %s</td>
-              </tr>
-              <tr>
                 <td>0708</td>
                 <td>Invalid positioning flag combined with DB_DBT_PARTIAL</td>
               </tr>
@@ -2529,6 +2533,142 @@
               <tr>
                 <td>0711</td>
                 <td>The primary key returned by pget can't be partial.</td>
+              </tr>
+              <tr>
+                <td>0713</td>
+                <td>Page %lu: page %lu on free list beyond last_pgno %lu</td>
+              </tr>
+              <tr>
+                <td>0714</td>
+                <td>Metadata page %lu cannot be read from mpool</td>
+              </tr>
+              <tr>
+                <td>0715</td>
+                <td>removing %s</td>
+              </tr>
+              <tr>
+                <td>0716</td>
+                <td>Target directory may not be null.</td>
+              </tr>
+              <tr>
+                <td>0717</td>
+                <td>%s: path too long</td>
+              </tr>
+              <tr>
+                <td>0718</td>
+                <td>%s: directory read</td>
+              </tr>
+              <tr>
+                <td>0719</td>
+                <td>highest numbered log file removed: %d</td>
+              </tr>
+              <tr>
+                <td>0720</td>
+                <td>%s: path too long</td>
+              </tr>
+              <tr>
+                <td>0721</td>
+                <td>%s: cannot create</td>
+              </tr>
+              <tr>
+                <td>0722</td>
+                <td>%s: path too long</td>
+              </tr>
+              <tr>
+                <td>0723</td>
+                <td>%s: directory read</td>
+              </tr>
+              <tr>
+                <td>0724</td>
+                <td>copying database %s%c%s to %s%c%s</td>
+              </tr>
+              <tr>
+                <td>0725</td>
+                <td>data directory '%s' is absolute path, not permitted unless backup is to a single directory</td>
+              </tr>
+              <tr>
+                <td>0726</td>
+                <td>copying %s to %s</td>
+              </tr>
+              <tr>
+                <td>0727</td>
+                <td>%lu buffer allocation</td>
+              </tr>
+              <tr>
+                <td>0728</td>
+                <td>%s: path too long</td>
+              </tr>
+              <tr>
+                <td>0729</td>
+                <td>%s%c%s not present</td>
+              </tr>
+              <tr>
+                <td>0731</td>
+                <td>Sync failed</td>
+              </tr>
+              <tr>
+                <td>0732</td>
+                <td>%s: path too long</td>
+              </tr>
+              <tr>
+                <td>0733</td>
+                <td>%s: path too long</td>
+              </tr>
+              <tr>
+                <td>0734</td>
+                <td>%s: cannot create</td>
+              </tr>
+              <tr>
+                <td>0735</td>
+                <td>Can't flush log</td>
+              </tr>
+              <tr>
+                <td>0736</td>
+                <td>Can't get log file names</td>
+              </tr>
+              <tr>
+                <td>0737</td>
+                <td>%s: path too long</td>
+              </tr>
+              <tr>
+                <td>0738</td>
+                <td>%s: path too long</td>
+              </tr>
+              <tr>
+                <td>0739</td>
+                <td>moving %s to %s</td>
+              </tr>
+              <tr>
+                <td>0740</td>
+                <td>removing %s</td>
+              </tr>
+              <tr>
+                <td>0741</td>
+                <td>unlink of %s failed</td>
+              </tr>
+              <tr>
+                <td>0742</td>
+                <td>lowest numbered log file copied: %d</td>
+              </tr>
+              <tr>
+                <td>0743</td>
+                <td>the largest log file removed (%d) must be greater than or equal the smallest log file copied (%d)</td>
+              </tr>
+              <tr>
+                <td>0745</td>
+                <td>Write failed.</td>
+              </tr>
+              <tr>
+                <td>0746</td>
+                <td>Exclusive database handles cannot be threaded.</td>
+              </tr>
+              <tr>
+                <td>0747</td>
+                <td>Exclusive database handles require transactional environments.</td>
+              </tr>
+              <tr>
+                <td>0748</td>
+                <td>Exclusive database handles cannot be opened on replication clients.</td>
               </tr>
             </tbody>
           </table>
@@ -2906,6 +3046,10 @@
               <tr>
                 <td>1589</td>
                 <td>DB_PRIVATE is not </td>
+              </tr>
+              <tr>
+                <td>1590</td>
+                <td>Could not add %s to environment list.</td>
               </tr>
             </tbody>
           </table>
@@ -3505,6 +3649,10 @@
                 <td>2582</td>
                 <td>DB_LOGC-&gt;get: LSN: %lu/%lu: short read</td>
               </tr>
+              <tr>
+                <td>2583</td>
+                <td>Log file %d not found, check log directory configuration</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -3530,6 +3678,22 @@
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td>0703</td>
+                <td>Cannot allocate space for path: %s</td>
+              </tr>
+              <tr>
+                <td>0704</td>
+                <td>Cannot open traget file: %s</td>
+              </tr>
+              <tr>
+                <td>0712</td>
+                <td>%s is already in a backup</td>
+              </tr>
+              <tr>
+                <td>0714</td>
+                <td>Releasing backup of %s for %s.</td>
+              </tr>
               <tr>
                 <td>3001</td>
                 <td>%smethod not permitted when replication is configured</td>
@@ -4125,7 +4289,7 @@
               </tr>
               <tr>
                 <td>3638</td>
-                <td>repmgr is shutting down</td>
+                <td>Could not clean up repmgr</td>
               </tr>
               <tr>
                 <td>3639</td>
@@ -4173,7 +4337,7 @@
               </tr>
               <tr>
                 <td>3651</td>
-                <td>repmgr is shutting down</td>
+                <td>repmgr is stopped</td>
               </tr>
               <tr>
                 <td>3652</td>
@@ -4224,10 +4388,6 @@
                 <td>Site config value not applicable to local site</td>
               </tr>
               <tr>
-                <td>3664</td>
-                <td>Site config value not applicable to remote site</td>
-              </tr>
-              <tr>
                 <td>3665</td>
                 <td>Unrecognized site config value</td>
               </tr>
@@ -4245,7 +4405,7 @@
               </tr>
               <tr>
                 <td>3669</td>
-                <td>repmgr threads are not running</td>
+                <td>repmgr is not running</td>
               </tr>
               <tr>
                 <td>3670</td>
@@ -4270,6 +4430,34 @@
               <tr>
                 <td>3675</td>
                 <td>Not enough input bytes to fill a __repmgr_connect_reject message</td>
+              </tr>
+              <tr>
+                <td>3676</td>
+                <td>unexpected msg type %lu in prepare_input</td>
+              </tr>
+              <tr>
+                <td>3677</td>
+                <td>unexpected msg type %lu in process_own_msg</td>
+              </tr>
+              <tr>
+                <td>3678</td>
+                <td>unexpected conn version %lu in send_handshake</td>
+              </tr>
+              <tr>
+                <td>3679</td>
+                <td>unexpected conn version %lu in accept_handshake</td>
+              </tr>
+              <tr>
+                <td>3681</td>
+                <td>invalid own buf size %lu in prepare_input</td>
+              </tr>
+              <tr>
+                <td>3682</td>
+                <td>invalid cur resp %lu in prepare_input</td>
+              </tr>
+              <tr>
+                <td>3683</td>
+                <td>unexpected connection info in record_permlsn</td>
               </tr>
             </tbody>
           </table>
@@ -4796,127 +4984,59 @@
               </tr>
               <tr>
                 <td>5026</td>
-                <td>%s: strdup: %s </td>
+                <td>strdup: %s </td>
               </tr>
               <tr>
                 <td>5027</td>
-                <td>%s: cannot specify -d and -c </td>
+                <td>cannot specify -d and -c </td>
               </tr>
               <tr>
                 <td>5028</td>
-                <td>%s: cannot specify -D and -d or -l </td>
+                <td>cannot specify -D and -d or -l </td>
               </tr>
               <tr>
                 <td>5029</td>
-                <td>%s failed to get environment variable DB_HOME: %s </td>
+                <td>failed to get environment variable DB_HOME: %s </td>
               </tr>
               <tr>
                 <td>5030</td>
-                <td>%s: no source database environment specified </td>
+                <td>no source database environment specified </td>
               </tr>
               <tr>
                 <td>5031</td>
-                <td>%s: no target backup directory specified </td>
+                <td>no target backup directory specified </td>
               </tr>
               <tr>
                 <td>5032</td>
-                <td>%s: hot backup started at %s</td>
+                <td>hot backup started at %s</td>
               </tr>
               <tr>
                 <td>5033</td>
-                <td>%s: DB_CONFIG must not contain an absolute ""path for the log directory </td>
-              </tr>
-              <tr>
-                <td>5034</td>
-                <td>%s: dbenv-&gt;set_flags(DB_HOTBACKUP_IN_PROGRESS, 1): %s </td>
+                <td>DB_CONFIG must not contain an absolute </td>
               </tr>
               <tr>
                 <td>5035</td>
-                <td>%s: %s: force checkpoint </td>
+                <td>%s: force checkpoint </td>
               </tr>
               <tr>
                 <td>5036</td>
-                <td>%s: %s: remove unnecessary log files </td>
-              </tr>
-              <tr>
-                <td>5037</td>
-                <td>%s: data directory '%s' is absolute path, not permitted with -D option </td>
-              </tr>
-              <tr>
-                <td>5038</td>
-                <td>%s: the largest log file removed (%d) must be greater </td>
-              </tr>
-              <tr>
-                <td>5039</td>
-                <td>%s: than or equal the smallest log file copied (%d) </td>
+                <td>%s: remove unnecessary log files </td>
               </tr>
               <tr>
                 <td>5040</td>
-                <td>%s: %s: run catastrophic recovery </td>
+                <td>%s: run catastrophic recovery </td>
               </tr>
               <tr>
                 <td>5041</td>
-                <td>%s: %s: remove unnecessary log files </td>
+                <td>%s: remove unnecessary log files </td>
               </tr>
               <tr>
                 <td>5042</td>
-                <td>%s: hot backup completed at %s</td>
+                <td>hot backup completed at %s</td>
               </tr>
               <tr>
                 <td>5043</td>
-                <td>%s: HOT BACKUP FAILED! </td>
-              </tr>
-              <tr>
-                <td>5044</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5045</td>
-                <td>%s: directory read</td>
-              </tr>
-              <tr>
-                <td>5046</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5047</td>
-                <td>%s: removing %s </td>
-              </tr>
-              <tr>
-                <td>5048</td>
-                <td>%s: highest numbered log file removed: %d </td>
-              </tr>
-              <tr>
-                <td>5049</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5050</td>
-                <td>%s: cannot create</td>
-              </tr>
-              <tr>
-                <td>5051</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5052</td>
-                <td>%s: directory read</td>
-              </tr>
-              <tr>
-                <td>5053</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5054</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5055</td>
-                <td>%s: cannot create</td>
-              </tr>
-              <tr>
-                <td>5056</td>
-                <td>%s%c%s: path too long</td>
+                <td>HOT BACKUP FAILED! </td>
               </tr>
               <tr>
                 <td>5057</td>
@@ -4924,59 +5044,11 @@
               </tr>
               <tr>
                 <td>5058</td>
-                <td>%s: use of -l with DB_CONFIG file is deprecated </td>
-              </tr>
-              <tr>
-                <td>5059</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5060</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5061</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5062</td>
-                <td>%s: moving %s to %s </td>
-              </tr>
-              <tr>
-                <td>5063</td>
-                <td>%s: removing %s </td>
-              </tr>
-              <tr>
-                <td>5064</td>
-                <td>unlink of %s failed</td>
-              </tr>
-              <tr>
-                <td>5065</td>
-                <td>%s: lowest numbered log file copied: %d </td>
-              </tr>
-              <tr>
-                <td>5066</td>
-                <td>%s: copying database %s to %s%c%s</td>
-              </tr>
-              <tr>
-                <td>5067</td>
-                <td>%lu buffer allocation</td>
-              </tr>
-              <tr>
-                <td>5068</td>
-                <td>%s%c%s: path too long</td>
-              </tr>
-              <tr>
-                <td>5069</td>
-                <td>%s: %s%c%s not present </td>
-              </tr>
-              <tr>
-                <td>5070</td>
-                <td>%s%c%s: path too long</td>
+                <td>use of -l with DB_CONFIG file is deprecated </td>
               </tr>
               <tr>
                 <td>5071</td>
-                <td>%s: version %d.%d doesn't match library version %d.%d </td>
+                <td>version %d.%d doesn't match library version %d.%d </td>
               </tr>
               <tr>
                 <td>5072</td>
@@ -5148,7 +5220,7 @@
               </tr>
               <tr>
                 <td>5114</td>
-                <td>%s: the -r or R options may not be specified with -m or -s </td>
+                <td>%s: the -r or R options may not be specified with -s </td>
               </tr>
               <tr>
                 <td>5115</td>
@@ -5208,7 +5280,47 @@
               </tr>
               <tr>
                 <td>5129</td>
-                <td>%s: Cannot copy data from a PRIVATE environment </td>
+                <td>Cannot copy data from a PRIVATE environment </td>
+              </tr>
+              <tr>
+                <td>5130</td>
+                <td>Password may not be specified twice</td>
+              </tr>
+              <tr>
+                <td>5131</td>
+                <td>Password may not be specified twice</td>
+              </tr>
+              <tr>
+                <td>5132</td>
+                <td>Password may not be specified twice</td>
+              </tr>
+              <tr>
+                <td>5133</td>
+                <td>Password may not be specified twice </td>
+              </tr>
+              <tr>
+                <td>5134</td>
+                <td>Password may not be specified twice</td>
+              </tr>
+              <tr>
+                <td>5135</td>
+                <td>Password may not be specified twice</td>
+              </tr>
+              <tr>
+                <td>5136</td>
+                <td>Password may not be specified twice</td>
+              </tr>
+              <tr>
+                <td>5137</td>
+                <td>Password may not be specified twice</td>
+              </tr>
+              <tr>
+                <td>5138</td>
+                <td>Password may not be specified twice</td>
+              </tr>
+              <tr>
+                <td>5139</td>
+                <td>Password may not be specified twice</td>
               </tr>
             </tbody>
           </table>

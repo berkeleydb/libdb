@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -35,9 +35,10 @@ __memp_bhwrite(dbmp, hp, mfp, bhp, open_extents)
 	DB_MPOOLFILE *dbmfp;
 	DB_MPREG *mpreg;
 	ENV *env;
-	int ret;
+	int opened, ret;
 
 	env = dbmp->env;
+	opened = 0;
 
 	/*
 	 * If the file has been removed or is a closed temporary file, we're
@@ -148,8 +149,15 @@ __memp_bhwrite(dbmp, hp, mfp, bhp, open_extents)
 	 */
 	if ((ret = __memp_fcreate(env, &dbmfp)) != 0)
 		return (ret);
-	if ((ret = __memp_fopen(dbmfp, mfp,
-	    NULL, NULL, DB_DURABLE_UNKNOWN, 0, mfp->pagesize)) != 0) {
+	/*
+	 * The open will set MP_FLUSH and so we need to keep
+	 * a checkpoint from closing this before we finish with it.
+	 */
+	dbmfp->ref++;
+	opened = 1;
+	if ((ret = __memp_fopen(dbmfp, mfp, NULL,
+	    NULL, DB_FLUSH | DB_DURABLE_UNKNOWN, 0, mfp->pagesize)) != 0) {
+	    	dbmfp->ref--;
 		(void)__memp_fclose(dbmfp, 0);
 
 		/*
@@ -174,9 +182,25 @@ pgwrite:
 	 * the file eventually gets closed.
 	 */
 	MUTEX_LOCK(env, dbmp->mutex);
-	if (dbmfp->ref == 1)
-		F_SET(dbmfp, MP_FLUSH);
-	else
+	if (!opened && dbmfp->ref == 1) {
+		/*
+		 * If we are the last reference, then we need to mark
+		 * this as having been used to flush.  If this dbmf
+		 * has not been counted as a neutral reference do it.
+		 *
+		 * Getting the mfp mutex while holding the dbmp is
+		 * ok we never do it in the reverse order.
+		 */
+		if (!F_ISSET(dbmfp, MP_FLUSH)) {
+			F_SET(dbmfp, MP_FLUSH);
+			MUTEX_LOCK(env,dbmfp->mfp->mutex);
+			if (!F_ISSET(dbmfp, MP_FOR_FLUSH)) {
+				mfp->neutral_cnt++;
+				F_SET(dbmfp, MP_FOR_FLUSH);
+			}
+			MUTEX_UNLOCK(env, dbmfp->mfp->mutex);
+		}
+	} else
 		--dbmfp->ref;
 	MUTEX_UNLOCK(env, dbmp->mutex);
 
@@ -211,7 +235,7 @@ __memp_pgread(dbmfp, bhp, can_create)
 	    F_ISSET(bhp, BH_TRASH) || !F_ISSET(bhp, BH_DIRTY));
 	DB_ASSERT(env, F_ISSET(bhp, BH_EXCLUSIVE));
 
-	/* Mark the buffer as in transistion. */
+	/* Mark the buffer as in transition. */
 	F_SET(bhp, BH_TRASH);
 
 	/*
@@ -372,6 +396,20 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 	}
 #endif
 
+#ifndef HAVE_ATOMICFILEREAD
+	if (mfp->backup_in_progress != 0) {
+		MUTEX_READLOCK(env, mfp->mtx_write);
+		if (bhp->pgno >= mfp->low_pgno && bhp->pgno <= mfp->high_pgno) {
+			MUTEX_UNLOCK(env, mfp->mtx_write);
+			ret = EAGAIN;
+			goto err;
+		}
+		atomic_inc(env, &mfp->writers);
+		MUTEX_UNLOCK(env, mfp->mtx_write);
+	} else
+		atomic_inc(env, &mfp->writers);
+#endif
+
 	/*
 	 * Call any pgout function.  If we have the page exclusive then
 	 * we are going to reuse it otherwise make a copy of the page so
@@ -394,11 +432,17 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 	/* Write the page. */
 	if ((ret = __os_io(env, DB_IO_WRITE, dbmfp->fhp, bhp->pgno,
 	    mfp->pagesize, 0, mfp->pagesize, buf, &nw)) != 0) {
+#ifndef HAVE_ATOMICFILEREAD
+		atomic_dec(env, &mfp->writers);
+#endif
 		__db_errx(env, DB_STR_A("3015",
 		    "%s: write failed for page %lu", "%s %lu"),
 		    __memp_fn(dbmfp), (u_long)bhp->pgno);
 		goto err;
 	}
+#ifndef HAVE_ATOMICFILEREAD
+	atomic_dec(env, &mfp->writers);
+#endif
 	STAT_INC_VERB(env, mpool, page_out,
 	    mfp->stat.st_page_out, __memp_fn(dbmfp), bhp->pgno);
 	if (bhp->pgno > mfp->last_flushed_pgno) {

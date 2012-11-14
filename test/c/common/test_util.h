@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2012, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -44,7 +44,7 @@ static int teardown_envdir(const char *dir)
 		return (0);
 
 	/* Get a list of the directory contents. */
-	if ((ret = __os_dirlist(NULL, dir, 0, &names, &cnt)) != 0)
+	if ((ret = __os_dirlist(NULL, dir, 1, &names, &cnt)) != 0)
 		return (ret);
 
 	/* Go through the file name list, remove each file in the list */

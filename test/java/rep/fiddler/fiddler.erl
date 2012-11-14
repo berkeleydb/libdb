@@ -123,9 +123,9 @@
 
 -module(fiddler).
 
--export([start/1, start/2, main/2, do_accept/3, slave/4]).
--import(lists,[keysearch/3,foreach/2]).
--import(gen_tcp,[listen/2,accept/1,recv/2,connect/3,send/2]).
+-export([start/1, start/2, main/1, do_accept/2, slave/2]).
+-import(lists,[member/2]).
+-import(gen_tcp,[listen/2,accept/1,connect/3,send/2]).
 
 -define(MANAGER_PORT, 8000).
 
@@ -137,59 +137,180 @@
 %% TODO: shouldn't we use records for those tuples?
 
 start(Config) ->
-    registry:start(),
-    manager:start(?MANAGER_PORT, Config),
-    start_up(Config, Config).
-
-start(MgrPort, Config) ->
-    registry:start(),
-    manager:start(MgrPort, Config),
-    start_up(Config, Config).
+    start(?MANAGER_PORT, Config).
 
 %% For each pair specified in the config, spawn off a listener to
-%% spoof the given pair, passing it its own pair, plus the total list
-%% of all pairs.
-%% 
-start_up([H|T], Config) ->
-    spawn(fiddler, main, [H, Config]),
-    start_up(T, Config);
-start_up([], _Config) ->
-    ok.
+%% spoof the given pair.
+%%
+start(MgrPort, Pairs) ->
+    optstore:start_link(),
+    registry:start(),
+    manager:start(MgrPort, Pairs),
+    lists:foreach(fun (Pair) -> spawn(fiddler, main, [Pair]) end, Pairs).
 
-main(Me, Config) ->
-    {Spoofed, _Real} = Me,
+main(Ports) ->
+    {Spoofed, Real} = Ports,
     {ok, LSock} = listen(Spoofed, 
-                         [binary, inet, inet6, {packet,raw}, {active, false}, {reuseaddr, true}]),
-    do_accept(Me, Config, LSock).
+                         [binary, inet, inet6, {packet,raw}, 
+                          {active, false}, {reuseaddr, true}]),
+    do_accept(LSock, Real).
 
-do_accept(Me, Config, LSock) ->
-    {_Spoofed, Real} = Me,
+%% It may seem more straightforward conceptually to spawn a new
+%% process to take care of each incoming connection, handing off the
+%% socket to the new process, and just have the initial listen process
+%% loop back onto the next accept() call.  But instead we "chain" to a
+%% new process to continue listening for new connections, and allow
+%% this process to proceed to handling socket we've just gotten.  The
+%% reason this is convenient is that this process is the "controlling
+%% process" of the socket, which means that the socket will
+%% automatically get closed when the process terminates.
+%% 
+do_accept(LSock, RealPort) ->
     {ok, Sock} = accept(LSock),
-    {ok, TargetSock} = connect("localhost", Real, 
+    Pid = spawn(fiddler, do_accept, [LSock, RealPort]),
+    gen_tcp:controlling_process(LSock, Pid),
+    slave(Sock, RealPort).
+
+slave(Sock, RealPort) ->
+    {ok, TargetSock} = connect("localhost", RealPort,
                                [binary, inet, inet6, {packet, raw}, {active, false}]),
-    Mgr = path_mgr:start(Me, Config, Sock, TargetSock),
-    spawn(fiddler, slave, [Sock, TargetSock, Mgr, receiving]),
-    spawn(fiddler, slave, [TargetSock, Sock, Mgr, sending]),
-    do_accept(Me, Config, LSock).
 
+    %% Conduct the initial handshake exchange synchronously, so that
+    %% we can easily get the originator's (peer's) port without
+    %% programming a FSM:
+    %%
+    %% (1) pass through the originator's version proposal
+    send_msg(TargetSock, reader:read(Sock)),
+    %% (2) pass through our local site's version confirmation
+    send_msg(Sock, reader:read(TargetSock)),
+    %% (3) get the final Parameters handshake, and look there for the
+    %% peer port before forwarding it
+    ThirdMsg = reader:read(Sock),
+    Opts = case ThirdMsg of
+               {?HANDSHAKE,_,_,Control,_} ->
+                   <<PeerPort:16, _/binary>> = Control,
+                   Path = {RealPort, PeerPort},
+                   registry:register(Path),
+                   initial_opts(Path);
+               _ ->
+                   []                           % could be JOIN_REQUEST
+           end,
+    R1 = reader:start(Sock),
+    R2 = reader:start(TargetSock),
+    send_msg(TargetSock, ThirdMsg),
+    reader:prime(R1),
+    reader:prime(R2),
+    loop(Opts, [{R1,Sock},{R2,TargetSock}]).
 
-slave(Sock, Fwd, Manager, Direction) ->
-    MsgResult = (catch get_one(Sock)),
-    %% If we only have a 4-part, or 2-part, msg result, it's one of
-    %% the new types, and so there's no fiddling to be done with it.
-    MsgToSend = case MsgResult of
-                    closed -> path_mgr:msg(Manager, Direction, MsgResult);
-                    {_,_,_,_,_} -> path_mgr:msg(Manager, Direction, MsgResult);
-                    {_,_,_,_} -> MsgResult;
-                    {_,_,_} -> MsgResult
-                end,
-    case MsgToSend of
-        quit ->
-            ok;
-        Msg ->                                  % or should I construct {ok,Msg}??
-            send_msg(Fwd, Msg),
-            slave(Sock, Fwd, Manager, Direction)
+%% This is a bit confusing, because there are really 3 port numbers
+%% we're interested in.  There's (1) the real port that our local site
+%% (the one we're fronting) is actually listening on; (2) the
+%% fake/spoof port that *we're* listening on, on our local site's
+%% behalf, to which any remote sites are going to be redirected to
+%% connect to; and (3) the (nominal/real/configured) port of any
+%% remote site that actually does connect to us, which we discover by
+%% spying on the handshake message.  The only reason we even care
+%% about (3) at all is because it's convenient if we make ourselves
+%% known by a "path" 2-tuple that includes it -- i.e., convenient for
+%% tests that are using this thing, and want to refer to paths using
+%% each site's "real" port numbers.
+%%
+%% (However, once we get down this far, having already (1) checked for
+%% "initial options" and (2) registered ourselves for
+%% later/dynamically added options, I suspect we don't even care about
+%% *any* of these port values.  All we care about is readers and
+%% sockets.
+
+loop(Opts0, Readers) ->
+    receive
+        {msg,Rdr,Msg} ->
+            Opts = check_toss(check_wedge(Opts0, Msg)),
+            Tossing = member(toss_all, Opts),
+            Wedged = member(wedged, Opts),
+            if
+                Wedged ->
+                    ok;
+                Tossing ->
+                    reader:prime(Rdr);
+                true ->
+                    send_msg(other_socket(Readers,Rdr), Msg),
+                    reader:prime(Rdr)
+            end,
+            loop(Opts, Readers);
+        {closed,Rdr} ->
+            Opts = check_toss(Opts0),
+            Tossing = member(toss_all, Opts),
+            if Tossing ->
+                    {value, {_,S}, Readers2} = lists:keytake(Rdr,1,Readers),
+                    gen_tcp:close(S),
+                    loop(Opts, Readers2);
+                true ->
+                    shutdown(Readers)
+            end;
+        shutdown ->
+            shutdown(Readers)
     end.
+
+shutdown(Readers) ->
+    lists:foreach(fun ({_R,S}) -> 
+                          gen_tcp:close(S)
+                  end, Readers).
+    
+
+%% Hmm, maybe what we should really do is filter out the matching list
+%% element, and then take from what's left.  Might be more code, but
+%% more elegant?
+%% 
+other_socket([{Rdr,_},{_,S}], Rdr) ->
+    S;
+
+other_socket([{_,S},{Rdr,_}], Rdr) ->
+    S;
+
+other_socket(_,_) ->
+    nil.
+
+initial_opts(Path) ->
+    optstore:lookup(Path).
+
+%% If we don't already have 'toss' on our list of processing options,
+%% then check to see if we're now being instructed to add it, if so
+%% then do so.
+%% 
+check_toss(Opts) ->
+    Tossing = member(toss, Opts),
+    if
+        Tossing ->
+            Opts;
+        true ->
+            receive
+                toss_all ->
+                    [ toss_all | Opts ]
+            after 0 ->
+                    Opts
+            end
+    end.
+
+check_wedge(Opts, Msg) ->
+    Wedgeable = member(page_clog, Opts),
+    Wedging = member(wedged, Opts),
+    if
+        Wedgeable andalso not Wedging ->
+            case Msg of
+                {?REP_MESSAGE,_,_,Control,_Rec} ->
+                    <<_:4/unit:32, Type:32/big, _/binary>> = Control,
+                    if
+                        Type == ?PAGE ->
+                            [ wedged | Opts ];
+                        true ->
+                            Opts
+                    end;
+                _ ->
+                    Opts
+            end;
+        true ->
+            Opts
+    end.                    
 
 send_msg(Sock, {MsgType, ControlLength, RecLength, Control, Rec}) ->
     Header = <<MsgType:8, ControlLength:32/big, RecLength:32/big>>,
@@ -211,46 +332,3 @@ send_piece(_Sock, nil) ->
 send_piece(Sock, Piece) ->
     send(Sock, Piece).
 
-get_one(Sock) ->
-    case recv(Sock, 9) of
-        {ok, B} ->
-            <<MsgType, Word1:32, Word2:32>> = B,
-            case MsgType of
-                ?ACK -> tradition_msg(Sock, MsgType, Word1, Word2);
-                ?HANDSHAKE -> tradition_msg(Sock, MsgType, Word1, Word2);
-                ?REP_MESSAGE -> tradition_msg(Sock, MsgType, Word1, Word2);
-                ?HEARTBEAT -> tradition_msg(Sock, MsgType, Word1, Word2);
-                ?APP_MSG -> simple_msg(Sock, MsgType, Word1, Word2);
-                ?APP_RESPONSE -> simple_msg(Sock, MsgType, Word1, Word2);
-                ?RESP_ERROR -> {Sock, MsgType, Word1, Word2};
-                ?OWN_MSG -> simple_msg(Sock, MsgType, Word1, Word2)
-            end;
-        {error, closed} ->
-            throw(closed);
-        {error,enotconn} ->
-            throw(closed)
-    end.
-
-tradition_msg(Sock, MsgType, ControlLength, RecLength) ->
-    Control = get_piece(Sock, ControlLength),
-    Rec = get_piece(Sock, RecLength),
-    {MsgType, ControlLength, RecLength, Control, Rec}.
-
-simple_msg(Sock, MsgType, Length, Word2) ->
-    Msg = get_piece(Sock, Length),
-    {MsgType, Length, Word2, Msg}.
-
-get_piece(Sock, Length) ->    
-    if
-        Length == 0 ->
-            nil;
-        Length > 0 ->
-            case recv(Sock, Length) of
-                {ok, Piece} ->
-                    Piece;
-                {error, closed} ->
-                    throw(closed);
-                {error,enotconn} ->
-                    throw(closed)
-            end
-    end.

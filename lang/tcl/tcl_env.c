@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -154,6 +154,7 @@ env_Cmd(clientData, interp, objc, objv)
 		"get_lk_max_locks",
 		"get_lk_max_objects",
 		"get_lk_partitions",
+		"get_metadata_dir",
 		"get_mp_max_openfd",
 		"get_mp_max_write",
 		"get_mp_mmapsize",
@@ -284,6 +285,7 @@ env_Cmd(clientData, interp, objc, objv)
 		ENVGETLKMAXLOCKS,
 		ENVGETLKMAXOBJECTS,
 		ENVGETLKPARTITIONS,
+		ENVGETMETADATADIR,
 		ENVGETMPMAXOPENFD,
 		ENVGETMPMAXWRITE,
 		ENVGETMPMMAPSIZE,
@@ -312,7 +314,7 @@ env_Cmd(clientData, interp, objc, objv)
 	time_t timeval;
 	u_int32_t bytes, gbytes, value;
 	long shm_key;
-	int cmdindex, i, intvalue, listobjc, ncache, result, ret, t_ret;
+	int cmdindex, i, intvalue, listobjc, ncache, result, ret;
 	const char *strval, **dirs;
 	char *strarg, newname[MSG_SIZE];
 #ifdef CONFIG_TEST
@@ -808,29 +810,7 @@ env_Cmd(clientData, interp, objc, objv)
 		result = tcl_CDSGroup(interp, objc, objv, dbenv, envip);
 		break;
 	case ENVCLOSE:
-		/*
-		 * No args for this.  Error if there are some.
-		 */
-		if (objc > 2) {
-			Tcl_WrongNumArgs(interp, 2, objv, NULL);
-			return (TCL_ERROR);
-		}
-		/*
-		 * Any transactions will be aborted, and an mpools
-		 * closed automatically.  We must delete any txn
-		 * and mp widgets we have here too for this env.
-		 * NOTE: envip is freed when we come back from
-		 * this function.  Set it to NULL to make sure no
-		 * one tries to use it later.
-		 */
-		ret = __mutex_free(dbenv->env, &envip->i_mutex);
-		_debug_check();
-		if ((t_ret = dbenv->close(dbenv, 0)) != 0 && ret == 0)
-			ret = t_ret;
-		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
-		    "env close");
-		_EnvInfoDelete(interp, envip);
-		envip = NULL;
+		result = tcl_EnvClose(interp, objc, objv, dbenv, envip);
 		break;
 	case ENVDBREMOVE:
 		result = env_DbRemove(interp, objc, objv, dbenv);
@@ -1035,6 +1015,16 @@ env_Cmd(clientData, interp, objc, objv)
 		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 		    "env get_lk_partitions")) == TCL_OK)
 			res = Tcl_NewLongObj((long)value);
+		break;
+	case ENVGETMETADATADIR:
+		if (objc != 2) {
+			Tcl_WrongNumArgs(interp, 1, objv, NULL);
+			return (TCL_ERROR);
+		}
+		ret = dbenv->get_metadata_dir(dbenv, &strval);
+		if ((result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "env get_metadata_dir")) == TCL_OK)
+			res = NewStringObj(strval, strlen(strval));
 		break;
 	case ENVGETMPMAXOPENFD:
 		if (objc != 2) {
@@ -1259,6 +1249,7 @@ tcl_EnvRemove(interp, objc, objv)
 		"-force",
 		"-home",
 		"-log_dir",
+		"-metadata_dir",
 		"-tmp_dir",
 		"-use_environ",
 		"-use_environ_root",
@@ -1274,6 +1265,7 @@ tcl_EnvRemove(interp, objc, objv)
 		ENVREM_FORCE,
 		ENVREM_HOME,
 		ENVREM_LOGDIR,
+		ENVREM_METADATADIR,
 		ENVREM_TMPDIR,
 		ENVREM_USE_ENVIRON,
 		ENVREM_USE_ENVIRON_ROOT
@@ -1281,13 +1273,13 @@ tcl_EnvRemove(interp, objc, objv)
 	DB_ENV *dbenv;
 	u_int32_t cflag, enc_flag, flag, forceflag, sflag;
 	int i, optindex, result, ret;
-	char *datadir, *home, *logdir, *passwd, *tmpdir;
+	char *datadir, *home, *logdir, *mddir, *passwd, *tmpdir;
 
 	result = TCL_OK;
 	cflag = flag = forceflag = sflag = 0;
 	home = NULL;
 	passwd = NULL;
-	datadir = logdir = tmpdir = NULL;
+	datadir = logdir = mddir = tmpdir = NULL;
 	enc_flag = 0;
 
 	if (objc < 2) {
@@ -1368,6 +1360,15 @@ tcl_EnvRemove(interp, objc, objv)
 			}
 			logdir = Tcl_GetStringFromObj(objv[i++], NULL);
 			break;
+		case ENVREM_METADATADIR:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-metadata_dir dir");
+				result = TCL_ERROR;
+				break;
+			}
+			mddir = Tcl_GetStringFromObj(objv[i++], NULL);
+			break;
 		case ENVREM_TMPDIR:
 			if (i >= objc) {
 				Tcl_WrongNumArgs(interp, 2, objv,
@@ -1404,6 +1405,14 @@ tcl_EnvRemove(interp, objc, objv)
 		ret = dbenv->set_lg_dir(dbenv, logdir);
 		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 		    "set_log_dir");
+		if (result != TCL_OK)
+			goto error;
+	}
+	if (mddir != NULL) {
+		_debug_check();
+		ret = dbenv->set_metadata_dir(dbenv, mddir);
+		result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
+		    "set_metadata_dir");
 		if (result != TCL_OK)
 			goto error;
 	}
@@ -1500,6 +1509,70 @@ _EnvInfoDelete(interp, envip)
 	}
 	(void)Tcl_DeleteCommand(interp, envip->i_name);
 	_DeleteInfo(envip);
+}
+
+/*
+ * PUBLIC: int tcl_EnvClose __P((Tcl_Interp *, int, Tcl_Obj * CONST*,
+ * PUBLIC:    DB_ENV *, DBTCL_INFO *));
+ *
+ * tcl_EnvClose --
+ *	Implements the DB_ENV->close command.
+ */
+int
+tcl_EnvClose(interp, objc, objv, dbenv, envip)
+	Tcl_Interp *interp;		/* Interpreter */
+	int objc;			/* arg count */
+	Tcl_Obj * CONST* objv;		/* args */
+	DB_ENV *dbenv;			/* Database pointer */
+	DBTCL_INFO *envip;		/* Info pointer */
+{
+	static const char *closeoptions[] = {
+		"-forcesync",
+		NULL
+	};
+	enum closeoptions {
+		FORCESYNC
+	};
+	int i, result, ret, t_ret;
+	u_int32_t flags;
+
+	result = TCL_OK;
+	flags = 0;
+	Tcl_SetResult(interp, "0", TCL_STATIC);
+	if (objc > 3) {
+		Tcl_WrongNumArgs(interp, 2, objv, "?-forcesync?");
+		return (TCL_ERROR);
+	} else if (objc == 3) {
+		/*
+		 * If there is an arg, make sure it is the right one.
+		 */
+		if (Tcl_GetIndexFromObj(interp, objv[2], closeoptions, "option",
+		    TCL_EXACT, &i) != TCL_OK)
+			return (IS_HELP(objv[2]));
+
+		switch ((enum closeoptions)i) {
+			case FORCESYNC:
+				flags |= DB_FORCESYNC;
+				break;
+		}
+	}
+
+	/*
+	 * Any transactions will be aborted, and an mpools
+	 * closed automatically.  We must delete any txn
+	 * and mp widgets we have here too for this env.
+	 * NOTE: envip is freed when we come back from
+	 * this function.  Set it to NULL to make sure no
+	 * one tries to use it later.
+	 */
+	ret = __mutex_free(dbenv->env, &envip->i_mutex);
+	_debug_check();
+	if ((t_ret = dbenv->close(dbenv, flags)) != 0 && ret == 0)
+		ret = t_ret;
+	result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret), "env close");
+	_EnvInfoDelete(interp, envip);
+	envip = NULL;
+	return (result);
 }
 
 #ifdef CONFIG_TEST
@@ -1622,6 +1695,7 @@ tcl_EnvVerbose(interp, dbenv, which, onoff)
 	Tcl_Obj *onoff;			/* On or off */
 {
 	static const char *verbwhich[] = {
+		"backup",
 		"deadlock",
 		"fileops",
 		"fileops_all",
@@ -1641,6 +1715,7 @@ tcl_EnvVerbose(interp, dbenv, which, onoff)
 		NULL
 	};
 	enum verbwhich {
+		ENVVERB_BACKUP,
 		ENVVERB_DEADLOCK,
 		ENVVERB_FILEOPS,
 		ENVVERB_FILEOPS_ALL,
@@ -1675,6 +1750,9 @@ tcl_EnvVerbose(interp, dbenv, which, onoff)
 		return (IS_HELP(which));
 
 	switch ((enum verbwhich)optindex) {
+	case ENVVERB_BACKUP:
+		wh = DB_VERB_BACKUP;
+		break;
 	case ENVVERB_DEADLOCK:
 		wh = DB_VERB_DEADLOCK;
 		break;
@@ -3034,6 +3112,7 @@ env_GetVerbose(interp, objc, objv, dbenv)
 		u_int32_t flag;
 		char *arg;
 	} verbose_flags[] = {
+		{ DB_VERB_BACKUP, "backup" },
 		{ DB_VERB_DEADLOCK, "deadlock" },
 		{ DB_VERB_FILEOPS, "fileops" },
 		{ DB_VERB_FILEOPS_ALL, "fileops_all" },

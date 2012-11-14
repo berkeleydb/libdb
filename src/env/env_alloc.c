@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -287,7 +287,7 @@ retry:
 
 #ifdef HAVE_STATISTICS
 	if (i >= DB_SIZE_Q_COUNT)
-		i = DB_SIZE_Q_COUNT - 1;	
+		i = DB_SIZE_Q_COUNT - 1;
 	++head->pow2_size[i];		/* Note the size of the request. */
 #endif
 
@@ -568,7 +568,7 @@ again:	if ((elp_tmp = SH_TAILQ_NEXT(elp, addrq, __alloc_element)) != NULL &&
 done:	elp->ulen = elp->len - sizeof(ALLOC_ELEMENT);
 #ifdef DIAGNOSTIC
 	elp->ulen -= sizeof(uintmax_t);
-	/* There was room for the guarrd byte in the chunk that came in. */
+	/* There was room for the guard byte in the chunk that came in. */
 	p[elp->ulen] = GUARD_BYTE;
 #endif
 	*lenp -= len;

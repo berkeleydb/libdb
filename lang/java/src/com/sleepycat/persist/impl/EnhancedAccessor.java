@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -122,7 +122,9 @@ public class EnhancedAccessor implements Accessor {
         return ((Enhanced) o).bdbIsPriKeyFieldNullOrZero();
     }
 
-    public void writePriKeyField(Object o, EntityOutput output) {
+    public void writePriKeyField(Object o, EntityOutput output)
+        throws RefreshException {
+
         if (priKeyFormat == null) {
             throw DbCompat.unexpectedState
                 ("No primary key: " + o.getClass().getName());
@@ -130,7 +132,9 @@ public class EnhancedAccessor implements Accessor {
         ((Enhanced) o).bdbWritePriKeyField(output, priKeyFormat);
     }
 
-    public void readPriKeyField(Object o, EntityInput input) {
+    public void readPriKeyField(Object o, EntityInput input)
+        throws RefreshException {
+
         if (priKeyFormat == null) {
             throw DbCompat.unexpectedState
                 ("No primary key: " + o.getClass().getName());
@@ -138,7 +142,9 @@ public class EnhancedAccessor implements Accessor {
         ((Enhanced) o).bdbReadPriKeyField(input, priKeyFormat);
     }
 
-    public void writeSecKeyFields(Object o, EntityOutput output) {
+    public void writeSecKeyFields(Object o, EntityOutput output)
+        throws RefreshException {
+
         ((Enhanced) o).bdbWriteSecKeyFields(output);
     }
 
@@ -146,12 +152,16 @@ public class EnhancedAccessor implements Accessor {
                                  EntityInput input,
                                  int startField,
                                  int endField,
-                                 int superLevel) {
+                                 int superLevel)
+        throws RefreshException {
+
         ((Enhanced) o).bdbReadSecKeyFields
             (input, startField, endField, superLevel);
     }
 
-    public void writeNonKeyFields(Object o, EntityOutput output) {
+    public void writeNonKeyFields(Object o, EntityOutput output)
+        throws RefreshException {
+
         ((Enhanced) o).bdbWriteNonKeyFields(output);
     }
 
@@ -159,16 +169,22 @@ public class EnhancedAccessor implements Accessor {
                                  EntityInput input,
                                  int startField,
                                  int endField,
-                                 int superLevel) {
+                                 int superLevel)
+        throws RefreshException {
+
         ((Enhanced) o).bdbReadNonKeyFields
             (input, startField, endField, superLevel);
     }
 
-    public void writeCompositeKeyFields(Object o, EntityOutput output) {
+    public void writeCompositeKeyFields(Object o, EntityOutput output)
+        throws RefreshException {
+
         ((Enhanced) o).bdbWriteCompositeKeyFields(output, compositeKeyFormats);
     }
 
-    public void readCompositeKeyFields(Object o, EntityInput input) {
+    public void readCompositeKeyFields(Object o, EntityInput input)
+        throws RefreshException {
+
         ((Enhanced) o).bdbReadCompositeKeyFields(input, compositeKeyFormats);
     }
 
@@ -185,5 +201,9 @@ public class EnhancedAccessor implements Accessor {
                          boolean isSecField,
                          Object value) {
         ((Enhanced) o).bdbSetField(o, field, superLevel, isSecField, value);
+    }
+    
+    public void setPriField(Object o, Object value) {
+        ((Enhanced) o).bdbSetPriField(o, value);
     }
 }

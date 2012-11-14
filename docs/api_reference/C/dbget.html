@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -114,7 +114,7 @@ DB-&gt;pget(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3676223"></a>Parameters</h3>
+              <h3 class="title"><a id="idp57527232"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -122,7 +122,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676026"></a>txnid</h4>
+                <h4 class="title"><a id="idp57496096"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -142,7 +142,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676090"></a>key</h4>
+                <h4 class="title"><a id="idp57496528"></a>key</h4>
               </div>
             </div>
           </div>
@@ -164,7 +164,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676404"></a>pkey</h4>
+                <h4 class="title"><a id="idp57538288"></a>pkey</h4>
               </div>
             </div>
           </div>
@@ -180,7 +180,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3675840"></a>data</h4>
+                <h4 class="title"><a id="idp57512056"></a>data</h4>
               </div>
             </div>
           </div>
@@ -192,7 +192,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676007"></a>flags</h4>
+                <h4 class="title"><a id="idp57501880"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -316,7 +316,7 @@ DB-&gt;pget(DB *db,
                 <p>
                          In the case of Btree or Hash databases, all of the data items
                          associated with the specified key are entered into the buffer.  In the
-                         case of Queue or Recno databases, all of the data items in the
+                         case of Queue, Recno or Heap databases, all of the data items in the
                          database, starting at, and subsequent to, the specified key, are
                          entered into the buffer.
                     </p>
@@ -394,7 +394,7 @@ DB-&gt;pget(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3676367"></a>Errors</h3>
+              <h3 class="title"><a id="idp57550240"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -410,7 +410,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676892"></a>DB_BUFFER_SMALL</h4>
+                <h4 class="title"><a id="idp57547752"></a>DB_BUFFER_SMALL</h4>
               </div>
             </div>
           </div>
@@ -422,7 +422,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676850"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idp57497080"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -435,7 +435,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676699"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp57553616"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -443,12 +443,19 @@ DB-&gt;pget(DB *db,
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
             </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a>
+                for more information.
+            </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676564"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp57568056"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -462,7 +469,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676748"></a>  DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="idp57569816"></a>  DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -481,7 +488,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3677093"></a>DB_REP_LEASE_EXPIRED</h4>
+                <h4 class="title"><a id="idp57571640"></a>DB_REP_LEASE_EXPIRED</h4>
               </div>
             </div>
           </div>
@@ -493,7 +500,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676690"></a>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="idp57542992"></a>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -505,7 +512,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3676716"></a>DB_SECONDARY_BAD</h4>
+                <h4 class="title"><a id="idp57550736"></a>DB_SECONDARY_BAD</h4>
               </div>
             </div>
           </div>
@@ -517,7 +524,7 @@ DB-&gt;pget(DB *db,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3671419"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp57531168"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -540,7 +547,7 @@ DB-&gt;pget(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3676611"></a>Class</h3>
+              <h3 class="title"><a id="idp57579680"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -552,7 +559,7 @@ DB-&gt;pget(DB *db,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3676342"></a>See Also</h3>
+              <h3 class="title"><a id="idp57534808"></a>See Also</h3>
             </div>
           </div>
         </div>

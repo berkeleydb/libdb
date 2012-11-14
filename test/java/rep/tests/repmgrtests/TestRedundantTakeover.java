@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2010 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -25,7 +25,6 @@ import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.DatabaseType;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
-import com.sleepycat.db.EventHandlerAdapter;
 import com.sleepycat.db.ReplicationManagerAckPolicy;
 import com.sleepycat.db.ReplicationManagerSiteConfig;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
@@ -45,35 +44,6 @@ public class TestRedundantTakeover {
     private int masterPort;
     private int clientPort;
 
-    class MyEventHandler extends EventHandlerAdapter {
-        private boolean done = false;
-        private boolean panic = false;
-        private int permFailCount = 0;
-		
-        @Override synchronized public void handleRepStartupDoneEvent() {
-            done = true;
-            notifyAll();
-        }
-
-        @Override synchronized public void handleRepPermFailedEvent() {
-            permFailCount++;
-        }
-
-        synchronized public int getPermFailCount() { return permFailCount; }
-
-        @Override synchronized public void handlePanicEvent() {
-            done = true;
-            panic = true;
-            notifyAll();
-        }
-        
-        synchronized void await() throws Exception {
-            while (!done) { wait(); }
-            if (panic)
-                throw new Exception("aborted by panic in DB");
-        }
-    }
-    
     @Before public void setUp() throws Exception {
         testdir = new File(TEST_DIR_NAME);
         Util.rm_rf(testdir);
@@ -106,7 +76,7 @@ public class TestRedundantTakeover {
             new ReplicationManagerSiteConfig("localhost", masterPort);
         site.setLocalSite(true);
         masterConfig.addReplicationManagerSite(site);
-        MyEventHandler masterMonitor = new MyEventHandler();
+        EventHandler masterMonitor = new EventHandler();
         masterConfig.setEventHandler(masterMonitor);
         File masterDir = mkdir("master");
         Environment master = new Environment(masterDir, masterConfig);
@@ -114,7 +84,7 @@ public class TestRedundantTakeover {
 		
         // create client, wait for it to finish sync-ing up
         // 
-        MyEventHandler clientMonitor = new MyEventHandler();
+        EventHandler clientMonitor = new EventHandler();
         EnvironmentConfig ec = makeClientConfig(clientMonitor, clientPort, masterPort);
         
         File clientDir = mkdir("client");
@@ -136,7 +106,7 @@ public class TestRedundantTakeover {
         // close client (which will be hidden from master), and try
         // opening it again
         client.close();
-        clientMonitor = new MyEventHandler();
+        clientMonitor = new EventHandler();
         ec = makeClientConfig(clientMonitor, clientPort, masterPort);
         ec.setRunRecovery(true);
         client = new Environment(clientDir, ec);
@@ -169,7 +139,7 @@ public class TestRedundantTakeover {
         fiddler = null;
     }
 
-    private EnvironmentConfig makeClientConfig(MyEventHandler evHandler,
+    private EnvironmentConfig makeClientConfig(EventHandler evHandler,
                                                int clientPort, int masterPort)
         throws Exception
     {

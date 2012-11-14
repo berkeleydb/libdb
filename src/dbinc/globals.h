@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -65,6 +65,8 @@ typedef struct __db_globals {
 	size_t size_active_pids;	/* allocated size of active_pids */
 
 	pid_t *active_pids;		/* array active pids */
+
+	char *saved_errstr;		/* saved error string from backup */
 
 	/* Underlying OS interface jump table.*/
 	void	(*j_assert) __P((const char *, const char *, int));

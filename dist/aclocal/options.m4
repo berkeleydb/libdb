@@ -368,6 +368,26 @@ AC_ARG_ENABLE(umrw,
 	[db_cv_umrw="$enable_umrw"], [db_cv_umrw="no"])
 AC_MSG_RESULT($db_cv_umrw)
 
+# Solaris, AI/X, OS/X and other BSD-derived systems default to POSIX-conforming
+# disk i/o: A single read or write call is atomic. Other systems do not
+# guarantee atomicity; in particular Linux and Microsoft Windows.
+atomicfileread="no"
+case "$host_os" in
+solaris* | aix* | bsdi3* | freebsd* | darwin*)
+	atomicfileread="yes";;
+esac
+AC_MSG_CHECKING(if --enable-atomicfileread option specified)
+AC_ARG_ENABLE(atomicfileread,
+	[AC_HELP_STRING([--enable-atomicfileread],
+			[Indicate that the platform reads and writes files atomically.])],
+	[db_cv_atomicfileread="$enable_atomicfileread"], [db_cv_atomicfileread=$atomicfileread])
+AC_MSG_RESULT($db_cv_atomicfileread)
+if test "$db_cv_atomicfileread" = "yes"; then
+	AC_DEFINE(HAVE_ATOMICFILEREAD)
+	AH_TEMPLATE(HAVE_ATOMICFILEREAD,
+    [Define to 1 if platform reads and writes files atomically.])
+fi
+
 # Cryptography support.
 # Until Berkeley DB 5.0, this was a simple yes/no decision.
 # With the addition of support for Intel Integrated Performance Primitives (ipp)

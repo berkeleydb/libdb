@@ -25,6 +25,14 @@ do_test bdb_exclusive.1.0 {
   }
 } {}
 
+do_test bdb_exclusive.1.1 {
+   db eval {
+   BEGIN EXCLUSIVE;
+   ROLLBACK;
+   select * from t1;
+  }
+} {} 
+
 # Create deadlock between an exclusive and non-exclusive 
 # transactions
 set exclusive_test2 {

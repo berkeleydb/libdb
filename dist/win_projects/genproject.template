@@ -197,11 +197,11 @@ declare function local:makeLibraryDirectory($lib,$platform,$config)
 };
 
 (: The simple thing is to add all libraries for all projects :)
-(: Add an unconditional "../lib" to the end :)
+(: Add an unconditional "../../lib" to the end :)
 declare function local:addLibraryDirectories($project,$platform,$config)
 {
   attribute{"AdditionalLibraryDirectories"}{string-join((for $dep in $project/depends
-   return local:makeLibraryDirectory(doc($projectList)/projects/library[@name=$dep],$platform,$config),"../lib"),";")}
+   return local:makeLibraryDirectory(doc($projectList)/projects/library[@name=$dep],$platform,$config),"../../lib"),";")}
 };
 
 (: The simple thing is to add all libraries for all projects :)

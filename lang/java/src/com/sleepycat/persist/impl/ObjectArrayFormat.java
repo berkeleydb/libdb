@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -39,8 +39,8 @@ public class ObjectArrayFormat extends Format {
     private int nDimensions;
     private transient Format useComponentFormat;
 
-    ObjectArrayFormat(Class type) {
-        super(type);
+    ObjectArrayFormat(Catalog catalog, Class type) {
+        super(catalog, type);
         String name = getClassName();
         for (nDimensions = 0;
              name.charAt(nDimensions) == '[';
@@ -111,21 +111,31 @@ public class ObjectArrayFormat extends Format {
     }
 
     @Override
-    public Object readObject(Object o, EntityInput input, boolean rawAccess) {
+    public Object readObject(Object o, EntityInput input, boolean rawAccess)
+        throws RefreshException {
+        
         Object[] a;
         if (rawAccess) {
             a = ((RawObject) o).getElements();
         } else {
             a = (Object[]) o;
         }
-        for (int i = 0; i < a.length; i += 1) {
-            a[i] = input.readObject();
+        if (useComponentFormat.getId() == Format.ID_STRING) {
+            for (int i = 0; i < a.length; i += 1) {
+                a[i] = input.readStringObject();
+            }
+        } else {
+            for (int i = 0; i < a.length; i += 1) {
+                a[i] = input.readObject();
+            }
         }
         return o;
     }
 
     @Override
-    void writeObject(Object o, EntityOutput output, boolean rawAccess) {
+    void writeObject(Object o, EntityOutput output, boolean rawAccess)
+        throws RefreshException {
+
         Object[] a;
         if (rawAccess) {
             a = ((RawObject) o).getElements();
@@ -133,8 +143,14 @@ public class ObjectArrayFormat extends Format {
             a = (Object[]) o;
         }
         output.writeArrayLength(a.length);
-        for (int i = 0; i < a.length; i += 1) {
-            output.writeObject(a[i], useComponentFormat);
+        if (useComponentFormat.getId() == Format.ID_STRING) {
+            for (int i = 0; i < a.length; i += 1) {
+                output.writeString((String)a[i]);
+            }
+        } else {
+            for (int i = 0; i < a.length; i += 1) {
+                output.writeObject(a[i], useComponentFormat);
+            }
         }
     }
 
@@ -142,7 +158,9 @@ public class ObjectArrayFormat extends Format {
     Object convertRawObject(Catalog catalog,
                             boolean rawAccess,
                             RawObject rawObject,
-                            IdentityHashMap converted) {
+                            IdentityHashMap converted)
+        throws RefreshException {
+
         RawArrayInput input = new RawArrayInput
             (catalog, rawAccess, converted, rawObject, useComponentFormat);
         Object a = newInstance(input, rawAccess);
@@ -151,7 +169,9 @@ public class ObjectArrayFormat extends Format {
     }
 
     @Override
-    void skipContents(RecordInput input) {
+    void skipContents(RecordInput input)
+        throws RefreshException {
+
         int len = input.readPackedInt();
         for (int i = 0; i < len; i += 1) {
             input.skipField(useComponentFormat);
@@ -159,7 +179,9 @@ public class ObjectArrayFormat extends Format {
     }
 
     @Override
-    void copySecMultiKey(RecordInput input, Format keyFormat, Set results) {
+    void copySecMultiKey(RecordInput input, Format keyFormat, Set results)
+        throws RefreshException {
+
         int len = input.readPackedInt();
         for (int i = 0; i < len; i += 1) {
             KeyLocation loc = input.getKeyLocation(useComponentFormat);

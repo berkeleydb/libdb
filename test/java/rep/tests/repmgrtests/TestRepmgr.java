@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -22,7 +22,6 @@ import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseType;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
-import com.sleepycat.db.EventHandlerAdapter;
 import com.sleepycat.db.ReplicationManagerSiteConfig;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
 import com.sleepycat.db.VerboseConfig;
@@ -37,29 +36,6 @@ public class TestRepmgr extends TestCase {
 	private static final String TEST_DIR_NAME = "TESTDIR";
 
 	private File testdir;
-	class MyEventHandler extends EventHandlerAdapter {
-		private boolean done = false;
-		private boolean panic = false;
-		
-		@Override
-		synchronized public void handleRepStartupDoneEvent() {
-			done = true;
-			notifyAll();
-		}
-		
-		@Override
-		synchronized public void handlePanicEvent() {
-			done = true;
-			panic = true;
-			notifyAll();
-		}
-		
-		synchronized void await() throws Exception {
-			while (!done) { wait(); }
-			if (panic)
-				throw new Exception("aborted by panic in DB");
-		}
-	}
 
 	@Before
 	public void setUp() throws Exception {
@@ -141,7 +117,7 @@ public class TestRepmgr extends TestCase {
                 dbsite = new ReplicationManagerSiteConfig("localhost", masterPort);
                 dbsite.setBootstrapHelper(true);
 		ec.addReplicationManagerSite(dbsite);
-		MyEventHandler mon = new MyEventHandler();
+		EventHandler mon = new EventHandler();
 		ec.setEventHandler(mon);
 		Environment client = new Environment(mkdir("client"), ec);
 		client.replicationManagerStart(2, ReplicationManagerStartPolicy.REP_CLIENT);
@@ -151,9 +127,7 @@ public class TestRepmgr extends TestCase {
 //		assertEquals("localhost", sites[0].host);
 //		assertEquals(masterSpoofPort, sites[0].port);
 
-                System.err.println("started client");
 		mon.await();
-                System.err.println("completed await()");
 		
 //		sites = master.getReplicationManagerSiteList();
 //		assertEquals(1, sites.length);

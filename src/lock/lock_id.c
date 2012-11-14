@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -328,7 +328,7 @@ __lock_getlocker_int(lt, locker, create, retp)
 			 * Don't hold lockers when getting the region,
 			 * we could deadlock.  When creating a locker
 			 * there is no race since the id allocation
-			 * is syncrhonized.
+			 * is synchronized.
 			 */
 			UNLOCK_LOCKERS(env, region);
 			LOCK_REGION_LOCK(env);
@@ -455,7 +455,7 @@ __lock_addfamilylocker(env, pid, id, is_family)
 	/*
 	 * Link the child at the head of the master's list.
 	 * The guess is when looking for deadlock that
-	 * the most recent child is the one thats blocked.
+	 * the most recent child is the one that's blocked.
 	 */
 	SH_LIST_INSERT_HEAD(
 	    &mlockerp->child_locker, lockerp, child_link, __db_locker);

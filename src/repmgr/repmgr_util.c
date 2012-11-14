@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -14,7 +14,6 @@
 #include "dbinc/txn.h"
 
 #define	INITIAL_SITES_ALLOCATION	3	     /* Arbitrary guess. */
-#define	RETRY_TIME_ADJUST		200000	     /* Arbitrary estimate. */
 
 static int get_eid __P((ENV *, const char *, u_int, int *));
 static int __repmgr_addrcmp __P((repmgr_netaddr_t *, repmgr_netaddr_t *));
@@ -26,7 +25,7 @@ static int read_gmdb __P((ENV *, DB_THREAD_INFO *, u_int8_t **, size_t *));
  * parameter is given as TRUE, we'll make the wait time 0, and put the request
  * at the _beginning_ of the retry queue.
  *
- * PUBLIC: int __repmgr_schedule_connection_attempt __P((ENV *, u_int, int));
+ * PUBLIC: int __repmgr_schedule_connection_attempt __P((ENV *, int, int));
  *
  * !!!
  * Caller should hold mutex.
@@ -37,7 +36,7 @@ static int read_gmdb __P((ENV *, DB_THREAD_INFO *, u_int8_t **, size_t *));
 int
 __repmgr_schedule_connection_attempt(env, eid, immediate)
 	ENV *env;
-	u_int eid;
+	int eid;
 	int immediate;
 {
 	DB_REP *db_rep;
@@ -45,39 +44,20 @@ __repmgr_schedule_connection_attempt(env, eid, immediate)
 	REPMGR_RETRY *retry, *target;
 	REPMGR_SITE *site;
 	db_timespec t;
-	int cmp, ret;
+	int ret;
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 	if ((ret = __os_malloc(env, sizeof(*retry), &retry)) != 0)
 		return (ret);
 
+	DB_ASSERT(env, IS_VALID_EID(eid));
 	site = SITE_FROM_EID(eid);
 	__os_gettime(env, &t, 1);
 	if (immediate)
 		TAILQ_INSERT_HEAD(&db_rep->retries, retry, entries);
 	else {
 		TIMESPEC_ADD_DB_TIMEOUT(&t, rep->connection_retry_wait);
-
-		/*
-		 * Although it's extremely rare, two sites could be trying to
-		 * connect to each other simultaneously, and each could kill its
-		 * own connection when it received the other's.  And this could
-		 * continue, in sync, since configured retry times are usually
-		 * the same.  So, perturb one site's retry time by a small
-		 * amount to break the cycle.  Since each site has its own
-		 * address, it's always possible to decide which is "greater
-		 * than".
-		 *     (The mnemonic is that a server conventionally has a
-		 * small well-known port number.  And clients have the right to
-		 * connect to servers, not the other way around.)
-		 */
-		cmp = __repmgr_addrcmp(&site->net_addr,
-		    &SITE_FROM_EID(db_rep->self_eid)->net_addr);
-		DB_ASSERT(env, cmp != 0);
-		if (cmp == 1)
-			TIMESPEC_ADD_DB_TIMEOUT(&t, RETRY_TIME_ADJUST);
-
 		/*
 		 * Insert the new "retry" on the (time-ordered) list in its
 		 * proper position.  To do so, find the list entry ("target")
@@ -100,6 +80,37 @@ __repmgr_schedule_connection_attempt(env, eid, immediate)
 	site->ref.retry = retry;
 
 	return (__repmgr_wake_main_thread(env));
+}
+
+/*
+ * Determines whether a remote site should be considered a "server" to us as a
+ * "client" (in typical client/server terminology, not to be confused with our
+ * usual use of the term "client" as in the master/client replication role), or
+ * vice versa.
+ *
+ * PUBLIC: int __repmgr_is_server __P((ENV *, REPMGR_SITE *));
+ */
+int
+__repmgr_is_server(env, site)
+	ENV *env;
+	REPMGR_SITE *site;
+{
+	DB_REP *db_rep;
+	int cmp;
+
+	db_rep = env->rep_handle;
+	cmp = __repmgr_addrcmp(&site->net_addr,
+	    &SITE_FROM_EID(db_rep->self_eid)->net_addr);
+	DB_ASSERT(env, cmp != 0);
+
+	/*
+	 * The mnemonic here is that a server conventionally has a
+	 * small well-known port number, while clients typically use a port
+	 * number from the higher ephemeral range.  So, for the remote site to
+	 * be considered a server, its address should have compared as lower
+	 * than ours.
+	 */
+	return (cmp == -1);
 }
 
 /*
@@ -184,6 +195,30 @@ __repmgr_new_connection(env, connp, s, state)
 }
 
 /*
+ * PUBLIC: int __repmgr_set_keepalive __P((ENV *, REPMGR_CONNECTION *));
+ */
+int
+__repmgr_set_keepalive(env, conn)
+	ENV *env;
+	REPMGR_CONNECTION *conn;
+{
+	int ret, sockopt;
+
+	ret = 0;
+#ifdef SO_KEEPALIVE
+	sockopt = 1;
+	if (setsockopt(conn->fd, SOL_SOCKET,
+	    SO_KEEPALIVE, (sockopt_t)&sockopt, sizeof(sockopt)) != 0) {
+		ret = net_errno;
+		__db_err(env, ret, DB_STR("3626",
+			"can't set KEEPALIVE socket option"));
+		(void)__repmgr_destroy_conn(env, conn);
+	}
+#endif
+	return (ret);
+}
+
+/*
  * PUBLIC: int __repmgr_new_site __P((ENV *, REPMGR_SITE**,
  * PUBLIC:     const char *, u_int));
  *
@@ -256,6 +291,7 @@ __repmgr_new_site(env, sitep, host, port)
 	timespecclear(&site->last_rcvd_timestamp);
 	TAILQ_INIT(&site->sub_conns);
 	site->connector = NULL;
+	site->ref.conn.in = site->ref.conn.out = NULL;
 	site->state = SITE_IDLE;
 
 	site->membership = 0;
@@ -715,8 +751,7 @@ __repmgr_each_connection(env, callback, info, err_quit)
 	DB_REP *db_rep;
 	REPMGR_CONNECTION *conn, *next;
 	REPMGR_SITE *site;
-	u_int eid;
-	int ret, t_ret;
+	int eid, ret, t_ret;
 
 #define	HANDLE_ERROR		        \
 	do {			        \
@@ -746,8 +781,11 @@ __repmgr_each_connection(env, callback, info, err_quit)
 		site = SITE_FROM_EID(eid);
 
 		if (site->state == SITE_CONNECTED) {
-			conn = site->ref.conn;
-			if ((t_ret = (*callback)(env, conn, info)) != 0)
+			if ((conn = site->ref.conn.in) != NULL &&
+			    (t_ret = (*callback)(env, conn, info)) != 0)
+				HANDLE_ERROR;
+			if ((conn = site->ref.conn.out) != NULL &&
+			    (t_ret = (*callback)(env, conn, info)) != 0)
 				HANDLE_ERROR;
 		}
 
@@ -932,10 +970,30 @@ int
 __repmgr_env_refresh(env)
 	ENV *env;
 {
+	DB_REP *db_rep;
+	REP *rep;
+	REGINFO *infop;
+	SITEINFO *shared_array;
+	u_int i;
 	int ret;
 
-	ret = F_ISSET(env, ENV_PRIVATE) ?
-	    __mutex_free(env, &env->rep_handle->region->mtx_repmgr) : 0;
+	db_rep = env->rep_handle;
+	rep = db_rep->region;
+	infop = env->reginfo;
+	ret = 0;
+	COMPQUIET(i, 0);
+
+	if (F_ISSET(env, ENV_PRIVATE)) {
+		ret = __mutex_free(env, &rep->mtx_repmgr);
+		if (rep->siteinfo_off != INVALID_ROFF) {
+			shared_array = R_ADDR(infop, rep->siteinfo_off);
+			for (i = 0; i < db_rep->site_cnt; i++)
+				__env_alloc_free(infop, R_ADDR(infop,
+				    shared_array[i].addr.host));
+			__env_alloc_free(infop, shared_array);
+			rep->siteinfo_off = INVALID_ROFF;
+		}
+	}
 
 	return (ret);
 }
@@ -1095,27 +1153,28 @@ out:
  * array entry in the range from <= x < limit.  Passing from >= limit is
  * allowed, and is effectively a no-op.
  *
- * PUBLIC: int __repmgr_init_new_sites __P((ENV *, u_int, u_int));
+ * PUBLIC: int __repmgr_init_new_sites __P((ENV *, int, int));
  *
  * !!! Assumes caller holds db_rep->mutex.
  */
 int
 __repmgr_init_new_sites(env, from, limit)
 	ENV *env;
-	u_int from, limit;
+	int from, limit;
 {
 	DB_REP *db_rep;
 	REPMGR_SITE *site;
-	u_int i;
-	int ret;
+	int i, ret;
 
 	db_rep = env->rep_handle;
 
 	if (db_rep->selector == NULL)
 		return (0);
+
+	DB_ASSERT(env, IS_VALID_EID(from) && IS_VALID_EID(limit) &&
+	    from <= limit);
 	for (i = from; i < limit; i++) {
 		site = SITE_FROM_EID(i);
-
 		if (site->membership == SITE_PRESENT &&
 		    (ret = __repmgr_schedule_connection_attempt(env,
 		    i, TRUE)) != 0)
@@ -1141,7 +1200,7 @@ __repmgr_failchk(env)
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 
-	COMPQUIET(unused, 0);
+	DB_THREADID_INIT(unused);
 	MUTEX_LOCK(env, rep->mtx_repmgr);
 
 	/*
@@ -1166,19 +1225,26 @@ __repmgr_master_is_known(env)
 	ENV *env;
 {
 	DB_REP *db_rep;
-	REP *rep;
-	int master;
+	REPMGR_CONNECTION *conn;
+	REPMGR_SITE *master;
 
 	db_rep = env->rep_handle;
-	rep = db_rep->region;
-	master = rep->master_id;
 
 	/*
 	 * We are the master, or we know of a master and have a healthy
 	 * connection to it.
 	 */
-	return (master == db_rep->self_eid ||
-	    __repmgr_master_connection(env) != NULL);
+	if (db_rep->region->master_id == db_rep->self_eid)
+		return (TRUE);
+	if ((master = __repmgr_connected_master(env)) == NULL)
+		return (FALSE);
+	if ((conn = master->ref.conn.in) != NULL &&
+	    IS_READY_STATE(conn->state))
+		return (TRUE);
+	if ((conn = master->ref.conn.out) != NULL &&
+	    IS_READY_STATE(conn->state))
+		return (TRUE);
+	return (FALSE);
 }
 
 /*
@@ -1201,7 +1267,7 @@ __repmgr_stable_lsn(env, stable_lsn)
 	rep = db_rep->region;
 
 	if (rep->min_log_file != 0 && rep->min_log_file < stable_lsn->file) {
-		/* 
+		/*
 		 * Returning an LSN to be consistent with the rest of the
 		 * log archiving processing.  Construct LSN of format
 		 * [filenum][0].
@@ -1288,7 +1354,8 @@ __repmgr_marshal_member_list(env, bufp, lenp)
 			continue;
 
 		site_info.host.data = site->net_addr.host;
-		site_info.host.size = (u_int32_t)strlen(site->net_addr.host) + 1;
+		site_info.host.size =
+		    (u_int32_t)strlen(site->net_addr.host) + 1;
 		site_info.port = site->net_addr.port;
 		site_info.flags = site->membership;
 
@@ -1464,7 +1531,7 @@ __repmgr_refresh_membership(env, buf, len)
 	ret = __repmgr_membr_vers_unmarshal(env, &membr_vers, buf, len, &p);
 	DB_ASSERT(env, ret == 0);
 
-	if (db_rep->finished)
+	if (db_rep->repmgr_status == stopped)
 		return (0);
 	/* Ignore obsolete versions. */
 	if (__repmgr_gmdb_version_cmp(env,
@@ -1496,6 +1563,7 @@ __repmgr_refresh_membership(env, buf, len)
 
 		if ((ret = __repmgr_find_site(env, host, port, &eid)) != 0)
 			goto err;
+		DB_ASSERT(env, IS_VALID_EID(eid));
 		F_SET(SITE_FROM_EID(eid), SITE_TOUCHED);
 	}
 	ret = __rep_set_nsites_int(env, n);
@@ -1858,13 +1926,14 @@ __repmgr_set_membership(env, host, port, status)
 
 	MUTEX_LOCK(env, rep->mtx_repmgr);
 	if ((ret = get_eid(env, host, port, &eid)) == 0) {
+		DB_ASSERT(env, IS_VALID_EID(eid));
 		site = SITE_FROM_EID(eid);
 		orig = site->membership;
 		sites = R_ADDR(infop, rep->siteinfo_off);
 
 		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 		    "set membership for %s:%lu %lu (was %lu)",
-		    host, (u_long)port, (u_long)status, (u_long)orig ));
+		    host, (u_long)port, (u_long)status, (u_long)orig));
 		if (status != sites[eid].status) {
 			/*
 			 * Show that a change is occurring.
@@ -1892,7 +1961,8 @@ __repmgr_set_membership(env, host, port, status)
 	 * If our notion of the site's membership changed, we may need to create
 	 * or kill a connection.
 	 */
-	if (ret == 0 && !db_rep->finished && SELECTOR_RUNNING(db_rep)) {
+	if (ret == 0 && db_rep->repmgr_status == running &&
+	    SELECTOR_RUNNING(db_rep)) {
 
 		if (eid == db_rep->self_eid && status != SITE_PRESENT)
 			ret = DB_DELETED;
@@ -1912,7 +1982,7 @@ __repmgr_set_membership(env, host, port, status)
 			 * naturally try again later.
 			 */
 			ret = __repmgr_schedule_connection_attempt(env,
-			    (u_int)eid, TRUE);
+			    eid, TRUE);
 			if (eid != db_rep->self_eid)
 				DB_EVENT(env, DB_EVENT_REP_SITE_ADDED, &eid);
 		} else if (orig != 0 && status == 0)
@@ -1999,10 +2069,15 @@ __repmgr_bcast_own_msg(env, type, buf, len)
 		site = SITE_FROM_EID(i);
 		if (site->state != SITE_CONNECTED)
 			continue;
-		conn = site->ref.conn;
-		if (conn->state != CONN_READY)
-			continue;
-		if ((ret = __repmgr_send_own_msg(env,
+		if ((conn = site->ref.conn.in) != NULL &&
+		    conn->state == CONN_READY &&
+		    (ret = __repmgr_send_own_msg(env,
+		    conn, type, buf, (u_int32_t)len)) != 0 &&
+		    (ret = __repmgr_bust_connection(env, conn)) != 0)
+			return (ret);
+		if ((conn = site->ref.conn.out) != NULL &&
+		    conn->state == CONN_READY &&
+		    (ret = __repmgr_send_own_msg(env,
 		    conn, type, buf, (u_int32_t)len)) != 0 &&
 		    (ret = __repmgr_bust_connection(env, conn)) != 0)
 			return (ret);

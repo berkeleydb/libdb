@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.impl;
 
 import com.sleepycat.bind.tuple.TupleBase;
+import com.sleepycat.compat.DbCompat;
 import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.Sequence;
@@ -44,6 +45,21 @@ public class PersistKeyAssigner {
 
     public boolean assignPrimaryKey(Object entity, DatabaseEntry key)
         throws DatabaseException {
+
+        try {
+            return assignPrimaryKeyInternal(entity, key);
+        } catch (RefreshException e) {
+            e.refresh();
+            try {
+                return assignPrimaryKeyInternal(entity, key);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
+        }
+    }
+
+    private boolean assignPrimaryKeyInternal(Object entity, DatabaseEntry key)
+        throws DatabaseException, RefreshException {
             
         /*
          * The keyFieldFormat is the format of a simple integer field.  For a

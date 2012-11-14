@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 
 package com.sleepycat.db;
@@ -64,23 +64,6 @@ public class TransactionStats {
             return priority;
         }
 
-        private int status;
-        /** Provides one of the following constants, which indicate the status of the transaction:
-          <p> TXN_ABORTED, TXN_COMMITTED, TXN_NEED_ABORT, TXN_PREPARED, or TXN_RUNNING.
-        */
-    public int getStatus() {
-            return status;
-        }
-
-        private int xa_status;
-        /** Provides one of the following constants, which indicate the XA status: 
-          <p>
-          TXN_XA_ACTIVE, TXN_XA_DEADLOCKED, TXN_XA_IDLE, TXN_XA_PREPARED, or TXN_XA_ROLLEDBACK.
-        */
-    public int getXaStatus() {
-            return xa_status;
-        }
-
         private byte[] gid;
         /** Return the transaction's Global ID, if the transaction was prepared using 
           {@link Transaction#prepare}. Otherwise, return an undefined value.  
@@ -107,8 +90,6 @@ public class TransactionStats {
                 + "\n      read_lsn=" + read_lsn
                 + "\n      mvcc_ref=" + mvcc_ref
                 + "\n      priority=" + priority
-                + "\n      status=" + status
-                + "\n      xa_status=" + xa_status
                 + "\n      gid=" + DbUtil.byteArrayToString(gid)
                 + "\n      name=" + name
                 ;

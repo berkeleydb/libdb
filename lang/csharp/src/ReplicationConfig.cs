@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -38,6 +38,15 @@ namespace BerkeleyDB {
         /// <see cref="DatabaseEnvironment.RepSync"/>. 
         /// </summary>
         public bool DelayClientSync;
+        /// <summary>
+        /// If true, replication only stores the internal information in-memory
+        /// and cannot keep persistent state across a site crash or reboot. By
+        /// default, it is false and replication creates files in the
+        /// environment home directory to preserve the internal information. 
+        /// This configuration flag can only be set before the
+        /// <see cref="DatabaseEnvironment"/> is opened.
+        /// </summary>
+        public bool InMemory;
         /// <summary>
         /// If true, master leases will be used for this site (defaults to
         /// false). 

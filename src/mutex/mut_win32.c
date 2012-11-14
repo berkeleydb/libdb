@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -71,7 +71,7 @@ static __inline int get_handle(env, mutexp, eventp)
  * __db_win32_mutex_lock_int
  *	Internal function to lock a win32 mutex
  *
- *	If the wait paramter is 0, this function will return DB_LOCK_NOTGRANTED
+ *	If the wait parameter is 0, this function will return DB_LOCK_NOTGRANTED
  *	rather than wait.
  *
  */

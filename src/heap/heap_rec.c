@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 
 #include "db_config.h"
@@ -156,14 +156,14 @@ __heap_pg_alloc_recover(env, dbtp, lsnp, op, info)
 		REC_DIRTY(mpf, ip, file_dbp->priority, &meta);
 		LSN(meta) = argp->meta_lsn;
 		if (meta->dbmeta.last_pgno != argp->last_pgno) {
-			if (file_dbp->mpf->mfp->last_pgno == 
+			if (file_dbp->mpf->mfp->last_pgno ==
 			    meta->dbmeta.last_pgno)
 				trunc = 1;
 			meta->dbmeta.last_pgno = argp->last_pgno;
 		}
 		if (argp->ptype == P_IHEAP &&
 		    HEAP_REGION_NUM(file_dbp, argp->pgno) == meta->nregions) {
-			do 
+			do
 				meta->nregions--;
 			while (argp->last_pgno <
 			    (meta->nregions - 1) * HEAP_REGION_SIZE(file_dbp));
@@ -213,12 +213,12 @@ __heap_pg_alloc_recover(env, dbtp, lsnp, op, info)
 		if ((ret = __memp_fget(mpf,
 		    &argp->pgno, ip, NULL, DB_MPOOL_FREE, &pagep)) != 0)
 			goto out;
-	    	if (trunc == 0 && argp->pgno <= mpf->mfp->last_flushed_pgno) {
+		if (trunc == 0 && argp->pgno <= mpf->mfp->last_flushed_pgno) {
 			/*
 			 * If this page is on disk we need to zero it.
 			 * This is safe since we never free pages other
 			 * than backing out an allocation, so there can
-			 * not be a previous allocate and free of this 
+			 * not be a previous allocate and free of this
 			 * page that is reflected on disk.
 			 */
 			if ((ret = __db_zero_extend(env, mpf->fhp,
@@ -240,12 +240,12 @@ __heap_pg_alloc_recover(env, dbtp, lsnp, op, info)
 			goto out;
 		if (pagep->high_pgno >= argp->pgno)
 			goto done;
-		if ((ret = __memp_dirty(mpf, &pagep, ip, NULL, 
+		if ((ret = __memp_dirty(mpf, &pagep, ip, NULL,
 		    DB_PRIORITY_UNCHANGED, 0)) != 0)
 			goto done;
 		pagep->high_pgno = argp->pgno;
 	}
-	
+
 do_meta:
 	if (trunc == 1 &&
 	    (ret = __memp_ftruncate(mpf, NULL, ip, meta->dbmeta.last_pgno + 1,
@@ -314,7 +314,7 @@ __heap_trunc_meta_recover(env, dbtp, lsnp, op, info)
 		LSN(meta) = *lsnp;
 		if ((ret = __memp_ftruncate(mpf, dbc->txn,
 		    ip, PGNO_BASE_MD + 1, MP_TRUNC_NOCACHE)) != 0)
-		    	goto out;
+			goto out;
 	}
 
 done:	*lsnp = argp->prev_lsn;
@@ -374,7 +374,7 @@ __heap_trunc_page_recover(env, dbtp, lsnp, op, info)
 		pagep = NULL;
 		if ((ret = __memp_fget(mpf, &argp->pgno,
 		    dbc->thread_info, dbc->txn, DB_MPOOL_FREE, &pagep)) != 0)
-		    	goto out;
+			goto out;
 	}
 
 done:	*lsnp = argp->prev_lsn;

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -27,9 +27,14 @@ interface Reader extends Serializable {
                           int initVersion,
                           Format oldFormat);
 
-    Object newInstance(EntityInput input, boolean rawAccess);
+    Object newInstance(EntityInput input, boolean rawAccess)
+        throws RefreshException;
 
-    void readPriKey(Object o, EntityInput input, boolean rawAccess);
+    void readPriKey(Object o, EntityInput input, boolean rawAccess)
+        throws RefreshException;
 
-    Object readObject(Object o, EntityInput input, boolean rawAccess);
+    Object readObject(Object o, EntityInput input, boolean rawAccess)
+        throws RefreshException;
+        
+    Accessor getAccessor(boolean rawAccess);
 }

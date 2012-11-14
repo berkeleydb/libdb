@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1998, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -44,7 +44,7 @@ __bam_reclaim(dbp, ip, txn, flags)
 
 	/* Walk the tree, freeing pages. */
 	ret = __bam_traverse(dbc, DB_LOCK_WRITE,
-	    PGNO_INVALID, __db_reclaim_callback, (void*)(uintptr_t)flags);
+	    PGNO_INVALID, __db_reclaim_callback, &flags);
 
 	if ((t_ret = __TLPUT(dbc, meta_lock)) != 0 && ret == 0)
 		ret = t_ret;

@@ -1,6 +1,16 @@
 db_env_create
 	DB_CXX_NO_EXCEPTIONS		# C++: return error values
 
+DbEnv.backup
+	# Remove all files from the target directory tree first.
+	DB_BACKUP_CLEAN
+	DB_BACKUP_FILES			# Copy plain files too.
+	DB_BACKUP_NO_LOGS		# Don't backup log files.
+	DB_BACKUP_SINGLE_DIR		# All files go to a single directory.
+	DB_BACKUP_UPDATE		# Incremental backup.
+	DB_CREATE			# Create the target directories.
+	DB_EXCL				# Error if a target file exists.
+	
 DbEnv.close
 	# Sync database when automatically closing its db handles.
 	DB_FORCESYNC			
@@ -68,6 +78,7 @@ DbEnv.lock_stat_print
 
 DbEnv.lock_vec
 	DB_LOCK_CHECK			# UNDOC: check for a lock
+	DB_LOCK_IGNORE_REC		# UNDOC: get lock during recovery
 	DB_LOCK_NOWAIT			# Don't wait for an unavailable lock
 	DB_LOCK_RECORD			# UNDOC: record lock
 	DB_LOCK_SET_TIMEOUT		# UNDOC: set lock timeout
@@ -231,6 +242,7 @@ DbEnv.set_timeout
 	DB_SET_REG_TIMEOUT		# Set dbregister timeout
 
 DbEnv.set_verbose
+	DB_VERB_BACKUP			# Backup information
 	DB_VERB_DEADLOCK		# Deadlock detection information
 	DB_VERB_FILEOPS			# Major file operations
 	DB_VERB_FILEOPS_ALL		# All file operations
@@ -289,6 +301,7 @@ DbLogc.get
 
 DbMpoolFile.close
 	DB_MPOOL_DISCARD		# UNDOC: Discard file
+	DB_FLUSH			# UNDOC: opened to flush a page
 	DB_MPOOL_NOLOCK			# UNDOC: Already have mpf locked
 
 DbMpoolFile.get
@@ -305,6 +318,7 @@ DbMpoolFile.open
 	DB_DIRECT			# Don't buffer the file in the OS
 	DB_DURABLE_UNKNOWN		# UNDOC: Durability on open
 	DB_EXTENT			# UNDOC: dealing with an extent
+	DB_FLUSH			# UNDOC: opened to flush a page
 	DB_MULTIVERSION			# Multiversion concurrency control
 	DB_NOMMAP			# Don't mmap underlying file
 	DB_ODDFILESIZE			# Truncate file to N * pgsize
@@ -435,7 +449,8 @@ Db.open
 	# The following flags aren't actually part of the Db.open method
 	# API, but they are accepted by the underlying __db_open function.
 	DB_DURABLE_UNKNOWN		# UNDOC: Durability on open
-	DB_INTERNAL_DB			# UNDOC: Open db in env dir
+	DB_INTERNAL_PERSISTENT_DB	# UNDOC: Open db in metadata dir
+	DB_INTERNAL_TEMPORARY_DB	# UNDOC: Open db in env home dir
 	DB_NOERROR			# UNDOC: Don't raise errors.
 	DB_ODDFILESIZE			# UNDOC: Truncate file to N * pgsize
 	DB_WRITEOPEN			# UNDOC: open with write lock

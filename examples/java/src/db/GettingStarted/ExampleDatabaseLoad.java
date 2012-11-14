@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2004, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$ 
  */

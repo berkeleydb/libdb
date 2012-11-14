@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -43,9 +43,14 @@
 int
 DbEnv::lock_id(u_int32_t *idp);</pre>
       <p>
-         The <code class="methodname">DbEnv::lock_id()</code> method copies a locker ID, which is guaranteed
-         to be unique in the environment's lock table, into the memory location to
-         which <span class="bold"><strong>idp</strong></span> refers.
+         The <code class="methodname">DbEnv::lock_id()</code> method copies a
+         locker ID, which is guaranteed to be unique in the environment's
+         lock table, into the memory location to which 
+         <span class="bold"><strong>idp</strong></span> refers.
+    </p>
+      <p>
+        Note that lockers are not free-threaded; lockers can not be used by
+        more than one thread at the same time.
     </p>
       <p>
          The <a class="xref" href="lockid_free.html" title="DbEnv::lock_id_free()">DbEnv::lock_id_free()</a> 
@@ -66,7 +71,7 @@ DbEnv::lock_id(u_int32_t *idp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3614611"></a>Parameters</h3>
+              <h3 class="title"><a id="idp2706584"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -74,7 +79,7 @@ DbEnv::lock_id(u_int32_t *idp);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3613614"></a>idp</h4>
+                <h4 class="title"><a id="idp2684600"></a>idp</h4>
               </div>
             </div>
           </div>
@@ -88,7 +93,7 @@ DbEnv::lock_id(u_int32_t *idp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3614869"></a>Class</h3>
+              <h3 class="title"><a id="idp2711448"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -101,7 +106,7 @@ DbEnv::lock_id(u_int32_t *idp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3614351"></a>See Also</h3>
+              <h3 class="title"><a id="idp2650920"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -157,6 +157,10 @@ extern "C" {
 #  define AT_LEAST_DB_5_2
 #endif
 
+#if DB_VERSION_MAJOR > 5 || (DB_VERSION_MAJOR == 5 && DB_VERSION_MINOR >= 3)
+#  define AT_LEAST_DB_5_3
+#endif
+
 #ifdef __cplusplus
 }
 #endif

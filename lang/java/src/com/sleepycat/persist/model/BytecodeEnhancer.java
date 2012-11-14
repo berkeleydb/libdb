@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -17,6 +17,7 @@ import static com.sleepycat.asm.Opcodes.ACONST_NULL;
 import static com.sleepycat.asm.Opcodes.ALOAD;
 import static com.sleepycat.asm.Opcodes.ANEWARRAY;
 import static com.sleepycat.asm.Opcodes.ARETURN;
+import static com.sleepycat.asm.Opcodes.ASM4;
 import static com.sleepycat.asm.Opcodes.BIPUSH;
 import static com.sleepycat.asm.Opcodes.CHECKCAST;
 import static com.sleepycat.asm.Opcodes.DCMPL;
@@ -52,6 +53,7 @@ import static com.sleepycat.asm.Opcodes.POP;
 import static com.sleepycat.asm.Opcodes.PUTFIELD;
 import static com.sleepycat.asm.Opcodes.RETURN;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,7 +65,6 @@ import java.util.Map;
 
 import com.sleepycat.asm.AnnotationVisitor;
 import com.sleepycat.asm.Attribute;
-import com.sleepycat.asm.ClassAdapter;
 import com.sleepycat.asm.ClassVisitor;
 import com.sleepycat.asm.FieldVisitor;
 import com.sleepycat.asm.Label;
@@ -87,7 +88,7 @@ import com.sleepycat.compat.DbCompat;
  *
  * @author Mark Hayes
  */
-class BytecodeEnhancer extends ClassAdapter {
+class BytecodeEnhancer extends ClassVisitor {
 
     /** Thrown when we determine that a class is not persistent. */
     @SuppressWarnings("serial")
@@ -123,7 +124,7 @@ class BytecodeEnhancer extends ClassAdapter {
     private String staticBlockMethod;
 
     BytecodeEnhancer(ClassVisitor parentVisitor) {
-        super(parentVisitor);
+        super(ASM4, parentVisitor);
         secKeyFields = new ArrayList<FieldInfo>();
         nonKeyFields = new ArrayList<FieldInfo>();
     }
@@ -225,6 +226,7 @@ class BytecodeEnhancer extends ClassAdapter {
         genBdbReadCompositeKeyFields();
         genBdbGetField();
         genBdbSetField();
+        genBdbSetPriField();
         genStaticBlock();
         super.visitEnd();
     }
@@ -511,7 +513,14 @@ class BytecodeEnhancer extends ClassAdapter {
             (ACC_PUBLIC, "bdbWriteSecKeyFields",
              "(Lcom/sleepycat/persist/impl/EntityOutput;)V", null, null);
         mv.visitCode();
-        if (priKeyField != null && isRefType(priKeyField.type)) {
+        
+        /* 
+         * In JE 5.0, String is treated as primitive type, so String does
+         * not need to be registered. [#19247]
+         */
+        if (priKeyField != null && 
+            isRefType(priKeyField.type) && 
+            !priKeyField.isString) {
             genRegisterPrimaryKey(mv, false);
         }
         if (hasPersistentSuperclass) {
@@ -558,8 +567,12 @@ class BytecodeEnhancer extends ClassAdapter {
             (ACC_PUBLIC, "bdbReadSecKeyFields",
              "(Lcom/sleepycat/persist/impl/EntityInput;III)V", null, null);
         mv.visitCode();
-        if (priKeyField != null && isRefType(priKeyField.type)) {
+        if (priKeyField != null && 
+            isRefType(priKeyField.type) &&
+            !priKeyField.isString) {
             genRegisterPrimaryKey(mv, true);
+        } else if (priKeyField != null && priKeyField.isString) {
+            genRegisterPrimaryStringKey(mv);
         }
         genReadSuperKeyFields(mv, true);
         genReadFieldSwitch(mv, secKeyFields);
@@ -585,6 +598,22 @@ class BytecodeEnhancer extends ClassAdapter {
         mv.visitMethodInsn
             (INVOKEINTERFACE, entityInputOrOutputClass, "registerPriKeyObject",
              "(Ljava/lang/Object;)V");
+    }
+    
+    /**
+     *      input.registerPriStringKeyObject(priKeyField);
+     */
+    private void genRegisterPrimaryStringKey(MethodVisitor mv) {
+        String entityInputOrOutputClass = 
+            "com/sleepycat/persist/impl/EntityInput";
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitFieldInsn
+            (GETFIELD, className, priKeyField.name,
+             priKeyField.type.getDescriptor());
+        mv.visitMethodInsn
+            (INVOKEINTERFACE, entityInputOrOutputClass, 
+             "registerPriStringKeyObject", "(Ljava/lang/Object;)V");
     }
 
     /**
@@ -740,7 +769,18 @@ class BytecodeEnhancer extends ClassAdapter {
         mv.visitFieldInsn
             (GETFIELD, className, field.name, field.type.getDescriptor());
         int sort = field.type.getSort();
-        if (sort == Type.OBJECT || sort == Type.ARRAY) {
+        if (field.isString) {
+            
+            /* 
+             * In JE 5.0, we treat String as primitive, and will not store 
+             * format ID for String data. [#19247]
+             */
+            mv.visitMethodInsn
+                (INVOKEINTERFACE, "com/sleepycat/persist/impl/EntityOutput",
+                 "writeString",
+                 "(Ljava/lang/String;)Lcom/sleepycat/bind/tuple/TupleOutput;");
+            mv.visitInsn(POP);
+        } else if (sort == Type.OBJECT || sort == Type.ARRAY) {
             mv.visitInsn(ACONST_NULL);
             mv.visitMethodInsn
                 (INVOKEINTERFACE, "com/sleepycat/persist/impl/EntityOutput",
@@ -791,6 +831,12 @@ class BytecodeEnhancer extends ClassAdapter {
                 (INVOKEINTERFACE, "com/sleepycat/persist/impl/EntityOutput",
                  "writeBigInteger",
              "(Ljava/math/BigInteger;)Lcom/sleepycat/bind/tuple/TupleOutput;");
+            mv.visitInsn(POP);
+        } else if (fieldClassName.equals(BigDecimal.class.getName())) {
+            mv.visitMethodInsn
+                (INVOKEINTERFACE, "com/sleepycat/persist/impl/EntityOutput",
+                 "writeSortedBigDecimal",
+             "(Ljava/math/BigDecimal;)Lcom/sleepycat/bind/tuple/TupleOutput;");
             mv.visitInsn(POP);
         } else {
             throw DbCompat.unexpectedState(fieldClassName);
@@ -916,7 +962,17 @@ class BytecodeEnhancer extends ClassAdapter {
     private void genReadField(MethodVisitor mv, FieldInfo field) {
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(ALOAD, 1);
-        if (isRefType(field.type)) {
+        if (field.isString) {
+            
+            /* 
+             * In JE 5.0, we treat String as primitive, and will not store 
+             * format ID for String data. [#19247]
+             */
+            mv.visitMethodInsn
+                (INVOKEINTERFACE, "com/sleepycat/persist/impl/EntityInput",
+                 "readStringObject", "()Ljava/lang/Object;");
+            mv.visitTypeInsn(CHECKCAST, getTypeInstName(field.type));
+        } else if (isRefType(field.type)) {
             mv.visitMethodInsn
                 (INVOKEINTERFACE, "com/sleepycat/persist/impl/EntityInput",
                  "readObject", "()Ljava/lang/Object;");
@@ -972,6 +1028,12 @@ class BytecodeEnhancer extends ClassAdapter {
             mv.visitMethodInsn
                 (INVOKEINTERFACE, "com/sleepycat/persist/impl/EntityInput",
                  "readBigInteger", "()Ljava/math/BigInteger;");
+        } else if (fieldClassName.equals(BigDecimal.class.getName())) {
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitVarInsn(ALOAD, 1);
+            mv.visitMethodInsn
+                (INVOKEINTERFACE, "com/sleepycat/persist/impl/EntityInput",
+                 "readSortedBigDecimal", "()Ljava/math/BigDecimal;");
         } else {
             throw DbCompat.unexpectedState(fieldClassName);
         }
@@ -1174,6 +1236,49 @@ class BytecodeEnhancer extends ClassAdapter {
         mv.visitLabel(l1);
         mv.visitInsn(RETURN);
         mv.visitMaxs(2, 6);
+        mv.visitEnd();
+    }
+    
+    /**
+     *  public void bdbSetPriField(Object o, Object value) {
+     *      if (priKeyField != null) {
+     *          thisField = (TheFieldClass) value;
+     *      } else if (super != null) {
+     *          // if has superclass:
+     *          super.bdbSetPriField(o, value)
+     *      }
+     *  }
+     */
+    private void genBdbSetPriField() {
+        MethodVisitor mv = cv.visitMethod
+            (ACC_PUBLIC, "bdbSetPriField",
+             "(Ljava/lang/Object;Ljava/lang/Object;)V", null, null);
+        mv.visitCode();
+        if (priKeyField != null) {
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitVarInsn(ALOAD, 2);
+            if (isRefType(priKeyField.type)) {
+                mv.visitTypeInsn(CHECKCAST, getTypeInstName(priKeyField.type));
+            } else {
+                int sort = priKeyField.type.getSort();
+                mv.visitTypeInsn
+                    (CHECKCAST,
+                     getPrimitiveWrapperClass(sort).replace('.', '/'));
+                genUnwrapPrimitive(mv, sort);
+            }
+            mv.visitFieldInsn
+                (PUTFIELD, className, priKeyField.name,
+                 priKeyField.type.getDescriptor());
+        } else if (hasPersistentSuperclass) {
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitVarInsn(ALOAD, 1);
+            mv.visitVarInsn(ALOAD, 2);
+            mv.visitMethodInsn
+                (INVOKESPECIAL, superclassName, "bdbSetPriField",
+                 "(Ljava/lang/Object;Ljava/lang/Object;)V");
+        }
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(3, 3);
         mv.visitEnd();
     }
 
@@ -1463,6 +1568,7 @@ class BytecodeEnhancer extends ClassAdapter {
     static boolean isSimpleRefType(String className) {
         return (PRIMITIVE_WRAPPERS.containsKey(className) ||
                 className.equals(BigInteger.class.getName()) ||
+                className.equals(BigDecimal.class.getName()) ||
                 className.equals(Date.class.getName()) ||
                 className.equals(String.class.getName()));
     }
@@ -1525,7 +1631,7 @@ class BytecodeEnhancer extends ClassAdapter {
         return NOT_PERSISTENT;
     }
 
-    private static class FieldInfo implements FieldVisitor {
+    private static class FieldInfo extends FieldVisitor {
 
         FieldVisitor parent;
         String name;
@@ -1534,15 +1640,20 @@ class BytecodeEnhancer extends ClassAdapter {
         boolean isPriKey;
         boolean isSecKey;
         boolean isTransient;
+        boolean isString = false;
 
         FieldInfo(FieldVisitor parent,
                   String name,
                   String desc,
                   boolean isTransient) {
+            super(ASM4);
             this.parent = parent;
             this.name = name;
             this.isTransient = isTransient;
             type = Type.getType(desc);
+            if (type.getClassName().equals(String.class.getName())) {
+                isString = true;
+            }
         }
 
         public AnnotationVisitor visitAnnotation(String desc,
@@ -1609,11 +1720,12 @@ class BytecodeEnhancer extends ClassAdapter {
         }
     }
 
-    private static abstract class AnnotationInfo implements AnnotationVisitor {
+    private static abstract class AnnotationInfo extends AnnotationVisitor {
 
         AnnotationVisitor parent;
 
         AnnotationInfo(AnnotationVisitor parent) {
+            super(ASM4);
             this.parent = parent;
         }
 

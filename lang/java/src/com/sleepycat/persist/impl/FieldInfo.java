@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -10,6 +10,8 @@ package com.sleepycat.persist.impl;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -113,11 +115,13 @@ class FieldInfo implements RawField, Serializable, Comparable<FieldInfo> {
     private String className;
     private Format format;
     private transient Class cls;
+    private transient Field field;
 
     private FieldInfo(Field field) {
         name = field.getName();
         cls = field.getType();
         className = cls.getName();
+        this.field = field;
     }
 
     void collectRelatedFormats(Catalog catalog,
@@ -129,6 +133,49 @@ class FieldInfo implements RawField, Serializable, Comparable<FieldInfo> {
          * that it may be replaced by the initialize method.  [#16233]
          */
         format = catalog.createFormat(cls, newFormats);
+        
+        /*
+         * If the created format is a NonPersistentFormat, and the field is a
+         * map or a collection, then the generic types of this field are 
+         * ParameterizedTypes, e.g., Map<MyClass1, MyClass2>, so the formats of 
+         * the generic types for this field, i.e., MyClass1 and MyClass2 will 
+         * be created here. [#19377]
+         */
+        Class cls = field.getType();
+        if (format instanceof NonPersistentFormat &&
+            (java.util.Map.class.isAssignableFrom(cls) ||
+             java.util.Collection.class.isAssignableFrom(cls))) {
+            if (field != null && 
+                field.getGenericType() instanceof ParameterizedType) {
+                collectParameterizedTypeFormats(catalog, newFormats, 
+                    (ParameterizedType)field.getGenericType());
+            }
+        }
+    }
+    
+    /*
+     * Create formats for the parameterized types, e.g., will create formats 
+     * for MyClass1 and MyClass2 when meeting Map<MyClass1, Set<MyClass2>>, 
+     * where MyClass1 and MyClass2 are instance of java.lang.Class.
+     */
+    private void 
+        collectParameterizedTypeFormats(Catalog catalog,
+                                        Map<String, Format> newFormats,
+                                        ParameterizedType parameType) {
+        Type[] types = parameType.getActualTypeArguments();
+        for (int i = 0; i < types.length; i++) {
+            if (types[i] instanceof ParameterizedType) {
+                collectParameterizedTypeFormats(catalog, newFormats, 
+                                                (ParameterizedType)types[i]);
+            } else if (types[i] instanceof Class) {
+
+                /* 
+                 * Only use Catalog.createFormat to create the format for the
+                 * class which is instance of java.lang.class.
+                 */
+                catalog.createFormat((Class)types[i], newFormats);
+            }
+        }
     }
 
     void migrateFromBeta(Map<String, Format> formatMap) {
@@ -156,10 +203,10 @@ class FieldInfo implements RawField, Serializable, Comparable<FieldInfo> {
         }
     }
 
-    Class getFieldClass() {
+    Class getFieldClass(Catalog catalog) {
         if (cls == null) {
             try {
-                cls = SimpleCatalog.classForName(className);
+                cls = catalog.resolveClass(className);
             } catch (ClassNotFoundException e) {
                 throw DbCompat.unexpectedException(e);
             }

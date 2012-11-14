@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -48,6 +48,22 @@ DB_ENV-&gt;rep_set_priority(DB_ENV *env, u_int32_t priority);  </pre>
          value of 0 indicates that this environment cannot be a replication
          group master.
     </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+            The
+            <a class="xref" href="repmgrset_ack_policy.html" title="DB_ENV-&gt;repmgr_set_ack_policy()">DB_ENV-&gt;repmgr_set_ack_policy()</a>
+            method describes <span class="emphasis"><em>electable peers</em></span>, which
+            are replication sites with a non-zero priority. For some
+            acknowledgement policies, Replication Manager's computation of
+            the durability result for each new update transaction is
+            sensitive to whether each site in the group is a peer.
+            Therefore, if you change a site's priority from a non-zero
+            value to <code class="literal">0</code>, or from <code class="literal">0</code> to
+            a non-zero value, this can invalidate the durability result of
+            previously committed transactions.
+        </p>
+      </div>
       <p>
          The database environment's replication subsystem may also be
          configured using the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.  The syntax
@@ -83,7 +99,7 @@ DB_ENV-&gt;rep_set_priority(DB_ENV *env, u_int32_t priority);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3749324"></a>Parameters</h3>
+              <h3 class="title"><a id="idp62128520"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -91,7 +107,7 @@ DB_ENV-&gt;rep_set_priority(DB_ENV *env, u_int32_t priority);  </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3749330"></a>priority</h4>
+                <h4 class="title"><a id="idp62127872"></a>priority</h4>
               </div>
             </div>
           </div>
@@ -108,7 +124,7 @@ DB_ENV-&gt;rep_set_priority(DB_ENV *env, u_int32_t priority);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3749380"></a>Class</h3>
+              <h3 class="title"><a id="idp62095360"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -120,7 +136,7 @@ DB_ENV-&gt;rep_set_priority(DB_ENV *env, u_int32_t priority);  </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3748669"></a>See Also</h3>
+              <h3 class="title"><a id="idp62101816"></a>See Also</h3>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 /***
  * ASM: a very small and fast Java bytecode manipulation framework
- * Copyright (c) 2000-2005 INRIA, France Telecom
+ * Copyright (c) 2000-2011 INRIA, France Telecom
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -117,12 +117,12 @@ public class Attribute {
      *         bytes.
      */
     protected Attribute read(
-        ClassReader cr,
-        int off,
-        int len,
-        char[] buf,
-        int codeOff,
-        Label[] labels)
+        final ClassReader cr,
+        final int off,
+        final int len,
+        final char[] buf,
+        final int codeOff,
+        final Label[] labels)
     {
         Attribute attr = new Attribute(type);
         attr.value = new byte[len];
@@ -151,11 +151,11 @@ public class Attribute {
      * @return the byte array form of this attribute.
      */
     protected ByteVector write(
-        ClassWriter cw,
-        byte[] code,
-        int len,
-        int maxStack,
-        int maxLocals)
+        final ClassWriter cw,
+        final byte[] code,
+        final int len,
+        final int maxStack,
+        final int maxLocals)
     {
         ByteVector v = new ByteVector();
         v.data = value;

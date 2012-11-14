@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -41,7 +41,7 @@
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
 
 int
-DbEnv::set_memory_init(DB_MEM_CONFIG object, u_int32_t count); </pre>
+DbEnv::set_memory_init(DB_MEM_CONFIG type, u_int32_t count); </pre>
       <p>
         This method sets the number of objects to allocate and initialize
         for a specified structure when an environment is created.  Doing
@@ -74,7 +74,7 @@ DbEnv::set_memory_init(DB_MEM_CONFIG object, u_int32_t count); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3605780"></a>Parameters</h3>
+              <h3 class="title"><a id="idp2155272"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -82,12 +82,12 @@ DbEnv::set_memory_init(DB_MEM_CONFIG object, u_int32_t count); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3605791"></a>struct</h4>
+                <h4 class="title"><a id="idp2155824"></a>type</h4>
               </div>
             </div>
           </div>
           <p>
-                The <span class="bold"><strong>struct</strong></span> parameter must be 
+                The <span class="bold"><strong>type</strong></span> parameter must be 
                 set to one of the following:        
             </p>
           <div class="itemizedlist">
@@ -173,7 +173,7 @@ DbEnv::set_memory_init(DB_MEM_CONFIG object, u_int32_t count); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3605653"></a>count</h4>
+                <h4 class="title"><a id="idp2136520"></a>count</h4>
               </div>
             </div>
           </div>
@@ -196,7 +196,7 @@ DbEnv::set_memory_init(DB_MEM_CONFIG object, u_int32_t count); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3605441"></a>Errors</h3>
+              <h3 class="title"><a id="idp2152024"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -214,7 +214,7 @@ DbEnv::set_memory_init(DB_MEM_CONFIG object, u_int32_t count); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3605024"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp2153896"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -228,7 +228,7 @@ DbEnv::set_memory_init(DB_MEM_CONFIG object, u_int32_t count); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3604114"></a>Class</h3>
+              <h3 class="title"><a id="idp2122736"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -240,7 +240,7 @@ DbEnv::set_memory_init(DB_MEM_CONFIG object, u_int32_t count); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3605871"></a>See Also</h3>
+              <h3 class="title"><a id="idp2140416"></a>See Also</h3>
             </div>
           </div>
         </div>

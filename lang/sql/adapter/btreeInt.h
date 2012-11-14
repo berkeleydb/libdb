@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2012, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 
 #include <errno.h>
@@ -10,8 +10,8 @@
 #include <db.h>
 
 #ifdef BDBSQL_SHARE_PRIVATE
-/* BDBSQL_SHARE_PRIVATE implies BDBSQL_OMIT_SHARING */
-#define	BDBSQL_OMIT_SHARING
+/* BDBSQL_SHARE_PRIVATE implies BDBSQL_SINGLE_PROCESS */
+#define	BDBSQL_SINGLE_PROCESS
 #endif
 
 #define	INTKEY_BUFSIZE	(sizeof(i64) + 2) /* We add 2 bytes to negatives. */
@@ -61,13 +61,17 @@
 #ifndef INT64_MAX
 #define	INT64_MAX ((((i64)0x7fffffff) << 32) | 0xffffffff)
 #endif
+#ifndef GIGABYTE
+#define	GIGABYTE 1073741824
+#endif
 
-#define	MAP_ERR(rc, ret)					\
-	((rc != SQLITE_OK) ? rc : (ret == 0) ? SQLITE_OK : dberr2sqlite(ret))
-
-#define	MAP_ERR_LOCKED(rc, ret)					\
+#define	MAP_ERR(rc, ret, p)					\
 	((rc != SQLITE_OK) ? rc : (ret == 0) ? SQLITE_OK :	\
-	    dberr2sqlitelocked(ret))
+	    dberr2sqlite(ret, p))
+
+#define	MAP_ERR_LOCKED(rc, ret, p)					\
+	((rc != SQLITE_OK) ? rc : (ret == 0) ? SQLITE_OK :	\
+	    dberr2sqlitelocked(ret, p))
 
 /* Declare custom functions added by Berkeley DB to SQL. */
 int add_sequence_functions(sqlite3 *db);
@@ -156,8 +160,9 @@ typedef enum { LOCKMODE_NONE, LOCKMODE_READ, LOCKMODE_WRITE } lock_mode_t;
 typedef enum { NO_LSN_RESET, LSN_RESET_FILE } lsn_reset_t;
 
 /* Declarations for functions that are shared by adapter source files. */
+int btreeBeginTransInternal(Btree *p, int wrflag);
 void *btreeCreateIndexKey(BtCursor *pCur);
-int btreeGetErrorFile(const BtShared *pBt, char *fname);
+void btreeGetErrorFile(const BtShared *pBt, char *fname);
 Index *btreeGetIndex(Btree *p, int iTable);
 int btreeGetPageCount(Btree *p, int **tables, u32 *pageCount, DB_TXN *txn);
 int btreeGetUserTable(Btree *p, DB_TXN *pTxn, DB **pDb, int iTable);
@@ -165,13 +170,14 @@ int btreeGetTables(Btree *, int **, DB_TXN *);
 int btreeLockSchema(Btree *p, lock_mode_t lockMode);
 int btreeOpenEnvironment(Btree *p, int needLock);
 int btreeOpenMetaTables(Btree *p, int *pCreating);
+int btreeReopenEnvironment(Btree *p, int removingRep);
 int btreeUpdateBtShared(Btree *p, int needLock);
 #ifndef SQLITE_OMIT_VACUUM
 int btreeIncrVacuum(Btree *p, u_int32_t *truncatedPages);
 int btreeVacuum(Btree *p, char **pzErrMsg);
 void btreeFreeVacuumInfo(Btree *p);
 #endif
-int dberr2sqlite(int);
+int dberr2sqlite(int, Btree *p);
 int closeDB(Btree *p, DB *dbp, u_int32_t flags);
 void *allocateCursorIndex(BtCursor *pCur, u_int32_t amount);
 int splitIndexKey(BtCursor *pCur);
@@ -194,6 +200,10 @@ int getHostPort(const char *hpstr, char **host, u_int *port);
 int setRepVerboseFile(BtShared *pBt, DB_ENV *dbenv, const char *fname,
     char *msg);
 int unsetRepVerboseFile(BtShared *pBt, DB_ENV *dbenv, char **msg);
+/* Returns the thread id as a void *, which needs to be freed. */
+void *getThreadID(sqlite3 *db);
+/* Checks if the thread id item identifies the current thread. */
+int isCurrentThread(void *tid);
 
 #define	CLEAR_PWD(pBt)	do {						\
 	memset((pBt)->encrypt_pwd, 0xff, (pBt)->encrypt_pwd_len);	\
@@ -228,6 +238,7 @@ struct BtShared {
 	char *short_name; /* A pointer into orig_name memory. */
 	char *orig_name;
 	char *err_file;
+	char *err_msg;
 	u_int8_t fileid[DB_FILE_ID_LEN];
 	char *encrypt_pwd;
 	lsn_reset_t lsn_reset;
@@ -287,6 +298,8 @@ struct BtShared {
 	int repStartMaster; /* Start replication site as initial master? */
 	FILE *repVerbFile; /* File for replication verbose output. */
 	int repStarted; /* Replication is configured and started. */
+	int repForceRecover; /* Force recovery on next open environment. */
+	int single_process; /* If non-zero, keep all environment on the heap. */
 };
 
 struct BtCursor {
@@ -304,10 +317,11 @@ struct BtCursor {
 	int error, lastRes;
 	i64 cachedRowid, savedIntKey, lastKey;
 	DBT key, data, index;
-	u8 nKeyBuf[INTKEY_BUFSIZE];
+	i64 nKey;
 	u8 indexKeyBuf[CURSOR_BUFSIZE];
 	DBT multiData;
 	void *multiGetPtr, *multiPutPtr;
+	void *threadID;
 	int skipMulti;
 	BtCursor *next;
 };
@@ -372,3 +386,48 @@ typedef enum {
 /* Utility functions. */
 void log_msg(loglevel_t level, const char *fmt, ...);
 #endif
+
+/* 
+ * Common functions for internal DBSQL btree components (btree.c, vacuum.c, etc)
+ */ 
+int btreeFindOrCreateDataTable(Btree *, int *, CACHED_DB **, int); 
+int btreeGetKeyInfo(Btree *p, int iTable, KeyInfo **pKeyInfo); 
+int btreeTableNameToId(const char *subdb, int len, int *pid); 
+
+/* 
+ * Common macros for internal DBSQL btree components (btree.c, vacuum.c, etc)
+ */ 
+#define	pDbEnv		(pBt->dbenv)
+#define	pMetaDb		(pBt->metadb)
+#define	pTablesDb	(pBt->tablesdb)
+#define	pFamilyTxn	(p->family_txn)
+#define	pReadTxn	(p->read_txn)
+#define	pMainTxn	(p->main_txn)
+#define	pSavepointTxn	(p->savepoint_txn)
+
+#ifdef BDBSQL_FILE_PER_TABLE
+#define	FIX_TABLENAME(pBt, fileName, tableName) do {		\
+	if (pBt->dbStorage == DB_STORE_NAMED) {			\
+		fileName = tableName;				\
+	} else							\
+		fileName = pBt->short_name;			\
+} while (0)
+#else
+#define	FIX_TABLENAME(pBt, fileName, tableName) do {		\
+	fileName = pBt->short_name;				\
+} while (0)
+#endif
+
+#define	GET_AUTO_COMMIT(pBt, txn) (((pBt)->transactional &&	\
+	(!(txn) || (txn) == pFamilyTxn)) ? DB_AUTO_COMMIT : 0)
+
+/*
+ * If an update occurs while this Btree is also performing backup then
+ * increase the updateDuringBackup counter.  This value is checked before
+ * and after each backup step, and if it has increase then the backup
+ * process is reset.
+ */
+#define	UPDATE_DURING_BACKUP(p)  \
+    if (p->nBackup > 0)     \
+	p->updateDuringBackup++;
+

@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -545,7 +545,8 @@ public class RepQuoteExampleGSG <strong class="userinput"><code> implements Even
                 highest priority will become the master.
         </p>
         <pre class="programlisting">&gt; mkdir env1
-&gt; java db.repquote.RepQuoteExampleGSG -h env1 -L localhost:8080 -p 10
+&gt; java db.repquote_gsg.RepQuoteExampleGSG -h env1 -L localhost:8080 \
+-p 10
 No stock database yet available.
 No stock database yet available.  </pre>
         <p>
@@ -556,7 +557,7 @@ No stock database yet available.  </pre>
         port of the other replication process:
 </p>
         <pre class="programlisting">&gt; mkdir env2
-&gt; java db.repquote.RepQuoteExampleGSG -h env2 -l localhost:8081 \
+&gt; java db.repquote_gsg.RepQuoteExampleGSG -h env2 -l localhost:8081 \
 -r localhost:8080 -p 20</pre>
         <p>
         After a short pause, the second process should display the master

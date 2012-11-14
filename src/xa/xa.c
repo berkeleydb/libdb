@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1998, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -116,8 +116,13 @@ __xa_get_txn(env, xid, td, txnp, flags, ending)
 		DB_ASSERT(env, ending == 0);
 		if (LF_ISSET(TMJOIN | TMRESUME))
 			ret = XAER_NOTA;
+		/*
+		 * The snapshot flag is ignored if the database is not
+		 * enabled for MVCC.  This allows MVCC to be used
+		 * with XA transactions.
+		 */
 		else if ((ret = __txn_begin(env,
-		    ip, NULL, txnp, DB_TXN_NOWAIT)) != 0) {
+		    ip, NULL, txnp, DB_TXN_NOWAIT|DB_TXN_SNAPSHOT)) != 0) {
 			dbenv->err(dbenv, ret, DB_STR("4540",
 			    "xa_get_txn: transaction begin failed"));
 			ret = XAER_RMERR;
@@ -137,7 +142,7 @@ __xa_get_txn(env, xid, td, txnp, flags, ending)
 			td->xa_br_status = TXN_XA_ACTIVE;
 		}
 	} else {
-		/* If we get here, the tranaction exists. */
+		/* If we get here, the transaction exists. */
 		if (ending == 0 && !LF_ISSET(TMRESUME) && !LF_ISSET(TMJOIN)) {
 			ret = XAER_DUPID;
 			goto out;
@@ -847,7 +852,7 @@ __db_xa_commit(xid, rmid, arg_flags)
 		return (ret);
 
 	/*
-	 * Because this transaction is curently associated, commit will not free
+	 * Because this transaction is currently associated, commit will not free
 	 * the transaction structure, which is good, because we need to do that
 	 * in xa_put_txn below.
 	 */

@@ -1,6 +1,6 @@
 /***
  * ASM: a very small and fast Java bytecode manipulation framework
- * Copyright (c) 2000-2005 INRIA, France Telecom
+ * Copyright (c) 2000-2011 INRIA, France Telecom
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,15 +30,53 @@
 package com.sleepycat.asm;
 
 /**
- * A visitor to visit a Java class. The methods of this interface must be called
+ * A visitor to visit a Java class. The methods of this class must be called
  * in the following order: <tt>visit</tt> [ <tt>visitSource</tt> ] [
  * <tt>visitOuterClass</tt> ] ( <tt>visitAnnotation</tt> |
- * <tt>visitAttribute</tt> )* (<tt>visitInnerClass</tt> |
+ * <tt>visitAttribute</tt> )* ( <tt>visitInnerClass</tt> |
  * <tt>visitField</tt> | <tt>visitMethod</tt> )* <tt>visitEnd</tt>.
  *
  * @author Eric Bruneton
  */
-public interface ClassVisitor {
+public abstract class ClassVisitor {
+
+    /**
+     * The ASM API version implemented by this visitor. The value of this field
+     * must be one of {@link Opcodes#ASM4}.
+     */
+    protected final int api;
+
+    /**
+     * The class visitor to which this visitor must delegate method calls. May
+     * be null.
+     */
+    protected ClassVisitor cv;
+
+    /**
+     * Constructs a new {@link ClassVisitor}.
+     *
+     * @param api the ASM API version implemented by this visitor. Must be one
+     *        of {@link Opcodes#ASM4}.
+     */
+    public ClassVisitor(final int api) {
+        this(api, null);
+    }
+
+    /**
+     * Constructs a new {@link ClassVisitor}.
+     *
+     * @param api the ASM API version implemented by this visitor. Must be one
+     *        of {@link Opcodes#ASM4}.
+     * @param cv the class visitor to which this visitor must delegate method
+     *        calls. May be null.
+     */
+    public ClassVisitor(final int api, final ClassVisitor cv) {
+        /*if (api != Opcodes.ASM4) {
+            throw new IllegalArgumentException();
+        }*/
+        this.api = api;
+        this.cv = cv;
+    }
 
     /**
      * Visits the header of the class.
@@ -59,13 +97,18 @@ public interface ClassVisitor {
      *        {@link Type#getInternalName() getInternalName}). May be
      *        <tt>null</tt>.
      */
-    void visit(
+    public void visit(
         int version,
         int access,
         String name,
         String signature,
         String superName,
-        String[] interfaces);
+        String[] interfaces)
+    {
+        if (cv != null) {
+            cv.visit(version, access, name, signature, superName, interfaces);
+        }
+    }
 
     /**
      * Visits the source of the class.
@@ -76,7 +119,11 @@ public interface ClassVisitor {
      *        between source and compiled elements of the class. May be
      *        <tt>null</tt>.
      */
-    void visitSource(String source, String debug);
+    public void visitSource(String source, String debug) {
+        if (cv != null) {
+            cv.visitSource(source, debug);
+        }
+    }
 
     /**
      * Visits the enclosing class of the class. This method must be called only
@@ -90,23 +137,37 @@ public interface ClassVisitor {
      *        <tt>null</tt> if the class is not enclosed in a method of its
      *        enclosing class.
      */
-    void visitOuterClass(String owner, String name, String desc);
+    public void visitOuterClass(String owner, String name, String desc) {
+        if (cv != null)  {
+            cv.visitOuterClass(owner, name, desc);
+        }
+    }
 
     /**
      * Visits an annotation of the class.
      *
      * @param desc the class descriptor of the annotation class.
      * @param visible <tt>true</tt> if the annotation is visible at runtime.
-     * @return a non null visitor to visit the annotation values.
+     * @return a visitor to visit the annotation values, or <tt>null</tt> if
+     *         this visitor is not interested in visiting this annotation.
      */
-    AnnotationVisitor visitAnnotation(String desc, boolean visible);
+    public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
+        if (cv != null) {
+            return cv.visitAnnotation(desc, visible);
+        }
+        return null;
+    }
 
     /**
      * Visits a non standard attribute of the class.
      *
      * @param attr an attribute.
      */
-    void visitAttribute(Attribute attr);
+    public void visitAttribute(Attribute attr) {
+        if (cv != null) {
+            cv.visitAttribute(attr);
+        }
+    }
 
     /**
      * Visits information about an inner class. This inner class is not
@@ -116,18 +177,23 @@ public interface ClassVisitor {
      *        {@link Type#getInternalName() getInternalName}).
      * @param outerName the internal name of the class to which the inner class
      *        belongs (see {@link Type#getInternalName() getInternalName}). May
-     *        be <tt>null</tt>.
+     *        be <tt>null</tt> for not member classes.
      * @param innerName the (simple) name of the inner class inside its
      *        enclosing class. May be <tt>null</tt> for anonymous inner
      *        classes.
      * @param access the access flags of the inner class as originally declared
      *        in the enclosing class.
      */
-    void visitInnerClass(
+    public void visitInnerClass(
         String name,
         String outerName,
         String innerName,
-        int access);
+        int access)
+    {
+        if (cv != null) {
+            cv.visitInnerClass(name, outerName, innerName, access);
+        }
+    }
 
     /**
      * Visits a field of the class.
@@ -152,12 +218,18 @@ public interface ClassVisitor {
      *         <tt>null</tt> if this class visitor is not interested in
      *         visiting these annotations and attributes.
      */
-    FieldVisitor visitField(
+    public FieldVisitor visitField(
         int access,
         String name,
         String desc,
         String signature,
-        Object value);
+        Object value)
+    {
+        if (cv != null) {
+            return cv.visitField(access, name, desc, signature, value);
+        }
+        return null;
+    }
 
     /**
      * Visits a method of the class. This method <i>must</i> return a new
@@ -179,17 +251,27 @@ public interface ClassVisitor {
      *         if this class visitor is not interested in visiting the code of
      *         this method.
      */
-    MethodVisitor visitMethod(
+    public MethodVisitor visitMethod(
         int access,
         String name,
         String desc,
         String signature,
-        String[] exceptions);
+        String[] exceptions)
+    {
+        if (cv != null) {
+            return cv.visitMethod(access, name, desc, signature, exceptions);
+        }
+        return null;
+    }
 
     /**
      * Visits the end of the class. This method, which is the last one to be
      * called, is used to inform the visitor that all the fields and methods of
      * the class have been visited.
      */
-    void visitEnd();
+    public void visitEnd() {
+        if (cv != null) {
+            cv.visitEnd();
+        }
+    }
 }

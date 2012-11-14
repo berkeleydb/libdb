@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 
 #include "db_config.h"
@@ -14,6 +14,9 @@
 
 static int __bam_compress_marshal_data __P((DB *, const DBT *, DBT *));
 static int __bam_compress_set_dbt __P((DB *, DBT *, const void *, u_int32_t));
+static int __bam_compress_check_sort_multiple_key __P((DB *, DBT *));
+static int __bam_compress_check_sort_multiple __P((DB *, DBT *, DBT *));
+static int __bam_compress_check_sort_multiple_keyonly __P((DB *, DBT *));
 static int __bamc_compress_del_and_get_next __P((DBC *, DBT *, DBT *));
 static int __bamc_compress_get_bothc __P((DBC *, DBT *, u_int32_t));
 static int __bamc_compress_get_multiple_key __P((DBC *, DBT *, u_int32_t));
@@ -1574,7 +1577,7 @@ __bamc_compress_get_prev(dbc, flags)
 			tofind = (u_int32_t)-1;
 		} else if (cp->prevcursor == 0) {
 			/*
-			 * The current key is at the begining of the
+			 * The current key is at the beginning of the
 			 * compressed block, so get the last key from the
 			 * previous block
 			 */
@@ -1674,7 +1677,7 @@ __bamc_compress_get_prev_nodup(dbc, flags)
 	/*
 	 * Linear search for the next non-duplicate key - this is
 	 * especially inefficient for DB_PREV_NODUP, since we have to
-	 * decompress from the begining of the chunk to find previous
+	 * decompress from the beginning of the chunk to find previous
 	 * key/data pairs. Instead we could check for key equality as we
 	 * decompress.
 	 */
@@ -1744,9 +1747,6 @@ __bamc_compress_get_next_dup(dbc, key, flags)
 	dbp = dbc->dbp;
 	t = (BTREE *)dbp->bt_internal;
 
-	if (cp->currentKey == 0)
-		return (EINVAL);
-
 	if (F_ISSET(cp, C_COMPRESS_DELETED)) {
 		/*
 		 * Check that the next entry has the same key as the
@@ -1757,7 +1757,8 @@ __bamc_compress_get_next_dup(dbc, key, flags)
 		F_CLR(cp, C_COMPRESS_DELETED);
 		return (t->bt_compare(dbp,
 		    cp->currentKey, &cp->del_key) == 0 ? 0 : DB_NOTFOUND);
-	}
+	} else if (cp->currentKey == 0)
+		return (EINVAL);
 
 	/* Check that the next entry has the same key as the previous entry */
 	ret = __bamc_next_decompress(dbc);
@@ -2270,6 +2271,8 @@ __bamc_compress_iput(dbc, key, data, flags)
 
 	multi = LF_ISSET(DB_MULTIPLE|DB_MULTIPLE_KEY);
 	LF_CLR(DB_MULTIPLE|DB_MULTIPLE_KEY);
+	if (flags == 0)
+		flags = DB_KEYLAST;
 
 	switch (flags) {
 	case DB_CURRENT:
@@ -2336,11 +2339,17 @@ __bamc_compress_iput(dbc, key, data, flags)
 				    dbc, key, data, DB_GET_BOTH_RANGE, 0);
 			break;
 		case DB_MULTIPLE:
+			if ((ret = __bam_compress_check_sort_multiple(dbp,
+			    key, data)) != 0)
+				goto end;
 			__bam_cs_create_multiple(&stream, key, data);
 			ret = __bamc_compress_merge_insert(
 			    dbc, &stream, &key->doff, flags);
 			break;
 		case DB_MULTIPLE_KEY:
+			if ((ret = __bam_compress_check_sort_multiple_key(dbp,
+			    key)) != 0)
+				goto end;
 			__bam_cs_create_multiple_key(&stream, key);
 			ret = __bamc_compress_merge_insert(
 			    dbc, &stream, &key->doff, flags);
@@ -2537,6 +2546,7 @@ __bamc_compress_ibulk_del(dbc, key, flags)
 	DBT *key;
 	u_int32_t flags;
 {
+	int ret;
 	BTREE_COMPRESS_STREAM stream;
 
 	switch (flags) {
@@ -2544,10 +2554,16 @@ __bamc_compress_ibulk_del(dbc, key, flags)
 		__bam_cs_create_single_keyonly(&stream, key);
 		return (__bamc_compress_merge_delete_dups(dbc, &stream, NULL));
 	case DB_MULTIPLE:
+		if ((ret = __bam_compress_check_sort_multiple_keyonly(
+		    dbc->dbp, key)) != 0)
+			return (ret);
 		__bam_cs_create_multiple_keyonly(&stream, key);
 		return (__bamc_compress_merge_delete_dups(
 		    dbc, &stream, &key->doff));
 	case DB_MULTIPLE_KEY:
+		if ((ret = __bam_compress_check_sort_multiple_key(
+		    dbc->dbp, key)) != 0)
+			return (ret);
 		__bam_cs_create_multiple_key(&stream, key);
 		return (__bamc_compress_merge_delete(dbc, &stream, &key->doff));
 	default:
@@ -3018,6 +3034,140 @@ err:
 	}
 
 	return (ret);
+}
+
+/*
+ * Check if the key/data pairs in the bulk buffer are sorted.
+ */
+static int
+__bam_compress_check_sort_multiple_key(dbp, key)
+	DB *dbp;
+	DBT *key;
+{
+#ifdef DIAGNOSTIC
+	void *kptr;
+	DBT key1, data1, key2, data2;
+
+	memset(&key1, 0, sizeof(DBT));
+	memset(&data1, 0, sizeof(DBT));
+	memset(&key2, 0, sizeof(DBT));
+	memset(&data2, 0, sizeof(DBT));
+
+	DB_MULTIPLE_INIT(kptr, key);
+	DB_MULTIPLE_KEY_NEXT(kptr, key,
+	    key2.data, key2.size, data2.data, data2.size);
+	/* No key/data pair in the bulk buffer */
+	if (kptr == NULL)
+		return (0);
+
+	for (;;) {
+		DB_MULTIPLE_KEY_NEXT(kptr, key,
+		    key1.data, key1.size, data1.data, data1.size);
+		if (kptr == NULL)
+			break;
+		if (__db_compare_both(dbp, &key1, &data1, &key2, &data2) < 0) {
+			__db_errx(dbp->env, DB_STR("1170",
+		    "The key/data pairs in the buffer are not sorted."));
+			return (EINVAL);
+		}
+		key2.data = key1.data;
+		key2.size = key1.size;
+		data2.data = data1.data;
+		data2.size = data1.size;
+	}
+#else
+	COMPQUIET(dbp, NULL);
+	COMPQUIET(key, NULL);
+#endif
+	return (0);
+}
+
+/*
+ * Check if the key/data pairs in the bulk buffer are sorted.
+ */
+static int
+__bam_compress_check_sort_multiple(dbp, key, data)
+	DB *dbp;
+	DBT *key, *data;
+{
+#ifdef DIAGNOSTIC
+	void *kptr, *dptr;
+	DBT key1, data1, key2, data2;
+
+	memset(&key1, 0, sizeof(DBT));
+	memset(&data1, 0, sizeof(DBT));
+	memset(&key2, 0, sizeof(DBT));
+	memset(&data2, 0, sizeof(DBT));
+
+	DB_MULTIPLE_INIT(kptr, key);
+	DB_MULTIPLE_INIT(dptr, data);
+	DB_MULTIPLE_NEXT(kptr, key, key2.data, key2.size);
+	DB_MULTIPLE_NEXT(dptr, data, data2.data, data2.size);
+	/* No key/data pair in the bulk buffer */
+	if (kptr == NULL || dptr == NULL)
+		return (0);
+
+	for (;;) {
+		DB_MULTIPLE_NEXT(kptr, key, key1.data, key1.size);
+		DB_MULTIPLE_NEXT(dptr, data, data1.data, data1.size);
+		if (kptr == NULL || dptr == NULL)
+			break;
+		if (__db_compare_both(dbp, &key1, &data1, &key2, &data2) < 0) {
+			__db_errx(dbp->env, DB_STR("1171",
+		    "The key/data pairs in the buffer are not sorted."));
+			return (EINVAL);
+		}
+		key2.data = key1.data;
+		key2.size = key1.size;
+		data2.data = data1.data;
+		data2.size = data1.size;
+	}
+#else
+	COMPQUIET(dbp, NULL);
+	COMPQUIET(key, NULL);
+	COMPQUIET(data, NULL);
+#endif
+	return (0);
+}
+
+/*
+ * Check if the keys in the bulk buffer are sorted.
+ */
+static int
+__bam_compress_check_sort_multiple_keyonly(dbp, key)
+	DB *dbp;
+	DBT *key;
+{
+#ifdef DIAGNOSTIC
+	void *kptr;
+	DBT key1, key2;
+
+	memset(&key1, 0, sizeof(DBT));
+	memset(&key2, 0, sizeof(DBT));
+
+	DB_MULTIPLE_INIT(kptr, key);
+	DB_MULTIPLE_NEXT(kptr, key, key2.data, key2.size);
+	/* No DBT item in the bulk buffer */
+	if (kptr == NULL)
+		return (0);
+
+	for (;;) {
+		DB_MULTIPLE_NEXT(kptr, key, key1.data, key1.size);
+		if (kptr == NULL)
+			break;
+		if (__db_compare_both(dbp, &key1, NULL, &key2, NULL) < 0) {
+			__db_errx(dbp->env, DB_STR("1172",
+			    "The DBT items in the buffer are not sorted"));
+			return (EINVAL);
+		}
+		key2.data = key1.data;
+		key2.size = key1.size;
+	}
+#else
+	COMPQUIET(dbp, NULL);
+	COMPQUIET(key, NULL);
+#endif
+	return (0);
 }
 
 #endif

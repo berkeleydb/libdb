@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -85,8 +85,16 @@ public class StoreConfig implements Cloneable {
      * is opened.</p>
      */
     public StoreConfig setAllowCreate(boolean allowCreate) {
-        this.allowCreate = allowCreate;
+        setAllowCreateVoid(allowCreate);
         return this;
+    }
+    
+    /**
+     * @hidden
+     * The void return setter for use by Bean editors.
+     */
+    public void setAllowCreateVoid(boolean allowCreate) {
+        this.allowCreate = allowCreate;
     }
 
     /**
@@ -105,8 +113,16 @@ public class StoreConfig implements Cloneable {
      * is opened.</p>
      */
     public StoreConfig setExclusiveCreate(boolean exclusiveCreate) {
-        this.exclusiveCreate = exclusiveCreate;
+        setExclusiveCreateVoid(exclusiveCreate);
         return this;
+    }
+    
+    /**
+     * @hidden
+     * The void return setter for use by Bean editors.
+     */
+    public void setExclusiveCreateVoid(boolean exclusiveCreate) {
+        this.exclusiveCreate = exclusiveCreate;
     }
 
     /**
@@ -125,8 +141,16 @@ public class StoreConfig implements Cloneable {
      * transactional.</p>
      */
     public StoreConfig setTransactional(boolean transactional) {
-        this.transactional = transactional;
+        setTransactionalVoid(transactional);
         return this;
+    }
+    
+    /**
+     * @hidden
+     * The void return setter for use by Bean editors.
+     */
+    public void setTransactionalVoid(boolean transactional) {
+        this.transactional = transactional;
     }
 
     /**
@@ -145,8 +169,16 @@ public class StoreConfig implements Cloneable {
      * if the environment is read-only.</p>
      */
     public StoreConfig setReadOnly(boolean readOnly) {
-        this.readOnly = readOnly;
+        setReadOnlyVoid(readOnly);
         return this;
+    }
+    
+    /**
+     * @hidden
+     * The void return setter for use by Bean editors.
+     */
+    public void setReadOnlyVoid(boolean readOnly) {
+        this.readOnly = readOnly;
     }
 
     /**
@@ -169,7 +201,7 @@ public class StoreConfig implements Cloneable {
      * addition, if that secondary index defines a foreign key constraint, the
      * constraint will not be enforced.</p>
      *
-     * <p>The secondary index will be populated later when the {code
+     * <p>The secondary index will be populated later when the {@code
      * getSecondaryIndex} method is called for the first time for that index,
      * or when the store is closed and re-opened with this property set to
      * false and the primary index is obtained.  In either case, the secondary
@@ -185,8 +217,16 @@ public class StoreConfig implements Cloneable {
      * constraints during the load also provides more flexibility.</p>
      */
     public StoreConfig setSecondaryBulkLoad(boolean secondaryBulkLoad) {
-        this.secondaryBulkLoad = secondaryBulkLoad;
+        setSecondaryBulkLoadVoid(secondaryBulkLoad);
         return this;
+    }
+    
+    /**
+     * @hidden
+     * The void return setter for use by Bean editors.
+     */
+    public void setSecondaryBulkLoadVoid(boolean secondaryBulkLoad) {
+        this.secondaryBulkLoad = secondaryBulkLoad;
     }
 
     /**
@@ -203,8 +243,16 @@ public class StoreConfig implements Cloneable {
      * AnnotationModel} instance is used by default.</p>
      */
     public StoreConfig setModel(EntityModel model) {
-        this.model = model;
+        setModelVoid(model);
         return this;
+    }
+    
+    /**
+     * @hidden
+     * The void return setter for use by Bean editors.
+     */
+    public void setModelVoid(EntityModel model) {
+        this.model = model;
     }
 
     /**
@@ -235,8 +283,16 @@ public class StoreConfig implements Cloneable {
      * will be thrown when creating an {@link EntityStore}.</p>
      */
     public StoreConfig setMutations(Mutations mutations) {
-        this.mutations = mutations;
+        setMutationsVoid(mutations);
         return this;
+    }
+    
+    /**
+     * @hidden
+     * The void return setter for use by Bean editors.
+     */
+    public void setMutationsVoid(Mutations mutations) {
+        this.mutations = mutations;
     }
 
     /**
@@ -255,11 +311,19 @@ public class StoreConfig implements Cloneable {
      * @throws NullPointerException if a null parameter value is passed.
      */
     public StoreConfig setDatabaseNamer(DatabaseNamer databaseNamer) {
+        setDatabaseNamerVoid(databaseNamer);
+        return this;
+    }
+    
+    /**
+     * @hidden
+     * The void return setter for use by Bean editors.
+     */
+    public void setDatabaseNamerVoid(DatabaseNamer databaseNamer) {
         if (databaseNamer == null) {
             throw new NullPointerException();
         }
         this.databaseNamer = databaseNamer;
-        return this;
     }
 
     /**

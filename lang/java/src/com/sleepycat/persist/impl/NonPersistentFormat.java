@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -23,8 +23,8 @@ class NonPersistentFormat extends Format {
 
     private static final long serialVersionUID = -7488355830875148784L;
 
-    NonPersistentFormat(Class type) {
-        super(type);
+    NonPersistentFormat(Catalog catalog, Class type) {
+        super(catalog, type);
     }
 
     @Override

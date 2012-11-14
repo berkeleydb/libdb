@@ -1,12 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.bind.serial;
 
+import java.io.Closeable;
 import java.io.ObjectStreamClass;
 
 import com.sleepycat.db.DatabaseException;
@@ -32,7 +33,8 @@ import com.sleepycat.db.DatabaseException;
  *
  * @author Mark Hayes
  */
-public interface ClassCatalog {
+public interface ClassCatalog
+    {
 
     /**
      * Close a catalog database and release any cached resources.
@@ -69,4 +71,16 @@ public interface ClassCatalog {
      */
     public ObjectStreamClass getClassFormat(byte[] classID)
         throws DatabaseException, ClassNotFoundException;
+
+    /**
+     * Returns the ClassLoader to be used by bindings that use this catalog.
+     * The ClassLoader is used by {@link SerialBinding} to load classes whose
+     * description is stored in the catalog.
+     *
+     * <p>In BDB JE, the implementation of this method in {@link
+     * StoredClassCatalog} returns the ClassLoader property of the catalog
+     * database Environment.  This ensures that the Environment's ClassLoader
+     * property is used for loading all user-supplied classes.</p>
+     */
+    public ClassLoader getClassLoader();
 }

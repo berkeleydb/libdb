@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -18,6 +18,7 @@ import com.sleepycat.db.EventHandlerAdapter;
 import com.sleepycat.db.ReplicationConfig;
 import com.sleepycat.db.ReplicationHostAddress;
 import com.sleepycat.db.ReplicationManagerAckPolicy;
+import com.sleepycat.db.ReplicationManagerConnectionStatus;
 import com.sleepycat.db.ReplicationManagerSiteConfig;
 import com.sleepycat.db.ReplicationManagerSiteInfo;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
@@ -153,7 +154,7 @@ public class ConnectScript implements SimpleConnectTest.Ops {
                 }
             }
             assertNotNull("other port not in site list", inf);
-            if (inf.isConnected()) { return; }
+            if (inf.getConnectionStatus() == ReplicationManagerConnectionStatus.CONNECTED) { return; }
             Thread.sleep(1000);
         }
         fail("was not connected to remote site within " + pollLimit + " seconds");

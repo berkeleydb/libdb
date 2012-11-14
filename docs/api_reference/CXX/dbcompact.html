@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -63,7 +63,7 @@ Db::compact(DbTxn *txnid,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3559406"></a>Parameters</h3>
+              <h3 class="title"><a id="idm7211976"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -71,7 +71,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3559182"></a>txnid</h4>
+                <h4 class="title"><a id="idm7004472"></a>txnid</h4>
               </div>
             </div>
           </div>
@@ -102,7 +102,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3559822"></a>start</h4>
+                <h4 class="title"><a id="idm247344"></a>start</h4>
               </div>
             </div>
           </div>
@@ -121,7 +121,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3559919"></a>stop</h4>
+                <h4 class="title"><a id="idm7584288"></a>stop</h4>
               </div>
             </div>
           </div>
@@ -139,7 +139,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3559984"></a>c_data</h4>
+                <h4 class="title"><a id="idm1062184"></a>c_data</h4>
               </div>
             </div>
           </div>
@@ -262,7 +262,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3560133"></a>flags</h4>
+                <h4 class="title"><a id="idm1952256"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -312,7 +312,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3560432"></a>end</h4>
+                <h4 class="title"><a id="idm1598608"></a>end</h4>
               </div>
             </div>
           </div>
@@ -331,7 +331,7 @@ Db::compact(DbTxn *txnid,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3560399"></a>Errors</h3>
+              <h3 class="title"><a id="idm3463976"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -349,7 +349,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3560433"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idm3544888"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -367,13 +367,20 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3559996"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idm4100832"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
           <p>
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="Db::set_lk_exclusive()">Db::set_lk_exclusive()</a>
+                for more information.
             </p>
           <p>
                 <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
@@ -385,7 +392,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3560312"></a> <span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
+                <h4 class="title"><a id="idm4149472"></a> <span>DbRepHandleDeadException or</span> DB_REP_HANDLE_DEAD</h4>
               </div>
             </div>
           </div>
@@ -407,7 +414,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3560357"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
+                <h4 class="title"><a id="idm4549552"></a><span>DbDeadlockException or </span>DB_REP_LOCKOUT</h4>
               </div>
             </div>
           </div>
@@ -424,7 +431,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3557467"></a>EACCES</h4>
+                <h4 class="title"><a id="idm5334144"></a>EACCES</h4>
               </div>
             </div>
           </div>
@@ -436,7 +443,7 @@ Db::compact(DbTxn *txnid,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3560334"></a>EINVAL</h4>
+                <h4 class="title"><a id="idm4952928"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -449,7 +456,7 @@ Db::compact(DbTxn *txnid,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3560127"></a>Class</h3>
+              <h3 class="title"><a id="idm1561328"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -461,7 +468,7 @@ Db::compact(DbTxn *txnid,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3559203"></a>See Also</h3>
+              <h3 class="title"><a id="idm5746688"></a>See Also</h3>
             </div>
           </div>
         </div>

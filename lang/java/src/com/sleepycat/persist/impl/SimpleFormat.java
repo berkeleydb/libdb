@@ -1,13 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.impl;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Date;
 import java.util.Map;
@@ -31,8 +32,8 @@ public abstract class SimpleFormat extends Format {
     private final boolean primitive;
     private SimpleFormat wrapperFormat;
 
-    SimpleFormat(Class type, boolean primitive) {
-        super(type);
+    SimpleFormat(Catalog catalog, Class type, boolean primitive) {
+        super(catalog, type);
         this.primitive = primitive;
     }
 
@@ -78,7 +79,9 @@ public abstract class SimpleFormat extends Format {
 
     /* -- Begin methods to be overridden by primitive formats only. -- */
 
-    Object newPrimitiveArray(int len, EntityInput input) {
+    Object newPrimitiveArray(int len, EntityInput input)
+        throws RefreshException {
+
         throw DbCompat.unexpectedState();
     }
 
@@ -94,7 +97,7 @@ public abstract class SimpleFormat extends Format {
      * @throws IllegalAccessException from subclasses.
      */
     void readPrimitiveField(Object o, EntityInput input, Field field)
-        throws IllegalAccessException {
+        throws IllegalAccessException, RefreshException {
 
         throw DbCompat.unexpectedState();
     }
@@ -130,8 +133,9 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = -7724949525068533451L;
 
-        FBool(boolean primitive) {
-            super(primitive ? Boolean.TYPE : Boolean.class, primitive);
+        FBool(Catalog catalog, boolean primitive) {
+            super(catalog, primitive ? Boolean.TYPE : Boolean.class,
+                  primitive);
         }
 
         @Override
@@ -140,7 +144,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return Boolean.valueOf(input.readBoolean());
         }
 
@@ -160,7 +166,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        Object newPrimitiveArray(int len, EntityInput input) {
+        Object newPrimitiveArray(int len, EntityInput input)
+            throws RefreshException {
+
             boolean[] a = new boolean[len];
             for (int i = 0; i < len; i += 1) {
                 a[i] = input.readBoolean();
@@ -185,7 +193,7 @@ public abstract class SimpleFormat extends Format {
 
         @Override
         void readPrimitiveField(Object o, EntityInput input, Field field)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.setBoolean(o, input.readBoolean());
         }
@@ -202,8 +210,8 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = 3651752958101447257L;
 
-        FByte(boolean primitive) {
-            super(primitive ? Byte.TYPE : Byte.class, primitive);
+        FByte(Catalog catalog, boolean primitive) {
+            super(catalog, primitive ? Byte.TYPE : Byte.class, primitive);
         }
 
         @Override
@@ -212,7 +220,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return Byte.valueOf(input.readByte());
         }
 
@@ -232,7 +242,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        Object newPrimitiveArray(int len, EntityInput input) {
+        Object newPrimitiveArray(int len, EntityInput input)
+            throws RefreshException {
+
             byte[] a = new byte[len];
             for (int i = 0; i < len; i += 1) {
                 a[i] = input.readByte();
@@ -257,7 +269,7 @@ public abstract class SimpleFormat extends Format {
 
         @Override
         void readPrimitiveField(Object o, EntityInput input, Field field)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.setByte(o, input.readByte());
         }
@@ -279,8 +291,8 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = -4909138198491785624L;
 
-        FShort(boolean primitive) {
-            super(primitive ? Short.TYPE : Short.class, primitive);
+        FShort(Catalog catalog, boolean primitive) {
+            super(catalog, primitive ? Short.TYPE : Short.class, primitive);
         }
 
         @Override
@@ -289,7 +301,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return Short.valueOf(input.readShort());
         }
 
@@ -310,7 +324,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        Object newPrimitiveArray(int len, EntityInput input) {
+        Object newPrimitiveArray(int len, EntityInput input)
+            throws RefreshException {
+
             short[] a = new short[len];
             for (int i = 0; i < len; i += 1) {
                 a[i] = input.readShort();
@@ -335,7 +351,7 @@ public abstract class SimpleFormat extends Format {
 
         @Override
         void readPrimitiveField(Object o, EntityInput input, Field field)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.setShort(o, input.readShort());
         }
@@ -357,8 +373,9 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = 2695910006049980013L;
 
-        FInt(boolean primitive) {
-            super(primitive ? Integer.TYPE : Integer.class, primitive);
+        FInt(Catalog catalog, boolean primitive) {
+            super(catalog, primitive ? Integer.TYPE : Integer.class,
+                  primitive);
         }
 
         @Override
@@ -367,7 +384,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return Integer.valueOf(input.readInt());
         }
 
@@ -390,7 +409,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        Object newPrimitiveArray(int len, EntityInput input) {
+        Object newPrimitiveArray(int len, EntityInput input)
+            throws RefreshException {
+
             int[] a = new int[len];
             for (int i = 0; i < len; i += 1) {
                 a[i] = input.readInt();
@@ -415,7 +436,7 @@ public abstract class SimpleFormat extends Format {
 
         @Override
         void readPrimitiveField(Object o, EntityInput input, Field field)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.setInt(o, input.readInt());
         }
@@ -437,8 +458,8 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = 1872661106534776520L;
 
-        FLong(boolean primitive) {
-            super(primitive ? Long.TYPE : Long.class, primitive);
+        FLong(Catalog catalog, boolean primitive) {
+            super(catalog, primitive ? Long.TYPE : Long.class, primitive);
         }
 
         @Override
@@ -447,7 +468,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return Long.valueOf(input.readLong());
         }
 
@@ -469,7 +492,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        Object newPrimitiveArray(int len, EntityInput input) {
+        Object newPrimitiveArray(int len, EntityInput input)
+            throws RefreshException {
+
             long[] a = new long[len];
             for (int i = 0; i < len; i += 1) {
                 a[i] = input.readLong();
@@ -494,7 +519,7 @@ public abstract class SimpleFormat extends Format {
 
         @Override
         void readPrimitiveField(Object o, EntityInput input, Field field)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.setLong(o, input.readLong());
         }
@@ -516,8 +541,8 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = 1033413049495053602L;
 
-        FFloat(boolean primitive) {
-            super(primitive ? Float.TYPE : Float.class, primitive);
+        FFloat(Catalog catalog, boolean primitive) {
+            super(catalog, primitive ? Float.TYPE : Float.class, primitive);
         }
 
         @Override
@@ -526,7 +551,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return Float.valueOf(input.readSortedFloat());
         }
 
@@ -549,7 +576,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        Object newPrimitiveArray(int len, EntityInput input) {
+        Object newPrimitiveArray(int len, EntityInput input)
+            throws RefreshException {
+
             float[] a = new float[len];
             for (int i = 0; i < len; i += 1) {
                 a[i] = input.readSortedFloat();
@@ -574,7 +603,7 @@ public abstract class SimpleFormat extends Format {
 
         @Override
         void readPrimitiveField(Object o, EntityInput input, Field field)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.setFloat(o, input.readSortedFloat());
         }
@@ -591,8 +620,8 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = 646904456811041423L;
 
-        FDouble(boolean primitive) {
-            super(primitive ? Double.TYPE : Double.class, primitive);
+        FDouble(Catalog catalog, boolean primitive) {
+            super(catalog, primitive ? Double.TYPE : Double.class, primitive);
         }
 
         @Override
@@ -601,7 +630,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return Double.valueOf(input.readSortedDouble());
         }
 
@@ -623,7 +654,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        Object newPrimitiveArray(int len, EntityInput input) {
+        Object newPrimitiveArray(int len, EntityInput input)
+            throws RefreshException {
+
             double[] a = new double[len];
             for (int i = 0; i < len; i += 1) {
                 a[i] = input.readSortedDouble();
@@ -648,7 +681,7 @@ public abstract class SimpleFormat extends Format {
 
         @Override
         void readPrimitiveField(Object o, EntityInput input, Field field)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.setDouble(o, input.readSortedDouble());
         }
@@ -665,8 +698,9 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = -7609118195770005374L;
 
-        FChar(boolean primitive) {
-            super(primitive ? Character.TYPE : Character.class, primitive);
+        FChar(Catalog catalog, boolean primitive) {
+            super(catalog, primitive ? Character.TYPE : Character.class,
+                  primitive);
         }
 
         @Override
@@ -675,7 +709,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return Character.valueOf(input.readChar());
         }
 
@@ -696,7 +732,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        Object newPrimitiveArray(int len, EntityInput input) {
+        Object newPrimitiveArray(int len, EntityInput input)
+            throws RefreshException {
+
             char[] a = new char[len];
             for (int i = 0; i < len; i += 1) {
                 a[i] = input.readChar();
@@ -721,7 +759,7 @@ public abstract class SimpleFormat extends Format {
 
         @Override
         void readPrimitiveField(Object o, EntityInput input, Field field)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.setChar(o, input.readChar());
         }
@@ -738,8 +776,8 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = 5710392786480064612L;
 
-        FString() {
-            super(String.class, false);
+        FString(Catalog catalog) {
+            super(catalog, String.class, false);
         }
 
         @Override
@@ -748,7 +786,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return input.readString();
         }
 
@@ -775,8 +815,8 @@ public abstract class SimpleFormat extends Format {
 
         private static final long serialVersionUID = -5027098112507644563L;
 
-        FBigInt() {
-            super(BigInteger.class, false);
+        FBigInt(Catalog catalog) {
+            super(catalog, BigInteger.class, false);
         }
 
         @Override
@@ -785,7 +825,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return input.readBigInteger();
         }
 
@@ -807,13 +849,56 @@ public abstract class SimpleFormat extends Format {
             input.skipFast(len);
         }
     }
+    
+    public static class FBigDec extends SimpleFormat {
+        private static final long serialVersionUID = 6108874887143696463L;
+        
+        FBigDec(Catalog catalog) {
+            super(catalog, BigDecimal.class, false);
+        }
+
+        @Override
+        Object newArray(int len) {
+            return new BigDecimal[len];
+        }
+
+        @Override
+        public Object newInstance(EntityInput input, boolean rawAccess) 
+            throws RefreshException {
+            
+            return input.readSortedBigDecimal();
+        }
+
+        @Override
+        void writeObject(Object o, EntityOutput output, boolean rawAccess) {
+            output.writeSortedBigDecimal((BigDecimal) o);
+        }
+
+        @Override
+        void skipContents(RecordInput input) {
+            input.skipFast(input.getSortedBigDecimalByteLength());
+        }
+
+        @Override
+        void copySecKey(RecordInput input, RecordOutput output) {
+            int len = input.getSortedBigDecimalByteLength();
+            output.writeFast
+                (input.getBufferBytes(), input.getBufferOffset(), len);
+            input.skipFast(len);
+        }
+        
+        @Override
+        public boolean allowEvolveFromProxy() {
+            return true;
+        }
+    }
 
     public static class FDate extends SimpleFormat {
 
         private static final long serialVersionUID = -5665773229869034145L;
 
-        FDate() {
-            super(Date.class, false);
+        FDate(Catalog catalog) {
+            super(catalog, Date.class, false);
         }
 
         @Override
@@ -822,7 +907,9 @@ public abstract class SimpleFormat extends Format {
         }
 
         @Override
-        public Object newInstance(EntityInput input, boolean rawAccess) {
+        public Object newInstance(EntityInput input, boolean rawAccess)
+            throws RefreshException {
+
             return new Date(input.readLong());
         }
 

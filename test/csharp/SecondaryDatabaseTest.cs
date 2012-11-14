@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -291,6 +291,81 @@ namespace CsharpAPITest
 			// Close primary database.
 			primaryDB.Close();
 		}
+
+        [Test]
+        public void TestMultiKeyGen() {
+            testName = "TestPrefixCompare";
+            SetUpTest(true);
+            string dbFileName = testHome + "/" + testName + ".db";
+
+            // Open a primary btree database.
+            BTreeDatabaseConfig btreeDBConfig =
+                new BTreeDatabaseConfig();
+            btreeDBConfig.Creation = CreatePolicy.ALWAYS;
+            BTreeDatabase btreeDB = BTreeDatabase.Open(
+                dbFileName, btreeDBConfig);
+
+            // Open a secondary btree database. 
+            SecondaryBTreeDatabaseConfig secBtreeDBConfig =
+                new SecondaryBTreeDatabaseConfig(btreeDB, null);
+            secBtreeDBConfig.Primary = btreeDB;
+            secBtreeDBConfig.KeyGen =
+                new SecondaryKeyGenDelegate(
+                MultipleKeyGen);
+            SecondaryBTreeDatabase secDB =
+                SecondaryBTreeDatabase.Open(
+                dbFileName, secBtreeDBConfig);
+
+            /* Check that multiple secondary keys work */
+            DatabaseEntry key, data;
+            String keyStr = "key";
+            key = new DatabaseEntry();
+            Configuration.dbtFromString(key, keyStr);
+
+            data = new DatabaseEntry();
+            String[] dataStrs = { "abc", "def", "ghi", "jkl" };
+            String dataStr = String.Join(",", dataStrs);
+            Configuration.dbtFromString(data, dataStr);
+            btreeDB.Put(key, data);
+
+            foreach (String skeyStr in dataStrs) {
+                DatabaseEntry skey = new DatabaseEntry();
+                Configuration.dbtFromString(skey, skeyStr);
+                Assert.IsTrue(secDB.Exists(skey));
+            }
+
+            /*
+             * Check that a single secondary key, returned in a
+             * MultipleDatabaseEntry works.
+             */ 
+            keyStr = "key2";
+            key = new DatabaseEntry();
+            Configuration.dbtFromString(key, keyStr);
+
+            data = new DatabaseEntry();
+            dataStrs = new string[1]{ "abcdefghijkl" };
+            dataStr = String.Join(",", dataStrs);
+            Configuration.dbtFromString(data, dataStr);
+            btreeDB.Put(key, data);
+
+            // Check that secondary keys work
+            foreach (String skeyStr in dataStrs) {
+                DatabaseEntry skey = new DatabaseEntry();
+                Configuration.dbtFromString(skey, skeyStr);
+                Assert.IsTrue(secDB.Exists(skey));
+            }
+        }
+
+        public DatabaseEntry MultipleKeyGen(DatabaseEntry key, DatabaseEntry data) {
+            LinkedList<DatabaseEntry> skeys = new LinkedList<DatabaseEntry>();
+            String dataStr = Configuration.strFromDBT(data);
+            foreach (String s in dataStr.Split(',')) {
+                DatabaseEntry tmp = new DatabaseEntry();
+                Configuration.dbtFromString(tmp, s);
+                skeys.AddLast(tmp);
+            }
+            return new MultipleDatabaseEntry(skeys, false);
+        }
 
 		[Test]
 		public void TestSecondaryCursor()

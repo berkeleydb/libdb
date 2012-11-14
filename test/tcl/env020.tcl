@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -408,6 +408,8 @@ proc env020_init { } {
 		"Mutex"
 		"Revision count"
 		"Reference count"
+		"Sync open count"
+		"Sync/read only open count"
 		"Block count"
 		"Last page number"
 		"Original last page number"
@@ -732,6 +734,7 @@ proc env020_init { } {
 		"ThreadId"
 		"ThreadIdString"
 		"Log dir"
+		"Metadata dir"
 		"Tmp dir"
 		"Data dir"
 		"Intermediate directory mode"

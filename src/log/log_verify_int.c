@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -1412,6 +1412,15 @@ __lv_dbreg_str(op)
 	case DBREG_REOPEN:
 		p = "DBREG_REOPEN";
 		break;
+	case DBREG_XCHKPNT:
+		p = "DBREG_XCHKPNT";
+		break;
+	case DBREG_XOPEN:
+		p = "DBREG_XOPEN";
+		break;
+	case DBREG_XREOPEN:
+		p = "DBREG_XREOPEN";
+		break;
 	default:
 		p = DB_STR_P("Unknown dbreg op code");
 		break;
@@ -1594,7 +1603,7 @@ __dbreg_register_verify(env, dbtp, lsnp, notused2, lvhp)
 		}
 
 		/*
-		 * PREOPEN is only generated when openning an in-memory db.
+		 * PREOPEN is only generated when opening an in-memory db.
 		 * Because we need to log the fileid we're allocating, but we
 		 * don't have all the details yet, we are preopening the
 		 * database and will actually complete the open later. So
@@ -1703,7 +1712,8 @@ __dbreg_register_verify(env, dbtp, lsnp, notused2, lvhp)
 	}
 
 	if ((IS_DBREG_CLOSE(opcode) &&
-	    (pflife->lifetime != DBREG_CHKPNT) &&
+	    (pflife->lifetime != DBREG_CHKPNT ||
+	    pflife->lifetime != DBREG_XCHKPNT) &&
 	    !IS_DBREG_OPEN(pflife->lifetime))) {
 		__db_errx(env, DB_STR_A("2545",
 		    "[%lu][%lu] Wrong dbreg operation sequence for file %s "
@@ -3722,7 +3732,7 @@ __txn_child_verify(env, dbtp, lsnp, notused2, lvhp)
 	ptvi->nchild_commit++;
 	/*
 	 * The start of this child txn caused lvh->ntxn_active to be
-	 * incremented unecessarily, so decrement it.
+	 * incremented unnecessarily, so decrement it.
 	 */
 	lvh->ntxn_active--;
 	if (ptvi->status != TXN_STAT_ACTIVE) {
@@ -4140,7 +4150,7 @@ __lv_on_new_txn (lvh, lsnp, txnp, type, dbregid, fid)
 		vtip = pvti;
 		/*
 		 * If this txn id was recycled, this use is legal. A legal
-		 * recyclable txnid is immediately not recycleable after
+		 * recyclable txnid is immediately not recyclable after
 		 * it's recycled here. And it's impossible for vtip->status
 		 * to be TXN_STAT_ACTIVE, since we have made it TXN_STAT_ABORT
 		 * when we detected this txn id recycle just now.
@@ -4163,7 +4173,7 @@ __lv_on_new_txn (lvh, lsnp, txnp, type, dbregid, fid)
 		/*
 		 * We may goto the else branch if this txn has child txns
 		 * before any updates done on its behalf. So we should
-		 * exclude this possiblilty to conclude a failed verification.
+		 * exclude this possibility to conclude a failed verification.
 		 */
 		} else if (vtip->nchild_active + vtip->nchild_commit +
 		    vtip->nchild_abort == 0) {

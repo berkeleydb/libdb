@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -28,8 +28,8 @@ public class ProxiedFormat extends Format {
     private Format proxyFormat;
     private transient String proxyClassName;
 
-    ProxiedFormat(Class proxiedType, String proxyClassName) {
-        super(proxiedType);
+    ProxiedFormat(Catalog catalog, Class proxiedType, String proxyClassName) {
+        super(catalog, proxiedType);
         this.proxyClassName = proxyClassName;
     }
 
@@ -83,20 +83,35 @@ public class ProxiedFormat extends Format {
     }
 
     @Override
-    public Object newInstance(EntityInput input, boolean rawAccess) {
+    public Object newInstance(EntityInput input, boolean rawAccess)
+        throws RefreshException {
+
         Reader reader = proxyFormat.getReader();
         if (rawAccess) {
             return reader.newInstance(null, true);
         } else {
-            PersistentProxy proxy =
-                (PersistentProxy) reader.newInstance(null, false);
-            proxy = (PersistentProxy) reader.readObject(proxy, input, false);
-            return proxy.convertProxy();
+
+            /* 
+             * Note that the read object will not be a PersistentProxy if
+             * a class converter mutation is used.  In this case, the reader 
+             * will be ConverterReader. ConverterReader.readObject
+             * will call ProxiedFormat.convertRawObject, which will call
+             * PersistentProxy.convertProxy to convert the proxy. So we do not
+             * need another call to the convertProxy method.  [#19312]
+             */
+            Object o = reader.readObject(reader.newInstance(null, false), 
+                                         input, false);
+            if (o instanceof PersistentProxy) {
+                o = ((PersistentProxy) o).convertProxy();
+            }
+            return o;
         }
     }
 
     @Override
-    public Object readObject(Object o, EntityInput input, boolean rawAccess) {
+    public Object readObject(Object o, EntityInput input, boolean rawAccess)
+        throws RefreshException {
+
         if (rawAccess) {
             o = proxyFormat.getReader().readObject(o, input, true);
         }
@@ -105,7 +120,9 @@ public class ProxiedFormat extends Format {
     }
 
     @Override
-    void writeObject(Object o, EntityOutput output, boolean rawAccess) {
+    void writeObject(Object o, EntityOutput output, boolean rawAccess)
+        throws RefreshException {
+
         if (rawAccess) {
             proxyFormat.writeObject(o, output, true);
         } else {
@@ -120,7 +137,9 @@ public class ProxiedFormat extends Format {
     Object convertRawObject(Catalog catalog,
                             boolean rawAccess,
                             RawObject rawObject,
-                            IdentityHashMap converted) {
+                            IdentityHashMap converted)
+        throws RefreshException {
+
         PersistentProxy proxy = (PersistentProxy) proxyFormat.convertRawObject
             (catalog, rawAccess, rawObject, converted);
         Object o = proxy.convertProxy();
@@ -129,18 +148,38 @@ public class ProxiedFormat extends Format {
     }
 
     @Override
-    void skipContents(RecordInput input) {
+    void skipContents(RecordInput input)
+        throws RefreshException {
+
         proxyFormat.skipContents(input);
     }
 
     @Override
-    void copySecMultiKey(RecordInput input, Format keyFormat, Set results) {
+    void copySecMultiKey(RecordInput input, Format keyFormat, Set results)
+        throws RefreshException {
+
         CollectionProxy.copyElements(input, this, keyFormat, results);
     }
 
     @Override
     boolean evolve(Format newFormatParam, Evolver evolver) {
         if (!(newFormatParam instanceof ProxiedFormat)) {
+            
+            /* 
+             * A workaround for reading the BigDecimal data stored by 
+             * BigDecimal proxy before je4.1. 
+             * 
+             * The BigDecimal proxy has a proxied format for BigDecimal, which 
+             * is a built-in SimpleType. We will evolve this ProxiedFormat of 
+             * BigDecimal to the SimpleFormat. In other words, the conversion 
+             * from a BigDecimal proxied format to a BigDecimal SimpleFormat is 
+             * allowed, and the old format can be used as the reader of the old 
+             * data.
+             */
+            if (newFormatParam.allowEvolveFromProxy()) {
+                evolver.useEvolvedFormat(this, this, newFormatParam);
+                return true;
+            }
             evolver.addEvolveError
                 (this, newFormatParam, null,
                  "A proxied class may not be changed to a different type");

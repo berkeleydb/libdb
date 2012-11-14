@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -78,6 +78,10 @@ namespace BerkeleyDB {
             db.set_flags(cfg.flags);
             if (cfg.ByteOrder != ByteOrder.MACHINE)
                 db.set_lorder(cfg.ByteOrder.lorder);
+            if (cfg.NoWaitDbExclusiveLock == true)
+                db.set_lk_exclusive(1);
+            else if (cfg.NoWaitDbExclusiveLock == false)
+                db.set_lk_exclusive(0);
             if (cfg.pagesizeIsSet)
                 db.set_pagesize(cfg.PageSize);
             if (cfg.Priority != CachePriority.DEFAULT)
@@ -369,6 +373,29 @@ namespace BerkeleyDB {
                 uint flags = 0;
                 db.get_flags(ref flags);
                 return (flags & DbConstants.DB_TXN_NOT_DURABLE) != 0;
+            }
+        }
+        /// <summary>
+        /// If true, configure the database handle to obtain a write lock on the
+        /// entire database. When the database is opened it will immediately
+        /// throw <see cref="LockNotGrantedException"/> if it cannot obtain the
+        /// exclusive lock immediately. If False, configure the database handle
+        /// to obtain a write lock on the entire database. When the database is
+        /// opened, it will block until it can obtain the exclusive lock. If
+        /// null, do not configure the database handle to obtain a write lock on
+        /// the entire database.
+        /// </summary>
+        public bool? NoWaitDbExclusiveLock {
+            get {
+                int onoff = 0;
+                int nowait = 0;
+                bool? result = null;
+                db.get_lk_exclusive(ref onoff, ref nowait);
+                if (onoff > 0) {
+                    if (nowait > 0) result = true;
+                    else result = false;
+                }
+                return result;
             }
         }
         /// <summary>

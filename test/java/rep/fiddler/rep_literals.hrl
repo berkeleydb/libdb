@@ -14,3 +14,4 @@
 -define(PAGE, 19).
 
 -define(REPVERSION_47, 5).
+-define(REPMGR_VERSION, 4).                     % repmgr's (current) protocol version

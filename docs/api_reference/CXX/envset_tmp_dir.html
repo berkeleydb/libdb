@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -57,58 +57,63 @@ DbEnv::set_tmp_dir(const char *dir); </pre>
         <ol type="1">
           <li>
             <p>
-                         The value of the environment variable <span class="bold"><strong>TMPDIR</strong></span>.
-                </p>
+                The value of the environment variable 
+                <span class="bold"><strong>TMPDIR</strong></span>.
+            </p>
           </li>
           <li>
             <p>
-                         The value of the environment variable <span class="bold"><strong>TEMP</strong></span>.
-                </p>
+                The value of the environment variable 
+                <span class="bold"><strong>TEMP</strong></span>.
+            </p>
           </li>
           <li>
             <p>
-                         The value of the environment variable <span class="bold"><strong>TMP</strong></span>.
-                </p>
+                The value of the environment variable 
+                <span class="bold"><strong>TMP</strong></span>.
+            </p>
           </li>
           <li>
             <p>
-                         The value of the environment variable <span class="bold"><strong>TempFolder</strong></span>.
-                </p>
+                The value of the environment variable 
+                <span class="bold"><strong>TempFolder</strong></span>.
+            </p>
           </li>
           <li>
             <p>
-                    The value returned by the <span class="bold"><strong>GetTempPath</strong></span> interface. 
-                </p>
+                The value returned by the 
+                <span class="bold"><strong>GetTempPath</strong></span> interface. 
+            </p>
           </li>
           <li>
             <p>
-                        The directory <span class="bold"><strong>/var/tmp</strong></span>. 
-                </p>
+                The directory <span class="bold"><strong>/var/tmp</strong></span>. 
+            </p>
           </li>
           <li>
             <p>
-                        The directory <span class="bold"><strong>/usr/tmp</strong></span>. 
-                </p>
+                The directory <span class="bold"><strong>/usr/tmp</strong></span>. 
+            </p>
           </li>
           <li>
             <p>
-                        The directory <span class="bold"><strong>/temp</strong></span>. 
-                </p>
+                The directory <span class="bold"><strong>/temp</strong></span>. 
+            </p>
           </li>
           <li>
             <p>
-                        The directory <span class="bold"><strong>/tmp</strong></span>. 
-                </p>
+                The directory <span class="bold"><strong>/tmp</strong></span>. 
+            </p>
           </li>
           <li>
             <p>
-                        The directory <span class="bold"><strong>C:/temp</strong></span>. 
-                </p>
+                The directory <span class="bold"><strong>C:/temp</strong></span>. 
+            </p>
           </li>
           <li>
             <p>
-                         The directory <span class="bold"><strong>C:/tmp</strong></span>. 
-                </p>
+                The directory <span class="bold"><strong>C:/tmp</strong></span>. 
+            </p>
           </li>
         </ol>
       </div>
@@ -119,13 +124,13 @@ DbEnv::set_tmp_dir(const char *dir); </pre>
             <a class="link" href="envopen.html#envopen_DB_USE_ENVIRON">DB_USE_ENVIRON</a>  or
             <a class="link" href="envopen.html#envopen_DB_USE_ENVIRON_ROOT">DB_USE_ENVIRON_ROOT</a> 
             flags were specified.
-    </p>
+        </p>
       </div>
       <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
         <h3 class="title">Note</h3>
         <p>
-         The GetTempPath interface is only checked on Win/32 platforms.
-    </p>
+             The GetTempPath interface is only checked on Win/32 platforms.
+        </p>
       </div>
       <p>
          The database environment's temporary file directory may also be
@@ -137,9 +142,10 @@ DbEnv::set_tmp_dir(const char *dir); </pre>
          configuration done before that time.
     </p>
       <p>
-         The <code class="methodname">DbEnv::set_tmp_dir()</code> method configures operations performed
-         using the specified <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handle, not all
-         operations performed on the underlying database environment.
+         The <code class="methodname">DbEnv::set_tmp_dir()</code> method configures
+         operations performed using the specified 
+         <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  handle, not all operations
+         performed on the underlying database environment.
     </p>
       <p>
          The <code class="methodname">DbEnv::set_tmp_dir()</code> <span>
@@ -155,7 +161,7 @@ DbEnv::set_tmp_dir(const char *dir); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3608001"></a>Parameters</h3>
+              <h3 class="title"><a id="idp2340376"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -163,30 +169,32 @@ DbEnv::set_tmp_dir(const char *dir); </pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3608533"></a>dir</h4>
+                <h4 class="title"><a id="idp2302152"></a>dir</h4>
               </div>
             </div>
           </div>
           <p>
-                          The <span class="bold"><strong>dir</strong></span> parameter is the directory to
-                          be used to store temporary files.
-                     </p>
+                The <span class="bold"><strong>dir</strong></span> parameter is the
+                directory to be used to store temporary files.  This
+                directory must currently exist at environment open time.
+            </p>
           <p>
-                             When using a Unicode build on Windows (the default), the this argument will be interpreted
-                             as a UTF-8 string, which is equivalent to ASCII for Latin characters.
-                     </p>
+                When using a Unicode build on Windows (the default), the
+                this argument will be interpreted as a UTF-8 string, which
+                is equivalent to ASCII for Latin characters.
+            </p>
         </div>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3608051"></a>Errors</h3>
+              <h3 class="title"><a id="idp2342864"></a>Errors</h3>
             </div>
           </div>
         </div>
         <p>
-                         The <code class="methodname">DbEnv::set_tmp_dir()</code> <span>
+             The <code class="methodname">DbEnv::set_tmp_dir()</code> <span>
             
             <span>
                 method may fail and throw a <a class="link" href="dbexception.html" title="Chapter 6. The DbException Class">DbException</a> 
@@ -194,12 +202,12 @@ DbEnv::set_tmp_dir(const char *dir); </pre>
                 of the following non-zero errors:
             </span>
         </span>
-                    </p>
+        </p>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3608797"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp2348224"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -213,25 +221,25 @@ DbEnv::set_tmp_dir(const char *dir); </pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3608819"></a>Class</h3>
+              <h3 class="title"><a id="idp2328368"></a>Class</h3>
             </div>
           </div>
         </div>
         <p>
-                <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  
-            </p>
+            <a class="link" href="env.html" title="Chapter 5.  The DbEnv Handle">DbEnv</a>  
+        </p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3608602"></a>See Also</h3>
+              <h3 class="title"><a id="idp2324696"></a>See Also</h3>
             </div>
           </div>
         </div>
         <p>
-                     <a class="xref" href="env.html#envlist" title="Database Environments and Related Methods">Database Environments and Related Methods</a> 
-                </p>
+             <a class="xref" href="env.html#envlist" title="Database Environments and Related Methods">Database Environments and Related Methods</a> 
+        </p>
       </div>
     </div>
     <div class="navfooter">

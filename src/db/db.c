@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -459,6 +459,13 @@ __env_setup(dbp, txn, fname, dname, id, flags)
 	env = dbp->env;
 	dbenv = env->dbenv;
 
+	/*
+	 * When verifying an in-memory db, we need to pass dname to
+	 * __env_mpool.  That is the only time fname will be used.
+	 */
+	if (F_ISSET(dbp, DB_AM_INMEM) && F_ISSET(dbp, DB_AM_VERIFYING))
+		fname = dname;
+
 	/* If we don't yet have an environment, it's time to create it. */
 	if (!F_ISSET(env, ENV_OPEN_CALLED)) {
 #if defined(HAVE_MIXED_SIZE_ADDRESSING) && (SIZEOF_CHAR_P == 8)
@@ -479,8 +486,8 @@ __env_setup(dbp, txn, fname, dname, id, flags)
 	}
 
 	/* Join the underlying cache. */
-	if ((!F_ISSET(dbp, DB_AM_INMEM) || dname == NULL) &&
-	    (ret = __env_mpool(dbp, fname, flags)) != 0)
+	if ((!F_ISSET(dbp, DB_AM_INMEM) || F_ISSET(dbp, DB_AM_VERIFYING) ||
+	    dname == NULL) && (ret = __env_mpool(dbp, fname, flags)) != 0)
 		return (ret);
 
 	/* We may need a per-thread mutex. */
@@ -1118,6 +1125,8 @@ never_opened:
 		if ((ret = __bam_db_create(dbp)) != 0)
 			return (ret);
 		if ((ret = __ham_db_create(dbp)) != 0)
+			return (ret);
+		if ((ret = __heap_db_create(dbp)) != 0)
 			return (ret);
 		if ((ret = __qam_db_create(dbp)) != 0)
 			return (ret);

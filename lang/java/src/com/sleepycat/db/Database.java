@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -607,42 +607,46 @@ deadlock.
     /**
     Remove key/data pairs from the database.
     <p>
-    The key/data pair associated with the specified key is discarded
+    The key/data pairs associated with the specified keys are discarded
     from the database.  In the presence of duplicate key values, all
-    records associated with the designated key will be discarded.
+    records associated with the designated keys will be discarded.
     <p>
-    The key/data pair is also deleted from any associated secondary
-    databases.
-    When called on a database that has been made into a secondary index, 
-    this method deletes the key/data pair from the primary database and all secondary indices.
+    The key/data pairs are also deleted from any associated secondary
+    databases.  When called on a database that has been made into a secondary
+    index, this method deletes the key/data pairs from the primary database and
+    all secondary indices.
     <p>
     @param txn
     If the operation is part of an application-specified transaction, the txn
-	parameter is a Transaction object returned from the
-	{@link com.sleepycat.db.Environment#beginTransaction Environment.beginTransaction} method; if the operation is part of a Berkeley DB
-	Concurrent Data Store group, the txn parameter is a Transaction object returned
-	from the {@link com.sleepycat.db.Environment#beginCDSGroup Environment.beginCDSGroup} method; otherwise null.
-	For a transactional database, an explicit transaction may be specified, or null
-	may be specified to use auto-commit.  For a non-transactional database, null
-	must be specified. If no transaction handle is specified, but the operation occurs in a transactional 
-	database, the operation will be implicitly transaction protected.
+    parameter is a Transaction object returned from the
+    {@link com.sleepycat.db.Environment#beginTransaction Environment.beginTransaction}
+    method; if the operation is part of a Berkeley DB Concurrent Data Store 
+    group, the txn parameter is a Transaction object returned from the 
+    {@link com.sleepycat.db.Environment#beginCDSGroup Environment.beginCDSGroup}
+    method; otherwise null. For a transactional database, an explicit transaction
+    may be specified, or null may be specified to use auto-commit.  For a 
+    non-transactional database, null must be specified.  If no transaction
+    handle is specified, but the operation occurs in a transactional database,
+    the operation will be implicitly transaction protected.
     <p>
-    @param keys the set of keys {@link com.sleepycat.db.DatabaseEntry DatabaseEntry} operated on.
+    @param keys the set of keys 
+    {@link com.sleepycat.db.MultipleEntry MultipleEntry} operated on.
     <p>
     @return
-    The method will return {@link com.sleepycat.db.OperationStatus#NOTFOUND OperationStatus.NOTFOUND} if the
-    specified key is not found in the database;
-        The method will return {@link com.sleepycat.db.OperationStatus#KEYEMPTY OperationStatus.KEYEMPTY} if the
-    database is a Queue or Recno database and the specified key exists,
+    The method will return 
+    {@link com.sleepycat.db.OperationStatus#NOTFOUND OperationStatus.NOTFOUND}
+    if the specified key is not found in the database; The method will return 
+    {@link com.sleepycat.db.OperationStatus#KEYEMPTY OperationStatus.KEYEMPTY}
+    if the database is a Queue or Recno database and the specified key exists,
     but was never explicitly created by the application or was later
-    deleted;
-    otherwise the method will return {@link com.sleepycat.db.OperationStatus#SUCCESS OperationStatus.SUCCESS}.
+    deleted; otherwise the method will return
+    {@link com.sleepycat.db.OperationStatus#SUCCESS OperationStatus.SUCCESS}.
     <p>
     <p>
-@throws DeadlockException if the operation was selected to resolve a
-deadlock.
-<p>
-@throws DatabaseException if a failure occurs.
+    @throws DeadlockException if the operation was selected to resolve a 
+    deadlock.
+    <p>
+    @throws DatabaseException if a failure occurs.
     */
     public OperationStatus deleteMultiple(final Transaction txn,
                                   final MultipleEntry keys)
@@ -651,7 +655,59 @@ deadlock.
         return OperationStatus.fromInt(
             db.del((txn == null) ? null : txn.txn, keys,
                 DbConstants.DB_MULTIPLE | 
-		((txn == null) ? autoCommitFlag : 0)));
+                ((txn == null) ? autoCommitFlag : 0)));
+    }
+
+    /**
+    Remove key/data pairs from the database.
+    <p>
+    The specified key/data pairs are discarded from the database.
+    <p>
+    The key/data pairs are also deleted from any associated secondary
+    databases. When called on a database that has been made into a secondary
+    index, this method deletes the key/data pairs from the primary database and
+    all secondary indices.
+    <p>
+    @param txn
+    If the operation is part of an application-specified transaction, the txn
+    parameter is a Transaction object returned from the
+    {@link com.sleepycat.db.Environment#beginTransaction Environment.beginTransaction}
+    method; if the operation is part of a Berkeley DB Concurrent Data Store 
+    group, the txn parameter is a Transaction object returned from the 
+    {@link com.sleepycat.db.Environment#beginCDSGroup Environment.beginCDSGroup}
+    method; otherwise null. For a transactional database, an explicit transaction
+    may be specified, or null may be specified to use auto-commit.  For a 
+    non-transactional database, null must be specified.  If no transaction
+    handle is specified, but the operation occurs in a transactional database,
+    the operation will be implicitly transaction protected.
+    <p>
+    @param keys the set of key/data pairs 
+    {@link com.sleepycat.db.MultipleEntry MultipleEntry} operated on.
+    <p>
+    @return
+    The method will return 
+    {@link com.sleepycat.db.OperationStatus#NOTFOUND OperationStatus.NOTFOUND}
+    if the specified key is not found in the database; The method will return 
+    {@link com.sleepycat.db.OperationStatus#KEYEMPTY OperationStatus.KEYEMPTY}
+    if the database is a Queue or Recno database and the specified key exists,
+    but was never explicitly created by the application or was later
+    deleted; otherwise the method will return
+    {@link com.sleepycat.db.OperationStatus#SUCCESS OperationStatus.SUCCESS}.
+    <p>
+    <p>
+    @throws DeadlockException if the operation was selected to resolve a 
+    deadlock.
+    <p>
+    @throws DatabaseException if a failure occurs.
+    */
+    public OperationStatus deleteMultipleKey(final Transaction txn,
+                                  final MultipleEntry keys)
+        throws DatabaseException {
+
+        return OperationStatus.fromInt(
+            db.del((txn == null) ? null : txn.txn, keys,
+                DbConstants.DB_MULTIPLE_KEY | 
+                ((txn == null) ? autoCommitFlag : 0)));
     }
 
     /**

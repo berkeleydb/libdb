@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -35,6 +35,8 @@ public class TestUtils
     // should be initialized by calling loadEnvVars. Shared between all tests.
     public static String BASETEST_DBDIR   = "";
     public static File   BASETEST_DBFILE  = null; //      new File(TestUtils.BASETEST_DBDIR);
+    public static String BASETEST_BACKUPDIR   = "";
+    public static File   BASETEST_BACKUPFILE  = null; //      new File(TestUtils.BASETEST_BACKUPDIR);
  
     public static void ERR(String a)
     {
@@ -202,13 +204,23 @@ public class TestUtils
 			BASETEST_DBDIR = "data";
         BASETEST_DBFILE = new File(BASETEST_DBDIR);
         if (!BASETEST_DBFILE.exists())
-		    BASETEST_DBFILE.mkdirs();
+            BASETEST_DBFILE.mkdirs();
+        BASETEST_BACKUPDIR = BASETEST_DBDIR + "_bak";
+        BASETEST_BACKUPFILE = new File(BASETEST_BACKUPDIR);
+        if (!BASETEST_BACKUPFILE.exists())
+            BASETEST_BACKUPFILE.mkdirs();
     }
  
     public static String getDBFileName(String dbname)
     {
         DEBUGOUT(1, "getDBFileName returning: " + BASETEST_DBDIR + "/" + dbname);
         return BASETEST_DBDIR + "/" + dbname;
+    }
+
+    public static String getBackupFileName(String dbname)
+    {
+        DEBUGOUT(1, "getBackupFileName returning: " + BASETEST_BACKUPDIR + "/" + dbname);
+        return BASETEST_BACKUPDIR + "/" + dbname;
     }
  
     public static OutputStream getErrorStream()

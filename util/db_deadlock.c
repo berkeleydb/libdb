@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.\n";
+    "Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 int main __P((int, char *[]));
@@ -87,6 +87,12 @@ main(argc, argv)
 			logfile = optarg;
 			break;
 		case 'P':
+			if (passwd != NULL) {
+				fprintf(stderr, DB_STR("5136",
+					"Password may not be specified twice"));
+				free(passwd);
+				return (EXIT_FAILURE);
+			}
 			passwd = strdup(optarg);
 			memset(optarg, 0, strlen(optarg));
 			if (passwd == NULL) {

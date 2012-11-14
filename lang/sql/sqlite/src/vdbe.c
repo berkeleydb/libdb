@@ -2929,11 +2929,13 @@ case OP_SetCookie: {       /* in3 */
 case OP_VerifyCookie: {
   int iMeta;
   int iGen;
+  int iSchemaChanged;
   Btree *pBt;
 
   assert( pOp->p1>=0 && pOp->p1<db->nDb );
   assert( (p->btreeMask & (((yDbMask)1)<<pOp->p1))!=0 );
   assert( sqlite3SchemaMutexHeld(db, pOp->p1, 0) );
+  iSchemaChanged = 0;
   pBt = db->aDb[pOp->p1].pBt;
   if( pBt ){
     sqlite3BtreeGetMeta(pBt, BTREE_SCHEMA_VERSION, (u32 *)&iMeta);
@@ -2962,12 +2964,14 @@ case OP_VerifyCookie: {
     ** a v-table method.
     */
     if( db->aDb[pOp->p1].pSchema->schema_cookie!=iMeta ){
+      iSchemaChanged = 1;
       sqlite3ResetInternalSchema(db, pOp->p1);
     }
 
     p->expired = 1;
     rc = SQLITE_SCHEMA;
   }
+  sqlite3BtreeHandleCacheUpdate(pBt, iSchemaChanged);
   break;
 }
 
@@ -5328,7 +5332,7 @@ case OP_JournalMode: {    /* out2-prerelease */
   ** in temporary storage or if the VFS does not support shared memory 
   */
   if( eNew==PAGER_JOURNALMODE_WAL
-   && (zFilename[0]==0                         /* Temp file */
+   && (zFilename==NULL || zFilename[0]==0      /* Temp file */
        || !sqlite3PagerWalSupported(pPager))   /* No shared-memory support */
   ){
     eNew = eOld;

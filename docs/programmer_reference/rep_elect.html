@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -154,8 +154,10 @@ to declare itself master.  Otherwise it must choose between providing
 availability of a writable master (at the risk of duplicate masters),
 or strict protection against duplicate masters (but no master when a
 failure occurs).   Replication Manager offers this choice via the
-<a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method.  Base API applications can accomplish
-this by judicious setting of the nvotes and nsites parameters to the
+<a href="../api_reference/C/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method <a href="../api_reference/C/repconfig.html#config_DB_REPMGR_CONF_2SITE_STRICT" class="olink">DB_REPMGR_CONF_2SITE_STRICT</a> flag.  Base API
+applications can accomplish this by judicious setting of the
+<span class="bold"><strong>nvotes</strong></span> and
+<span class="bold"><strong>nsites</strong></span> parameters to the
 <a href="../api_reference/C/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> method. </p>
       <p>It is possible for a less-preferred database environment to win an
 election if a number of systems crash at the same time.  Because an

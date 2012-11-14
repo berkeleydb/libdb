@@ -205,7 +205,7 @@ f=../build_wince/db_config.h
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f)
 
-# Build the Windows libdb.rc and libdb.def.
+# Build the Windows libdb.rc, libdb.def and libdb_small.def.
 f=../build_windows/libdb.rc
 cat <<ENDOFSEDTEXT > $s
 s/%MAJOR%/$DB_VERSION_MAJOR/
@@ -220,7 +220,20 @@ f=../build_windows/libdb.def
  echo &&
  echo EXPORTS;
 a=1
-for i in `sed -e '/^$/d' -e '/^#/d' win_exports.in`; do
+for i in `sed -e '/^$/d' -e '/^#/d' -e 's/[	 ].*//' win_exports.in`; do
+	echo "	$i	@$a"
+	a=`expr $a + 1`
+done) > $t
+cmp $t $f > /dev/null 2>&1 ||
+    (echo "Building $f" && rm -f $f && cp $t $f)
+f=../build_windows/libdb_small.def
+(echo $msgw &&
+ echo &&
+ echo EXPORTS;
+a=1
+for i in `sed -e '/^$/d' -e '/^#/d' win_exports.in |
+          egrep -w db_small |
+          sed -e 's/[	 ].*//'`; do
 	echo "	$i	@$a"
 	a=`expr $a + 1`
 done) > $t

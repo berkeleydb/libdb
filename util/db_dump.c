@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -14,7 +14,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.\n";
+    "Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 int	 db_init __P((DB_ENV *, char *, int, u_int32_t, int *));
@@ -97,6 +97,12 @@ main(argc, argv)
 			nflag = 1;
 			break;
 		case 'P':
+			if (passwd != NULL) {
+				fprintf(stderr, DB_STR("5130",
+					"Password may not be specified twice"));
+				free(passwd);
+				return (EXIT_FAILURE);
+			}
 			passwd = strdup(optarg);
 			memset(optarg, 0, strlen(optarg));
 			if (passwd == NULL) {
@@ -167,9 +173,9 @@ main(argc, argv)
 		return (EXIT_FAILURE);
 	}
 
-	if ((mflag || sflag) && rflag) {
+	if (sflag && rflag) {
 		fprintf(stderr, DB_STR_A("5114",
-	    "%s: the -r or R options may not be specified with -m or -s\n",
+	    "%s: the -r or R options may not be specified with -s\n",
 		    "%s\n"), progname);
 		return (EXIT_FAILURE);
 	}
@@ -233,7 +239,7 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 	 */
 	if (rflag) {
 		/* The verify method is a destructor. */
-		ret = dbp->verify(dbp, filename, NULL, stdout,
+		ret = dbp->verify(dbp, filename, dbname, stdout,
 		    DB_SALVAGE |
 		    (Rflag ? DB_AGGRESSIVE : 0) |
 		    (pflag ? DB_PRINTABLE : 0));

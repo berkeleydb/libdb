@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -42,17 +42,17 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="am_conf_select.html#id3931867">Btree or Heap?</a>
+              <a href="am_conf_select.html#idm1772384">Btree or Heap?</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="am_conf_select.html#id3932731">Hash or Btree?</a>
+              <a href="am_conf_select.html#idm2622384">Hash or Btree?</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="am_conf_select.html#id3930574">Queue or Recno?</a>
+              <a href="am_conf_select.html#idm1789184">Queue or Recno?</a>
             </span>
           </dt>
         </dl>
@@ -83,7 +83,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3931867"></a>Btree or Heap?</h3>
+              <h3 class="title"><a id="idm1772384"></a>Btree or Heap?</h3>
             </div>
           </div>
         </div>
@@ -104,7 +104,7 @@
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3931926"></a>Disk Space Usage</h4>
+                <h4 class="title"><a id="idm1549752"></a>Disk Space Usage</h4>
               </div>
             </div>
           </div>
@@ -131,7 +131,7 @@
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3931368"></a>Record Access</h4>
+                <h4 class="title"><a id="idm1572504"></a>Record Access</h4>
               </div>
             </div>
           </div>
@@ -169,16 +169,12 @@
                 Secondary databases are described in 
                 <a class="xref" href="am_second.html" title="Secondary indexes">Secondary indexes</a>.
             </p>
-          <p>
-                Finally, note that bulk get operations are not
-                currently supported by Heap.
-            </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3931912"></a>Record Creation/Deletion</h4>
+                <h4 class="title"><a id="idm2352312"></a>Record Creation/Deletion</h4>
               </div>
             </div>
           </div>
@@ -233,7 +229,7 @@
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3932004"></a>Cursor Operations</h4>
+                <h4 class="title"><a id="idm1962568"></a>Cursor Operations</h4>
               </div>
             </div>
           </div>
@@ -266,12 +262,28 @@
               </li>
               <li>
                 <p>
-                        To enhance concurrency, multiple pages and storage
-                        regions may be allocated in a Heap database. This
-                        can happen if multiple threads and/or processes are
-                        simultaneously creating records. In this case,
-                        iterating through the records in a Heap database is
-                        not recommended due to performance considerations.
+                        For concurrent applications, iterating through the records in a
+                        Heap database is not recommended due to performance
+                        considerations. This is because there is a good
+                        chance that there are a lot of empty pages in the
+                        database if you have a concurrent application.
+                    </p>
+                <p>
+                        For a Heap database, entire regions are locked when
+                        a lock is acquired for a database page. If there is
+                        then contention for that region, and a new database
+                        page needs to be added, then Berkeley DB simply
+                        creates a whole new region.  The locked region is
+                        then padded with empty pages in order to reach the
+                        new region.
+                    </p>
+                <p>
+                        The result is that if the last used page in a
+                        region is 10, and a new region is created at page
+                        100, then there are empty pages from 11 to 99. If
+                        you are iterating with a cursor, then all those
+                        empty pages must be examined by the cursor before
+                        it can reach the data at page 100.
                     </p>
               </li>
             </ul>
@@ -281,7 +293,7 @@
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3932498"></a>Which Access Method Should You Use?</h4>
+                <h4 class="title"><a id="idm2036040"></a>Which Access Method Should You Use?</h4>
               </div>
             </div>
           </div>
@@ -366,7 +378,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3932731"></a>Hash or Btree?</h3>
+              <h3 class="title"><a id="idm2622384"></a>Hash or Btree?</h3>
             </div>
           </div>
         </div>
@@ -453,7 +465,7 @@
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3930574"></a>Queue or Recno?</h3>
+              <h3 class="title"><a id="idm1789184"></a>Queue or Recno?</h3>
             </div>
           </div>
         </div>

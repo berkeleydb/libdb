@@ -107,13 +107,19 @@ public abstract class Benchmark {
 
 	if (DriverName.length() == 0 || DBUrl.length() == 0) {
 	    System.out.println("JDBC based benchmark program\n\n" +
-			       "usage:\n\njava SQLite.Benchmark " +
+			       "JRE usage:\n\njava SQLite.BenchmarkDriver " +
 			       "-url [url_to_db] \\\n    " +
 			       "[-user [username]] " +
 			       "[-password [password]] " +
 			       "[-driver [driver_class_name]] \\\n    " +
 			       "[-v] [-init] [-tpc N] [-tps N] " +
-			       "[-clients N]");
+			       "[-clients N]\n");
+	    System.out.println("OJEC usage:\n\ncvm SQLite.BenchmarkDataSource " +
+			       "[-user [username]] " +
+			       "[-password [password]] " +
+			       "[-driver [driver_class_name]] \\\n    " +
+			       "[-v] [-init] [-tpc N] [-tps N] " +
+			       "[-clients N]\n");
 	    System.out.println();
 	    System.out.println("-v          verbose mode");
 	    System.out.println("-init       initialize the tables");

@@ -1,15 +1,13 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ */
+
 /*
-*      Copyright (c) 1997 BEA Systems, Inc.
-*       All Rights Reserved
-*
-*       THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF
-*       BEA Systems, Inc.
-*       The copyright notice above does not evidence any
-*       actual or intended publication of such source code.
-*
-* This server is called by the client.  It inserts a value into db1 then
-* calls bdb2 to insert a value into db2.
-*/
+ * This server is called by the client.  It inserts a value into db1 then
+ * calls bdb2 to insert a value into db2.
+ */
 
 #include <db.h>
 #include <xa.h>
@@ -22,17 +20,14 @@
 #include <time.h>
 #include <tpadm.h>
 #include <unistd.h>
+#include "../utilities/bdb_xa_util.h"
 
-#define	DATABASE1	"data1.db"
+#define	NUMDB 1
 
-static u_int32_t open_flags = DB_CREATE | DB_AUTO_COMMIT;
-static DB *gdbp;
 static int times = 1;
 static long seq = 1;
 
-static DB* getdbp(){
-	return gdbp;
-}
+static char *progname;
 
 /* Open the database when the server is started. */
 int
@@ -40,8 +35,10 @@ tpsvrinit(argc, argv)
 int argc;
 char **argv;
 {
-	int ret;
 	char ch;
+
+	progname = argv[0];
+
 	/* Some compilers warn if argc and argv aren't used. */
 	while ((ch = getopt(argc, argv, "t:")) != EOF)
 		switch (ch) {
@@ -51,30 +48,14 @@ char **argv;
 		}
 	
 
-	tpopen();
-
-	/* Create and initialize database object, open the database. */
-	if ((ret = db_create(&gdbp, NULL, DB_XA_CREATE)) != 0) {
-		userlog("db_create: %s", db_strerror(ret));
-		return (EXIT_FAILURE);
-	}
-
-	if ((ret = gdbp->open(gdbp, NULL, DATABASE1, NULL, DB_BTREE, open_flags, 
-	    0664)) != 0) {
-		userlog("open: %s", db_strerror(ret));
-		return (EXIT_FAILURE);
-	}
-
-	return(0);
+	return (init_xa_server(NUMDB, progname, 0));
 }
 
 /* Close the database when the server is shutdown. */
 void
 tpsvrdone(void)
 {
-	DB* dbp = getdbp();
-	dbp->close(dbp, 0);
-	tpclose();
+	close_xa_server(NUMDB, progname);
 }
 
 /* Insert a value into db1, then call bdb2 to insert that value into db2. */
@@ -84,11 +65,11 @@ TPSVCINFO *rqst;
 {
 	long rcvlen;
 	int ret, i;
-	DB *dbp = getdbp();
 	DBT key, data;
 	size_t len;
 	int ch;
 	char *p, *t, buf[1024];
+	DB *dbp = dbs[0];
 
 	tpbegin(10,0);
 
@@ -178,7 +159,7 @@ TPSVCINFO *rqst;
 	int ret,count;
 	DBT key, value;
 	DBC *cursorp;
-	DB *dbp = getdbp();
+	DB *dbp = dbs[0];
 	
 	tpbegin(60*10,0);
 

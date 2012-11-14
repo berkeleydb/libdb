@@ -1,150 +1,156 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db", "db.vcxproj", "{FD045D60-ABAD-4A6C-9794-9BFB085FC3E7}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db", "VS10\db.vcxproj", "{FD045D60-ABAD-4A6C-9794-9BFB085FC3E7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_archive", "db_archive.vcxproj", "{56056344-53A1-4FA6-B20B-862C0BA68953}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_archive", "VS10\db_archive.vcxproj", "{56056344-53A1-4FA6-B20B-862C0BA68953}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_checkpoint", "db_checkpoint.vcxproj", "{A3BE0163-1E6C-4235-9B6B-3A36ABB5E285}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_checkpoint", "VS10\db_checkpoint.vcxproj", "{A3BE0163-1E6C-4235-9B6B-3A36ABB5E285}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_deadlock", "db_deadlock.vcxproj", "{CD0FD995-B4D1-4907-987B-99CF3304E7E0}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_deadlock", "VS10\db_deadlock.vcxproj", "{CD0FD995-B4D1-4907-987B-99CF3304E7E0}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_dump", "db_dump.vcxproj", "{DB067D2C-7163-428B-AAF8-642316AB173B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_dump", "VS10\db_dump.vcxproj", "{DB067D2C-7163-428B-AAF8-642316AB173B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_hotbackup", "db_hotbackup.vcxproj", "{67C0DABC-353A-491F-9A77-8E2E601ED52B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_hotbackup", "VS10\db_hotbackup.vcxproj", "{67C0DABC-353A-491F-9A77-8E2E601ED52B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_java", "db_java.vcxproj", "{0052E828-5F10-4973-8729-50B0C5598702}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_java", "VS10\db_java.vcxproj", "{0052E828-5F10-4973-8729-50B0C5598702}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_load", "db_load.vcxproj", "{7640133F-4AB8-42DA-ADB5-95F21447F7D5}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_load", "VS10\db_load.vcxproj", "{7640133F-4AB8-42DA-ADB5-95F21447F7D5}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_printlog", "db_printlog.vcxproj", "{D505F51B-2B92-4850-A08F-9113D947FF4B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_printlog", "VS10\db_printlog.vcxproj", "{D505F51B-2B92-4850-A08F-9113D947FF4B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_recover", "db_recover.vcxproj", "{9E03FD51-E387-4EEF-9EEA-E71707A56212}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_recover", "VS10\db_recover.vcxproj", "{9E03FD51-E387-4EEF-9EEA-E71707A56212}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_replicate", "db_replicate.vcxproj", "{2AA9FB16-F1B0-47A7-AE10-7830E4E317E2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_replicate", "VS10\db_replicate.vcxproj", "{2AA9FB16-F1B0-47A7-AE10-7830E4E317E2}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_stat", "db_stat.vcxproj", "{19D3A4CB-1C12-43D4-A94B-D2B387AD43E5}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_stat", "VS10\db_stat.vcxproj", "{19D3A4CB-1C12-43D4-A94B-D2B387AD43E5}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_tcl", "db_tcl.vcxproj", "{7F3D3EEE-2ABB-4F0F-A2A7-DE88C1989BE1}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_tcl", "VS10\db_tcl.vcxproj", "{7F3D3EEE-2ABB-4F0F-A2A7-DE88C1989BE1}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_test", "db_test.vcxproj", "{B17B933F-6F75-4095-BE51-12666358163A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_test", "VS10\db_test.vcxproj", "{B17B933F-6F75-4095-BE51-12666358163A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_tuner", "db_tuner.vcxproj", "{A86208B6-BEEB-11DF-BCF9-116EDFD72085}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_tuner", "VS10\db_tuner.vcxproj", "{A86208B6-BEEB-11DF-BCF9-116EDFD72085}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_upgrade", "db_upgrade.vcxproj", "{5F4D66DB-8D75-43D4-A1BB-60A01BC6B32F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_upgrade", "VS10\db_upgrade.vcxproj", "{5F4D66DB-8D75-43D4-A1BB-60A01BC6B32F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_verify", "db_verify.vcxproj", "{12E118CA-CAAE-4F54-AE81-8D9981AA0635}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_verify", "VS10\db_verify.vcxproj", "{12E118CA-CAAE-4F54-AE81-8D9981AA0635}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_access", "ex_access.vcxproj", "{75DF98AA-25DF-4183-A022-024CF918480D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_access", "VS10\ex_access.vcxproj", "{75DF98AA-25DF-4183-A022-024CF918480D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_bulk", "ex_bulk.vcxproj", "{ABE1ACF6-C375-44AB-A628-80B4A94580FD}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_bulk", "VS10\ex_bulk.vcxproj", "{ABE1ACF6-C375-44AB-A628-80B4A94580FD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_btrec", "ex_btrec.vcxproj", "{5DD66F4B-EB4A-4453-BC31-3FF7B2240634}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_btrec", "VS10\ex_btrec.vcxproj", "{5DD66F4B-EB4A-4453-BC31-3FF7B2240634}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_csvcode", "ex_csvcode.vcxproj", "{54E6A58D-561D-467E-B378-6BA2EE138880}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_csvcode", "VS10\ex_csvcode.vcxproj", "{54E6A58D-561D-467E-B378-6BA2EE138880}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_csvload", "ex_csvload.vcxproj", "{CEC6CC37-88A3-4573-8957-6BA0CEF94B3D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_csvload", "VS10\ex_csvload.vcxproj", "{CEC6CC37-88A3-4573-8957-6BA0CEF94B3D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_csvquery", "ex_csvquery.vcxproj", "{438BEA9C-A9DF-4EAE-A9F7-A5F35CAF3FB9}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_csvquery", "VS10\ex_csvquery.vcxproj", "{438BEA9C-A9DF-4EAE-A9F7-A5F35CAF3FB9}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_env", "ex_env.vcxproj", "{443530F5-CCC3-40C8-A89B-AEF6C14D3A41}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_env", "VS10\ex_env.vcxproj", "{443530F5-CCC3-40C8-A89B-AEF6C14D3A41}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_heap", "ex_heap.vcxproj", "{B736B89C-B7EE-4C45-88BA-174B9A1956B3}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_heap", "VS10\ex_heap.vcxproj", "{B736B89C-B7EE-4C45-88BA-174B9A1956B3}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_lock", "ex_lock.vcxproj", "{B254668F-C28F-4B14-92A5-3BF4B83D02EE}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_lock", "VS10\ex_lock.vcxproj", "{B254668F-C28F-4B14-92A5-3BF4B83D02EE}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_mpool", "ex_mpool.vcxproj", "{0F6925F0-6243-47E0-A0FF-05F70B15FC2C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_mpool", "VS10\ex_mpool.vcxproj", "{0F6925F0-6243-47E0-A0FF-05F70B15FC2C}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_rep_base", "ex_rep_base.vcxproj", "{BDBF0EE2-1551-47A4-ACD0-B22B05DF4D77}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_rep_base", "VS10\ex_rep_base.vcxproj", "{BDBF0EE2-1551-47A4-ACD0-B22B05DF4D77}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_rep_chan", "ex_rep_chan.vcxproj", "{080516C0-670A-11E0-AE3E-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_rep_chan", "VS10\ex_rep_chan.vcxproj", "{080516C0-670A-11E0-AE3E-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_rep_mgr", "ex_rep_mgr.vcxproj", "{365A89B8-B5A5-4EC6-990B-08254028E1A6}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_rep_mgr", "VS10\ex_rep_mgr.vcxproj", "{365A89B8-B5A5-4EC6-990B-08254028E1A6}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sequence", "ex_sequence.vcxproj", "{4E43DB5C-D050-4003-A4FF-6294D9F498DD}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sequence", "VS10\ex_sequence.vcxproj", "{4E43DB5C-D050-4003-A4FF-6294D9F498DD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_tpcb", "ex_tpcb.vcxproj", "{8632C58A-CC00-4116-B61A-CBE0F2C11CAD}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_tpcb", "VS10\ex_tpcb.vcxproj", "{8632C58A-CC00-4116-B61A-CBE0F2C11CAD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_txnguide", "ex_txnguide.vcxproj", "{80B961C4-D1D6-48E9-8965-CFCE69BF85E2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_txnguide", "VS10\ex_txnguide.vcxproj", "{80B961C4-D1D6-48E9-8965-CFCE69BF85E2}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_txnguide_inmem", "ex_txnguide_inmem.vcxproj", "{925BD215-6680-4FFF-8345-0741E4627B1F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_txnguide_inmem", "VS10\ex_txnguide_inmem.vcxproj", "{925BD215-6680-4FFF-8345-0741E4627B1F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_binding", "ex_sql_binding.vcxproj", "{67965310-072A-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_binding", "VS10\ex_sql_binding.vcxproj", "{67965310-072A-11DF-8A39-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_fts3", "ex_sql_fts3.vcxproj", "{FF1CAD6A-1EDF-4AD3-9A4F-8C76B7214A13}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_fts3", "VS10\ex_sql_fts3.vcxproj", "{FF1CAD6A-1EDF-4AD3-9A4F-8C76B7214A13}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_index", "ex_sql_index.vcxproj", "{67965311-072A-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_index", "VS10\ex_sql_index.vcxproj", "{67965311-072A-11DF-8A39-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_load", "ex_sql_load.vcxproj", "{67965312-072A-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_load", "VS10\ex_sql_load.vcxproj", "{67965312-072A-11DF-8A39-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_multi_thread", "ex_sql_multi_thread.vcxproj", "{67965313-072A-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_multi_thread", "VS10\ex_sql_multi_thread.vcxproj", "{67965313-072A-11DF-8A39-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_query", "ex_sql_query.vcxproj", "{67965314-072A-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_query", "VS10\ex_sql_query.vcxproj", "{67965314-072A-11DF-8A39-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_rtree", "ex_sql_rtree.vcxproj", "{9CBFC33A-027B-4A58-8059-2E3C29489E64}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_rtree", "VS10\ex_sql_rtree.vcxproj", "{9CBFC33A-027B-4A58-8059-2E3C29489E64}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_savepoint", "ex_sql_savepoint.vcxproj", "{67965315-072A-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_savepoint", "VS10\ex_sql_savepoint.vcxproj", "{67965315-072A-11DF-8A39-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_statement", "ex_sql_statement.vcxproj", "{67965316-072A-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_statement", "VS10\ex_sql_statement.vcxproj", "{67965316-072A-11DF-8A39-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_transaction", "ex_sql_transaction.vcxproj", "{67965317-072A-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_sql_transaction", "VS10\ex_sql_transaction.vcxproj", "{67965317-072A-11DF-8A39-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example_database_load", "example_database_load.vcxproj", "{56C01012-66D7-4295-B382-F3815366DB26}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example_database_load", "VS10\example_database_load.vcxproj", "{56C01012-66D7-4295-B382-F3815366DB26}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example_database_read", "example_database_read.vcxproj", "{0D35F7E6-425B-4D09-B805-B6D47A9B4AB3}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example_database_read", "VS10\example_database_read.vcxproj", "{0D35F7E6-425B-4D09-B805-B6D47A9B4AB3}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_access", "excxx_access.vcxproj", "{2575F0DD-DAA5-4AE5-AC81-7C47507AD279}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_access", "VS10\excxx_access.vcxproj", "{2575F0DD-DAA5-4AE5-AC81-7C47507AD279}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_btrec", "excxx_btrec.vcxproj", "{38C080B1-7003-48DF-820D-06348BC87B1B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_btrec", "VS10\excxx_btrec.vcxproj", "{38C080B1-7003-48DF-820D-06348BC87B1B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_env", "excxx_env.vcxproj", "{E790C029-341D-489B-B987-D35947AD78C3}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_env", "VS10\excxx_env.vcxproj", "{E790C029-341D-489B-B987-D35947AD78C3}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_example_database_load", "excxx_example_database_load.vcxproj", "{A4F42222-FE02-431D-A046-B049E516DEB7}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_example_database_load", "VS10\excxx_example_database_load.vcxproj", "{A4F42222-FE02-431D-A046-B049E516DEB7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_example_database_read", "excxx_example_database_read.vcxproj", "{81C97B03-193C-4021-A78E-F0A2A2AFAA87}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_example_database_read", "VS10\excxx_example_database_read.vcxproj", "{81C97B03-193C-4021-A78E-F0A2A2AFAA87}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_lock", "excxx_lock.vcxproj", "{19393F5D-DBBE-450C-9217-EA0C7503E277}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_lock", "VS10\excxx_lock.vcxproj", "{19393F5D-DBBE-450C-9217-EA0C7503E277}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_mpool", "excxx_mpool.vcxproj", "{DAEDD51B-0FED-4779-A99A-C09E4D2ACB5E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_mpool", "VS10\excxx_mpool.vcxproj", "{DAEDD51B-0FED-4779-A99A-C09E4D2ACB5E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_repquote", "excxx_repquote.vcxproj", "{75046027-E052-4E8B-AE87-E27DE9C2BC21}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_repquote", "VS10\excxx_repquote.vcxproj", "{75046027-E052-4E8B-AE87-E27DE9C2BC21}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_sequence", "excxx_sequence.vcxproj", "{D90AE774-03EF-4945-A3C3-AC76BF90825F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_sequence", "VS10\excxx_sequence.vcxproj", "{D90AE774-03EF-4945-A3C3-AC76BF90825F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_tpcb", "excxx_tpcb.vcxproj", "{77BD278B-7927-4C88-9198-5067C549398D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_tpcb", "VS10\excxx_tpcb.vcxproj", "{77BD278B-7927-4C88-9198-5067C549398D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_txnguide", "excxx_txnguide.vcxproj", "{2E9B94E9-024C-4255-9104-BA81FF7F2591}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_txnguide", "VS10\excxx_txnguide.vcxproj", "{2E9B94E9-024C-4255-9104-BA81FF7F2591}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_txnguide_inmem", "excxx_txnguide_inmem.vcxproj", "{009413E4-EFDF-42FB-8631-931CFAEAAB72}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "excxx_txnguide_inmem", "VS10\excxx_txnguide_inmem.vcxproj", "{009413E4-EFDF-42FB-8631-931CFAEAAB72}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "php_db4", "php_db4.vcxproj", "{44AFD8B5-687F-4B9D-B163-1F381CC11794}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "php_db4", "VS10\php_db4.vcxproj", "{44AFD8B5-687F-4B9D-B163-1F381CC11794}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_cutest", "test_cutest.vcxproj", "{086BD200-FDC6-11DF-8CFF-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_cutest", "VS10\test_cutest.vcxproj", "{086BD200-FDC6-11DF-8CFF-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_stl", "db_stl.vcxproj", "{284CC197-0C66-11DE-8C30-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_stl", "VS10\db_stl.vcxproj", "{284CC197-0C66-11DE-8C30-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_access", "exstl_access.vcxproj", "{284CC190-0C66-11DE-8C30-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_access", "VS10\exstl_access.vcxproj", "{284CC190-0C66-11DE-8C30-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_advancedfeatures", "exstl_advancedfeatures.vcxproj", "{8E5423C1-0177-4A14-86BC-75F0895E7198}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_advancedfeatures", "VS10\exstl_advancedfeatures.vcxproj", "{8E5423C1-0177-4A14-86BC-75F0895E7198}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_repquote", "exstl_repquote.vcxproj", "{284CC191-0C66-11DE-8C30-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_repquote", "VS10\exstl_repquote.vcxproj", "{284CC191-0C66-11DE-8C30-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_tpcb", "exstl_tpcb.vcxproj", "{284CC192-0C66-11DE-8C30-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_tpcb", "VS10\exstl_tpcb.vcxproj", "{284CC192-0C66-11DE-8C30-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_txnguide", "exstl_txnguide.vcxproj", "{284CC193-0C66-11DE-8C30-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "exstl_txnguide", "VS10\exstl_txnguide.vcxproj", "{284CC193-0C66-11DE-8C30-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_stream", "ex_stream.vcxproj", "{8F3D872E-C7F5-4C0D-9974-0F0CB9DAA527}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ex_stream", "VS10\ex_stream.vcxproj", "{8F3D872E-C7F5-4C0D-9974-0F0CB9DAA527}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql", "db_sql.vcxproj", "{4B65E600-064A-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql", "VS10\db_sql.vcxproj", "{4B65E600-064A-11DF-8A39-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_small", "db_small.vcxproj", "{B7124116-7A43-4BF1-B727-4C8ADE40FF7F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_small", "VS10\db_small.vcxproj", "{B7124116-7A43-4BF1-B727-4C8ADE40FF7F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_log_verify", "db_log_verify.vcxproj", "{872961A3-877A-4B53-886D-F1FB65073608}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_log_verify", "VS10\db_log_verify.vcxproj", "{872961A3-877A-4B53-886D-F1FB65073608}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql_codegen", "db_sql_codegen.vcxproj", "{738EE880-0E33-11DE-8C30-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql_codegen", "VS10\db_sql_codegen.vcxproj", "{738EE880-0E33-11DE-8C30-0800200C9A66}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql_testfixture", "db_sql_testfixture.vcxproj", "{5D79B660-0667-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql_jdbc", "VS10\db_sql_jdbc.vcxproj", "{433EAC30-1CEA-11DF-8A39-0800200C9A66}"
+	ProjectSection(ProjectDependencies) = postProject
+		{4B65E600-064A-11DF-8A39-0800200C9A66} = {4B65E600-064A-11DF-8A39-0800200C9A66}
+		{FD045D60-ABAD-4A6C-9794-9BFB085FC3E7} = {FD045D60-ABAD-4A6C-9794-9BFB085FC3E7}
+	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql_shell", "db_sql_shell.vcxproj", "{A5DB89F0-06E5-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql_testfixture", "VS10\db_sql_testfixture.vcxproj", "{5D79B660-0667-11DF-8A39-0800200C9A66}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql_shell", "VS10\db_sql_shell.vcxproj", "{A5DB89F0-06E5-11DF-8A39-0800200C9A66}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -426,6 +432,18 @@ Global
 		{443530F5-CCC3-40C8-A89B-AEF6C14D3A41}.Static Debug|x64.ActiveCfg = Debug|x64
 		{443530F5-CCC3-40C8-A89B-AEF6C14D3A41}.Static Release|Win32.ActiveCfg = Release|Win32
 		{443530F5-CCC3-40C8-A89B-AEF6C14D3A41}.Static Release|x64.ActiveCfg = Release|x64
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Debug|Win32.Build.0 = Debug|Win32
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Debug|x64.ActiveCfg = Debug|x64
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Debug|x64.Build.0 = Debug|x64
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Release|Win32.ActiveCfg = Release|Win32
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Release|Win32.Build.0 = Release|Win32
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Release|x64.ActiveCfg = Release|x64
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Release|x64.Build.0 = Release|x64
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Static Debug|Win32.ActiveCfg = Debug|Win32
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Static Debug|x64.ActiveCfg = Debug|x64
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Static Release|Win32.ActiveCfg = Release|Win32
+		{B736B89C-B7EE-4C45-88BA-174B9A1956B3}.Static Release|x64.ActiveCfg = Release|x64
 		{B254668F-C28F-4B14-92A5-3BF4B83D02EE}.Debug|Win32.ActiveCfg = Debug|Win32
 		{B254668F-C28F-4B14-92A5-3BF4B83D02EE}.Debug|Win32.Build.0 = Debug|Win32
 		{B254668F-C28F-4B14-92A5-3BF4B83D02EE}.Debug|x64.ActiveCfg = Debug|x64
@@ -462,6 +480,18 @@ Global
 		{BDBF0EE2-1551-47A4-ACD0-B22B05DF4D77}.Static Debug|x64.ActiveCfg = Debug|x64
 		{BDBF0EE2-1551-47A4-ACD0-B22B05DF4D77}.Static Release|Win32.ActiveCfg = Release|Win32
 		{BDBF0EE2-1551-47A4-ACD0-B22B05DF4D77}.Static Release|x64.ActiveCfg = Release|x64
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Debug|Win32.ActiveCfg = Debug|Win32
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Debug|Win32.Build.0 = Debug|Win32
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Debug|x64.ActiveCfg = Debug|x64
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Debug|x64.Build.0 = Debug|x64
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Release|Win32.ActiveCfg = Release|Win32
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Release|Win32.Build.0 = Release|Win32
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Release|x64.ActiveCfg = Release|x64
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Release|x64.Build.0 = Release|x64
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Static Debug|Win32.ActiveCfg = Debug|Win32
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Static Debug|x64.ActiveCfg = Debug|x64
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Static Release|Win32.ActiveCfg = Release|Win32
+		{080516C0-670A-11E0-AE3E-0800200C9A66}.Static Release|x64.ActiveCfg = Release|x64
 		{365A89B8-B5A5-4EC6-990B-08254028E1A6}.Debug|Win32.ActiveCfg = Debug|Win32
 		{365A89B8-B5A5-4EC6-990B-08254028E1A6}.Debug|Win32.Build.0 = Debug|Win32
 		{365A89B8-B5A5-4EC6-990B-08254028E1A6}.Debug|x64.ActiveCfg = Debug|x64
@@ -966,6 +996,14 @@ Global
 		{738EE880-0E33-11DE-8C30-0800200C9A66}.Static Debug|x64.ActiveCfg = Debug|x64
 		{738EE880-0E33-11DE-8C30-0800200C9A66}.Static Release|Win32.ActiveCfg = Release|Win32
 		{738EE880-0E33-11DE-8C30-0800200C9A66}.Static Release|x64.ActiveCfg = Release|x64
+		{433EAC30-1CEA-11DF-8A39-0800200C9A66}.Debug|Win32.ActiveCfg = Debug|Win32
+		{433EAC30-1CEA-11DF-8A39-0800200C9A66}.Debug|x64.ActiveCfg = Debug|x64
+		{433EAC30-1CEA-11DF-8A39-0800200C9A66}.Release|Win32.ActiveCfg = Release|Win32
+		{433EAC30-1CEA-11DF-8A39-0800200C9A66}.Release|x64.ActiveCfg = Release|x64
+		{433EAC30-1CEA-11DF-8A39-0800200C9A66}.Static Debug|Win32.ActiveCfg = Debug|Win32
+		{433EAC30-1CEA-11DF-8A39-0800200C9A66}.Static Debug|x64.ActiveCfg = Debug|x64
+		{433EAC30-1CEA-11DF-8A39-0800200C9A66}.Static Release|Win32.ActiveCfg = Release|Win32
+		{433EAC30-1CEA-11DF-8A39-0800200C9A66}.Static Release|x64.ActiveCfg = Release|x64
 		{5D79B660-0667-11DF-8A39-0800200C9A66}.Debug|Win32.ActiveCfg = Debug|Win32
 		{5D79B660-0667-11DF-8A39-0800200C9A66}.Debug|x64.ActiveCfg = Debug|x64
 		{5D79B660-0667-11DF-8A39-0800200C9A66}.Release|Win32.ActiveCfg = Release|Win32

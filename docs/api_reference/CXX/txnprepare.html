@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -84,7 +84,7 @@ DbTxn::prepare(u_int8_t gid[DB_GID_SIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3654833"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
+              <h4 class="title"><a id="idp5120248"></a><span>DbDeadlockException or </span>DB_LOCK_DEADLOCK</h4>
             </div>
           </div>
         </div>
@@ -102,13 +102,20 @@ DbTxn::prepare(u_int8_t gid[DB_GID_SIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3654993"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
+              <h4 class="title"><a id="idp5128568"></a><span>DbLockNotGrantedException or </span>DB_LOCK_NOTGRANTED</h4>
             </div>
           </div>
         </div>
         <p>
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
+            </p>
+        <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="Db::set_lk_exclusive()">Db::set_lk_exclusive()</a>
+                for more information.
             </p>
         <p>
                 <a class="xref" href="dblocknotgranted.html" title="DbLockNotGrantedException">DbLockNotGrantedException</a> is thrown if
@@ -120,7 +127,7 @@ DbTxn::prepare(u_int8_t gid[DB_GID_SIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h4 class="title"><a id="id3654271"></a>EINVAL</h4>
+              <h4 class="title"><a id="idp5127496"></a>EINVAL</h4>
             </div>
           </div>
         </div>
@@ -132,7 +139,7 @@ DbTxn::prepare(u_int8_t gid[DB_GID_SIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3655000"></a>Parameters</h3>
+              <h3 class="title"><a id="idp5120488"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -140,7 +147,7 @@ DbTxn::prepare(u_int8_t gid[DB_GID_SIZE]);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3655324"></a>gid</h4>
+                <h4 class="title"><a id="idp5146696"></a>gid</h4>
               </div>
             </div>
           </div>
@@ -157,7 +164,7 @@ DbTxn::prepare(u_int8_t gid[DB_GID_SIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3655202"></a>Class</h3>
+              <h3 class="title"><a id="idp5138392"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -169,7 +176,7 @@ DbTxn::prepare(u_int8_t gid[DB_GID_SIZE]);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3655211"></a>See Also</h3>
+              <h3 class="title"><a id="idp5138992"></a>See Also</h3>
             </div>
           </div>
         </div>

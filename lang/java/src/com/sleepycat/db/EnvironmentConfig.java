@@ -1,7 +1,8 @@
+
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -77,6 +78,10 @@ public class EnvironmentConfig implements Cloneable {
 
     /* Parameters */
     private int mode = 0644;
+    private int backup_read_count = 0;
+    private int backup_read_sleep = 0;
+    private int backup_size = 0;
+    private boolean backup_write_direct = false;
     private int cacheCount = 0;
     private long cacheSize = 0L;
     private long cacheMax = 0L;
@@ -102,6 +107,7 @@ public class EnvironmentConfig implements Cloneable {
     private int maxOpenFiles = 0;
     private int maxWrite = 0;
     private long maxWriteSleep = 0L;
+    private java.io.File metadataDir = null;
     private int mutexAlignment = 0;
     private int mutexIncrement = 0;
     private int mutexTestAndSetSpins = 0;
@@ -180,6 +186,7 @@ public class EnvironmentConfig implements Cloneable {
     private boolean yieldCPU = false;
 
     /* Verbose Flags */
+    private boolean verboseBackup = false;
     private boolean verboseDeadlock = false;
     private boolean verboseFileops = false;
     private boolean verboseFileopsAll = false;
@@ -198,6 +205,7 @@ public class EnvironmentConfig implements Cloneable {
     private boolean verboseWaitsFor = false;
 
     /* Callbacks */
+    private BackupHandler backupHandler = null;
     private ErrorHandler errorHandler = null;
     private FeedbackHandler feedbackHandler = null;
     private LogRecordHandler logRecordHandler = null;
@@ -783,15 +791,178 @@ The application-specified OutputStream for error messages.
     }
 
     /**
-Return the an OutputStream for displaying error messages.
+Return the OutputStream for displaying error messages.
 <p>
 This method may be called at any time during the life of the application.
 <p>
 @return
-The an OutputStream for displaying error messages.
+The OutputStream for displaying error messages.
     */
     public java.io.OutputStream getErrorStream() {
         return errorStream;
+    }
+
+    /**
+Return the number of pages to read before pausing during the hot backup.
+<p>
+@return
+The number of pages to read before pausing.
+    */
+    public int getBackupReadCount() {
+        return this.backup_read_count;
+    }
+
+    /**
+Configures the number of pages to read during a hot backup before pausing. 
+<p>
+Increasing this value increases the amount of I/O the backup process
+performs for any given time interval. If your application is already
+heavily I/O bound, setting this value to a lower number may help to improve
+your overall data throughput by reducing the I/O demands placed on your
+system. By default, all pages are read without a pause.
+<p>
+This method configures the behavior of the
+{@link com.sleepycat.db.Environment#backup Environment.backup}
+and 
+{@link com.sleepycat.db.Environment#backupDatabase Environment.backupDatabase}
+methods. It may be called at any time during the life of the application.
+<p>
+@param count
+The number of pages to read before pausing.
+    */
+    public void setBackupReadCount(int count) {
+        this.backup_read_count = count;
+    }
+
+    /**
+Return the number of microseconds to sleep between batches of reads during
+a hot backup.
+<p>
+@return
+The number of microseconds to sleep.
+    */
+    public int getBackupReadSleep() {
+        return this.backup_read_sleep;
+    }
+
+    /**
+Configures the number of microseconds to sleep between batches of reads during
+a hot backup.
+<p>
+Increasing this value decreases the amount of I/O the backup process
+performs for any given time interval. If your application is already
+heavily I/O bound, setting this value to a higher number may help to
+improve your overall data throughput by reducing the I/O demands placed on
+your system. 
+<p>
+This method configures the behavior of the
+{@link com.sleepycat.db.Environment#backup Environment.backup}
+and 
+{@link com.sleepycat.db.Environment#backupDatabase Environment.backupDatabase}
+methods. It may be called at any time during the life of the application.
+<p>
+@param sleep
+The number of microseconds to sleep.
+    */
+    public void setBackupReadSleep(int sleep) {
+        this.backup_read_sleep = sleep;
+    }
+
+    /**
+Return the size of the buffer, in megabytes, to read from the database
+during a hot backup.
+<p>
+@return
+The size of the buffer in megabytes.
+    */
+    public int getBackupSize() {
+        return this.backup_size;
+    }
+
+    /**
+Configures the size of the buffer, in bytes, to read from the database
+during a hot backup.
+<p>
+This method configures the behavior of the
+{@link com.sleepycat.db.Environment#backup Environment.backup}
+and 
+{@link com.sleepycat.db.Environment#backupDatabase Environment.backupDatabase}
+methods. It may be called at any time during the life of the application.
+<p>
+@param size
+The size of the buffer in bytes. Default is 1 megabyte.
+    */
+    public void setBackupSize(int size) {
+        this.backup_size = size;
+    }
+
+    /**
+Return return true if direct I/O is used when writing pages to the disk
+during a hot backup.
+<p>
+@return
+The environment's current direct I/O for hot backup setting.
+    */
+    public boolean getBackupWriteDirect() {
+        return this.backup_write_direct;
+    }
+
+    /**
+Configures whether direct I/O is used when writing pages to the disk during a
+hot backup.
+<p>
+For some environments, direct I/O can provide faster write throughput, but
+usually it is slower because the OS buffer pool offers asynchronous
+activity. 
+<p>
+This method configures the behavior of the
+{@link com.sleepycat.db.Environment#backup Environment.backup}
+and 
+{@link com.sleepycat.db.Environment#backupDatabase Environment.backupDatabase}
+methods. It may be called at any time during the life of the application.
+<p>
+@param writeDirect
+If true, use direct I/O when writing database pages; if false, do not use 
+direct I/O. 
+    */
+    public void setBackupWriteDirect(boolean writeDirect) {
+        this.backup_write_direct = writeDirect;
+    }
+
+    /**
+Sets the {@link com.sleepycat.db.BackupHandler BackupHandler}
+interface to be used when performing hot backups.
+<p>
+The {@link com.sleepycat.db.BackupHandler BackupHandler} interface is used
+to override the default behavior used by the 
+{@link com.sleepycat.db.Environment#backup Environment.backup}
+and 
+{@link com.sleepycat.db.Environment#backupDatabase Environment.backupDatabase}
+methods. 
+<p>
+This method may be called at any time during the life of the application.
+<p>
+This method configures operations performed using the Environment handle,
+not all operations performed on the underlying database environment. 
+<p>
+@param backupHandler
+The {@link com.sleepycat.db.BackupHandler BackupHandler}
+interface to use when performing hot backups.
+    */
+    public void setBackupHandler(final BackupHandler backupHandler) {
+        this.backupHandler = backupHandler;
+    }
+
+    /**
+Return the {@link com.sleepycat.db.BackupHandler BackupHandler}
+used to override default hot backup behavior.
+<p>
+@return
+The {@link com.sleepycat.db.BackupHandler BackupHandler}
+interface to use when performing hot backups.
+    */
+    public BackupHandler getBackupHandler() {
+        return backupHandler;
     }
 
     /**
@@ -2083,7 +2254,7 @@ The application-specified OutputStream for informational messages.
     }
 
     /**
-Return the an OutputStream for displaying informational messages.
+Return the OutputStream for displaying informational messages.
 <p>
 This method may be called at any time during the life of the application.
 <p>
@@ -2092,6 +2263,26 @@ The an OutputStream for displaying informational messages.
     */
     public java.io.OutputStream getMessageStream() {
         return messageStream;
+    }
+
+    /**
+    Set the path of a directory to be used as the location to store the
+    persistent metadata files.
+    @param dir
+    The path of metadata directory.
+    */
+    public void setMetadataDir(java.io.File dir) {
+        metadataDir = dir;
+    }
+
+    /**
+    Return the path of a directory to be used as the location to store the
+    persistent metadata.
+    @return
+    The the path of metadata directory.
+    */
+    public java.io.File getMetadataDir() {
+        return metadataDir;
     }
 
     /**
@@ -2135,22 +2326,48 @@ The an OutputStream for displaying informational messages.
     }
 
 /**
+Sets the page size used to allocate the hash table and the number of mutexes
+expected to be needed by the buffer pool.
+<p>
+This method may be called only before the environment is opened.
+<p>
+@param mpPageSize
+The expected page size to use. Generally, it is set to the expected average
+page size for all the data pages that are in the buffer pool. 
  */
     public void setCachePageSize(final int mpPageSize) {
         this.mpPageSize = mpPageSize;
     }
 /**
+Returns the environment's current page size setting.
+<p>
+@return
+The current setting for the environment's expected page size use.
  */
     public int getCachePageSize() {
         return mpPageSize;
     }
 
 /**
+Overrides the calculated hash table size.
+<p>
+The table size is then adjusted to a nearby prime number to enhance the 
+hashing algorithm.
+<p>
+This method may be called only before the environment is opened.
+<p>
+@param mpTableSize
+Specifies the size of the buffer pool hash table, which is then internally
+adjusted to a nearby prime number.
  */
     public void setCacheTableSize(final int mpTableSize) {
         this.mpTableSize = mpTableSize;
     }
 /**
+Returns the environment's current table size setting.
+<p>
+@return
+The current setting for the environment's table size.
  */
     public int getCacheTableSize() {
         return mpTableSize;
@@ -3722,6 +3939,9 @@ True if the database environment is configured to accept information
     public void setVerbose(final VerboseConfig flag, boolean enable) {
         int iflag = flag.getInternalFlag();
         switch (iflag) {
+        case DbConstants.DB_VERB_BACKUP:
+            verboseBackup = enable;
+            break;
         case DbConstants.DB_VERB_DEADLOCK:
             verboseDeadlock = enable;
             break;
@@ -3792,6 +4012,8 @@ True if the database environment is configured to accept information
     public boolean getVerbose(final VerboseConfig flag) {
         int iflag = flag.getInternalFlag();
         switch (iflag) {
+        case DbConstants.DB_VERB_BACKUP:
+            return verboseBackup;
         case DbConstants.DB_VERB_DEADLOCK:
             return verboseDeadlock;
         case DbConstants.DB_VERB_FILEOPS:
@@ -4218,87 +4440,55 @@ True if the system has been configured to yield the processor
             dbenv.log_set_config(DbConstants.DB_LOG_ZERO, logZero);
 
         /* Verbose flags */
-        if (verboseDeadlock && !oldConfig.verboseDeadlock)
-            dbenv.set_verbose(DbConstants.DB_VERB_DEADLOCK, true);
-        if (!verboseDeadlock && oldConfig.verboseDeadlock)
-            dbenv.set_verbose(DbConstants.DB_VERB_DEADLOCK, false);
-
-        if (verboseFileops && !oldConfig.verboseFileops)
-            dbenv.set_verbose(DbConstants.DB_VERB_FILEOPS, true);
-        if (!verboseFileops && oldConfig.verboseFileops)
-            dbenv.set_verbose(DbConstants.DB_VERB_FILEOPS, false);
-
-        if (verboseFileopsAll && !oldConfig.verboseFileopsAll)
-            dbenv.set_verbose(DbConstants.DB_VERB_FILEOPS_ALL, true);
-        if (!verboseFileopsAll && oldConfig.verboseFileopsAll)
-            dbenv.set_verbose(DbConstants.DB_VERB_FILEOPS_ALL, false);
-
-        if (verboseRecovery && !oldConfig.verboseRecovery)
-            dbenv.set_verbose(DbConstants.DB_VERB_RECOVERY, true);
-        if (!verboseRecovery && oldConfig.verboseRecovery)
-            dbenv.set_verbose(DbConstants.DB_VERB_RECOVERY, false);
-
-        if (verboseRegister && !oldConfig.verboseRegister)
-            dbenv.set_verbose(DbConstants.DB_VERB_REGISTER, true);
-        if (!verboseRegister && oldConfig.verboseRegister)
-            dbenv.set_verbose(DbConstants.DB_VERB_REGISTER, false);
-
-        if (verboseReplication && !oldConfig.verboseReplication)
-            dbenv.set_verbose(DbConstants.DB_VERB_REPLICATION, true);
-        if (!verboseReplication && oldConfig.verboseReplication)
-            dbenv.set_verbose(DbConstants.DB_VERB_REPLICATION, false);
-
-        if (verboseReplicationElection && !oldConfig.verboseReplicationElection)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_ELECT, true);
-        if (!verboseReplicationElection && oldConfig.verboseReplicationElection)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_ELECT, false);
-
-        if (verboseReplicationLease && !oldConfig.verboseReplicationLease)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_LEASE, true);
-        if (!verboseReplicationLease && oldConfig.verboseReplicationLease)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_LEASE, false);
-
-        if (verboseReplicationMisc && !oldConfig.verboseReplicationMisc)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_MISC, true);
-        if (!verboseReplicationMisc && oldConfig.verboseReplicationMisc)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_MISC, false);
-
-        if (verboseReplicationMsgs && !oldConfig.verboseReplicationMsgs)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_MSGS, true);
-        if (!verboseReplicationMsgs && oldConfig.verboseReplicationMsgs)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_MSGS, false);
-
-        if (verboseReplicationSync && !oldConfig.verboseReplicationSync)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_SYNC, true);
-        if (!verboseReplicationSync && oldConfig.verboseReplicationSync)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_SYNC, false);
-
-        if (verboseReplicationSystem && !oldConfig.verboseReplicationSystem)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_SYSTEM, true);
-        if (!verboseReplicationSystem && oldConfig.verboseReplicationSystem)
-	    dbenv.set_verbose(DbConstants.DB_VERB_REP_SYSTEM, false);
-
-        if (verboseReplicationTest && !oldConfig.verboseReplicationTest)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_TEST, true);
-        if (!verboseReplicationTest && oldConfig.verboseReplicationTest)
-            dbenv.set_verbose(DbConstants.DB_VERB_REP_TEST, false);
-
-        if (verboseRepmgrConnfail && !oldConfig.verboseRepmgrConnfail)
-            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_CONNFAIL, true);
-        if (!verboseRepmgrConnfail && oldConfig.verboseRepmgrConnfail)
-            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_CONNFAIL, false);
-
-        if (verboseRepmgrMisc && !oldConfig.verboseRepmgrMisc)
-            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_MISC, true);
-        if (!verboseRepmgrMisc && oldConfig.verboseRepmgrMisc)
-            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_MISC, false);
-
-        if (verboseWaitsFor && !oldConfig.verboseWaitsFor)
-            dbenv.set_verbose(DbConstants.DB_VERB_WAITSFOR, true);
-        if (!verboseWaitsFor && oldConfig.verboseWaitsFor)
-            dbenv.set_verbose(DbConstants.DB_VERB_WAITSFOR, false);
+        if (verboseBackup != oldConfig.verboseBackup)
+            dbenv.set_verbose(DbConstants.DB_VERB_BACKUP, verboseBackup);
+        if (verboseDeadlock != oldConfig.verboseDeadlock)
+            dbenv.set_verbose(DbConstants.DB_VERB_DEADLOCK, verboseDeadlock);
+        if (verboseFileops != oldConfig.verboseFileops)
+            dbenv.set_verbose(DbConstants.DB_VERB_FILEOPS, verboseFileops);
+        if (verboseFileopsAll != oldConfig.verboseFileopsAll)
+            dbenv.set_verbose(DbConstants.DB_VERB_FILEOPS_ALL,
+                verboseFileopsAll);
+        if (verboseRecovery != !oldConfig.verboseRecovery)
+            dbenv.set_verbose(DbConstants.DB_VERB_RECOVERY, verboseRecovery);
+        if (verboseRegister != oldConfig.verboseRegister)
+            dbenv.set_verbose(DbConstants.DB_VERB_REGISTER, verboseRegister);
+        if (verboseReplication != oldConfig.verboseReplication)
+            dbenv.set_verbose(DbConstants.DB_VERB_REPLICATION,
+                verboseReplication);
+        if (verboseReplicationElection != oldConfig.verboseReplicationElection)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_ELECT,
+                verboseReplicationElection);
+        if (verboseReplicationLease != oldConfig.verboseReplicationLease)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_LEASE,
+                verboseReplicationLease);
+        if (verboseReplicationMisc != oldConfig.verboseReplicationMisc)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_MISC,
+                verboseReplicationMisc);
+        if (verboseReplicationMsgs != oldConfig.verboseReplicationMsgs)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_MSGS,
+                verboseReplicationMsgs);
+        if (verboseReplicationSync != oldConfig.verboseReplicationSync)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_SYNC,
+                verboseReplicationSync);
+        if (verboseReplicationSystem != oldConfig.verboseReplicationSystem)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_SYSTEM,
+                verboseReplicationSystem);
+        if (verboseReplicationTest != oldConfig.verboseReplicationTest)
+            dbenv.set_verbose(DbConstants.DB_VERB_REP_TEST,
+                verboseReplicationTest);
+        if (verboseRepmgrConnfail != oldConfig.verboseRepmgrConnfail)
+            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_CONNFAIL,
+                verboseRepmgrConnfail);
+        if (verboseRepmgrMisc != oldConfig.verboseRepmgrMisc)
+            dbenv.set_verbose(DbConstants.DB_VERB_REPMGR_MISC,
+                verboseRepmgrMisc);
+        if (verboseWaitsFor != oldConfig.verboseWaitsFor)
+            dbenv.set_verbose(DbConstants.DB_VERB_WAITSFOR, verboseWaitsFor);
 
         /* Callbacks */
+        if (backupHandler != oldConfig.backupHandler)
+            dbenv.set_backup_callbacks(backupHandler, backupHandler, backupHandler);
         if (feedbackHandler != oldConfig.feedbackHandler)
             dbenv.set_feedback(feedbackHandler);
         if (logRecordHandler != oldConfig.logRecordHandler)
@@ -4318,15 +4508,16 @@ True if the system has been configured to yield the processor
             dbenv.set_cachesize(cacheSize, cacheCount);
         if (cacheMax != oldConfig.cacheMax)
             dbenv.set_cache_max(cacheMax);
-        if (createDir != oldConfig.createDir)
-            dbenv.set_create_dir(createDir.toString());
 
         for (final java.util.Enumeration e = dataDirs.elements();
             e.hasMoreElements();) {
             final java.io.File dir = (java.io.File)e.nextElement();
             if (!oldConfig.dataDirs.contains(dir))
-                dbenv.set_data_dir(dir.toString());
+                dbenv.add_data_dir(dir.toString());
         }
+        if (createDir != oldConfig.createDir)
+            dbenv.set_create_dir(createDir.toString());
+
         if (!lockConflictsEqual(lockConflicts, oldConfig.lockConflicts))
             dbenv.set_lk_conflicts(lockConflicts);
         if (lockDetectMode != oldConfig.lockDetectMode)
@@ -4359,6 +4550,8 @@ True if the system has been configured to yield the processor
             dbenv.set_mp_max_write(maxWrite, maxWriteSleep);
         if (messageStream != oldConfig.messageStream)
             dbenv.set_message_stream(messageStream);
+        if (metadataDir != oldConfig.metadataDir)
+            dbenv.set_metadata_dir(metadataDir.toString());
         if (mmapSize != oldConfig.mmapSize)
             dbenv.set_mp_mmapsize(mmapSize);
         if (mpPageSize != oldConfig.mpPageSize)
@@ -4520,6 +4713,7 @@ True if the system has been configured to yield the processor
         }
 
         /* Verbose flags */
+        verboseBackup = dbenv.get_verbose(DbConstants.DB_VERB_BACKUP);
         verboseDeadlock = dbenv.get_verbose(DbConstants.DB_VERB_DEADLOCK);
         verboseFileops = dbenv.get_verbose(DbConstants.DB_VERB_FILEOPS);
         verboseFileopsAll = dbenv.get_verbose(DbConstants.DB_VERB_FILEOPS_ALL);
@@ -4544,6 +4738,7 @@ True if the system has been configured to yield the processor
         eventHandler = dbenv.get_event_notify();
         messageHandler = dbenv.get_msgcall();
         panicHandler = dbenv.get_paniccall();
+        backupHandler = dbenv.get_backup_handler();
         // XXX: replicationTransport and envid aren't available?
 
         /* Other settings */
@@ -4629,6 +4824,10 @@ True if the system has been configured to yield the processor
         initResourceThreads = dbenv.get_memory_init(DbConstants.DB_MEM_THREAD);
 
         regionMemoryMax = dbenv.get_memory_max();
+
+        String metadataDirStr = dbenv.get_metadata_dir();
+        if (metadataDirStr != null)
+            metadataDir = new java.io.File(metadataDirStr);
 
         if (initializeReplication) {
             replicationClockskewFast = dbenv.rep_get_clockskew_fast();

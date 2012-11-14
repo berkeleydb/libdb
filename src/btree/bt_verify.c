@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -52,16 +52,11 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		return (ret);
 
 	/*
-	 * If VRFY_INCOMPLETE is not set, then we didn't come through
-	 * __db_vrfy_pagezero and didn't incompletely
-	 * check this page--we haven't checked it at all.
-	 * Thus we need to call __db_vrfy_meta and check the common fields.
-	 *
-	 * If VRFY_INCOMPLETE is set, we've already done all the same work
-	 * in __db_vrfy_pagezero, so skip the check.
+	 * If we came through __db_vrfy_pagezero, we have already checked the
+	 * common fields.  However, we used the on-disk metadata page, it may
+	 * have been stale.  We now have the page from mpool, so check that.
 	 */
-	if (!F_ISSET(pip, VRFY_INCOMPLETE) &&
-	    (ret = __db_vrfy_meta(dbp, vdp, &meta->dbmeta, pgno, flags)) != 0) {
+	if ((ret = __db_vrfy_meta(dbp, vdp, &meta->dbmeta, pgno, flags)) != 0) {
 		if (ret == DB_VERIFY_BAD)
 			isbad = 1;
 		else
@@ -1097,7 +1092,8 @@ retry:	p1 = &dbta;
 			 * if overflow items are unsafe.
 			 */
 overflow:		if (!ovflok) {
-				F_SET(pip, VRFY_INCOMPLETE);
+				if (pip != NULL)
+					F_SET(pip, VRFY_INCOMPLETE);
 				goto err;
 			}
 
@@ -1228,7 +1224,9 @@ overflow:		if (!ovflok) {
 					if (dup_1.data == NULL ||
 					    dup_2.data == NULL) {
 						DB_ASSERT(env, !ovflok);
-						F_SET(pip, VRFY_INCOMPLETE);
+						if (pip != NULL)
+							F_SET(pip,
+							    VRFY_INCOMPLETE);
 						goto err;
 					}
 
@@ -1238,7 +1236,8 @@ overflow:		if (!ovflok) {
 					 * until we do the structure check
 					 * and see whether DUPSORT is set.
 					 */
-					if (dupfunc(dbp, &dup_1, &dup_2) > 0)
+					if (dupfunc(dbp, &dup_1, &dup_2) > 0 &&
+					    pip != NULL)
 						F_SET(pip, VRFY_DUPS_UNSORTED);
 
 					if (freedup_1)

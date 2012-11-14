@@ -1,7 +1,7 @@
 /*-
 * See the file LICENSE for redistribution information.
 *
-* Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+* Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
 */
 /*
 ** This file contains the implementation of the sqlite3_backup_XXX()
@@ -224,7 +224,7 @@ sqlite3_backup *sqlite3_backup_init(sqlite3* pDestDb, const char *zDestDb,
 	}
 	dbenv = p->pSrc->pBt->dbenv;
 	p->rc = dberr2sqlite(dbenv->txn_begin(dbenv, p->pSrc->family_txn,
-	    &p->srcTxn, 0));
+	    &p->srcTxn, 0), NULL);
 	if (p->rc != SQLITE_OK) {
 		sqlite3Error(pSrcDb, p->rc, 0);
 		goto err;
@@ -403,7 +403,7 @@ err:
 done:	if (tmp_env != NULL)
 		tmp_env->close(tmp_env, 0);
 
-	return MAP_ERR(rc, ret);
+	return MAP_ERR(rc, ret, p);
 }
 
 /* Close or free all handles and commit or rollback the transaction. */
@@ -426,7 +426,7 @@ static int backupCleanup(sqlite3_backup *p)
 		app = db->app_private;
 		if ((ret = p->srcCur->close(p->srcCur)) == 0)
 			ret = db->close(db, DB_NOSYNC);
-		rc2 = dberr2sqlite(ret);
+		rc2 = dberr2sqlite(ret, NULL);
 		/*
 		 * The KeyInfo was allocated in btreeSetupIndex,
 		 * so have to deallocate it here.
@@ -463,7 +463,7 @@ static int backupCleanup(sqlite3_backup *p)
 			ret = p->srcTxn->commit(p->srcTxn, 0);
 		else
 			ret = p->srcTxn->abort(p->srcTxn);
-		rc2 = dberr2sqlite(ret);
+		rc2 = dberr2sqlite(ret, NULL);
 	}
 	p->srcTxn = 0;
 	if (rc2 != SQLITE_OK && sqlite3BtreeIsInTrans(p->pDest)) {
@@ -688,7 +688,7 @@ int sqlite3_backup_step(sqlite3_backup *p, int nPage) {
 			if (p->rc != SQLITE_OK)
 				goto err;
 		}
-		if ((p->rc = sqlite3BtreeBeginTrans(p->pDest, 2))
+		if ((p->rc = btreeBeginTransInternal(p->pDest, 2))
 			!= SQLITE_OK)
 			goto err;
 	}
@@ -705,7 +705,7 @@ int sqlite3_backup_step(sqlite3_backup *p, int nPage) {
 	if (!p->srcTxn) {
 		dbenv = p->pSrc->pBt->dbenv;
 		if ((p->rc = dberr2sqlite(dbenv->txn_begin(dbenv,
-		    p->pSrc->family_txn, &p->srcTxn, 0))) != SQLITE_OK)
+		    p->pSrc->family_txn, &p->srcTxn, 0), NULL)) != SQLITE_OK)
 			goto err;
 	}
 
@@ -1022,5 +1022,5 @@ static int btreeCopyPages(sqlite3_backup *p, int *pages)
 	goto done;
 err:	if (ret == SQLITE_DONE)
 		return ret;
-done:	return MAP_ERR(rc, ret);
+done:	return MAP_ERR(rc, ret, NULL);
 }

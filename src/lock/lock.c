@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -454,7 +454,7 @@ __lock_get(env, locker, flags, obj, lock_mode, lock)
 
 	lt = env->lk_handle;
 
-	if (IS_RECOVERING(env)) {
+	if (IS_RECOVERING(env) && !LF_ISSET(DB_LOCK_IGNORE_REC)) {
 		LOCK_INIT(*lock);
 		return (0);
 	}
@@ -626,7 +626,7 @@ again:	if (obj == NULL) {
 	 * access method when we want to get an entry which is past
 	 * the end of the queue.  With CDB we have a DB_READ_LOCK and
 	 * need to switch it to DB_LOCK_WAIT. Otherwise we insert a
-	 * DB_LOCK_WAIT and and then after releaseing the metadata
+	 * DB_LOCK_WAIT and and then after releasing the metadata
 	 * page wait on it and join the waiters queue.  This must be
 	 * done as a single operation so that another locker cannot
 	 * get in and fail to wake us up.
@@ -896,6 +896,7 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 		 * the txn expiration time.  lk_expire is passed
 		 * to avoid an extra call to get the time.
 		 */
+		timespecclear(&sh_locker->lk_expire);
 		if (__clock_expired(env,
 		    &sh_locker->lk_expire, &sh_locker->tx_expire)) {
 			newl->status = DB_LSTAT_EXPIRED;
@@ -996,7 +997,7 @@ in_abort:	newl->status = DB_LSTAT_WAITING;
 		case DB_LSTAT_ABORTED:
 			/*
 			 * If we raced with the deadlock detector and it
-			 * mistakenly picked this tranaction to abort again
+			 * mistakenly picked this transaction to abort again
 			 * ignore the abort and request the lock again.
 			 */
 			if (F_ISSET(sh_locker, DB_LOCKER_INABORT))

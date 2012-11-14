@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -29,6 +29,7 @@ import com.sleepycat.db.Database;
 import com.sleepycat.db.DatabaseConfig;
 import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.DeadlockException;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.OperationStatus;
 import com.sleepycat.db.Transaction;
@@ -56,6 +57,8 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  * @author Mark Hayes
  */
 public class PersistCatalog implements Catalog {
+    
+    private static final int MAX_TXN_RETRIES = 10;
 
     /**
      * Key to Data record in the catalog database.  In the JE 3.0.12 beta
@@ -131,6 +134,7 @@ public class PersistCatalog implements Catalog {
      */
     private Map<String, String> proxyClassMap;
 
+    private final Environment env;
     private final boolean rawAccess;
     private EntityModel model;
     private StoredModel storedModel;
@@ -138,6 +142,7 @@ public class PersistCatalog implements Catalog {
     private final Database db;
     private int openCount;
     private boolean readOnly;
+    private final boolean transactional;
 
     /**
      * If a Replica is upgraded, local in-memory evolution may take place prior
@@ -158,8 +163,8 @@ public class PersistCatalog implements Catalog {
      * The Evolver and catalog Data are non-null during catalog initialization,
      * and null otherwise.
      */
-    private Evolver evolver;
-    private Data catalogData;
+    private Evolver initEvolver;
+    private Data initData;
 
     /**
      * Creates a new catalog, opening the database and reading it from a given
@@ -170,8 +175,7 @@ public class PersistCatalog implements Catalog {
      * database is not read-only, write the initialized catalog to the
      * database.
      */
-    public PersistCatalog(final Transaction txn,
-                          final Environment env,
+    public PersistCatalog(final Environment env,
                           final String storePrefix,
                           final String dbName,
                           final DatabaseConfig dbConfig,
@@ -184,8 +188,11 @@ public class PersistCatalog implements Catalog {
                IncompatibleClassException,
                DatabaseException {
 
+        this.env = env;
         this.rawAccess = rawAccess;
         this.store = store;
+        this.transactional = dbConfig.getTransactional();
+
         /* store may be null for testing. */
         String[] fileAndDbNames = (store != null) ?
             store.parseDbName(dbName) :
@@ -215,7 +222,7 @@ public class PersistCatalog implements Catalog {
         openCount = 1;
         boolean success = false;
         try {
-            init(txn, storePrefix, modelParam, mutationsParam);
+            initAndRetry(storePrefix, modelParam, mutationsParam);
             success = true;
         } finally {
             if (!success) {
@@ -229,17 +236,67 @@ public class PersistCatalog implements Catalog {
      * information from the old catalog directly in the new catalog, but all
      * formats are created from scratch and class evolution is attempted.
      */
-    PersistCatalog(final Transaction txn,
-                   final PersistCatalog oldCatalog,
-                   final String storePrefix)
+    PersistCatalog(final PersistCatalog oldCatalog, final String storePrefix)
         throws DatabaseException {
 
         db = oldCatalog.db;
         store = oldCatalog.store;
+        env = oldCatalog.env;
         rawAccess = oldCatalog.rawAccess;
         openCount = oldCatalog.openCount;
+        transactional = oldCatalog.transactional;
 
-        init(txn, storePrefix, oldCatalog.model, oldCatalog.mutations);
+        initAndRetry(storePrefix, oldCatalog.model, oldCatalog.mutations);
+    }
+
+    private void initAndRetry(final String storePrefix,
+                              final EntityModel modelParam,
+                              final Mutations mutationsParam)
+        throws DatabaseException {
+
+        for (int i = 0;; i += 1) {
+            Transaction txn = null;
+            if (transactional && DbCompat.getThreadTransaction(env) == null) {
+                txn =
+                    env.beginTransaction(null, store.getAutoCommitTxnConfig());
+            }
+            boolean success = false;
+            try {
+                init(txn, storePrefix, modelParam, mutationsParam);
+                success = true;
+                return;
+            } catch (DeadlockException e) {
+
+                /*
+                 * It is very unlikely that two threads opening the same
+                 * EntityStore will cause a lock conflict.  However, because we
+                 * read-modify-update the catalog record,
+                 * LockPreemptedException must be handled in a replicated JE
+                 * environment.  Since LockPreemptedException is a
+                 * LockConfictException, it is simplest to retry when any
+                 * LockConfictException occurs.
+                 */
+                if (i >= MAX_TXN_RETRIES) {
+                    throw e;
+                }
+                continue;
+            } finally {
+
+                /*
+                 * If the catalog is read-only we abort rather than commit,
+                 * because a ReplicaWriteException may have occurred.
+                 * ReplicaWriteException invalidates the transaction, and there
+                 * are no writes to commit anyway. [#16655]
+                 */
+                if (txn != null) {
+                    if (success && !isReadOnly()) {
+                        txn.commit();
+                    } else {
+                        txn.abort();
+                    }
+                }
+            }
+        }
     }
 
     private void init(final Transaction txn,
@@ -249,8 +306,8 @@ public class PersistCatalog implements Catalog {
         throws DatabaseException {
 
         try {
-            catalogData = readData(txn);
-            mutations = catalogData.mutations;
+            initData = readData(txn);
+            mutations = initData.mutations;
             if (mutations == null) {
                 mutations = new Mutations();
             }
@@ -260,7 +317,7 @@ public class PersistCatalog implements Catalog {
              * catalog and disallow class changes.  This brings the catalog up
              * to date so that evolution can proceed correctly from then on.
              */
-            boolean betaVersion = (catalogData.version == BETA_VERSION);
+            boolean betaVersion = (initData.version == BETA_VERSION);
             boolean needWrite = betaVersion;
             boolean disallowClassChanges = betaVersion;
 
@@ -276,26 +333,37 @@ public class PersistCatalog implements Catalog {
                 forceEvolution = true;
             }
 
+            final ClassLoader envClassLoader = DbCompat.getClassLoader(env);
+
             /* Get the existing format list, or copy it from SimpleCatalog. */
-            formatList = catalogData.formatList;
+            formatList = initData.formatList;
             if (formatList == null) {
-                formatList = SimpleCatalog.copyFormatList();
+                formatList = SimpleCatalog.getAllSimpleFormats(envClassLoader);
 
                 /*
                  * Special cases: Object and Number are predefined but are not
                  * simple types.
                  */
-                Format format = new NonPersistentFormat(Object.class);
+                Format format = new NonPersistentFormat(this, Object.class);
                 format.setId(Format.ID_OBJECT);
                 formatList.set(Format.ID_OBJECT, format);
-                format = new NonPersistentFormat(Number.class);
+                format = new NonPersistentFormat(this, Number.class);
                 format.setId(Format.ID_NUMBER);
                 formatList.set(Format.ID_NUMBER, format);
             } else {
-                if (SimpleCatalog.copyMissingFormats(formatList)) {
+                /* Pick up any new predefined simple types. */
+                if (SimpleCatalog.addMissingSimpleFormats(envClassLoader,
+                                                          formatList)) {
                     needWrite = true;
                 }
                 nStoredFormats = formatList.size();
+            }
+
+            /* Initialize transient catalog field before further use. */
+            for (Format format : formatList) {
+                if (format != null) {
+                    format.initCatalog(this);
+                }
             }
 
             /* Special handling for JE 3.0.12 beta formats. */
@@ -338,6 +406,7 @@ public class PersistCatalog implements Catalog {
                     storedModel = new StoredModel(this);
                     model = storedModel;
                 }
+                ModelInternal.setClassLoader(model, envClassLoader);
                 for (Format format : formatList) {
                     if (format != null) {
                         format.initializeIfNeeded(this, model);
@@ -356,6 +425,7 @@ public class PersistCatalog implements Catalog {
             } else {
                 model = new AnnotationModel();
             }
+            ModelInternal.setClassLoader(model, envClassLoader);
             storedModel = null;
 
             /*
@@ -375,6 +445,8 @@ public class PersistCatalog implements Catalog {
              */
             List<String> knownClasses =
                 new ArrayList<String>(model.getKnownClasses());
+            /* Also adds the special classes, i.e., enum or array. [#19377] */
+            knownClasses.addAll(model.getKnownSpecialClasses());
             addPredefinedProxies(knownClasses);
 
             /*
@@ -393,10 +465,10 @@ public class PersistCatalog implements Catalog {
                     (oldName, oldFormat.getVersion(), null);
                 String newName =
                     (renamer != null) ? renamer.getNewName() : oldName;
-                addProxiedClass(newName);
+                addProxiedClass(newName, false /*isKnownClass*/);
             }
             for (String className : knownClasses) {
-                addProxiedClass(className);
+                addProxiedClass(className, true /*isKnownClass*/);
             }
 
             /*
@@ -418,7 +490,7 @@ public class PersistCatalog implements Catalog {
              * exception that contains the messages for all of the errors in
              * mutations or in the definition of new classes.
              */
-            evolver = new Evolver
+            initEvolver = new Evolver
                 (this, storePrefix, mutations, newFormats, forceEvolution,
                  disallowClassChanges);
             for (Format oldFormat : formatList) {
@@ -426,13 +498,13 @@ public class PersistCatalog implements Catalog {
                     continue;
                 }
                 if (oldFormat.isEntity()) {
-                    evolver.evolveFormat(oldFormat);
+                    initEvolver.evolveFormat(oldFormat);
                 } else {
-                    evolver.addNonEntityFormat(oldFormat);
+                    initEvolver.addNonEntityFormat(oldFormat);
                 }
             }
-            evolver.finishEvolution();
-            String errors = evolver.getErrors();
+            initEvolver.finishEvolution();
+            String errors = initEvolver.getErrors();
             if (errors != null) {
                 throw new IncompatibleClassException(errors);
             }
@@ -457,7 +529,7 @@ public class PersistCatalog implements Catalog {
 
             final boolean formatsChanged =
                  newFormats.size() > 0 ||
-                 evolver.areFormatsChanged();
+                 initEvolver.areFormatsChanged();
             needWrite |= formatsChanged;
 
             /* For unit testing. */
@@ -465,7 +537,7 @@ public class PersistCatalog implements Catalog {
                 throw new IllegalStateException
                     ("Unexpected changes " +
                      " newFormats.size=" + newFormats.size() +
-                     " areFormatsChanged=" + evolver.areFormatsChanged());
+                     " areFormatsChanged=" + initEvolver.areFormatsChanged());
             }
 
             readOnly = db.getConfig().getReadOnly();
@@ -478,16 +550,16 @@ public class PersistCatalog implements Catalog {
                      * Only rename/remove databases if we are going to update
                      * the catalog to reflect those class changes.
                      */
-                    evolver.renameAndRemoveDatabases(store, txn);
+                    initEvolver.renameAndRemoveDatabases(store, txn);
 
                     /*
-                     * Note that we use the Data object that was read above, and
-                     * the beta version determines whether to delete the old
-                     * mutations record.
+                     * Note that we use the Data object that was read above,
+                     * and the beta version determines whether to delete the
+                     * old mutations record.
                      */
-                    catalogData.formatList = formatList;
-                    catalogData.mutations = mutations;
-                    writeData(txn, catalogData);
+                    initData.formatList = formatList;
+                    initData.mutations = mutations;
+                    writeData(txn, initData);
             }
             initModelAndMutations();
         } finally {
@@ -497,8 +569,8 @@ public class PersistCatalog implements Catalog {
              * should be null afterwards.
              */
             proxyClassMap = null;
-            catalogData = null;
-            evolver = null;
+            initData = null;
+            initEvolver = null;
         }
     }
 
@@ -524,11 +596,37 @@ public class PersistCatalog implements Catalog {
         }
     }
 
-    private void addProxiedClass(String className) {
+    private void addProxiedClass(String className, boolean isKnownClass) {
         ClassMetadata metadata = model.getClassMetadata(className);
         if (metadata != null) {
             String proxiedClassName = metadata.getProxiedClassName();
             if (proxiedClassName != null) {
+                
+                /* 
+                 * If the class is a registered known class, need to check if 
+                 * registering proxy class is allowed or not. Currently, only 
+                 * SimpleType is not allowed to register a proxy class.
+                 */
+                if (isKnownClass) {
+                    try {
+                        Class type = resolveClass(proxiedClassName);
+                        
+                        /*
+                         * Check if the proxied class is allowed to register a 
+                         * proxy class. If not, IllegalArgumentException will 
+                         * be thrown.
+                         */
+                        if(!SimpleCatalog.allowRegisterProxy(type)) {
+                            throw new IllegalArgumentException
+                            ("Registering proxy is not allowed for " + 
+                             proxiedClassName + 
+                             ", which is a built-in simple type.");
+                        }
+                    } catch (ClassNotFoundException e) {
+                        throw DbCompat.unexpectedState
+                        ("Class does not exist: " + proxiedClassName);
+                    }
+                }
                 proxyClassMap.put(proxiedClassName, className);
             }
         }
@@ -541,6 +639,7 @@ public class PersistCatalog implements Catalog {
         knownClasses.add(CollectionProxy.TreeSetProxy.class.getName());
         knownClasses.add(MapProxy.HashMapProxy.class.getName());
         knownClasses.add(MapProxy.TreeMapProxy.class.getName());
+        knownClasses.add(MapProxy.LinkedHashMapProxy.class.getName());
     }
 
     /**
@@ -627,7 +726,7 @@ public class PersistCatalog implements Catalog {
                                Map<String, Format> newFormats) {
         Class type;
         try {
-            type = SimpleCatalog.classForName(clsName);
+            type = resolveClass(clsName);
         } catch (ClassNotFoundException e) {
             throw DbCompat.unexpectedState
                 ("Class does not exist: " + clsName);
@@ -644,11 +743,11 @@ public class PersistCatalog implements Catalog {
     public Format createFormat(Class type, Map<String, Format> newFormats) {
         /* Return a new or existing format for this class. */
         String className = type.getName();
-        Format format = newFormats.get(className);
+        Format format = getFormatFromMap(type, newFormats);
         if (format != null) {
             return format;
         }
-        format = formatMap.get(className);
+        format = getFormatFromMap(type, formatMap);
         if (format != null) {
             return format;
         }
@@ -667,15 +766,23 @@ public class PersistCatalog implements Catalog {
             proxyClassName = proxyClassMap.get(className);
         }
         if (proxyClassName != null) {
-            format = new ProxiedFormat(type, proxyClassName);
+            format = new ProxiedFormat(this, type, proxyClassName);
         } else if (type.isArray()) {
             format = type.getComponentType().isPrimitive() ?
-                (new PrimitiveArrayFormat(type)) :
-                (new ObjectArrayFormat(type));
+                (new PrimitiveArrayFormat(this, type)) :
+                (new ObjectArrayFormat(this, type));
         } else if (type.isEnum()) {
-            format = new EnumFormat(type);
+            format = new EnumFormat(this, type);
+        } else if (type.getEnclosingClass() != null && 
+                   type.getEnclosingClass().isEnum()) {
+
+            /* 
+             * If the type is an anonymous class of an enum class, the format
+             * which represents the enum class will be created. [#18357]
+             */
+            format = new EnumFormat(this, type.getEnclosingClass());
         } else if (type == Object.class || type.isInterface()) {
-            format = new NonPersistentFormat(type);
+            format = new NonPersistentFormat(this, type);
         } else {
             if (metadata == null) {
                 throw new IllegalArgumentException
@@ -707,11 +814,13 @@ public class PersistCatalog implements Catalog {
             }
             if (metadata.getCompositeKeyFields() != null) {
                 format = new CompositeKeyFormat
-                    (type, metadata, metadata.getCompositeKeyFields());
+                    (this, type, metadata,
+                     metadata.getCompositeKeyFields());
             } else {
                 EntityMetadata entityMetadata =
                     model.getEntityMetadata(className);
-                format = new ComplexFormat(type, metadata, entityMetadata);
+                format =
+                    new ComplexFormat(this, type, metadata, entityMetadata);
             }
         }
         /* Collect new format along with any related new formats. */
@@ -719,6 +828,26 @@ public class PersistCatalog implements Catalog {
         format.collectRelatedFormats(this, newFormats);
 
         return format;
+    }
+    
+    private Format getFormatFromMap(Class type, 
+                                    Map<String, Format> formats) {
+        Format format = formats.get(type.getName());
+        if (format != null) {
+            return format;
+        } else if (type.getEnclosingClass() != null && 
+                   type.getEnclosingClass().isEnum()) {
+
+            /* 
+             * If the type is an anonymous class of this enum class, the format
+             * which represents the enum class will be returned. [#18357]
+             */
+            format = formats.get(type.getEnclosingClass().getName());
+            if (format != null) {
+                return format;
+            }
+        }
+        return null;
     }
 
     /**
@@ -781,24 +910,24 @@ public class PersistCatalog implements Catalog {
      */
     public int getInitVersion(Format format, boolean forReader) {
 
-        if (catalogData == null || catalogData.formatList == null ||
-            format.getId() >= catalogData.formatList.size()) {
+        if (initData == null || initData.formatList == null ||
+            format.getId() >= initData.formatList.size()) {
 
             /*
-             * For new formats, use the current version.  If catalogData is
-             * null, the Catalog ctor is finished and the format must be new.
-             * If the ctor is in progress, the format is new if its ID is
-             * greater than the ID of all pre-existing formats.
+             * For new formats, use the current version.  If initData is null,
+             * the Catalog ctor is finished and the format must be new.  If the
+             * ctor is in progress, the format is new if its ID is greater than
+             * the ID of all pre-existing formats.
              */
             return Catalog.CURRENT_VERSION;
         } else {
 
             /*
              * Get the version of a pre-existing format during execution of the
-             * Catalog ctor.  The catalogData field is non-null, but evolver
+             * Catalog ctor.  The initData field is non-null, but initEvolver
              * may be null if the catalog is opened in raw mode.
              */
-            assert catalogData != null;
+            assert initData != null;
 
             if (forReader) {
 
@@ -807,16 +936,19 @@ public class PersistCatalog implements Catalog {
                  * format.  Use the current version if the format changed
                  * during class evolution, otherwise use the stored version.
                  */
-                return (evolver != null && evolver.isFormatChanged(format)) ?
-                       Catalog.CURRENT_VERSION : catalogData.version;
+                return (initEvolver != null &&
+                        initEvolver.isFormatChanged(format)) ?
+                       Catalog.CURRENT_VERSION : initData.version;
             } else {
                 /* Always used the stored version for a pre-existing format. */
-                return catalogData.version;
+                return initData.version;
             }
         }
     }
 
-    public Format getFormat(final int formatId, final boolean expectStored) {
+    public Format getFormat(final int formatId, final boolean expectStored)
+        throws RefreshException {
+
         if (formatId < 0) {
             throw DbCompat.unexpectedState
                 ("Format ID " + formatId + " is negative," +
@@ -884,7 +1016,9 @@ public class PersistCatalog implements Catalog {
      * Later we found this to be problematic since a user txn may have locked
      * primary records, see [#16399].</p>
      */
-    public Format getFormat(Class cls, boolean checkEntitySubclassIndexes) {
+    public Format getFormat(Class cls, boolean checkEntitySubclassIndexes)
+        throws RefreshException {
+
         Format format = formatMap.get(cls.getName());
         if (format == null) {
             if (model != null) {
@@ -959,10 +1093,19 @@ public class PersistCatalog implements Catalog {
      * Metadata needs refreshing when a Replica with stale metadata is elected
      * master, and then a user write operation is attempted.  [#16655]
      */
-    void checkWriteInReplicaUpgradeMode() {
+    void checkWriteInReplicaUpgradeMode()
+        throws RefreshException {
+
         if (nStoredFormats < formatList.size()) {
             throw new RefreshException(store, this, -1 /*formatId*/);
         }
+    }
+
+    /**
+     * For unit testing.
+     */
+    boolean isReplicaUpgradeMode() {
+        return nStoredFormats < formatList.size();
     }
 
     /**
@@ -972,7 +1115,8 @@ public class PersistCatalog implements Catalog {
      * <p>This method uses a copy-on-write technique to add new formats without
      * impacting other threads.</p>
      */
-    private synchronized Format addNewFormat(Class cls) {
+    private synchronized Format addNewFormat(Class cls)
+        throws RefreshException {
 
         /*
          * After synchronizing, check whether another thread has added the
@@ -981,7 +1125,7 @@ public class PersistCatalog implements Catalog {
          * for null.  (The double-check technique is known to be flawed in
          * Java.)
          */
-        Format format = formatMap.get(cls.getName());
+        Format format = getFormatFromMap(cls, formatMap);
         if (format != null) {
             return format;
         }
@@ -1004,8 +1148,8 @@ public class PersistCatalog implements Catalog {
          * Initialize new formats using a read-only catalog because we can't
          * update this catalog until after we store it (below).
          */
-        Catalog newFormatCatalog =
-            new ReadOnlyCatalog(newFormatList, newFormatMap);
+        Catalog newFormatCatalog = new ReadOnlyCatalog
+            (ModelInternal.getClassLoader(model), newFormatList, newFormatMap);
         for (Format newFormat : newFormats.values()) {
             newFormat.initializeIfNeeded(newFormatCatalog, model);
             newLatestFormatMap.put(newFormat.getClassName(), newFormat);
@@ -1028,10 +1172,10 @@ public class PersistCatalog implements Catalog {
          */
         if (!readOnly) {
             try {
-                Data catalogData = new Data();
-                catalogData.formatList = newFormatList;
-                catalogData.mutations = mutations;
-                writeData(null, catalogData);
+                Data newData = new Data();
+                newData.formatList = newFormatList;
+                newData.mutations = mutations;
+                writeDataCheckStale(newData);
             } catch (DatabaseException e) {
                 throw RuntimeExceptionWrapper.wrapIfNeeded(e);
             }
@@ -1048,13 +1192,13 @@ public class PersistCatalog implements Catalog {
      * when Store.evolve has updated a Format's EvolveNeeded property.  Uses
      * auto-commit.
      */
-    public synchronized void flush()
+    public synchronized void flush(Transaction txn)
         throws DatabaseException {
 
-        Data catalogData = new Data();
-        catalogData.formatList = formatList;
-        catalogData.mutations = mutations;
-        writeData(null, catalogData);
+        Data newData = new Data();
+        newData.formatList = formatList;
+        newData.mutations = mutations;
+        writeData(txn, newData);
     }
 
     /**
@@ -1072,7 +1216,7 @@ public class PersistCatalog implements Catalog {
     private Data readData(Transaction txn)
         throws DatabaseException {
 
-        Data catalogData;
+        Data oldData;
         DatabaseEntry key = new DatabaseEntry(DATA_KEY);
         DatabaseEntry data = new DatabaseEntry();
         OperationStatus status = db.get(txn, key, data, null);
@@ -1084,56 +1228,111 @@ public class PersistCatalog implements Catalog {
                 Object object = ois.readObject();
                 assert ois.available() == 0;
                 if (object instanceof Data) {
-                    catalogData = (Data) object;
+                    oldData = (Data) object;
                 } else {
                     if (!(object instanceof List)) {
                         throw DbCompat.unexpectedState
                             (object.getClass().getName());
                     }
-                    catalogData = new Data();
-                    catalogData.formatList = (List) object;
-                    catalogData.version = BETA_VERSION;
+                    oldData = new Data();
+                    oldData.formatList = (List) object;
+                    oldData.version = BETA_VERSION;
                 }
-                return catalogData;
+                return oldData;
             } catch (ClassNotFoundException e) {
                 throw DbCompat.unexpectedException(e);
             } catch (IOException e) {
                 throw DbCompat.unexpectedException(e);
             }
         } else {
-            catalogData = new Data();
-            catalogData.version = Catalog.CURRENT_VERSION;
+            oldData = new Data();
+            oldData.version = Catalog.CURRENT_VERSION;
         }
-        return catalogData;
+        return oldData;
     }
 
     /**
-     * Writes catalog Data.  If txn is null, auto-commit is used.
+     * Metadata needs refreshing when a Replica with stale metadata is elected
+     * master, and then a user write operation is attempted that also requires
+     * a metadata update.  [#16655]
      */
-    private void writeData(Transaction txn, Data catalogData)
+    boolean isMetadataStale(Transaction txn)
         throws DatabaseException {
 
         Data oldData = readData(txn);
 
-        /*
-         * Metadata needs refreshing when a Replica with stale metadata is
-         * elected master, and then a user write operation is attempted that
-         * also requires a metadata update.  [#16655]
-         */
-        final int nOldFormats = formatList.size();
-        if (oldData.formatList != null &&
-            oldData.formatList.size() > nOldFormats) {
-            throw new RefreshException(store, this,  /*formatId*/-1);
+        return (oldData.formatList != null &&
+                oldData.formatList.size() > nStoredFormats);
+    }
+
+    /**
+     * Writes catalog Data after checking for stale metadata.
+     */
+    private void writeDataCheckStale(Data newData)
+        throws DatabaseException, RefreshException {
+
+        for (int i = 0;; i += 1) {
+            Transaction txn = null;
+            if (transactional && DbCompat.getThreadTransaction(env) == null) {
+                txn =
+                    env.beginTransaction(null, store.getAutoCommitTxnConfig());
+            }
+            boolean success = false;
+            try {
+                if (isMetadataStale(txn)) {
+                    throw new RefreshException(store, this,  -1 /*formatId*/);
+                }
+                writeData(txn, newData);
+                success = true;
+                return;
+            } catch (DeadlockException e) {
+
+                /*
+                 * A lock conflict should not occur because writes to the
+                 * catalog DB are in synchronized methods.  However, because we
+                 * read-modify-update the catalog record,
+                 * LockPreemptedException must be handled in a replicated JE
+                 * environment.  Since LockPreemptedException is a
+                 * LockConfictException, it is simplest to retry when any
+                 * LockConfictException occurs.
+                 */
+                if (i >= MAX_TXN_RETRIES) {
+                    throw e;
+                }
+                continue;
+            } finally {
+
+                /*
+                 * If the catalog is read-only we abort rather than commit,
+                 * because a ReplicaWriteException may have occurred.
+                 * ReplicaWriteException invalidates the transaction, and there
+                 * are no writes to commit anyway. [#16655]
+                 */
+                if (txn != null) {
+                    if (success && !isReadOnly()) {
+                        txn.commit();
+                    } else {
+                        txn.abort();
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * Writes catalog Data.  Does not check for stale metadata.
+     */
+    private void writeData(Transaction txn, Data newData)
+        throws DatabaseException {
 
         /* Catalog data is written in the current version. */
-        boolean wasBetaVersion = (catalogData.version == BETA_VERSION);
-        catalogData.version = CURRENT_VERSION;
+        boolean wasBetaVersion = (newData.version == BETA_VERSION);
+        newData.version = CURRENT_VERSION;
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             ObjectOutputStream oos = new ObjectOutputStream(baos);
-            oos.writeObject(catalogData);
+            oos.writeObject(newData);
         } catch (IOException e) {
             throw DbCompat.unexpectedException(e);
         }
@@ -1150,14 +1349,16 @@ public class PersistCatalog implements Catalog {
             db.delete(txn, key);
         }
 
-        nStoredFormats = catalogData.formatList.size();
+        nStoredFormats = newData.formatList.size();
     }
 
     public boolean isRawAccess() {
         return rawAccess;
     }
 
-    public Object convertRawObject(RawObject o, IdentityHashMap converted) {
+    public Object convertRawObject(RawObject o, IdentityHashMap converted)
+        throws RefreshException {
+
         Format format = (Format) o.getType();
         if (this == format.getCatalog()) {
             /* Ensure a fresh format is used, in case of Replica refresh. */
@@ -1173,7 +1374,7 @@ public class PersistCatalog implements Catalog {
             String clsName = format.getClassName();
             Class cls;
             try {
-                cls = SimpleCatalog.classForName(clsName);
+                cls = resolveClass(clsName);
                 format = getFormat(cls, true /*checkEntitySubclassIndexes*/);
             } catch (ClassNotFoundException e) {
                 format = null;
@@ -1191,5 +1392,17 @@ public class PersistCatalog implements Catalog {
             converted = new IdentityHashMap();
         }
         return format.convertRawObject(this, false, o, converted);
+    }
+
+    public Class resolveClass(String clsName)
+        throws ClassNotFoundException {
+
+        return SimpleCatalog.resolveClass
+            (clsName, ModelInternal.getClassLoader(model));
+    }
+
+    public Class resolveKeyClass(String clsName) {
+        return SimpleCatalog.resolveKeyClass
+            (clsName, ModelInternal.getClassLoader(model));
     }
 }

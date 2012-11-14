@@ -1,25 +1,25 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql", "db_sql.vcproj", "{ACE41B30-04BB-11DF-8A39-0800200C9A66}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_sql", "VS8\db_sql.vcproj"", "{ACE41B30-04BB-11DF-8A39-0800200C9A66}"
 	ProjectSection(ProjectDependencies) = postProject
 		{CDE1C264-5E6C-11DF-AC8B-D58FDFD72085} = {CDE1C264-5E6C-11DF-AC8B-D58FDFD72085}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wce_sql", "wce_sql.vcproj", "{75DF98AA-25DF-4183-A022-024CF918480D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wce_sql", "VS8\wce_sql.vcproj"", "{75DF98AA-25DF-4183-A022-024CF918480D}"
 	ProjectSection(ProjectDependencies) = postProject
 		{ACE41B30-04BB-11DF-8A39-0800200C9A66} = {ACE41B30-04BB-11DF-8A39-0800200C9A66}
 		{CDE1C264-5E6C-11DF-AC8B-D58FDFD72085} = {CDE1C264-5E6C-11DF-AC8B-D58FDFD72085}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wce_tpcb", "wce_tpcb.vcproj", "{F2CE670A-ABAE-414A-9A17-8079AB58613F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wce_tpcb", "VS8\wce_tpcb.vcproj"", "{F2CE670A-ABAE-414A-9A17-8079AB58613F}"
 	ProjectSection(ProjectDependencies) = postProject
 		{CDE1C264-5E6C-11DF-AC8B-D58FDFD72085} = {CDE1C264-5E6C-11DF-AC8B-D58FDFD72085}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db", "db.vcproj", "{CDE1C264-5E6C-11DF-AC8B-D58FDFD72085}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db", "VS8\db.vcproj"", "{CDE1C264-5E6C-11DF-AC8B-D58FDFD72085}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_small", "db_small.vcproj", "{F016AF0B-CBFD-4083-B501-4A1D0A934A2D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_small", "VS8\db_small.vcproj"", "{F016AF0B-CBFD-4083-B501-4A1D0A934A2D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

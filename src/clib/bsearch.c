@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -30,8 +30,8 @@ void *bsearch(key, base, nmemb, size, cmp)
 
 	/* not doing a binary search, but searching linearly */
 	for (i=0; i < nmemb; i++) {
-		if (*(pid_t*)key - *((pid_t*)base + i) == 0)
-			return ((pid_t*)base + i);
+		if ((*cmp)(key, (const void *)((char *)base + i * size)) == 0)
+			return ((void *)((char *)base + i * size));
 	}
 
 	return (NULL);

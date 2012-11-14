@@ -4,7 +4,7 @@
  *
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 static int __dbj_fill_bt_stat(JNIEnv *jnienv,
     jobject jobj, struct __db_bt_stat *statp) {
@@ -75,6 +75,7 @@ static int __dbj_fill_heap_stat(JNIEnv *jnienv,
 	JAVADB_STAT_INT(jnienv, jobj, heap_stat_heap_pagecnt_fid, statp, heap_pagecnt);
 	JAVADB_STAT_INT(jnienv, jobj, heap_stat_heap_pagesize_fid, statp, heap_pagesize);
 	JAVADB_STAT_INT(jnienv, jobj, heap_stat_heap_nregions_fid, statp, heap_nregions);
+	JAVADB_STAT_INT(jnienv, jobj, heap_stat_heap_regionsize_fid, statp, heap_regionsize);
 	return (0);
 }
 static int __dbj_fill_lock_stat(JNIEnv *jnienv,
@@ -169,6 +170,7 @@ static int __dbj_fill_mpool_fstat(JNIEnv *jnienv,
 	JAVADB_STAT_LONG(jnienv, jobj, mpool_fstat_st_page_create_fid, statp, st_page_create);
 	JAVADB_STAT_LONG(jnienv, jobj, mpool_fstat_st_page_in_fid, statp, st_page_in);
 	JAVADB_STAT_LONG(jnienv, jobj, mpool_fstat_st_page_out_fid, statp, st_page_out);
+	JAVADB_STAT_LONG(jnienv, jobj, mpool_fstat_st_backup_spins_fid, statp, st_backup_spins);
 	JAVADB_STAT_STRING(jnienv, jobj, mpool_fstat_file_name_fid, statp, file_name);
 	return (0);
 }
@@ -372,8 +374,6 @@ static int __dbj_fill_txn_active(JNIEnv *jnienv,
 	JAVADB_STAT_LSN(jnienv, jobj, txn_active_read_lsn_fid, statp, read_lsn);
 	JAVADB_STAT_INT(jnienv, jobj, txn_active_mvcc_ref_fid, statp, mvcc_ref);
 	JAVADB_STAT_INT(jnienv, jobj, txn_active_priority_fid, statp, priority);
-	JAVADB_STAT_INT(jnienv, jobj, txn_active_status_fid, statp, status);
-	JAVADB_STAT_INT(jnienv, jobj, txn_active_xa_status_fid, statp, xa_status);
 	JAVADB_STAT_GID(jnienv, jobj, txn_active_gid_fid, statp, gid);
 	JAVADB_STAT_STRING(jnienv, jobj, txn_active_name_fid, statp, name);
 	return (0);

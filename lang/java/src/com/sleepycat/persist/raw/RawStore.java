@@ -1,11 +1,13 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
 package com.sleepycat.persist.raw;
+
+import java.io.Closeable;
 
 import com.sleepycat.compat.DbCompat;
 import com.sleepycat.db.DatabaseException;
@@ -44,7 +46,8 @@ import com.sleepycat.persist.model.EntityModel;
  *
  * @author Mark Hayes
  */
-public class RawStore {
+public class RawStore
+    {
 
     private Store store;
 
@@ -141,6 +144,13 @@ public class RawStore {
     /**
      * Closes all databases and sequences that were opened by this model.  No
      * databases opened via this store may be in use.
+     *
+     * <p>WARNING: To guard against memory leaks, the application should
+     * discard all references to the closed handle.  While BDB makes an effort
+     * to discard references from closed objects to the allocated memory for an
+     * environment, this behavior is not guaranteed.  The safe course of action
+     * for an application is to discard all references to closed BDB
+     * objects.</p>
      *
      * @throws DatabaseException the base class for all BDB exceptions.
      */

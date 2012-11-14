@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -80,24 +80,26 @@ public class CompositeKeyFormat extends Format {
     /**
      * Creates a new composite key format.
      */
-    CompositeKeyFormat(Class cls,
+    CompositeKeyFormat(Catalog catalog,
+                       Class cls,
                        ClassMetadata metadata,
                        List<FieldMetadata> fieldMeta) {
-        this(cls, metadata, getFieldNameArray(fieldMeta));
+        this(catalog, cls, metadata, getFieldNameArray(fieldMeta));
     }
 
     /**
      * Reconsistitues a composite key format after a PersistComparator is
      * deserialized.
      */
-    CompositeKeyFormat(Class cls, String[] fieldNames) {
-        this(cls, null /*metadata*/, fieldNames);
+    CompositeKeyFormat(Catalog catalog, Class cls, String[] fieldNames) {
+        this(catalog, cls, null /*metadata*/, fieldNames);
     }
 
-    private CompositeKeyFormat(Class cls,
+    private CompositeKeyFormat(Catalog catalog,
+                               Class cls,
                                ClassMetadata metadata,
                                String[] fieldNames) {
-        super(cls);
+        super(catalog, cls);
         this.metadata = metadata;
 
         /* Check that the superclass is Object. */
@@ -127,7 +129,7 @@ public class CompositeKeyFormat extends Format {
             }
             fields.add(field);
             instanceFields.remove(field);
-            Class fieldCls = field.getFieldClass();
+            Class fieldCls = field.getFieldClass(getCatalog());
             if (!SimpleCatalog.isSimpleType(fieldCls) &&
                 !fieldCls.isEnum()) {
                 throw new IllegalArgumentException
@@ -226,14 +228,18 @@ public class CompositeKeyFormat extends Format {
     }
 
     @Override
-    public Object readObject(Object o, EntityInput input, boolean rawAccess) {
+    public Object readObject(Object o, EntityInput input, boolean rawAccess)
+        throws RefreshException {
+
         Accessor accessor = rawAccess ? rawAccessor : objAccessor;
         accessor.readCompositeKeyFields(o, input);
         return o;
     }
 
     @Override
-    void writeObject(Object o, EntityOutput output, boolean rawAccess) {
+    void writeObject(Object o, EntityOutput output, boolean rawAccess)
+        throws RefreshException {
+
         Accessor accessor = rawAccess ? rawAccessor : objAccessor;
         accessor.writeCompositeKeyFields(o, output);
     }
@@ -242,7 +248,8 @@ public class CompositeKeyFormat extends Format {
     Object convertRawObject(Catalog catalog,
                             boolean rawAccess,
                             RawObject rawObject,
-                            IdentityHashMap converted) {
+                            IdentityHashMap converted)
+        throws RefreshException {
 
         /*
          * Synchronization is not required since rawInputFields is immutable.
@@ -271,7 +278,9 @@ public class CompositeKeyFormat extends Format {
     }
 
     @Override
-    void skipContents(RecordInput input) {
+    void skipContents(RecordInput input)
+        throws RefreshException {
+
         int maxNum = fields.size();
         for (int i = 0; i < maxNum; i += 1) {
             fields.get(i).getType().skipContents(input);
@@ -291,7 +300,7 @@ public class CompositeKeyFormat extends Format {
         if (fields.size() != 1) {
             throw new IllegalArgumentException
                 ("A composite key class used with a sequence may contain " +
-                 "only a single integer key field: " + getClassName());
+                 "only a single key field: " + getClassName());
         }
         return fields.get(0).getType().getSequenceKeyFormat();
     }

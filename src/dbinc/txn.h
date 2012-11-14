@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -20,7 +20,8 @@ typedef enum {
 	TXN_CLOSE,		/* Close a DB handle whose close had failed. */
 	TXN_REMOVE,		/* Remove a file. */
 	TXN_TRADE,		/* Trade lockers. */
-	TXN_TRADED		/* Already traded; downgrade lock. */
+	TXN_TRADED,		/* Already traded; downgrade lock. */
+	TXN_XTRADE		/* Trade lockers on exclusive db handle. */
 } TXN_EVENT_T;
 
 struct __db_txnregion;	typedef struct __db_txnregion DB_TXNREGION;
@@ -53,7 +54,7 @@ DB_ALIGN8 struct __db_txn_stat_int { /* SHARED */
 	DB_LSN	  st_last_ckp;		/* lsn of the last checkpoint */
 	time_t	  st_time_ckp;		/* time of last checkpoint */
 	u_int32_t st_last_txnid;	/* last transaction id given out */
-	u_int32_t st_inittxns;		/* inital txns allocated */
+	u_int32_t st_inittxns;		/* initial txns allocated */
 	u_int32_t st_maxtxns;		/* maximum txns possible */
 	uintmax_t st_naborts;		/* number of aborted transactions */
 	uintmax_t st_nbegins;		/* number of begun transactions */

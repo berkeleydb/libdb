@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1998, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -77,7 +77,8 @@ __heap_truncate(dbc, countp)
 			LSN_NOT_LOGGED(LSN(pg));
 
 		if (pgno == next_region) {
-			next_region += region_size;
+			DB_ASSERT(dbp->env, TYPE(pg) == P_IHEAP);
+			next_region += region_size + 1;
 		} else {
 			/*
 			 * We can't use pg->entries to calculate the record
@@ -102,7 +103,7 @@ __heap_truncate(dbc, countp)
 			break;
 		if ((ret = __memp_fget(mpf, &pgno,
 		    dbc->thread_info, dbc->txn, DB_MPOOL_FREE, &pg)) != 0)
-		    	break;
+			break;
 	}
 	if ((t_ret = __TLPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
@@ -126,8 +127,8 @@ __heap_truncate(dbc, countp)
 
 	if ((ret = __memp_ftruncate(mpf, dbc->txn,
 	    dbc->thread_info, PGNO_BASE_MD + 1, MP_TRUNC_NOCACHE)) != 0)
-	    	goto err;
-	
+		goto err;
+
 	/* Create the first region. */
 	pgno = PGNO_BASE_MD + 1;
 	if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info,

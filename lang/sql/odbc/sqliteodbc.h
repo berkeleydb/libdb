@@ -15,9 +15,9 @@
  * @file sqliteodbc.h
  * Header file for SQLite ODBC driver.
  *
- * $Id: sqliteodbc.h,v 1.53 2009/03/22 08:45:33 chw Exp chw $
+ * $Id: sqliteodbc.h,v 1.56 2011/11/12 04:35:40 chw Exp chw $
  *
- * Copyright (c) 2001-2009 Christian Werner <chw@ch-werner.de>
+ * Copyright (c) 2001-2011 Christian Werner <chw@ch-werner.de>
  *
  * See the file "license.terms" for information on usage
  * and redistribution of this file and for a
@@ -48,6 +48,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
 #endif
 #include <stdlib.h>
 #if defined(HAVE_LOCALECONV) || defined(_WIN32) || defined(_WIN64)
@@ -254,24 +255,24 @@ typedef struct stmt {
     SQLCHAR logmsg[1024];	/**< Message for SQLError() */ 
     int nowchar[2];		/**< Don't try to use WCHAR */
     int longnames;		/**< Don't shorten column names */
-    int retr_data;		/**< SQL_ATTR_RETRIEVE_DATA */
-    SQLUINTEGER rowset_size;	/**< Size of rowset */
+    SQLULEN retr_data;		/**< SQL_ATTR_RETRIEVE_DATA */
+    SQLULEN rowset_size;	/**< Size of rowset */
     SQLUSMALLINT *row_status;	/**< Row status pointer */
     SQLUSMALLINT *row_status0;	/**< Internal status array */
     SQLUSMALLINT row_status1;	/**< Internal status array for 1 row rowsets */
-    SQLUINTEGER *row_count;	/**< Row count pointer */
-    SQLUINTEGER row_count0;	/**< Row count */
-    SQLUINTEGER paramset_size;	/**< SQL_ATTR_PARAMSET_SIZE */
-    SQLUINTEGER paramset_count;	/**< Internal for paramset */
+    SQLULEN *row_count;		/**< Row count pointer */
+    SQLULEN row_count0;		/**< Row count */
+    SQLULEN paramset_size;	/**< SQL_ATTR_PARAMSET_SIZE */
+    SQLULEN paramset_count;	/**< Internal for paramset */
     SQLUINTEGER paramset_nrows;	/**< Row count for paramset handling */
-    SQLUINTEGER bind_type;	/**< SQL_ATTR_ROW_BIND_TYPE */
-    SQLUINTEGER *bind_offs;	/**< SQL_ATTR_ROW_BIND_OFFSET_PTR */
+    SQLULEN bind_type;		/**< SQL_ATTR_ROW_BIND_TYPE */
+    SQLULEN *bind_offs;		/**< SQL_ATTR_ROW_BIND_OFFSET_PTR */
     /* Dummies to make ADO happy */
-    SQLUINTEGER *parm_bind_offs;/**< SQL_ATTR_PARAM_BIND_OFFSET_PTR */
+    SQLULEN *parm_bind_offs;	/**< SQL_ATTR_PARAM_BIND_OFFSET_PTR */
     SQLUSMALLINT *parm_oper;	/**< SQL_ATTR_PARAM_OPERATION_PTR */
     SQLUSMALLINT *parm_status;	/**< SQL_ATTR_PARAMS_STATUS_PTR */
-    SQLUINTEGER *parm_proc;	/**< SQL_ATTR_PARAMS_PROCESSED_PTR */
-    SQLUINTEGER parm_bind_type;	/**< SQL_ATTR_PARAM_BIND_TYPE */
+    SQLULEN *parm_proc;		/**< SQL_ATTR_PARAMS_PROCESSED_PTR */
+    SQLULEN parm_bind_type;	/**< SQL_ATTR_PARAM_BIND_TYPE */
     int curtype;		/**< Cursor type */
     sqlite_vm *vm;		/**< SQLite VM or NULL */
 #if HAVE_ENCDEC

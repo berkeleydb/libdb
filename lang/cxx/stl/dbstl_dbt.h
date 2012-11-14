@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -408,7 +408,9 @@ public:
 		else
 			sz = sizeof(dt);
 
-		if (onstack) {
+		copyf = EM::instance()->get_copy_function();
+
+		if (onstack &&  copyf == NULL) {
 			freemem();
 			pdbt->data = ((void*)&dt);
 			// We have to set DB_DBT_USERMEM for DB_THREAD to work.
@@ -432,7 +434,7 @@ public:
 		} else
 			pdbt->size = (sz);
 
-		if ((copyf = EM::instance()->get_copy_function()) != NULL)
+		if (copyf != NULL)
 			copyf(pdbt->data, dt);
 		else
 			memcpy(pdbt->data, &dt, sz);
@@ -650,16 +652,16 @@ protected:
 	template <Typename T>
 	void make_dbt_internal(const T*t, bool onstack)
 	{
+		typedef DbstlElemTraits<T> EM;
 		u_int32_t i, sz, totalsz, sql;
 		DBT *pdbt = (DBT *)&dbt_;
-		typename DbstlElemTraits<T>::ElemSizeFunct szf = NULL;
-		typename DbstlElemTraits<T>::SequenceLenFunct
-		    seqlenf = NULL;
+		typename EM::ElemSizeFunct szf = NULL;
+		typename EM::SequenceLenFunct seqlenf = NULL;
+		typename EM::SequenceCopyFunct seqcopyf = NULL;
 
-		szf = DbstlElemTraits<T>::instance()->
-		    get_size_function();
-		seqlenf = DbstlElemTraits<T>::instance()->
-		    get_sequence_len_function();
+		szf = EM::instance()->get_size_function();
+		seqlenf = EM::instance()->get_sequence_len_function();
+		seqcopyf = EM::instance()->get_sequence_copy_function();
 
 		assert(seqlenf != NULL);
 		sql = sz = (u_int32_t)seqlenf(t);
@@ -671,7 +673,7 @@ protected:
 
 		sz = totalsz;
 
-		if (onstack) {
+		if (onstack && seqcopyf == NULL) {
 			freemem();
 			pdbt->data = (void *)t;
 			pdbt->size = sz;
@@ -687,9 +689,7 @@ protected:
 			}
 			pdbt->size = sz;
 
-			DbstlElemTraits<T>::instance()->
-			    get_sequence_copy_function()
-			        ((T *)pdbt->data, t, sql);
+			EM::instance()->copy((T *)pdbt->data, t, sql);
 		}
 	}
 

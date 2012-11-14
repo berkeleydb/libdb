@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 9.00
 # Visual Studio 2005
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db", "db.vcproj", "{FD045D60-ABAD-4A6C-9794-9BFB085FC3E7}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db", "VS8\db.vcproj", "{FD045D60-ABAD-4A6C-9794-9BFB085FC3E7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_csharp", "db_csharp.vcproj", "{13DE550F-16FD-4AC2-9EC6-B1A18F41476F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_csharp", "VS8\db_csharp.vcproj", "{13DE550F-16FD-4AC2-9EC6-B1A18F41476F}"
 	ProjectSection(ProjectDependencies) = postProject
 		{FD045D60-ABAD-4A6C-9794-9BFB085FC3E7} = {FD045D60-ABAD-4A6C-9794-9BFB085FC3E7}
 	EndProjectSection

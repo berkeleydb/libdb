@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -14,9 +14,9 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.sleepycat.compat.DbCompat;
-import com.sleepycat.persist.model.EntityModel;
-import com.sleepycat.persist.raw.RawObject;
 import java.util.IdentityHashMap;
+import com.sleepycat.persist.raw.RawObject;
+import com.sleepycat.util.ClassResolver;
 
 /**
  * A static catalog containing simple types only.  Once created, this catalog
@@ -59,11 +59,7 @@ public class SimpleCatalog implements Catalog {
         primitiveTypeToWrapper.put(Double.TYPE, Double.class);
     }
 
-    private static final SimpleCatalog instance = new SimpleCatalog();
-
-    static SimpleCatalog getInstance() {
-        return instance;
-    }
+    private static final SimpleCatalog instance = new SimpleCatalog(null);
 
     static boolean isSimpleType(Class type) {
         return instance.formatMap.containsKey(type.getName());
@@ -77,13 +73,23 @@ public class SimpleCatalog implements Catalog {
         return cls;
     }
 
-    public static Class keyClassForName(String className) {
+    public static Class resolveClass(String className, ClassLoader loader)
+        throws ClassNotFoundException {
+
+        Class cls = keywordToPrimitive.get(className);
+        if (cls == null) {
+            cls = ClassResolver.resolveClass(className, loader);
+        }
+        return cls;
+    }
+
+    public static Class resolveKeyClass(String className, ClassLoader loader) {
         Class cls = keywordToPrimitive.get(className);
         if (cls != null) {
             cls = primitiveTypeToWrapper.get(cls);
         } else {
             try {
-                cls = EntityModel.classForName(className);
+                cls = ClassResolver.resolveClass(className, loader);
             } catch (ClassNotFoundException e) {
                 throw new IllegalArgumentException
                     ("Key class not found: " + className);
@@ -102,41 +108,35 @@ public class SimpleCatalog implements Catalog {
         }
     }
 
-    public static Class classForName(String className)
-        throws ClassNotFoundException {
-
-        Class cls = keywordToPrimitive.get(className);
-        if (cls == null) {
-            cls = EntityModel.classForName(className);
-        }
-        return cls;
+    static List<Format> getAllSimpleFormats(ClassLoader loader) {
+        return new ArrayList<Format>(new SimpleCatalog(loader).formatList);
     }
 
-    static SimpleFormat getSimpleFormat(Class type) {
-        return instance.formatMap.get(type.getName());
-    }
-
-    static List<Format> copyFormatList() {
-        return new ArrayList<Format>(instance.formatList);
-    }
-
-    static boolean copyMissingFormats(List<Format> copyToList) {
+    static boolean addMissingSimpleFormats(ClassLoader loader,
+                                           List<Format> copyToList) {
         boolean anyCopied = false;
+        SimpleCatalog tempCatalog = null;
         for (int i = 0; i <= Format.ID_PREDEFINED; i += 1) {
-            Format thisFormat = instance.formatList.get(i);
-            Format otherFormat = copyToList.get(i);
+            final Format thisFormat = instance.formatList.get(i);
+            final Format otherFormat = copyToList.get(i);
             if (thisFormat != null && otherFormat == null) {
-                copyToList.set(i, thisFormat);
+                assert thisFormat.getWrapperFormat() == null;
+                if (tempCatalog == null) {
+                    tempCatalog = new SimpleCatalog(loader);
+                }
+                copyToList.set(i, tempCatalog.formatList.get(i));
                 anyCopied = true;
             }
         }
         return anyCopied;
     }
 
-    private List<SimpleFormat> formatList;
-    private Map<String, SimpleFormat> formatMap;
+    private final ClassLoader classLoader;
+    private final List<SimpleFormat> formatList;
+    private final Map<String, SimpleFormat> formatMap;
 
-    private SimpleCatalog() {
+    SimpleCatalog(final ClassLoader classLoader) {
+        this.classLoader = classLoader;
 
         /*
          * Reserve slots for all predefined IDs, so that that next ID assigned
@@ -151,28 +151,26 @@ public class SimpleCatalog implements Catalog {
         }
 
         /* Initialize all predefined formats.  */
-        setFormat(Format.ID_BOOL,     new SimpleFormat.FBool(true));
-        setFormat(Format.ID_BOOL_W,   new SimpleFormat.FBool(false));
-        setFormat(Format.ID_BYTE,     new SimpleFormat.FByte(true));
-        setFormat(Format.ID_BYTE_W,   new SimpleFormat.FByte(false));
-        setFormat(Format.ID_SHORT,    new SimpleFormat.FShort(true));
-        setFormat(Format.ID_SHORT_W,  new SimpleFormat.FShort(false));
-        setFormat(Format.ID_INT,      new SimpleFormat.FInt(true));
-        setFormat(Format.ID_INT_W,    new SimpleFormat.FInt(false));
-        setFormat(Format.ID_LONG,     new SimpleFormat.FLong(true));
-        setFormat(Format.ID_LONG_W,   new SimpleFormat.FLong(false));
-        setFormat(Format.ID_FLOAT,    new SimpleFormat.FFloat(true));
-        setFormat(Format.ID_FLOAT_W,  new SimpleFormat.FFloat(false));
-        setFormat(Format.ID_DOUBLE,   new SimpleFormat.FDouble(true));
-        setFormat(Format.ID_DOUBLE_W, new SimpleFormat.FDouble(false));
-        setFormat(Format.ID_CHAR,     new SimpleFormat.FChar(true));
-        setFormat(Format.ID_CHAR_W,   new SimpleFormat.FChar(false));
-        setFormat(Format.ID_STRING,   new SimpleFormat.FString());
-        setFormat(Format.ID_BIGINT,   new SimpleFormat.FBigInt());
-        /*
-        setFormat(Format.ID_BIGDEC,   new SimpleFormat.FBigDec());
-        */
-        setFormat(Format.ID_DATE,     new SimpleFormat.FDate());
+        setFormat(Format.ID_BOOL,     new SimpleFormat.FBool(this, true));
+        setFormat(Format.ID_BOOL_W,   new SimpleFormat.FBool(this, false));
+        setFormat(Format.ID_BYTE,     new SimpleFormat.FByte(this, true));
+        setFormat(Format.ID_BYTE_W,   new SimpleFormat.FByte(this, false));
+        setFormat(Format.ID_SHORT,    new SimpleFormat.FShort(this, true));
+        setFormat(Format.ID_SHORT_W,  new SimpleFormat.FShort(this, false));
+        setFormat(Format.ID_INT,      new SimpleFormat.FInt(this, true));
+        setFormat(Format.ID_INT_W,    new SimpleFormat.FInt(this, false));
+        setFormat(Format.ID_LONG,     new SimpleFormat.FLong(this, true));
+        setFormat(Format.ID_LONG_W,   new SimpleFormat.FLong(this, false));
+        setFormat(Format.ID_FLOAT,    new SimpleFormat.FFloat(this, true));
+        setFormat(Format.ID_FLOAT_W,  new SimpleFormat.FFloat(this, false));
+        setFormat(Format.ID_DOUBLE,   new SimpleFormat.FDouble(this, true));
+        setFormat(Format.ID_DOUBLE_W, new SimpleFormat.FDouble(this, false));
+        setFormat(Format.ID_CHAR,     new SimpleFormat.FChar(this, true));
+        setFormat(Format.ID_CHAR_W,   new SimpleFormat.FChar(this, false));
+        setFormat(Format.ID_STRING,   new SimpleFormat.FString(this));
+        setFormat(Format.ID_BIGINT,   new SimpleFormat.FBigInt(this));
+        setFormat(Format.ID_BIGDEC,   new SimpleFormat.FBigDec(this));
+        setFormat(Format.ID_DATE,     new SimpleFormat.FDate(this));
 
         /* Tell primitives about their wrapper class. */
         setWrapper(Format.ID_BOOL, Format.ID_BOOL_W);
@@ -253,5 +251,20 @@ public class SimpleCatalog implements Catalog {
 
     public Object convertRawObject(RawObject o, IdentityHashMap converted) {
         throw DbCompat.unexpectedState();
+    }
+
+    public Class resolveClass(String clsName)
+        throws ClassNotFoundException {
+
+        return SimpleCatalog.resolveClass(clsName, classLoader);
+    }
+
+    public Class resolveKeyClass(String clsName) {
+        return SimpleCatalog.resolveKeyClass(clsName, classLoader);
+    }
+    
+    /* Registering proxy is not allowed for SimpleType. */
+    public static boolean allowRegisterProxy(Class type) {
+        return !isSimpleType(type);
     }
 }

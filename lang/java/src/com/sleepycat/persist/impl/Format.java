@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -308,8 +308,8 @@ public abstract class Format implements Reader, RawType, Serializable {
     /**
      * Creates a new format for a given class.
      */
-    Format(Class type) {
-        this(type.getName());
+    Format(final Catalog catalog, final Class type) {
+        this(catalog, type.getName());
         this.type = type;
         addSupertypes();
     }
@@ -317,7 +317,10 @@ public abstract class Format implements Reader, RawType, Serializable {
     /**
      * Creates a format for class evolution when no class may be present.
      */
-    Format(String className) {
+    Format(final Catalog catalog, final String className) {
+        assert catalog != null;
+        assert className != null;
+        this.catalog = catalog;
         this.className = className;
         latestFormat = this;
         supertypes = new HashSet<String>();
@@ -330,6 +333,15 @@ public abstract class Format implements Reader, RawType, Serializable {
         if (latestFormat == null) {
             latestFormat = this;
         }
+    }
+
+    /**
+     * Initialize transient catalog field after deserialization.  This must
+     * occur before any other usage.
+     */
+    void initCatalog(final Catalog catalog) {
+        assert catalog != null;
+        this.catalog = catalog;
     }
 
     final boolean isNew() {
@@ -368,9 +380,10 @@ public abstract class Format implements Reader, RawType, Serializable {
      * format.
      */
     final Class getExistingType() {
+        assert catalog != null;
         if (type == null) {
             try {
-                type = SimpleCatalog.classForName(className);
+                type = catalog.resolveClass(className);
             } catch (ClassNotFoundException e) {
                 throw DbCompat.unexpectedException(e);
             }
@@ -504,6 +517,17 @@ public abstract class Format implements Reader, RawType, Serializable {
         throw DbCompat.unexpectedState();
     }
 
+    /**
+     * For an entity format, returns whether the entity was written using the
+     * new String format.  For a non-entity format, this method should not be
+     * called.
+     *
+     * Overridden by ComplexFormat.
+     */
+    boolean getNewStringFormat() {
+        throw DbCompat.unexpectedState();
+    }
+
     final boolean isInitialized() {
         return initialized;
     }
@@ -516,6 +540,8 @@ public abstract class Format implements Reader, RawType, Serializable {
      * is already intialized.
      */
     final void initializeIfNeeded(Catalog catalog, EntityModel model) {
+        assert catalog != null;
+
         if (!initialized) {
             initialized = true;
             this.catalog = catalog;
@@ -804,7 +830,8 @@ public abstract class Format implements Reader, RawType, Serializable {
      * during conversion of an old format.  Normally it should be called via
      * the getReader method and the Reader interface.
      */
-    public abstract Object newInstance(EntityInput input, boolean rawAccess);
+    public abstract Object newInstance(EntityInput input, boolean rawAccess)
+        throws RefreshException;
 
     /**
      * Called after newInstance() to read the rest of the data bytes and fill
@@ -818,13 +845,15 @@ public abstract class Format implements Reader, RawType, Serializable {
      */
     public abstract Object readObject(Object o,
                                       EntityInput input,
-                                      boolean rawAccess);
+                                      boolean rawAccess)
+        throws RefreshException;
 
     /**
      * Writes a given instance of the target class to the output data bytes.
      * This is the complement of the newInstance()/readObject() pair.
      */
-    abstract void writeObject(Object o, EntityOutput output, boolean rawAccess);
+    abstract void writeObject(Object o, EntityOutput output, boolean rawAccess)
+        throws RefreshException;
 
     /**
      * Skips over the object's contents, as if readObject() were called, but
@@ -833,7 +862,8 @@ public abstract class Format implements Reader, RawType, Serializable {
      * format ID is read just before calling this method, so this method is
      * responsible for skipping everything following the format ID.
      */
-    abstract void skipContents(RecordInput input);
+    abstract void skipContents(RecordInput input)
+        throws RefreshException;
 
     /* -- More methods that may optionally be overridden by subclasses. -- */
 
@@ -842,7 +872,9 @@ public abstract class Format implements Reader, RawType, Serializable {
      * the given secondary key field.  Returns the format of the key field
      * found, or null if the field is not present (nullified) in the object.
      */
-    Format skipToSecKey(RecordInput input, String keyName) {
+    Format skipToSecKey(RecordInput input, String keyName)
+        throws RefreshException {
+
         throw DbCompat.unexpectedState(toString());
     }
 
@@ -858,7 +890,9 @@ public abstract class Format implements Reader, RawType, Serializable {
      * Called after skipToSecKey() to copy the data bytes of an array or
      * collection (XXX_TO_MANY) key field.
      */
-    void copySecMultiKey(RecordInput input, Format keyFormat, Set results) {
+    void copySecMultiKey(RecordInput input, Format keyFormat, Set results)
+        throws RefreshException {
+
         throw DbCompat.unexpectedState(toString());
     }
 
@@ -887,7 +921,9 @@ public abstract class Format implements Reader, RawType, Serializable {
      * primary key data bytes are stored separately from the rest of the
      * record.
      */
-    void writePriKey(Object o, EntityOutput output, boolean rawAccess) {
+    void writePriKey(Object o, EntityOutput output, boolean rawAccess)
+        throws RefreshException {
+
         throw DbCompat.unexpectedState(toString());
     }
 
@@ -900,7 +936,9 @@ public abstract class Format implements Reader, RawType, Serializable {
      * during conversion of an old format.  Normally it should be called via
      * the getReader method and the Reader interface.
      */
-    public void readPriKey(Object o, EntityInput input, boolean rawAccess) {
+    public void readPriKey(Object o, EntityInput input, boolean rawAccess)
+        throws RefreshException {
+
         throw DbCompat.unexpectedState(toString());
     }
 
@@ -934,8 +972,22 @@ public abstract class Format implements Reader, RawType, Serializable {
     Object convertRawObject(Catalog catalog,
                             boolean rawAccess,
                             RawObject rawObject,
-                            IdentityHashMap converted) {
+                            IdentityHashMap converted)
+        throws RefreshException {
+
         throw DbCompat.unexpectedState(toString());
+    }
+    
+    /**
+     * Currently, only FBigDec will return true. It is a workaround for reading
+     * the BigDecimal data stored by BigDecimal proxy before je4.1.
+     */
+    public boolean allowEvolveFromProxy() {
+        return false;
+    }
+    
+    public Accessor getAccessor(boolean rawAccess) {
+        return null;
     }
 
     @Override

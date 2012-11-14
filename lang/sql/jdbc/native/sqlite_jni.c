@@ -4298,6 +4298,33 @@ Java_SQLite_Stmt_column_1decltype(JNIEnv *env, jobject obj, jint col)
 }
 
 JNIEXPORT jstring JNICALL
+Java_SQLite_Stmt_column_1name(JNIEnv *env, jobject obj, jint col)
+{
+#if HAVE_SQLITE3 && HAVE_SQLITE_COMPILE
+    hvm *v = gethstmt(env, obj);
+
+    if (v && v->vm && v->h) {
+	int ncol = sqlite3_column_count((sqlite3_stmt *) v->vm);
+	const jchar *str;
+
+	if (col < 0 || col >= ncol) {
+	    throwex(env, "column out of bounds");
+	    return 0;
+	}
+	str = sqlite3_column_name16((sqlite3_stmt *) v->vm, col);
+	if (str) {
+	    return (*env)->NewString(env, str, jstrlen(str));
+	}
+	return 0;
+    }
+    throwex(env, "stmt already closed");
+#else
+    throwex(env, "unsupported");
+#endif
+    return 0;
+}
+
+JNIEXPORT jstring JNICALL
 Java_SQLite_Stmt_column_1origin_1name(JNIEnv *env, jobject obj, jint col)
 {
 #if HAVE_SQLITE3 && HAVE_SQLITE3_COLUMN_ORIGIN_NAME16

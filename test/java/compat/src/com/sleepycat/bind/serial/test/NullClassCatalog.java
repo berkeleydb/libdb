@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -32,5 +32,9 @@ class NullClassCatalog implements ClassCatalog {
 
     public ObjectStreamClass getClassFormat(byte[] classID) {
         return null; // ObjectInput not supported
+    }
+
+    public ClassLoader getClassLoader() {
+        return null;
     }
 }

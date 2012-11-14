@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -154,7 +154,8 @@ public @interface PrimaryKey {
      * integer type ({@code byte}, {@code short}, {@code int} or {@code long})
      * or the primitive wrapper class for one of these types.  A composite key
      * class may also be used to override sort order, but it may contain only a
-     * single key field that has one of the types previously mentioned.</p>
+     * single key field, and this field must have one of the types previously
+     * mentioned.</p>
      *
      * <p>When an entity with a primary key sequence is stored using one of the
      * <code>put</code> methods in the {@link PrimaryIndex}, a new key will be

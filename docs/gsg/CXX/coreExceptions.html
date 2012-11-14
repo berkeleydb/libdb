@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -49,29 +49,8 @@
             
         in the event of a serious error. 
         
-        <span>
-        However, be aware that
-        <code class="classname">DbException</code> does not inherit from
-        <code class="classname">std::exception</code> so your <code class="literal">try</code>
-        blocks should catch both types of exceptions. For example:
-        </span>
         
     </p>
-      <a id="cxx_intro1"></a>
-      <pre class="programlisting">#include &lt;db_cxx.h&gt;
-    ...
-try 
-{
-    // DB and other code goes here
-}
-catch(DbException &amp;e)
-{
-  // DB error handling goes here
-}
-catch(std::exception &amp;e)
-{
-    // All other error handling goes here
-} </pre>
       <p>
         You can obtain the DB error number for a
         <code class="classname">DbException</code> 

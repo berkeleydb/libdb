@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1997, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -149,21 +149,38 @@ public class BulkExample {
         int count = 0;
 
         try {
-            /* Delete a set of keys */
-            MultipleDataEntry keySet = new MultipleDataEntry();
-            keySet.setData(new byte[buffLen]);
-            keySet.setUserBuffer(buffLen, true);
-            for (int i = 0; i < value; i++) {
-                key.setData(intToByte(i));
-                keySet.append(key);
-                count++;
+            if (dups != 0) {
+                /* Delete a set of keys */
+                MultipleDataEntry keySet = new MultipleDataEntry();
+                keySet.setData(new byte[buffLen]);
+                keySet.setUserBuffer(buffLen, true);
+                for (int i = 0; i < value; i++) {
+                    key.setData(intToByte(i));
+                    keySet.append(key);
+                }
+                if (pdb.deleteMultiple(txn, keySet) != 
+                    OperationStatus.SUCCESS)
+                    count = 0;
+                else
+                    count = value * dups;
+            } else {
+                /* Delete a set of key/value pairs */
+                MultipleKeyDataEntry pairSet = new MultipleKeyDataEntry();
+                pairSet.setData(new byte[buffLen * 2]);
+                pairSet.setUserBuffer(buffLen * 2, true);
+                DatabaseEntry data = new DatabaseEntry(); 
+                for (int i = 0; i < value; i++) {
+                    key.setData(intToByte(i));
+                    DataVal dataVal = new DataVal(i);
+                    data.setData(dataVal.getBytes());
+                    pairSet.append(key, data);
+                }
+                if (pdb.deleteMultipleKey(txn, pairSet) != 
+                    OperationStatus.SUCCESS)
+                    count = 0;
+                else
+                    count = value;
             }
-
-            if (pdb.deleteMultiple(txn, keySet) != 
-                OperationStatus.SUCCESS)
-                count = 0;
-            else if (dups != 0)
-                count = count * dups;
 
             txn.commit();
             return count;
@@ -459,12 +476,9 @@ public class BulkExample {
         System.out.println("Usage: BulkExample \n" +
             " -c cachesize [1000 * pagesize] \n" + 
             " -d number of duplicates [none] \n" + 
-            " -e use environment and transaction \n" + 
-            " -i number of read iterations [1000000] \n" +
             " -n number of keys [1000000] \n" + 
             " -p pagesize [65536] \n" +
             " -D perform bulk delete \n" +
-            " -I just initialize the environment \n" + 
             " -R perform bulk read \n" + 
             " -S perform bulk read in secondary database \n" + 
             " -U perform bulk update \n");

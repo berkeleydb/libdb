@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2006, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2006, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -29,7 +29,8 @@ static int __repmgr_next_timeout __P((ENV *,
     db_timespec *, HEARTBEAT_ACTION *));
 static int __repmgr_retry_connections __P((ENV *));
 static int __repmgr_send_heartbeat __P((ENV *));
-static int __repmgr_try_one __P((ENV *, u_int));
+static int __repmgr_try_one __P((ENV *, int));
+static int resolve_collision __P((ENV *, REPMGR_SITE *, REPMGR_CONNECTION *));
 static int send_version_response __P((ENV *, REPMGR_CONNECTION *));
 
 #define	ONLY_HANDSHAKE(env, conn) do {				     \
@@ -55,9 +56,7 @@ __repmgr_select_thread(argsp)
 	args = argsp;
 	env = args->env;
 
-	if ((ret = __repmgr_select_loop(env)) == DB_DELETED)
-		ret = __repmgr_bow_out(env);
-	if (ret != 0) {
+	if ((ret = __repmgr_select_loop(env))  != 0) {
 		__db_err(env, ret, DB_STR("3614", "select loop failed"));
 		(void)__repmgr_thread_failure(env, ret);
 	}
@@ -74,7 +73,6 @@ __repmgr_bow_out(env)
 	DB_REP *db_rep;
 	int ret;
 
-	RPRINT(env, (env, DB_VERB_REPMGR_MISC, "Stopping repmgr threads"));
 	db_rep = env->rep_handle;
 	LOCK_MUTEX(db_rep->mutex);
 	ret = __repmgr_stop_threads(env);
@@ -143,14 +141,16 @@ __repmgr_accept(env)
 		(void)closesocket(s);
 		return (ret);
 	}
+	if ((ret = __repmgr_set_keepalive(env, conn)) != 0) {
+		(void)__repmgr_destroy_conn(env, conn);
+		return (ret);
+	}
 	if ((ret = __repmgr_set_nonblock_conn(conn)) != 0) {
 		__db_err(env, ret, DB_STR("3616",
 		    "can't set nonblock after accept"));
 		(void)__repmgr_destroy_conn(env, conn);
 		return (ret);
 	}
-
-	F_SET(conn, CONN_INCOMING);
 
 	/*
 	 * We don't yet know which site this connection is coming from.  So for
@@ -233,8 +233,9 @@ __repmgr_next_timeout(env, deadline, action)
 	REP *rep;
 	HEARTBEAT_ACTION my_action;
 	REPMGR_CONNECTION *conn;
-	REPMGR_SITE *site;
+	REPMGR_SITE *master;
 	db_timespec t;
+	u_int32_t version;
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
@@ -244,19 +245,29 @@ __repmgr_next_timeout(env, deadline, action)
 		t = db_rep->last_bcast;
 		TIMESPEC_ADD_DB_TIMEOUT(&t, rep->heartbeat_frequency);
 		my_action = __repmgr_send_heartbeat;
-	} else if ((conn = __repmgr_master_connection(env)) != NULL &&
+	} else if ((master = __repmgr_connected_master(env)) != NULL &&
 	    !IS_SUBORDINATE(db_rep) &&
-	    rep->heartbeat_monitor_timeout > 0 &&
-	    conn->version >= HEARTBEAT_MIN_VERSION) {
-		/*
-		 * If we have a working connection to a heartbeat-aware master,
-		 * let's monitor it.  Otherwise there's really nothing we can
-		 * do.
-		 */
-		site = SITE_FROM_EID(rep->master_id);
-		t = site->last_rcvd_timestamp;
-		TIMESPEC_ADD_DB_TIMEOUT(&t, rep->heartbeat_monitor_timeout);
-		my_action = __repmgr_call_election;
+	    rep->heartbeat_monitor_timeout > 0) {
+		version = 0;
+		if ((conn = master->ref.conn.in) != NULL &&
+		    IS_READY_STATE(conn->state))
+			version = conn->version;
+		if ((conn = master->ref.conn.out) != NULL &&
+		    IS_READY_STATE(conn->state) &&
+		    conn->version > version)
+			version = conn->version;
+		if (version >= HEARTBEAT_MIN_VERSION) {
+			/*
+			 * If we have a working connection to a heartbeat-aware
+			 * master, let's monitor it.  Otherwise there's really
+			 * nothing we can do.
+			 */
+			t = master->last_rcvd_timestamp;
+			TIMESPEC_ADD_DB_TIMEOUT(&t,
+			    rep->heartbeat_monitor_timeout);
+			my_action = __repmgr_call_election;
+		} else
+			return (FALSE);
 	} else
 		return (FALSE);
 
@@ -286,7 +297,7 @@ __repmgr_send_heartbeat(env)
 	__repmgr_permlsn_args permlsn;
 	u_int8_t buf[__REPMGR_PERMLSN_SIZE];
 	u_int unused1, unused2;
-	int ret;
+	int ret, unused3;
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
@@ -300,31 +311,28 @@ __repmgr_send_heartbeat(env)
 
 	DB_INIT_DBT(rec, NULL, 0);
 	return (__repmgr_send_broadcast(env,
-	    REPMGR_HEARTBEAT, &control, &rec, &unused1, &unused2));
+	    REPMGR_HEARTBEAT, &control, &rec, &unused1, &unused2, &unused3));
 }
 
 /*
- * PUBLIC: REPMGR_CONNECTION *__repmgr_master_connection __P((ENV *));
-
+ * PUBLIC: REPMGR_SITE *__repmgr_connected_master __P((ENV *));
  */
-REPMGR_CONNECTION *
-__repmgr_master_connection(env)
+REPMGR_SITE *
+__repmgr_connected_master(env)
 	ENV *env;
 {
 	DB_REP *db_rep;
-	REP *rep;
 	REPMGR_SITE *master;
 	int master_id;
 
 	db_rep = env->rep_handle;
-	rep = db_rep->region;
-	master_id = rep->master_id;
+	master_id = db_rep->region->master_id;
 
 	if (!IS_KNOWN_REMOTE_SITE(master_id))
 		return (NULL);
 	master = SITE_FROM_EID(master_id);
-	if (IS_SITE_HANDSHAKEN(master))
-		return master->ref.conn;
+	if (master->state == SITE_CONNECTED)
+		return (master);
 	return (NULL);
 }
 
@@ -333,13 +341,22 @@ __repmgr_call_election(env)
 	ENV *env;
 {
 	REPMGR_CONNECTION *conn;
+	REPMGR_SITE *master;
+	int ret;
 
-	conn = __repmgr_master_connection(env);
-	DB_ASSERT(env, conn != NULL);
+	master = __repmgr_connected_master(env);
+	if (master == NULL)
+		return (0);
 	RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 	    "heartbeat monitor timeout expired"));
 	STAT(env->rep_handle->region->mstat.st_connection_drop++);
-	return (__repmgr_bust_connection(env, conn));
+	if ((conn = master->ref.conn.in) != NULL &&
+	    (ret = __repmgr_bust_connection(env, conn)) != 0)
+		return (ret);
+	if ((conn = master->ref.conn.out) != NULL &&
+	    (ret = __repmgr_bust_connection(env, conn)) != 0)
+		return (ret);
+	return (0);
 }
 
 /*
@@ -382,8 +399,7 @@ __repmgr_retry_connections(env)
 	REPMGR_SITE *site;
 	REPMGR_RETRY *retry;
 	db_timespec now;
-	u_int eid;
-	int ret;
+	int eid, ret;
 
 	db_rep = env->rep_handle;
 	__os_gettime(env, &now, 1);
@@ -397,6 +413,7 @@ __repmgr_retry_connections(env)
 
 		eid = retry->eid;
 		__os_free(env, retry);
+		DB_ASSERT(env, IS_VALID_EID(eid));
 		site = SITE_FROM_EID(eid);
 		DB_ASSERT(env, site->state == SITE_PAUSING);
 
@@ -421,8 +438,7 @@ __repmgr_first_try_connections(env)
 {
 	DB_REP *db_rep;
 	REPMGR_SITE *site;
-	u_int eid;
-	int ret;
+	int eid, ret;
 
 	db_rep = env->rep_handle;
 	FOR_EACH_REMOTE_SITE_INDEX(eid) {
@@ -449,7 +465,7 @@ __repmgr_first_try_connections(env)
 static int
 __repmgr_try_one(env, eid)
 	ENV *env;
-	u_int eid;
+	int eid;
 {
 	DB_REP *db_rep;
 	REPMGR_SITE *site;
@@ -457,6 +473,7 @@ __repmgr_try_one(env, eid)
 	int ret;
 
 	db_rep = env->rep_handle;
+	DB_ASSERT(env, IS_VALID_EID(eid));
 	site = SITE_FROM_EID(eid);
 	th = site->connector;
 	if (th == NULL) {
@@ -477,7 +494,7 @@ __repmgr_try_one(env, eid)
 	site->state = SITE_CONNECTING;
 
 	th->run = __repmgr_connector_thread;
-	th->args.eid = (int)eid;
+	th->args.eid = eid;
 	if ((ret = __repmgr_thread_start(env, th)) != 0) {
 		__os_free(env, th);
 		site->connector = NULL;
@@ -525,8 +542,9 @@ __repmgr_connector_main(env, th)
 	ret = 0;
 
 	LOCK_MUTEX(db_rep->mutex);
+	DB_ASSERT(env, IS_VALID_EID(th->args.eid));
 	site = SITE_FROM_EID(th->args.eid);
-	if (site->state != SITE_CONNECTING && db_rep->finished)
+	if (site->state != SITE_CONNECTING && db_rep->repmgr_status == stopped)
 		goto unlock;
 
 	/*
@@ -554,12 +572,13 @@ __repmgr_connector_main(env, th)
 		}
 		conn->type = REP_CONNECTION;
 		site = SITE_FROM_EID(th->args.eid);
-		if (site->state != SITE_CONNECTING || db_rep->finished)
+		if (site->state != SITE_CONNECTING ||
+		    db_rep->repmgr_status == stopped)
 			goto cleanup;
 
-		conn->eid = (int)th->args.eid;
+		conn->eid = th->args.eid;
 		site = SITE_FROM_EID(th->args.eid);
-		site->ref.conn = conn;
+		site->ref.conn.out = conn;
 		site->state = SITE_CONNECTED;
 		__os_gettime(env, &site->last_rcvd_timestamp, 1);
 		ret = __repmgr_wake_main_thread(env);
@@ -572,12 +591,13 @@ __repmgr_connector_main(env, th)
 
 		LOCK_MUTEX(db_rep->mutex);
 		site = SITE_FROM_EID(th->args.eid);
-		if (site->state != SITE_CONNECTING || db_rep->finished) {
+		if (site->state != SITE_CONNECTING ||
+		    db_rep->repmgr_status == stopped) {
 			ret = 0;
 			goto unlock;
 		}
 		ret = __repmgr_schedule_connection_attempt(env,
-		    (u_int)th->args.eid, FALSE);
+		    th->args.eid, FALSE);
 	} else
 		goto out;
 
@@ -882,7 +902,12 @@ prepare_input(env, conn)
 		 * final handshake, implying that this connection is to be used
 		 * for a one-shot GMDB request.
 		 */
-		DB_ASSERT(env, REPMGR_OWN_BUF_SIZE(msg_hdr) > 0);
+		if (REPMGR_OWN_BUF_SIZE(msg_hdr) == 0) {
+			__db_errx(env, DB_STR_A("3680",
+			    "invalid own buf size %lu in prepare_input", "%lu"),
+			    (u_long)REPMGR_OWN_BUF_SIZE(msg_hdr));
+			return (DB_REP_UNAVAIL);
+		}
 		DB_INIT_DBT(conn->input.rep_message->v.gmdb_msg.request,
 		    (u_int8_t*)membase + sizeof(REPMGR_MESSAGE),
 		    REPMGR_OWN_BUF_SIZE(msg_hdr));
@@ -893,7 +918,12 @@ prepare_input(env, conn)
 	case REPMGR_APP_RESPONSE:
 		size = APP_RESP_BUFFER_SIZE(msg_hdr);
 		conn->cur_resp = APP_RESP_TAG(msg_hdr);
-		DB_ASSERT(env, conn->cur_resp < conn->aresp);
+		if (conn->cur_resp >= conn->aresp) {
+			__db_errx(env, DB_STR_A("3681",
+			    "invalid cur resp %lu in prepare_input", "%lu"),
+			    (u_long)conn->cur_resp);
+			return (DB_REP_UNAVAIL);
+		}
 		resp = &conn->responses[conn->cur_resp];
 		DB_ASSERT(env, F_ISSET(resp, RESP_IN_USE));
 
@@ -968,7 +998,10 @@ prepare_input(env, conn)
 		break;
 
 	default:
-		return (__db_unknown_path(env, "prepare_input"));
+		__db_errx(env, DB_STR_A("3676",
+		    "unexpected msg type %lu in prepare_input", "%lu"),
+		    (u_long)conn->msg_type);
+		return (DB_REP_UNAVAIL);
 	}
 
 	if (skip) {
@@ -1318,7 +1351,10 @@ process_own_msg(env, conn)
 	case REPMGR_REMOVE_REQUEST:
 	case REPMGR_RESOLVE_LIMBO:
 	default:
-		return (__db_unknown_path(env, "process_own_msg"));
+		__db_errx(env, DB_STR_A("3677",
+		    "unexpected msg type %lu in process_own_msg", "%lu"),
+		    (u_long)REPMGR_OWN_MSG_TYPE(msg->msg_hdr));
+		return (DB_REP_UNAVAIL);
 	}
 	/*
 	 * If we haven't given ownership of the msg buffer to another thread,
@@ -1449,7 +1485,10 @@ __repmgr_send_handshake(env, conn, opt, optlen, flags)
 		cntrl_len = __REPMGR_HANDSHAKE_SIZE;
 		break;
 	default:
-		return (__db_unknown_path(env, "__repmgr_send_handshake"));
+		__db_errx(env, DB_STR_A("3678",
+		    "unexpected conn version %lu in send_handshake", "%lu"),
+		    (u_long)conn->version);
+		return (DB_REP_UNAVAIL);
 	}
 	hostname_len = strlen(my_addr->host);
 	rec_len = hostname_len + 1 +
@@ -1645,7 +1684,10 @@ accept_handshake(env, conn, hostname)
 		ack = hs.ack_policy;
 		break;
 	default:
-		return (__db_unknown_path(env, "accept_handshake"));
+		__db_errx(env, DB_STR_A("3679",
+		    "unexpected conn version %lu in accept_handshake", "%lu"),
+		    (u_long)conn->version);
+		return (DB_REP_UNAVAIL);
 	}
 
 	return (process_parameters(env,
@@ -1691,7 +1733,7 @@ process_parameters(env, conn, host, port, ack, electable, flags)
 	REPMGR_SITE *site;
 	__repmgr_connect_reject_args reject;
 	u_int8_t reject_buf[__REPMGR_CONNECT_REJECT_SIZE];
-	int eid, ret, sockopt;
+	int eid, ret;
 
 	db_rep = env->rep_handle;
 
@@ -1743,18 +1785,6 @@ process_parameters(env, conn, host, port, ack, electable, flags)
 				TAILQ_INSERT_TAIL(&site->sub_conns,
 				    conn, entries);
 				conn->eid = eid;
-
-#ifdef SO_KEEPALIVE
-				sockopt = 1;
-				if (setsockopt(conn->fd, SOL_SOCKET,
-				    SO_KEEPALIVE, (sockopt_t)&sockopt,
-				     sizeof(sockopt)) != 0) {
-					ret = net_errno;
-					__db_err(env, ret, DB_STR("3626",
-				    "can't set KEEPALIVE socket option"));
-					return (ret);
-				}
-#endif
 			} else {
 				DB_EVENT(env,
 				    DB_EVENT_REP_CONNECT_ESTD, &eid);
@@ -1775,17 +1805,10 @@ process_parameters(env, conn, host, port, ack, electable, flags)
 					 * least we thought we were.
 					 */
 					RPRINT(env, (env, DB_VERB_REPMGR_MISC,
-			     "connection from %s:%u EID %u supersedes existing",
+			 "connection from %s:%u EID %u while already connected",
 					    host, port, eid));
-
-					/*
-					 * No need for site-oriented recovery,
-					 * since we now have a replacement
-					 * connection; so skip bust_connection()
-					 * and call disable_conn() directly.
-					 */
-					if ((ret = __repmgr_disable_connection(
-					    env, site->ref.conn)) != 0)
+					if ((ret = resolve_collision(env,
+					    site, conn)) != 0)
 						return (ret);
 					break;
 				case SITE_CONNECTING:
@@ -1803,7 +1826,7 @@ process_parameters(env, conn, host, port, ack, electable, flags)
 				}
 				conn->eid = eid;
 				site->state = SITE_CONNECTED;
-				site->ref.conn = conn;
+				site->ref.conn.in = conn;
 				__os_gettime(env,
 				    &site->last_rcvd_timestamp, 1);
 			}
@@ -1856,6 +1879,43 @@ process_parameters(env, conn, host, port, ack, electable, flags)
 }
 
 static int
+resolve_collision(env, site, conn)
+	ENV *env;
+	REPMGR_SITE *site;
+	REPMGR_CONNECTION *conn;
+{
+	int ret;
+
+	/*
+	 * No need for site-oriented recovery, since we now have a replacement
+	 * connection; so skip bust_connection() and call disable_conn()
+	 * directly.
+	 *
+	 * If we already had an incoming connection, this new one always
+	 * replaces it.  Whether it also/alternatively replaces an outgoing
+	 * connection depends on whether we're client or server (so as to avoid
+	 * connection collisions resulting in no remaining connections).  (If
+	 * it's an older version that doesn't know about our collision
+	 * resolution protocol, it will behave like a client.)
+	 */
+	if (site->ref.conn.in != NULL) {
+		ret = __repmgr_disable_connection(env, site->ref.conn.in);
+		site->ref.conn.in = NULL;
+		if (ret != 0)
+			return (ret);
+	}
+	if (site->ref.conn.out != NULL &&
+	    conn->version >= CONN_COLLISION_VERSION &&
+	    __repmgr_is_server(env, site)) {
+		ret = __repmgr_disable_connection(env, site->ref.conn.out);
+		site->ref.conn.out = NULL;
+		if (ret != 0)
+			return (ret);
+	}
+	return (0);
+}
+
+static int
 record_permlsn(env, conn)
 	ENV *env;
 	REPMGR_CONNECTION *conn;
@@ -1871,8 +1931,12 @@ record_permlsn(env, conn)
 	db_rep = env->rep_handle;
 	do_log_check = 0;
 
-	DB_ASSERT(env, conn->version > 0 &&
-	    IS_READY_STATE(conn->state) && IS_VALID_EID(conn->eid));
+	if (conn->version == 0 ||
+	    !IS_READY_STATE(conn->state) || !IS_VALID_EID(conn->eid)) {
+		__db_errx(env, DB_STR("3682",
+		    "unexpected connection info in record_permlsn"));
+		return (DB_REP_UNAVAIL);
+	}
 	site = SITE_FROM_EID(conn->eid);
 
 	/*
@@ -1938,9 +2002,10 @@ check_min_log_file(env)
 {
 	DB_REP *db_rep;
 	REP *rep;
+	REPMGR_CONNECTION *conn;
 	REPMGR_SITE *site;
 	u_int32_t min_log;
-	u_int eid;
+	int eid;
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
@@ -1954,17 +2019,21 @@ check_min_log_file(env)
 	 * indefinitely prevent log archiving.
 	 */
 	FOR_EACH_REMOTE_SITE_INDEX(eid) {
-		if ((int)eid == rep->master_id)
+		if (eid == rep->master_id)
 			continue;
 		site = SITE_FROM_EID(eid);
-		if (IS_SITE_AVAILABLE(site) &&
+		if (site->state == SITE_CONNECTED &&
+		    (((conn = site->ref.conn.in) != NULL &&
+		    conn->state == CONN_READY) ||
+		    ((conn = site->ref.conn.out) != NULL &&
+		    conn->state == CONN_READY)) &&
 		    !IS_ZERO_LSN(site->max_ack) &&
 		    (min_log == 0 || site->max_ack.file < min_log))
 			min_log = site->max_ack.file;
 	}
 	/*
 	 * During normal operation min_log should increase over time, but it
-	 * is possible if a site returns after being diconnected for a while
+	 * is possible if a site returns after being disconnected for a while
 	 * that min_log could decrease.
 	 */
 	if (min_log != 0 && min_log != rep->min_log_file)

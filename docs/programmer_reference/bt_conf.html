@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -373,6 +373,18 @@ err:    /* Close the cursor. */
         so long as your database is not configured for unsorted duplicates.
     </p>
         </div>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+	The default compression function is not guaranteed to reduce the 
+	size of the on-disk database in every case.  It has been tested
+	and shown to work well with English-language text.  Of course, in 
+	order to determine if the default compression algorithm is beneficial
+	for your application, it is important to test both the final size
+	and the performance using a representative set of data and access
+	patterns. 
+    </p>
+        </div>
         <p>
     The default compression function performs prefix compression on each
     key added to the database.  This means that, for a key
@@ -434,7 +446,7 @@ err:    /* Close the cursor. */
             </div>
           </div>
           <p>
-    An application wishing to perform it's own compression may supply a
+    An application wishing to perform its own compression may supply a
     compression and decompression function which will be called instead of
     Berkeley DB's default functions.  The compression function is
     passed five <a href="../api_reference/C/dbt.html" class="olink">DBT</a> structures: 
@@ -630,7 +642,7 @@ err:    /* Close the cursor. */
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3934383"></a>Programmer Notes</h4>
+                <h4 class="title"><a id="idm1755952"></a>Programmer Notes</h4>
               </div>
             </div>
           </div>

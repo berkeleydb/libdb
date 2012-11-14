@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -46,6 +46,15 @@
               <a href="admin.html#backup">Backing Up Berkeley DB SQL Databases</a>
             </span>
           </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="admin.html#idp50743400">Backing Up Replicated Berkeley DB SQL Databases</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
           <dt>
             <span class="sect1">
               <a href="sync.html">Syncing with Oracle Databases</a>
@@ -98,6 +107,15 @@
             </div>
           </div>
         </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="admin.html#idp50743400">Backing Up Replicated Berkeley DB SQL Databases</a>
+              </span>
+            </dt>
+          </dl>
+        </div>
         <p>
                 You can use the standard SQLite <code class="literal">.dump</code>
                 command to backup the data managed by the  BDB SQL interface.
@@ -119,6 +137,50 @@
                 to have a full backup. To do that copy the file named <code class="literal">
                 pragma</code> from the database journal directory.
             </p>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="idp50743400"></a>Backing Up Replicated Berkeley DB SQL Databases</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+	        When BDB SQL interface databases are replicated the process for backing up
+		a regular database should be followed. The user must then copy
+		some additional files for the backup to be complete.
+	    </p>
+          <p>
+	    	The additional files can be found in the journal directory of
+		the source database, and should be copied into the journal
+		directory of the backup copy. The journal directory is
+		automatically created when a Berkeley DB SQL interface database is created.
+		The journal directory is created in the same directory as the
+		database file, it has the name of the database file with a
+		<code class="literal">-journal</code> appendix.
+	    </p>
+          <p>
+	    	The files that need to be copied into the backup journal directory are:
+		    </p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <code class="literal">__db.rep.egen</code>
+              </li>
+              <li>
+                <code class="literal">__db.rep.gen</code>
+              </li>
+              <li>
+                <code class="literal">__db.rep.init</code>
+              </li>
+              <li>
+                <code class="literal">__db.rep.system</code>
+              </li>
+            </ul>
+          </div>
+          <p>
+	    </p>
+        </div>
       </div>
     </div>
     <div class="navfooter">

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2010 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -28,7 +28,6 @@ import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseType;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
-import com.sleepycat.db.EventHandlerAdapter;
 import com.sleepycat.db.ReplicationManagerSiteConfig;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
 import com.sleepycat.db.ReplicationManagerStats;
@@ -50,41 +49,6 @@ public class TestHeartbeats {
     private int client2Port;
     private int mgrPort;
 
-    class MyEventHandler extends EventHandlerAdapter {
-        private boolean done = false;
-        private boolean panic = false;
-        private int newmasterCount = 0;
-        private boolean iAmMaster;
-		
-        @Override synchronized public void handleRepStartupDoneEvent() {
-            done = true;
-            notifyAll();
-        }
-
-        @Override synchronized public void handleRepMasterEvent() {
-            iAmMaster = true;
-        }
-
-        @Override synchronized public void handleRepNewMasterEvent(int eid) {
-            newmasterCount++;
-        }
-
-        synchronized public int getNewmasterCount() { return newmasterCount; }
-        synchronized public boolean isMaster() { return iAmMaster; }
-
-        @Override synchronized public void handlePanicEvent() {
-            done = true;
-            panic = true;
-            notifyAll();
-        }
-        
-        synchronized void await() throws Exception {
-            while (!done) { wait(); }
-            if (panic)
-                throw new Exception("aborted by panic in DB");
-        }
-    }
-    
     @Before public void setUp() throws Exception {
         testdir = new File(TEST_DIR_NAME);
         Util.rm_rf(testdir);
@@ -121,8 +85,6 @@ public class TestHeartbeats {
             new ReplicationManagerSiteConfig("localhost", masterPort);
         site.setLocalSite(true);
         masterConfig.addReplicationManagerSite(site);
-        MyEventHandler masterMonitor = new MyEventHandler();
-        masterConfig.setEventHandler(masterMonitor);
         File masterDir = mkdir("master");
         Environment master = new Environment(masterDir, masterConfig);
         master.setReplicationTimeout(ReplicationTimeoutType.HEARTBEAT_SEND, 3000000);
@@ -138,7 +100,7 @@ public class TestHeartbeats {
 
         // create two clients, wait for them to finish sync-ing up
         // 
-        MyEventHandler clientMonitor = new MyEventHandler();
+        EventHandler clientMonitor = new EventHandler();
         EnvironmentConfig ec = makeClientConfig(clientMonitor, clientPort, masterPort);
         
         File clientDir = mkdir("client");
@@ -149,7 +111,7 @@ public class TestHeartbeats {
         client.replicationManagerStart(1, ReplicationManagerStartPolicy.REP_CLIENT);
         clientMonitor.await();
 
-        MyEventHandler client2Monitor = new MyEventHandler();
+        EventHandler client2Monitor = new EventHandler();
         ec = makeClientConfig(client2Monitor, client2Port, masterPort);
         
         File client2Dir = mkdir("client2");
@@ -214,7 +176,6 @@ public class TestHeartbeats {
         Thread.sleep(5000 + 2000);
         ReplicationManagerStats masterStats =
             master.getReplicationManagerStats(StatsConfig.DEFAULT);
-        assertEquals(2, masterStats.getConnectionDrop());
         assertTrue(clientMonitor.isMaster() || client2Monitor.isMaster());
 
         client2.close();
@@ -229,7 +190,7 @@ public class TestHeartbeats {
         fiddler = null;
     }
 
-    private EnvironmentConfig makeClientConfig(MyEventHandler evHandler,
+    private EnvironmentConfig makeClientConfig(EventHandler evHandler,
                                                int clientPort, int masterPort)
         throws Exception
     {

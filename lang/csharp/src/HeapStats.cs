@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -42,6 +42,10 @@ namespace BerkeleyDB {
         /// The underlying database page (and bucket) size, in bytes.
         /// </summary>
         public uint PageSize { get { return st.heap_pagesize; } }
+       /// <summary>
+       /// The region size of the Heap database.
+       /// </summary>
+       public uint RegionSize { get { return st.heap_regionsize; } }
         /// <summary>
         /// The version of the Heap database. 
         /// </summary>

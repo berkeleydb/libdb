@@ -7,6 +7,8 @@
 # Utility functions for bdb tests.
 
 source $testdir/tester.tcl
+source $testdir/../../../../test/tcl_utils/multi_proc_utils.tcl
+source $testdir/../../../../test/tcl_utils/common_test_utils.tcl
 
 # 
 # Functions for threads that return SQLITE_LOCK error when caught
@@ -46,65 +48,6 @@ set ::bdb_thread_procs {
   }
 }
 
-# NOTE: This routine is copied from ../test/tcl/reputils.tcl
-# and changes to it should be made in both places because the SQL
-# tests are currently independent of the core tests.
-#
-# Return a list of TCP port numbers that are not currently in use on
-# the local system.  Note that this doesn't actually reserve the
-# ports, so it's possible that by the time the caller tries to use
-# them, another process could have taken one of them.  But for our
-# purposes that's unlikely enough that this is still useful: it's
-# still better than trying to find hard-coded port numbers that will
-# always be available.
-#
-# Using a starting baseport value that falls in the non-ephemeral port
-# range on most platforms.  Can override starting baseport by setting
-# environment variable BDBBASEPORT. 
-#
-proc available_ports { n { rangeincr 10 } } {
-	global env
-
-	if { [info exists env(BDBBASEPORT)] } {
-		set baseport $env(BDBBASEPORT)
-	} else {
-		set baseport 30100
-	}
-
-	# Try sets of contiguous ports ascending from baseport.
-	for { set i $baseport } { $i < $baseport + $rangeincr * 100 } \
-	    { incr i $rangeincr } {
-		set ports {}
-		set socks {}
-		set numports $n
-		set curport $i
-
-		# Try one set of contiguous ports.
-		while { [incr numports -1] >= 0 } {
-			incr curport
-			if [catch { socket -server Unused \
-			    -myaddr localhost $curport } sock] {
-				# A port is unavailable, try another set.
-				break
-			}
-			lappend socks $sock
-			lappend ports $curport
-		}
-		foreach sock $socks {
-			close $sock
-		}
-		if { $numports == -1 } {
-			# We have all the ports we need.
-			break
-		}
-	}
-	if { $numports == -1 } {
-		return $ports
-	} else {
-		error "available_ports: could not get ports for $baseport"
-	}
-}
-
 #
 # This procedure sets up three sites and databases suitable for replication
 # testing.  The databases are created in separate subdirectories of the
@@ -128,7 +71,7 @@ proc setup_rep_sites {} {
 	file delete -force $site1dir
 	file mkdir $site1dir
 	sqlite3 db $site1dir/rep.db
-	set site1addr "localhost:[lindex $ports 0]"
+	set site1addr "127.0.0.1:[lindex $ports 0]"
 
 	# Set up site2 directory and database.
 	set site2dir ./repsite2
@@ -138,7 +81,7 @@ proc setup_rep_sites {} {
 	file delete -force $site2dir
 	file mkdir $site2dir
 	sqlite3 db2 $site2dir/rep.db
-	set site2addr "localhost:[lindex $ports 1]"
+	set site2addr "127.0.0.1:[lindex $ports 1]"
 
 	# Set up site3 directory and database.
 	set site3dir ./repsite3
@@ -148,5 +91,5 @@ proc setup_rep_sites {} {
 	file delete -force $site3dir
 	file mkdir $site3dir
 	sqlite3 db3 $site3dir/rep.db
-	set site3addr "localhost:[lindex $ports 2]"
+	set site3addr "127.0.0.1:[lindex $ports 2]"
 }

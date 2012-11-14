@@ -303,7 +303,7 @@ declare function local:makeLibraryDirectory($lib,$platform,$config)
 
 declare function local:addLibraryDirectories($project, $platform, $config)
 {
-  string-join((for $dep in $project/depends return local:makeLibraryDirectory(doc($projectList)/projects/library[@name=$dep],$platform,$config),"../lib"),";")
+  string-join((for $dep in $project/depends return local:makeLibraryDirectory(doc($projectList)/projects/library[@name=$dep],$platform,$config),"../../lib"),";")
 };
 
 declare function local:makeOutputPDBFile($project,$config)
@@ -348,6 +348,14 @@ declare function local:generateCustomBuildTool($project,$config)
 	    {local:indent(6)}<Command>{$commandtext}</Command>
 	    {local:indent(6)}<Message>{$message}</Message>
 	    {local:indent(4)}</PostBuildEvent>)
+    else if (not(empty($project/event[@name="prebuild"]))) then 
+	let $commandtext := $project/event[@name="prebuild"]/command[contains(@config,$config)]/text()
+        let $message := $project/event[@name="prebuild"]/description
+        return (
+	    local:indent(4),<PreBuildEvent xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	    {local:indent(6)}<Command>{$commandtext}</Command>
+	    {local:indent(6)}<Message>{$message}</Message>
+	    {local:indent(4)}</PreBuildEvent>)
      else ()
 };
 
@@ -471,7 +479,7 @@ declare function local:generateRcFilesNoFilter($project)
   for $file in $project/files//file return
        if (ends-with($file/@name,".rc")) then
 	    (local:indent(2),<ItemGroup xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-	       {local:indent(4)}<ResourceCompile Include="{substring-after($file/@name,"/")}">
+	       {local:indent(4)}<ResourceCompile Include="../{substring-after($file/@name,"/")}">
 	       {for $platform in local:getPlatforms($vsversion) return
 	          for $config in local:getConfiguration($project) return(
 		    local:indent(6), <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=={concat("'",$config,"|",$platform,"'")}">{concat(if ($config="Debug") then "_DEBUG" else "NDEBUG",";","$(NoInherit))",";%(PreprocessorDefinitions)")}</PreprocessorDefinitions>)
@@ -491,7 +499,7 @@ declare function local:generateDefFilesNoFilter($project)
     if (ends-with($file/@name,".def")) then 
       (
          local:indent(2),<ItemGroup xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-	   {local:indent(4)}<None Include="{substring-after($file/@name,"/")}" />
+	   {local:indent(4)}<None Include="../{substring-after($file/@name,"/")}" />
 	 {local:indent(2)}</ItemGroup>
       )
     else ()

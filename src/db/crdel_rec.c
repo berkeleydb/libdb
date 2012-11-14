@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -53,11 +53,11 @@ __crdel_metasub_recover(env, dbtp, lsnp, op, info)
 		goto done;
 
 	if ((ret = __memp_fget(mpf, &argp->pgno, ip, NULL, 0, &pagep)) != 0) {
-		/* 
+		/*
 		 * If this is an in-memory file, this might be OK. Also, heap
 		 * can get there through a truncate and we have to redo page 1
 		 */
-		if ((file_dbp->type == DB_HEAP || 
+		if ((file_dbp->type == DB_HEAP ||
 		    F_ISSET(file_dbp, DB_AM_INMEM)) &&
 		    (ret = __memp_fget(mpf, &argp->pgno, ip, NULL,
 		    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &pagep)) == 0) {

@@ -3,13 +3,17 @@
 #include "resource.h"
 #include "sqlite.h"
 
+#ifndef SQLITE_VERSION
+#define SQLITE_VERSION "?.?.?"
+#endif
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // Dialog
 //
 
-DRIVERCONNECT DIALOG DISCARDABLE  65, 43, 333, 111
-STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
+DRIVERCONNECT DIALOG DISCARDABLE  65, 43, 287, 111
+STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
 #ifdef SQLITE_UTF8
 CAPTION "SQLite ODBC (UTF-8) Driver Connect"
@@ -22,26 +26,26 @@ BEGIN
     EDITTEXT        IDC_DBNAME,82,36,140,12,ES_AUTOHSCROLL
     PUSHBUTTON      "Browse...",IDC_BROWSE,225,35,40,14
     EDITTEXT        IDC_TONAME,82,51,53,12,ES_AUTOHSCROLL
+    CONTROL         "Step API",IDC_STEPAPI,"Button",BS_AUTOCHECKBOX |
+                    WS_TABSTOP,165,50,50,15
+    CONTROL         "No TXN",IDC_NOTXN,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    225,50,45,15
 #ifdef SQLITE_UTF8
     CONTROL         "No WCHAR",IDC_NOWCHAR,"Button",BS_AUTOCHECKBOX |
-                    WS_TABSTOP,170,50,50,15
+                    WS_TABSTOP,85,65,50,15
 #endif
-    CONTROL         "Step API",IDC_STEPAPI,"Button",BS_AUTOCHECKBOX |
-                    WS_TABSTOP,225,50,50,15
-    CONTROL         "No TXN",IDC_NOTXN,"Button",BS_AUTOCHECKBOX |
-                    WS_TABSTOP,280,50,50,15
+    CONTROL         "Long Column Names",IDC_LONGNAM,"Button",BS_AUTOCHECKBOX |
+                    WS_TABSTOP,165,65,95,15
     DEFPUSHBUTTON   "OK",IDOK,175,90,40,14
     PUSHBUTTON      "Cancel",IDCANCEL,225,90,40,14
-    CTEXT           "Enter options for connect",1003,120,6,80,8
+    CTEXT           "Enter options for connect",1003,95,5,80,8
     RTEXT           "Data Source Name:",IDC_DSNAMETEXT,6,22,73,9,NOT WS_GROUP
     RTEXT           "Database Name:",IDC_DBNAMETEXT,7,38,71,9,NOT WS_GROUP
     RTEXT           "Lock Timeout [ms]:",IDC_TONAMETEXT,6,53,73,9,NOT WS_GROUP
-    CONTROL         "Long Column Names",IDC_LONGNAM,"Button",BS_AUTOCHECKBOX |
-                    WS_TABSTOP,225,65,95,15
 END
 
-CONFIGDSN DIALOG DISCARDABLE  65, 43, 333, 111
-STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
+CONFIGDSN DIALOG DISCARDABLE  65, 43, 287, 111
+STYLE DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION |
     WS_SYSMENU
 #ifdef SQLITE_UTF8
 CAPTION "SQLite ODBC (UTF-8) DSN Configuration"
@@ -54,22 +58,22 @@ BEGIN
     EDITTEXT        IDC_DBNAME,82,36,140,12,ES_AUTOHSCROLL
     PUSHBUTTON      "Browse...",IDC_BROWSE,225,35,40,14
     EDITTEXT        IDC_TONAME,82,51,53,12,ES_AUTOHSCROLL
+    CONTROL         "Step API",IDC_STEPAPI,"Button",BS_AUTOCHECKBOX |
+                    WS_TABSTOP,165,50,50,15
+    CONTROL         "No TXN",IDC_NOTXN,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    225,50,45,15
 #ifdef SQLITE_UTF8
     CONTROL         "No WCHAR",IDC_NOWCHAR,"Button",BS_AUTOCHECKBOX |
-                    WS_TABSTOP,170,50,50,15
+                    WS_TABSTOP,85,65,50,15
 #endif
-    CONTROL         "Step API",IDC_STEPAPI,"Button",BS_AUTOCHECKBOX |
-                    WS_TABSTOP,225,50,50,15
-    CONTROL         "No TXN",IDC_NOTXN,"Button",BS_AUTOCHECKBOX |
-                    WS_TABSTOP,280,50,50,15
+    CONTROL         "Long Column Names",IDC_LONGNAM,"Button",BS_AUTOCHECKBOX |
+                    WS_TABSTOP,165,65,95,15
     DEFPUSHBUTTON   "OK",IDOK,175,90,40,14
     PUSHBUTTON      "Cancel",IDCANCEL,225,90,40,14
-    CTEXT           "Enter options for connect",1003,120,6,80,8
+    CTEXT           "Enter options for connect",1003,95,5,80,8
     RTEXT           "Data Source Name:",IDC_DSNAMETEXT,6,22,73,9,NOT WS_GROUP
     RTEXT           "Database Name:",IDC_DBNAMETEXT,7,38,71,9,NOT WS_GROUP
     RTEXT           "Lock Timeout [ms]:",IDC_TONAMETEXT,6,53,73,9,NOT WS_GROUP
-    CONTROL         "Long Column Names",IDC_LONGNAM,"Button",BS_AUTOCHECKBOX |
-                    WS_TABSTOP,225,65,95,15
 END
 
 /////////////////////////////////////////////////////////////////////////////
@@ -98,7 +102,7 @@ BEGIN
 #endif
             VALUE "FileVersion", VERSION "\0"
             VALUE "InternalName", "SQLITEODBC\0"
-            VALUE "LegalCopyright", "Copyright © 2001-2010 <chw@ch-werner.de>\0"
+            VALUE "LegalCopyright", "Copyright © 2001-2011 <chw@ch-werner.de>\0"
             VALUE "LegalTrademarks", "\0"
 #ifdef SQLITE_UTF8
             VALUE "OriginalFilename", "SQLITEODBCU.DLL\0"

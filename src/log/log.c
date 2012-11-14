@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -463,7 +463,7 @@ retry:	if ((ret = __os_dirlist(env, dir, 0, &names, &fcnt)) != 0) {
 
 	/* Search for a valid log file name. */
 	for (cnt = fcnt, clv = logval = 0; --cnt >= 0;) {
-		if (strncmp(names[cnt], LFPREFIX, sizeof(LFPREFIX) - 1) != 0)
+		if (!IS_LOG_FILE(names[cnt]))
 			continue;
 
 		/*
@@ -603,7 +603,8 @@ __log_valid(dblp, number, set_persist, fhpp, flags, statusp, versionp)
 	LOGP *persist;
 	logfile_validity status;
 	size_t hdrsize, nr, recsize;
-	int is_hmac, ret;
+	int chksum_includes_hdr, is_hmac, ret;
+	u_int32_t logversion;
 	u_int8_t *tmp;
 	char *fname;
 
@@ -613,6 +614,12 @@ __log_valid(dblp, number, set_persist, fhpp, flags, statusp, versionp)
 	persist = NULL;
 	status = DB_LV_NORMAL;
 	tmp = NULL;
+#if defined(HAVE_LOG_CHECKSUM)
+	/* Most log versions include the hdr in the checksum. */
+	chksum_includes_hdr = 1;
+#else
+	COMPQUIET(chksum_includes_hdr, 0);
+#endif
 
 	/* Return the file handle to our caller, on request */
 	if (fhpp != NULL)
@@ -697,13 +704,30 @@ __log_valid(dblp, number, set_persist, fhpp, flags, statusp, versionp)
 			__db_errx(env, "log record size mismatch");
 			goto err;
 		}
-		/* Check the checksum and decrypt. */
+		/*
+		 * The checksum is calculated from the encrypted data, and,
+		 * for recent logs, the fields hdr->{prev,len}.
+		 */
 #ifdef HAVE_LOG_CHECKSUM
 		if ((ret = __db_check_chksum(env, hdr, db_cipher,
 		    &hdr->chksum[0], (u_int8_t *)persist,
 		    hdr->len - hdrsize, is_hmac)) != 0) {
-			__db_errx(env, "log record checksum mismatch");
-			goto err;
+			/*
+			 * The checksum doesn't verify when the header fields
+			 * are included; try without the header.
+			 */
+
+			if ((ret = __db_check_chksum(env, NULL, db_cipher,
+			    &hdr->chksum[0], (u_int8_t *)persist,
+			    hdr->len - hdrsize, is_hmac)) != 0)
+				goto bad_checksum;
+			/*
+ 			 * The checksum verifies without the header.  Make note
+ 			 * of that, because it is only acceptable when the log
+ 			 * version < DB_LOGCHKSUM.  Later, when we determine log
+ 			 * version, we will confirm this.
+			 */
+			chksum_includes_hdr = 0;
 		}
 #endif
 
@@ -739,55 +763,73 @@ __log_valid(dblp, number, set_persist, fhpp, flags, statusp, versionp)
 		goto err;
 	}
 
+	logversion = persist->version;
 	/*
 	 * Set our status code to indicate whether the log file belongs to an
 	 * unreadable or readable old version; leave it alone if and only if
 	 * the log file version is the current one.
 	 */
-	if (persist->version > DB_LOGVERSION) {
+	if (logversion > DB_LOGVERSION) {
 		/* This is a fatal error--the log file is newer than DB. */
 		__db_errx(env, DB_STR_A("2531",
 		    "Unacceptable log file %s: unsupported log version %lu",
-		    "%s %lu"), fname, (u_long)persist->version);
+		    "%s %lu"), fname, (u_long)logversion);
 		ret = EINVAL;
 		goto err;
-	} else if (persist->version < DB_LOGOLDVER) {
+	} else if (logversion < DB_LOGOLDVER) {
 		status = DB_LV_OLD_UNREADABLE;
 		/* This is a non-fatal error, but give some feedback. */
 		__db_errx(env, DB_STR_A("2532",
 		    "Skipping log file %s: historic log version %lu", "%s %lu"),
-		    fname, (u_long)persist->version);
+		    fname, (u_long)logversion);
 		/*
 		 * We don't want to set persistent info based on an unreadable
 		 * region, so jump to "err".
 		 */
 		goto err;
-	} else if (persist->version < DB_LOGVERSION)
+	} else if (logversion < DB_LOGVERSION)
 		status = DB_LV_OLD_READABLE;
 
 	/*
-	 * Only if we have a current log do we verify the checksum.  We could
-	 * not check the checksum before checking the magic and version because
-	 * old log headers put the length and checksum in a different location.
-	 * The checksum was calculated with the swapped byte order, so we need
-	 * to check it with the same bytes.
+	 * We could not check the checksum before checking the magic and version
+	 * because old log headers put the length and checksum in a different
+	 * location.
 	 */
-	if (!CRYPTO_ON(env)) {
+#ifdef HAVE_LOG_CHECKSUM
+	if (CRYPTO_ON(env)) {
+		/*
+		 * We might have to declare a checksum failure here, if:
+		 * - the checksum verified only by ignoring the header, and
+		 * - the log version indicates that the header should have 
+		 * been included.
+		 */
+		if (!chksum_includes_hdr && logversion >= DB_LOGCHKSUM)
+			goto bad_checksum;
+	} else {
+		/*
+		 * The checksum was calculated with the swapped byte order. We
+		 * might need to swap them back; the check needs the same bytes.
+		 */
 		if (LOG_SWAPPED(env))
 			__log_persistswap(persist);
-#ifdef HAVE_LOG_CHECKSUM
+		/*
+		 * We have the logversion here, so we know whether to include
+		 * the hdr or not.
+		 */
 		if ((ret = __db_check_chksum(env,
-		    hdr, db_cipher, &hdr->chksum[0], (u_int8_t *)persist,
+		    logversion >= DB_LOGCHKSUM ? hdr : NULL, db_cipher,
+		    &hdr->chksum[0], (u_int8_t *)persist,
 		    hdr->len - hdrsize, is_hmac)) != 0) {
+bad_checksum:
 			__db_errx(env, DB_STR("2533",
 			    "log record checksum mismatch"));
 			goto err;
 		}
-#endif
 
 		if (LOG_SWAPPED(env))
 			__log_persistswap(persist);
 	}
+#endif
 
 	/*
 	 * If the log is readable so far and we're doing system initialization,
@@ -798,10 +840,10 @@ __log_valid(dblp, number, set_persist, fhpp, flags, statusp, versionp)
 	if (set_persist) {
 		lp = dblp->reginfo.primary;
 		lp->log_size = persist->log_size;
-		lp->persist.version = persist->version;
+		lp->persist.version = logversion;
 	}
 	if (versionp != NULL)
-		*versionp = persist->version;
+		*versionp = logversion;
 
 err:	if (fname != NULL)
 		__os_free(env, fname);

@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -58,6 +58,11 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
         method.
     </p>
       <p>
+        You must use the exact same host identification string and port
+        number to refer to a given site throughout your application 
+        and on each of its sites.
+    </p>
+      <p>
          The <code class="methodname">DB_ENV-&gt;repmgr_site()</code> method may be called at any time
          after the environment handle has been created.
     </p>
@@ -73,7 +78,7 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3753485"></a>Parameters</h3>
+              <h3 class="title"><a id="idp62352672"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -81,7 +86,7 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3753504"></a>host</h4>
+                <h4 class="title"><a id="idp62378328"></a>host</h4>
               </div>
             </div>
           </div>
@@ -93,7 +98,7 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3753727"></a>port</h4>
+                <h4 class="title"><a id="idp62402432"></a>port</h4>
               </div>
             </div>
           </div>
@@ -105,7 +110,7 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3753887"></a>sitep</h4>
+                <h4 class="title"><a id="idp62402840"></a>sitep</h4>
               </div>
             </div>
           </div>
@@ -118,7 +123,7 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3753894"></a>flags</h4>
+                <h4 class="title"><a id="idp62403288"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -132,7 +137,7 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3753031"></a>Errors</h3>
+              <h3 class="title"><a id="idp62351552"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -149,7 +154,7 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3753748"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp62387960"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -163,7 +168,7 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3753701"></a>Class</h3>
+              <h3 class="title"><a id="idp62393904"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -175,7 +180,7 @@ DB_ENV-&gt;repmgr_site(DB_ENV *env, const char *host,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3753580"></a>See Also</h3>
+              <h3 class="title"><a id="idp62391144"></a>See Also</h3>
             </div>
           </div>
         </div>

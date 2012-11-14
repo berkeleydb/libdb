@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -71,6 +71,27 @@ namespace BerkeleyDB {
             _bytes = Bytes;
         }
 
+        private uint _regionsz;
+        internal bool regionszIsSet;
+        /// <summary>
+        /// The number of pages in a region of the database. If this value is
+        /// never set, the default region size for the database's page size will
+        /// be used. You can set the database page size using 
+        /// <see cref="DatabaseConfig.PageSize"/>.
+        ///
+        /// If the database already exists, this value will be ignored. If the
+        /// specified region size is larger than the maximum region size for the
+        /// database's page size, an error will be returned when
+        /// <see cref="Database.Open"/> is called. The maximum allowable region 
+        /// size will be included in the error message. 
+        /// </summary>
+        public uint RegionSize {
+            get { return _regionsz; }
+            set { 
+                _regionsz = value;
+                regionszIsSet = true;
+            }
+        }
         /// <summary>
         /// Instantiate a new HeapDatabaseConfig object
         /// </summary>

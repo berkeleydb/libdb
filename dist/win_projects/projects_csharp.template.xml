@@ -22,6 +22,7 @@
       <file name="AckPolicy.cs" />
       <file name="ActiveTransaction.cs" />
       <file name="BaseCursor.cs" />
+      <file name="BackupOptions.cs" />
       <file name="BTreeCursor.cs" />
       <file name="BTreeDatabase.cs" />
       <file name="BTreeDatabaseConfig.cs" />
@@ -42,6 +43,7 @@
       <file name="Enums.cs" />
       <file name="ErrorCodes.cs" />
       <file name="HashStats.cs" />
+      <file name="IBackup.cs" />
       <file name="Internal\DB_CHANNEL.cs" />
       <file name="Internal\DB_LOCKREQ.cs" />
       <file name="Internal\DB_PREPLIST.cs" />

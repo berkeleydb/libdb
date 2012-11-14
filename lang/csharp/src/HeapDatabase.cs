@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 using System;
@@ -30,6 +30,8 @@ namespace BerkeleyDB {
 
             if (cfg.maxSizeIsSet)
                 db.set_heapsize(cfg.MaxSizeGBytes, cfg.MaxSizeBytes);
+            if (cfg.regionszIsSet)
+                db.set_heap_regionsize(cfg.RegionSize);
         }
 
         /// <summary>
@@ -129,6 +131,18 @@ namespace BerkeleyDB {
                 uint bytes = 0;
                 db.get_heapsize(ref gbytes, ref bytes);
                 return bytes;
+            }
+        }
+        /// <summary>
+        /// The number of pages in a region of the database. It is set by 
+        /// <see cref="HeapDatabaseConfig.RegionSize"/> when the heap database
+        /// is opened.
+        /// </summary>
+        public uint RegionSize {
+            get {
+                 uint ret = 0;
+                 db.get_heap_regionsize(ref ret);
+                 return ret;
             }
         }
         #endregion Properties

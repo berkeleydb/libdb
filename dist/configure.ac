@@ -29,18 +29,6 @@ fi
 AC_MSG_RESULT(no)
 
 topdir=`echo "$srcdir/.." | sed 's,/dist/\.\.,,'`
-# abs_srcdir: for relative building, jdbc configure-ing, 
-# use --with-sqlite3=$abs_srcdir/../lang/sql/generated
-# rather than --with-sqlite3=../../lang/sql/generated which is correct only for in-place
-# --with-sqlite3=$srcdir/../lang/sql/generated does not work for relative $srcdir
-ac_pwd=`pwd`; cd $srcdir;  abs_srcdir=`pwd`; cd $ac_pwd
-
-# abs_topdir: use it for JAVA_MANIFEST in Makefile; 
-# that's because $topdir could be either absolute or relative path, and
-# - ../$(JAVA_MANIFEST) is wrong for absolute path $topdir 
-# - while for relative $topdir, one level back ../$(JAVA_MANIFEST) would needed 
-abs_topdir=`echo "$abs_srcdir/.." | sed 's,/dist/\.\.,,'`
-
 # Substitution variables. BDB additions need to be documented.
 AC_SUBST(ADDITIONAL_INCS)
 AC_SUBST(ADDITIONAL_LANG)
@@ -102,7 +90,6 @@ AC_SUBST(db_int_def)
 AC_SUBST(o)
 AC_SUBST(subdir_cmd)
 AC_SUBST(topdir)
-AC_SUBST(abs_topdir)
 
 # The Windows public header has two extra symbols we need to remove.
 AC_SUBST(platform_header)
@@ -949,7 +936,7 @@ if test "$db_cv_build_replication" = "yes"; then
 	AH_TEMPLATE(HAVE_REPLICATION_THREADS,
 	    [Define to 1 if building the Berkeley DB replication framework.])
 
-	if test "$ac_cv_header_pthread_h" = yes; then
+	if test "$ac_cv_header_pthread_h" = yes -a "$db_cv_mingw" != "yes"; then
 		AC_DEFINE(HAVE_REPLICATION_THREADS)
 
 		if test "$with_stacksize" != "no"; then
@@ -968,6 +955,7 @@ if test "$db_cv_build_replication" = "yes"; then
 		esac
 		ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(REPMGR_OBJS)"
 	else
+		AC_MSG_WARN([Replication manager is not supported.])
 		ADDITIONAL_OBJS="$ADDITIONAL_OBJS repmgr_stub${o}"
 	fi
 else

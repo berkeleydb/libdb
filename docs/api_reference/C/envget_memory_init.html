@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -41,7 +41,7 @@
       <pre class="programlisting">#include &lt;db.h&gt;
 
 int
-DB_ENV-&gt;get_memory_init(DB_ENV *dbenv, DB_MEM_CONFIG struct, 
+DB_ENV-&gt;get_memory_init(DB_ENV *dbenv, DB_MEM_CONFIG type, 
                         u_int32_t *countp);  </pre>
       <p>
         The <code class="methodname">DB_ENV-&gt;get_memory_init()</code> method returns
@@ -68,7 +68,7 @@ DB_ENV-&gt;get_memory_init(DB_ENV *dbenv, DB_MEM_CONFIG struct,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3706994"></a>Parameters</h3>
+              <h3 class="title"><a id="idp59513120"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -76,7 +76,7 @@ DB_ENV-&gt;get_memory_init(DB_ENV *dbenv, DB_MEM_CONFIG struct,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3706984"></a>struct</h4>
+                <h4 class="title"><a id="idp59512472"></a>type</h4>
               </div>
             </div>
           </div>
@@ -159,13 +159,13 @@ DB_ENV-&gt;get_memory_init(DB_ENV *dbenv, DB_MEM_CONFIG struct,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3707218"></a>countp</h4>
+                <h4 class="title"><a id="idp59526488"></a>countp</h4>
               </div>
             </div>
           </div>
           <p>
                   The <span class="bold"><strong>countp</strong></span> parameter references
-                  memory into which object count for which the specified
+                  memory into which the object count for the specified
                   structure is copied.
              </p>
         </div>
@@ -174,7 +174,7 @@ DB_ENV-&gt;get_memory_init(DB_ENV *dbenv, DB_MEM_CONFIG struct,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3706605"></a>Class</h3>
+              <h3 class="title"><a id="idp59516672"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -186,7 +186,7 @@ DB_ENV-&gt;get_memory_init(DB_ENV *dbenv, DB_MEM_CONFIG struct,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3707256"></a>See Also</h3>
+              <h3 class="title"><a id="idp59528776"></a>See Also</h3>
             </div>
           </div>
         </div>

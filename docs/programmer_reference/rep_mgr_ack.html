@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -97,6 +97,12 @@ transaction.  As long as any client site is connected, this policy
 will prevent the master from racing ahead if one or more sites is down.
 On the master, this policy will then consider the transaction durable if
 the number of acknowledgements meets quorum for the group.</p>
+      <p>The following acknowledgement policies determine durability
+using acknowledgements from electable peers only: <a href="../api_reference/C/repmgrset_ack_policy.html#ackspolicy_DB_REPMGR_ACKS_QUORUM" class="olink">DB_REPMGR_ACKS_QUORUM</a>,
+<a href="../api_reference/C/repmgrset_ack_policy.html#ackspolicy_DB_REPMGR_ACKS_ONE_PEER" class="olink">DB_REPMGR_ACKS_ONE_PEER</a>, <a href="../api_reference/C/repmgrset_ack_policy.html#ackspolicy_DB_REPMGR_ACKS_ALL_PEERS" class="olink">DB_REPMGR_ACKS_ALL_PEERS</a>.  An electable
+peer is a site where the priority value is greater than zero.  In
+replication groups using these policies, an unelectable site does not
+send acknowledgements and cannot contribute to transaction durability.</p>
     </div>
     <div class="navfooter">
       <hr />

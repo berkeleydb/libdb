@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -842,7 +842,7 @@ dolock:	if (!with_delete || inorder || retrying) {
 #ifdef QDEBUG
 		if (DBC_LOGGING(dbc))
 			(void)__log_printf(env,
-			    dbc->txn, "Queue S: %x %d %d",
+			    dbc->txn, "Queue S: %x %u %u",
 			    dbc->locker ? dbc->locker->id : 0,
 			    cp->recno, first);
 #endif
@@ -923,7 +923,7 @@ release_retry:	/* Release locks and retry, if possible. */
 #ifdef QDEBUG
 		if (with_delete && DBC_LOGGING(dbc)) {
 			(void)__log_printf(dbp->env, dbc->txn,
-			    "Queue E: %x %d %d",
+			    "Queue E: %x %u %u",
 			    dbc->locker ? dbc->locker->id : 0,
 			    cp->recno, first);
 		}
@@ -953,7 +953,7 @@ release_retry:	/* Release locks and retry, if possible. */
 				is_first = 0;
 			else if (first == cp->recno)
 				/* we have verified that this record is gone. */
-				first++;
+				QAM_INC_RECNO(first);
 			if (QAM_BEFORE_FIRST(meta, cp->recno) &&
 			    DONT_NEED_LOCKS(dbc))
 				flags = DB_FIRST;
@@ -1000,7 +1000,7 @@ release_retry:	/* Release locks and retry, if possible. */
 			if (DBC_LOGGING(dbc)) {
 #ifdef QDEBUG
 				(void)__log_printf(dbp->env, dbc->txn,
-				    "Queue I: %x %d %d %d",
+				    "Queue I: %x %u %u %u",
 				    dbc->locker ? dbc->locker->id : 0,
 				    cp->recno, first, meta->cur_recno);
 #endif
@@ -1152,7 +1152,7 @@ release_retry:	/* Release locks and retry, if possible. */
 #ifdef QDEBUG
 		if (DBC_LOGGING(dbc))
 			(void)__log_printf(env,
-			    dbc->txn, "Queue D: %x %d %d %d",
+			    dbc->txn, "Queue D: %x %u %u %u",
 			    dbc->locker ? dbc->locker->id : 0,
 			    cp->recno, first, meta->first_recno);
 #endif
@@ -1277,7 +1277,7 @@ __qam_consume(dbc, meta, first)
 #ifdef QDEBUG
 			if (DBC_LOGGING(dbc))
 				(void)__log_printf(dbp->env, dbc->txn,
-				    "Queue R: %x %d %d %d",
+				    "Queue R: %x %u %u %u",
 				    dbc->locker ? dbc->locker->id : 0,
 				    cp->pgno, first, meta->first_recno);
 #endif
@@ -1342,7 +1342,7 @@ done:
 		if (DBC_LOGGING(dbc)) {
 #ifdef QDEBUG
 			(void)__log_printf(dbp->env, dbc->txn,
-			    "Queue M: %x %d %d %d",
+			    "Queue M: %x %u %u %u",
 			    dbc->locker ? dbc->locker->id : 0,
 			    cp->recno, first, meta->first_recno);
 #endif

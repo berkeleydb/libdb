@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -64,7 +64,8 @@ public class SerialBinding<E> extends SerialBase implements EntryBinding<E> {
      *
      * @param baseClass is the base class for serialized objects stored using
      * this binding -- all objects using this binding must be an instance of
-     * this class.
+     * this class.  Note that if this parameter is non-null, then this binding
+     * will not support serialization of null values.
      */
     public SerialBinding(ClassCatalog classCatalog, Class<E> baseClass) {
 
@@ -86,16 +87,17 @@ public class SerialBinding<E> extends SerialBase implements EntryBinding<E> {
     }
 
     /**
-     * Returns the class loader to be used during deserialization, or null if
-     * a default class loader should be used.  The default implementation of
-     * this method returns
-     * <code>Thread.currentThread().getContextClassLoader()</code> to use the
-     * context class loader for the current thread.
+     * Returns the class loader to be used during deserialization, or null if a
+     * default class loader should be used.  The default implementation of this
+     * method returns {@link ClassCatalog#getClassLoader()}, if it returns a
+     * non-null value.  If {@link ClassCatalog#getClassLoader()} returns null,
+     * then <code>Thread.currentThread().getContextClassLoader()</code> is
+     * returned.
      *
-     * <p>This method may be overridden to return a dynamically determined class
-     * loader.  For example, <code>getBaseClass().getClassLoader()</code> could
-     * be called to use the class loader for the base class, assuming that a
-     * base class has been specified.</p>
+     * <p>This method may be overridden to return a dynamically determined
+     * class loader.  For example, <code>getBaseClass().getClassLoader()</code>
+     * could be called to use the class loader for the base class, assuming
+     * that a base class has been specified.</p>
      *
      * <p>If this method returns null, a default class loader will be used as
      * determined by the <code>java.io.ObjectInputStream.resolveClass</code>
@@ -103,6 +105,10 @@ public class SerialBinding<E> extends SerialBase implements EntryBinding<E> {
      */
     public ClassLoader getClassLoader() {
 
+        final ClassLoader loader = classCatalog.getClassLoader();
+        if (loader != null) {
+            return loader;
+        }
         return Thread.currentThread().getContextClassLoader();
     }
 
@@ -154,14 +160,17 @@ public class SerialBinding<E> extends SerialBase implements EntryBinding<E> {
      * @param entry is the output serialized entry.
      *
      * @throws IllegalArgumentException if the object is not an instance of the
-     * base class for this binding.
+     * base class for this binding, including if the object is null and a
+     * non-null base class was specified.
      */
     public void objectToEntry(E object, DatabaseEntry entry) {
 
         if (baseClass != null && !baseClass.isInstance(object)) {
             throw new IllegalArgumentException
-                ("Data object class (" + object.getClass() +
-                 ") not an instance of binding's base class (" +
+                (((object != null) ?
+                  ("Data object class (" + object.getClass() + ')') :
+                  "Null value") +
+                 " is not an instance of binding's base class (" +
                  baseClass + ')');
         }
         FastOutputStream fo = getSerialOutput(object);

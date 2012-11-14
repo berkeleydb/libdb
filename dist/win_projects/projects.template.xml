@@ -11,10 +11,10 @@
   * TBD: describe format in more detail
   -->
 <projects>
-  <variable name="sourcePath">../</variable>
-  <variable name="outputBase.7.10">../build_windows/</variable>
-  <variable name="outputBase.8.00">../build_windows/</variable>
-  <variable name="outputBase.10.0">../build_windows/</variable>
+  <variable name="sourcePath">../../</variable>
+  <variable name="outputBase.7.10">../../build_windows/</variable>
+  <variable name="outputBase.8.00">../../build_windows/</variable>
+  <variable name="outputBase.10.0">../../build_windows/</variable>
   <preprocessor config="all">WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE</preprocessor>
   <preprocessor config="Debug">_DEBUG;DIAGNOSTIC</preprocessor>
   <preprocessor config="Release">NDEBUG</preprocessor>
@@ -154,22 +154,9 @@
       </config>
     </platform>
   </library>
-  <!-- testfixture is based on tcl8.4 -->
-  <library name="tcl84">
-    <libname config="Debug">tcl84g</libname>
-    <libname config="Release">tcl84</libname>
-    <platform name="Win32 x64">
-      <config type="Debug">
-       <libdir>C:/tcl/lib</libdir>
-      </config>
-      <config type="Release">
-       <libdir>C:/tcl/lib</libdir>
-      </config>
-    </platform>
-  </library>
-  <include name="all">../build_windows,../src,../src/dbinc,../include</include>
-  <include name="db_sql_src">../lang/sql/generated,../lang/sql/adapter,../lang/sql/sqlite/src,../lang/sql/sqlite/ext/fts3,../lang/sql/sqlite/ext/rtree</include>
-  <include name="db_sql">../lang/sql/generated,../include</include>
+  <include name="all">../../build_windows,../../src,../../src/dbinc,../../include</include>
+  <include name="db_sql_src">../../lang/sql/generated,../../lang/sql/adapter,../../lang/sql/sqlite/src,../../lang/sql/sqlite/ext/fts3,../../lang/sql/sqlite/ext/rtree</include>
+  <include name="db_sql">../../lang/sql/generated,../../include</include>
   <project name="php_db4" guid="44AFD8B5-687F-4B9D-B163-1F381CC11794">
     <type>library</type>
     <configuration></configuration>
@@ -242,6 +229,7 @@
       <file name="src/db/db_am.c"/>
       <file name="src/db/db_auto.c"/>
       <file name="src/common/clock.c"/>
+      <file name="src/db/db_backup.c"/>
       <file name="src/common/db_byteorder.c"/>
       <file name="src/db/db_cam.c"/>
       <file name="src/db/db_cds.c"/>
@@ -287,6 +275,7 @@
       <file name="src/dbreg/dbreg_util.c"/>
       <file name="src/common/dbt.c"/>
       <file name="src/env/env_alloc.c"/>
+      <file name="src/env/env_backup.c"/>
       <file name="src/env/env_config.c"/>
       <file name="src/env/env_failchk.c"/>
       <file name="src/env/env_file.c"/>
@@ -321,6 +310,7 @@
       <file name="src/heap/heap.c"/>
       <file name="src/heap/heap_auto.c"/>
       <file name="src/heap/heap_autop.c"/>
+      <file name="src/heap/heap_backup.c"/>
       <file name="src/heap/heap_conv.c"/>
       <file name="src/heap/heap_method.c"/>
       <file name="src/heap/heap_open.c"/>
@@ -358,6 +348,7 @@
       <file name="src/log/log_verify_int.c"/>
       <file name="src/common/mkpath.c"/>
       <file name="src/mp/mp_alloc.c"/>
+      <file name="src/mp/mp_backup.c"/>
       <file name="src/mp/mp_bh.c"/>
       <file name="src/mp/mp_fget.c"/>
       <file name="src/mp/mp_fmethod.c"/>
@@ -398,6 +389,7 @@
       <file name="src/os_windows/os_map.c"/>
       <file name="src/os_windows/os_mkdir.c"/>
       <file name="src/os_windows/os_open.c"/>
+      <file name="src/os/os_path.c"/>
       <file name="src/os/os_pid.c"/>
       <file name="src/os_windows/os_rename.c"/>
       <file name="src/os/os_root.c"/>
@@ -475,6 +467,7 @@
     <configuration></configuration>
     <depends>winsock</depends>
     <include type="ref">all</include>
+    <moddef file="build_windows/libdb_small.def"/>
     <options>
       <nowp64/>
       <link config="Debug">/FIXED:NO /export:__db_assert</link>
@@ -535,6 +528,7 @@
       <file name="src\db\db.c"/>
       <file name="src\db\db_am.c"/>
       <file name="src\db\db_auto.c"/>
+      <file name="src\db\db_backup.c"/>
       <file name="src\db\db_cam.c"/>
       <file name="src\db\db_cds.c"/>
       <file name="src\db\db_compact.c"/>
@@ -569,6 +563,7 @@
       <file name="src\dbreg\dbreg_stat.c"/>
       <file name="src\dbreg\dbreg_util.c"/>
       <file name="src\env\env_alloc.c"/>
+      <file name="src\env\env_backup.c"/>
       <file name="src\env\env_config.c"/>
       <file name="src\env\env_failchk.c"/>
       <file name="src\env\env_file.c"/>
@@ -610,6 +605,7 @@
       <file name="src\log\log_stat.c"/>
       <file name="src\log\log_verify_stub.c"/>
       <file name="src\mp\mp_alloc.c"/>
+      <file name="src\mp\mp_backup.c"/>
       <file name="src\mp\mp_bh.c"/>
       <file name="src\mp\mp_fget.c"/>
       <file name="src\mp\mp_fmethod.c"/>
@@ -653,6 +649,7 @@
       <file name="src\os_windows\os_map.c"/>
       <file name="src\os_windows\os_mkdir.c"/>
       <file name="src\os_windows\os_open.c"/>
+      <file name="src\os\os_path.c"/>
       <file name="src\os_windows\os_rename.c"/>
       <file name="src\os_windows\os_rw.c"/>
       <file name="src\os_windows\os_seek.c"/>
@@ -691,7 +688,7 @@
       <nowp64/>
       <link config="Debug">/FIXED:NO</link>
     </options>
-    <preprocessor config="all">SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;SQLITE_HAS_CODEC;SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_FTS3;SQLITE_ENABLE_LOAD_EXTENSION</preprocessor>
+    <preprocessor config="all">SQLITE_EXPORTS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;SQLITE_CORE;SQLITE_ENABLE_COLUMN_METADATA;SQLITE_ENABLE_FTS3;SQLITE_ENABLE_LOAD_EXTENSION</preprocessor>
     <preprocessor config="Debug">SQLITE_DEBUG;SQLITE_MEMDEBUG</preprocessor>
     <preprocessor config="dll">SQLITE_API=__declspec(dllexport)</preprocessor>
     <preprocessor config="Static Debug">SQLITE_DEBUG;SQLITE_MEMDEBUG</preprocessor>
@@ -784,15 +781,15 @@
     <configuration></configuration>
     <depends>db_sql</depends>
     <include type="ref">db_sql_src</include>
-    <include type="rel">../lang/sql/jdbc/native</include>
+    <include type="rel">../../lang/sql/jdbc/native</include>
     <options><nowp64/></options>
     <event name="prebuild">
       <command config="ReleaseDebug">
 mkdir "./$(OutDir)/jdbc_classes/" 
 echo compiling JDBC classes
-javac -g -target 1.5 -d "$(OutDir)\jdbc_classes" -classpath "$(OutDir)\jdbc_classes" ..\lang\sql\jdbc\SQLite\*java ..\lang\sql\jdbc\SQLite\JDBC2x\*java
+javac -g -target 1.5 -d "$(OutDir)\jdbc_classes" -classpath "$(OutDir)\jdbc_classes" ..\..\lang\sql\jdbc\SQLite\*java ..\..\lang\sql\jdbc\SQLite\JDBC2x\*java
 echo Building JNI header files
-javah -o ..\lang\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)\jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
+javah -o ..\..\lang\sql\jdbc\native\sqlite_jni.h -classpath "$(OutDir)\jdbc_classes" SQLite.Database SQLite.Vm SQLite.FunctionContext SQLite.Stmt SQLite.Blob
 echo creating jar file
 jar cf "$(OutDir)\jdbc.jar" -C "$(OutDir)\jdbc_classes" .
 echo JDBC build finished</command>
@@ -823,7 +820,7 @@ echo JDBC build finished</command>
     <depends>db</depends>
     <references>db</references>
     <include type="ref">all</include>
-    <include type="rel">../lang/cxx/stl</include>
+    <include type="rel">../../lang/cxx/stl</include>
     <options><nowp64/></options>
     <preprocessor config="all">_UNICODE;UNICODE</preprocessor>
     <preprocessor config="dll">DB_CREATE_DLL</preprocessor>
@@ -887,13 +884,13 @@ echo JDBC build finished</command>
       <command config="ReleaseDebug">
 echo compiling Berkeley DB Java classes 
 mkdir "./$(OutDir)/classes/" 
-javac -g -target 1.5 -d "$(OutDir)\classes" -classpath "$(OutDir)\classes" ..\lang\java\src\com\sleepycat\db\*.java ..\lang\java\src\com\sleepycat\db\internal\*.java ..\lang\java\src\com\sleepycat\asm\*.java ..\lang\java\src\com\sleepycat\bind\*.java ..\lang\java\src\com\sleepycat\bind\serial\*.java ..\lang\java\src\com\sleepycat\bind\tuple\*.java ..\lang\java\src\com\sleepycat\collections\*.java ..\lang\java\src\com\sleepycat\compat\*.java ..\lang\java\src\com\sleepycat\persist\*.java ..\lang\java\src\com\sleepycat\persist\evolve\*.java ..\lang\java\src\com\sleepycat\persist\impl\*.java ..\lang\java\src\com\sleepycat\persist\model\*.java ..\lang\java\src\com\sleepycat\persist\raw\*.java ..\lang\java\src\com\sleepycat\util\*.java ..\lang\java\src\com\sleepycat\util\keyrange\*.java
+javac -g -target 1.5 -d "$(OutDir)\classes" -classpath "$(OutDir)\classes" ..\..\lang\java\src\com\sleepycat\db\*.java ..\..\lang\java\src\com\sleepycat\db\internal\*.java ..\..\lang\java\src\com\sleepycat\asm\*.java ..\..\lang\java\src\com\sleepycat\bind\*.java ..\..\lang\java\src\com\sleepycat\bind\serial\*.java ..\..\lang\java\src\com\sleepycat\bind\tuple\*.java ..\..\lang\java\src\com\sleepycat\collections\*.java ..\..\lang\java\src\com\sleepycat\compat\*.java ..\..\lang\java\src\com\sleepycat\persist\*.java ..\..\lang\java\src\com\sleepycat\persist\evolve\*.java ..\..\lang\java\src\com\sleepycat\persist\impl\*.java ..\..\lang\java\src\com\sleepycat\persist\model\*.java ..\..\lang\java\src\com\sleepycat\persist\raw\*.java ..\..\lang\java\src\com\sleepycat\util\*.java ..\..\lang\java\src\com\sleepycat\util\keyrange\*.java
 java -classpath $(OutDir)\classes com.sleepycat.persist.model.ClassEnhancer $(OutDir)\classes
 echo compiling examples
 mkdir "$(OutDir)\classes.ex"
-javac -g -target 1.5 -d "$(OutDir)\classes.ex" -classpath "$(OutDir)\classes;$(OutDir)\classes.ex" ..\examples/java\src\db\*.java ..\examples/java\src\db\GettingStarted\*.java ..\examples/java\src\db\repquote\*.java ..\examples/java\src\db\repquote_gsg\*.java ..\examples/java\src\db\txn\*.java ..\examples/java\src\collections\access\*.java ..\examples/java\src\collections\hello\*.java ..\examples/java\src\collections\ship\basic\*.java ..\examples/java\src\collections\ship\entity\*.java ..\examples/java\src\collections\ship\factory\*.java ..\examples/java\src\collections\ship\index\*.java ..\examples/java\src\collections\ship\marshal\*.java ..\examples/java\src\collections\ship\sentity\*.java ..\examples/java\src\collections\ship\tuple\*.java ..\examples/java\src\persist\*.java ..\examples/java\src\persist\gettingStarted\*.java ..\examples/java\src\persist\txn\*.java
+javac -g -target 1.5 -d "$(OutDir)\classes.ex" -classpath "$(OutDir)\classes;$(OutDir)\classes.ex" ..\..\examples/java\src\db\*.java ..\..\examples/java\src\db\GettingStarted\*.java ..\..\examples/java\src\db\repquote\*.java ..\..\examples/java\src\db\repquote_gsg\*.java ..\..\examples/java\src\db\txn\*.java ..\..\examples/java\src\collections\access\*.java ..\..\examples/java\src\collections\hello\*.java ..\..\examples/java\src\collections\ship\basic\*.java ..\..\examples/java\src\collections\ship\entity\*.java ..\..\examples/java\src\collections\ship\factory\*.java ..\..\examples/java\src\collections\ship\index\*.java ..\..\examples/java\src\collections\ship\marshal\*.java ..\..\examples/java\src\collections\ship\sentity\*.java ..\..\examples/java\src\collections\ship\tuple\*.java ..\..\examples/java\src\persist\*.java ..\..\examples/java\src\persist\gettingStarted\*.java ..\..\examples/java\src\persist\txn\*.java
 echo creating jar files
-jar cfm "$(OutDir)/db.jar" ../lang/java/jarManifestEntries -C "$(OutDir)\classes" .
+jar cfm "$(OutDir)/db.jar" ../..\lang/java/jarManifestEntries -C "$(OutDir)\classes" .
 jar cf "$(OutDir)/dbexamples.jar" -C "$(OutDir)\classes.ex" .
 echo Java build finished</command>
       <output>force_compilation.txt</output>
@@ -1091,11 +1088,11 @@ echo Java build finished</command>
     <type>app</type>
     <configuration></configuration>
     <depends>db</depends>
-    <depends>tcl84</depends>
+    <depends>tcl</depends>
     <references>db</references>
     <include type="ref">all</include>
     <include type="ref">db_sql_src</include>
-    <preprocessor config="all">WIN32;_CONSOL;STATIC_BUILD;SQLITE_TEST;TCLSH;SQLITE_NO_SYNC;SQLITE_CRASH_TEST;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;SQLITE_THREADSAFE=1;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE;SQLITE_HAS_CODEC</preprocessor>
+    <preprocessor config="all">WIN32;_CONSOL;STATIC_BUILD;SQLITE_TEST;TCLSH;SQLITE_NO_SYNC;SQLITE_CRASH_TEST;SQLITE_SERVER;SQLITE_PRIVATE;SQLITE_CORE;SQLITE_THREADSAFE=1;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE_UNICODE;UNICODE</preprocessor>
     <preprocessor config="Debug">SQLITE_MEMDEBUG;</preprocessor>
     <files>
       <file name="lang\sql\sqlite\src\alter.c"/>
@@ -1343,8 +1340,8 @@ echo Java build finished</command>
     <references>db</references>
     <include type="ref">all</include>
     <event name="postbuild">
-      <command config="Release">$(OUTDIR)\ex_csvcode.exe -c ../examples/c/csv/csv_local.c -h ../examples/c/csv/csv_local.h -f ../examples/c/csv/sample.desc</command>
-      <command config="Debug">$(OUTDIR)\ex_csvcode.exe -c ../examples/c/csv/csv_local.c -h ../examples/c/csv/csv_local.h -f ../examples/c/csv/sample.desc</command>
+      <command config="Release">$(OUTDIR)\ex_csvcode.exe -c ../../examples/c/csv/csv_local.c -h ../../examples/c/csv/csv_local.h -f ../../examples/c/csv/sample.desc</command>
+      <command config="Debug">$(OUTDIR)\ex_csvcode.exe -c ../../examples/c/csv/csv_local.c -h ../../examples/c/csv/csv_local.h -f ../../examples/c/csv/sample.desc</command>
       <description>Generate csv_local.{c|h} files.</description>
     </event>
     <files>
@@ -1416,7 +1413,7 @@ echo Java build finished</command>
       <command config="ReleaseDebug">
 echo compiling examples
 mkdir "$(OutDir)\classes.ex"
-javac -g -target 1.5 -d "$(OutDir)\classes.ex" -classpath "$(OutDir)\classes;$(OutDir)\classes.ex" ..\examples/java\src\db\*.java ..\examples/java\src\db\GettingStarted\*.java ..\examples/java\src\db\repquote\*.java ..\examples/java\src\db\repquote_gsg\*.java ..\examples/java\src\db\txn\*.java ..\examples/java\src\collections\access\*.java ..\examples/java\src\collections\hello\*.java ..\examples/java\src\collections\ship\basic\*.java ..\examples/java\src\collections\ship\entity\*.java ..\examples/java\src\collections\ship\factory\*.java ..\examples/java\src\collections\ship\index\*.java ..\examples/java\src\collections\ship\marshal\*.java ..\examples/java\src\collections\ship\sentity\*.java ..\examples/java\src\collections\ship\tuple\*.java ..\examples/java\src\persist\*.java ..\examples/java\src\persist\gettingStarted\*.java ..\examples/java\src\persist\txn\*.java
+javac -g -target 1.5 -d "$(OutDir)\classes.ex" -classpath "$(OutDir)\classes;$(OutDir)\classes.ex" ..\..\examples/java\src\db\*.java ..\..\examples/java\src\db\GettingStarted\*.java ..\..\examples/java\src\db\repquote\*.java ..\..\examples/java\src\db\repquote_gsg\*.java ..\..\examples/java\src\db\txn\*.java ..\..\examples/java\src\collections\access\*.java ..\..\examples/java\src\collections\hello\*.java ..\..\examples/java\src\collections\ship\basic\*.java ..\..\examples/java\src\collections\ship\entity\*.java ..\..\examples/java\src\collections\ship\factory\*.java ..\..\examples/java\src\collections\ship\index\*.java ..\..\examples/java\src\collections\ship\marshal\*.java ..\..\examples/java\src\collections\ship\sentity\*.java ..\..\examples/java\src\collections\ship\tuple\*.java ..\..\examples/java\src\persist\*.java ..\..\examples/java\src\persist\gettingStarted\*.java ..\..\examples/java\src\persist\txn\*.java
 echo creating jar files
 jar cf "$(OutDir)/dbexamples.jar" -C "$(OutDir)\classes.ex" .
 echo Java example build finished</command>
@@ -1817,7 +1814,7 @@ echo Java example build finished</command>
     <references>db</references>
     <references>db_sql</references>
     <include type="ref">all</include>
-    <include type="rel">../lang/cxx/stl</include>
+    <include type="rel">../../lang/cxx/stl</include>
     <options><compile platform="x64">/bigobj</compile></options>
     <files>
       <file name="examples/stl/StlAccessExample.cpp"/>
@@ -1831,7 +1828,7 @@ echo Java example build finished</command>
     <references>db</references>
     <references>db_sql</references>
     <include type="ref">all</include>
-    <include type="rel">../lang/cxx/stl</include>
+    <include type="rel">../../lang/cxx/stl</include>
     <options><compile platform="x64">/bigobj</compile></options>
     <files>
       <file name="examples/stl/StlAdvancedFeatures.cpp"/>
@@ -1847,7 +1844,7 @@ echo Java example build finished</command>
     <references>db</references>
     <references>db_stl</references>
     <include type="ref">all</include>
-    <include type="rel">../lang/cxx/stl</include>
+    <include type="rel">../../lang/cxx/stl</include>
     <options><compile platform="x64">/bigobj</compile></options>
     <files>
       <file name="examples/stl/repquote/StlRepConfigInfo.cpp"/>
@@ -1864,7 +1861,7 @@ echo Java example build finished</command>
     <references>db</references>
     <references>db_stl</references>
     <include type="ref">all</include>
-    <include type="rel">../lang/cxx/stl</include>
+    <include type="rel">../../lang/cxx/stl</include>
     <options><compile platform="x64">/bigobj</compile></options>
     <files>
       <file name="examples/stl/StlTpcbExample.cpp"/>
@@ -1879,7 +1876,7 @@ echo Java example build finished</command>
     <references>db</references>
     <references>db_stl</references>
     <include type="ref">all</include>
-    <include type="rel">../lang/cxx/stl</include>
+    <include type="rel">../../lang/cxx/stl</include>
     <options><compile platform="x64">/bigobj</compile></options>
     <files>
       <file name="examples/stl/StlTransactionGuideExample.cpp"/>
@@ -1892,7 +1889,7 @@ echo Java example build finished</command>
     <depends>db</depends>
     <depends>db_stl</depends>
     <include type="ref">all</include>
-    <include type="rel">../lang/cxx/stl</include>
+    <include type="rel">../../lang/cxx/stl</include>
     <preprocessor config="all">_SCL_SECURE_NO_WARNINGS</preprocessor>
     <options><compile platform="x64">/bigobj</compile></options>
     <files>
@@ -1913,7 +1910,7 @@ echo Java example build finished</command>
     <depends>db</depends>
     <depends>db_stl</depends>
     <include type="ref">all</include>
-    <include type="rel">../lang/cxx/stl</include>
+    <include type="rel">../../lang/cxx/stl</include>
     <preprocessor config="all">_SCL_SECURE_NO_WARNINGS</preprocessor>
     <options><compile platform="x64">/bigobj</compile></options>
     <files>
@@ -1935,7 +1932,7 @@ echo Java example build finished</command>
     <depends>db</depends>
     <depends>db_stl</depends>
     <include type="ref">all</include>
-    <include type="rel">../lang/cxx/stl</include>
+    <include type="rel">../../lang/cxx/stl</include>
     <preprocessor config="all">_SCL_SECURE_NO_WARNINGS</preprocessor>
     <options><compile platform="x64">/bigobj</compile></options>
     <files>
@@ -1977,17 +1974,19 @@ echo Java example build finished</command>
     <type>app</type>
     <configuration></configuration>
     <depends>db</depends>
+    <depends>winsock</depends>
     <references>db</references>
     <references>db_tuner</references>
     <preprocessor config="all">TEST_HARNESS_C</preprocessor>
     <include type="ref">all</include>
-    <include type="rel">../test/c/cutest,../test/c/suite,../test/c/common</include>
+    <include type="rel">../../test/c/cutest,../../test/c/suite,../../test/c/common</include>
     <files>
       <file name="src/clib/getopt.c"/>
       <file name="test/c/cutest/CuTest.c"/>
       <file name="test/c/cutest/CuTests.c"/>
       <file name="test/c/cutest/Runner.c"/>
       <file name="test/c/suites/TestChannel.c"/>
+      <file name="test/c/suites/TestDbHotBackup.c"/>
       <file name="test/c/suites/TestDbTuner.c"/>
       <file name="test/c/suites/TestEncryption.c"/>
       <file name="test/c/suites/TestEnvConfig.c"/>

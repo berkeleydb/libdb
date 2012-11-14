@@ -19,6 +19,7 @@ trap 'rm -f $t; exit 0' 0 1 2 3 13 15
  echo "set src_root @srcdir@/.."		&& \
  echo "set test_path @srcdir@/../test/tcl"	&& \
  echo "set je_root @srcdir@/../../je"		&& \
+ echo "set tcl_utils @srcdir@/../test/tcl_utils"	&& \
  echo ""					&& \
  echo "global testdir"				&& \
  echo "set testdir ./TESTDIR"			&& \
@@ -54,6 +55,7 @@ cmp $t $f > /dev/null 2>&1 ||
  echo "set src_root .."				&& \
  echo "set test_path ../test/tcl"		&& \
  echo "set je_root ../../je"			&& \
+ echo "set tcl_utils ../test/tcl_utils"		&& \
  echo ""					&& \
  echo "global testdir"				&& \
  echo "set testdir ./TESTDIR"			&& \

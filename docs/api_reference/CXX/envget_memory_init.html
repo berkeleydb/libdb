@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -41,7 +41,7 @@
       <pre class="programlisting">#include &lt;db_cxx.h&gt;
 
 int
-DbEnv::get_memory_init(DB_MEM_CONFIG struct, u_int32_t *countp);</pre>
+DbEnv::get_memory_init(DB_MEM_CONFIG type, u_int32_t *countp);</pre>
       <p>
         The <code class="methodname">DbEnv::get_memory_init()</code> method returns
         the number of objects to allocate and initialize when an
@@ -69,7 +69,7 @@ DbEnv::get_memory_init(DB_MEM_CONFIG struct, u_int32_t *countp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3596023"></a>Parameters</h3>
+              <h3 class="title"><a id="idp1514920"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -77,7 +77,7 @@ DbEnv::get_memory_init(DB_MEM_CONFIG struct, u_int32_t *countp);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3596012"></a>struct</h4>
+                <h4 class="title"><a id="idp1514272"></a>type</h4>
               </div>
             </div>
           </div>
@@ -160,13 +160,13 @@ DbEnv::get_memory_init(DB_MEM_CONFIG struct, u_int32_t *countp);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3596246"></a>countp</h4>
+                <h4 class="title"><a id="idp1528360"></a>countp</h4>
               </div>
             </div>
           </div>
           <p>
                   The <span class="bold"><strong>countp</strong></span> parameter references
-                  memory into which object count for which the specified
+                  memory into which the object count for the specified
                   structure is copied.
              </p>
         </div>
@@ -175,7 +175,7 @@ DbEnv::get_memory_init(DB_MEM_CONFIG struct, u_int32_t *countp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3596081"></a>Class</h3>
+              <h3 class="title"><a id="idp1518216"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -187,7 +187,7 @@ DbEnv::get_memory_init(DB_MEM_CONFIG struct, u_int32_t *countp);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3596284"></a>See Also</h3>
+              <h3 class="title"><a id="idp1530648"></a>See Also</h3>
             </div>
           </div>
         </div>

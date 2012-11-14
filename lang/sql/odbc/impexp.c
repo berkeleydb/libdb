@@ -19,7 +19,7 @@
  *  SQLite function:
  *       SELECT import_sql(filename);
  *
- *  C function (STANDALONE):
+ *  C function:
  *       int impexp_import_sql(sqlite3 *db, char *filename);
  *
  *       Reads SQL commands from filename and executes them
@@ -30,7 +30,7 @@
  *  SQLite function:
  *       SELECT export_sql(filename, [mode, tablename, ...]);
  *
- *  C function (STANDALONE):
+ *  C function:
  *       int impexp_export_sql(sqlite3 *db, char *filename, int mode, ...);
  *
  *       Writes SQL to filename similar to SQLite's shell
@@ -58,10 +58,10 @@
  *  SQLite function:
  *       SELECT export_csv(filename, hdr, prefix1, tablename1, schema1, ...]);
  *
- *  C function (STANDALONE):
- *       int impexp_export_csv(sqlite3 *db, int hdr, char *filename,
- *                             char *prefix1, char *tablename1,
- *                             char *schema1, ...);
+ *  C function:
+ *       int impexp_export_csv(sqlite3 *db, char *filename, int hdr, ...);
+ *                             [char *prefix1, char *tablename1,
+ *                             char *schema1, ...]
  *
  *       Writes entire tables as CSV to provided filename. A header
  *       row is written when the hdr parameter is true. The
@@ -94,7 +94,7 @@
  *       SELECT export_xml(filename, appendflag, indent,
  *                         [root, item, tablename, schema]+);
  *
- *  C function (STANDALONE):
+ *  C function:
  *       int impexp_export_xml(sqlite3 *db, char *filename,
  *                             int append, int indent, char *root,
  *                             char *item, char *tablename, char *schema);
@@ -143,12 +143,42 @@
  *       not on column names and root/item tags.
  *
  *
+ *  SQLite function:
+ *       SELECT export_json(filename, sql);
+ *
+ *  C function:
+ *       int impexp_export_json(sqlite3 *db, char *sql,
+ *                              impexp_putc pfunc, void *parg);
+ *
+ *       Executes arbitrary SQL statements and formats
+ *       the result in JavaScript Object Notation (JSON).
+ *       The layout of the result is:
+ *
+ *        object {results, sql}
+ *         results[] object {columns, rows, changes, last_insert_rowid, error}
+ *          columns[]
+ *           object {name, decltype, type }     (sqlite3_column_*)
+ *          rows[][]                            (sqlite3_column_*)
+ *          changes                             (sqlite3_changes)
+ *          last_insert_rowid                   (sqlite3_last_insert_rowid)
+ *          error                               (sqlite3_errmsg)
+ *         sql                                  (SQL text)
+ *
+ *       For each single SQL statement in "sql" an object in the
+ *       "results" array is produced.
+ *
+ *       The function pointer for the output function to
+ *       "impexp_export_json" has a signature compatible
+ *       with fputc(3).
+ *
+ *
  * On Win32 the filename argument may be specified as NULL in order
  * to open a system file dialog for interactive filename selection.
  */
 
 #ifdef STANDALONE
 #include <sqlite3.h>
+#define sqlite3_api_routines void
 #else
 #include <sqlite3ext.h>
 SQLITE_EXTENSION_INIT1
@@ -163,7 +193,18 @@ SQLITE_EXTENSION_INIT1
 #include <windows.h>
 #define strcasecmp  _stricmp
 #define strncasecmp _strnicmp
+#else
+#include <unistd.h>
 #endif
+
+#include "impexp.h"
+
+/* JSON output helper */
+
+typedef struct {
+    impexp_putc pfunc;
+    void *parg;
+} json_pfs;
 
 static const char space_chars[] = " \f\n\r\t\v";
 
@@ -746,7 +787,6 @@ done:
     sqlite3_result_int(ctx, sqlite3_changes(db) - changes0);
 }
 
-#ifdef STANDALONE
 int
 impexp_import_sql(sqlite3 *db, char *filename)
 {
@@ -788,7 +828,6 @@ impexp_import_sql(sqlite3 *db, char *filename)
 done:
     return sqlite3_changes(db) - changes0;
 }
-#endif
 
 typedef struct {
     sqlite3 *db;
@@ -957,7 +996,7 @@ dump_cb(void *udata, int nargs, char **args, char **cols)
     const char *table, *type, *sql;
     DUMP_DATA *dd = (DUMP_DATA *) udata;
 
-    if (nargs != 3) {
+    if (nargs != 3 || args == NULL) {
 	return 1;
     }
     table = args[0];
@@ -1583,8 +1622,6 @@ done:
     sqlite3_result_int(ctx, dd->nlines);
 }
 
-
-#ifdef STANDALONE
 int
 impexp_export_sql(sqlite3 *db, char *filename, int mode, ...)
 {
@@ -1668,9 +1705,7 @@ impexp_export_sql(sqlite3 *db, char *filename, int mode, ...)
 done:
     return dd->nlines;
 }
-#endif
 
-#ifdef STANDALONE
 int
 impexp_export_csv(sqlite3 *db, char *filename, int hdr, ...)
 {
@@ -1713,7 +1748,12 @@ impexp_export_csv(sqlite3 *db, char *filename, int hdr, ...)
 #ifdef _WIN32
     dd->out = fopen(filename, "wb");
 #else
-    dd->out = fopen(filename, "w");
+    if (hdr < 0 && access(filename, W_OK) == 0) {
+	dd->out = fopen(filename, "a");
+	dd->indent = 0;
+    } else {
+	dd->out = fopen(filename, "w");
+    }
 #endif
     if (!dd->out) {
 	goto done;
@@ -1747,9 +1787,7 @@ impexp_export_csv(sqlite3 *db, char *filename, int hdr, ...)
 done:
     return dd->nlines;
 }
-#endif
 
-#ifdef STANDALONE
 int
 impexp_export_xml(sqlite3 *db, char *filename, int append, int indnt,
 		  char *root, char *item, char *tablename, char *schema)
@@ -1822,16 +1860,374 @@ impexp_export_xml(sqlite3 *db, char *filename, int append, int indnt,
 done:
     return dd->nlines;
 }
+
+static void
+json_pstr(const char *string, json_pfs *pfs)
+{
+    while (*string) {
+	pfs->pfunc(*string, pfs->parg);
+	string++;
+    }
+}
+
+static void
+json_pstrq(const char *string, json_pfs *pfs)
+{
+    impexp_putc pfunc = pfs->pfunc;
+    void *parg = pfs->parg;
+    char buf[64];
+
+    if (!string) {
+	json_pstr("null", pfs);
+	return;
+    }
+    pfunc('"', parg);
+    while (*string) {
+	switch (*string) {
+	case '"':
+	case '\\':
+	    pfunc('\\', parg);
+	    pfunc(*string, parg);
+	    break;
+	case '\b':
+	    pfunc('\\', parg);
+	    pfunc('b', parg);
+	    break;
+	case '\f':
+	    pfunc('\\', parg);
+	    pfunc('f', parg);
+	    break;
+	case '\n':
+	    pfunc('\\', parg);
+	    pfunc('n', parg);
+	    break;
+	case '\r':
+	    pfunc('\\', parg);
+	    pfunc('r', parg);
+	    break;
+	case '\t':
+	    pfunc('\\', parg);
+	    pfunc('t', parg);
+	    break;
+	default:
+	    if ((*string < ' ' && *string > 0) || *string == 0x7f) {
+		sprintf(buf, "\\u%04x", *string);
+		json_pstr(buf, pfs);
+	    } else if (*string < 0) {
+		unsigned char c = string[0];
+		unsigned long uc = 0;
+
+		if (c < 0xc0) {
+		    uc = c;
+		} else if (c < 0xe0) {
+		    if ((string[1] & 0xc0) == 0x80) {
+			uc = ((c & 0x1f) << 6) | (string[1] & 0x3f);
+			++string;
+		    } else {
+			uc = c;
+		    }
+		} else if (c < 0xf0) {
+		    if ((string[1] & 0xc0) == 0x80 &&
+			(string[2] & 0xc0) == 0x80) {
+			uc = ((c & 0x0f) << 12) |
+			     ((string[1] & 0x3f) << 6) | (string[2] & 0x3f);
+			string += 2;
+		    } else {
+			uc = c;
+		    }
+		} else if (c < 0xf8) {
+		    if ((string[1] & 0xc0) == 0x80 &&
+			(string[2] & 0xc0) == 0x80 &&
+			(string[3] & 0xc0) == 0x80) {
+			uc = ((c & 0x03) << 18) |
+			     ((string[1] & 0x3f) << 12) |
+			     ((string[2] & 0x3f) << 6) |
+			     (string[4] & 0x3f);
+			string += 3;
+		    } else {
+			uc = c;
+		    }
+		} else if (c < 0xfc) {
+		    if ((string[1] & 0xc0) == 0x80 &&
+			(string[2] & 0xc0) == 0x80 &&
+			(string[3] & 0xc0) == 0x80 &&
+			(string[4] & 0xc0) == 0x80) {
+			uc = ((c & 0x01) << 24) |
+			     ((string[1] & 0x3f) << 18) |
+			     ((string[2] & 0x3f) << 12) |
+			     ((string[4] & 0x3f) << 6) |
+			     (string[5] & 0x3f);
+			string += 4;
+		    } else {
+			uc = c;
+		    }
+		} else {
+		    /* ignore */
+		    ++string;
+		}
+		if (uc < 0x10000) {
+		    sprintf(buf, "\\u%04lx", uc);
+		} else {
+		    uc -= 0x10000;
+
+		    sprintf(buf, "\\u%04lx", 0xd800 | (uc & 0x3ff));
+		    json_pstr(buf, pfs);
+		    sprintf(buf, "\\u%04lx", 0xdc00 | ((uc >> 10) & 0x3ff));
+		}
+		json_pstr(buf, pfs);
+	    } else {
+		pfunc(*string, parg);
+	    }
+	    break;
+	}
+	++string;
+    }
+    pfunc('"', parg);
+}
+
+static void
+json_pb64(const unsigned char *blk, int len, json_pfs *pfs)
+{
+    impexp_putc pfunc = pfs->pfunc;
+    void *parg = pfs->parg;
+    int i, reg[5];
+    char buf[16];
+    static const char *b64 =
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+    if (!blk) {
+	json_pstr("null", pfs);
+	return;
+    }
+    buf[4] = '\0';
+    pfunc('"', parg);
+    for (i = 0; i < len; i += 3) {
+	reg[1] = reg[2] = reg[3] = reg[4] = 0;
+	reg[0] = blk[i];
+	if (i + 1 < len) {
+	    reg[1] = blk[i + 1];
+	    reg[3] = 1;
+	}
+	if (i + 2 < len) {
+	    reg[2] = blk[i + 2];
+	    reg[4] = 1;
+	}
+	buf[0] = b64[reg[0] >> 2];
+	buf[1] = b64[((reg[0] << 4) & 0x30) | (reg[1] >> 4)];
+	if (reg[3]) {
+	    buf[2] = b64[((reg[1] << 2) & 0x3c) | (reg[2] >> 6)];
+	} else {
+	    buf[2] = '=';
+	}
+	if (reg[4]) {
+	    buf[3] = b64[reg[2] & 0x3f];
+	} else {
+	    buf[3] = '=';
+	}
+	json_pstr(buf, pfs);
+    }
+    pfunc('"', parg);
+}
+
+static int
+json_output(sqlite3 *db, char *sql, impexp_putc pfunc, void *parg)
+{
+    json_pfs pfs0, *pfs = &pfs0;
+    const char *tail = sql;
+    int i, nresults = 0, result = SQLITE_ERROR;
+
+    pfs->pfunc = pfunc;
+    pfs->parg = parg;
+    json_pstr("{sql:", pfs);
+    json_pstrq(sql, pfs);
+    json_pstr(",results:[", pfs);
+    do {
+	sqlite3_stmt *stmt;
+	int firstrow = 1, nrows = 0;
+	char buf[256];
+
+	++nresults;
+	json_pstr(nresults == 1 ? "{" : ",{", pfs);
+	result = sqlite3_prepare(db, tail, -1, &stmt, &tail);
+	if (result != SQLITE_OK) {
+doerr:
+	    if (nrows == 0) {
+		json_pstr("columns:null,rows:null,changes:0,"
+			  "last_insert_rowid:null,", pfs);
+	    }
+	    json_pstr("error:", pfs);
+	    json_pstrq(sqlite3_errmsg(db), pfs);
+	    pfunc('}', parg);
+	    break;
+	}
+	result = sqlite3_step(stmt);
+	while (result == SQLITE_ROW || result == SQLITE_DONE) {
+	    if (firstrow) {
+		for (i = 0; i < sqlite3_column_count(stmt); i++) {
+		    char *type;
+		    json_pstr(i == 0 ? "columns:[" : ",", pfs);
+		    json_pstr("{name:", pfs);
+		    json_pstrq(sqlite3_column_name(stmt, i), pfs);
+		    json_pstr(",decltype:", pfs);
+		    json_pstrq(sqlite3_column_decltype(stmt, i), pfs);
+		    json_pstr(",type:", pfs);
+		    switch (sqlite3_column_type(stmt, i)) {
+		    case SQLITE_INTEGER:
+			type = "integer";
+			break;
+		    case SQLITE_FLOAT:
+			type = "float";
+			break;
+		    case SQLITE_BLOB:
+			type = "blob";
+			break;
+		    case SQLITE_TEXT:
+			type = "text";
+			break;
+		    case SQLITE_NULL:
+			type = "null";
+			break;
+		    default:
+			type = "unknown";
+			break;
+		    }
+		    json_pstrq(type, pfs);
+		    pfunc('}', parg);
+		}
+		if (i) {
+		    pfunc(']', parg);
+		}
+		firstrow = 0;
+	    }
+	    if (result == SQLITE_DONE) {
+		break;
+	    }
+	    ++nrows;
+	    json_pstr(nrows == 1 ? ",rows:[" : ",", pfs);
+	    for (i = 0; i < sqlite3_column_count(stmt); i++) {
+		pfunc(i == 0 ? '[' : ',', parg);
+		switch (sqlite3_column_type(stmt, i)) {
+		case SQLITE_INTEGER:
+		case SQLITE_FLOAT:
+		    json_pstr((char *) sqlite3_column_text(stmt, i), pfs);
+		    break;
+		case SQLITE_BLOB:
+		    json_pb64((unsigned char *) sqlite3_column_blob(stmt, i),
+			      sqlite3_column_bytes(stmt, i), pfs);
+		    break;
+		case SQLITE_TEXT:
+		    json_pstrq((char *) sqlite3_column_text(stmt, i), pfs);
+		    break;
+		case SQLITE_NULL:
+		default:
+		    json_pstr("null", pfs);
+		    break;
+		}
+	    }
+	    json_pstr(i == 0 ? "null]" : "]", pfs);
+	    result = sqlite3_step(stmt);
+	}
+	if (nrows > 0) {
+	    pfunc(']', parg);
+	}
+	result = sqlite3_finalize(stmt);
+	if (result != SQLITE_OK) {
+	    if (nrows > 0) {
+		sprintf(buf,
+#ifdef _WIN32
+			",changes:%d,last_insert_rowid:%I64d",
+#else
+			",changes:%d,last_insert_rowid:%lld",
+#endif
+			sqlite3_changes(db),
+			sqlite3_last_insert_rowid(db));
+		json_pstr(buf, pfs);
+	    }
+	    goto doerr;
+	}
+	if (nrows == 0) {
+	    json_pstr("columns:null,rows:null", pfs);
+	}
+	sprintf(buf,
+#ifdef _WIN32
+		",changes:%d,last_insert_rowid:%I64d",
+#else
+		",changes:%d,last_insert_rowid:%lld",
+#endif
+		sqlite3_changes(db),
+		sqlite3_last_insert_rowid(db));
+	json_pstr(buf, pfs);
+	json_pstr(",error:null}", pfs);
+    } while (tail && *tail);
+    json_pstr("]}", pfs);
+    return result;
+}
+
+static void
+export_json_func(sqlite3_context *ctx, int nargs, sqlite3_value **args)
+{
+    sqlite3 *db = (sqlite3 *) sqlite3_user_data(ctx);
+    int result = -1;
+    char *filename = 0;
+    char *sql = 0;
+    FILE *out = 0;
+#ifdef _WIN32
+    char fnbuf[MAX_PATH];
 #endif
 
-#ifdef STANDALONE
+    if (nargs > 0) {
+	if (sqlite3_value_type(args[0]) != SQLITE_NULL) {
+	    filename = (char *) sqlite3_value_text(args[0]);
+	}
+    }
+#ifdef _WIN32
+    if (!filename) {
+	OPENFILENAME ofn;
+
+	memset(&ofn, 0, sizeof (ofn));
+	memset(fnbuf, 0, sizeof (fnbuf));
+	ofn.lStructSize = sizeof (ofn);
+	ofn.lpstrFile = fnbuf;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.Flags = OFN_HIDEREADONLY | OFN_NOCHANGEDIR | OFN_EXPLORER |
+		    OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+	if (GetSaveFileName(&ofn)) {
+	    filename = fnbuf;
+	}
+    }
+#endif
+    if (!filename) {
+	goto done;
+    }
+    out = fopen(filename, "w");
+    if (!out) {
+	goto done;
+    }
+    if (nargs > 1) {
+	sql = (char *) sqlite3_value_text(args[1]);
+    }
+    if (sql) {
+	result = json_output(db, sql, (impexp_putc) fputc, out);
+    }
+    fclose(out);
+done:
+    sqlite3_result_int(ctx, result);
+}
+
 int
-impexp_init(sqlite3 *db)
+impexp_export_json(sqlite3 *db, char *sql, impexp_putc pfunc,
+		   void *parg)
+{
+    return json_output(db, sql, pfunc, parg);
+}
+
+#ifdef STANDALONE
+static int
 #else
 int
+#endif
 sqlite3_extension_init(sqlite3 *db, char **errmsg, 
 		       const sqlite3_api_routines *api)
-#endif
 {
     int rc, i;
     static const struct {
@@ -1840,18 +2236,21 @@ sqlite3_extension_init(sqlite3 *db, char **errmsg,
 	int nargs;
 	int textrep;
     } ftab[] = {
-	{ "quote_sql",	quote_func,      -1, SQLITE_UTF8 },
-	{ "import_sql",	import_func,     -1, SQLITE_UTF8 },
-	{ "export_sql",	export_func,     -1, SQLITE_UTF8 },
-	{ "quote_csv",	quote_csv_func,  -1, SQLITE_UTF8 },
-	{ "export_csv",	export_csv_func, -1, SQLITE_UTF8 },
-	{ "indent_xml",	indent_xml_func,  1, SQLITE_UTF8 },
-	{ "quote_xml",	quote_xml_func,  -1, SQLITE_UTF8 },
-	{ "export_xml",	export_xml_func, -1, SQLITE_UTF8 }
+	{ "quote_sql",	 quote_func,       -1, SQLITE_UTF8 },
+	{ "import_sql",	 import_func,      -1, SQLITE_UTF8 },
+	{ "export_sql",	 export_func,      -1, SQLITE_UTF8 },
+	{ "quote_csv",	 quote_csv_func,   -1, SQLITE_UTF8 },
+	{ "export_csv",	 export_csv_func,  -1, SQLITE_UTF8 },
+	{ "indent_xml",	 indent_xml_func,   1, SQLITE_UTF8 },
+	{ "quote_xml",	 quote_xml_func,   -1, SQLITE_UTF8 },
+	{ "export_xml",  export_xml_func,  -1, SQLITE_UTF8 },
+	{ "export_json", export_json_func, -1, SQLITE_UTF8 }
     };
 
 #ifndef STANDALONE
-    SQLITE_EXTENSION_INIT2(api);
+    if (api != NULL) {
+	SQLITE_EXTENSION_INIT2(api);
+    }
 #endif
 
     for (i = 0; i < sizeof (ftab) / sizeof (ftab[0]); i++) {
@@ -1868,3 +2267,8 @@ sqlite3_extension_init(sqlite3 *db, char **errmsg,
     return rc;
 }
 
+int
+impexp_init(sqlite3 *db)
+{
+    return sqlite3_extension_init(db, NULL, NULL);
+}

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -29,9 +29,6 @@ import com.sleepycat.db.DatabaseEntry;
 import com.sleepycat.db.DatabaseType;
 import com.sleepycat.db.Environment;
 import com.sleepycat.db.EnvironmentConfig;
-import com.sleepycat.db.EventHandlerAdapter;
-import com.sleepycat.db.ReplicationConfig;
-import com.sleepycat.db.ReplicationManagerAckPolicy;
 import com.sleepycat.db.ReplicationManagerSiteConfig;
 import com.sleepycat.db.ReplicationManagerStartPolicy;
 import com.sleepycat.db.ReplicationTimeoutType;
@@ -51,38 +48,6 @@ public class TestDrainIntInit {
     private int clientPort;
     private int clientPort2;
     private int mgrPort;
-
-    class MyEventHandler extends EventHandlerAdapter {
-        private boolean done = false;
-        private boolean panic = false;
-        private int permFailCount = 0;
-		
-        @Override
-            synchronized public void handleRepStartupDoneEvent() {
-                done = true;
-                notifyAll();
-            }
-
-        @Override
-            synchronized public void handleRepPermFailedEvent() {
-                permFailCount++;
-            }
-
-        synchronized public int getPermFailCount() { return permFailCount; }
-		
-        @Override
-            synchronized public void handlePanicEvent() {
-                done = true;
-                panic = true;
-                notifyAll();
-            }
-		
-        synchronized void await() throws Exception {
-            while (!done) { wait(); }
-            if (panic)
-                throw new Exception("aborted by panic in DB");
-        }
-    }
 
     @Before public void setUp() throws Exception {
         testdir = new File(TEST_DIR_NAME);
@@ -141,8 +106,6 @@ public class TestDrainIntInit {
         site.setLegacy(true);
         ec.addReplicationManagerSite(site);
 
-        MyEventHandler masterMonitor = new MyEventHandler();
-        ec.setEventHandler(masterMonitor);
         Environment master = new Environment(mkdir("master"), ec);
         master.setReplicationTimeout(ReplicationTimeoutType.ACK_TIMEOUT,
                                      3000000);
@@ -159,7 +122,7 @@ public class TestDrainIntInit {
         DatabaseEntry value = new DatabaseEntry();
         value.setData(data);
         for (int i=0;
-             ((BtreeStats)db.getStats(null, null)).getPageCount() < 50;
+             ((BtreeStats)db.getStats(null, null)).getPageCount() < 500;
              i++)
         {
             String k = "The record number is: " + i;
@@ -168,8 +131,19 @@ public class TestDrainIntInit {
         }
         db.close();
 
-        // create client, but don't sync yet
+        // create client
+        // Tell fiddler to stop reading once it sees a PAGE message
         // 
+        Socket s = new Socket("localhost", mgrPort);
+        OutputStreamWriter w = new OutputStreamWriter(s.getOutputStream());
+
+        String path1 = "{" + masterPort + "," + clientPort + "}"; // looks like {6000,6001}
+        w.write("{init," + path1 + ",page_clog}\r\n");
+        w.flush();
+        BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
+        br.readLine();          // for now, ignore returned serial number
+        assertEquals("ok", br.readLine());
+
         ec = makeBasicConfig();
         site = new ReplicationManagerSiteConfig("localhost", clientPort);
         site.setLocalSite(true);
@@ -182,23 +156,13 @@ public class TestDrainIntInit {
         site = new ReplicationManagerSiteConfig("localhost", clientPort2);
         site.setLegacy(true);
         ec.addReplicationManagerSite(site);
+        EventHandler mon = new EventHandler();
+        ec.setEventHandler(mon);
         Environment client = new Environment(mkdir("client"), ec);
-        client.setReplicationConfig(ReplicationConfig.DELAYCLIENT, true);
         client.replicationManagerStart(1, ReplicationManagerStartPolicy.REP_CLIENT);
-        Thread.sleep(2000);     // FIXME
 
-
-        // tell fiddler to stop reading once it sees a PAGE message
-        Socket s = new Socket("localhost", mgrPort);
-        OutputStreamWriter w = new OutputStreamWriter(s.getOutputStream());
-
-        String path1 = "{" + masterPort + "," + clientPort + "}"; // looks like {6000,6001}
-        w.write("{" + path1 + ",page_clog}\r\n");
-        w.flush();
-        BufferedReader br = new BufferedReader(new InputStreamReader(s.getInputStream()));
-        assertEquals("ok", br.readLine());
-
-        client.syncReplication();
+        // wait for NEWMASTER
+        mon.awaitNewmaster();
 
         // wait til it gets stuck
         Thread.sleep(5000);     // FIXME
@@ -216,7 +180,7 @@ public class TestDrainIntInit {
         site.setLegacy(true);
         ec.addReplicationManagerSite(site);
 
-        MyEventHandler mon = new MyEventHandler();
+        mon = new EventHandler();
         ec.setEventHandler(mon);
         long start = System.currentTimeMillis();
         Environment client2 = new Environment(mkdir("client2"), ec);

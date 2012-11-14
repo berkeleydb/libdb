@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -43,41 +43,42 @@ extern "C" {
 #define	MTX_ATOMIC_EMULATION	 2
 #define	MTX_DB_HANDLE		 3
 #define	MTX_ENV_DBLIST		 4
-#define	MTX_ENV_HANDLE		 5
-#define	MTX_ENV_REGION		 6
-#define	MTX_LOCK_REGION		 7
-#define	MTX_LOGICAL_LOCK	 8
-#define	MTX_LOG_FILENAME	 9
-#define	MTX_LOG_FLUSH		10
-#define	MTX_LOG_HANDLE		11
-#define	MTX_LOG_REGION		12
-#define	MTX_MPOOLFILE_HANDLE	13
-#define	MTX_MPOOL_BH		14
-#define	MTX_MPOOL_FH		15
-#define	MTX_MPOOL_FILE_BUCKET	16
-#define	MTX_MPOOL_HANDLE	17
-#define	MTX_MPOOL_HASH_BUCKET	18
-#define	MTX_MPOOL_REGION	19
-#define	MTX_MUTEX_REGION	20
-#define	MTX_MUTEX_TEST		21
-#define	MTX_REP_CHKPT		22
-#define	MTX_REP_DATABASE	23
-#define	MTX_REP_DIAG		24
-#define	MTX_REP_EVENT		25
-#define	MTX_REP_REGION		26
-#define	MTX_REP_START		27
-#define	MTX_REP_WAITER		28
-#define	MTX_REPMGR		29
-#define	MTX_SEQUENCE		30
-#define	MTX_TWISTER		31
-#define	MTX_TCL_EVENTS		32
-#define	MTX_TXN_ACTIVE		33
-#define	MTX_TXN_CHKPT		34
-#define	MTX_TXN_COMMIT		35
-#define	MTX_TXN_MVCC		36
-#define	MTX_TXN_REGION		37
+#define	MTX_ENV_EXCLDBLIST	 5
+#define	MTX_ENV_HANDLE		 6
+#define	MTX_ENV_REGION		 7
+#define	MTX_LOCK_REGION		 8
+#define	MTX_LOGICAL_LOCK	 9
+#define	MTX_LOG_FILENAME	10
+#define	MTX_LOG_FLUSH		11
+#define	MTX_LOG_HANDLE		12
+#define	MTX_LOG_REGION		13
+#define	MTX_MPOOLFILE_HANDLE	14
+#define	MTX_MPOOL_BH		15
+#define	MTX_MPOOL_FH		16
+#define	MTX_MPOOL_FILE_BUCKET	17
+#define	MTX_MPOOL_HANDLE	18
+#define	MTX_MPOOL_HASH_BUCKET	19
+#define	MTX_MPOOL_REGION	20
+#define	MTX_MUTEX_REGION	21
+#define	MTX_MUTEX_TEST		22
+#define	MTX_REP_CHKPT		23
+#define	MTX_REP_DATABASE	24
+#define	MTX_REP_DIAG		25
+#define	MTX_REP_EVENT		26
+#define	MTX_REP_REGION		27
+#define	MTX_REP_START		28
+#define	MTX_REP_WAITER		29
+#define	MTX_REPMGR		30
+#define	MTX_SEQUENCE		31
+#define	MTX_TWISTER		32
+#define	MTX_TCL_EVENTS		33
+#define	MTX_TXN_ACTIVE		34
+#define	MTX_TXN_CHKPT		35
+#define	MTX_TXN_COMMIT		36
+#define	MTX_TXN_MVCC		37
+#define	MTX_TXN_REGION		38
 
-#define	MTX_MAX_ENTRY		37
+#define	MTX_MAX_ENTRY		38
 
 /* The following macros are defined on some platforms, e.g. QNX. */
 #undef __mutex_init

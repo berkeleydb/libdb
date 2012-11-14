@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000-2010 Oracle.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle.  All rights reserved.
  *
  */
 package com.sleepycat.persist.test;
@@ -9,6 +9,8 @@ package com.sleepycat.persist.test;
 import static com.sleepycat.persist.model.Relationship.MANY_TO_ONE;
 
 import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
 
 import junit.framework.TestCase;
 
@@ -2849,6 +2851,297 @@ class EvolveClasses {
                     (Integer.class, FieldAddAndConvert.class);
             init();
             index.put(this);
+        }
+    }
+    
+    @Entity
+    static class RenameSecFieldDestroyOrder_1 extends EvolveCase {
+
+        @PrimaryKey
+        int key = 1;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey = "aa";
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        int secKey2 = 2;
+        
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey3 = "bb";
+        
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,RenameSecFieldDestroyOrder_1>
+                index = store.getPrimaryIndex
+                    (Integer.class, 
+                     RenameSecFieldDestroyOrder_1.class);
+            index.put(this);
+        }
+    }
+    
+    @Entity
+    static class RenameSecFieldDestroyOrder_2 extends EvolveCase {
+
+        @PrimaryKey
+        int key = 1;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey = "aa";
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        int secKey2 = 2;
+        
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey3 = "bb";
+        
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,RenameSecFieldDestroyOrder_2>
+                index = store.getPrimaryIndex
+                    (Integer.class, 
+                     RenameSecFieldDestroyOrder_2.class);
+            index.put(this);
+        }
+    }
+    
+    @Entity
+    static class RenameSecFieldDestroyOrder_3 extends EvolveCase {
+
+        @PrimaryKey
+        int key = 1;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey = "aa";
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        int secKey2 = 2;
+        
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey3 = "bb";
+        
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,RenameSecFieldDestroyOrder_3>
+                index = store.getPrimaryIndex
+                    (Integer.class, 
+                     RenameSecFieldDestroyOrder_3.class);
+            index.put(this);
+        }
+    }
+    
+    @Entity
+    static class DeleteSecAnnotationDestroyOrder extends EvolveCase {
+
+        @PrimaryKey
+        int key = 1;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey = "aa";
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        int secKey2 = 2;
+        
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey3 = "bb";
+        
+        int anonKey = 3;
+        String xnonKey = "cc";
+        
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer,DeleteSecAnnotationDestroyOrder>
+                index = store.getPrimaryIndex
+                    (Integer.class, 
+                     DeleteSecAnnotationDestroyOrder.class);
+            index.put(this);
+        }
+    }
+    
+    /** [#19377] */
+    @Entity
+    static class ProxyClassFieldChanged extends EvolveCase {
+
+        @PrimaryKey
+        int key;
+
+        private ProxiedClass embed;
+
+        private void init() {
+            key = 1;
+            embed = new ProxiedClass(2);
+        }
+        
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(ProxiedClass_Proxy2.class);
+        }
+
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassFieldChanged>
+                index = store.getPrimaryIndex
+                    (Integer.class, ProxyClassFieldChanged.class);
+            init();
+            index.put(this);
+        }
+    }
+    
+    @Persistent(proxyFor=ProxiedClass.class)
+    static class ProxiedClass_Proxy2 implements PersistentProxy<ProxiedClass> {
+        Map<String, Integer> data;
+
+        public void initializeProxy(ProxiedClass o) {
+            data = new HashMap<String, Integer>();
+            data.put("data", o.data);
+        }
+
+        public ProxiedClass convertProxy() {
+            return new ProxiedClass(data.get("data"));
+        }
+    }
+    
+    /** [#19377] */
+    @Entity
+    static class ProxyClassObjectFieldChanged extends EvolveCase {
+
+        @PrimaryKey
+        int key;
+
+        private ProxiedClass embed;
+
+        private void init() {
+            key = 1;
+            embed = new ProxiedClass(2);
+        }
+        
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(ProxiedClass_Proxy3.class);
+        }
+
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassObjectFieldChanged>
+                index = store.getPrimaryIndex
+                    (Integer.class, ProxyClassObjectFieldChanged.class);
+            init();
+            index.put(this);
+        }
+    }
+    
+    @Persistent(proxyFor=ProxiedClass.class)
+    static class ProxiedClass_Proxy3 implements PersistentProxy<ProxiedClass> {
+        Map<String, Integer> data;
+
+        public void initializeProxy(ProxiedClass o) {
+            data = new HashMap<String, Integer>();
+            data.put("data", o.data);
+        }
+
+        public ProxiedClass convertProxy() {
+            return new ProxiedClass(data.get("data"));
+        }
+    }
+    
+    /** [#19377] */
+    @Entity
+    static class ProxyClassArrayFieldChanged extends EvolveCase {
+
+        @PrimaryKey
+        int key;
+
+        private ProxiedClass embed;
+
+        private void init() {
+            key = 1;
+            embed = new ProxiedClass(2);
+        }
+        
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(ProxiedClass_Proxy4.class);
+        }
+
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassArrayFieldChanged>
+                index = store.getPrimaryIndex
+                    (Integer.class, ProxyClassArrayFieldChanged.class);
+            init();
+            index.put(this);
+        }
+    }
+    
+    @Persistent(proxyFor=ProxiedClass.class)
+    static class ProxiedClass_Proxy4 implements PersistentProxy<ProxiedClass> {
+        Integer[] data;
+
+        public void initializeProxy(ProxiedClass o) {
+            data = new Integer[1];
+            data[0] = o.data;
+        }
+
+        public ProxiedClass convertProxy() {
+            return new ProxiedClass(data[0]);
+        }
+    }
+    
+    /** [#19377] */
+    @Entity
+    static class ProxyClassObjectArrayFieldChanged extends EvolveCase {
+
+        @PrimaryKey
+        int key;
+
+        private ProxiedClass embed;
+
+        private void init() {
+            key = 1;
+            embed = new ProxiedClass(2);
+        }
+        
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(ProxiedClass_Proxy5.class);
+        }
+
+        @Override
+        void writeObjects(EntityStore store)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassObjectArrayFieldChanged>
+                index = store.getPrimaryIndex
+                    (Integer.class, ProxyClassObjectArrayFieldChanged.class);
+            init();
+            index.put(this);
+        }
+    }
+    
+    @Persistent(proxyFor=ProxiedClass.class)
+    static class ProxiedClass_Proxy5 implements PersistentProxy<ProxiedClass> {
+        Integer[] data;
+
+        public void initializeProxy(ProxiedClass o) {
+            data = new Integer[1];
+            data[0] = o.data;
+        }
+
+        public ProxiedClass convertProxy() {
+            return new ProxiedClass(data[0]);
         }
     }
 }

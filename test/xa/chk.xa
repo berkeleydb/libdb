@@ -94,7 +94,7 @@ export LD_LIBRARY_PATH PATH
 
 echo "TEST 1"
 func_clean 
-src1/tuxconfig.sh
+utilities/tuxconfig.sh 200103
 src1/run.sh
 if test "$?" -ne 0; then
 	exit 1
@@ -109,14 +109,14 @@ fi
 echo "TEST 3"
 # multi threaded test
 func_clean
-src3/tuxconfig.sh 0
+utilities/multi_tuxconfig.sh 200104
 src3/run.sh 0
 if test "$?" -ne 0; then
 	exit 1
 fi
 # multi threaded test where one thread dies
 func_clean
-src3/tuxconfig.sh 1
+utilities/tuxconfig.sh 200105
 src3/run.sh 1
 if test "$?" -ne 0; then
 	exit 1
@@ -124,10 +124,21 @@ fi
 echo "TEST 4"
 # multi threaded test
 func_clean 
-src4/tuxconfig.sh 0
+utilities/multi_tuxconfig.sh 200103
 src4/run.sh 0
 if test "$?" -ne 0; then
 	exit 1
 fi
+echo "TEST 5"
+# MVCC tests.
+for i in {0..2}
+do
+    func_clean 
+    utilities/multi_1thr_tuxconfig.sh $((200106 + $i))
+    src5/run.sh $i
+    if test "$?" -ne 0; then
+	exit 1
+    fi
+done
 
 exit 0

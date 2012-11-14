@@ -1226,6 +1226,24 @@ db_auto.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../src/db/db_backup.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/db/db_backup.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/db/db_backup.c_objects
+db_backup.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/db/db_backup.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../src/db/db_cam.c_dependDone
 TRUE
 <END>
@@ -1874,6 +1892,24 @@ env_alloc.o
 C/C++ compiler
 <END>
 
+<BEGIN> FILE_$(PRJ_DIR)/../src/env/env_backup.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/env/env_backup.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/env/env_backup.c_objects
+env_backup.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/env/env_backup.c_tool
+C/C++ compiler
+<END>
+
 <BEGIN> FILE_$(PRJ_DIR)/../src/env/env_config.c_dependDone
 TRUE
 <END>
@@ -2465,6 +2501,24 @@ heap_autop.o
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../src/heap/heap_autop.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/heap/heap_backup.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/heap/heap_backup.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/heap/heap_backup.c_objects
+heap_backup.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/heap/heap_backup.c_tool
 C/C++ compiler
 <END>
 
@@ -3077,6 +3131,24 @@ mp_alloc.o
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../src/mp/mp_alloc.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/mp/mp_backup.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/mp/mp_backup.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/mp/mp_backup.c_objects
+mp_backup.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/mp/mp_backup.c_tool
 C/C++ compiler
 <END>
 
@@ -3707,6 +3779,24 @@ os_open.o
 <END>
 
 <BEGIN> FILE_$(PRJ_DIR)/../src/os/os_open.c_tool
+C/C++ compiler
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/os/os_path.c_dependDone
+TRUE
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/os/os_path.c_dependencies
+$(PRJ_DIR)/db_config.h \
+	$(PRJ_DIR)/db_int.h \
+	$(PRJ_DIR)/db.h
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/os/os_path.c_objects
+os_path.o
+<END>
+
+<BEGIN> FILE_$(PRJ_DIR)/../src/os/os_path.c_tool
 C/C++ compiler
 <END>
 
@@ -4860,6 +4950,7 @@ $(PRJ_DIR)/../src/btree/bt_compact.c \
 	$(PRJ_DIR)/../src/db/db.c \
 	$(PRJ_DIR)/../src/db/db_am.c \
 	$(PRJ_DIR)/../src/db/db_auto.c \
+	$(PRJ_DIR)/../src/db/db_backup.c \
 	$(PRJ_DIR)/../src/db/db_cam.c \
 	$(PRJ_DIR)/../src/db/db_cds.c \
 	$(PRJ_DIR)/../src/db/db_compact.c \
@@ -4896,6 +4987,7 @@ $(PRJ_DIR)/../src/btree/bt_compact.c \
 	$(PRJ_DIR)/../src/dbreg/dbreg_stat.c \
 	$(PRJ_DIR)/../src/dbreg/dbreg_util.c \
 	$(PRJ_DIR)/../src/env/env_alloc.c \
+	$(PRJ_DIR)/../src/env/env_backup.c \
 	$(PRJ_DIR)/../src/env/env_config.c \
 	$(PRJ_DIR)/../src/env/env_failchk.c \
 	$(PRJ_DIR)/../src/env/env_file.c \
@@ -4929,6 +5021,7 @@ $(PRJ_DIR)/../src/btree/bt_compact.c \
 	$(PRJ_DIR)/../src/hash/hash_verify.c \
 	$(PRJ_DIR)/../src/heap/heap_auto.c \
 	$(PRJ_DIR)/../src/heap/heap_autop.c \
+	$(PRJ_DIR)/../src/heap/heap_backup.c \
 	$(PRJ_DIR)/../src/heap/heap.c \
 	$(PRJ_DIR)/../src/heap/heap_conv.c \
 	$(PRJ_DIR)/../src/heap/heap_method.c \
@@ -4963,6 +5056,7 @@ $(PRJ_DIR)/../src/btree/bt_compact.c \
 	$(PRJ_DIR)/../src/log/log_verify_auto.c \
 	$(PRJ_DIR)/../src/log/log_verify_int.c \
 	$(PRJ_DIR)/../src/mp/mp_alloc.c \
+	$(PRJ_DIR)/../src/mp/mp_backup.c \
 	$(PRJ_DIR)/../src/mp/mp_bh.c \
 	$(PRJ_DIR)/../src/mp/mp_fget.c \
 	$(PRJ_DIR)/../src/mp/mp_fmethod.c \
@@ -4998,6 +5092,7 @@ $(PRJ_DIR)/../src/btree/bt_compact.c \
 	$(PRJ_DIR)/../src/os/os_handle.c \
 	$(PRJ_DIR)/../src/os/os_mkdir.c \
 	$(PRJ_DIR)/../src/os/os_open.c \
+	$(PRJ_DIR)/../src/os/os_path.c \
 	$(PRJ_DIR)/../src/os/os_pid.c \
 	$(PRJ_DIR)/../src/os/os_rename.c \
 	$(PRJ_DIR)/../src/os/os_root.c \

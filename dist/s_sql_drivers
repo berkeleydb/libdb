@@ -22,13 +22,6 @@ die()
 	exit 1
 }
 
-cygwin=`uname | grep -i "cygwin"`
-if [ "$cygwin" != "" ]; then
-        is_cygwin="true"
-else
-        is_cygwin="false"
-fi
-
 START_DIR=`pwd`
 if [ "x$1" != "x" ]; then
 	PKG_ROOT=$1
@@ -36,15 +29,15 @@ else
 	PKG_ROOT=../..
 fi
 
-#DB_ADDONS_REPO=$PKG_ROOT/db_addons
-DB_ADDONS_REPO=$PKG_ROOT/db_addons-5.2
+DB_ADDONS_REPO=$PKG_ROOT/db_addons-5.3
 update_repo()
 {
 	if [ ! -d $DB_ADDONS_REPO ]; then
 		die "db_addons repository doesn't exist."
 	fi
-	cd $DB_ADDONS_REPO
-	hg pull -u
+	hg up -R $DB_ADDONS_REPO -r `hg branch` || \
+	    die "Failed updating db_addons - likely contains local updates."
+	hg pull -R $DB_ADDONS_REPO -u
 	if [ $? != 0 ]; then
 		die "Failed updating the db_addons repository."
 	fi
@@ -102,7 +95,7 @@ cat $ODBC_DIR/resource.h.in | \
 # Let sqlite3odb.rc include "$SQL_DIR/generated/sqlite3.h" instead of sqlite3.h 
 mv $ODBC_DIR/sqlite3odbc.rc $ODBC_DIR/sqlite3odbc.rc.in
 cat $ODBC_DIR/sqlite3odbc.rc.in | \
-	sed -e 's/sqlite3.h/..\/lang\/sql\/generated\/sqlite3.h/g' \
+	sed -e 's/sqlite3.h/..\/..\/lang\/sql\/generated\/sqlite3.h/g' \
 	> $ODBC_DIR/sqlite3odbc.rc
 }
 
@@ -210,15 +203,19 @@ cp -r $START_DIR/../src $BDB_ROOT
 reserved_projects="db_sql_shell db_sql db"
 reserved_solutions="Berkeley_DB.sln Berkeley_DB_vs2010.sln"
 mkdir $BDB_ROOT/build_windows
-for f in $reserved_solutions *.h *.src *.rc *.def *.props
+mkdir $BDB_ROOT/build_windows/VS8
+mkdir $BDB_ROOT/build_windows/VS10
+for f in $reserved_solutions *.h *.src *.rc *.def
 do
 	cp $START_DIR/../build_windows/$f $BDB_ROOT/build_windows
 done
 for f in $reserved_projects
 do
-	cp $START_DIR/../build_windows/$f.vcproj $BDB_ROOT/build_windows
-	cp $START_DIR/../build_windows/$f.vcxproj $BDB_ROOT/build_windows
+	cp $START_DIR/../build_windows/VS8/$f.vcproj $BDB_ROOT/build_windows/VS8
+	cp $START_DIR/../build_windows/VS10/$f.vcxproj \
+	    $BDB_ROOT/build_windows/VS10
 done
+cp $START_DIR/../build_windows/VS10/*.props $BDB_ROOT/build_windows/VS10/
 
 # Cleanup solution files
 for sln_name in $reserved_solutions
@@ -247,8 +244,9 @@ do
         	fi  
 	done
 
-	# Unix to dos -- VisualStudio solution files must be dos format
-	sed -e 's/$/\r/' ${sln}.tmp > ${sln}
+	# Change to dos format -- VisualStudio solution files must be dos format
+	sed -e 's///g' -e 's/$//' ${sln}.tmp > $sln
+
 	rm -f $TMP_FILE
 	rm -f ${sln}.tmp
 done
@@ -412,13 +410,9 @@ do
 		fi
 	done
 
-	# Unix to dos
-	if [ "$is_cygwin" = "true" ]; then
-		# Unix to Dos for cygwin for sed behavior difference on cygwin
-		sed -e "s/$/\r/" ${sln}.tmp > $sln
-	else
-		cat ${sln}.tmp > $sln
-	fi
+	# Change to dos format -- VisualStudio solution files must be dos format
+	sed -e 's///g' -e 's/$//' ${sln}.tmp > $sln
+
 	rm ${sln}.tmp
 done
 
@@ -462,12 +456,9 @@ do
     	    -e "s/test\.2008/testce\.2008/g" \
     	${sln}.tmp > $TMP_FILE
 
-	if [ "$is_cygwin" = "true" ]; then
-		# Unix to Dos for cygwin for sed behavior difference on cygwin
-		sed -e "s/$/\r/" $TMP_FILE > $dst
-	else
-		cat $TMP_FILE > $dst
-	fi
+	# Change to dos format -- VisualStudio solution files must be dos format
+	sed -e 's///g' -e 's/$//' $TMP_FILE > $dst
+
 	rm -f ${sln}.tmp
 done
 

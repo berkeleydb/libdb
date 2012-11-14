@@ -8,8 +8,6 @@ use constant IGNORE => 'ignore' ;
 
 %constants = (
 
-
-
 	#########
 	# 2.0.3
 	#########
@@ -952,6 +950,14 @@ use constant IGNORE => 'ignore' ;
 	DB_TXN_LOG_VERIFY          => '5.0.6',
 
 	#########
+	# 5.0.32
+	#########
+
+	DBC_ERROR                  => IGNORE,
+	DB_LOG_VERIFY_PARTIAL      => DEFINE,
+	DB_NOERROR                 => DEFINE,
+
+	#########
 	# 5.1.3
 	#########
 
@@ -963,8 +969,6 @@ use constant IGNORE => 'ignore' ;
 	DB_HOTBACKUP_IN_PROGRESS   => DEFINE,
 	DB_LOCK_CHECK              => DEFINE,
 	DB_LOG_NO_DATA             => DEFINE,
-	DB_LOG_VERIFY_PARTIAL      => DEFINE,
-	DB_NOERROR                 => DEFINE,
 	DB_REPMGR_ACKS_ALL_AVAILABLE => DEFINE,
 	DB_TXN_BULK                => DEFINE,
 	TXN_BULK                   => IGNORE,
@@ -978,13 +982,7 @@ use constant IGNORE => 'ignore' ;
 	DB_NO_CHECKPOINT           => DEFINE,
 
 	#########
-	# 5.1.25
-	#########
-
-	DBC_ERROR                  => IGNORE,
-
-	#########
-	# 5.2.10
+	# 5.2.14
 	#########
 
 	DB_ALIGN8                  => IGNORE,
@@ -998,6 +996,7 @@ use constant IGNORE => 'ignore' ;
 	DB_EVENT_REP_LOCAL_SITE_REMOVED => DEFINE,
 	DB_EVENT_REP_SITE_ADDED    => DEFINE,
 	DB_EVENT_REP_SITE_REMOVED  => DEFINE,
+	DB_EVENT_REP_WOULD_ROLLBACK => DEFINE,
 	DB_FAILCHK_ISALIVE         => DEFINE,
 	DB_GROUP_CREATOR           => DEFINE,
 	DB_HEAPMAGIC               => DEFINE,
@@ -1011,6 +1010,8 @@ use constant IGNORE => 'ignore' ;
 	DB_LOCAL_SITE              => DEFINE,
 	DB_OK_HEAP                 => DEFINE,
 	DB_REPMGR_NEED_RESPONSE    => DEFINE,
+	DB_REP_CONF_AUTOROLLBACK   => DEFINE,
+	DB_REP_WOULDROLLBACK       => DEFINE,
 	DB_STAT_ALLOC              => DEFINE,
 	DB_STAT_SUMMARY            => DEFINE,
 	TXN_NEED_ABORT             => IGNORE,
@@ -1023,15 +1024,39 @@ use constant IGNORE => 'ignore' ;
 	TXN_XA_THREAD_UNASSOCIATED => IGNORE,
 
 	# enum DBTYPE
-	DB_HEAP                    => '5.2.10',
+	DB_HEAP                    => '5.2.14',
 
 	# enum DB_MEM_CONFIG
-	DB_MEM_LOCK                => '5.2.10',
-	DB_MEM_LOCKOBJECT          => '5.2.10',
-	DB_MEM_LOCKER              => '5.2.10',
-	DB_MEM_LOGID               => '5.2.10',
-	DB_MEM_TRANSACTION         => '5.2.10',
-	DB_MEM_THREAD              => '5.2.10',
+	DB_MEM_LOCK                => '5.2.14',
+	DB_MEM_LOCKOBJECT          => '5.2.14',
+	DB_MEM_LOCKER              => '5.2.14',
+	DB_MEM_LOGID               => '5.2.14',
+	DB_MEM_TRANSACTION         => '5.2.14',
+	DB_MEM_THREAD              => '5.2.14',
+
+	#########
+	# 5.3.5
+	#########
+
+	DB2_AM_EXCL                => DEFINE,
+	DB2_AM_INTEXCL             => DEFINE,
+	DB2_AM_NOWAIT              => DEFINE,
+	DB_AM_PARTDB               => IGNORE,
+	DB_BACKUP_CLEAN            => DEFINE,
+	DB_BACKUP_FILES            => DEFINE,
+	DB_BACKUP_NO_LOGS          => DEFINE,
+	DB_BACKUP_SINGLE_DIR       => DEFINE,
+	DB_BACKUP_UPDATE           => DEFINE,
+	DB_INTERNAL_PERSISTENT_DB  => DEFINE,
+	DB_INTERNAL_TEMPORARY_DB   => DEFINE,
+	DB_LOCK_IGNORE_REC         => DEFINE,
+	DB_VERB_BACKUP             => DEFINE,
+
+	# enum DB_BACKUP_CONFIG
+	DB_BACKUP_READ_COUNT       => '5.3.5',
+	DB_BACKUP_READ_SLEEP       => '5.3.5',
+	DB_BACKUP_SIZE             => '5.3.5',
+	DB_BACKUP_WRITE_DIRECT     => '5.3.5',
 	) ;
 
 sub enum_Macro

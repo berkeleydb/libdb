@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -889,5 +889,51 @@ __qam_lsn_reset(dbp, ip)
 			break;
 
 	__os_free(dbp->env, filelist);
+	return (ret);
+}
+
+/*
+ * __qam_backup_extents--
+ *	Routine to safely copy the active queue extents of a database.
+ * PUBLIC: int __qam_backup_extents __P((DB *,
+ * PUBLIC:       DB_THREAD_INFO *, const char *, u_int32_t));
+ */
+int
+__qam_backup_extents(dbp, ip, target, flags)
+	DB *dbp;
+	DB_THREAD_INFO *ip;
+	const char *target;
+	u_int32_t flags;
+{
+	DB_FH *filep;
+	QUEUE *qp;
+	QUEUE_FILELIST *fp, *filelist;
+	int ret, t_ret;
+	char buf[DB_MAXPATHLEN];
+	void *handle;
+
+	if ((ret = __qam_gen_filelist(dbp, ip, &filelist)) != 0)
+		return (ret);
+
+	if (filelist == NULL)
+		return (0);
+
+	qp = dbp->q_internal;
+
+	for (fp = filelist; fp->mpf != NULL; fp++) {
+		QAM_EXNAME(qp, fp->id, buf, sizeof(buf));
+		if ((ret = __memp_backup_open(dbp->dbenv->env,
+		    fp->mpf, buf, target, flags, &filep, &handle)) == 0)
+			ret = __memp_backup_mpf(dbp->dbenv->env, fp->mpf, ip,
+			    0, fp->mpf->mfp->last_pgno, filep, handle, flags);
+		if ((t_ret = __memp_backup_close(dbp->dbenv->env,
+		    fp->mpf, buf, filep, handle)) != 0 && ret == 0)
+			ret = t_ret;
+		if (ret != 0)
+			break;
+	}
+
+	__os_free(dbp->env, filelist);
+
 	return (ret);
 }

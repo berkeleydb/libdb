@@ -1,9 +1,17 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ */
+
 /*
  * This code is for servers used in test 4.  Server 1 inserts
  * into database 1 and Server 2 inserts into database 2, then
  * sleeps for 30 seconds to cause a timeout error in the client.
  */
 #include <sys/types.h>
+
+#include "../utilities/bdb_xa_util.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -26,24 +34,15 @@
 #ifdef SERVER1
 #define	TXN_FUNC		TestTxn1
 #define	TXN_STRING		"TestTxn1"
-#define TABLE			"table1.db"
 #endif
 #ifdef SERVER2
 #define	TXN_FUNC		TestTxn2
 #define	TXN_STRING		"TestTxn2"
-#define TABLE			"table2.db"
 #endif
 void TXN_FUNC(TPSVCINFO *);
 
 #define	HOME	"../data"
-
-#ifdef VERBOSE
-static int verbose = 1;				/* Debugging output. */
-#else
-static int verbose = 0;
-#endif
-
-DB *db;					/* Table handle. */
+#define NUMDB	2
 
 char *progname;					/* Server run-time name. */
 
@@ -53,61 +52,40 @@ char *progname;					/* Server run-time name. */
 int
 tpsvrinit(int argc, char* argv[])
 {
-	int ret;
-
 	progname = argv[0];
-	if (verbose)
-		printf("%s: called\n", progname);
-
-	/* Open resource managers. */
-	if (tx_open() == TX_ERROR) {
-		fprintf(stderr, "tx_open: TX_ERROR\n");
-		return (-1);
-	}
-
-	/* Seed random number generator. */
-	srand((u_int)(time(NULL) | getpid()));
-
-	/* Open permanent XA handles. */
-	if ((ret = db_create(&db, NULL, DB_XA_CREATE)) != 0) {
-		fprintf(stderr, "db_create: %s\n", db_strerror(ret));
-		return (-1);
-	}
-	db->set_errfile(db, stderr);
-	if ((ret = db->open(db, NULL,
-	    TABLE, NULL, DB_BTREE, DB_AUTO_COMMIT | DB_CREATE, 0660)) != 0) {
-		fprintf(stderr, "DB open: %s: %s\n", TABLE, db_strerror(ret));
-		return (-1);
-	}
-
-	if (verbose)
-		printf("%s: tpsvrinit: initialization done\n", progname);
-
-	return (0);
+	return (init_xa_server(NUMDB, progname, 0));
 }
 
 /* Called when the servers are shutdown.  This closes the database. */
 void
 tpsvrdone()
 {
-	if (db != NULL)
-		(void)db->close(db, 0);
-
-	tx_close();
-
-	if (verbose)
-		printf("%s: tpsvrdone: shutdown done\n", progname);
+	close_xa_server(NUMDB, progname);
 }
 
 /* 
- * This function is called by the client.  Here Server 1 and Server 2 insert
- * data into a table using XA transactions.  */
+ * This function is called by the client.  Here, on Server 1 data is
+ * inserted into table 1 and it returns successfully.  On Server 2 data
+ * is inserted into table 2, but then it sleeps for 30 seconds then
+ * returns, in order to force a timeout and to make sure that the data
+ * is rolled back in both databases. 
+ */
 void
 TXN_FUNC(TPSVCINFO *msg)
 {
 	DBT data;
 	DBT key;
-	int ret, val;
+	int ret, val, i;
+	DB *db;
+	const char *name;
+#ifdef SERVER1
+	i = 0;
+#else
+	i = 1;
+#endif
+
+	db = dbs[i];
+	name = db_names[i];
 
         val = 1;
 
@@ -118,16 +96,16 @@ TXN_FUNC(TPSVCINFO *msg)
 	data.data = &val;
 	data.size = sizeof(val);
 
-	/* Table 1. */
 	if (verbose) {
-		printf("put: key in %s: %i\n", val, TABLE);
-		printf("put: data in %s: %i\n", val, TABLE);
+		printf("put: key in %s: %i\n", val, db_names[0]);
+		printf("put: data in %s: %i\n", val, db_names[0]);
 	}
 	if ((ret = db->put(db, NULL, &key, &data, 0)) != 0) {
 		if (ret == DB_LOCK_DEADLOCK)
 			goto abort;
-		fprintf(stderr, "%s: %s: Table->put: %s\n",
-		    progname, TXN_STRING, db_strerror(ret));
+		fprintf(stderr, "%s: %s: %s->put: %s\n",
+		    progname, TXN_STRING, name, 
+		    db_strerror(ret));
 		goto err;
 	}
 

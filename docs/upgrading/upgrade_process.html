@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -196,9 +196,9 @@
           </li>
           <li>
             <p>
-        Archive the database environment for catastrophic recovery.  See
-        <a href="../programmer_reference/transapp_archival.html" class="olink">Database and log file archival</a>
-        for more information.
+        Archive the database environment for catastrophic recovery using
+        the <code class="literal">db_archive</code> utility as described in the
+        <a href="../programmer_reference/transapp_archival.html" class="olink">Database and log file archival</a> section in the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>.
     </p>
           </li>
           <li>
@@ -212,12 +212,22 @@
         <a href="../api_reference/C/db_checkpoint.html" class="olink">db_checkpoint utility</a>, make sure to use the new version of the utility; that is, the version that
         came with the release of Berkeley DB to which you are upgrading.
     </p>
+            <p>
+        Note that forcing a checkpoint might result in warning messages
+        about log files that are being skipped. This is normal, and can be
+        safely ignored.
+    </p>
           </li>
           <li>
             <p>
         Remove unnecessary log files from the environment using the <code class="literal">-d</code> option on
         the <a href="../api_reference/C/db_archive.html" class="olink">db_archive utility</a>, or from an application which calls the <a href="../api_reference/C/logarchive.html" class="olink">DB_ENV-&gt;log_archive()</a> method with the
         <a href="../api_reference/C/logarchive.html#archive_DB_ARCH_REMOVE" class="olink">DB_ARCH_REMOVE</a> flag.
+    </p>
+            <p>
+        Note that removing log files in this way might result in warning messages
+        about log files that are being skipped. This is normal, and can be
+        safely ignored.
     </p>
             <p>
         Note that if you are upgrading a replicated application, then you should
@@ -259,9 +269,9 @@
           </li>
           <li>
             <p>
-        Archive the database environment for catastrophic recovery.  See
-            <a href="../programmer_reference/transapp_archival.html" class="olink">Database and log file archival</a>
-        for more information.
+        Archive the database environment for catastrophic recovery using
+        the <code class="literal">db_archive</code> utility as described in the
+        <a href="../programmer_reference/transapp_archival.html" class="olink">Database and log file archival</a> section in the <em class="citetitle">Berkeley DB Programmer's Reference Guide</em>.
     </p>
           </li>
           <li>
@@ -293,12 +303,22 @@
         <a href="../api_reference/C/db_checkpoint.html" class="olink">db_checkpoint utility</a>, make sure to use the new version of the utility; that is, the version that
         came with the release of Berkeley DB to which you are upgrading.
     </p>
+            <p>
+        Note that forcing a checkpoint might result in warning messages
+        about log files that are being skipped. This is normal, and can be
+        safely ignored.
+    </p>
           </li>
           <li>
             <p>
         Remove unnecessary log files from the environment using the <code class="literal">-d</code> option on
         the <a href="../api_reference/C/db_archive.html" class="olink">db_archive utility</a>, or from an application which calls the <a href="../api_reference/C/logarchive.html" class="olink">DB_ENV-&gt;log_archive()</a> method with the
         <a href="../api_reference/C/logarchive.html#archive_DB_ARCH_REMOVE" class="olink">DB_ARCH_REMOVE</a> flag.
+    </p>
+            <p>
+        Note that removing log files in this way might result in warning messages
+        about log files that are being skipped. This is normal, and can be
+        safely ignored.
     </p>
             <p>
         Note that if you are upgrading a replicated application, then you should

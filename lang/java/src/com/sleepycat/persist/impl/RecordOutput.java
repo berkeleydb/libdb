@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -34,12 +34,14 @@ class RecordOutput extends TupleOutput implements EntityOutput {
         super();
         this.catalog = catalog;
         this.rawAccess = rawAccess;
+        this.visited = new IdentityHashMap<Object, Integer>();
     }
 
     /**
      * @see EntityOutput#writeObject
      */
-    public void writeObject(Object o, Format fieldFormat) {
+    public void writeObject(Object o, Format fieldFormat)
+        throws RefreshException {
 
         /* For a null instance, write a zero format ID. */
         if (o == null) {
@@ -51,16 +53,14 @@ class RecordOutput extends TupleOutput implements EntityOutput {
          * For an already visited instance, output a reference to it.  The
          * reference is the negation of the visited offset minus one.
          */
-        if (visited != null) {
-            Integer offset = visited.get(o);
-            if (offset != null) {
-                if (offset == RecordInput.PROHIBIT_REF_OFFSET) {
-                    throw new IllegalArgumentException
-                        (RecordInput.PROHIBIT_NESTED_REF_MSG);
-                } else {
-                    writePackedInt(-(offset + 1));
-                    return;
-                }
+        Integer offset = visited.get(o);
+        if (offset != null) {
+            if (offset == RecordInput.PROHIBIT_REF_OFFSET) {
+                throw new IllegalArgumentException
+                    (RecordInput.PROHIBIT_NESTED_REF_MSG);
+            } else {
+                writePackedInt(-(offset + 1));
+                return;
             }
         }
 
@@ -100,9 +100,6 @@ class RecordOutput extends TupleOutput implements EntityOutput {
          * (ProxiedFormat for example) prohibit nested fields that reference
          * the parent object. [#15815]
          */
-        if (visited == null) {
-            visited = new IdentityHashMap<Object, Integer>();
-        }
         boolean prohibitNestedRefs = format.areNestedRefsProhibited();
         Integer visitedOffset = size();
         visited.put(o, prohibitNestedRefs ? RecordInput.PROHIBIT_REF_OFFSET :
@@ -121,7 +118,8 @@ class RecordOutput extends TupleOutput implements EntityOutput {
     /**
      * @see EntityOutput#writeKeyObject
      */
-    public void writeKeyObject(Object o, Format fieldFormat) {
+    public void writeKeyObject(Object o, Format fieldFormat)
+        throws RefreshException {
 
         /* Key objects must not be null and must be of the declared class. */
         if (o == null) {
@@ -164,10 +162,16 @@ class RecordOutput extends TupleOutput implements EntityOutput {
          * PRI_KEY_VISITED_OFFSET is used as the visited offset to indicate
          * that the visited object is stored in the primary key byte array.
          */
-        if (visited == null) {
-            visited = new IdentityHashMap<Object, Integer>();
-        }
         visited.put(o, RecordInput.PRI_KEY_VISITED_OFFSET);
+    }
+
+    /**
+     * Registers the top level entity before writing it, to allow nested fields
+     * to reference their parent entity. [#17525]
+     */
+    public void registerEntity(Object entity) {
+        assert size() == 0;
+        visited.put(entity, size());
     }
 
     /**

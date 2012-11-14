@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -71,7 +71,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3725585"></a>Parameters</h3>
+              <h3 class="title"><a id="idp60687000"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -79,7 +79,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3725529"></a>locker</h4>
+                <h4 class="title"><a id="idp60687696"></a>locker</h4>
               </div>
             </div>
           </div>
@@ -93,7 +93,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3725676"></a>flags</h4>
+                <h4 class="title"><a id="idp60632176"></a>flags</h4>
               </div>
             </div>
           </div>
@@ -122,7 +122,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3725826"></a>list</h4>
+                <h4 class="title"><a id="idp60716296"></a>list</h4>
               </div>
             </div>
           </div>
@@ -328,7 +328,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3726455"></a>nlist</h4>
+                <h4 class="title"><a id="idp60753584"></a>nlist</h4>
               </div>
             </div>
           </div>
@@ -341,7 +341,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3725873"></a>elistp</h4>
+                <h4 class="title"><a id="idp60754664"></a>elistp</h4>
               </div>
             </div>
           </div>
@@ -356,7 +356,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3725891"></a>Errors</h3>
+              <h3 class="title"><a id="idp60755744"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -372,7 +372,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3726128"></a>DB_LOCK_DEADLOCK</h4>
+                <h4 class="title"><a id="idp60734280"></a>DB_LOCK_DEADLOCK</h4>
               </div>
             </div>
           </div>
@@ -385,7 +385,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3726251"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp60744912"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -393,12 +393,19 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
                 A Berkeley DB Concurrent Data Store database environment configured
                 for lock timeouts was unable to grant a lock in the allowed time.
             </p>
+          <p>
+                You attempted to open a database handle that is configured
+                for no waiting exclusive locking, but the exclusive lock could not be
+                immediately obtained. See
+                <a class="xref" href="dbset_lk_exclusive.html" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a>
+                for more information.
+            </p>
         </div>
         <div class="sect3" lang="en" xml:lang="en">
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3726318"></a>DB_LOCK_NOTGRANTED</h4>
+                <h4 class="title"><a id="idp60736160"></a>DB_LOCK_NOTGRANTED</h4>
               </div>
             </div>
           </div>
@@ -412,7 +419,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3726138"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp60732736"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -424,7 +431,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3726554"></a>ENOMEM</h4>
+                <h4 class="title"><a id="idp60761064"></a>ENOMEM</h4>
               </div>
             </div>
           </div>
@@ -437,7 +444,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3726522"></a>Class</h3>
+              <h3 class="title"><a id="idp60734648"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -450,7 +457,7 @@ DB_ENV-&gt;lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3726026"></a>See Also</h3>
+              <h3 class="title"><a id="idp60722344"></a>See Also</h3>
             </div>
           </div>
         </div>

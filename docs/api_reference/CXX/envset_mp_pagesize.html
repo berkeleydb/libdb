@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -43,16 +43,18 @@
 int
 DbEnv::set_mp_pagesize(u_int32_t pagesize);</pre>
       <p>
-         The <code class="methodname">DbEnv::set_mp_pagesize()</code> method sets the pagesize used to allocate the hash table and the number of mutexes expected to be needed by the buffer pool.
+         The <code class="methodname">DbEnv::set_mp_pagesize()</code> method sets
+         the pagesize used to allocate the hash table and the number of
+         mutexes expected to be needed by the buffer pool.
     </p>
       <p>
-         You must call this method only before the environment is opened.
+         This method may be called only before the environment is opened.
     </p>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3627882"></a>Parameters</h3>
+              <h3 class="title"><a id="idp3491576"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -60,12 +62,15 @@ DbEnv::set_mp_pagesize(u_int32_t pagesize);</pre>
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3627885"></a>pagesize</h4>
+                <h4 class="title"><a id="idp3491768"></a>pagesize</h4>
               </div>
             </div>
           </div>
           <p>
-                         The pagesize parameter specifies expected page size use. Generally, it is set to the expected average page size for all the data pages that are in the buffer pool.
+                         The pagesize parameter specifies expected page
+                         size use. Generally, it is set to the expected
+                         average page size for all the data pages that are
+                         in the buffer pool.
                      </p>
         </div>
       </div>
@@ -73,7 +78,7 @@ DbEnv::set_mp_pagesize(u_int32_t pagesize);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3627726"></a>Class</h3>
+              <h3 class="title"><a id="idp3481496"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -86,7 +91,7 @@ DbEnv::set_mp_pagesize(u_int32_t pagesize);</pre>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3627763"></a>See Also</h3>
+              <h3 class="title"><a id="idp3484128"></a>See Also</h3>
             </div>
           </div>
         </div>

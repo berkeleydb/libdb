@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -27,8 +27,8 @@ public class PrimitiveArrayFormat extends Format {
 
     private SimpleFormat componentFormat;
 
-    PrimitiveArrayFormat(Class type) {
-        super(type);
+    PrimitiveArrayFormat(Catalog catalog, Class type) {
+        super(catalog, type);
     }
 
     @Override
@@ -60,8 +60,7 @@ public class PrimitiveArrayFormat extends Format {
          * arrays are always available in Java.
          */
         componentFormat = (SimpleFormat)
-            catalog.getFormat(getExistingType().getComponentType(),
-                              false /*checkEntitySubclassIndexes*/);
+            catalog.getFormat(getExistingType().getComponentType().getName());
     }
 
     @Override
@@ -70,7 +69,9 @@ public class PrimitiveArrayFormat extends Format {
     }
 
     @Override
-    public Object newInstance(EntityInput input, boolean rawAccess) {
+    public Object newInstance(EntityInput input, boolean rawAccess)
+        throws RefreshException {
+
         int len = input.readArrayLength();
         if (rawAccess) {
             return new RawObject(this, new Object[len]);
@@ -80,7 +81,9 @@ public class PrimitiveArrayFormat extends Format {
     }
 
     @Override
-    public Object readObject(Object o, EntityInput input, boolean rawAccess) {
+    public Object readObject(Object o, EntityInput input, boolean rawAccess)
+        throws RefreshException {
+
         if (rawAccess) {
             Object[] a = ((RawObject) o).getElements();
             for (int i = 0; i < a.length; i += 1) {
@@ -93,7 +96,9 @@ public class PrimitiveArrayFormat extends Format {
     }
 
     @Override
-    void writeObject(Object o, EntityOutput output, boolean rawAccess) {
+    void writeObject(Object o, EntityOutput output, boolean rawAccess)
+        throws RefreshException {
+
         if (rawAccess) {
             Object[] a = ((RawObject) o).getElements();
             output.writeArrayLength(a.length);
@@ -109,7 +114,9 @@ public class PrimitiveArrayFormat extends Format {
     Object convertRawObject(Catalog catalog,
                             boolean rawAccess,
                             RawObject rawObject,
-                            IdentityHashMap converted) {
+                            IdentityHashMap converted)
+        throws RefreshException {
+
         RawArrayInput input = new RawArrayInput
             (catalog, rawAccess, converted, rawObject, componentFormat);
         Object a = newInstance(input, rawAccess);

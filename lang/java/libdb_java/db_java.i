@@ -60,6 +60,7 @@ import java.util.Comparator;
 
 /* Extra code in the Java classes */
 %typemap(javacode) struct DbEnv %{
+	/* package */ static final int GIGABYTE = 1 << 30;
 	/*
 	 * Internally, the JNI layer creates a global reference to each DbEnv,
 	 * which can potentially be different to this.  We keep a copy here so
@@ -80,7 +81,13 @@ import java.util.Comparator;
 	private java.io.OutputStream error_stream;
 	private java.io.OutputStream message_stream;
 	private ThreadLocal errBuf;
-
+	/* 
+	 * Because of how SWIG creates things, we need 3 separate objects here.
+	 * We will only ever use backup_open_handler, however.
+	 */
+	private BackupHandler backup_close_handler;
+	private BackupHandler backup_open_handler;
+	private BackupHandler backup_write_handler;
 	public static class RepProcessMessage {
 		public int envid;
 	}
@@ -339,6 +346,31 @@ import java.util.Comparator;
 
 	public void set_tx_timestamp(java.util.Date timestamp) {
 		set_tx_timestamp0(timestamp.getTime()/1000);
+	}
+
+	/*
+	 * See comment at top explaining why backup_open_handler is used
+	 * for all 3 backup callbacks.
+	 */
+	public BackupHandler get_backup_handler() {
+		return backup_open_handler;
+	}
+
+	private final int handle_backup_close(String dbname) {
+		return backup_open_handler.close(dbname);
+	}
+
+	private final int handle_backup_open(String dbname, String target) {
+		return backup_open_handler.open(target, dbname);
+	}
+
+	private final int handle_backup_write(int file_pos_gbytes, int file_pos_bytes, int len, byte[] buf) {
+		/*
+		 * Offset in buf is always 0.  We include it anyways to match
+		 * the OutputStream.write() signature.
+		 */
+		long file_pos = file_pos_gbytes * GIGABYTE + file_pos_bytes;
+		return backup_open_handler.write(file_pos, buf, 0, len);
 	}
 %}
 

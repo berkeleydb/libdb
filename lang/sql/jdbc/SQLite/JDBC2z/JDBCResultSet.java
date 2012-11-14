@@ -175,7 +175,7 @@ public class JDBCResultSet implements java.sql.ResultSet {
     @Override
     public boolean previous() throws SQLException {
 	if (tr == null) {
-	    throw new SQLException("result set already closed.");
+	    throw new SQLException("result set already closed");
 	}
 	if (row >= 0) {
 	    row--;

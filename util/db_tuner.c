@@ -1,7 +1,7 @@
 /* 
  * See the file LICENSE for redistribution information.
  * 
- * Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
  * 
  * $Id$
  * 
@@ -54,7 +54,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.\n";
+    "Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 /*
@@ -139,7 +139,6 @@ main(argc, argv)
 	char *argv[];
 {
 	extern char *optarg;
-	extern int optind;
 	DB *dbp;
 	DB_ENV *dbenv;
 	DBTYPE dbtype;

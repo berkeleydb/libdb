@@ -2,7 +2,7 @@
 *  This template is for changing SQLite.Interop/SQLite.Interop.vcproj
 *  of ADO.NET
 :)
-declare variable $WINDOWS_PROJ_URL := '@BDB_PATH@/build_windows/db.vcproj';
+declare variable $WINDOWS_PROJ_URL := '@BDB_PATH@/build_windows/VS8/db.vcproj';
 declare variable $WINDOWS_FILES := fn:document($WINDOWS_PROJ_URL)/VisualStudioProject/Files;
 declare variable $WINCE_FILES := fn:document($WINCE_PROJ_URL)/VisualStudioProject/Files;
 
@@ -18,7 +18,7 @@ declare function local:getFileList($fileList)
     (: Change file path :)
     for $filePath in $newFileList/File/@RelativePath
     return replace value of node $filePath
-      with fn:replace($filePath, '..\\src', $WIN_SRC)
+      with fn:replace($filePath, '..\\..\\src', $WIN_SRC)
   )
   return $newFileList
 };
@@ -59,11 +59,15 @@ return
         (: Update PreprocessorDefinitions :)
         (
           for $node in $PreprocessorDefinitions
+          let $additionalFlags := 
+            if (fn:contains($config/@Name, 'Debug')) then (
+              $DEBUG_ADDITIONAL_FLAGS
+            ) else ()
           let $combinedFlags := 
             if (fn:contains($config/@Name, $WINCE_PLATFORM_NAME)) then (
-              $cflags
+              fn:concat($cflags, $additionalFlags)
             ) else (
-              fn:concat($node/string(), $cflags)
+              fn:concat($node/string(), $cflags, $additionalFlags)
             )
           return replace value of node $node with $combinedFlags
         ), 

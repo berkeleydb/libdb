@@ -14,7 +14,7 @@
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
@@ -66,8 +66,8 @@ DB_ENV-&gt;set_cache_max(DB_ENV *dbenv, u_int32_t gbytes, u_int32_t bytes);  </p
          <a class="link" href="env.html" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a>  handle.
     </p>
       <p>
-         The <code class="methodname">DB_ENV-&gt;set_cache_max()</code> method may be called at any time during
-         the life of the application.
+         The <code class="methodname">DB_ENV-&gt;set_cache_max()</code> method must be
+         called prior to opening the database environment.
     </p>
       <p>
          The <code class="methodname">DB_ENV-&gt;set_cache_max()</code> <span>
@@ -81,7 +81,7 @@ DB_ENV-&gt;set_cache_max(DB_ENV *dbenv, u_int32_t gbytes, u_int32_t bytes);  </p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3735450"></a>Parameters</h3>
+              <h3 class="title"><a id="idp61280496"></a>Parameters</h3>
             </div>
           </div>
         </div>
@@ -89,7 +89,7 @@ DB_ENV-&gt;set_cache_max(DB_ENV *dbenv, u_int32_t gbytes, u_int32_t bytes);  </p
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3735332"></a>gbytes</h4>
+                <h4 class="title"><a id="idp61291016"></a>gbytes</h4>
               </div>
             </div>
           </div>
@@ -103,7 +103,7 @@ DB_ENV-&gt;set_cache_max(DB_ENV *dbenv, u_int32_t gbytes, u_int32_t bytes);  </p
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3735448"></a>bytes</h4>
+                <h4 class="title"><a id="idp61277832"></a>bytes</h4>
               </div>
             </div>
           </div>
@@ -118,7 +118,7 @@ DB_ENV-&gt;set_cache_max(DB_ENV *dbenv, u_int32_t gbytes, u_int32_t bytes);  </p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3735397"></a>Errors</h3>
+              <h3 class="title"><a id="idp61281328"></a>Errors</h3>
             </div>
           </div>
         </div>
@@ -134,7 +134,7 @@ DB_ENV-&gt;set_cache_max(DB_ENV *dbenv, u_int32_t gbytes, u_int32_t bytes);  </p
           <div class="titlepage">
             <div>
               <div>
-                <h4 class="title"><a id="id3735269"></a>EINVAL</h4>
+                <h4 class="title"><a id="idp61280280"></a>EINVAL</h4>
               </div>
             </div>
           </div>
@@ -147,7 +147,7 @@ DB_ENV-&gt;set_cache_max(DB_ENV *dbenv, u_int32_t gbytes, u_int32_t bytes);  </p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3735631"></a>Class</h3>
+              <h3 class="title"><a id="idp61302080"></a>Class</h3>
             </div>
           </div>
         </div>
@@ -159,7 +159,7 @@ DB_ENV-&gt;set_cache_max(DB_ENV *dbenv, u_int32_t gbytes, u_int32_t bytes);  </p
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3735683"></a>See Also</h3>
+              <h3 class="title"><a id="idp61304208"></a>See Also</h3>
             </div>
           </div>
         </div>

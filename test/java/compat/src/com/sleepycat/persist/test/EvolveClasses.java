@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 package com.sleepycat.persist.test;
@@ -10,6 +10,7 @@ import static com.sleepycat.persist.model.Relationship.MANY_TO_ONE;
 import static com.sleepycat.persist.model.Relationship.ONE_TO_ONE;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +18,6 @@ import java.util.StringTokenizer;
 
 import junit.framework.TestCase;
 
-import com.sleepycat.compat.DbCompat;
 import com.sleepycat.db.DatabaseException;
 import com.sleepycat.db.Environment;
 import com.sleepycat.persist.EntityStore;
@@ -3729,7 +3729,7 @@ class EvolveClasses {
         extends EvolveCase {
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        AllowFieldTypeChanges_Key kComposite;
+        AllowFieldTypeChanges_Key kComposite1;
 
         Integer f_long2Integer;
         Long f_String2Long;
@@ -3752,31 +3752,31 @@ class EvolveClasses {
             AllowFieldTypeChanges_Key.class.getName();
 
         @PrimaryKey
-        Integer pkeyInteger;
+        Integer pkeyInt1;
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        Boolean kBoolean;
+        Boolean kBoolean1;
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        Byte kByte;
+        Byte kByte1;
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        Short kShort;
+        Short kShort1;
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        Integer kInteger;
+        Integer kInt1;
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        Long kLong;
+        Long kLong1;
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        Float kFloat;
+        Float kFloat1;
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        Double kDouble;
+        Double kDouble1;
 
         @SecondaryKey(relate=ONE_TO_ONE)
-        Character kCharacter;
+        Character kCharacter1;
 
         short f01;
         int f02;
@@ -3855,16 +3855,16 @@ class EvolveClasses {
         @Override
         Mutations getMutations() {
             Mutations m = new Mutations();
-            m.addRenamer(new Renamer(NAME, 0, "pkeyint", "pkeyInteger"));
-            m.addRenamer(new Renamer(NAME, 0, "kboolean", "kBoolean"));
-            m.addRenamer(new Renamer(NAME, 0, "kbyte", "kByte"));
-            m.addRenamer(new Renamer(NAME, 0, "kshort", "kShort"));
-            m.addRenamer(new Renamer(NAME, 0, "kint", "kInteger"));
-            m.addRenamer(new Renamer(NAME, 0, "klong", "kLong"));
-            m.addRenamer(new Renamer(NAME, 0, "kfloat", "kFloat"));
-            m.addRenamer(new Renamer(NAME, 0, "kdouble", "kDouble"));
-            m.addRenamer(new Renamer(NAME, 0, "kchar", "kCharacter"));
-            m.addRenamer(new Renamer(NAME2, 0, "kcomposite", "kComposite"));
+            m.addRenamer(new Renamer(NAME, 0, "pkeyint", "pkeyInt1"));
+            m.addRenamer(new Renamer(NAME, 0, "kboolean", "kBoolean1"));
+            m.addRenamer(new Renamer(NAME, 0, "kbyte", "kByte1"));
+            m.addRenamer(new Renamer(NAME, 0, "kshort", "kShort1"));
+            m.addRenamer(new Renamer(NAME, 0, "kint", "kInt1"));
+            m.addRenamer(new Renamer(NAME, 0, "klong", "kLong1"));
+            m.addRenamer(new Renamer(NAME, 0, "kfloat", "kFloat1"));
+            m.addRenamer(new Renamer(NAME, 0, "kdouble", "kDouble1"));
+            m.addRenamer(new Renamer(NAME, 0, "kchar", "kCharacter1"));
+            m.addRenamer(new Renamer(NAME2, 0, "kcomposite", "kComposite1"));
 
             Conversion conv1 = new MyConversion1();
             Conversion conv2 = new MyConversion2();
@@ -3958,39 +3958,40 @@ class EvolveClasses {
                 return;
             }
             checkValues(store.getSecondaryIndex
-                (index, Boolean.class, "kBoolean").get(true));
+                (index, Boolean.class, "kBoolean1").get(true));
             checkValues(store.getSecondaryIndex
-                (index, Byte.class, "kByte").get((byte) 77));
+                (index, Byte.class, "kByte1").get((byte) 77));
             checkValues(store.getSecondaryIndex
-                (index, Short.class, "kShort").get((short) 66));
+                (index, Short.class, "kShort1").get((short) 66));
             checkValues(store.getSecondaryIndex
-                (index, Integer.class, "kInteger").get(55));
+                (index, Integer.class, "kInt1").get(55));
             checkValues(store.getSecondaryIndex
-                (index, Long.class, "kLong").get((long) 44));
+                (index, Long.class, "kLong1").get((long) 44));
             checkValues(store.getSecondaryIndex
-                (index, Float.class, "kFloat").get((float) 33));
+                (index, Float.class, "kFloat1").get((float) 33));
             checkValues(store.getSecondaryIndex
-                (index, Double.class, "kDouble").get((double) 22));
+                (index, Double.class, "kDouble1").get((double) 22));
             checkValues(store.getSecondaryIndex
-                (index, Character.class, "kCharacter").get((char) 11));
+                (index, Character.class, "kCharacter1").get((char) 11));
             checkValues(store.getSecondaryIndex
-                (index, AllowFieldTypeChanges_Key.class, "kComposite").get
+                (index, AllowFieldTypeChanges_Key.class, "kComposite1").get
                     (new AllowFieldTypeChanges_Key(true)));
         }
 
         private void checkValues(AllowFieldTypeChanges obj) {
             TestCase.assertNotNull(obj);
-            TestCase.assertEquals(obj.pkeyInteger, Integer.valueOf(99));
-            TestCase.assertEquals(obj.kBoolean, Boolean.valueOf(true));
-            TestCase.assertEquals(obj.kByte, Byte.valueOf((byte) 77));
-            TestCase.assertEquals(obj.kShort, Short.valueOf((short) 66));
-            TestCase.assertEquals(obj.kInteger, Integer.valueOf(55));
-            TestCase.assertEquals(obj.kLong, Long.valueOf(44));
-            TestCase.assertEquals(obj.kFloat, Float.valueOf(33));
-            TestCase.assertEquals(obj.kDouble, Double.valueOf(22));
-            TestCase.assertEquals(obj.kCharacter, Character.valueOf((char) 11));
+            TestCase.assertEquals(obj.pkeyInt1, Integer.valueOf(99));
+            TestCase.assertEquals(obj.kBoolean1, Boolean.valueOf(true));
+            TestCase.assertEquals(obj.kByte1, Byte.valueOf((byte) 77));
+            TestCase.assertEquals(obj.kShort1, Short.valueOf((short) 66));
+            TestCase.assertEquals(obj.kInt1, Integer.valueOf(55));
+            TestCase.assertEquals(obj.kLong1, Long.valueOf(44));
+            TestCase.assertEquals(obj.kFloat1, Float.valueOf(33));
+            TestCase.assertEquals(obj.kDouble1, Double.valueOf(22));
+            TestCase.assertEquals(obj.kCharacter1,
+                                  Character.valueOf((char) 11));
 
-            AllowFieldTypeChanges_Key embed = obj.kComposite;
+            AllowFieldTypeChanges_Key embed = obj.kComposite1;
             TestCase.assertNotNull(embed);
             TestCase.assertEquals(embed.f1, true);
             TestCase.assertEquals(embed.f2, (byte) 2);
@@ -4117,15 +4118,15 @@ class EvolveClasses {
             RawObject obj;
             if (expectEvolved) {
                 obj = readRaw(store, 99, NAME, 1, NAME2, 1, CASECLS, 0);
-                checkRawFields(obj, "pkeyInteger", 99,
-                               "kBoolean", true,
-                               "kByte", (byte) 77,
-                               "kShort", (short) 66,
-                               "kInteger", 55,
-                               "kLong", (long) 44,
-                               "kFloat", (float) 33,
-                               "kDouble", (double) 22,
-                               "kCharacter", (char) 11,
+                checkRawFields(obj, "pkeyInt1", 99,
+                               "kBoolean1", true,
+                               "kByte1", (byte) 77,
+                               "kShort1", (short) 66,
+                               "kInt1", 55,
+                               "kLong1", (long) 44,
+                               "kFloat1", (float) 33,
+                               "kDouble1", (double) 22,
+                               "kCharacter1", (char) 11,
 
                                "f01", (short) 1,
                                "f02", 2,
@@ -4201,7 +4202,7 @@ class EvolveClasses {
                                "f_long2int", 333,
                                "f_String2long", 444L);
                 checkRawFields(obj.getSuper(),
-                               "kComposite", embed,
+                               "kComposite1", embed,
                                "f_long2Integer", 111,
                                "f_String2Long", 222L);
             } else {
@@ -4297,27 +4298,25 @@ class EvolveClasses {
             }
             Environment env = store.getEnvironment();
 
-            assertDbExists(expectEvolved, env, NAME, "kBoolean");
-            assertDbExists(expectEvolved, env, NAME, "kByte");
-            assertDbExists(expectEvolved, env, NAME, "kShort");
-            assertDbExists(expectEvolved, env, NAME, "kInteger");
-            assertDbExists(expectEvolved, env, NAME, "kLong");
-            assertDbExists(expectEvolved, env, NAME, "kFloat");
-            assertDbExists(expectEvolved, env, NAME, "kDouble");
-            assertDbExists(expectEvolved, env, NAME, "kCharacter");
-            assertDbExists(expectEvolved, env, NAME, "kComposite");
+            assertDbExists(expectEvolved, env, NAME, "kBoolean1");
+            assertDbExists(expectEvolved, env, NAME, "kByte1");
+            assertDbExists(expectEvolved, env, NAME, "kShort1");
+            assertDbExists(expectEvolved, env, NAME, "kInt1");
+            assertDbExists(expectEvolved, env, NAME, "kLong1");
+            assertDbExists(expectEvolved, env, NAME, "kFloat1");
+            assertDbExists(expectEvolved, env, NAME, "kDouble1");
+            assertDbExists(expectEvolved, env, NAME, "kCharacter1");
+            assertDbExists(expectEvolved, env, NAME, "kComposite1");
 
+            assertDbExists(!expectEvolved, env, NAME, "kboolean");
+            assertDbExists(!expectEvolved, env, NAME, "kbyte");
+            assertDbExists(!expectEvolved, env, NAME, "kshort");
             assertDbExists(!expectEvolved, env, NAME, "kint");
+            assertDbExists(!expectEvolved, env, NAME, "klong");
+            assertDbExists(!expectEvolved, env, NAME, "kfloat");
+            assertDbExists(!expectEvolved, env, NAME, "kdouble");
             assertDbExists(!expectEvolved, env, NAME, "kchar");
-            if(!DbCompat.hasCaseInsensitiveOnDiskDbFile()) {
-                assertDbExists(!expectEvolved, env, NAME, "kboolean");
-                assertDbExists(!expectEvolved, env, NAME, "kbyte");
-                assertDbExists(!expectEvolved, env, NAME, "kshort");             
-                assertDbExists(!expectEvolved, env, NAME, "klong");
-                assertDbExists(!expectEvolved, env, NAME, "kfloat");
-                assertDbExists(!expectEvolved, env, NAME, "kdouble");              
-                assertDbExists(!expectEvolved, env, NAME, "kcomposite");
-            }
+            assertDbExists(!expectEvolved, env, NAME, "kcomposite");
         }
     }
 
@@ -6828,6 +6827,1142 @@ class EvolveClasses {
                                "f1", 1,
                                "f3", 3);
             }
+        }
+    }
+    
+    /* 
+     * [18961]Rename secKey2, so the order of secondary keys' names is changed 
+     * from: secKey->seckey2->secKey3 to new_seckey2->secKey->secKey3.
+     */
+    @Entity(version=1)
+    static class RenameSecFieldDestroyOrder_1 extends EvolveCase{
+
+        private static final String NAME =
+            RenameSecFieldDestroyOrder_1.class.getName();
+        
+        @PrimaryKey
+        int key;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey;
+
+        /* Rename secKey2 to new_secKey2. */
+        @SecondaryKey(relate=MANY_TO_ONE)
+        int new_secKey2;
+        
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey3;
+        
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            m.addRenamer(new Renamer(NAME, 0, "secKey2", "new_secKey2"));
+            return m;
+        }
+        
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 1, null);
+            if (oldTypesExist) {
+                checkVersions(model, NAME, 1, NAME, 0);
+            } else {
+                checkVersions(model, NAME, 1);
+            }
+        }
+        
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, RenameSecFieldDestroyOrder_1>
+                index = store.getPrimaryIndex
+                    (Integer.class, RenameSecFieldDestroyOrder_1.class);
+            RenameSecFieldDestroyOrder_1 obj = index.get(1);
+            checkValues(obj);
+            checkSecondaries(store, index);
+
+            if (doUpdate) {
+                index.put(obj);
+                checkSecondaries(store, index);
+            }
+        }
+        
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, RenameSecFieldDestroyOrder_1>
+                index = newStore.getPrimaryIndex
+                    (Integer.class, RenameSecFieldDestroyOrder_1.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(1);
+            index.put((RenameSecFieldDestroyOrder_1)
+                      newStore.getModel().convertRawObject(raw));
+        }
+        
+        private void checkSecondaries(EntityStore store,
+                PrimaryIndex<Integer,
+                             RenameSecFieldDestroyOrder_1>
+                             index)
+            throws DatabaseException {
+            
+            if (!newMetadataWritten) {
+                return;
+            }
+            checkValues(store.getSecondaryIndex
+                (index, String.class, "secKey").get("aa"));
+            checkValues(store.getSecondaryIndex
+                (index, Integer.class, "new_secKey2").get(2));
+            checkValues(store.getSecondaryIndex
+                (index, String.class, "secKey3").get("bb"));
+        }
+        
+        private void checkValues(RenameSecFieldDestroyOrder_1 obj) {
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(obj.key, 1);
+            TestCase.assertEquals(obj.secKey, "aa");
+            TestCase.assertEquals(obj.new_secKey2, 2);
+            TestCase.assertEquals(obj.secKey3, "bb");
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawObject obj;
+            if (expectEvolved) {
+                obj = readRaw(store, 1, NAME, 1, CASECLS, 0);
+                checkRawFields(obj, "key", 1,
+                               "secKey", "aa",
+                               "new_secKey2", 2,
+                               "secKey3", "bb");
+            } else {
+                obj = readRaw(store, 1, NAME, 0, CASECLS, 0);
+                checkRawFields(obj, "key", 1,
+                               "secKey", "aa",
+                               "secKey2", 2,
+                               "secKey3", "bb");
+            }
+            Environment env = store.getEnvironment();
+
+            assertDbExists(expectEvolved, env, NAME, "new_secKey2");
+            assertDbExists(!expectEvolved, env, NAME, "secKey2");
+        }
+    }
+    
+    /* 
+     * [18961]Rename secKey2 and secKey3, so the order of secondary keys' names 
+     * is changed from : secKey->seckey2->secKey3 to new_seckey2->new_secKey3->
+     * secKey1.
+     */
+    @Entity(version=1)
+    static class RenameSecFieldDestroyOrder_2 extends EvolveCase{
+
+        private static final String NAME =
+            RenameSecFieldDestroyOrder_2.class.getName();
+        
+        @PrimaryKey
+        int key;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey;
+
+        /* Rename secKey2 to new_secKey2. */
+        @SecondaryKey(relate=MANY_TO_ONE)
+        int new_secKey2;
+        
+        /* Rename secKey3 to new_secKey3. */
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String new_secKey3;
+        
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            m.addRenamer(new Renamer(NAME, 0, "secKey2", "new_secKey2"));
+            m.addRenamer(new Renamer(NAME, 0, "secKey3", "new_secKey3"));
+            return m;
+        }
+        
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 1, null);
+            if (oldTypesExist) {
+                checkVersions(model, NAME, 1, NAME, 0);
+            } else {
+                checkVersions(model, NAME, 1);
+            }
+        }
+        
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, RenameSecFieldDestroyOrder_2>
+                index = store.getPrimaryIndex
+                    (Integer.class, RenameSecFieldDestroyOrder_2.class);
+            RenameSecFieldDestroyOrder_2 obj = index.get(1);
+            checkValues(obj);
+            checkSecondaries(store, index);
+
+            if (doUpdate) {
+                index.put(obj);
+                checkSecondaries(store, index);
+            }
+        }
+        
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, RenameSecFieldDestroyOrder_2>
+                index = newStore.getPrimaryIndex
+                    (Integer.class, RenameSecFieldDestroyOrder_2.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(1);
+            index.put((RenameSecFieldDestroyOrder_2)
+                      newStore.getModel().convertRawObject(raw));
+        }
+        
+        private void checkSecondaries(EntityStore store,
+                PrimaryIndex<Integer,
+                             RenameSecFieldDestroyOrder_2>
+                             index)
+            throws DatabaseException {
+            
+            if (!newMetadataWritten) {
+                return;
+            }
+            checkValues(store.getSecondaryIndex
+                (index, String.class, "secKey").get("aa"));
+            checkValues(store.getSecondaryIndex
+                (index, Integer.class, "new_secKey2").get(2));
+            checkValues(store.getSecondaryIndex
+                (index, String.class, "new_secKey3").get("bb"));
+        }
+        
+        private void checkValues(RenameSecFieldDestroyOrder_2 obj) {
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(obj.key, 1);
+            TestCase.assertEquals(obj.secKey, "aa");
+            TestCase.assertEquals(obj.new_secKey2, 2);
+            TestCase.assertEquals(obj.new_secKey3, "bb");
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawObject obj;
+            if (expectEvolved) {
+                obj = readRaw(store, 1, NAME, 1, CASECLS, 0);
+                checkRawFields(obj, "key", 1,
+                               "secKey", "aa",
+                               "new_secKey2", 2,
+                               "new_secKey3", "bb");
+            } else {
+                obj = readRaw(store, 1, NAME, 0, CASECLS, 0);
+                checkRawFields(obj, "key", 1,
+                               "secKey", "aa",
+                               "secKey2", 2,
+                               "secKey3", "bb");
+            }
+            Environment env = store.getEnvironment();
+
+            assertDbExists(expectEvolved, env, NAME, "new_secKey2");
+            assertDbExists(!expectEvolved, env, NAME, "secKey2");
+            assertDbExists(expectEvolved, env, NAME, "new_secKey3");
+            assertDbExists(!expectEvolved, env, NAME, "secKey3");
+        }
+    }
+    
+    /* 
+     * [18961]Rename secKey2 and secKey3, so the order of secondary keys' names 
+     * is changed from : secKey->seckey2->secKey3 to new_seckey3->pnew_secKey2
+     * ->secKey1.
+     */
+    @Entity(version=1)
+    static class RenameSecFieldDestroyOrder_3 extends EvolveCase{
+
+        private static final String NAME =
+            RenameSecFieldDestroyOrder_3.class.getName();
+        
+        @PrimaryKey
+        int key;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey;
+
+        /* Rename secKey2 to pnew_secKey2. */
+        @SecondaryKey(relate=MANY_TO_ONE)
+        int pnew_secKey2;
+        
+        /* Rename secKey3 to new_secKey3. */
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String new_secKey3;
+        
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            m.addRenamer(new Renamer(NAME, 0, "secKey2", "pnew_secKey2"));
+            m.addRenamer(new Renamer(NAME, 0, "secKey3", "new_secKey3"));
+            return m;
+        }
+        
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 1, null);
+            if (oldTypesExist) {
+                checkVersions(model, NAME, 1, NAME, 0);
+            } else {
+                checkVersions(model, NAME, 1);
+            }
+        }
+        
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, RenameSecFieldDestroyOrder_3>
+                index = store.getPrimaryIndex
+                    (Integer.class, RenameSecFieldDestroyOrder_3.class);
+            RenameSecFieldDestroyOrder_3 obj = index.get(1);
+            checkValues(obj);
+            checkSecondaries(store, index);
+
+            if (doUpdate) {
+                index.put(obj);
+                checkSecondaries(store, index);
+            }
+        }
+        
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, RenameSecFieldDestroyOrder_3>
+                index = newStore.getPrimaryIndex
+                    (Integer.class, 
+                            RenameSecFieldDestroyOrder_3.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(1);
+            index.put((RenameSecFieldDestroyOrder_3)
+                      newStore.getModel().convertRawObject(raw));
+        }
+        
+        private void checkSecondaries(EntityStore store,
+                PrimaryIndex<Integer,
+                             RenameSecFieldDestroyOrder_3>
+                             index)
+            throws DatabaseException {
+            
+            if (!newMetadataWritten) {
+                return;
+            }
+            checkValues(store.getSecondaryIndex
+                (index, String.class, "secKey").get("aa"));
+            checkValues(store.getSecondaryIndex
+                (index, Integer.class, "pnew_secKey2").get(2));
+            checkValues(store.getSecondaryIndex
+                (index, String.class, "new_secKey3").get("bb"));
+        }
+        
+        private void checkValues(RenameSecFieldDestroyOrder_3 obj) {
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(obj.key, 1);
+            TestCase.assertEquals(obj.secKey, "aa");
+            TestCase.assertEquals(obj.pnew_secKey2, 2);
+            TestCase.assertEquals(obj.new_secKey3, "bb");
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawObject obj;
+            if (expectEvolved) {
+                obj = readRaw(store, 1, NAME, 1, CASECLS, 0);
+                checkRawFields(obj, "key", 1,
+                               "secKey", "aa",
+                               "pnew_secKey2", 2,
+                               "new_secKey3", "bb");
+            } else {
+                obj = readRaw(store, 1, NAME, 0, CASECLS, 0);
+                checkRawFields(obj, "key", 1,
+                               "secKey", "aa",
+                               "secKey2", 2,
+                               "secKey3", "bb");
+            }
+            Environment env = store.getEnvironment();
+
+            assertDbExists(expectEvolved, env, NAME, "pnew_secKey2");
+            assertDbExists(!expectEvolved, env, NAME, "secKey2");
+            assertDbExists(expectEvolved, env, NAME, "new_secKey3");
+            assertDbExists(!expectEvolved, env, NAME, "secKey3");
+        }
+    }
+    
+    /* 
+     * [#18961]Delete secKey2's SecondaryKey annotation. so the order of non 
+     * keys' names is changed from : anonKey->znonkey to anonKey->secKey2->
+     * xnonKey.
+     */
+    @Entity(version=1)
+    static class DeleteSecAnnotationDestroyOrder extends EvolveCase{
+
+        private static final String NAME =
+            DeleteSecAnnotationDestroyOrder.class.getName();
+        
+        @PrimaryKey
+        int key;
+
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey;
+
+        /* Delete secKey2's SecondaryKey annotation. */
+        //@SecondaryKey(relate=MANY_TO_ONE)
+        int secKey2;
+        
+        @SecondaryKey(relate=MANY_TO_ONE)
+        String secKey3;
+        
+        int znonKey;
+        String xnonKey = "cc";
+        
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            m.addRenamer(new Renamer(NAME, 0, "anonKey", "znonKey"));
+            return m;
+        }
+        
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 1, null);
+            if (oldTypesExist) {
+                checkVersions(model, NAME, 1, NAME, 0);
+            } else {
+                checkVersions(model, NAME, 1);
+            }
+        }
+        
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, DeleteSecAnnotationDestroyOrder>
+                index = store.getPrimaryIndex
+                    (Integer.class, DeleteSecAnnotationDestroyOrder.class);
+            DeleteSecAnnotationDestroyOrder obj = index.get(1);
+            checkValues(obj);
+            checkSecondaries(store, index);
+
+            if (doUpdate) {
+                index.put(obj);
+                checkSecondaries(store, index);
+            }
+        }
+        
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, DeleteSecAnnotationDestroyOrder>
+                index = newStore.getPrimaryIndex
+                    (Integer.class, 
+                     DeleteSecAnnotationDestroyOrder.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(1);
+            index.put((DeleteSecAnnotationDestroyOrder)
+                      newStore.getModel().convertRawObject(raw));
+        }
+        
+        private void checkSecondaries(EntityStore store,
+                PrimaryIndex<Integer,
+                             DeleteSecAnnotationDestroyOrder>
+                             index)
+            throws DatabaseException {
+            
+            if (!newMetadataWritten) {
+                return;
+            }
+            checkValues(store.getSecondaryIndex
+                (index, String.class, "secKey").get("aa"));
+            checkValues(store.getSecondaryIndex
+                (index, String.class, "secKey3").get("bb"));
+        }
+        
+        private void checkValues(DeleteSecAnnotationDestroyOrder obj) {
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(obj.key, 1);
+            TestCase.assertEquals(obj.secKey, "aa");
+            TestCase.assertEquals(obj.secKey2, 2);
+            TestCase.assertEquals(obj.secKey3, "bb");
+            TestCase.assertEquals(obj.znonKey, 3);
+            TestCase.assertEquals(obj.xnonKey, "cc");
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawObject obj;
+            if (expectEvolved) {
+                obj = readRaw(store, 1, NAME, 1, CASECLS, 0);
+                checkRawFields(obj, "key", 1,
+                               "secKey", "aa",
+                               "secKey2", 2,
+                               "secKey3", "bb",
+                               "znonKey", 3,
+                               "xnonKey", "cc");
+            } else {
+                obj = readRaw(store, 1, NAME, 0, CASECLS, 0);
+                checkRawFields(obj, "key", 1,
+                               "secKey", "aa",
+                               "secKey2", 2,
+                               "secKey3", "bb",
+                               "anonKey", 3,
+                               "xnonKey", "cc");
+            }
+            Environment env = store.getEnvironment();
+
+            assertDbExists(!expectEvolved, env, NAME, "secKey2");
+        }
+    }
+    
+    /*
+     *  [#19377]Change one field of the proxy class from Map<String, String> to
+     *  Map<MyEnum, String>.
+     */
+    @Entity
+    static class ProxyClassFieldChanged extends EvolveCase {
+        private static final String NAME = 
+            ProxyClassFieldChanged.class.getName();
+        private static final String NAME2 = 
+            ProxiedClass_Proxy2.class.getName();
+
+        @PrimaryKey
+        int key;
+
+        private ProxiedClass embed;
+
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(ProxiedClass_Proxy2.class);
+        }
+        
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            Converter converter = 
+                new Converter(ProxiedClass_Proxy2.class.getName(), 0, "data", 
+                              new MyConversion());
+            m.addConverter(converter);
+            return m;
+        }
+
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 0, null);
+            checkVersions(model, NAME, 0);
+            if (oldTypesExist) {
+                checkVersions(model, NAME2, 1, NAME2, 0);
+            } else {
+                checkVersions(model, NAME2, 1);
+            }
+        }
+
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassFieldChanged>
+                index = store.getPrimaryIndex
+                    (Integer.class, ProxyClassFieldChanged.class);
+            ProxyClassFieldChanged obj = index.get(1);
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(1, obj.key);
+            TestCase.assertNotNull(obj.embed);
+            TestCase.assertEquals(2, obj.embed.data);
+            if (doUpdate) {
+                index.put(obj);
+            }
+        }
+
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassFieldChanged>
+                index = newStore.getPrimaryIndex
+                    (Integer.class, ProxyClassFieldChanged.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(1);
+            index.put((ProxyClassFieldChanged)
+                      newStore.getModel().convertRawObject(raw));
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawType embedType = store.getModel().getRawType(NAME2);
+            RawObject data = makeRawObject(store, expectEvolved);
+            RawObject embed = new RawObject
+                (embedType, makeValues("data", data), null);
+            RawObject obj = readRaw(store, 1, NAME, 0, CASECLS, 0);
+            checkRawFields(obj, "key", 1, "embed", embed);
+        }
+        
+        static RawObject makeRawObject(RawStore store, 
+                                        boolean expectEvolved) {
+            RawType dataType = store.getModel().getRawType
+                ("com.sleepycat.persist.impl.MapProxy$HashMapProxy");
+            RawType dataSuperType = store.getModel().getRawType
+                ("com.sleepycat.persist.impl.MapProxy");
+            RawType listRawType = 
+                store.getModel().getRawType(Object[].class.getName());
+            RawType myEnumType = 
+                store.getModel().getRawType(MyEnum.class.getName());
+            RawObject keyRawObject = null;
+            if (expectEvolved) {
+                ArrayList<RawObject> dataKeyValue = 
+                    new ArrayList<RawObject>();
+                RawObject myEnumRawObject = new RawObject(myEnumType, "DATA");
+                dataKeyValue.add(myEnumRawObject);
+                keyRawObject = new RawObject
+                    (listRawType, dataKeyValue.toArray());
+            } else {
+                ArrayList<String> dataKeyValue = new ArrayList<String>();
+                dataKeyValue.add("data");
+                keyRawObject = new RawObject
+                    (listRawType, dataKeyValue.toArray());
+            }
+            
+            ArrayList<Integer> dataValueValue = new ArrayList<Integer>(); 
+            dataValueValue.add(2);
+            
+            RawObject valueRawObject = new RawObject
+                (listRawType, dataValueValue.toArray());
+            
+            Map<String, Object> 
+                dataSuperValue = new HashMap<String, Object>();
+            dataSuperValue.put("keys", keyRawObject);
+            dataSuperValue.put("values", valueRawObject);
+            RawObject dataSuperRawObject = 
+                new RawObject(dataSuperType, dataSuperValue, null);
+            Map<String, Object> dataValue = 
+                new HashMap<String, Object>();
+            RawObject dataRawObject = new RawObject(dataType, 
+                    dataValue, dataSuperRawObject);
+            return dataRawObject;
+        }
+        
+        static class MyConversion implements Conversion {
+            private static final long serialVersionUID = 1L;
+            private transient RawType newDataType;
+            private transient RawType newDataSuperType;
+            private transient RawType myEnumType;
+
+            public void initialize(EntityModel model) {
+                newDataType = model.getRawType
+                    ("com.sleepycat.persist.impl.MapProxy$HashMapProxy");
+                newDataSuperType = 
+                    model.getRawType("com.sleepycat.persist.impl.MapProxy");
+                myEnumType = model.getRawType(MyEnum.class.getName());
+            }
+
+            public Object convert(Object fromValue) {
+
+                // Get field value maps for old and new objects.
+                RawObject oldDataRawObject = (RawObject) fromValue;
+                RawObject oldKeyRawObject = (RawObject)oldDataRawObject.
+                    getSuper().getValues().get("keys");
+                Object[] oldDataKeyValue = 
+                    (Object[])oldKeyRawObject.getElements();
+                RawObject oldValueRawObject = (RawObject)oldDataRawObject.
+                    getSuper().getValues().get("values");
+                
+                ArrayList<RawObject> newDataKeyValue = 
+                    new ArrayList<RawObject>();
+                RawObject myEnumRawObject = new RawObject(myEnumType, "DATA");
+                newDataKeyValue.add(myEnumRawObject);
+                
+                RawObject newKeyRawObject = new RawObject
+                    (oldKeyRawObject.getType(), newDataKeyValue.toArray());
+                Map<String, Object> 
+                    newDataSuperValue = new HashMap<String, Object>();
+                newDataSuperValue.put("keys", newKeyRawObject);
+                newDataSuperValue.put("values", oldValueRawObject);
+                RawObject newDataSuperRawObject = 
+                    new RawObject(newDataSuperType, newDataSuperValue, null);
+                Map<String, Object> newDataValue = 
+                    new HashMap<String, Object>();
+                RawObject newDataRawObject = 
+                    new RawObject(newDataType, newDataValue, 
+                                  newDataSuperRawObject);
+                return newDataRawObject;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                return o instanceof MyConversion;
+            }
+        }
+    }
+    
+    @Persistent(proxyFor=ProxiedClass.class, version=1)
+    static class ProxiedClass_Proxy2 implements PersistentProxy<ProxiedClass> {
+        Map<MyEnum, Integer> data;
+
+        public void initializeProxy(ProxiedClass o) {
+            data = new HashMap<MyEnum, Integer>();
+            data.put(MyEnum.DATA, o.data);
+        }
+
+        public ProxiedClass convertProxy() {
+            return new ProxiedClass(data.get(MyEnum.DATA));
+        }
+    }
+    
+    enum MyEnum { DATA };
+    
+    /*
+     *  [#19377]Change one field of the proxy class from Map<String, String> to
+     *  Map<Object, String>, and the Object component then will be assigned a
+     *  MyEnum object, which is not known for DPL when open a store.
+     */
+    @Entity
+    static class ProxyClassObjectFieldChanged extends EvolveCase {
+        private static final String NAME = 
+            ProxyClassObjectFieldChanged.class.getName();
+        private static final String NAME2 = 
+            ProxiedClass_Proxy3.class.getName();
+
+        @PrimaryKey
+        int key;
+
+        private ProxiedClass embed;
+
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(ProxiedClass_Proxy3.class);
+            
+            /*
+             * Because the DPL does not know MyEnum class, we have to register 
+             * it in advance of using it.
+             */
+            model.registerClass(MyEnum.class);
+        }
+        
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            Converter converter = 
+                new Converter(ProxiedClass_Proxy3.class.getName(), 0, "data", 
+                              new ProxyClassFieldChanged.MyConversion());
+            m.addConverter(converter);
+            return m;
+        }
+
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 0, null);
+            checkVersions(model, NAME, 0);
+            if (oldTypesExist) {
+                checkVersions(model, NAME2, 1, NAME2, 0);
+            } else {
+                checkVersions(model, NAME2, 1);
+            }
+        }
+
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassObjectFieldChanged>
+                index = store.getPrimaryIndex
+                    (Integer.class, ProxyClassObjectFieldChanged.class);
+            ProxyClassObjectFieldChanged obj = index.get(1);
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(1, obj.key);
+            TestCase.assertNotNull(obj.embed);
+            TestCase.assertEquals(2, obj.embed.data);
+            if (doUpdate) {
+                index.put(obj);
+            }
+        }
+
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassObjectFieldChanged>
+                index = newStore.getPrimaryIndex
+                    (Integer.class, ProxyClassObjectFieldChanged.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(1);
+            index.put((ProxyClassObjectFieldChanged)
+                      newStore.getModel().convertRawObject(raw));
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawType embedType = store.getModel().getRawType(NAME2);
+            RawObject data = 
+                ProxyClassFieldChanged.makeRawObject(store, expectEvolved);
+            RawObject embed = 
+                new RawObject(embedType, makeValues("data", data), null);
+            RawObject obj = readRaw(store, 1, NAME, 0, CASECLS, 0);
+            checkRawFields(obj, "key", 1, "embed", embed);
+
+        }
+    }
+    
+    @Persistent(proxyFor=ProxiedClass.class, version=1)
+    static class ProxiedClass_Proxy3 implements PersistentProxy<ProxiedClass> {
+        /* Changed from Map<String, String> to Map<Object, String>. */
+        Map<Object, Integer> data;
+
+        public void initializeProxy(ProxiedClass o) {
+            data = new HashMap<Object, Integer>();
+            data.put(MyEnum.DATA, o.data);
+        }
+
+        public ProxiedClass convertProxy() {
+            return new ProxiedClass(data.get(MyEnum.DATA));
+        }
+    }
+    
+    /*
+     *  [#19377]Change one field of the proxy class from Integer[] to
+     *  IntegerClass[].
+     */
+    @Entity
+    static class ProxyClassArrayFieldChanged extends EvolveCase {
+        private static final String NAME = 
+            ProxyClassArrayFieldChanged.class.getName();
+        private static final String NAME2 = 
+            ProxiedClass_Proxy4.class.getName();
+
+        @PrimaryKey
+        int key;
+
+        private ProxiedClass embed;
+        
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(ProxiedClass_Proxy4.class);
+        }
+        
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            Converter converter = 
+                new Converter(ProxiedClass_Proxy4.class.getName(), 0, "data", 
+                              new MyConversion());
+            m.addConverter(converter);
+            return m;
+        }
+
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 0, null);
+            checkVersions(model, NAME, 0);
+            if (oldTypesExist) {
+                checkVersions(model, NAME2, 1, NAME2, 0);
+            } else {
+                checkVersions(model, NAME2, 1);
+            }
+        }
+
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassArrayFieldChanged>
+                index = store.getPrimaryIndex
+                    (Integer.class, ProxyClassArrayFieldChanged.class);
+            ProxyClassArrayFieldChanged obj = index.get(1);
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(1, obj.key);
+            TestCase.assertNotNull(obj.embed);
+            TestCase.assertEquals(2, obj.embed.data);
+            if (doUpdate) {
+                index.put(obj);
+            }
+        }
+
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassArrayFieldChanged>
+                index = newStore.getPrimaryIndex
+                    (Integer.class, ProxyClassArrayFieldChanged.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(1);
+            index.put((ProxyClassArrayFieldChanged)
+                      newStore.getModel().convertRawObject(raw));
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawType embedType = store.getModel().getRawType(NAME2);
+            RawObject data = makeRawObject(store, expectEvolved);
+            RawObject embed = new RawObject
+                (embedType, makeValues("data", data), null);
+            RawObject obj = readRaw(store, 1, NAME, 0, CASECLS, 0);
+            checkRawFields(obj, "key", 1, "embed", embed);
+
+        }
+         
+        static RawObject makeRawObject(RawStore store, 
+                                       boolean expectEvolved) {
+            RawType integerClassType = 
+                store.getModel().getRawType(IntegerClass.class.getName());
+            RawObject dataRawObject = null;
+            if (expectEvolved) {
+                RawType dataType = store.getModel().getRawType
+                                       (IntegerClass[].class.getName());
+                Map<String, Object> integerClassValues = 
+                    new HashMap<String, Object>();
+                integerClassValues.put("data", 2);
+                RawObject integerClassObject = 
+                    new RawObject(integerClassType, integerClassValues, null);
+                RawObject[] elements = new RawObject[1];
+                elements[0] = integerClassObject;
+                dataRawObject = new RawObject(dataType, elements);
+            } else {
+                RawType dataType = 
+                    store.getModel().getRawType(Integer[].class.getName());
+                Integer[] elements = new Integer[1];
+                elements[0] = 2;
+                dataRawObject = new RawObject(dataType, elements);
+            }
+            return dataRawObject;
+        }
+        
+        static class MyConversion implements Conversion {
+            private static final long serialVersionUID = 1L;
+            private transient RawType newDataType;
+            private transient RawType integerClassType;
+
+            public void initialize(EntityModel model) {
+                newDataType = model.getRawType(IntegerClass[].class.getName());
+                integerClassType = 
+                    model.getRawType(IntegerClass.class.getName());
+            }
+
+            public Object convert(Object fromValue) {
+
+                // Get field value maps for old and new objects.
+                RawObject oldDataRawObject = (RawObject) fromValue;
+                Object[] oldElements = oldDataRawObject.getElements();
+                Map<String, Object> integerClassValues = 
+                    new HashMap<String, Object>();
+                integerClassValues.put("data", oldElements[0]);
+                RawObject integerClassObject = 
+                    new RawObject(integerClassType, integerClassValues, null);
+                RawObject[] newElements = new RawObject[1];
+                newElements[0] = integerClassObject;
+                RawObject newDataRawObject = 
+                    new RawObject(newDataType, newElements);
+                return newDataRawObject;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                return o instanceof MyConversion;
+            }
+        }
+    }
+    
+    @Persistent(proxyFor=ProxiedClass.class, version=1)
+    static class ProxiedClass_Proxy4 implements PersistentProxy<ProxiedClass> {
+        IntegerClass[] data;
+
+        public void initializeProxy(ProxiedClass o) {
+            data = new IntegerClass[1];
+            data[0] = new IntegerClass(o.data);
+        }
+
+        public ProxiedClass convertProxy() {
+            return new ProxiedClass(data[0].data);
+        }
+    }
+    
+    @Persistent 
+    static class IntegerClass {
+        int data;
+        
+        IntegerClass(){}
+        
+        IntegerClass(int data) {
+            this.data = data;
+        }
+    }
+    
+    /*
+     *  [#19377]Change one field of the proxy class from Integer[] to Object[], 
+     *  and the Object component then will be assigned a IntegerClass object, 
+     *  which is not known for DPL when open a store.
+     */
+    @Entity
+    static class ProxyClassObjectArrayFieldChanged extends EvolveCase {
+        private static final String NAME = 
+            ProxyClassObjectArrayFieldChanged.class.getName();
+        private static final String NAME2 = 
+            ProxiedClass_Proxy5.class.getName();
+
+        @PrimaryKey
+        int key;
+
+        private ProxiedClass embed;
+        
+        @Override
+        void configure(EntityModel model, StoreConfig config) {
+            model.registerClass(ProxiedClass_Proxy5.class);
+            model.registerClass(IntegerClass[].class);
+        }
+        
+        @Override
+        Mutations getMutations() {
+            Mutations m = new Mutations();
+            Converter converter = 
+                new Converter(ProxiedClass_Proxy5.class.getName(), 0, "data", 
+                              new ProxyClassArrayFieldChanged.MyConversion());
+            m.addConverter(converter);
+            return m;
+        }
+
+        @Override
+        void checkEvolvedModel(EntityModel model,
+                               Environment env,
+                               boolean oldTypesExist) {
+            checkEntity(true, model, env, NAME, 0, null);
+            checkVersions(model, NAME, 0);
+            if (oldTypesExist) {
+                checkVersions(model, NAME2, 1, NAME2, 0);
+            } else {
+                checkVersions(model, NAME2, 1);
+            }
+        }
+
+        @Override
+        void readObjects(EntityStore store, boolean doUpdate)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassObjectArrayFieldChanged>
+                index = store.getPrimaryIndex
+                    (Integer.class, ProxyClassObjectArrayFieldChanged.class);
+            ProxyClassObjectArrayFieldChanged obj = index.get(1);
+            TestCase.assertNotNull(obj);
+            TestCase.assertEquals(1, obj.key);
+            TestCase.assertNotNull(obj.embed);
+            TestCase.assertEquals(2, obj.embed.data);
+            if (doUpdate) {
+                index.put(obj);
+            }
+        }
+
+        @Override
+        void copyRawObjects(RawStore rawStore, EntityStore newStore)
+            throws DatabaseException {
+
+            PrimaryIndex<Integer, ProxyClassObjectArrayFieldChanged>
+                index = newStore.getPrimaryIndex
+                    (Integer.class, ProxyClassObjectArrayFieldChanged.class);
+            RawObject raw = rawStore.getPrimaryIndex(NAME).get(1);
+            index.put((ProxyClassObjectArrayFieldChanged)
+                      newStore.getModel().convertRawObject(raw));
+        }
+
+        @Override
+        void readRawObjects(RawStore store,
+                            boolean expectEvolved,
+                            boolean expectUpdated)
+            throws DatabaseException {
+
+            RawType embedType = store.getModel().getRawType(NAME2);
+            RawObject data = 
+                makeRawObject(store, expectEvolved, expectUpdated);
+            RawObject embed = new RawObject
+                (embedType, makeValues("data", data), null);
+            RawObject obj = readRaw(store, 1, NAME, 0, CASECLS, 0);
+            checkRawFields(obj, "key", 1, "embed", embed);
+
+        }
+        
+        static RawObject makeRawObject(RawStore store, 
+                                       boolean expectEvolved,
+                                       boolean expectUpdated) {
+            RawType integerClassType = 
+                store.getModel().getRawType(IntegerClass.class.getName());
+            RawObject dataRawObject = null;
+            if (expectEvolved) {
+                RawType dataType = null;
+                if (expectUpdated) {
+                    dataType = store.getModel().getRawType
+                        (Object[].class.getName());
+                } else {
+                    dataType = store.getModel().getRawType
+                        (IntegerClass[].class.getName());
+                }
+                Map<String, Object> integerClassValues = 
+                    new HashMap<String, Object>();
+                integerClassValues.put("data", 2);
+                RawObject integerClassObject = 
+                    new RawObject(integerClassType, integerClassValues, null);
+                RawObject[] elements = new RawObject[1];
+                elements[0] = integerClassObject;
+                dataRawObject = new RawObject(dataType, elements);
+            } else {
+                RawType dataType = 
+                    store.getModel().getRawType(Integer[].class.getName());
+                Integer[] elements = new Integer[1];
+                elements[0] = 2;
+                dataRawObject = new RawObject(dataType, elements);
+            }
+            return dataRawObject;
+        }
+    }
+    
+    @Persistent(proxyFor=ProxiedClass.class, version=1)
+    static class ProxiedClass_Proxy5 implements PersistentProxy<ProxiedClass> {
+        Object[] data;
+
+        public void initializeProxy(ProxiedClass o) {
+            data = new Object[1];
+            data[0] = new IntegerClass(o.data);
+        }
+
+        public ProxiedClass convertProxy() {
+            return new ProxiedClass(((IntegerClass)data[0]).data);
         }
     }
 }

@@ -127,8 +127,8 @@ RequireJava() {
 RequireTcl() {
     Progress -minor "checking for Tcl..."
     RequireFileInPath INCLUDE "$INCLUDE" tcl.h
-    RequireFileInPath LIB "$LIB" tcl84g.lib
-    RequireFileInPath LIB "$LIB" tcl84.lib
+    RequireFileInPath LIB "$LIB" tcl85g.lib
+    RequireFileInPath LIB "$LIB" tcl85.lib
 }
 
 # RequireWix()
@@ -207,7 +207,9 @@ BuildProduct() {
     Progress "Building $PRODUCT_NAME in ${PRODUCT_SUB_BLDDIR}"
     cd ${PRODUCT_SUB_BLDDIR}/dist
     # make files writeable if necessary
-    chmod +w ${PRODUCT_SUB_BLDDIR}/build_windows/*.vcproj
+    chmod +w ${PRODUCT_SUB_BLDDIR}/build_windows/VS8/*.vcproj
+    chmod +w ${PRODUCT_SUB_BLDDIR}/build_windows/VS10/*.vcxproj
+    chmod +w ${PRODUCT_SUB_BLDDIR}/build_windows/VS10/*.props
     chmod +w ${PRODUCT_SUB_BLDDIR}/build_windows/*.sln
     cmd.exe /x /c call $MSI_DIR/build.bat
 }
@@ -378,6 +380,8 @@ StageSourceComponents() {
     rm -rf stage
     mkdir stage
     mkdir stage/build_windows
+    mkdir stage/build_windows/VS8
+    mkdir stage/build_windows/VS10
     mkdir stage/sql
     mkdir stage/src
     mkdir stage/src/clib
@@ -396,9 +400,10 @@ StageSourceComponents() {
     cp build_windows/Berkeley_DB_examples_vs2010.sln stage/build_windows
     cp build_windows/BDB_dotNet_examples_vs2010.sln stage/build_windows
     # NOTE: this assumes ALL example projects start with "ex"
-    cp build_windows/ex*.vcproj stage/build_windows
+    cp build_windows/VS8/ex*.vcproj stage/build_windows/VS8
     # VS2010 projects too
-    cp build_windows/ex*.vcxproj stage/build_windows
+    cp build_windows/VS10/ex*.vcxproj stage/build_windows/VS10
+    cp build_windows/VS10/*.props stage/build_windows/VS10
 
     # note files in example group file, starting at stage
     cd stage

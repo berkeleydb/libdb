@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -43,7 +43,7 @@ static int serve_repmgr_request __P((ENV *, REPMGR_MESSAGE *));
  * "present".  Otherwise ("deleting") the goal is to not even appear in the
  * database at all (0).
  */
-#define	NEXT_STATUS(s) ((s) == SITE_ADDING ? SITE_PRESENT : 0)
+#define	NEXT_STATUS(s) (u_int32_t)((s) == SITE_ADDING ? SITE_PRESENT : 0)
 
 /*
  * PUBLIC: void *__repmgr_msg_thread __P((void *));
@@ -92,11 +92,13 @@ message_loop(env, th)
 			 * or GMDB operations, so that we can limit the number
 			 * of them, in order to avoid starving more important
 			 * rep messages.
-			 */ 
+			 */
 			db_rep->non_rep_th++;
 			incremented = TRUE;
 		}
 		if (msg->msg_hdr.type == REPMGR_REP_MESSAGE) {
+			DB_ASSERT(env,
+			    IS_VALID_EID(msg->v.repmsg.originating_eid));
 			site = SITE_FROM_EID(msg->v.repmsg.originating_eid);
 			membership = site->membership;
 		}
@@ -164,7 +166,7 @@ message_loop(env, th)
 	/*
 	 * A return of DB_REP_UNAVAIL from __repmgr_queue_get() merely means we
 	 * should finish gracefully.
-	 */ 
+	 */
 	if (ret == DB_REP_UNAVAIL)
 		ret = 0;
 out:
@@ -471,8 +473,7 @@ send_permlsn(env, generation, lsn)
 	REP *rep;
 	REPMGR_CONNECTION *conn;
 	REPMGR_SITE *site;
-	int ack, bcast, master, policy, ret;
-	u_int eid;
+	int ack, bcast, eid, master, policy, ret;
 
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
@@ -519,10 +520,18 @@ send_permlsn(env, generation, lsn)
 	 * Send to master first, since we need to send to all its connections.
 	 */
 	if (site != NULL && (bcast || ack)) {
-		if (IS_SITE_AVAILABLE(site) &&
-		    (ret = send_permlsn_conn(env,
-		    site->ref.conn, generation, lsn)) != 0)
-			goto unlock;
+		if (site->state == SITE_CONNECTED) {
+			if ((conn = site->ref.conn.in) != NULL &&
+			    conn->state == CONN_READY &&
+			    (ret = send_permlsn_conn(env,
+			    conn, generation, lsn)) != 0)
+				goto unlock;
+			if ((conn = site->ref.conn.out) != NULL &&
+			    conn->state == CONN_READY &&
+			    (ret = send_permlsn_conn(env,
+			    conn, generation, lsn)) != 0)
+				goto unlock;
+		}
 		TAILQ_FOREACH(conn, &site->sub_conns, entries) {
 			if ((ret = send_permlsn_conn(env,
 			    conn, generation, lsn)) != 0)
@@ -535,16 +544,24 @@ send_permlsn(env, generation, lsn)
 		 * that, above).
 		 */
 		FOR_EACH_REMOTE_SITE_INDEX(eid) {
-			if ((int)eid == master)
+			if (eid == master)
 				continue;
 			site = SITE_FROM_EID(eid);
 			/*
-			 * Send the ack out on primary connection only.
+			 * Send the ack out on primary connections only.
 			 */
-			if (site->state == SITE_CONNECTED &&
-			    (ret = send_permlsn_conn(env,
-			    site->ref.conn, generation, lsn)) != 0)
-				goto unlock;
+			if (site->state == SITE_CONNECTED) {
+				if ((conn = site->ref.conn.in) != NULL &&
+				    conn->state == CONN_READY &&
+				    (ret = send_permlsn_conn(env,
+				    conn, generation, lsn)) != 0)
+					goto unlock;
+				if ((conn = site->ref.conn.out) != NULL &&
+				    conn->state == CONN_READY &&
+				    (ret = send_permlsn_conn(env,
+				    conn, generation, lsn)) != 0)
+					goto unlock;
+			}
 		}
 	}
 
@@ -891,7 +908,7 @@ resolve_limbo_int(env, ip)
 	 * there's nothing for us to do.
 	 */
 	eid = db_rep->limbo_victim;
-	if (eid == DB_EID_INVALID)
+	if (!IS_VALID_EID(eid))
 		goto out;
 	site = SITE_FROM_EID(eid);
 	addr = site->net_addr;
@@ -1187,7 +1204,7 @@ rescind_pending(env, ip, eid, cur_status, new_status)
 
 	db_rep = env->rep_handle;
 
-retry:	
+retry:
 	if ((ret = __repmgr_setup_gmdb_op(env, ip, NULL, 0)) != 0)
 		return (ret);
 

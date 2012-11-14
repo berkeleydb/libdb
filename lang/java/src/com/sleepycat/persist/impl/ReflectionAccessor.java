@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -41,7 +41,8 @@ class ReflectionAccessor implements Accessor {
         } catch (NoSuchMethodException e) {
             throw DbCompat.unexpectedState(type.getName());
         }
-        if (!Modifier.isPublic(constructor.getModifiers())) {
+        if (!Modifier.isPublic(type.getModifiers()) || 
+            !Modifier.isPublic(constructor.getModifiers())) {
             setAccessible(constructor, type.getName() + "()");
         }
     }
@@ -58,22 +59,19 @@ class ReflectionAccessor implements Accessor {
         this(type, superAccessor);
         if (priKeyField != null) {
             priKey = getField(catalog, priKeyField,
-                              true /*isRequiredKeyField*/,
-                              false /*isCompositeKey*/);
+                              true /*isRequiredKeyField*/);
         } else {
             priKey = null;
         }
         if (secKeyFields.size() > 0) {
             secKeys = getFields(catalog, secKeyFields,
-                                false /*isRequiredKeyField*/,
-                                false /*isCompositeKey*/);
+                                false /*isRequiredKeyField*/);
         } else {
             secKeys = EMPTY_KEYS;
         }
         if (nonKeyFields.size() > 0) {
             nonKeys = getFields(catalog, nonKeyFields,
-                                false /*isRequiredKeyField*/,
-                                false /*isCompositeKey*/);
+                                false /*isRequiredKeyField*/);
         } else {
             nonKeys = EMPTY_KEYS;
         }
@@ -88,20 +86,16 @@ class ReflectionAccessor implements Accessor {
         this(type, null);
         priKey = null;
         secKeys = EMPTY_KEYS;
-        nonKeys = getFields(catalog, fieldInfos,
-                            true /*isRequiredKeyField*/,
-                            true /*isCompositeKey*/);
+        nonKeys = getFields(catalog, fieldInfos, true /*isRequiredKeyField*/);
     }
 
     private FieldAccess[] getFields(Catalog catalog,
                                     List<FieldInfo> fieldInfos,
-                                    boolean isRequiredKeyField,
-                                    boolean isCompositeKey) {
+                                    boolean isRequiredKeyField) {
         int index = 0;
         FieldAccess[] fields = new FieldAccess[fieldInfos.size()];
         for (FieldInfo info : fieldInfos) {
-            fields[index] = getField
-                (catalog, info, isRequiredKeyField, isCompositeKey);
+            fields[index] = getField(catalog, info, isRequiredKeyField);
             index += 1;
         }
         return fields;
@@ -109,26 +103,28 @@ class ReflectionAccessor implements Accessor {
 
     private FieldAccess getField(Catalog catalog,
                                  FieldInfo fieldInfo,
-                                 boolean isRequiredKeyField,
-                                 boolean isCompositeKey) {
+                                 boolean isRequiredKeyField) {
         Field field;
         try {
             field = type.getDeclaredField(fieldInfo.getName());
         } catch (NoSuchFieldException e) {
             throw DbCompat.unexpectedException(e);
         }
-        if (!Modifier.isPublic(field.getModifiers())) {
+        if (!Modifier.isPublic(type.getModifiers()) || 
+            !Modifier.isPublic(field.getModifiers())) {
             setAccessible(field, field.getName());
         }
         Class fieldCls = field.getType();
         if (fieldCls.isPrimitive()) {
             assert SimpleCatalog.isSimpleType(fieldCls);
             return new PrimitiveAccess
-                (field, SimpleCatalog.getSimpleFormat(fieldCls));
+                (field, (SimpleFormat) catalog.getFormat(fieldCls.getName()));
         } else if (isRequiredKeyField) {
             Format format = catalog.getFormat(fieldInfo.getClassName());
             assert format != null;
             return new KeyObjectAccess(field, format);
+        } else if (fieldCls == String.class) {
+            return new StringAccess(field);
         } else {
             return new ObjectAccess(field);
         }
@@ -176,7 +172,9 @@ class ReflectionAccessor implements Accessor {
         }
     }
 
-    public void writePriKeyField(Object o, EntityOutput output) {
+    public void writePriKeyField(Object o, EntityOutput output)
+        throws RefreshException {
+
         try {
             if (priKey != null) {
                 priKey.write(o, output);
@@ -190,7 +188,9 @@ class ReflectionAccessor implements Accessor {
         }
     }
 
-    public void readPriKeyField(Object o, EntityInput input) {
+    public void readPriKeyField(Object o, EntityInput input)
+        throws RefreshException {
+
         try {
             if (priKey != null) {
                 priKey.read(o, input);
@@ -204,9 +204,16 @@ class ReflectionAccessor implements Accessor {
         }
     }
 
-    public void writeSecKeyFields(Object o, EntityOutput output) {
+    public void writeSecKeyFields(Object o, EntityOutput output)
+        throws RefreshException {
+
         try {
-            if (priKey != null && !priKey.isPrimitive) {
+        
+            /* 
+             * In JE 5.0, String is treated as primitive type, so String does
+             * not need to be registered. [#19247]
+             */
+            if (priKey != null && !priKey.isPrimitive && !priKey.isString) {
                 output.registerPriKeyObject(priKey.field.get(o));
             }
             if (superAccessor != null) {
@@ -224,10 +231,14 @@ class ReflectionAccessor implements Accessor {
                                  EntityInput input,
                                  int startField,
                                  int endField,
-                                 int superLevel) {
+                                 int superLevel)
+        throws RefreshException {
+
         try {
-            if (priKey != null && !priKey.isPrimitive) {
+            if (priKey != null && !priKey.isPrimitive && !priKey.isString) {
                 input.registerPriKeyObject(priKey.field.get(o));
+            } else if (priKey != null && priKey.isString) {
+                input.registerPriStringKeyObject(priKey.field.get(o));
             }
             if (superLevel != 0 && superAccessor != null) {
                 superAccessor.readSecKeyFields
@@ -250,7 +261,9 @@ class ReflectionAccessor implements Accessor {
         }
     }
 
-    public void writeNonKeyFields(Object o, EntityOutput output) {
+    public void writeNonKeyFields(Object o, EntityOutput output)
+        throws RefreshException {
+
         try {
             if (superAccessor != null) {
                 superAccessor.writeNonKeyFields(o, output);
@@ -267,7 +280,9 @@ class ReflectionAccessor implements Accessor {
                                  EntityInput input,
                                  int startField,
                                  int endField,
-                                 int superLevel) {
+                                 int superLevel)
+        throws RefreshException {
+
         try {
             if (superLevel != 0 && superAccessor != null) {
                 superAccessor.readNonKeyFields
@@ -290,7 +305,9 @@ class ReflectionAccessor implements Accessor {
         }
     }
 
-    public void writeCompositeKeyFields(Object o, EntityOutput output) {
+    public void writeCompositeKeyFields(Object o, EntityOutput output)
+        throws RefreshException {
+
         try {
             for (int i = 0; i < nonKeys.length; i += 1) {
                 nonKeys[i].write(o, output);
@@ -300,7 +317,9 @@ class ReflectionAccessor implements Accessor {
         }
     }
 
-    public void readCompositeKeyFields(Object o, EntityInput input) {
+    public void readCompositeKeyFields(Object o, EntityInput input)
+        throws RefreshException {
+
         try {
             for (int i = 0; i < nonKeys.length; i += 1) {
                 nonKeys[i].read(o, input);
@@ -345,6 +364,20 @@ class ReflectionAccessor implements Accessor {
             throw DbCompat.unexpectedException(e);
         }
     }
+    
+    public void setPriField(Object o, Object value) {
+        try {
+            if (priKey != null) {
+                priKey.field.set(o, value);
+            } else if (superAccessor != null) {
+                superAccessor.setPriField(o, value);
+            } else {
+                throw DbCompat.unexpectedState("No primary key field");
+            }
+        } catch (IllegalAccessException e) {
+            throw DbCompat.unexpectedException(e);
+        }
+    }
 
     /**
      * Abstract base class for field access classes.
@@ -353,23 +386,26 @@ class ReflectionAccessor implements Accessor {
 
         Field field;
         boolean isPrimitive;
+        boolean isString = false;
 
         FieldAccess(Field field) {
             this.field = field;
             isPrimitive = field.getType().isPrimitive();
+            isString = 
+                field.getType().getName().equals(String.class.getName());
         }
 
         /**
          * Writes a field.
          */
         abstract void write(Object o, EntityOutput out)
-            throws IllegalAccessException;
+            throws IllegalAccessException, RefreshException;
 
         /**
          * Reads a field.
          */
         abstract void read(Object o, EntityInput in)
-            throws IllegalAccessException;
+            throws IllegalAccessException, RefreshException;
 
         /**
          * Returns whether a field is null (for reference types) or zero (for
@@ -394,14 +430,14 @@ class ReflectionAccessor implements Accessor {
 
         @Override
         void write(Object o, EntityOutput out)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             out.writeObject(field.get(o), null);
         }
 
         @Override
         void read(Object o, EntityInput in)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.set(o, in.readObject());
         }
@@ -422,16 +458,40 @@ class ReflectionAccessor implements Accessor {
 
         @Override
         void write(Object o, EntityOutput out)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             out.writeKeyObject(field.get(o), format);
         }
 
         @Override
         void read(Object o, EntityInput in)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             field.set(o, in.readKeyObject(format));
+        }
+    }
+
+    /**
+     * Access for String fields, that are not primary key fields or composite
+     * key fields with object types.
+     */
+    private static class StringAccess extends FieldAccess {
+        StringAccess(Field field) {
+            super(field);
+        }
+
+        @Override
+        void write(Object o, EntityOutput out)
+            throws IllegalAccessException, RefreshException {
+            
+            out.writeString((String) field.get(o));
+        }
+
+        @Override
+        void read(Object o, EntityInput in)
+            throws IllegalAccessException, RefreshException {
+
+            field.set(o, in.readStringObject());
         }
     }
 
@@ -456,7 +516,7 @@ class ReflectionAccessor implements Accessor {
 
         @Override
         void read(Object o, EntityInput in)
-            throws IllegalAccessException {
+            throws IllegalAccessException, RefreshException {
 
             format.readPrimitiveField(o, in, field);
         }

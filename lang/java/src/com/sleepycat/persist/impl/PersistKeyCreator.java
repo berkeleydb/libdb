@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  */
 
@@ -46,15 +46,37 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
     /**
      * Creates a key creator/nullifier for a given entity class and key name.
      */
-    public PersistKeyCreator(Catalog catalog,
+    public PersistKeyCreator(Catalog catalogParam,
                              EntityMetadata entityMeta,
                              String keyClassName,
                              SecondaryKeyMetadata secKeyMeta,
                              boolean rawAccess) {
-        this.catalog = catalog;
+        catalog = catalogParam;
+        try {
+            getFormats(entityMeta, keyClassName, secKeyMeta, rawAccess);
+        } catch (RefreshException e) {
+            /* Must assign catalog field in constructor. */
+            catalog = e.refresh();
+            try {
+                getFormats(entityMeta, keyClassName, secKeyMeta, rawAccess);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
+        }
+        keyName = secKeyMeta.getKeyName();
+        Relationship rel = secKeyMeta.getRelationship();
+        toMany = (rel == Relationship.ONE_TO_MANY ||
+                  rel == Relationship.MANY_TO_MANY);
+    }
+
+    private void getFormats(EntityMetadata entityMeta,
+                            String keyClassName,
+                            SecondaryKeyMetadata secKeyMeta,
+                            boolean rawAccess)
+        throws RefreshException {
+
         priKeyFormat = PersistEntityBinding.getOrCreateFormat
             (catalog, entityMeta.getPrimaryKey().getClassName(), rawAccess);
-        keyName = secKeyMeta.getKeyName();
         keyFormat = PersistEntityBinding.getOrCreateFormat
             (catalog, keyClassName, rawAccess);
         if (keyFormat == null) {
@@ -66,9 +88,6 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
                 ("Use a primitive wrapper class instead of class: " +
                  keyFormat.getClassName());
         }
-        Relationship rel = secKeyMeta.getRelationship();
-        toMany = (rel == Relationship.ONE_TO_MANY ||
-                  rel == Relationship.MANY_TO_MANY);
     }
 
     public boolean createSecondaryKey(SecondaryDatabase secondary,
@@ -79,14 +98,21 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
             return createSecondaryKeyInternal(secondary, key, data, result);
         } catch (RefreshException e) {
             e.refresh();
-            return createSecondaryKeyInternal(secondary, key, data, result);
+            try {
+                return createSecondaryKeyInternal(secondary, key, data,
+                                                  result);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
         }
     }
 
     private boolean createSecondaryKeyInternal(SecondaryDatabase secondary,
                                                DatabaseEntry key,
                                                DatabaseEntry data,
-                                               DatabaseEntry result) {
+                                               DatabaseEntry result)
+        throws RefreshException {
+
         if (toMany) {
             throw DbCompat.unexpectedState();
         }
@@ -111,14 +137,20 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
             createSecondaryKeysInternal(secondary, key, data, results);
         } catch (RefreshException e) {
             e.refresh();
-            createSecondaryKeysInternal(secondary, key, data, results);
+            try {
+                createSecondaryKeysInternal(secondary, key, data, results);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
         }
     }
 
     private void createSecondaryKeysInternal(SecondaryDatabase secondary,
                                              DatabaseEntry key,
                                              DatabaseEntry data,
-                                             Set results) {
+                                             Set results)
+        throws RefreshException {
+
         if (!toMany) {
             throw DbCompat.unexpectedState();
         }
@@ -137,17 +169,23 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
             return nullifyForeignKeyInternal(secondary, key, data, secKey);
         } catch (RefreshException e) {
             e.refresh();
-            return nullifyForeignKeyInternal(secondary, key, data, secKey);
+            try {
+                return nullifyForeignKeyInternal(secondary, key, data, secKey);
+            } catch (RefreshException e2) {
+                throw DbCompat.unexpectedException(e2);
+            }
         }
     }
 
     private boolean nullifyForeignKeyInternal(SecondaryDatabase secondary,
                                               DatabaseEntry key,
                                               DatabaseEntry data,
-                                              DatabaseEntry secKey) {
+                                              DatabaseEntry secKey)
+        throws RefreshException {
+
         /* Deserialize the entity and get its current class format. */
         RawObject entity = (RawObject) PersistEntityBinding.readEntity
-            (catalog, key, data, true /*rawAccess*/);
+            (catalog, key, null, data, true /*rawAccess*/);
         Format entityFormat = (Format) entity.getType();
 
         /*
@@ -179,7 +217,8 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
     /**
      * Returns the location from which the secondary key field can be copied.
      */
-    private KeyLocation moveToKey(DatabaseEntry priKey, DatabaseEntry data) {
+    private KeyLocation moveToKey(DatabaseEntry priKey, DatabaseEntry data)
+        throws RefreshException {
 
         RecordInput input = new RecordInput
             (catalog, true /*rawAccess*/, priKey, priKeyFormat.getId(),
@@ -187,6 +226,7 @@ public class PersistKeyCreator implements SecondaryKeyCreator,
         int formatId = input.readPackedInt();
         Format entityFormat =
             catalog.getFormat(formatId, true /*expectStored*/);
+        input.registerEntityFormat(entityFormat);
         Format fieldFormat = entityFormat.skipToSecKey(input, keyName);
         if (fieldFormat != null) {
             /* Returns null if key field is null. */

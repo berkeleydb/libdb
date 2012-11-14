@@ -1,6 +1,38 @@
-2011-08-05
+2012-02-09
 
-	* Add updates so the package can work with Oracle Java Embedded Client
+	* added newer sqlite3_status(), sqlite3_db_status() constants
+	* added DataSource for JDK 1.4/1.5/1.6
+	* proper detect Java 1.7 in SQLite.JDBC
+
+2012-02-02
+
+	* reviewed configure for Java 1.7
+	* added DataSource for Java 1.7
+
+2011-12-22
+	* fixes in open mode of SQLite.Shell
+	* minor tweaks in Makefile.in
+
+2011-11-22
+
+	* support for OpenJDK 1.7 added
+
+2011-10-30
+
+	* minor doc update
+	* updated config.sub/config.guess
+
+2011-10-27
+
+	* updated libtool/aclocal/configure
+	* added SQLite.Stmt.column_name method as suggested by Eoin Shanaghy
+
+2011-08-27
+
+	* update to SQLite 3.7.7.1
+	* fallback to pkg-config for Ubuntu 11 SQLite3
+	* RPM packaging
+	* added support for Oracle Java Embedded Client (OJEC)
 
 2011-04-30
 

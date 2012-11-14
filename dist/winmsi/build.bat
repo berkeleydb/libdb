@@ -19,14 +19,14 @@ echo Using Visual Studio format 8.0 (Visual Studio 2005)
 @echo "" > winbld.out
 @echo devenv /build Release ..\build_windows\Berkeley_DB.sln
 @devenv /build Release ..\build_windows\Berkeley_DB.sln >> winbld.out
-@echo devenv /build Release ..\build_windows\Berkeley_DB.sln /project db_java.vcproj
-@devenv /build Release ..\build_windows\Berkeley_DB.sln /project db_java.vcproj
+@echo devenv /build Release ..\build_windows\Berkeley_DB.sln /project VS8\db_java.vcproj
+@devenv /build Release ..\build_windows\Berkeley_DB.sln /project VS8\db_java.vcproj
 @echo devenv /build Release ..\build_windows\BDB_dotNet.sln
 @devenv /build Release ..\build_windows\BDB_dotNet.sln >> winbld.out
-@echo devenv /build Release ..\build_windows\db_sql_jdbc.vcproj
-@devenv /build Release ..\build_windows\db_sql_jdbc.vcproj >> winbld.out
-@echo devenv /build Release ..\build_windows\db_sql_odbc.vcproj
-@devenv /build Release ..\build_windows\db_sql_odbc.vcproj >> winbld.out
+@echo devenv /build Release ..\build_windows\VS8\db_sql_jdbc.vcproj
+@devenv /build Release ..\build_windows\VS8\db_sql_jdbc.vcproj >> winbld.out
+@echo devenv /build Release ..\build_windows\VS8\db_sql_odbc.vcproj
+@devenv /build Release ..\build_windows\VS8\db_sql_odbc.vcproj >> winbld.out
 goto :eof
 
 :VS90
@@ -42,14 +42,14 @@ goto :batnotfound
 @echo "" > winbld.out
 @echo devenv /build Release ..\build_windows\Berkeley_DB.sln
 @devenv /build Release ..\build_windows\Berkeley_DB.sln >> winbld.out
-@echo devenv /build Release ..\build_windows\Berkeley_DB.sln /project db_java.vcproj
-@devenv /build Release ..\build_windows\Berkeley_DB.sln /project db_java.vcproj
+@echo devenv /build Release ..\build_windows\Berkeley_DB.sln /project VS8\db_java.vcproj
+@devenv /build Release ..\build_windows\Berkeley_DB.sln /project VS8\db_java.vcproj
 @echo devenv /build Release ..\build_windows\BDB_dotNet.sln
 @devenv /build Release ..\build_windows\BDB_dotNet.sln >> winbld.out
-@echo devenv /build Release ..\build_windows\db_sql_jdbc.vcproj
-@devenv /build Release ..\build_windows\db_sql_jdbc.vcproj >> winbld.out
-@echo devenv /build Release ..\build_windows\db_sql_odbc.vcproj
-@devenv /build Release ..\build_windows\db_sql_odbc.vcproj >> winbld.out
+@echo devenv /build Release ..\build_windows\VS8\db_sql_jdbc.vcproj
+@devenv /build Release ..\build_windows\VS8\db_sql_jdbc.vcproj >> winbld.out
+@echo devenv /build Release ..\build_windows\VS8\db_sql_odbc.vcproj
+@devenv /build Release ..\build_windows\VS8\db_sql_odbc.vcproj >> winbld.out
 goto :eof
 
 :batnotfound

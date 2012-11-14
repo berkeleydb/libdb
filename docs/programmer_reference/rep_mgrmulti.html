@@ -8,20 +8,20 @@
     <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
     <link rel="start" href="index.html" title="Berkeley DB Programmer's Reference Guide" />
     <link rel="up" href="rep.html" title="Chapter 12.  Berkeley DB Replication" />
-    <link rel="prev" href="group_membership.html" title="Managing Replication Manager Group Membership" />
+    <link rel="prev" href="rep_filename.html" title="Managing Replication Files" />
     <link rel="next" href="rep_replicate.html" title="Running Replication using the db_replicate Utility" />
   </head>
   <body>
     <div xmlns="" class="navheader">
       <div class="libver">
-        <p>Library Version 11.2.5.2</p>
+        <p>Library Version 11.2.5.3</p>
       </div>
       <table width="100%" summary="Navigation header">
         <tr>
           <th colspan="3" align="center">Running Replication Manager in multiple processes</th>
         </tr>
         <tr>
-          <td width="20%" align="left"><a accesskey="p" href="group_membership.html">Prev</a> </td>
+          <td width="20%" align="left"><a accesskey="p" href="rep_filename.html">Prev</a> </td>
           <th width="60%" align="center">Chapter 12. 
 		Berkeley DB Replication
         </th>
@@ -42,27 +42,27 @@
         <dl>
           <dt>
             <span class="sect2">
-              <a href="rep_mgrmulti.html#id3959612">One replication process and multiple subordinate processes</a>
+              <a href="rep_mgrmulti.html#idp2239216">One replication process and multiple subordinate processes</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="rep_mgrmulti.html#id3960149">Persistence of network address configuration</a>
+              <a href="rep_mgrmulti.html#idp2202400">Persistence of local site network address configuration</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="rep_mgrmulti.html#id3959865">Programming considerations</a>
+              <a href="rep_mgrmulti.html#idp2221464">Programming considerations</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="rep_mgrmulti.html#id3959663">Handling failure</a>
+              <a href="rep_mgrmulti.html#idp2233184">Handling failure</a>
             </span>
           </dt>
           <dt>
             <span class="sect2">
-              <a href="rep_mgrmulti.html#id3960241">Other miscellaneous rules</a>
+              <a href="rep_mgrmulti.html#idp2233360">Other miscellaneous rules</a>
             </span>
           </dt>
         </dl>
@@ -73,7 +73,7 @@ from multiple processes.</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3959612"></a>One replication process and multiple subordinate processes</h3>
+              <h3 class="title"><a id="idp2239216"></a>One replication process and multiple subordinate processes</h3>
             </div>
           </div>
         </div>
@@ -93,29 +93,29 @@ subsequent processes ("subordinate processes").</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3960149"></a>Persistence of network address configuration</h3>
+              <h3 class="title"><a id="idp2202400"></a>Persistence of local site network address configuration</h3>
             </div>
           </div>
         </div>
-        <p>Local and remote site network addresses are stored in shared memory,
-and remain intact even when (all) processes close their environment
+        <p>The local site network address is stored in shared memory,
+and remains intact even when (all) processes close their environment
 handles gracefully and terminate.  A process which opens an
-environment handle without running recovery automatically inherits all
-existing network address configuration.  Such a process may not change
-the local site address (although it is allowed to make a redundant
-call to repmgr_set_local_site() specifying a configuration matching
-that which is already in effect).</p>
-        <p>Similarly, removing an existing remote site address from an intact
-environment is currently not supported.  In order to make either of
-these types of change, the application must run recovery.  By doing so
-you start fresh with a clean slate, erasing all network address
-configuration information.</p>
+environment handle without running recovery automatically inherits the
+existing local site network address configuration.  Such a process may not
+change the local site address (although it is allowed to redundantly
+specify a local site configuration matching that which is already in
+effect).</p>
+        <p>In order to change the local site network address, the application
+must run recovery.  The application can then specify a new local site
+address before restarting Replication Manager.  The application should also
+remove the old local site address from the replication group if it is no
+longer needed.</p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3959865"></a>Programming considerations</h3>
+              <h3 class="title"><a id="idp2221464"></a>Programming considerations</h3>
             </div>
           </div>
         </div>
@@ -133,7 +133,7 @@ outgoing TCP/IP connections to all clients in the replication group.
 It uses these direct connections to send to clients any log records
 resulting from update transactions that the process executes.  But all
 other replication activity —message processing, elections, 
-etc.— takes place only in the replication process.</p>
+etc.— takes place only in the "replication process".</p>
         <p>Replication Manager notifies the application of certain events, using
 the callback function configured with the <a href="../api_reference/C/envevent_notify.html" class="olink">DB_ENV-&gt;set_event_notify()</a>
 method.  These notifications occur only in the process where the event
@@ -141,12 +141,14 @@ itself occurred.  Generally this means that most notifications occur
 only in the "replication process".  Currently the only replication
 notification that can occur in a "subordinate process" is
 <a href="../api_reference/C/envevent_notify.html#event_notify_DB_EVENT_REP_PERM_FAILED" class="olink">DB_EVENT_REP_PERM_FAILED</a>.</p>
+        <p>It is not supported for a process running Replication Manager to
+spawn a subprocess.</p>
       </div>
       <div class="sect2" lang="en" xml:lang="en">
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3959663"></a>Handling failure</h3>
+              <h3 class="title"><a id="idp2233184"></a>Handling failure</h3>
             </div>
           </div>
         </div>
@@ -187,7 +189,7 @@ two ways to handle failure of a process:</p>
         <div class="titlepage">
           <div>
             <div>
-              <h3 class="title"><a id="id3960241"></a>Other miscellaneous rules</h3>
+              <h3 class="title"><a id="idp2233360"></a>Other miscellaneous rules</h3>
             </div>
           </div>
         </div>
@@ -206,14 +208,14 @@ to 4.8.</li>
       <hr />
       <table width="100%" summary="Navigation footer">
         <tr>
-          <td width="40%" align="left"><a accesskey="p" href="group_membership.html">Prev</a> </td>
+          <td width="40%" align="left"><a accesskey="p" href="rep_filename.html">Prev</a> </td>
           <td width="20%" align="center">
             <a accesskey="u" href="rep.html">Up</a>
           </td>
           <td width="40%" align="right"> <a accesskey="n" href="rep_replicate.html">Next</a></td>
         </tr>
         <tr>
-          <td width="40%" align="left" valign="top">Managing Replication Manager Group Membership </td>
+          <td width="40%" align="left" valign="top">Managing Replication Files </td>
           <td width="20%" align="center">
             <a accesskey="h" href="index.html">Home</a>
           </td>
