@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -159,7 +159,7 @@ __repmgr_await_cond(env, pred, ctx, timeout, wait_condition)
 			    db_rep->mutex, &deadline);
 		else
 			ret = pthread_cond_wait(wait_condition, db_rep->mutex);
-		if (db_rep->finished)
+		if (db_rep->repmgr_status == stopped)
 			return (DB_REP_UNAVAIL);
 		if (ret == ETIMEDOUT)
 			return (DB_TIMEOUT);
@@ -265,7 +265,7 @@ __repmgr_await_drain(env, conn, timeout)
 		    db_rep->mutex, &deadline);
 		switch (ret) {
 		case 0:
-			if (db_rep->finished)
+			if (db_rep->repmgr_status == stopped)
 				goto out; /* #4. */
 			/*
 			 * Another thread could have stumbled into an error on
@@ -692,7 +692,7 @@ __repmgr_select_loop(env)
 			}
 		}
 		LOCK_MUTEX(db_rep->mutex);
-		if (db_rep->finished) {
+		if (db_rep->repmgr_status == stopped) {
 			ret = 0;
 			goto out;
 		}
@@ -728,6 +728,11 @@ __repmgr_select_loop(env)
 			goto out;
 	}
 out:
+	UNLOCK_MUTEX(db_rep->mutex);
+	if (ret == DB_DELETED)
+		ret = __repmgr_bow_out(env);
+	LOCK_MUTEX(db_rep->mutex);
+	(void)__repmgr_net_close(env);
 	UNLOCK_MUTEX(db_rep->mutex);
 	return (ret);
 }

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -89,7 +89,7 @@ __db_reclaim_callback(dbc, p, cookie, putp)
 	if ((dbp->type == DB_BTREE || dbp->type == DB_RECNO) &&
 	    PGNO(p) == ((BTREE *)dbp->bt_internal)->bt_root)
 		return (0);
-	if ((ret = __db_free(dbc, p, P_TO_UINT32(cookie))) != 0)
+	if ((ret = __db_free(dbc, p, *(u_int32_t *)cookie)) != 0)
 		return (ret);
 	*putp = 1;
 

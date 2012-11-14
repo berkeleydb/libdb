@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -315,7 +315,7 @@ retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel, flags, &stack)) != 0)
 	lock = cp->csp->lock;
 	set_stack = stack;
 	/*
-	 * Determine if we need to lock interiror nodes.
+	 * Determine if we need to lock interior nodes.
 	 * If we have record numbers we always lock.  Otherwise we only
 	 * need to do this if we are write locking and we are returning
 	 * a stack of nodes.  SR_NEXT will eventually get a stack and
@@ -710,7 +710,7 @@ lock_next:		h = NULL;
 				     ret != DB_LOCK_DEADLOCK))
 					goto err;
 
-				/* Relase the parent if we are holding it. */
+				/* Release the parent if we are holding it. */
 				if (parent_h != NULL &&
 				    (ret = __memp_fput(mpf, dbc->thread_info,
 				    parent_h, dbc->priority)) != 0)
@@ -734,7 +734,7 @@ lock_next:		h = NULL;
 				 * free.  If we are at the LEAF level we can
 				 * hold on to the lock if the page is still
 				 * of the right type.  Otherwise we need to
-				 * besure this page cannot move to an off page
+				 * be sure this page cannot move to an off page
 				 * duplicate tree (which are not locked) and
 				 * masquerade as the page we want.
 				 */

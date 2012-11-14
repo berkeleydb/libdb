@@ -19,7 +19,7 @@ tmadmin << END_OF_TMADMIN
 END_OF_TMADMIN
 }
 
-mkdir $RUN/data3
+mkdir $RUN/data2
 
 # Everything else is done in run/bin.
 cd $RUN/bin
@@ -34,11 +34,12 @@ test "$DVERBOSE" == 1 && {
 	DVERBOSE_FLAG="-v"
 }
 COMPILE_FLAGS="$CFLAGS $COMPILE_FLAGS -g -I../../.."
+UTILITY_FILES="-f ../../src1/htimestampxa.c -f ../../utilities/bdb_xa_util.c"
 
 msg "BUILDING CLIENT"
 CFLAGS="$COMPILE_FLAGS"; export CFLAGS
 buildclient -r BERKELEY-DB $DVERBOSE_FLAG -o client \
-    -f ../../src1/htimestampxa.c -f ../../src1/client.c
+    $UTILITY_FILES -f ../../src1/client.c
 test "$?" -eq 0 || {
 	echo "FAIL: buildclient failed."
 	exit 1
@@ -48,7 +49,7 @@ msg "BUILDING SERVER #1"
 CFLAGS="$COMPILE_FLAGS -DSERVER1"; export CFLAGS
 buildserver -r BERKELEY-DB $DVERBOSE_FLAG -o server1 \
   -s TestTxn1:TestTxn1 \
-    -f ../../src1/htimestampxa.c -f ../../src1/server.c
+    $UTILITY_FILES -f ../../src1/server.c
 test "$?" -eq 0 || {
 	echo "FAIL: buildserver failed."
 	exit 1
@@ -58,7 +59,7 @@ msg "BUILDING SERVER #2"
 CFLAGS="$COMPILE_FLAGS -DSERVER2"; export CFLAGS
 buildserver $DVERBOSE_FLAG -r BERKELEY-DB -o server2 \
    -s TestTxn2:TestTxn2 \
-    -f ../../src1/htimestampxa.c -f ../../src1/server.c
+    $UTILITY_FILES -f ../../src1/server.c
 test "$?" -eq 0 || {
 	echo "FAIL: buildserver failed."
 	exit 1

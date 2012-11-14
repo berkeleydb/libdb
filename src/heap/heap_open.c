@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 
 #include "db_config.h"
@@ -217,15 +217,29 @@ __heap_new_file(dbp, ip, txn, fhp, name)
 	DB_MPOOLFILE *mpf;
 	DB_PGINFO pginfo;
 	ENV *env;
+	HEAP *h;
 	HEAPMETA *meta;
 	HEAPPG *region;
 	db_pgno_t pgno;
 	int ret, t_ret;
+	u_int32_t max_size;
 	void *buf;
 
 	env = dbp->env;
 	mpf = dbp->mpf;
 	buf = NULL;
+	h = (HEAP *)dbp->heap_internal;
+	max_size = HEAP_REGION_COUNT(dbp, dbp->pgsize);
+
+	if (h->region_size == 0)
+		h->region_size = HEAP_DEFAULT_REGION_MAX(dbp) > max_size ?
+		    max_size : HEAP_DEFAULT_REGION_MAX(dbp);
+	else if (h->region_size > max_size) {
+		__db_errx(dbp->env, DB_STR_A("1169",
+		    "region size may not be larger than %lu",
+		    "%lu"), (u_long)max_size);
+		return (EINVAL);
+	}
 
 	if (F_ISSET(dbp, DB_AM_INMEM)) {
 		/* Build the meta-data page. */
@@ -419,8 +433,6 @@ __heap_init_meta(dbp, meta, pgno, lsnp)
 	memcpy(meta->dbmeta.uid, dbp->fileid, DB_FILE_ID_LEN);
 	meta->gbytes = h->gbytes;
 	meta->bytes = h->bytes;
-	if (h->region_size > HEAP_REGION_COUNT(dbp->pgsize))
-		h->region_size = HEAP_REGION_COUNT(dbp->pgsize);
 	meta->region_size = h->region_size;
 	meta->nregions = 1;
 	meta->curregion = 1;

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -492,7 +492,7 @@ __lock_region_max(env)
 
 /*
  * __lock_region_size --
- *	Return the inital region size.
+ *	Return the initial region size.
  * PUBLIC: size_t __lock_region_size __P((ENV *, size_t));
  */
 size_t
@@ -546,7 +546,7 @@ __lock_region_size(env, other_alloc)
 	 * pick the point 2/3s of the way to the max size.  If the max
 	 * is not stated then guess that objects will fill 1/2 the memory.
 	 * Failing to know how much memory there might we just wind up
-	 * using the default value.  If this winds up being less thatn
+	 * using the default value.  If this winds up being less than
 	 * the init value then we just make the table fit the init value.
 	 */
 	if ((count = dbenv->lk_max_objects) == 0) {

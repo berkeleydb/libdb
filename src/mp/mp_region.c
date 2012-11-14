@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -567,7 +567,7 @@ __memp_env_refresh(env)
 not_priv:
 	/* Discard DB_MPOOLFILEs. */
 	while ((dbmfp = TAILQ_FIRST(&dbmp->dbmfq)) != NULL)
-		if ((t_ret = __memp_fclose(dbmfp, 0)) != 0 && ret == 0)
+		if ((t_ret = __memp_fclose(dbmfp, DB_FLUSH)) != 0 && ret == 0)
 			ret = t_ret;
 
 	/* Discard DB_MPREGs. */

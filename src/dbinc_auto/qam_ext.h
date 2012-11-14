@@ -31,6 +31,7 @@ int __qam_extent_names __P((ENV *, char *, char ***));
 void __qam_exid __P((DB *, u_int8_t *, u_int32_t));
 int __qam_nameop __P((DB *, DB_TXN *, const char *, qam_name_op));
 int __qam_lsn_reset __P((DB *, DB_THREAD_INFO *));
+int __qam_backup_extents __P((DB *, DB_THREAD_INFO *, const char *, u_int32_t));
 int __qam_db_create __P((DB *));
 int __qam_db_close __P((DB *, u_int32_t));
 int __qam_get_extentsize __P((DB *, u_int32_t *));

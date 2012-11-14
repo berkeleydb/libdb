@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -521,6 +521,10 @@ __memp_print_stats(env, flags)
 		__db_dl(env,
 		    "Pages written from the cache to the backing file",
 		    (u_long)(*tfsp)->st_page_out);
+		if ((*tfsp)->st_backup_spins != 0)
+			__db_dl(env,
+			    "Spins while trying to backup the file",
+			    (u_long)(*tfsp)->st_backup_spins);
 	}
 
 	__os_ufree(env, fsp);
@@ -653,6 +657,7 @@ __memp_print_files(env, mfp, argp, countp, flags)
 	MUTEX_LOCK(env, mfp->mutex);
 	STAT_ULONG("Revision count", mfp->revision);
 	STAT_ULONG("Reference count", mfp->mpf_cnt);
+	STAT_ULONG("Sync/read only open count", mfp->neutral_cnt);
 	STAT_ULONG("Block count", mfp->block_cnt);
 	STAT_ULONG("Last page number", mfp->last_pgno);
 	STAT_ULONG("Original last page number", mfp->orig_last_pgno);

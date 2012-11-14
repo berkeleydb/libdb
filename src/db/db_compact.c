@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -373,13 +373,13 @@ __db_free_freelist(dbp, ip, txn)
 
 	ret = __memp_free_freelist(dbp->mpf);
 
-err:	if ((t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
+err:	if (dbc != NULL && (t_ret = __LPUT(dbc, lock)) != 0 && ret == 0)
 		ret = t_ret;
 
 	if (dbc != NULL && (t_ret = __dbc_close(dbc)) != 0 && ret == 0)
 		ret = t_ret;
 
-	if (auto_commit && __txn_abort(txn) != 0 && ret == 0)
+	if (auto_commit && (t_ret = __txn_abort(txn)) != 0 && ret == 0)
 		ret = t_ret;
 
 	return (ret);
@@ -668,6 +668,7 @@ __db_truncate_root(dbc, ppg, indx, pgnop, tlen)
 
 	dbp = dbc->dbp;
 
+	DB_ASSERT(dbc->dbp->env, IS_DIRTY(ppg));
 	if ((ret = __memp_fget(dbp->mpf, pgnop,
 	     dbc->thread_info, dbc->txn, 0, &page)) != 0)
 		goto err;
@@ -789,6 +790,8 @@ __db_find_free(dbc, type, size, bstart, freep)
 			goto err;
 		}
 		start = i;
+		if (size == 1)
+			goto found;
 		while (i < nelems - 1 && list[i] + 1 == list[i + 1]) {
 			i++;
 			if (i - start == size - 1)
@@ -1066,6 +1069,8 @@ __db_move_metadata(dbc, metap, c_data)
 			ret = __txn_lockevent(dbp->env,
 			    dbp->cur_txn, dbp, &dbp->handle_lock, dbp->locker);
 	}
+	if (dbp->log_filename != NULL)
+		dbp->log_filename->meta_pgno = dbp->meta_pgno;
 	if (dbp->type == DB_HASH) {
 		ht = dbp->h_internal;
 		ht->meta_pgno = dbp->meta_pgno;
@@ -1075,7 +1080,6 @@ __db_move_metadata(dbc, metap, c_data)
 		bt->bt_meta = dbp->meta_pgno;
 		bt->revision = ++dbp->mpf->mfp->revision;
 	}
-
 
 err:	if ((t_ret = __db_close(mdbp, dbc->txn, DB_NOSYNC)) != 0 && ret == 0)
 		ret = t_ret;

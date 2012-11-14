@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -401,7 +401,7 @@ __logc_get_int(logc, alsn, dbt, flags)
 	db_cipher = env->crypto_handle;
 	dblp = env->lg_handle;
 	lp = dblp->reginfo.primary;
-	is_hmac = 0;
+	eof = is_hmac = 0;
 	orig_flags = flags; /* flags may be altered later. */
 	blen = 0;
 	logfsz = lp->persist.log_size;
@@ -602,8 +602,14 @@ nohdr:		switch (flags) {
 			 * we're reading backwards from another file, then
 			 * the first record in that new file should have its
 			 * prev field set correctly.
+			 * First check that the file exists.
 			 */
-			__db_errx(env, DB_STR("2576",
+			if (eof && logc->bp_lsn.file != nlsn.file)
+				__db_errx(env, DB_STR_A("2583",
+	     "Log file %d not found, check log directory configuration", "%d"),
+	     			     nlsn.file);
+			else
+				__db_errx(env, DB_STR("2576",
 		"Encountered zero length records while traversing backwards"));
 			ret = __env_panic(env, DB_RUNRECOVERY);
 			goto err;
@@ -645,14 +651,19 @@ cksum:	/*
 	if ((ret = __db_check_chksum(env, &hdr, db_cipher,
 	    hdr.chksum, rp + hdr.size, hdr.len - hdr.size, is_hmac)) != 0) {
 		/*
-		 * We may be dealing with a version that does not
-		 * checksum the header.  Try again without the header.
+		 * This might be a log whose checksum does not include the hdr.
+		 * Try again without the header, either for logs whose version
+		 * is pre-DB_LOGCHKSUM, or for the persist record which contains
+		 * the log version. Check for the zero offset first to avoid
+		 * unwanted recursion in __logc_version().
+		 *
 		 * Set the cursor to the LSN we are trying to look at.
 		 */
 		last_lsn = logc->lsn;
 		logc->lsn = nlsn;
-		if (__logc_version(logc, &version) == 0  &&
-		    version < DB_LOGCHKSUM &&
+		if ((logc->lsn.offset == 0 ||
+		    (__logc_version(logc, &version) == 0 &&
+		    version < DB_LOGCHKSUM)) &&
 		    __db_check_chksum(env, NULL,  db_cipher, hdr.chksum,
 		    rp + hdr.size, hdr.len - hdr.size, is_hmac) == 0) {
 			logc->lsn = last_lsn;
@@ -1473,7 +1484,7 @@ __log_read_record(env, dbpp, td, recbuf, spec, size, argpp)
 	ap = *argpp;
 	/*
 	 * Allocate space for the arg structure and a transaction
-	 * structure which will imeediately follow it.
+	 * structure which will imediately follow it.
 	 */
 	if (ap == NULL &&
 	    (ret = __os_malloc(env, size + sizeof(DB_TXN), &ap)) != 0)

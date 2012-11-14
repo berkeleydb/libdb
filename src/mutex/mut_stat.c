@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -190,9 +190,8 @@ __mutex_print_summary(env)
 		    (size -= sizeof(*mutexp)) < sizeof(*mutexp)) {
 			mutexp =
 			    __env_get_chunk(&mtxmgr->reginfo, &chunk, &size);
-			mutexp =
-			    ALIGNP_INC(mutexp, mtxregion->stat.st_mutex_align);
 		}
+		mutexp = ALIGNP_INC(mutexp, mtxregion->stat.st_mutex_align);
 	}
 	__db_msg(env, "Mutex counts");
 	__db_msg(env, "%d\tUnallocated", counts[0]);
@@ -303,30 +302,29 @@ __mutex_print_all(env, flags)
 	} else
 		mutexp = MUTEXP_SET(env, 1);
 	for (i = 1; i <= mtxregion->stat.st_mutex_cnt; ++i) {
-		if (!F_ISSET(mutexp, DB_MUTEX_ALLOCATED))
-			continue;
+		if (F_ISSET(mutexp, DB_MUTEX_ALLOCATED)) {
+			__db_msgadd(env, mbp, "%5lu\t", (u_long)i);
 
-		__db_msgadd(env, mbp, "%5lu\t", (u_long)i);
+			__mutex_print_debug_stats(env, mbp,
+			    F_ISSET(env, ENV_PRIVATE) ?
+			    (db_mutex_t)mutexp : i, flags);
 
-		__mutex_print_debug_stats(env, mbp,
-		    F_ISSET(env, ENV_PRIVATE) ? (db_mutex_t)mutexp : i, flags);
+			if (mutexp->alloc_id != 0)
+				__db_msgadd(env, mbp,
+				    ", %s", __mutex_print_id(mutexp->alloc_id));
 
-		if (mutexp->alloc_id != 0)
-			__db_msgadd(env,
-			    mbp, ", %s", __mutex_print_id(mutexp->alloc_id));
+			__db_prflags(env, mbp, mutexp->flags, fn, " (", ")");
 
-		__db_prflags(env, mbp, mutexp->flags, fn, " (", ")");
-
-		DB_MSGBUF_FLUSH(env, mbp);
+			DB_MSGBUF_FLUSH(env, mbp);
+		}
 
 		mutexp++;
 		if (F_ISSET(env, ENV_PRIVATE) &&
 		    (size -= sizeof(*mutexp)) < sizeof(*mutexp)) {
 			mutexp =
 			    __env_get_chunk(&mtxmgr->reginfo, &chunk, &size);
-			mutexp =
-			    ALIGNP_INC(mutexp, mtxregion->stat.st_mutex_align);
 		}
+		mutexp = ALIGNP_INC(mutexp, mtxregion->stat.st_mutex_align);
 	}
 
 	return (0);
@@ -463,6 +461,7 @@ __mutex_print_id(alloc_id)
 	case MTX_ATOMIC_EMULATION:	return ("atomic emulation");
 	case MTX_DB_HANDLE:		return ("db handle");
 	case MTX_ENV_DBLIST:		return ("env dblist");
+	case MTX_ENV_EXCLDBLIST:	return ("env exclusive dblist");
 	case MTX_ENV_HANDLE:		return ("env handle");
 	case MTX_ENV_REGION:		return ("env region");
 	case MTX_LOCK_REGION:		return ("lock region");

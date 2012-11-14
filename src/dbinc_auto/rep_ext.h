@@ -14,6 +14,8 @@ int __rep_egen_marshal __P((ENV *, __rep_egen_args *, u_int8_t *, size_t, size_t
 int __rep_egen_unmarshal __P((ENV *, __rep_egen_args *, u_int8_t *, size_t, u_int8_t **));
 int __rep_fileinfo_marshal __P((ENV *, u_int32_t, __rep_fileinfo_args *, u_int8_t *, size_t, size_t *));
 int __rep_fileinfo_unmarshal __P((ENV *, u_int32_t, __rep_fileinfo_args **, u_int8_t *, size_t, u_int8_t **));
+int __rep_fileinfo_v6_marshal __P((ENV *, u_int32_t, __rep_fileinfo_v6_args *, u_int8_t *, size_t, size_t *));
+int __rep_fileinfo_v6_unmarshal __P((ENV *, u_int32_t, __rep_fileinfo_v6_args **, u_int8_t *, size_t, u_int8_t **));
 int __rep_grant_info_marshal __P((ENV *, __rep_grant_info_args *, u_int8_t *, size_t, size_t *));
 int __rep_grant_info_unmarshal __P((ENV *, __rep_grant_info_args *, u_int8_t *, size_t, u_int8_t **));
 int __rep_logreq_marshal __P((ENV *, __rep_logreq_args *, u_int8_t *, size_t, size_t *));

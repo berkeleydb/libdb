@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -321,6 +321,7 @@ __partition_open(dbp, ip, txn, fname, type, flags, mode, do_open)
 		part_db = part->handles[part_id];
 		part_db->flags = F_ISSET(dbp,
 		    ~(DB_AM_CREATED | DB_AM_CREATED_MSTR | DB_AM_OPEN_CALLED));
+		F_SET(part_db, DB_AM_PARTDB);
 		part_db->adj_fileid = dbp->adj_fileid;
 		part_db->pgsize = dbp->pgsize;
 		part_db->priority = dbp->priority;
@@ -495,7 +496,7 @@ err:	/* Put the metadata page back. */
 
 /*
  * Support for sorting keys.  Keys must be sorted using the btree
- * compare function so if we call qsort in __partiton_setup_keys
+ * compare function so if we call qsort in __partition_setup_keys
  * we use this structure to pass the DBP and compare function.
  */
 struct key_sort {
@@ -769,7 +770,7 @@ __partition_get_dirs(dbp, dirpp)
 		return (0);
 
 	if ((ret = __os_calloc(env,
-	    sizeof(char *), part->nparts + 1, (char **)&part->dirs)) != 0)
+	    sizeof(char *), part->nparts + 1, (void *) &part->dirs)) != 0)
 		return (ret);
 
 	for (i = 0; i < part->nparts; i++)
@@ -862,7 +863,7 @@ __partc_get_pp(dbc, key, data, flags)
 	return (ret);
 }
 /*
- * __partiton_get --
+ * __partition_get --
  *	cursor get opeartion on a partitioned database.
  *
  * PUBLIC: int __partc_get __P((DBC*, DBT *, DBT *, u_int32_t));
@@ -1152,7 +1153,7 @@ __partc_destroy(dbc)
 }
 
 /*
- * __partiton_close
+ * __partition_close
  *	Close a partitioned database.
  *
  * PUBLIC: int __partition_close __P((DB *, DB_TXN *, u_int32_t));
@@ -1193,7 +1194,7 @@ __partition_close(dbp, txn, flags)
 }
 
 /*
- * __partiton_sync
+ * __partition_sync
  *	Sync a partitioned database.
  *
  * PUBLIC: int __partition_sync __P((DB *));
@@ -1224,7 +1225,7 @@ __partition_sync(dbp)
 }
 
 /*
- * __partiton_stat
+ * __partition_stat
  *	Stat a partitioned database.
  *
  * PUBLIC: int __partition_stat __P((DBC *, void *, u_int32_t));
@@ -1646,7 +1647,7 @@ __part_key_range(dbc, dbt, kp, flags)
 			kp->greater *= my_elems;
 			kp->greater /= total_elems;
 			/*
-			 * Proportially add weight from the subtrees to the
+			 * Proportionally add weight from the subtrees to the
 			 * left and right of this one.
 			 */
 			kp->less += less_elems / total_elems;

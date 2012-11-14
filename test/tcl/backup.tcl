@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information. 
 #
-# Copyright (c) 2007, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2007, 2012 Oracle and/or its affiliates.  All rights reserved.
 # 
 # $Id$
 #
@@ -16,11 +16,11 @@
 # TEST	(2) Test with -data_dir (-d). 
 # TEST	(3) Test updating an existing hot backup (-u).
 # TEST	(4) Test with absolute path. 
-# TEST	(5) Test with DB_CONFIG (-D), setting log_dir (-l)
+# TEST	(5) Test with DB_CONFIG, setting log_dir (-l)
 # TEST		and data_dir (-d).
 # TEST	(6) DB_CONFIG and update.  
-# TEST	(7) Repeat hot backup (non-update) with DB_CONFIG and 
-# TEST		existing directories. 
+# TEST	(7) Repeat hot backup (non-update) with DB_CONFIG, 
+# TEST		DB_CONFIG (-D) and existing directories. 
 
 proc backup { {nentries 1000} } {
 	source ./include.tcl
@@ -98,6 +98,7 @@ proc backup { {nentries 1000} } {
 			error_check_good db_close [$db close] 0
 			error_check_good env_close [$env close] 0
 			env_cleanup $testdir
+			env_cleanup $backupdir
 
 			puts "\tBackuptest.b: Hot backup with data_dir."
 			file mkdir $testdir/data1
@@ -261,6 +262,19 @@ proc backup { {nentries 1000} } {
 			    -${c}vh $testdir -b $backupdir -D } res] } {
 				error "FAIL: $res"
 			}
+			# Check that DB_CONFIG file is in backupdir.
+			error_check_good found_db_config\
+			    [file exists $backupdir/DB_CONFIG] 1
+			# Check that db is in backupdir/data1 and not in backupdir.
+			error_check_good found_db\
+			    [file exists $backupdir/data1/$testfile] 1
+			error_check_bad found_db\
+			    [file exists $backupdir/$testfile] 1
+			# Check that logs are in backupdir/logs and not in backupdir.
+			set logfiles [glob $backupdir/logs/log*]
+			error_check_bad found_logs [llength $logfiles] 0
+			set logfiles [glob $backupdir/log*]
+			error_check_good found_logs [llength $logfiles] 1
 
 			# We are not doing an update this time.
 			puts "\tBackuptest.g:\
@@ -269,6 +283,15 @@ proc backup { {nentries 1000} } {
 			    -${c}vh $testdir -b $backupdir } res] } {
 				error "FAIL: $res"
 			}
+			# Check that no DB_CONFIG file is in backupdir.
+			error_check_bad found_db_config\
+			    [file exists $backupdir/DB_CONFIG] 1
+			# Check that db is in backupdir.
+			error_check_good found_db\
+			    [file exists $backupdir/$testfile] 1
+			# Check that logs are in backupdir.
+			set logfiles [glob $backupdir/log*]
+			error_check_good found_logs [expr [llength $logfiles] > 1] 1
 
 			error_check_good db_close [$db close] 0
 			error_check_good env_close [$env close] 0

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -372,7 +372,7 @@ err:	if (copymap != NULL)
 /*
  * __dd_build --
  *	Build the lock dependency bit maps.
- * Notes on syncronization:
+ * Notes on synchronization:
  *	LOCK_SYSTEM_LOCK is used to hold objects locked when we have
  *		a single partition.
  *	LOCK_LOCKERS is held while we are walking the lockers list and

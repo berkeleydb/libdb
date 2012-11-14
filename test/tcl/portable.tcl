@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 
@@ -49,12 +49,10 @@ proc test_portable_logs { { archived_test_loc } } {
 	puts -nonewline $o "Log portability test started at: "
 	puts $o [clock format [clock seconds] -format "%H:%M %D"]
 	puts $o [berkdb version -string]
-	puts $o "Testing $e files"
 
 	puts -nonewline "Log portability test started at: "
 	puts [clock format [clock seconds] -format "%H:%M %D"]
 	puts [berkdb version -string]
-	puts "Testing $e files"
 
 	set portable_dir $archived_test_loc
 	puts $o "Using archived databases in $portable_dir."
@@ -62,8 +60,8 @@ proc test_portable_logs { { archived_test_loc } } {
 	close $o
 
 foreach version [glob $portable_dir/*] {
-	if { [string first CVS $version] != -1 } { continue }
 	regexp \[^\/\]*$ $version version
+	if { [string equal $version "logversion"] == 1 } { continue }
 
 	# Test only files where the endianness of the db does
 	# not match the endianness of the test platform. 
@@ -74,9 +72,11 @@ foreach version [glob $portable_dir/*] {
 		    on $myendianness platform."
 	} else {
 		set o [open PORTABLE.OUT a]
-		puts $o "Testing $dbendianness files"
+		puts $o "Testing $dbendianness files\
+		    on $myendianness platform."
 		close $o
-		puts "Testing $dbendianness files"
+		puts "Testing $dbendianness files\
+		    on $myendianness platform."
 
 		foreach method [glob -nocomplain $portable_dir/$version/*] {
 			regexp \[^\/\]*$ $method method
@@ -158,6 +158,13 @@ proc _recover_test { dir version method name dbendianness } {
 	# the recovered database.
 	catch { file rename -force $testdir/$name.db \
 	    $testdir/$name.db.init } res
+	if { [is_heap $method] == 1 } { 
+		file rename -force $testdir/$name.db1 \
+		    $testdir/$name.db.init1
+		file rename -force $testdir/$name.db2 \
+		    $testdir/$name.db.init2
+	}
+
 
 	# Recover.
         set ret [catch {eval {exec} $util_path/db_recover -h $testdir} res]
@@ -321,7 +328,12 @@ proc save_portable_files { dir } {
 		if { [llength $dbfiles] > 0 } {
 			set logfiles [glob -nocomplain $dir/log.*]
 			set dbfile [lindex $dbfiles 0]
-	
+
+			if { $portable_method == "heap" } { 
+				append dbfile1 $dbfile "1"
+				append dbfile2 $dbfile "2"
+			}
+
 			# We arbitrarily name the tar file where we save
 			# everything after the first database file we 
 			# find.  This works because the database files
@@ -336,8 +348,8 @@ proc save_portable_files { dir } {
 			cd $dir
 			if { [catch {
 				eval exec tar -cvf $dest/$basename.tar \
-				    [glob -nocomplain *.db log.* \
-				    __dbq.$basename-$en.db.*]
+				    [glob -nocomplain *.db *.db1 *.db2 \
+				    log.* __dbq.$basename-$en.db.*]
 				exec gzip --best $dest/$basename.tar
 			} res ] } {
 				puts "FAIL: tar/gzip of $basename failed\

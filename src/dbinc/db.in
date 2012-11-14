@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  *
@@ -469,10 +469,10 @@ struct __db_lockreq {
 /*******************************************************
  * Logging.
  *******************************************************/
-#define	DB_LOGVERSION	18		/* Current log version. */
-#define DB_LOGVERSION_LATCHING 15	/* Log version using latching. */
-#define	DB_LOGCHKSUM	12		/* Check sum headers. */
-#define	DB_LOGOLDVER	8		/* Oldest log version supported. */
+#define	DB_LOGVERSION	19		/* Current log version. */
+#define	DB_LOGVERSION_LATCHING 15	/* Log version using latching: db-4.8 */
+#define	DB_LOGCHKSUM	12		/* Check sum headers: db-4.5 */
+#define	DB_LOGOLDVER	8		/* Oldest version supported: db-4.2 */
 #define	DB_LOGMAGIC	0x040988
 
 /*
@@ -545,7 +545,7 @@ struct __db_log_stat { /* SHARED */
 	u_int32_t st_lg_size;		/* Log file size. */
 	u_int32_t st_wc_bytes;		/* Bytes to log since checkpoint. */
 	u_int32_t st_wc_mbytes;		/* Megabytes to log since checkpoint. */
-	u_int32_t st_fileid_init;	/* Inital allocation for fileids. */
+	u_int32_t st_fileid_init;	/* Initial allocation for fileids. */
 #ifndef __TEST_DB_NO_STATISTICS
 	u_int32_t st_nfileid;		/* Current number of fileids. */
 	u_int32_t st_maxnfileid;	/* Maximum number of fileids used. */
@@ -708,11 +708,12 @@ struct __db_mpoolfile {
 	 * multiple threads of control.
 	 */
 #define	MP_FILEID_SET	0x001		/* Application supplied a file ID. */
-#define	MP_FLUSH	0x002		/* Was opened to flush a buffer. */
-#define	MP_MULTIVERSION	0x004		/* Opened for multiversion access. */
-#define	MP_OPEN_CALLED	0x008		/* File opened. */
-#define	MP_READONLY	0x010		/* File is readonly. */
-#define	MP_DUMMY	0x020		/* File is dummy for __memp_fput. */
+#define	MP_FLUSH	0x002		/* Was used to flush a buffer. */
+#define	MP_FOR_FLUSH	0x004		/* Was opened to flush a buffer. */
+#define	MP_MULTIVERSION	0x008		/* Opened for multiversion access. */
+#define	MP_OPEN_CALLED	0x010		/* File opened. */
+#define	MP_READONLY	0x020		/* File is readonly. */
+#define	MP_DUMMY	0x040		/* File is dummy for __memp_fput. */
 	u_int32_t  flags;
 };
 
@@ -780,6 +781,7 @@ struct __db_mpool_fstat {
 	uintmax_t st_page_create;	/* Pages created in the cache. */
 	uintmax_t st_page_in;		/* Pages read in. */
 	uintmax_t st_page_out;		/* Pages written out. */
+	uintmax_t st_backup_spins;	/* Number of spins during a copy. */
 #endif
 	char *file_name;	/* File name. */
 };
@@ -1399,18 +1401,19 @@ typedef enum {
 
 /* DB (private) error return codes. */
 #define	DB_ALREADY_ABORTED	(-30899)
-#define	DB_DELETED		(-30898)/* Recovery file marked deleted. */
-#define	DB_EVENT_NOT_HANDLED	(-30897)/* Forward event to application. */
-#define	DB_NEEDSPLIT		(-30896)/* Page needs to be split. */
-#define	DB_REP_BULKOVF		(-30895)/* Rep bulk buffer overflow. */
-#define	DB_REP_LOGREADY		(-30894)/* Rep log ready for recovery. */
-#define	DB_REP_NEWMASTER	(-30893)/* We have learned of a new master. */
-#define	DB_REP_PAGEDONE		(-30892)/* This page was already done. */
-#define	DB_SURPRISE_KID		(-30891)/* Child commit where parent
+#define	DB_CHKSUM_FAIL		(-30898)/* Checksum failed. */
+#define	DB_DELETED		(-30897)/* Recovery file marked deleted. */
+#define	DB_EVENT_NOT_HANDLED	(-30896)/* Forward event to application. */
+#define	DB_NEEDSPLIT		(-30895)/* Page needs to be split. */
+#define	DB_REP_BULKOVF		(-30894)/* Rep bulk buffer overflow. */
+#define	DB_REP_LOGREADY		(-30893)/* Rep log ready for recovery. */
+#define	DB_REP_NEWMASTER	(-30892)/* We have learned of a new master. */
+#define	DB_REP_PAGEDONE		(-30891)/* This page was already done. */
+#define	DB_SURPRISE_KID		(-30890)/* Child commit where parent
 					   didn't know it was a parent. */
-#define	DB_SWAPBYTES		(-30890)/* Database needs byte swapping. */
-#define	DB_TXN_CKP		(-30889)/* Encountered ckp record in log. */
-#define	DB_VERIFY_FATAL		(-30888)/* DB->verify cannot proceed. */
+#define	DB_SWAPBYTES		(-30889)/* Database needs byte swapping. */
+#define	DB_TXN_CKP		(-30888)/* Encountered ckp record in log. */
+#define	DB_VERIFY_FATAL		(-30887)/* DB->verify cannot proceed. */
 
 /* Database handle. */
 struct __db {
@@ -1650,6 +1653,8 @@ struct __db {
 		__P((DB *, u_int32_t (**)(DB *, const void *, u_int32_t)));
 	int  (*get_h_nelem) __P((DB *, u_int32_t *));
 	int  (*get_heapsize) __P((DB *, u_int32_t *, u_int32_t *));
+	int  (*get_heap_regionsize) __P((DB *, u_int32_t *));
+	int  (*get_lk_exclusive) __P((DB *, int *, int *));
 	int  (*get_lorder) __P((DB *, int *));
 	DB_MPOOLFILE *(*get_mpf) __P((DB *));
 	void (*get_msgcall) __P((DB *,
@@ -1709,6 +1714,8 @@ struct __db {
 		__P((DB *, u_int32_t (*)(DB *, const void *, u_int32_t)));
 	int  (*set_h_nelem) __P((DB *, u_int32_t));
 	int  (*set_heapsize) __P((DB *, u_int32_t, u_int32_t, u_int32_t));
+	int  (*set_heap_regionsize) __P((DB *, u_int32_t));
+	int  (*set_lk_exclusive) __P((DB *, int));
 	int  (*set_lorder) __P((DB *, int));
 	void (*set_msgcall) __P((DB *, void (*)(const DB_ENV *, const char *)));
 	void (*set_msgfile) __P((DB *, FILE *));
@@ -1784,21 +1791,28 @@ struct __db {
 #define	DB_AM_NOT_DURABLE	0x00008000 /* Do not log changes */
 #define	DB_AM_OPEN_CALLED	0x00010000 /* DB->open called */
 #define	DB_AM_PAD		0x00020000 /* Fixed-length record pad */
-#define	DB_AM_PGDEF		0x00040000 /* Page size was defaulted */
-#define	DB_AM_RDONLY		0x00080000 /* Database is readonly */
-#define	DB_AM_READ_UNCOMMITTED	0x00100000 /* Support degree 1 isolation */
-#define	DB_AM_RECNUM		0x00200000 /* DB_RECNUM */
-#define	DB_AM_RECOVER		0x00400000 /* DB opened by recovery routine */
-#define	DB_AM_RENUMBER		0x00800000 /* DB_RENUMBER */
-#define	DB_AM_REVSPLITOFF	0x01000000 /* DB_REVSPLITOFF */
-#define	DB_AM_SECONDARY		0x02000000 /* Database is a secondary index */
-#define	DB_AM_SNAPSHOT		0x04000000 /* DB_SNAPSHOT */
-#define	DB_AM_SUBDB		0x08000000 /* Subdatabases supported */
-#define	DB_AM_SWAP		0x10000000 /* Pages need to be byte-swapped */
-#define	DB_AM_TXN		0x20000000 /* Opened in a transaction */
-#define	DB_AM_VERIFYING		0x40000000 /* DB handle is in the verifier */
+#define	DB_AM_PARTDB		0x00040000 /* Handle for a database partition */
+#define	DB_AM_PGDEF		0x00080000 /* Page size was defaulted */
+#define	DB_AM_RDONLY		0x00100000 /* Database is readonly */
+#define	DB_AM_READ_UNCOMMITTED	0x00200000 /* Support degree 1 isolation */
+#define	DB_AM_RECNUM		0x00400000 /* DB_RECNUM */
+#define	DB_AM_RECOVER		0x00800000 /* DB opened by recovery routine */
+#define	DB_AM_RENUMBER		0x01000000 /* DB_RENUMBER */
+#define	DB_AM_REVSPLITOFF	0x02000000 /* DB_REVSPLITOFF */
+#define	DB_AM_SECONDARY		0x04000000 /* Database is a secondary index */
+#define	DB_AM_SNAPSHOT		0x08000000 /* DB_SNAPSHOT */
+#define	DB_AM_SUBDB		0x10000000 /* Subdatabases supported */
+#define	DB_AM_SWAP		0x20000000 /* Pages need to be byte-swapped */
+#define	DB_AM_TXN		0x40000000 /* Opened in a transaction */
+#define	DB_AM_VERIFYING		0x80000000 /* DB handle is in the verifier */
 	u_int32_t orig_flags;		   /* Flags at  open, for refresh */
 	u_int32_t flags;
+
+#define DB2_AM_EXCL		0x00000001 /* Exclusively lock the handle */ 
+#define DB2_AM_INTEXCL		0x00000002 /* Internal exclusive lock. */
+#define DB2_AM_NOWAIT		0x00000004 /* Do not wait for handle lock */ 
+	u_int32_t orig_flags2;		   /* Second flags word; for refresh */ 
+	u_int32_t flags2;		   /* Second flags word */
 };
 
 /*
@@ -2198,6 +2212,7 @@ struct __db_heap_stat { /* SHARED */
 	u_int32_t heap_pagecnt;		/* Page count. */
 	u_int32_t heap_pagesize;	/* Page size. */
 	u_int32_t heap_nregions;	/* Number of regions. */
+	u_int32_t heap_regionsize;	/* Number of pages in a region. */
 };
 
 /* Queue statistics structure. */
@@ -2248,6 +2263,16 @@ typedef enum {
 	DB_MEM_THREAD=6
 } DB_MEM_CONFIG;
 
+/*
+ * Backup configuration types.
+ */
+typedef enum {
+	DB_BACKUP_READ_COUNT = 1,
+	DB_BACKUP_READ_SLEEP = 2,
+	DB_BACKUP_SIZE = 3,
+	DB_BACKUP_WRITE_DIRECT = 4
+} DB_BACKUP_CONFIG;
+
 struct __db_env {
 	ENV *env;			/* Linked ENV structure */
 
@@ -2280,6 +2305,7 @@ struct __db_env {
 
 	/* Application specified paths */
 	char	*db_log_dir;		/* Database log file directory */
+	char	*db_md_dir;		/* Persistent metadata directory */
 	char	*db_tmp_dir;		/* Database tmp file directory */
 
 	char    *db_create_dir;		/* Create directory for data files */
@@ -2394,8 +2420,10 @@ struct __db_env {
 
 	/* DB_ENV PUBLIC HANDLE LIST BEGIN */
 	int  (*add_data_dir) __P((DB_ENV *, const char *));
+	int  (*backup)	__P((DB_ENV *, const char *, u_int32_t));
 	int  (*cdsgroup_begin) __P((DB_ENV *, DB_TXN **));
 	int  (*close) __P((DB_ENV *, u_int32_t));
+	int  (*dbbackup) __P((DB_ENV *, const char *, const char *, u_int32_t));
 	int  (*dbremove) __P((DB_ENV *,
 		DB_TXN *, const char *, const char *, u_int32_t));
 	int  (*dbrename) __P((DB_ENV *,
@@ -2413,6 +2441,11 @@ struct __db_env {
 	int  (*get_create_dir) __P((DB_ENV *, const char **));
 	int  (*get_data_dirs) __P((DB_ENV *, const char ***));
 	int  (*get_data_len) __P((DB_ENV *, u_int32_t *));
+	int  (*get_backup_callbacks) __P((DB_ENV *,
+		int (**)(DB_ENV *, const char *, const char *, void **),
+		int (**)(DB_ENV *, u_int32_t, u_int32_t, u_int32_t, u_int8_t *, void *),
+		int (**)(DB_ENV *, const char *, void *)));
+	int  (*get_backup_config) __P((DB_ENV *, DB_BACKUP_CONFIG, u_int32_t *));
 	int  (*get_encrypt_flags) __P((DB_ENV *, u_int32_t *));
 	void (*get_errcall) __P((DB_ENV *,
 		void (**)(const DB_ENV *, const char *, const char *)));
@@ -2439,6 +2472,7 @@ struct __db_env {
 	int  (*get_lk_tablesize) __P((DB_ENV *, u_int32_t *));
 	int  (*get_memory_init) __P((DB_ENV *, DB_MEM_CONFIG, u_int32_t *));
 	int  (*get_memory_max) __P((DB_ENV *, u_int32_t *, u_int32_t *));
+	int  (*get_metadata_dir) __P((DB_ENV *, const char **));
 	int  (*get_mp_max_openfd) __P((DB_ENV *, int *));
 	int  (*get_mp_max_write) __P((DB_ENV *, int *, db_timeout_t *));
 	int  (*get_mp_mmapsize) __P((DB_ENV *, size_t *));
@@ -2561,6 +2595,12 @@ struct __db_env {
 	int  (*set_create_dir) __P((DB_ENV *, const char *));
 	int  (*set_data_dir) __P((DB_ENV *, const char *));
 	int  (*set_data_len) __P((DB_ENV *, u_int32_t));
+	int  (*set_backup_callbacks) __P((DB_ENV *,
+		int (*)(DB_ENV *, const char *, const char *, void **),
+		int (*)(DB_ENV *, u_int32_t,
+		    u_int32_t, u_int32_t, u_int8_t *, void *),
+		int (*)(DB_ENV *, const char *, void *)));
+	int  (*set_backup_config) __P((DB_ENV *, DB_BACKUP_CONFIG, u_int32_t));
 	int  (*set_encrypt) __P((DB_ENV *, const char *, u_int32_t));
 	void (*set_errcall) __P((DB_ENV *,
 		void (*)(const DB_ENV *, const char *, const char *)));
@@ -2588,6 +2628,7 @@ struct __db_env {
 	int  (*set_lk_tablesize) __P((DB_ENV *, u_int32_t));
 	int  (*set_memory_init) __P((DB_ENV *, DB_MEM_CONFIG, u_int32_t));
 	int  (*set_memory_max) __P((DB_ENV *, u_int32_t, u_int32_t));
+	int  (*set_metadata_dir) __P((DB_ENV *, const char *));
 	int  (*set_mp_max_openfd) __P((DB_ENV *, int));
 	int  (*set_mp_max_write) __P((DB_ENV *, int, db_timeout_t));
 	int  (*set_mp_mmapsize) __P((DB_ENV *, size_t));

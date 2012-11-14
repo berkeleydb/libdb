@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  * $Id$
  */
 
@@ -16,8 +16,7 @@
 #include "dbinc/mp.h"
 
 static int __ham_copy_data __P((DBC *, PAGE *, DB_COMPACT *, int *));
-static int __ham_truncate_overflow __P((DBC *,
-	     PAGE *, u_int32_t, DB_COMPACT *, int *));
+static int __ham_truncate_overflow __P((DBC *, u_int32_t, DB_COMPACT *, int *));
 
 /*
  * __ham_compact_int -- internal HASH compaction routine.
@@ -113,6 +112,10 @@ __ham_compact_int(dbc, start, stop, factor, c_data, donep, flags)
 				 * because the page number is
 				 * not aligned.
 				 */
+				if ((ret = __memp_dirty(mpf, &hcp->page,
+				    dbc->thread_info,
+				    dbc->txn, dbc->priority, 0)) != 0)
+					break;
 				origpgno = pgno;
 				if ((ret = __db_truncate_root(dbc, hcp->page,
 				    H_DATAINDEX(hcp->indx), &pgno, 0)) != 0)
@@ -136,7 +139,7 @@ no_opd:			if (check_trunc && HPAGE_PTYPE(H_PAIRDATA(
 			    dbp, hcp->page, hcp->indx)) == H_OFFPAGE) {
 				/* This is an overflow chain. */
 				if ((ret = __ham_truncate_overflow(dbc,
-				    hcp->page, H_DATAINDEX(hcp->indx),
+				    H_DATAINDEX(hcp->indx),
 				    c_data, &pgs_done)) != 0)
 					break;
 			}
@@ -146,7 +149,7 @@ no_opd:			if (check_trunc && HPAGE_PTYPE(H_PAIRDATA(
 			    dbp, hcp->page, hcp->indx)) == H_OFFPAGE) {
 				/* This is an overflow chain. */
 				if ((ret = __ham_truncate_overflow(dbc,
-				    hcp->page, H_KEYINDEX(hcp->indx),
+				    H_KEYINDEX(hcp->indx),
 				    c_data, &pgs_done)) != 0)
 					break;
 			}
@@ -233,8 +236,6 @@ __ham_compact_bucket(dbc, c_data, pgs_donep)
 		if (pg == NULL && (ret = __memp_fget(mpf, &pgno,
 		    dbc->thread_info, dbc->txn, DB_MPOOL_DIRTY, &pg)) != 0)
 			break;
-		if (NEXT_PGNO(pg) == PGNO_INVALID)
-			break;
 		/* Sort any unsorted pages before adding to the page. */
 		if (TYPE(pg) == P_HASH_UNSORTED) {
 			if ((ret = __ham_sort_page_cursor(dbc, pg)) != 0)
@@ -251,6 +252,8 @@ __ham_compact_bucket(dbc, c_data, pgs_donep)
 		if (pgno != PGNO(pg))
 			(*pgs_donep)++;
 
+		if (NEXT_PGNO(pg) == PGNO_INVALID)
+			break;
 		if ((ret = __ham_copy_data(dbc, pg, c_data, pgs_donep)) != 0)
 			break;
 		pgno = NEXT_PGNO(pg);
@@ -376,27 +379,32 @@ __ham_copy_data(dbc, pg, c_data, pgs_donep)
  * __ham_truncate_overflow -- try to truncate pages from an overflow chain.
  */
 static int
-__ham_truncate_overflow(dbc, page, indx, c_data, pgs_done)
+__ham_truncate_overflow(dbc, indx, c_data, pgs_done)
 	DBC *dbc;
-	PAGE *page;
 	u_int32_t indx;
 	DB_COMPACT *c_data;
 	int *pgs_done;
 {
 	DB *dbp;
+	HASH_CURSOR *hcp;
 	db_pgno_t origpgno, pgno;
 	int ret;
 
+	hcp = (HASH_CURSOR *)dbc->internal;
 	dbp = dbc->dbp;
 	memcpy(&pgno,
-	    HOFFPAGE_PGNO(P_ENTRY(dbp, page, indx)), sizeof(db_pgno_t));
+	    HOFFPAGE_PGNO(P_ENTRY(dbp, hcp->page, indx)), sizeof(db_pgno_t));
 	if (pgno > c_data->compact_truncate) {
 		c_data->compact_pages_examine++;
 		origpgno = pgno;
-		if ((ret = __db_truncate_root(dbc, page, indx, &pgno, 0)) != 0)
+		if ((ret = __memp_dirty(dbp->mpf, &hcp->page,
+		    dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
+			return (ret);
+		if ((ret =
+		     __db_truncate_root(dbc, hcp->page, indx, &pgno, 0)) != 0)
 			return (ret);
 		if (pgno != origpgno) {
-			memcpy(HOFFPAGE_PGNO(P_ENTRY(dbp, page, indx)),
+			memcpy(HOFFPAGE_PGNO(P_ENTRY(dbp, hcp->page, indx)),
 			    &pgno, sizeof(db_pgno_t));
 			(*pgs_done)++;
 			c_data->compact_pages--;
@@ -427,7 +435,7 @@ __ham_compact_hash(dbp, ip, txn, c_data)
 	PAGE *oldpage;
 	db_pgno_t free_pgno, last_pgno, pgno, start_pgno;
 	int flags, local_txn, ret, t_ret;
-	u_int32_t bucket, i;
+	u_int32_t bucket, i, size;
 
 	local_txn = IS_DB_AUTO_COMMIT(dbp, txn);
 	oldpage = NULL;
@@ -453,11 +461,17 @@ __ham_compact_hash(dbp, ip, txn, c_data)
 	/*
 	 * Find contiguous lower numbered pages for each hash table segment.
 	 */
-	for (i = 1; i <= __db_log2(meta->max_bucket); i++) {
-		bucket = i == 0 ? 0 : 1 << (i - 1);
+	for (i = 0; i < NCACHED && meta->spares[i] != PGNO_INVALID; i++) {
+		if (i == 0) {
+			bucket = 0;
+			size = 1;
+		} else {
+			bucket = 1 << (i - 1);
+			size = bucket;
+		}
 		start_pgno = meta->spares[i] + bucket;
 		if ((ret = __db_find_free(dbc, P_HASH,
-		    bucket, start_pgno, &free_pgno)) != 0) {
+		    size, start_pgno, &free_pgno)) != 0) {
 			if (ret != DB_NOTFOUND)
 				break;
 			ret = 0;
@@ -479,7 +493,7 @@ __ham_compact_hash(dbp, ip, txn, c_data)
 		 * we must put it.
 		 */
 		for (pgno = start_pgno;
-		    pgno < start_pgno + bucket; pgno++, free_pgno++) {
+		    pgno < start_pgno + size; pgno++, free_pgno++) {
 			if ((ret = __db_lget(dbc,
 			    LCK_COUPLE, pgno, DB_LOCK_WRITE, 0, &lock)) != 0)
 				goto err;
@@ -508,7 +522,7 @@ __ham_compact_hash(dbp, ip, txn, c_data)
 			oldpage = NULL;
 			c_data->compact_pages_examine++;
 		}
-		meta->spares[i] = free_pgno - (2 * bucket);
+		meta->spares[i] = free_pgno - (size + bucket);
 	}
 	if (ret == 0 && F_ISSET(dbp, DB_AM_SUBDB) &&
 	    PGNO(hcp->hdr) > c_data->compact_truncate)

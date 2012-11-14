@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1997, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -92,7 +92,7 @@ Db::Db(DbEnv *dbenv, u_int32_t flags)
 ,	construct_flags_(flags)
 ,	append_recno_callback_(0)
 ,	associate_callback_(0)
-,       associate_foreign_callback_(0)
+,	associate_foreign_callback_(0)
 ,	bt_compare_callback_(0)
 ,	bt_compress_callback_(0)
 ,	bt_decompress_callback_(0)
@@ -304,6 +304,26 @@ DB_METHOD(join, (Dbc **curslist, Dbc **cursorp, u_int32_t flags),
 DB_METHOD(key_range,
     (DbTxn *txnid, Dbt *key, DB_KEY_RANGE *results, u_int32_t flags),
     (db, unwrap(txnid), key, results, flags), DB_RETOK_STD)
+
+int Db::get_lk_exclusive(bool *onoff, bool *nowait)
+{
+	DB *db = (DB *)unwrapConst(this);
+	int on, on_nowait, ret;
+
+	ret = db->get_lk_exclusive(db, &on, &on_nowait);
+
+	*onoff = (on ? true : false);
+	*nowait = (on_nowait ? true : false);
+	return (ret);
+}
+int Db::set_lk_exclusive(bool nowait)
+{
+	DB *db = (DB *)unwrapConst(this);
+	int on_nowait;
+
+	on_nowait = (nowait ? 1 : 0);
+	return (db->set_lk_exclusive(db, on_nowait));
+}
 
 // If an error occurred during the constructor, report it now.
 // Otherwise, call the underlying DB->open method.
@@ -659,6 +679,10 @@ DB_METHOD(get_heapsize, (u_int32_t *gbytesp, u_int32_t *bytesp),
     (db, gbytesp, bytesp), DB_RETOK_STD)
 DB_METHOD(set_heapsize, (u_int32_t gbytes, u_int32_t bytes),
     (db, gbytes, bytes, 0), DB_RETOK_STD)
+DB_METHOD(get_heap_regionsize, (u_int32_t *npagesp),
+    (db, npagesp), DB_RETOK_STD)
+DB_METHOD(set_heap_regionsize, (u_int32_t npages),
+    (db, npages), DB_RETOK_STD)
 DB_METHOD(set_h_compare, (h_compare_fcn_type func),
     (db, func), DB_RETOK_STD)
 DB_METHOD(get_h_ffactor, (u_int32_t *h_ffactorp),

@@ -11,6 +11,15 @@ extern int TestChannelSuiteTeardown(CuSuite *suite);
 extern int TestChannelTestSetup(CuTest *test);
 extern int TestChannelTestTeardown(CuTest *test);
 extern int TestChannelFeature(CuTest *ct);
+extern int TestDbHotBackupSuiteSetup(CuSuite *suite);
+extern int TestDbHotBackupSuiteTeardown(CuSuite *suite);
+extern int TestDbHotBackupTestSetup(CuTest *ct);
+extern int TestDbHotBackupTestTeardown(CuTest *ct);
+extern int TestDbHotBackupSimpleEnv(CuTest *ct);
+extern int TestDbHotBackupPartitionDB(CuTest *ct);
+extern int TestDbHotBackupMultiDataDir(CuTest *ct);
+extern int TestDbHotBackupSetLogDir(CuTest *ct);
+extern int TestDbHotBackupQueueDB(CuTest *ct);
 extern int TestDbTuner(CuTest *ct);
 extern int TestNoEncryptedDb(CuTest *ct);
 extern int TestEncryptedDbFlag(CuTest *ct);
@@ -60,6 +69,31 @@ int RunChannelTests(CuString *output)
 
 	SUITE_ADD_TEST(suite, TestChannelFeature,
 	    TestChannelTestSetup, TestChannelTestTeardown);
+
+	CuSuiteRun(suite);
+	CuSuiteSummary(suite, output);
+	CuSuiteDetails(suite, output);
+	count = suite->failCount;
+	CuSuiteDelete(suite);
+	return (count);
+}
+
+int RunDbHotBackupTests(CuString *output)
+{
+	CuSuite *suite = CuSuiteNew("TestDbHotBackup",
+	    TestDbHotBackupSuiteSetup, TestDbHotBackupSuiteTeardown);
+	int count;
+
+	SUITE_ADD_TEST(suite, TestDbHotBackupSimpleEnv,
+	    TestDbHotBackupTestSetup, TestDbHotBackupTestTeardown);
+	SUITE_ADD_TEST(suite, TestDbHotBackupPartitionDB,
+	    TestDbHotBackupTestSetup, TestDbHotBackupTestTeardown);
+	SUITE_ADD_TEST(suite, TestDbHotBackupMultiDataDir,
+	    TestDbHotBackupTestSetup, TestDbHotBackupTestTeardown);
+	SUITE_ADD_TEST(suite, TestDbHotBackupSetLogDir,
+	    TestDbHotBackupTestSetup, TestDbHotBackupTestTeardown);
+	SUITE_ADD_TEST(suite, TestDbHotBackupQueueDB,
+	    TestDbHotBackupTestSetup, TestDbHotBackupTestTeardown);
 
 	CuSuiteRun(suite);
 	CuSuiteSummary(suite, output);
@@ -240,6 +274,7 @@ int RunQueueTests(CuString *output)
 
 TestSuite g_suites[] = {
 	{ "TestChannel", RunChannelTests },
+	{ "TestDbHotBackup", RunDbHotBackupTests },
 	{ "TestDbTuner", RunDbTunerTests },
 	{ "TestEncryption", RunEncryptionTests },
 	{ "TestEnvConfig", RunEnvConfigTests },

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -26,7 +26,7 @@ extern "C" {
 /*
  * A locker's deadlock resolution priority is stored as a 32 bit unsigned
  * integer.  The maximum priority is DB_LOCK_MAXPRIORITY and the default
- * priorit is DB_LOCK_DEFPRIORITY.
+ * priority is DB_LOCK_DEFPRIORITY.
  */
 #define	DB_LOCK_DEFPRIORITY	100
 #define DB_LOCK_MAXPRIORITY	UINT32_MAX

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id: env_method.c,v dabaaeb7d839 2010/08/03 17:28:53 mike $
  */
@@ -26,6 +26,7 @@ static int  __env_get_data_len __P((DB_ENV *, u_int32_t *));
 static int  __env_get_flags __P((DB_ENV *, u_int32_t *));
 static int  __env_get_home __P((DB_ENV *, const char **));
 static int  __env_get_intermediate_dir_mode __P((DB_ENV *, const char **));
+static int  __env_get_metadata_dir __P((DB_ENV *, const char **));
 static int  __env_get_shm_key __P((DB_ENV *, long *));
 static int  __env_get_thread_count __P((DB_ENV *, u_int32_t *));
 static int  __env_get_thread_id_fn __P((DB_ENV *,
@@ -158,6 +159,8 @@ __db_env_init(dbenv)
 	 */
 	/* DB_ENV PUBLIC HANDLE LIST BEGIN */
 	dbenv->add_data_dir = __env_add_data_dir;
+	dbenv->backup = __db_backup;
+	dbenv->dbbackup = __db_dbbackup_pp;
 	dbenv->cdsgroup_begin = __cdsgroup_begin_pp;
 	dbenv->close = __env_close_pp;
 	dbenv->dbremove = __env_dbremove_pp;
@@ -170,6 +173,8 @@ __db_env_init(dbenv)
 	dbenv->get_app_dispatch = __env_get_app_dispatch;
 	dbenv->get_cache_max = __memp_get_cache_max;
 	dbenv->get_cachesize = __memp_get_cachesize;
+	dbenv->get_backup_callbacks = __env_get_backup_callbacks;
+	dbenv->get_backup_config = __env_get_backup_config;
 	dbenv->get_create_dir = __env_get_create_dir;
 	dbenv->get_data_dirs = __env_get_data_dirs;
 	dbenv->get_data_len = __env_get_data_len;
@@ -197,6 +202,7 @@ __db_env_init(dbenv)
 	dbenv->get_lk_tablesize = __lock_get_lk_tablesize;
 	dbenv->get_memory_init = __env_get_memory_init;
 	dbenv->get_memory_max = __env_get_memory_max;
+	dbenv->get_metadata_dir = __env_get_metadata_dir;
 	dbenv->get_mp_max_openfd = __memp_get_mp_max_openfd;
 	dbenv->get_mp_max_write = __memp_get_mp_max_write;
 	dbenv->get_mp_mmapsize = __memp_get_mp_mmapsize;
@@ -297,6 +303,8 @@ __db_env_init(dbenv)
 	dbenv->repmgr_stat_print = __repmgr_stat_print_pp;
 	dbenv->set_alloc = __env_set_alloc;
 	dbenv->set_app_dispatch = __env_set_app_dispatch;
+	dbenv->set_backup_callbacks = __env_set_backup_callbacks;
+	dbenv->set_backup_config = __env_set_backup_config;
 	dbenv->set_cache_max = __memp_set_cache_max;
 	dbenv->set_cachesize = __memp_set_cachesize;
 	dbenv->set_create_dir = __env_set_create_dir;
@@ -326,6 +334,7 @@ __db_env_init(dbenv)
 	dbenv->set_lk_tablesize = __lock_set_lk_tablesize;
 	dbenv->set_memory_init = __env_set_memory_init;
 	dbenv->set_memory_max = __env_set_memory_max;
+	dbenv->set_metadata_dir = __env_set_metadata_dir;
 	dbenv->set_mp_max_openfd = __memp_set_mp_max_openfd;
 	dbenv->set_mp_max_write = __memp_set_mp_max_write;
 	dbenv->set_mp_mmapsize = __memp_set_mp_mmapsize;
@@ -649,7 +658,7 @@ __env_set_memory_max(dbenv, gbytes, bytes)
 	    "Maximum memory size too large: maximum is 4GB"));
 		return (EINVAL);
 	}
-	dbenv->memory_max = (roff_t)((gbytes * GIGABYTE) + bytes);
+	dbenv->memory_max = ((roff_t)gbytes * GIGABYTE) + bytes;
 	return (0);
 }
 
@@ -922,10 +931,9 @@ __env_set_flags(dbenv, flags, on)
 	int on;
 {
 	ENV *env;
-	DB_TXNREGION *tenv;
 	DB_THREAD_INFO *ip;
 	u_int32_t mapped_flags;
-	int mem_on, needs_checkpoint, ret;
+	int mem_on, ret;
 
 	env = dbenv->env;
 
@@ -1002,30 +1010,10 @@ __env_set_flags(dbenv, flags, on)
 		ENV_REQUIRES_CONFIG(env, env->tx_handle,
 		    "DB_ENV->set_flags: DB_HOTBACKUP_IN_PROGRESS", DB_INIT_TXN);
 
-		tenv = (DB_TXNREGION *)env->tx_handle->reginfo.primary;
-		needs_checkpoint = 0;
 		ENV_ENTER(env, ip);
-		TXN_SYSTEM_LOCK(env);
-		if (on) {
-			tenv->n_hotbackup++;
-			if (tenv->n_bulk_txn > 0)
-				needs_checkpoint = 1;
-		} else {
-			if (tenv->n_hotbackup == 0)
-				needs_checkpoint = -1; /* signal count error */
-			else
-				tenv->n_hotbackup--;
-		}
-		TXN_SYSTEM_UNLOCK(env);
+		ret = __env_set_backup(env, on);
 		ENV_LEAVE(env, ip);
-
-		if (needs_checkpoint == -1) {
-			__db_errx(env, DB_STR("1560",
-		    "Attempt to decrement hotbackup counter past zero"));
-			return (EINVAL);
-		}
-
-		if (needs_checkpoint && (ret = __txn_checkpoint(env, 0, 0, 0)))
+		if (ret != 0)
 			return (ret);
 	}
 
@@ -1036,6 +1024,45 @@ __env_set_flags(dbenv, flags, on)
 	else
 		F_CLR(dbenv, mapped_flags);
 
+	return (0);
+}
+
+/*
+ * __env_set_backup --
+ * PUBLIC: int __env_set_backup __P((ENV *, int));
+ */
+int
+__env_set_backup(env, on)
+	ENV *env;
+	int on;
+{
+	DB_TXNREGION *tenv;
+	int needs_checkpoint, ret;
+
+	tenv = (DB_TXNREGION *)env->tx_handle->reginfo.primary;
+	needs_checkpoint = 0;
+
+	TXN_SYSTEM_LOCK(env);
+	if (on) {
+		tenv->n_hotbackup++;
+		if (tenv->n_bulk_txn > 0)
+			needs_checkpoint = 1;
+	} else {
+		if (tenv->n_hotbackup == 0)
+			needs_checkpoint = -1; /* signal count error */
+		else
+			tenv->n_hotbackup--;
+	}
+	TXN_SYSTEM_UNLOCK(env);
+
+	if (needs_checkpoint == -1) {
+		__db_errx(env, DB_STR("1560",
+	    "Attempt to decrement hotbackup counter past zero"));
+		return (EINVAL);
+	}
+
+	if (needs_checkpoint && (ret = __txn_checkpoint(env, 0, 0, 0)))
+		return (ret);
 	return (0);
 }
 
@@ -1160,6 +1187,49 @@ __env_get_intermediate_dir_mode(dbenv, modep)
 	const char **modep;
 {
 	*modep = dbenv->intermediate_dir_mode;
+	return (0);
+}
+
+/*
+ * __env_set_metadata_dir --
+ *	DB_ENV->set_metadata_dir.
+ *
+ * PUBLIC: int  __env_set_metadata_dir __P((DB_ENV *, const char *));
+ */
+int
+__env_set_metadata_dir(dbenv, dir)
+	DB_ENV *dbenv;
+	const char *dir;
+{
+	ENV *env;
+	int i, ret;
+
+	env = dbenv->env;
+
+	ENV_ILLEGAL_AFTER_OPEN(env, "DB_ENV->set_metadata_dir");
+
+	/* If metadata_dir is not already on data_dir list, add it. */
+	for (i = 0; i < dbenv->data_next; i++)
+		if (strcmp(dir, dbenv->db_data_dir[i]) == 0)
+			break;
+	if (i == dbenv->data_next &&
+	    (ret = __env_add_data_dir(dbenv, dir)) != 0) {
+		__db_errx(env, DB_STR_A("1590",
+		    "Could not add %s to environment list.", "%s"), dir);
+		return (ret);
+	}
+
+	if (dbenv->db_md_dir != NULL)
+		__os_free(env, dbenv->db_md_dir);
+	return (__os_strdup(env, dir, &dbenv->db_md_dir));
+}
+
+static int
+__env_get_metadata_dir(dbenv, dirp)
+	DB_ENV *dbenv;
+	const char **dirp;
+{
+	*dirp = dbenv->db_md_dir;
 	return (0);
 }
 
@@ -1646,6 +1716,7 @@ __env_get_verbose(dbenv, which, onoffp)
 	int *onoffp;
 {
 	switch (which) {
+	case DB_VERB_BACKUP:
 	case DB_VERB_DEADLOCK:
 	case DB_VERB_FILEOPS:
 	case DB_VERB_FILEOPS_ALL:
@@ -1683,6 +1754,7 @@ __env_set_verbose(dbenv, which, on)
 	int on;
 {
 	switch (which) {
+	case DB_VERB_BACKUP:
 	case DB_VERB_DEADLOCK:
 	case DB_VERB_FILEOPS:
 	case DB_VERB_FILEOPS_ALL:

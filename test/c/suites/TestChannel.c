@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2011 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates. All rights reserved.
  */
 
 #include <ctype.h>
@@ -19,8 +19,8 @@
 #include <sys/uio.h>
 #endif
 
-#include "../cutest/CuTest.h"
-#include "../common/test_util.h"
+#include "CuTest.h"
+#include "test_util.h"
 
 #define MAX_SEGS 10
 #define MAX_MSGS 10
@@ -59,6 +59,8 @@ struct channel_test_globals {
 	CuTest *test;
 	mutex_t mtx;
 	cond_t cond;
+	u_int *ports;
+	int ports_cnt;
 };
 
 struct report {
@@ -98,6 +100,7 @@ static void clear_rpt_int __P((struct report *));
 static int env_done __P((void *));
 static struct report *get_rpt __P((const DB_ENV *));
 static int fortify __P((DB_ENV *, struct channel_test_globals *));
+static int get_avail_ports __P((u_int *, int));
 static int has_msgs __P((void *));
 static void msg_disp __P((DB_ENV *, DB_CHANNEL *, DBT *, u_int32_t, u_int32_t));
 static void msg_disp2 __P((DB_ENV *, DB_CHANNEL *, DBT *, u_int32_t, u_int32_t));
@@ -203,6 +206,7 @@ setup(envp1, envp2, envp3, g)
 	DB_SITE *dbsite;
 	u_int32_t flags;
 	int ret;
+	u_int *ports;
 
 #define CHECK(call) \
 	do {	    \
@@ -211,6 +215,8 @@ setup(envp1, envp2, envp3, g)
 	goto err;						\
 	}							\
 	} while (0);
+
+	ports = g->ports;
 
 	dbenv1 = dbenv2 = dbenv3 = NULL;
 	CHECK(db_env_create(&dbenv1, 0));
@@ -223,13 +229,11 @@ setup(envp1, envp2, envp3, g)
 	CHECK(dbenv1->open(dbenv1, "DIR1", flags, 0));
 	
 	CHECK(dbenv1->rep_set_config(dbenv1, DB_REPMGR_CONF_ELECTIONS, 0));
-	CHECK(dbenv1->repmgr_site(dbenv1, "localhost", 6000, &dbsite, 0));
+	CHECK(dbenv1->repmgr_site(dbenv1, "localhost", ports[0], &dbsite, 0));
 	CHECK(dbsite->set_config(dbsite, DB_LOCAL_SITE, 1));
 	CHECK(dbsite->close(dbsite));
 	CHECK(dbenv1->set_event_notify(dbenv1, notify));
 	CHECK(dbenv1->repmgr_msg_dispatch(dbenv1, msg_disp, 0));
-	CHECK(dbenv1->rep_set_timeout(dbenv1,
-		DB_REP_CONNECTION_RETRY, 3000000));
 	CHECK(dbenv1->repmgr_start(dbenv1, 2, DB_REP_MASTER));
 
 	CHECK(db_env_create(&dbenv2, 0));
@@ -240,15 +244,13 @@ setup(envp1, envp2, envp3, g)
 	CHECK(dbenv2->open(dbenv2, "DIR2", flags, 0));
 	CHECK(dbenv2->rep_set_config(dbenv2, DB_REPMGR_CONF_ELECTIONS, 0));
 
-	CHECK(dbenv2->repmgr_site(dbenv2, "localhost", 6001, &dbsite, 0));
+	CHECK(dbenv2->repmgr_site(dbenv2, "localhost", ports[1], &dbsite, 0));
 	CHECK(dbsite->set_config(dbsite, DB_LOCAL_SITE, 1));
 	CHECK(dbsite->close(dbsite));
-	CHECK(dbenv2->repmgr_site(dbenv2, "localhost", 6000, &dbsite, 0));
+	CHECK(dbenv2->repmgr_site(dbenv2, "localhost", ports[0], &dbsite, 0));
 	CHECK(dbsite->set_config(dbsite, DB_BOOTSTRAP_HELPER, 1));
 	CHECK(dbsite->close(dbsite));
 	CHECK(dbenv2->set_event_notify(dbenv2, notify));
-	CHECK(dbenv2->rep_set_timeout(dbenv2,
-		DB_REP_CONNECTION_RETRY, 3000000));
 	CHECK(dbenv2->repmgr_start(dbenv2, 2, DB_REP_CLIENT));
 
 	await_condition(is_started, dbenv2, 60);
@@ -267,15 +269,13 @@ setup(envp1, envp2, envp3, g)
 	CHECK(dbenv3->open(dbenv3, "DIR3", flags, 0));
 	CHECK(dbenv3->rep_set_config(dbenv3, DB_REPMGR_CONF_ELECTIONS, 0));
 
-	CHECK(dbenv3->repmgr_site(dbenv3, "localhost", 6002, &dbsite, 0));
+	CHECK(dbenv3->repmgr_site(dbenv3, "localhost", ports[2], &dbsite, 0));
 	CHECK(dbsite->set_config(dbsite, DB_LOCAL_SITE, 1));
 	CHECK(dbsite->close(dbsite));
-	CHECK(dbenv3->repmgr_site(dbenv3, "localhost", 6000, &dbsite, 0));
+	CHECK(dbenv3->repmgr_site(dbenv3, "localhost", ports[0], &dbsite, 0));
 	CHECK(dbsite->set_config(dbsite, DB_BOOTSTRAP_HELPER, 1));
 	CHECK(dbsite->close(dbsite));
 	CHECK(dbenv3->set_event_notify(dbenv3, notify));
-	CHECK(dbenv3->rep_set_timeout(dbenv3,
-		DB_REP_CONNECTION_RETRY, 3000000));
 	CHECK(dbenv3->repmgr_start(dbenv3, 2, DB_REP_CLIENT));
 
 	await_condition(is_started, dbenv3, 60);
@@ -388,6 +388,8 @@ get_rpt(dbenv)
 }
 
 int TestChannelFeature(CuTest *ct) {
+/* Run this test only when replication is supported. */
+#ifdef HAVE_REPLICATION
 	DB_ENV *dbenv1, *dbenv2, *dbenv3;
 	DB_CHANNEL *ch;
 	DB_REP_STAT *stats;
@@ -402,6 +404,7 @@ int TestChannelFeature(CuTest *ct) {
 	u_int8_t short_buf[4];
 	size_t sz;
 	int done, eid, ret;
+	u_int ports[3];
 	
 #ifdef _WIN32
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -409,15 +412,26 @@ int TestChannelFeature(CuTest *ct) {
 	printf("this is a test for repmgr channels feature\n");
 
 	g = ct->context;
+	ret = get_avail_ports(ports, 3);
+	CuAssertTrue(ct, (ret == 0));
+
+	g->ports = ports;
+	g->ports_cnt = 3;
+
+	printf("use ports: {%u, %u, %u}\n", ports[0], ports[1], ports[2]);
+	
+	/* 
+	 * The ports[0] will be the local port for dbenv1, ports[1] for dbenv2,
+	 * and ports[2] for dbenv3.
+	 */
 	CuAssertTrue(ct, (ret = setup(&dbenv1, &dbenv2, &dbenv3, g) == 0));
 
 	/*
-	 * For this first section, we're sending to ENV2.  TODO: make that more
-	 * clear, without duplicating the hard-coding of the port.
+	 * For this first section, we're sending to ENV2.  
 	 */
 	CuAssertTrue(ct,
 	    (ret = dbenv1->repmgr_site(dbenv1,
-		"localhost", 6001, &dbsite, 0)) == 0);
+		"localhost", ports[1], &dbsite, 0)) == 0);
 	CuAssertTrue(ct, (ret = dbsite->get_eid(dbsite, &eid)) == 0);
 	CuAssertTrue(ct, (ret = dbsite->close(dbsite)) == 0);
 	CuAssertTrue(ct, (ret = dbenv1->repmgr_channel(dbenv1, eid, &ch, 0)) == 0);
@@ -666,13 +680,12 @@ int TestChannelFeature(CuTest *ct) {
 
 	/* ---------------------------------------- */
 
-	// If you go from env2 to env, we know that it's port 6000.  TODO: make this
-	// more robust by storing it some more structured form.
+	// If you go from env2 to env, we know that it's ports[0]
 	// 
 	CuAssertTrue(ct, (ret = dbenv1->repmgr_msg_dispatch(dbenv1, msg_disp3, 0)) == 0);
 	CuAssertTrue(ct,
 	    (ret = dbenv2->repmgr_site(dbenv2,
-		"localhost", 6000, &dbsite, 0)) == 0);
+		"localhost", ports[0], &dbsite, 0)) == 0);
 	CuAssertTrue(ct, (ret = dbsite->get_eid(dbsite, &eid)) == 0);
 	CuAssertTrue(ct, (ret = dbsite->close(dbsite)) == 0);
 	CuAssertTrue(ct, (ret = dbenv2->repmgr_channel(dbenv2, eid, &ch, 0)) == 0);
@@ -725,7 +738,7 @@ int TestChannelFeature(CuTest *ct) {
 	CuAssertTrue(ct, (ret = dbenv2->repmgr_msg_dispatch(dbenv2, msg_disp4, 0)) == 0);
 	CuAssertTrue(ct,
 	    (ret = dbenv2->repmgr_site(dbenv2,
-		"localhost", 6002, &dbsite, 0)) == 0);
+		"localhost", ports[2], &dbsite, 0)) == 0);
 	CuAssertTrue(ct, (ret = dbsite->get_eid(dbsite, &eid)) == 0);
 	CuAssertTrue(ct, (ret = dbsite->close(dbsite)) == 0);
 	CuAssertTrue(ct, (ret = dbenv2->repmgr_channel(dbenv2, eid, &ch, 0)) == 0);
@@ -775,6 +788,9 @@ int TestChannelFeature(CuTest *ct) {
 
 	td(dbenv2);
 	td(dbenv3);
+#else
+	printf("TestChannelFeature is not supported by the build.\n");
+#endif /* HAVE_REPLICATION */
 	return (0);
 }
 
@@ -1263,3 +1279,114 @@ mystrcmp(actual, expected)
 		;
 	return (strcmp(p, expected));
 }
+
+static int get_avail_ports(ports, count)
+	u_int *ports;
+	int count;
+{
+/* This function is used only when replication is supported. */
+#ifdef HAVE_REPLICATION
+	u_int base, port, upper, curport;
+	int ret, t_ret, incr, i;
+	char buf[20], *rbuf, *str;
+	socket_t s;
+	ADDRINFO *orig_ai, *ai;
+#ifdef _WIN32
+#define in_port_t u_short
+#ifndef EADDRINUSE
+#define EADDRINUSE WSAEADDRINUSE
+#endif
+	WSADATA wsaData;
+	if ((ret = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0) {
+		printf("WSAStartup failed with error: %d\n", ret);
+		return (ret);
+	}
+#endif
+	base = 30100;
+	upper = 65535;
+
+	/* 
+	 * It is very convenient to have a very simple mapping between port
+	 * numbers and sites. So usually, we search a sequence of ports 
+	 * starting from (10 * N + 1). To avoid redundant check on a port,
+	 * we set the incr to be times of 10 and just bigger or equal to count.
+	 */
+	incr = 10 * ((count + 9) / 10);
+
+	/* 
+	 * The format for BDBPORTRANGE should be base:upper, 
+	 * either of base or upper can be empty, and if empty,
+	 * we will use the default value for it.
+	 * If no colon, the whole is considered to be base.
+	 */
+	rbuf = buf;
+	if ((ret = __os_getenv(NULL, "BDBPORTRANGE", &rbuf, sizeof(buf))) != 0)
+		goto end;
+	if (rbuf != NULL && rbuf[0] != '\0') {
+		if ((str = strsep(&rbuf, ":")) != NULL && str[0] != '\0')
+			base = (u_int)atoi(str);
+		if (rbuf != NULL && rbuf[0] != '\0')
+			upper = (u_int)atoi(rbuf);
+	}
+
+	for (port = base + 1; (port + incr) <= upper; port += incr) {
+		curport = port;
+		i = incr;
+
+		while (i-- > 0) {
+			if (ret = __repmgr_getaddr(NULL, "localhost", curport,
+			    AI_PASSIVE, &orig_ai) != 0)
+				goto end;
+
+			for (ai = orig_ai; ai != NULL; ai = ai->ai_next) {
+				if ((s = socket(ai->ai_family, ai->ai_socktype,
+				    ai->ai_protocol)) == INVALID_SOCKET)
+					continue;
+
+				if (bind(s, ai->ai_addr, 
+				    (socklen_t)ai->ai_addrlen) != 0) {
+					ret = net_errno;
+					(void)closesocket(s);
+					s = INVALID_SOCKET;
+					continue;
+				}
+
+				ret = 0;
+				goto clean;
+			}
+			if (ret == 0)
+				ret = net_errno;
+clean:
+			if (s != INVALID_SOCKET)
+				(void)closesocket(s);
+			__os_freeaddrinfo(NULL, orig_ai);
+			if (ret != 0 && ret != EADDRINUSE)
+				goto end;
+			else if (ret != 0)
+				break;
+			curport++;
+		}
+
+		/* We've found the port sequence now */
+		if (ret == 0) {
+			for (i = 0; i < count; i++)
+				ports[i] = port + i;
+			break;
+		}
+	}
+end:
+#ifdef _WIN32
+	if (WSACleanup() == SOCKET_ERROR) {
+		t_ret = net_errno;
+		printf("WSACleanup failed with error: %d\n", t_ret);
+		if (ret == 0)
+			ret = t_ret;
+	}
+#endif
+
+	return (ret);
+#else
+	return (0);
+#endif /* HAVE_REPLICATION */
+}
+

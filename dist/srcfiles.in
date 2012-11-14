@@ -113,6 +113,7 @@ src/db/db.c							android vx vxsmall
 src/db/db_am.c							android vx vxsmall 
 src/db/db_auto.c						android vx vxsmall 
 src/db/db_autop.c						vx6
+src/db/db_backup.c						android vx vxsmall 
 src/db/db_cam.c							android vx vxsmall 
 src/db/db_cds.c							android vx vxsmall 
 src/db/db_compact.c						android vx vxsmall 
@@ -152,6 +153,7 @@ src/dbreg/dbreg_rec.c						android vx vxsmall
 src/dbreg/dbreg_stat.c						android vx vxsmall 
 src/dbreg/dbreg_util.c						android vx vxsmall 
 src/env/env_alloc.c						android vx vxsmall 
+src/env/env_backup.c						android vx vxsmall 
 src/env/env_config.c						android vx vxsmall 
 src/env/env_failchk.c						android vx vxsmall 
 src/env/env_file.c						android vx vxsmall 
@@ -188,6 +190,7 @@ src/hash/hash_upgrade.c						vx
 src/hash/hash_verify.c						vx
 src/heap/heap_auto.c						vx
 src/heap/heap_autop.c						vx
+src/heap/heap_backup.c						vx
 src/heap/heap.c							vx
 src/heap/heap_conv.c						vx
 src/heap/heap_method.c						vx
@@ -224,6 +227,7 @@ src/log/log_verify_auto.c					vx
 src/log/log_verify_int.c					vx 
 src/log/log_verify_stub.c					android vxsmall 
 src/mp/mp_alloc.c						android vx vxsmall 
+src/mp/mp_backup.c						android vx vxsmall 
 src/mp/mp_bh.c							android vx vxsmall 
 src/mp/mp_fget.c						android vx vxsmall 
 src/mp/mp_fmethod.c						android vx vxsmall 
@@ -264,6 +268,7 @@ src/os/os_handle.c						android vx vxsmall
 src/os/os_map.c							android 
 src/os/os_mkdir.c						android vx vxsmall 
 src/os/os_open.c						android vx vxsmall 
+src/os/os_path.c						android vx vxsmall 
 src/os/os_pid.c							android vx vxsmall 
 src/os/os_rename.c						android vx vxsmall 
 src/os/os_root.c						android vx vxsmall 

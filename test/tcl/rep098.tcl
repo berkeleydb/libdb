@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -121,8 +121,8 @@ proc rep098_sub { method niter tnum logset recargs largs } {
 	set c_logtype [lindex $logset 1]
 
 	# In-memory logs cannot be used with -txn nosync.
-	set m_logargs [adjust_logargs $m_logtype]
-	set c_logargs [adjust_logargs $c_logtype]
+	set m_logargs [adjust_logargs $m_logtype 1048576]
+	set c_logargs [adjust_logargs $c_logtype 1048576]
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
 

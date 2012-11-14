@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994
@@ -114,7 +114,7 @@ __ham_quick_delete(dbc)
 	if ((ret = __hamc_writelock(dbc)) == 0) {
 		ret = __ham_del_pair(dbc, 0, NULL);
 		/*
-		 * If a page was retreived during the delete, put it now. We
+		 * If a page was retrieved during the delete, put it now. We
 		 * can't rely on the callers cursor close to do that, since bulk
 		 * delete operations keep the cursor open across deletes.
 		 */

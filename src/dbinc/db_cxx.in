@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1997, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -224,10 +224,12 @@ public:
 	virtual int get_feedback(void (**)(Db *, int, int));
 	virtual int get_flags(u_int32_t *);
 	virtual int get_heapsize(u_int32_t *, u_int32_t *);
+	virtual int get_heap_regionsize(u_int32_t *);
 	virtual int get_h_compare(int (**)(Db *, const Dbt *, const Dbt *));
 	virtual int get_h_ffactor(u_int32_t *);
 	virtual int get_h_hash(u_int32_t (**)(Db *, const void *, u_int32_t));
 	virtual int get_h_nelem(u_int32_t *);
+	virtual int get_lk_exclusive(bool *, bool *);
 	virtual int get_lorder(int *);
 	virtual void get_msgcall(void (**)(const DbEnv *, const char *));
 	virtual void get_msgfile(FILE **);
@@ -280,12 +282,14 @@ public:
 	virtual int set_feedback(void (*)(Db *, int, int));
 	virtual int set_flags(u_int32_t);
 	virtual int set_heapsize(u_int32_t, u_int32_t);
+	virtual int set_heap_regionsize(u_int32_t);
 	virtual int set_h_compare(h_compare_fcn_type); /*deprecated*/
 	virtual int set_h_compare(int (*)(Db *, const Dbt *, const Dbt *));
 	virtual int set_h_ffactor(u_int32_t);
 	virtual int set_h_hash(h_hash_fcn_type); /*deprecated*/
 	virtual int set_h_hash(u_int32_t (*)(Db *, const void *, u_int32_t));
 	virtual int set_h_nelem(u_int32_t);
+	virtual int set_lk_exclusive(bool);
 	virtual int set_lorder(int);
 	virtual void set_msgcall(void (*)(const DbEnv *, const char *));
 	virtual void set_msgfile(FILE *);
@@ -488,8 +492,11 @@ public:
 	// These methods match those in the C interface.
 	//
 	virtual int add_data_dir(const char *);
+	virtual int backup(const char *target, u_int32_t flags);
 	virtual int cdsgroup_begin(DbTxn **tid);
 	virtual int close(u_int32_t);
+	virtual int dbbackup(
+	    const char *dbfile, const char *target, u_int32_t flags);
 	virtual int dbremove(DbTxn *txn, const char *name, const char *subdb,
 	    u_int32_t flags);
 	virtual int dbrename(DbTxn *txn, const char *name, const char *subdb,
@@ -510,6 +517,16 @@ public:
 	virtual int set_alloc(db_malloc_fcn_type, db_realloc_fcn_type,
 	    db_free_fcn_type);
 	virtual void set_app_private(void *);
+	virtual int get_backup_callbacks(
+	    int (**)(DbEnv *, const char *, const char *, void **),
+	    int (**)(DbEnv *, u_int32_t, u_int32_t, u_int32_t, u_int8_t *, void *),
+	    int (**)(DbEnv *, const char *, void *));
+	virtual int set_backup_callbacks(
+	    int (*)(DbEnv *, const char *, const char *, void **),
+	    int (*)(DbEnv *, u_int32_t, u_int32_t, u_int32_t, u_int8_t *, void *),
+	    int (*)(DbEnv *, const char *, void *));
+	virtual int get_backup_config(DB_BACKUP_CONFIG, u_int32_t *);
+	virtual int set_backup_config(DB_BACKUP_CONFIG, u_int32_t);
 	virtual int get_cachesize(u_int32_t *, u_int32_t *, int *);
 	virtual int set_cachesize(u_int32_t, u_int32_t, int);
 	virtual int get_cache_max(u_int32_t *, u_int32_t *);
@@ -571,6 +588,8 @@ public:
 	virtual int set_memory_init(DB_MEM_CONFIG, u_int32_t);
 	virtual int get_memory_max(u_int32_t *, u_int32_t *);
 	virtual int set_memory_max(u_int32_t, u_int32_t);
+	virtual int get_metadata_dir(const char **);
+	virtual int set_metadata_dir(const char *);
 	virtual int get_mp_mmapsize(size_t *);
 	virtual int set_mp_mmapsize(size_t);
 	virtual int get_mp_max_openfd(int *);
@@ -798,6 +817,12 @@ public:
 	//
 	static int _app_dispatch_intercept(DB_ENV *dbenv, DBT *dbt, DB_LSN *lsn,
 				       db_recops op);
+	static int _backup_close_intercept(DB_ENV *dbenv,
+	    const char *dbname, void *handle);
+	static int _backup_open_intercept(DB_ENV *dbenv,
+	    const char *dbname, const char *target, void **handle);
+	static int _backup_write_intercept(DB_ENV *dbenv, u_int32_t off_gbytes,
+	    u_int32_t off_bytes, u_int32_t size, u_int8_t *buf, void *handle);
 	static void _paniccall_intercept(DB_ENV *dbenv, int errval);
 	static void _feedback_intercept(DB_ENV *dbenv, int opcode, int pct);
 	static void  _event_func_intercept(DB_ENV *dbenv, u_int32_t, void *);
@@ -837,6 +862,11 @@ private:
 	__DB_STD(ostream) *message_stream_;
 
 	int (*app_dispatch_callback_)(DbEnv *, Dbt *, DbLsn *, db_recops);
+	int (*backup_close_callback_)(DbEnv *, const char *, void *);
+	int (*backup_open_callback_)(
+	    DbEnv *, const char *, const char *, void **);
+	int (*backup_write_callback_)(
+	    DbEnv *, u_int32_t, u_int32_t, u_int32_t, u_int8_t *, void *);
 	int (*isalive_callback_)(DbEnv *, pid_t, db_threadid_t, u_int32_t);
 	void (*error_callback_)(const DbEnv *, const char *, const char *);
 	void (*feedback_callback_)(DbEnv *, int, int);

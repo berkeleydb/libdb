@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -1292,11 +1292,18 @@ gap_check:
 
 		if (ret == DB_KEYEXIST)
 			ret = 0;
-		if (ret != 0)
+		if (ret != 0 && ret != ENOMEM)
 			goto done;
 
-		if (IS_ZERO_LSN(lp->waiting_lsn) ||
-		    LOG_COMPARE(&rp->lsn, &lp->waiting_lsn) < 0) {
+		/*
+		 * If we are using in-memory, and got ENOMEM, it is
+		 * not an error.  But in that case we want to skip
+		 * comparing the message LSN since we're not storing it.
+		 * However, we do want continue to check if we need to
+		 * send a request for the gap.
+		 */
+		if (ret == 0 && (IS_ZERO_LSN(lp->waiting_lsn) ||
+		    LOG_COMPARE(&rp->lsn, &lp->waiting_lsn) < 0)) {
 			/*
 			 * If this is a new gap, then reset the rcvd_ts so
 			 * that an out-of-order record after an idle period
@@ -1416,16 +1423,13 @@ err:	/*
 	REP_SYSTEM_UNLOCK(env);
 	/*
 	 * If we've processed beyond the needed LSN for a pending
-	 * start sync, start it now.  We can compare >= here
-	 * because ready_lsn is the next record we expect.
-	 * Since ckp_lsn can point to the last commit record itself,
-	 * but if it does and ready_lsn == commit (i.e. we haven't
-	 * written the commit yet), we can still start to sync
-	 * because we're guaranteed no additional buffers can
-	 * be dirtied.
+	 * start sync, start it now.  We must compare > here
+	 * because ready_lsn is the next record we expect and if
+	 * the last record is a commit, that will dirty pages on
+	 * a client as that txn is applied.
 	 */
 	if (!IS_ZERO_LSN(rep->ckp_lsn) &&
-	    LOG_COMPARE(&lp->ready_lsn, &rep->ckp_lsn) >= 0) {
+	    LOG_COMPARE(&lp->ready_lsn, &rep->ckp_lsn) > 0) {
 		save_lsn = rep->ckp_lsn;
 		ZERO_LSN(rep->ckp_lsn);
 	} else
@@ -1610,7 +1614,7 @@ __rep_process_txn(env, rec)
 	locker->priority = DB_LOCK_MAXPRIORITY;
 
 	if ((ret =
-	      __lock_get_list(env, locker, 0, DB_LOCK_WRITE, lock_dbt)) != 0)
+	    __lock_get_list(env, locker, 0, DB_LOCK_WRITE, lock_dbt)) != 0)
 		goto err;
 
 	/* Phase 1.  Get a list of the LSNs in this transaction, and sort it. */
@@ -2457,7 +2461,7 @@ __rep_check_missing(env, gen, master_perm_lsn)
 	 * Prevent message lockout by counting ourself here.
 	 * Setting rep->msg_th will prevent a major system
 	 * change, such as a role change or running recovery, from
-	 * occuring before sending out any rerequests.
+	 * occurring before sending out any rerequests.
 	 */
 	rep->msg_th++;
 	REP_SYSTEM_UNLOCK(env);

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -342,7 +342,7 @@ connect_all(args)
 		goto err;
 	}
 
-	if (nsites > 0 && (hm_thr = calloc(nsites, sizeof(int))) == NULL) {
+	if (nsites > 0 && (hm_thr = calloc(nsites, sizeof(thread_t))) == NULL) {
 		dbenv->err(dbenv, errno, "connect_all");
 		ret = 1;
 		goto err;

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST	repmgr024
 # TEST	Test of group-wide log archiving awareness.
@@ -69,7 +69,7 @@ proc repmgr024_sub { method niter tnum largs } {
 	# the client is closed and we want to give it a chance to
 	# wait later in the test.
 	$enva repmgr -timeout {connection_retry 5000000} \
-	    -local [list localhost $porta] -start master
+	    -local [list 127.0.0.1 $porta] -start master
 
 	set cmdb "berkdb_env_noerr -create -txn nosync \
 	    $verbargs $repmemargs -rep -thread \
@@ -77,8 +77,8 @@ proc repmgr024_sub { method niter tnum largs } {
 	    -home $dirb"
 	set envb [eval $cmdb]
 	$envb repmgr -timeout {connection_retry 5000000} \
-	    -local [list localhost $portb] -start client \
-	    -remote [list localhost $porta]
+	    -local [list 127.0.0.1 $portb] -start client \
+	    -remote [list 127.0.0.1 $porta]
 	puts "\tRepmgr$tnum.a: wait for client B to sync with master."
 	await_startup_done $envb
 
@@ -88,8 +88,8 @@ proc repmgr024_sub { method niter tnum largs } {
 	    -home $dirc"
 	set envc [eval $cmdc]
 	$envc repmgr -timeout {connection_retry 5000000} \
-	    -local [list localhost $portc] -start client \
-	    -remote [list localhost $porta]
+	    -local [list 127.0.0.1 $portc] -start client \
+	    -remote [list 127.0.0.1 $porta]
 	puts "\tRepmgr$tnum.b: wait for client C to sync with master."
 	await_startup_done $envc
 
@@ -194,6 +194,14 @@ proc repmgr024_sub { method niter tnum largs } {
 			set stop 1
 		}
 	}
+
+	#
+	# Make sure neither log_archive in same process nor db_archive
+	# in a different process show any files to archive.
+	#
+	error_check_good no_files_log_archive [llength [$enva log_archive]] 0
+	set dbarchres [eval exec $util_path/db_archive -h $dira]
+	error_check_good no_files_db_archive [llength $dbarchres] 0
 
 	puts "\tRepmgr$tnum.j: Try to archive. Verify it didn't."
 	set res [$enva log_archive -arch_remove]

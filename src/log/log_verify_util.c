@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -254,7 +254,7 @@ err:
 	return (ret);
 }
 
-/* Seocndary index callback function for DB_LOG_VRFY_INFO->timelsn. */
+/* Secondary index callback function for DB_LOG_VRFY_INFO->timelsn. */
 static int
 __lv_seccbk_fname(secdb, key, data, result)
 	DB *secdb;
@@ -289,7 +289,7 @@ out:
 	return (ret);
 }
 
-/* Seocndary index callback function for DB_LOG_VRFY_INFO->txnpg. */
+/* Secondary index callback function for DB_LOG_VRFY_INFO->txnpg. */
 static int
 __lv_seccbk_txnpg(secdb, key, data, result)
 	DB *secdb;
@@ -306,7 +306,7 @@ __lv_seccbk_txnpg(secdb, key, data, result)
 	return (0);
 }
 
-/* Seocndary index callback function for DB_LOG_VRFY_INFO->timelsn. */
+/* Secondary index callback function for DB_LOG_VRFY_INFO->timelsn. */
 static int
 __lv_seccbk_lsn(secdb, key, data, result)
 	DB *secdb;
@@ -1325,7 +1325,8 @@ __add_dbregid(lvh, freg, dbregid, opcode, lsn, dbtype, meta_pgno, addp)
 			if (!IS_DBREG_CLOSE(opcode)) {
 				/* Opening an open dbreg id. */
 				if (IS_DBREG_OPEN(opcode) &&
-				    opcode != DBREG_CHKPNT) {
+				    (opcode != DBREG_CHKPNT &&
+				    opcode != DBREG_XCHKPNT)) {
 					tret = 2;
 					goto err;
 				}

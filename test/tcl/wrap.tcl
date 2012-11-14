@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -11,6 +11,7 @@
 
 source ./include.tcl
 source $test_path/testutils.tcl
+source $tcl_utils/multi_proc_utils.tcl
 
 # Arguments:
 if { $argc < 2 } {
@@ -41,8 +42,9 @@ set parentsentinel $testdir/begin.$parentpid
 set f [open $parentsentinel w]
 close $f
 
-# Create a Tcl subprocess that will actually run the test.
-set t [open "|$tclsh_path >& $logfile" w]
+# Create a subprocess that will actually run the test.
+set nameexec [info nameofexecutable]
+set t [open "|$nameexec >& $logfile" w]
 
 # Create a sentinel for the subprocess.
 set childpid [pid $t]

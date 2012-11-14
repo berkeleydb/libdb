@@ -51,6 +51,7 @@ int __os_mapfile __P((ENV *, char *, DB_FH *, size_t, int, void **));
 int __os_unmapfile __P((ENV *, void *, size_t));
 int __os_mkdir __P((ENV *, const char *, int));
 int __os_open __P((ENV *, const char *, u_int32_t, u_int32_t, int, DB_FH **));
+int __os_concat_path __P((char *, size_t, const char *, const char *));
 void __os_id __P((DB_ENV *, pid_t *, db_threadid_t*));
 int __os_rename __P((ENV *, const char *, const char *, u_int32_t));
 int __os_isroot __P((void));

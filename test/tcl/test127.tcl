@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -16,13 +16,27 @@
 # TEST	and make sure if the correct items are deleted.
 
 proc test127 {method { nentries 10000 } { ndups 5} { tnum "127" } 
-    {subdb 0} args } {
+    {subdb 0} {sort_multiple 0} args } {
 	source ./include.tcl
 	global alphabet
 
 	if {[is_btree $method] != 1 && [is_hash $method] != 1} {
 		puts "Skipping test$tnum for $method."
 		return 
+	}
+
+	# It is only makes sense for btree database to sort bulk buffer.
+	if {$sort_multiple && ![is_btree $method]} {
+		puts "Skipping test$tnum for $method with -sort_multiple."
+		return
+	}
+
+	# For compressed databases, we need to sort the items in
+	# the bulk buffer before doing the bulk put/delete operations.
+	if {[is_compressed $args] && !$sort_multiple} {
+		puts "Skipping test$tnum for compressed databases\
+		    without -sort_multiple."
+		return
 	}
 
 	set args [convert_args $method $args]
@@ -39,38 +53,47 @@ proc test127 {method { nentries 10000 } { ndups 5} { tnum "127" }
 		set save_msg "$save_msg using sub databases"
 	}
 
-	# If we are using an env, then testfile should just be the db name.
+	# If we are using an env, then basename should just be the db name.
 	# Otherwise it is the test directory and the name.
 	set eindex [lsearch -exact $args "-env"]
 	set txnenv 0
 	set txn ""
 	if { $eindex == -1 } {
-		set testfile $testdir/test$tnum.db
+		set basename $testdir/test$tnum
 		set env NULL
+		set orig_testdir $testdir
 	} else {
-		set testfile test$tnum.db
+		set basename test$tnum
 		incr eindex
 		set env [lindex $args $eindex]
 		set txnenv [is_txnenv $env]
 		if { $txnenv == 1 } {
 			append args " -auto_commit "
 		}
-		set testdir [get_home $env]
+		set orig_testdir [get_home $env]
 	}
 
-	cleanup $testdir $env
+	set extra_op ""
+	if {$sort_multiple} {
+		set extra_op "-sort_multiple"
+	}
 
+	if {[is_compressed $args]} {
+		set options [list "-dup -dupsort"]
+	}  else {
+		set options [list "-dup -dupsort" "-dup"]
+	}
 	set i 0
-	foreach ex_args [list "-dup -dupsort" "-dup"] {
+	foreach ex_args $options {
 		set dboargs [concat $args $ex_args]
-		set fname $testfile
+		set fname $basename.db
 		set dbname $subname
 		puts "Test$tnum: $method ($dboargs)\
 		    Database bulk update $save_msg."
 		if {$subdb} {
 			set dbname $subname.$i
 		} else {
-			set fname $testfile.$i
+			set fname $basename.$i.db
 		}
 		test127_sub $fname $dbname $dboargs
 		incr i
@@ -87,10 +110,15 @@ proc test127_sub {fname dbname dboargs} {
 	upvar subdb subdb
 	upvar txnenv txnenv
 	upvar env env
+	upvar extra_op extra_op
+	upvar orig_testdir orig_testdir
+
+	set testdir $orig_testdir
+	cleanup $testdir $env
 
 	set sorted [is_substr $dboargs "-dupsort"]
 	set omethod [convert_method $method]
-
+	
 	set db [eval {berkdb_open_noerr -create -mode 0644} \
 	    $dboargs $omethod $fname $dbname]
 	error_check_good dbopen [is_valid_db $db] TRUE
@@ -106,7 +134,7 @@ proc test127_sub {fname dbname dboargs} {
 	# First, we put half the entries using put -multiple.
 	# Then, we put the rest half using put -multiple_key.
 
-	puts "\tTest$tnum.a: Bulk put data using -multiple."
+	puts "\tTest$tnum.a: Bulk put data using -multiple $extra_op."
 	set key_list1 {}
 	set data_list1 {}
 	set key_list {}
@@ -122,24 +150,25 @@ proc test127_sub {fname dbname dboargs} {
 		}
 		lappend datas_list $datas
 	}
-	set ret [eval {$db put} $txn -multiple {$key_list1 $data_list1}]
-	error_check_good {put(-multiple)} $ret 0
+	set ret [eval {$db put} $txn -multiple $extra_op \
+	    {$key_list1 $data_list1}]
+	error_check_good "put(-multiple $extra_op)" $ret 0
 
-		# Put again without -overwritedup, should return DB_KEYEXIST.
+	# Put again without -overwritedup, should return DB_KEYEXIST.
 	set ret [catch {eval {$db put} \
-	    $txn -multiple {$key_list1 $data_list1}} res]
+	    $txn -multiple $extra_op {$key_list1 $data_list1}} res]
 	if {$sorted} {
 		error_check_good \
 		    {Check DB_KEYEXIST} [is_substr $res DB_KEYEXIST] 1
 	} else {
-		error_check_good {put_again(-multiple)} $ret 0
+		error_check_good "put_again(-multiple $extra_op)" $ret 0
 	}
 	# Put again with -overwritedup, should succeed
 	set ret [eval {$db put} \
-	    $txn -multiple -overwritedup {$key_list1 $data_list1}]
-	error_check_good {put_again(-multiple -overwritedup)} $ret 0
+	    $txn -multiple $extra_op -overwritedup {$key_list1 $data_list1}]
+	error_check_good "put_again(-multiple $extra_op -overwritedup)" $ret 0
 	
-	puts "\tTest$tnum.b: Bulk put data using -multiple_key."
+	puts "\tTest$tnum.b: Bulk put data using -multiple_key $extra_op."
 	set pair_list1 {}
 	for { set i [expr $nentries / 2 ]} { $i <= $nentries} { incr i } {
 		lappend key_list $i
@@ -151,40 +180,41 @@ proc test127_sub {fname dbname dboargs} {
 		}
 		lappend datas_list $datas
 	}
-	set ret [eval {$db put} $txn -multiple_key {$pair_list1}]
-	error_check_good {put(-multiple_key)} $ret 0
+	set ret [eval {$db put} $txn -multiple_key $extra_op {$pair_list1}]
+	error_check_good "put(-multiple_key $extra_op)" $ret 0
 	
 	# Put again without -overwritedup, should return DB_KEYEXIST.
 	set ret [catch {
-	    eval {$db put} $txn -multiple_key {$pair_list1}} res]
+	    eval {$db put} $txn -multiple_key $extra_op {$pair_list1}} res]
 	if {$sorted} {
 		error_check_good \
 		    {Check DB_KEYEXIST} [is_substr $res DB_KEYEXIST] 1
 	} else {
-		error_check_good {put_again(-multiple_key)} $ret 0
+		error_check_good "put_again(-multiple_key $extra_op)" $ret 0
 	}
 	# Put again with -overwritedup, should succeed
 	set ret [eval \
-	    {$db put} $txn -multiple_key -overwritedup {$pair_list1}]
+	    {$db put} $txn -multiple_key $extra_op -overwritedup {$pair_list1}]
 	error_check_good \
-	    {put_again(-multiple_key -overwritedup)} $ret 0
+	    "put_again(-multiple_key $extra_op -overwritedup)" $ret 0
 
 	puts "\tTest$tnum.c: Verify the data after bulk put."
 	test127_check_prirecords $db $key_list $datas_list $txn $sorted
 
-	puts "\tTest$tnum.d: Bulk delete data using -multiple."
+	puts "\tTest$tnum.d: Bulk delete data using -multiple $extra_op."
 	set key_list2 {}
 	for { set i 1 } { $i <= $nentries} { incr i 2 } {
 		lappend key_list2 $i
 	}
-	set ret [eval {$db del} $txn -multiple {$key_list2}]
-	error_check_good {del(-multiple)} $ret 0
+	set ret [eval {$db del} $txn -multiple $extra_op {$key_list2}]
+	error_check_good "del(-multiple $extra_op)" $ret 0
 
 	# Delete again, should return DB_NOTFOUND.
-	set ret [catch {eval {$db del} $txn -multiple {$key_list2}} res]
+	set ret [catch {eval {$db del} $txn -multiple $extra_op \
+	    {$key_list2}} res]
 	error_check_good {Check DB_NOTFOUND} [is_substr $res DB_NOTFOUND] 1
 
-	puts "\tTest$tnum.e: Bulk delete using -multiple_key."
+	puts "\tTest$tnum.e: Bulk delete using -multiple_key $extra_op."
 	set pair_list2 {}
 	for { set i 2 } { $i <= $nentries} { incr i  2} {
 		for { set j 1 } { $j <= $ndups / 2 } { incr j } {
@@ -193,18 +223,21 @@ proc test127_sub {fname dbname dboargs} {
 		}
 	}
 
-	set ret [eval {$db del} $txn -multiple_key {$pair_list2}]
-	error_check_good {del(-multiple_key)} $ret 0
+	set ret [eval {$db del} $txn -multiple_key $extra_op {$pair_list2}]
+	error_check_good "del(-multiple_key $extra_op)" $ret 0
 
 	# Delete again, should return DB_NOTFOUND.
-	set ret [catch {eval {$db del} $txn -multiple_key {$pair_list2}} res]
+	set ret [catch {eval {$db del} $txn -multiple_key $extra_op \
+	    {$pair_list2}} res]
 	if {$sorted} {
 		error_check_good {Check DB_NOTFOUND} [is_substr $res DB_NOTFOUND] 1
 	} else {
-		error_check_good "del(-multiple_key) 2 round" $ret 0
-		set ret [catch {eval {$db del} $txn -multiple_key {$pair_list2}} res]
-		error_check_good "del(-multiple_key) 3 round" $ret 0
-		set ret [catch {eval {$db del} $txn -multiple_key {$pair_list2}} res]
+		error_check_good "del(-multiple_key $extra_op) 2 round" $ret 0
+		set ret [catch {eval {$db del} $txn -multiple_key $extra_op \
+		    {$pair_list2}} res]
+		error_check_good "del(-multiple_key $extra_op) 3 round" $ret 0
+		set ret [catch {eval {$db del} $txn -multiple_key $extra_op \
+		    {$pair_list2}} res]
 		error_check_good {Check DB_NOTFOUND} [is_substr $res DB_NOTFOUND] 1		
 	}
 

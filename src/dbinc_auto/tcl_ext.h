@@ -21,6 +21,7 @@ int tcl_rep_send __P((DB_ENV *, const DBT *, const DBT *, const DB_LSN *, int, u
 int dbc_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 int env_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
 int tcl_EnvRemove __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
+int tcl_EnvClose __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *, DBTCL_INFO *));
 int tcl_EnvIdReset __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_EnvLsnReset __P((Tcl_Interp *, int, Tcl_Obj * CONST*, DB_ENV *));
 int tcl_EnvVerbose __P((Tcl_Interp *, DB_ENV *, Tcl_Obj *, Tcl_Obj *));
@@ -44,7 +45,7 @@ int _SetListElemWideInt __P((Tcl_Interp *, Tcl_Obj *, void *, int64_t));
 int _SetListRecnoElem __P((Tcl_Interp *, Tcl_Obj *, db_recno_t, u_char *, u_int32_t));
 int _SetListHeapElem __P((Tcl_Interp *, Tcl_Obj *, DB_HEAP_RID, u_char *, u_int32_t));
 int _Set3DBTList __P((Tcl_Interp *, Tcl_Obj *, DBT *, int, DBT *, int, DBT *));
-int _SetMultiList __P((Tcl_Interp *, Tcl_Obj *, DBT *, DBT*, DBTYPE, u_int32_t));
+int _SetMultiList __P((Tcl_Interp *, Tcl_Obj *, DBT *, DBT*, DBTYPE, u_int32_t, DBC*));
 int _GetGlobPrefix __P((char *, char **));
 int _ReturnSetup __P((Tcl_Interp *, int, int, char *));
 int _ErrorSetup __P((Tcl_Interp *, int, char *));

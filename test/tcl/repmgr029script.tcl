@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 
@@ -25,7 +25,7 @@ proc in_sync_state { d } {
 puts "Start site C"
 set envC [berkdb env -create -errpfx C -home $dirC -txn -rep -thread \
 	      -recover -verbose [list rep $rv]]
-$envC repmgr -local [list localhost $portC] -start elect
+$envC repmgr -local [list 127.0.0.1 $portC] -start elect
 
 puts "Wait until it gets into SYNC_PAGES state"
 while {![in_sync_state $dirC]} {

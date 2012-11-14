@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -97,7 +97,7 @@ __txn_checkpoint(env, kbytes, minutes, flags)
 	u_int32_t kbytes, minutes, flags;
 {
 	DB_LOG *dblp;
-	DB_LSN ckp_lsn, last_ckp;
+	DB_LSN ckp_lsn, last_ckp, msg_lsn;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	LOG *lp;
@@ -146,6 +146,10 @@ __txn_checkpoint(env, kbytes, minutes, flags)
 	if ((ret = __log_current_lsn_int(env, &ckp_lsn, &mbytes, &bytes)) != 0)
 		goto err;
 
+	/*
+	 * Save for possible use in START_SYNC message.
+	 */
+	msg_lsn = ckp_lsn;
 	if (!LF_ISSET(DB_FORCE)) {
 		/* Don't checkpoint a quiescent database. */
 		if (bytes == 0 && mbytes == 0)
@@ -224,9 +228,14 @@ do_ckp:
 		    (ret = __repmgr_autostart(env)) != 0)
 			goto err;
 #endif
+		/*
+		 * Send the LSN (saved in msg_lsn) where the sync starts
+		 * on the master.  Clients must have this LSN to assure that
+		 * they have applied all txns up to this point.
+		 */
 		if (env->rep_handle->send != NULL)
 			(void)__rep_send_message(env, DB_EID_BROADCAST,
-			    REP_START_SYNC, &ckp_lsn, NULL, 0, 0);
+			    REP_START_SYNC, &msg_lsn, NULL, 0, 0);
 	}
 
 	/* Flush the cache. */
@@ -318,7 +327,7 @@ err:	MUTEX_UNLOCK(env, region->mtx_ckp);
  *	 We check both the file and offset for 0 since the lsn may be in
  *	 transition.  If it is then we don't care about this txn because it
  *	 must be starting after we set the initial value of lsnp in the caller.
- *	 All txns must initalize their begin_lsn before writing to the log.
+ *	 All txns must initialize their begin_lsn before writing to the log.
  *
  * PUBLIC: int __txn_getactive __P((ENV *, DB_LSN *));
  */

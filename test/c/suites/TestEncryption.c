@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  *
@@ -27,6 +27,7 @@
 
 #include "db.h"
 #include "CuTest.h"
+#include "test_util.h"
 
 const char *progname_crypt = "encryption";
 #define	DATABASE	"encryption.db"
@@ -59,7 +60,12 @@ int TestEncryptedDbFlag(CuTest *ct) {
 }
 
 int TestEncryptedDb(CuTest *ct) {
+/* Run this test only when cryptography is supported. */
+#ifdef HAVE_CRYPTO
 	CuAssert(ct, "TestEncryptedDb", encryptTestCase(ct, 0, 0, 1, 0) == 0);
+#else
+	printf("TestEncryptedDb is not supported by the build.\n");
+#endif /* HAVE_CRYPTO */
 	return (0);
 }
 
@@ -94,25 +100,48 @@ int TestEnvWithEncryptedDbFlagAndDb(CuTest *ct) {
 }
 
 int TestEncyptedEnv(CuTest *ct) {
+/* Run this test only when cryptography is supported. */
+#ifdef HAVE_CRYPTO
 	CuAssert(ct, "TestEncyptedEnv", encryptTestCase(ct, 1, 1, 0, 0) == 0);
+#else
+	printf("TestEyptedEnv is not supported by the build.\n");
+#endif /* HAVE_CRYPTO */
 	return (0);
 }
 
 int TestEncyptedEnvWithEncyptedDbFlag(CuTest *ct) {
+/* Run this test only when cryptography is supported. */
+#ifdef HAVE_CRYPTO
 	CuAssert(ct, "TestEncyptedEnvWithEncyptedDbFlag",
 	    encryptTestCase(ct, 1, 1, 0, 1) == 0);
+#else
+	printf("TestEncyptedEnvWithEncyptedDbFlag "
+	    "is not supported by the build.\n");
+#endif /* HAVE_CRYPTO */
 	return (0);
 }
 
 int TestEncyptedEnvWithEncyptedDb(CuTest *ct) {
+/* Run this test only when cryptography is supported. */
+#ifdef HAVE_CRYPTO
 	CuAssert(ct, "TestEncyptedEnvWithEncyptedDb",
 	    encryptTestCase(ct, 1, 1, 1, 0) == 0);
+#else
+	printf("TestEncyptedEnvWithEncyptedDb "
+	    "is not supported by the build.\n");
+#endif /* HAVE_CRYPTO */
 	return (0);
 }
 
 int TestEncyptedEnvWithEncryptedDbFlagAndDb(CuTest *ct) {
+/* Run this test only when cryptography is supported. */
+#ifdef HAVE_CRYPTO
 	CuAssert(ct, "TestEncyptedEnvWithEncryptedDbFlagAndDb",
 	    encryptTestCase(ct, 1, 1, 1, 1) == 0);
+#else
+	printf("TestEncyptedEnvWithEncyptedDbFlagAndDb "
+	    "is not supported by the build.\n");
+#endif /* HAVE_CRYPTO */
 	return (0);
 }
 
@@ -307,8 +336,7 @@ int dbPutGet(CuTest *ct, DB *dbp)
 	DBT key, data;
 	char buf[1024];
 	const char *str = "abcdefghijklmnopqrst";
-	int cnt, ret;
-	size_t len;
+	int cnt, ret, len;
 
 	ret = 0;
 

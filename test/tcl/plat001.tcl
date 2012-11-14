@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -16,6 +16,12 @@ proc plat001 { method {tnum "001"} args } {
 	source ./include.tcl
 	global fixed_len
 	global util_path
+
+	# Heap doesn't support sequences. 
+        if { [is_heap $method] } {
+	        puts "Plat001 skipping for method $method."
+		return
+	}
 
 	# Fixed_len must be increased from the default to
 	# accommodate fixed-record length methods.

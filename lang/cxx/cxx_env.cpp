@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1997, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -150,6 +150,27 @@ char *_thread_id_string_intercept_c(DB_ENV *dbenv, pid_t pid,
 	return (DbEnv::_thread_id_string_intercept(dbenv, pid, thrid, buf));
 }
 
+extern "C"
+int _backup_close_intercept_c(DB_ENV *dbenv, const char *dbname, void *handle)
+{
+	return (DbEnv::_backup_close_intercept(dbenv, dbname, handle));
+}
+
+extern "C"
+int _backup_open_intercept_c(DB_ENV *dbenv,
+    const char *dbname, const char *target, void **handle)
+{
+	return (DbEnv::_backup_open_intercept(dbenv, dbname, target, handle));
+}
+
+extern "C"
+int _backup_write_intercept_c(DB_ENV *dbenv, u_int32_t off_gbytes,
+    u_int32_t off_bytes, u_int32_t size, u_int8_t *buf, void *handle)
+{
+	return (DbEnv::_backup_write_intercept(
+		dbenv, off_gbytes, off_bytes, size, buf, handle));
+}
+
 void DbEnv::_feedback_intercept(DB_ENV *dbenv, int opcode, int pct)
 {
 	DbEnv *cxxenv = DbEnv::get_DbEnv(dbenv);
@@ -285,6 +306,58 @@ char *DbEnv::_thread_id_string_intercept(DB_ENV *dbenv,
 		return (NULL);
 	}
 	return (cxxenv->thread_id_string_callback_(cxxenv, pid, thrid, buf));
+}
+
+int DbEnv::_backup_close_intercept(
+    DB_ENV *dbenv, const char *dbname, void *handle)
+{
+	DbEnv *cxxenv = DbEnv::get_DbEnv(dbenv);
+	if (cxxenv == 0) {
+		DB_ERROR(DbEnv::get_DbEnv(dbenv),
+		    "DbEnv::backup_close_callback", EINVAL, ON_ERROR_UNKNOWN);
+		return (EINVAL);
+	}
+	if (cxxenv->backup_close_callback_ == 0) {
+		DB_ERROR(DbEnv::get_DbEnv(dbenv), "DbEnv::backup_close_callback",
+		    EINVAL, cxxenv->error_policy());
+		return (EINVAL);
+	}
+	return (*cxxenv->backup_close_callback_)(cxxenv, dbname, handle);
+}
+
+int DbEnv::_backup_open_intercept(DB_ENV *dbenv,
+    const char *dbname, const char *target, void **handle)
+{
+	DbEnv *cxxenv = DbEnv::get_DbEnv(dbenv);
+	if (cxxenv == 0) {
+		DB_ERROR(DbEnv::get_DbEnv(dbenv),
+		    "DbEnv::backup_open_callback", EINVAL, ON_ERROR_UNKNOWN);
+		return (EINVAL);
+	}
+	if (cxxenv->backup_open_callback_ == 0) {
+		DB_ERROR(DbEnv::get_DbEnv(dbenv), "DbEnv::backup_open_callback",
+		    EINVAL, cxxenv->error_policy());
+		return (EINVAL);
+	}
+	return (*cxxenv->backup_open_callback_)(cxxenv, dbname, target, handle);
+}
+
+int DbEnv::_backup_write_intercept(DB_ENV *dbenv, u_int32_t off_gbytes,
+    u_int32_t off_bytes, u_int32_t size, u_int8_t *buf, void *handle)
+{
+	DbEnv *cxxenv = DbEnv::get_DbEnv(dbenv);
+	if (cxxenv == 0) {
+		DB_ERROR(DbEnv::get_DbEnv(dbenv),
+		    "DbEnv::backup_write_callback", EINVAL, ON_ERROR_UNKNOWN);
+		return (EINVAL);
+	}
+	if (cxxenv->backup_write_callback_ == 0) {
+		DB_ERROR(DbEnv::get_DbEnv(dbenv), "DbEnv::backup_write_callback",
+		    EINVAL, cxxenv->error_policy());
+		return (EINVAL);
+	}
+	return (*cxxenv->backup_write_callback_)(
+	    cxxenv, off_gbytes, off_bytes, size, buf, handle);
 }
 
 // A truism for the DbEnv object is that there is a valid
@@ -750,6 +823,8 @@ char *DbEnv::strerror(int error)
 // We keep these alphabetical by field name,
 // for comparison with Java's list.
 //
+DBENV_METHOD(get_backup_config, (DB_BACKUP_CONFIG type, u_int32_t *valuep), (dbenv, type, valuep))
+DBENV_METHOD(set_backup_config, (DB_BACKUP_CONFIG type, u_int32_t value), (dbenv, type, value))
 DBENV_METHOD(set_data_dir, (const char *dir), (dbenv, dir))
 DBENV_METHOD(get_encrypt_flags, (u_int32_t *flagsp),
     (dbenv, flagsp))
@@ -795,6 +870,8 @@ DBENV_METHOD(get_memory_init, (DB_MEM_CONFIG type, u_int32_t *count), (dbenv, ty
 DBENV_METHOD(set_memory_init, (DB_MEM_CONFIG type, u_int32_t count), (dbenv, type, count))
 DBENV_METHOD(get_memory_max, (u_int32_t *gbytes, u_int32_t *bytes), (dbenv, gbytes, bytes))
 DBENV_METHOD(set_memory_max, (u_int32_t gbytes, u_int32_t bytes), (dbenv, gbytes, bytes))
+DBENV_METHOD(get_metadata_dir, (const char **dirp), (dbenv, dirp))
+DBENV_METHOD(set_metadata_dir, (const char *dir), (dbenv, dir))
 DBENV_METHOD(get_mp_max_openfd, (int *maxopenfdp), (dbenv, maxopenfdp))
 DBENV_METHOD(set_mp_max_openfd, (int maxopenfd), (dbenv, maxopenfd))
 DBENV_METHOD(get_mp_max_write, (int *maxwritep, db_timeout_t *maxwrite_sleepp),
@@ -1066,6 +1143,43 @@ int DbEnv::set_thread_id_string(
 	return (ret);
 }
 
+int DbEnv::get_backup_callbacks(
+    int (**open_funcp)(DbEnv *, const char *, const char *, void **),
+    int (**write_funcp)(DbEnv *, u_int32_t, u_int32_t, u_int32_t, u_int8_t *, void *),
+    int (**close_funcp)(DbEnv *, const char *, void *))
+{
+	if (open_funcp != NULL)
+		*open_funcp = backup_open_callback_;
+	if (write_funcp != NULL)
+		*write_funcp = backup_write_callback_;
+	if (close_funcp != NULL)
+		*close_funcp = backup_close_callback_;
+
+	return 0;
+}
+
+int DbEnv::set_backup_callbacks(
+    int (*open_func)(DbEnv *, const char *, const char *, void **),
+    int (*write_func)(DbEnv *, u_int32_t, u_int32_t, u_int32_t, u_int8_t *, void *),
+    int (*close_func)(DbEnv *, const char *, void *))
+{
+	DB_ENV *dbenv = unwrap(this);
+	int ret;
+
+	backup_open_callback_ = open_func;
+	backup_write_callback_ = write_func;
+	backup_close_callback_ = close_func;
+
+	if ((ret = dbenv->set_backup_callbacks(dbenv,
+	    open_func == 0 ? 0 : _backup_open_intercept_c,
+	    write_func == 0 ? 0 : _backup_write_intercept_c,
+	    close_func == 0 ? 0 : _backup_close_intercept_c)) != 0)
+		DB_ERROR(this, "DbEnv::set_backup_callbacks", ret,
+		    error_policy());
+
+	return (ret);
+}
+
 DBENV_METHOD(add_data_dir, (const char *dir), (dbenv, dir))
 
 int DbEnv::cdsgroup_begin(DbTxn **tid)
@@ -1332,6 +1446,12 @@ DBENV_METHOD(get_timeout,
 DBENV_METHOD(set_timeout,
     (db_timeout_t timeout, u_int32_t flags),
     (dbenv, timeout, flags))
+
+DBENV_METHOD(backup,
+    (const char *target, u_int32_t flags), (dbenv, target, flags))
+DBENV_METHOD(dbbackup,
+    (const char *dbfile, const char *target, u_int32_t flags),
+    (dbenv, dbfile, target, flags))
 
 // static method
 char *DbEnv::version(int *major, int *minor, int *patch)

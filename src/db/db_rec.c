@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -886,10 +886,13 @@ __db_pg_free_recover_int(env, ip, argp, file_dbp, lsnp, mpf, op, data)
 		/*
 		 * If we are at the end of the file truncate, otherwise
 		 * put on the free list.
-		*/
+		 */
+#ifdef HAVE_FTRUNCATE
 		if (argp->pgno == argp->last_pgno)
 			meta->last_pgno = argp->pgno - 1;
-		else if (is_meta)
+		else
+#endif
+		if (is_meta)
 			meta->free = argp->pgno;
 		else
 			NEXT_PGNO(prevp) = argp->pgno;
@@ -924,9 +927,11 @@ check_meta:
 		    ip, NULL, 0, &pagep)) != 0) {
 			if (ret != DB_PAGE_NOTFOUND)
 				goto out;
+#ifdef HAVE_FTRUNCATE
 			if (is_meta &&
 			    DB_REDO(op) && meta->last_pgno <= argp->pgno)
 				goto trunc;
+#endif
 			goto done;
 		}
 	} else if ((ret = __memp_fget(mpf, &argp->pgno,
@@ -960,6 +965,7 @@ check_meta:
 		 * The page can be truncated if it was truncated at runtime
 		 * and the current metapage reflects the truncation.
 		 */
+#ifdef HAVE_FTRUNCATE
 		if (is_meta && meta->last_pgno <= argp->pgno &&
 		    argp->last_pgno <= argp->pgno) {
 			if ((ret = __memp_fput(mpf, ip,
@@ -975,7 +981,9 @@ trunc:			if ((ret = __memp_ftruncate(mpf, NULL, ip,
 			P_INIT(pagep, 0, PGNO_INVALID,
 			    PGNO_INVALID, PGNO_INVALID, 0, P_INVALID);
 			ZERO_LSN(pagep->lsn);
-		} else if (cmp_p == 0 || IS_ZERO_LSN(LSN(pagep))) {
+		} else
+#endif
+		if (cmp_p == 0 || IS_ZERO_LSN(LSN(pagep))) {
 			REC_DIRTY(mpf, ip, file_dbp->priority, &pagep);
 			P_INIT(pagep, file_dbp->pgsize,
 			    argp->pgno, PGNO_INVALID, argp->next, 0, P_INVALID);
@@ -1328,7 +1336,13 @@ __db_pg_trunc_recover(env, dbtp, lsnp, op, info)
 				else
 					meta->free = pglist->pgno;
 			}
-			meta->last_pgno = last_pgno;
+			/*
+			 * If this is part of a multi record truncate
+			 * this could be just the last page of this record
+			 * don't move the meta->last_pgno forward.
+			 */
+			if (meta->last_pgno > last_pgno)
+				meta->last_pgno = last_pgno;
 			LSN(meta) = *lsnp;
 		}
 	} else {
@@ -1350,7 +1364,7 @@ __db_pg_trunc_recover(env, dbtp, lsnp, op, info)
 		}
 		/*
 		 * Link the truncated part back into the free list.
-		 * Its either after the last_free page or direclty
+		 * Its either after the last_free page or directly
 		 * linked to the metadata page.
 		 */
 		if (argp->last_free != PGNO_INVALID) {
@@ -1460,8 +1474,11 @@ __db_realloc_recover(env, dbtp, lsnp, op, info)
 	DB_THREAD_INFO *ip;
 	PAGE *pagep;
 	db_pglist_t *pglist, *lp;
+#ifdef HAVE_FTRUNCATE
 	db_pgno_t *list;
-	u_int32_t felem, nelem, pos;
+	u_int32_t felem, pos;
+#endif
+	u_int32_t nelem;
 	int cmp_n, cmp_p, ret;
 
 	ip = ((DB_TXNHEAD *)info)->thread_info;
@@ -2598,7 +2615,7 @@ next:	if ((ret = __memp_fget(mpf, &argp->npgno, ip, NULL, 0, &pagep)) != 0) {
 					bt->bt_root = argp->npgno;
 				}
 			}
-			if (argp->pgno == file_dbp->meta_pgno) 
+			if (argp->pgno == file_dbp->meta_pgno)
 				file_dbp->meta_pgno = argp->npgno;
 
 			/*

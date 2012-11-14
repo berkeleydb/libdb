@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -62,11 +62,11 @@ __ham_vrfy_meta(dbp, vdp, m, pgno, flags)
 		hfunc = __ham_func5;
 
 	/*
-	 * If we haven't already checked the common fields in pagezero,
-	 * check them.
+	 * If we came through __db_vrfy_pagezero, we have already checked the
+	 * common fields.  However, we used the on-disk metadata page, it may
+	 * have been stale.  We now have the page from mpool, so check that.
 	 */
-	if (!F_ISSET(pip, VRFY_INCOMPLETE) &&
-	    (ret = __db_vrfy_meta(dbp, vdp, &m->dbmeta, pgno, flags)) != 0) {
+	if ((ret = __db_vrfy_meta(dbp, vdp, &m->dbmeta, pgno, flags)) != 0) {
 		if (ret == DB_VERIFY_BAD)
 			isbad = 1;
 		else
@@ -556,6 +556,15 @@ __ham_vrfy_bucket(dbp, vdp, m, bucket, flags)
 	pgno = BS_TO_PAGE(bucket, m->spares);
 
 	if ((ret = __db_vrfy_getpageinfo(vdp, pgno, &pip)) != 0)
+		goto err;
+
+	/*
+	 * Hash pages that nothing has ever hashed to may never have actually
+	 * come into existence, it is possible, and legal, for the first page in
+	 * a bucket to not exist.  This flag would have been set in
+	 * __db_vrfy_walkpages.
+	 */
+	if (F_ISSET(pip, VRFY_NONEXISTENT))
 		goto err;
 
 	/* Make sure we got a plausible page number. */

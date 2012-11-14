@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -1030,7 +1030,8 @@ tcl_RepStat(interp, objc, objv, dbenv)
 	MAKE_WSTAT_LIST("Elections won", sp->st_elections_won);
 	MAKE_STAT_LIST("Election phase", sp->st_election_status);
 	MAKE_STAT_LIST("Election winner", sp->st_election_cur_winner);
-	MAKE_STAT_LIST("Election generation number", sp->st_election_gen);
+	MAKE_STAT_LIST("Election winner generation number",
+	    sp->st_election_gen);
 	MAKE_STAT_LIST("Election data generation number", 
 	    sp->st_election_datagen);
 	MAKE_STAT_LSN("Election max LSN", &sp->st_election_lsn);

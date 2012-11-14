@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2010, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 # Test for ack policies that vary throughout the group, and that change
@@ -32,22 +32,22 @@ proc repmgr031 { } {
 	set envA [berkdb env -create -errpfx A -home $dirA -txn -rep -thread \
 		      -recover -verbose [list rep $rv] -event]
 	$envA rep_config {mgrelections off}
-	$envA repmgr -local [list localhost $portA] -start master -ack none
+	$envA repmgr -local [list 127.0.0.1 $portA] -start master -ack none
 	puts -nonewline "." ; 	flush stdout
 	
 	set envB [berkdb env -create -errpfx B -home $dirB -txn -rep -thread \
 		      -recover -verbose [list rep $rv]]
 	$envB rep_config {mgrelections off}
-	$envB repmgr -local [list localhost $portB] \
-	    -remote [list localhost $portA] -start client
+	$envB repmgr -local [list 127.0.0.1 $portB] \
+	    -remote [list 127.0.0.1 $portA] -start client
 	await_startup_done $envB
 	puts -nonewline "." ; 	flush stdout
 	
 	set envC [berkdb env -create -errpfx C -home $dirC -txn -rep -thread \
 		      -recover -verbose [list rep $rv] -event]
 	$envC rep_config {mgrelections off}
-	$envC repmgr -local [list localhost $portC] \
-	    -remote [list localhost $portA] -start client -ack none
+	$envC repmgr -local [list 127.0.0.1 $portC] \
+	    -remote [list 127.0.0.1 $portA] -start client -ack none
 	await_startup_done $envC
 	puts "."
 
@@ -95,7 +95,7 @@ proc repmgr031 { } {
 	set envB [berkdb env -create -errpfx B -home $dirB -txn -rep -thread \
 		      -recover -verbose [list rep $rv]]
 	$envB rep_config {mgrelections off}
-	$envB repmgr -local [list localhost $portB] -start client
+	$envB repmgr -local [list 127.0.0.1 $portB] -start client
 	await_startup_done $envB
 	
 	eval rep_test $method $envC NULL $niter 0 0 0

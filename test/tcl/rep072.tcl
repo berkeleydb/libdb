@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2007, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -95,8 +95,8 @@ proc rep072_sub {method {niter 200} {tnum 072} logset \
 	# In-memory logs require a large log buffer, and cannot
 	# be used with -txn nosync.  Adjust the args for master
 	# and client.
-	set m_logargs [adjust_logargs $m_logtype]
-	set c_logargs [adjust_logargs $c_logtype]
+	set m_logargs [adjust_logargs $m_logtype 1048576]
+	set c_logargs [adjust_logargs $c_logtype 1048576]
 	set m_txnargs [adjust_txnargs $m_logtype]
 	set c_txnargs [adjust_txnargs $c_logtype]
 

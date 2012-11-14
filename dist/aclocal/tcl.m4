@@ -87,10 +87,10 @@ AC_DEFUN(SC_LOAD_TCLCONFIG, [
 		AC_MSG_RESULT([file not found])
 	fi
 
-	# DB requires at least version 8.4.
+	# DB requires at least version 8.5.
 	if test ${TCL_MAJOR_VERSION} -lt 8 \
-	    -o ${TCL_MAJOR_VERSION} -eq 8 -a ${TCL_MINOR_VERSION} -lt 4; then
-		AC_MSG_ERROR([Berkeley DB requires Tcl version 8.4 or better.])
+	    -o ${TCL_MAJOR_VERSION} -eq 8 -a ${TCL_MINOR_VERSION} -lt 5; then
+		AC_MSG_ERROR([Berkeley DB requires Tcl version 8.5 or better.])
 	fi
 
 	# The eval is required to do substitution (for example, the TCL_DBGX

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -1076,7 +1076,8 @@ __rep_open_sysdb(env, ip, txn, dbname, flags, dbpp)
 	if ((ret = __db_create_internal(&dbp, env, 0)) != 0)
 		return (ret);
 
-	myflags = DB_INTERNAL_DB | (F_ISSET(env, ENV_THREAD) ? DB_THREAD : 0);
+	myflags = DB_INTERNAL_PERSISTENT_DB |
+	    (F_ISSET(env, ENV_THREAD) ? DB_THREAD : 0);
 
 	/*
 	 * First, try opening it as a sub-database within a disk-resident
@@ -1213,7 +1214,7 @@ __rep_client_dbinit(env, startup, which)
 	if ((ret = __db_set_flags(dbp, DB_TXN_NOT_DURABLE)) != 0)
 		goto err;
 
-	flags = DB_NO_AUTO_COMMIT | DB_CREATE | DB_INTERNAL_DB |
+	flags = DB_NO_AUTO_COMMIT | DB_CREATE | DB_INTERNAL_TEMPORARY_DB |
 	    (F_ISSET(env, ENV_THREAD) ? DB_THREAD : 0);
 
 	if ((ret = __db_open(dbp, ip, NULL, fname, subdb,
@@ -2825,7 +2826,7 @@ __rep_check_applied(env, ip, commit_info, reasonp)
 			reasonp->why = AWAIT_HISTORY;
 			reasonp->u.lsn = lsn;
 		} else if (ret != 0)
-			goto out; /* Second read returned unexpeced error. */
+			goto out; /* Second read returned unexpected error. */
 
 		/*
 		 * We now have the history info for the gen of the txn, and for
@@ -3006,8 +3007,10 @@ __rep_conv_vers(env, log_ver)
 	 * We can't use a switch statement, some of the DB_LOGVERSION_XX
 	 * constants are the same
 	 */
-	if (log_ver == DB_LOGVERSION)
-		return (DB_REPVERSION);
+	if (log_ver == DB_LOGVERSION_53)
+		return (DB_REPVERSION_53);
+	if (log_ver == DB_LOGVERSION_52)
+		return (DB_REPVERSION_52);
 	/* 5.0 and 5.1 had identical log and rep versions. */
 	if (log_ver == DB_LOGVERSION_51)
 		return (DB_REPVERSION_51);
@@ -3023,5 +3026,7 @@ __rep_conv_vers(env, log_ver)
 		return (DB_REPVERSION_45);
 	if (log_ver == DB_LOGVERSION_44)
 		return (DB_REPVERSION_44);
+	if (log_ver == DB_LOGVERSION)
+		return (DB_REPVERSION);
 	return (DB_REPVERSION_INVALID);
 }

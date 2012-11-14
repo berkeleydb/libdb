@@ -1,3 +1,9 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ */
+
 /*
  * This is the code for the two servers used in the first XA test.  Server 1
  * and Server 2 are both called by the client to insert data into table 1
@@ -23,6 +29,7 @@
 #include "datafml.h"
 #include "hdbrec.h"
 #include "htimestampxa.h"
+#include "../utilities/bdb_xa_util.h"
 
 /*
  * The two servers are largely identical, #ifdef the source code.
@@ -38,88 +45,30 @@
 void TXN_FUNC(TPSVCINFO *);
 
 #define	HOME	"../data"
-#define	TABLE1	"table1.db"
-#define	TABLE2	"table2.db"
 
-#ifdef VERBOSE
-static int verbose = 1;				/* Debugging output. */
-#else
-static int verbose = 0;
-#endif
-
-DB *db1, *db2;					/* Table handles. */
+#define NUMDB 2
 
 int cnt_forward;				/* Forwarded requests. */
 int cnt_request;				/* Total requests. */
 
-char *progname;					/* Server run-time name. */
-
-char *db_buf(DBT *);
+char *progname;				/* Server run-time name. */
 
 /*
  * Called when each server is started.  It creates and opens the
- * two databases.
+ * two database handles.
  */
 int
 tpsvrinit(int argc, char* argv[])
 {
-	int ret;
-
 	progname = argv[0];
-	if (verbose)
-		printf("%s: called\n", progname);
-
-	/* Open resource managers. */
-	if (tx_open() == TX_ERROR) {
-		fprintf(stderr, "tx_open: TX_ERROR\n");
-		return (-1);
-	}
-
-	/* Seed random number generator. */
-	srand((u_int)(time(NULL) | getpid()));
-
-	/* Open permanent XA handles. */
-	if ((ret = db_create(&db1, NULL, DB_XA_CREATE)) != 0) {
-		fprintf(stderr, "db_create: %s\n", db_strerror(ret));
-		return (-1);
-	}
-	db1->set_errfile(db1, stderr);
-	if ((ret = db1->open(db1, NULL,
-	    TABLE1, NULL, DB_BTREE, DB_AUTO_COMMIT | DB_CREATE, 0660)) != 0) {
-		fprintf(stderr, "DB open: %s: %s\n", TABLE1, db_strerror(ret));
-		return (-1);
-	}
-	if ((ret = db_create(&db2, NULL, DB_XA_CREATE)) != 0) {
-		fprintf(stderr, "db_create: %s\n", db_strerror(ret));
-		return (-1);
-	}
-	db2->set_errfile(db2, stderr);
-	if ((ret = db2->open(db2, NULL,
-	    TABLE2, NULL, DB_BTREE, DB_AUTO_COMMIT | DB_CREATE, 0660)) != 0) {
-		fprintf(stderr, "DB open: %s: %s\n", TABLE2, db_strerror(ret));
-		return (-1);
-	}
-
-	if (verbose)
-		printf("%s: tpsvrinit: initialization done\n", progname);
-
-	return (0);
+	return (init_xa_server(NUMDB, progname, 0));
 }
 
 /* Called when the servers are shutdown.  This closes the databases. */
 void
 tpsvrdone()
 {
-	if (db1 != NULL)
-		(void)db1->close(db1, 0);
-	if (db2 != NULL)
-		(void)db2->close(db2, 0);
-
-	tx_close();
-
-	if (verbose)
-		printf("%s: tpsvrdone: shutdown done\n", progname);
-
+	close_xa_server(NUMDB, progname);
 	printf("%s: %d requests, %d requests forwarded to the other server\n",
 	    progname, cnt_request, cnt_forward);
 }
@@ -137,7 +86,7 @@ TXN_FUNC(TPSVCINFO *msg)
 	FBFR *replyBuf;
 	HDbRec rcrd;
 	long replyLen, seqNo;
-	int ret;
+	int ret, i;
 
 	++cnt_request;
 
@@ -182,29 +131,27 @@ fml_err:	fprintf(stderr, "%s: FML ERROR: %s (code %d)\n",
 	key.data = &seqNo;
 	key.size = sizeof(seqNo);
 	memset(&data, 0, sizeof(data));
-	data.data = &rcrd;
-	data.size = sizeof(rcrd);
+	data.data = &seqNo;
+	data.size = sizeof(seqNo);
 
-	strcpy(rcrd.Msg, "Table1");		/* Table 1. */
 	if (verbose) {
-		printf("put1: key: %s\n", db_buf(&key));
-		printf("put1: data: %s\n", db_buf(&data));
-	}
-	if ((ret = db1->put(db1, NULL, &key, &data, 0)) != 0) {
-		if (ret == DB_LOCK_DEADLOCK)
-			goto abort;
-		fprintf(stderr, "%s: %s: Table1->put: %s\n",
-		    progname, TXN_STRING, db_strerror(ret));
-		goto err;
+		 __db_prdbt(&key, 0, "put: key: %s\n", stdout, 
+		     pr_callback, 0, 0);
+		 __db_prdbt(&data, 0, "put: data: %s\n", stdout, 
+		     pr_callback, 0, 0);
 	}
 
-	strcpy(rcrd.Msg, "Table2");		/* Table 2. */
-	if ((ret = db2->put(db2, NULL, &key, &data, 0)) != 0) {
-		if (ret == DB_LOCK_DEADLOCK)
-			goto abort;
-		fprintf(stderr, "%s: %s: Table2->put: %s\n",
-		    progname, TXN_STRING, db_strerror(ret));
-		goto err;
+	for (i = 0; i < NUMDB; i++) {
+		strcpy(rcrd.Msg, db_names[i]);	
+		if ((ret = dbs[i]->put(dbs[i], NULL, &key, 
+		    &data, 0)) != 0) {
+			if (ret == DB_LOCK_DEADLOCK)
+				goto abort;
+			fprintf(stderr, "%s: %s: %s->put: %s\n",
+			    progname, TXN_STRING, db_names[i], 
+			    db_strerror(ret));
+			goto err;
+		}
 	}
 
 	/*
@@ -227,18 +174,3 @@ abort:		if (verbose)
 err:	tpreturn(TPFAIL, 1L, 0, 0L, 0);
 }
 
-char *
-db_buf(dbt)
-	DBT *dbt;
-{
-	static u_char buf[1024];
-	size_t len;
-	u_char *p, *b;
-
-	for (p = dbt->data, len = dbt->size, b = buf; len > 0; ++p, --len)
-		if (isprint(*p))
-			b += sprintf((char *)b, "%c", *p);
-		else
-			b += sprintf((char *)b, "%#o", *p);
-	return ((char *)buf);
-}

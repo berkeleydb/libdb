@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -72,12 +72,16 @@ struct __fname {
 #define	DBREG_PREOPEN	4		/* Open in mpool only. */
 #define	DBREG_RCLOSE	5		/* File close after recovery. */
 #define	DBREG_REOPEN	6		/* Open for in-memory database. */
+#define	DBREG_XCHKPNT	7		/* Checkpoint of exclusive file. */
+#define	DBREG_XOPEN	8		/* File exclusive open. */
+#define	DBREG_XREOPEN	9		/* File exclusive open in-memory. */
 
 /* These bits are logged so db_printlog can handle page data. */
 #define	DBREG_OP_MASK	0xf		/* Opcode mask */
 #define	DBREG_BIGEND	0x1000		/* Db Big endian. */
 #define	DBREG_CHKSUM	0x2000		/* Db is checksummed. */
 #define	DBREG_ENCRYPT	0x4000		/* Db is encrypted. */
+#define	DBREG_EXCL	0x8000		/* Db is exclusive. */
 
 /*******************************************************
  * LOG:
@@ -90,6 +94,7 @@ struct __log_persist;	typedef struct __log_persist LOGP;
 #define	LFPREFIX	"log."		/* Log file name prefix. */
 #define	LFNAME		"log.%010d"	/* Log file name template. */
 #define	LFNAME_V1	"log.%05d"	/* Log file name template, rev 1. */
+#define IS_LOG_FILE(name)  (strncmp(name, LFPREFIX, sizeof(LFPREFIX) - 1) == 0)
 
 #define	LG_MAX_DEFAULT		(10 * MEGABYTE)	/* 10 MB. */
 #define	LG_MAX_INMEM		(256 * 1024)	/* 256 KB. */
@@ -285,7 +290,7 @@ struct __log { /* SHARED */
 	/* BEGIN fields protected by rep->mtx_clientdb. */
 	DB_LSN	  waiting_lsn;		/* First log record after a gap. */
 	DB_LSN	  verify_lsn;		/* LSN we are waiting to verify. */
-	DB_LSN	  prev_ckp;		/* LSN of ckp preceeding verify_lsn. */
+	DB_LSN	  prev_ckp;		/* LSN of ckp preceding verify_lsn. */
 	DB_LSN	  max_wait_lsn;		/* Maximum LSN requested. */
 	DB_LSN	  max_perm_lsn;		/* Maximum PERMANENT LSN processed. */
 	db_timespec max_lease_ts;	/* Maximum Lease timestamp seen. */

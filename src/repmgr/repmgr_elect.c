@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -37,9 +37,9 @@ __repmgr_init_election(env, flags)
 	COMPQUIET(th, NULL);
 
 	db_rep = env->rep_handle;
-	if (db_rep->finished) {
+	if (db_rep->repmgr_status == stopped) {
 		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
-		    "ignoring elect thread request %#lx; repmgr is finished",
+		    "ignoring elect thread request %#lx; repmgr is stopped",
 		    (u_long)flags));
 		return (0);
 	}
@@ -121,7 +121,8 @@ __repmgr_elect_main(env, th)
 	struct timespec deadline;
 #endif
 	db_timespec failtime, now, repstart_time, target, wait_til;
-	db_timeout_t response_time;
+	db_timeout_t delay_time, response_time, tmp_time;
+	u_long sec, usec;
 	u_int32_t flags;
 	int done_repstart, ret, suppress_election;
 	enum { ELECTION, REPSTART } action;
@@ -134,6 +135,40 @@ __repmgr_elect_main(env, th)
 
 	if (LF_ISSET(ELECT_F_EVENT_NOTIFY))
 		DB_EVENT(env, DB_EVENT_REP_MASTER_FAILURE, NULL);
+
+	/*
+	 * If leases are enabled, delay the election to allow any straggler
+	 * messages to get processed that might grant our lease again and
+	 * fool the base code into thinking the master is still there.
+	 * Any delay here offsets the time election code will wait for a
+	 * lease grant to expire.  So with leases we're not adding more delay.
+	 */
+	if (FLD_ISSET(db_rep->region->config, REP_C_LEASE)) {
+		/*
+		 * Use the smallest of the lease timeout, ack timeout,
+		 * or connection retry timeout.  We want to give straggler
+		 * messages a chance to get processed, but get an election
+		 * underway as soon as possible to find a master.
+		 */
+		if ((ret = __rep_get_timeout(env->dbenv,
+		    DB_REP_LEASE_TIMEOUT, &delay_time)) != 0)
+			goto out;
+		if ((ret = __rep_get_timeout(env->dbenv,
+		    DB_REP_ACK_TIMEOUT, &tmp_time)) != 0)
+			goto out;
+		if (tmp_time < delay_time)
+			delay_time = tmp_time;
+		if ((ret = __rep_get_timeout(env->dbenv,
+		    DB_REP_CONNECTION_RETRY, &tmp_time)) != 0)
+			goto out;
+		if (tmp_time < delay_time)
+			delay_time = tmp_time;
+		sec = delay_time / US_PER_SEC;
+		usec = delay_time % US_PER_SEC;
+		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
+		    "Election with leases pause sec %lu, usec %lu", sec, usec));
+		__os_yield(env, sec, usec);
+	}
 
 	/*
 	 * As a freshly started thread, lay claim to the title of being
@@ -187,7 +222,7 @@ __repmgr_elect_main(env, th)
 	for (;;) {
 		ret = 0;
 
-		if (db_rep->finished)
+		if (db_rep->repmgr_status == stopped)
 			goto unlock;
 
 		/*
@@ -359,7 +394,7 @@ __repmgr_compute_response_time(env)
 	 * to give it a chance to respond with a NEWMASTER message.  This is
 	 * particularly an issue at start-up time, when we're likely to have
 	 * several "new connection establishment" events bombarding us with lots
-	 * of rep_start requests in quick successtion.
+	 * of rep_start requests in quick succession.
 	 *
 	 * We don't have a separate user configuration for rep_start response,
 	 * but it's reasonable to expect it to be similar to either the ack

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -98,17 +98,17 @@ proc db_reptest_prof { } {
 }
 
 proc generate_profiles {} {
-	global envdirs
-	global num_sites
+	global dirs
+	global use
 	global util_path
 
 	#
 	# Once it is complete, generate profile information.
 	#
-	for { set i 1 } { $i <= $num_sites } { incr i } {
+	for { set i 1 } { $i <= $use(nsites) } { incr i } {
 		set gmon NULL
 		set known_gmons \
-		    { $envdirs($i)/db_reptest.gmon $envdirs($i)/gmon.out }
+		    { $dirs(env.$i)/db_reptest.gmon $dirs(env.$i)/gmon.out }
 		foreach gfile $known_gmons {
 			if { [file exists $gfile] } {
 				set gmon $gfile
@@ -185,13 +185,21 @@ proc db_reptest_loop { cmd stopstr count } {
 #
 proc db_reptest_int { cfgtype { restoredir NULL } } {
 	source ./include.tcl
-	global envdirs
-	global num_sites
+	global dirs
+	global use
 
 	env_cleanup $testdir
 
-	set savedir TESTDIR/SAVE_RUN
-	reptest_cleanup $savedir
+	set dirs(save) TESTDIR/SAVE_RUN
+	set dirs(restore) $restoredir
+	reptest_cleanup $dirs(save)
+
+	#
+	# Set up the array to indicate if we are going to use
+	# a metadata dir or database data dir.  If we are using
+	# datadirs, decide which one gets the created database.
+	#
+	get_datadirs $cfgtype use dirs
 
 	#
 	# Get all the default or random values needed for the test
@@ -202,59 +210,79 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 	# Get number of sites first because pretty much everything else
 	# after here depends on how many sites there are.
 	#
-	set num_sites [get_nsites $cfgtype $restoredir]
-	set use_lease [get_lease $cfgtype $restoredir]
-	set use_peers [get_peers $cfgtype]
+	set use(nsites) [get_nsites $cfgtype $dirs(restore)]
+	set use(lease) [get_lease $cfgtype $dirs(restore)]
+	set use(peers) [get_peers $cfgtype]
+	#
+	# Get port information in case it needs to be converted for this
+	# run.  A conversion will happen for a restored run if the current
+	# baseport is different than the one used in restoredir.
+	#
+	set portlist [available_ports $use(nsites)]
+	set baseport(curr) [expr [lindex $portlist 0] - 1]
+	set baseport(orig) [get_orig_baseport $cfgtype $dirs(restore)]
 	#
 	# Only use kill if we have > 2 sites.
 	# Returns a list.  An empty list means this will not be a kill test.
 	# Otherwise the list has 3 values, the kill type and 2 kill sites.
 	# See the 'get_kill' proc for a description of kill types.
 	#
-	set kill_type 0
+	set use(kill) ""
+	set kill_type "NONE"
 	set kill_site 0
-	set kill_remove 0
+	set kill_remover 0
 	set site_remove 0
-	if { $num_sites > 2 } {
-		set kill [get_kill $cfgtype $restoredir $num_sites]
-		if { [llength $kill] > 0 } {
-			set kill_type [lindex $kill 0]
-			set kill_site [lindex $kill 1]
-			set kill_remove [lindex $kill 2]
+	if { $use(nsites) > 2 } {
+		set use(kill) [get_kill $cfgtype \
+		    $dirs(restore) $use(nsites) baseport]
+		if { [llength $use(kill)] > 0 } {
+			set kill_type [lindex $use(kill) 0]
+			set kill_site [lindex $use(kill) 1]
+			set kill_remover [lindex $use(kill) 2]
 		} else {
 			# If we are not doing a kill test, determine if
 			# we are doing a remove test.
-			set site_remove [get_remove $cfgtype $num_sites]
+			set site_remove [get_remove $cfgtype $dirs(restore) \
+			    $use(nsites)]
 		}
 	}
 	if { $cfgtype != "restore" } {
-		if { $use_lease } {
-			set use_master 0
+		if { $use(lease) } {
+			set use(master) 0
 		} else {
-			set use_master [get_usemaster $cfgtype]
-			if { $site_remove == $use_master } {
+			set use(master) [get_usemaster $cfgtype]
+			if { $site_remove == $use(master) } {
 				set site_remove 0
 			}
 		}
-		set master_site [get_mastersite $cfgtype $use_master $num_sites]
-		set noelect [get_noelect $use_master]
+		set master_site [get_mastersite $cfgtype $use(master) $use(nsites)]
+		set noelect [get_noelect $use(master)]
 		set master2_site [get_secondary_master \
-		    $noelect $master_site $kill_site $num_sites]
-		set workers [get_workers $cfgtype $use_lease]
+		    $noelect $master_site $kill_site $use(nsites)]
+		set workers [get_workers $cfgtype $use(lease)]
 		set dbtype [get_dbtype $cfgtype]
 		set runtime [get_runtime $cfgtype]
-		puts -nonewline "Running: $num_sites sites, $runtime seconds "
-		if { $kill_site } {
-			puts -nonewline "kill site $kill_site "
-			if { $kill_remove } {
-				puts -nonewline "removed by site $kill_remove "
-			}
-		} elseif { $site_remove } {
-			puts -nonewline "remove site $site_remove "
+		puts "Running: $use(nsites) sites, $runtime seconds."
+		puts -nonewline "Running: "
+		if { $use(createdir) } {
+			puts -nonewline \
+    "$use(datadir) datadirs, createdir DATA.$use(createdir), "
 		}
-		if { $use_lease } {
-			puts "with leases"
-		} elseif { $use_master } {
+		if { $use(metadir) } {
+			puts -nonewline "METADIR, "
+		}
+		if { $kill_type == "DIE" || $kill_type == "REMOVE" } {
+			puts -nonewline "kill site $kill_site, "
+		}
+		if { $kill_type == "LIVE_REM" } {
+			puts -nonewline \
+			    "live removal of site $kill_site by $kill_remover, "
+		} elseif { $site_remove } {
+			puts -nonewline "remove site $site_remove, "
+		}
+		if { $use(lease) } {
+			puts "with leases."
+		} elseif { $use(master) } {
 			set master_text "master site $master_site"
 			if { $noelect } {
 				set master_text [concat $master_text \
@@ -264,41 +292,56 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 				set master_text [concat $master_text \
 				    "secondary master site $master2_site"]
 			}
-			puts "$master_text"
+			puts "$master_text."
 		} else {
-			puts "no master"
+			puts "no master."
 		}
 	}
 	#
 	# This loop sets up the args to the invocation of db_reptest
 	# for each site.
 	#
-	set portlist [available_ports $num_sites]
-	for { set i 1 } {$i <= $num_sites } { incr i } {
-		set envdirs($i) TESTDIR/ENV$i
-		set homedirs($i) ../ENV$i
-		reptest_cleanup $envdirs($i)
+	for { set i 1 } {$i <= $use(nsites) } { incr i } {
+		set dirs(env.$i) TESTDIR/ENV$i
+		set dirs(home.$i) ../ENV$i
+		reptest_cleanup $dirs(env.$i)
 		#
 		# If we are restoring the args, just read them from the
 		# saved location for this sites.  Otherwise build up
 		# the args for each piece we need.
 		#
 		if { $cfgtype == "restore" } {
-			set cid [open $restoredir/DB_REPTEST_ARGS.$i r]
+			set cid [open $dirs(restore)/DB_REPTEST_ARGS.$i r]
 			set prog_args($i) [read $cid]
 			close $cid
+			#
+			# Convert -K port number arguments to current
+			# baseport if needed.  regsub -all substitutes
+			# all occurrences of pattern, which is "-K "
+			# and a number.  The result of regsub contains a tcl
+			# expression with the number (\2, the second part of
+			# the pattern), operators and variable names, e.g.:
+			#   -K [expr 30104 - $baseport(orig) + $baseport(curr)]
+			# and then subst evalutes the tcl expression.
+			#
+			if { $baseport(curr) != $baseport(orig) } {
+				regsub -all {(-K )([0-9]+)} $prog_args($i) \
+				    {-K [expr \2 - $baseport(orig) + \
+				    $baseport(curr)]} prog_args($i)
+				set prog_args($i) [subst $prog_args($i)]
+			}
 			if { $runtime == 0 } {
 				set runtime [parse_runtime $prog_args($i)]
 				puts "Runtime: $runtime"
 			}
 		} else {
-			set nmsg [berkdb random_int 1 [expr $num_sites * 2]]
+			set nmsg [berkdb random_int 1 [expr $use(nsites) * 2]]
 			set prog_args($i) \
 			    "-v -c $workers -t $dbtype -T $runtime -m $nmsg "
 			set prog_args($i) \
-			    [concat $prog_args($i) "-h $homedirs($i)"]
+			    [concat $prog_args($i) "-h $dirs(home.$i)"]
 			set prog_args($i) \
-			    [concat $prog_args($i) "-o $num_sites"]
+			    [concat $prog_args($i) "-o $use(nsites)"]
 			#
 			# Add in if this site should remove itself.
 			#
@@ -308,13 +351,14 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 			#
 			# Add in if this site should kill itself.
 			#
-			if { $kill_site == $i } {
+			if { ($kill_type == "DIE" || $kill_type == "REMOVE") && \
+			    $kill_site == $i} {
 				set prog_args($i) [concat $prog_args($i) "-k"]
 			}
 			#
 			# Add in if this site should remove a killed site.
 			#
-			if { $kill_remove == $i } {
+			if { $kill_remover == $i } {
 				set kport [lindex $portlist \
 				    [expr $kill_site - 1]]
 				set prog_args($i) [concat $prog_args($i) \
@@ -333,7 +377,7 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 				# start as a client.  Otherwise start with
 				# elections.
 				#
-				if { $use_master } {
+				if { $use(master) } {
 					set prog_args($i) \
 					    [concat $prog_args($i) "-C"]
 				} else {
@@ -353,19 +397,18 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 				}
 			}
 		}
-		save_db_reptest $savedir ARGS $i $prog_args($i)
+		save_db_reptest $dirs(save) ARGS $i $prog_args($i)
 	}
 
 	# Now make the DB_CONFIG file for each site.
-	reptest_make_config $savedir $num_sites envdirs state \
-	    $use_lease $use_peers $kill_site $portlist $cfgtype $restoredir
+	reptest_make_config $cfgtype dirs state use $portlist baseport
 
 	# Run the test
-	run_db_reptest $savedir envdirs $num_sites $runtime $use_lease
+	run_db_reptest dirs $use(nsites) $runtime $use(lease)
 	puts "Test run complete.  Verify."
 
 	# Verify the test run.
-	verify_db_reptest $num_sites envdirs $kill_site
+	verify_db_reptest $use(nsites) dirs use $kill_site $site_remove
 
 	# Show the summary files
 	print_summary
@@ -375,10 +418,11 @@ proc db_reptest_int { cfgtype { restoredir NULL } } {
 #
 # Make a DB_CONFIG file for all sites in the group
 #
-proc reptest_make_config { savedir nsites edirs st lease peers kill \
-    portlist cfgtype restoredir } {
-	upvar $edirs envdirs
-	upvar $st state
+proc reptest_make_config { cfgtype dirsarr starr usearr portlist baseptarr } {
+	upvar $dirsarr dirs
+	upvar $starr state
+	upvar $baseptarr baseport
+	upvar $usearr use
 	global rporttype
 
 	#
@@ -408,12 +452,12 @@ proc reptest_make_config { savedir nsites edirs st lease peers kill \
 	# 2site strict and ack policy must be the same on all sites.
 	#
 	if { $cfgtype == "random" } {
-		if { $nsites == 2 } {
+		if { $use(nsites) == 2 } {
 			set strict [berkdb random_int 0 1]
 		} else {
 			set strict 0
 		}
-		if { $lease } {
+		if { $use(lease) } {
 			#
 			# 2site strict with leases must have ack policy of
 			# one because quorum acks are ignored in this case,
@@ -436,7 +480,7 @@ proc reptest_make_config { savedir nsites edirs st lease peers kill \
 				# it is a rarely used option.
 				#
 				if { $ackpolicy == "db_repmgr_acks_none" && \
-				    $nsites > 2 } {
+				    $use(nsites) > 2 } {
 					continue
 				}
 				#
@@ -446,7 +490,7 @@ proc reptest_make_config { savedir nsites edirs st lease peers kill \
 				# to ignore acks and blast the clients with
 				# log records.
 				#
-				if { $kill && \
+				if { [llength $use(kill)] > 0 && \
 				    ($ackpolicy == "db_repmgr_acks_all" || \
 				    $ackpolicy == 
 				    "db_repmgr_acks_all_peers") } {
@@ -464,24 +508,44 @@ proc reptest_make_config { savedir nsites edirs st lease peers kill \
 	#
 	set known_master 0
 	if { $cfgtype != "restore" } {
-		for { set i 1 } { $i <= $nsites } { incr i } {
+		for { set i 1 } { $i <= $use(nsites) } { incr i } {
 			if { $state($i) == "MASTER" } {
 				set known_master $i
 			}
 		}
 		if { $known_master == 0 } {
-			set known_master [berkdb random_int 1 $nsites]
+			set known_master [berkdb random_int 1 $use(nsites)]
 		}
 	}
-	for { set i 1 } { $i <= $nsites } { incr i } {
+	for { set i 1 } { $i <= $use(nsites) } { incr i } {
 		#
 		# If we're restoring we just need to copy it.
 		#
 		if { $cfgtype == "restore" } {
-			file copy $restoredir/DB_CONFIG.$i \
-			    $envdirs($i)/DB_CONFIG
-			file copy $restoredir/DB_CONFIG.$i \
-			    $savedir/DB_CONFIG.$i
+			#
+			# Convert DB_CONFIG port numbers to current baseport
+			# if needed.
+			#
+			set restore_cfile $dirs(restore)/DB_CONFIG.$i
+			set new_cfile $dirs(env.$i)/DB_CONFIG
+			set new_save_cfile $dirs(save)/DB_CONFIG.$i
+			if { $baseport(curr) != $baseport(orig) } {
+				convert_config_ports $restore_cfile \
+				    $new_cfile baseport
+				file copy $new_cfile $new_save_cfile
+			} else {
+				file copy $restore_cfile $new_cfile
+				file copy $restore_cfile $new_save_cfile
+			}
+			if { $use(metadir) } {
+				file mkdir $dirs(env.$i)/METADIR
+			}
+			if { $use(datadir) } {
+				for { set diri 1 } { $diri <= $use(datadir) } \
+				    { incr diri } {
+					file mkdir $dirs(env.$i)/DATA.$diri
+				}
+			}
 			continue
 		}
 		#
@@ -493,8 +557,8 @@ proc reptest_make_config { savedir nsites edirs st lease peers kill \
 		# Add lease configuration if needed.  We're running all
 		# locally, so there is no clock skew.
 		#
-		set allist [get_ack_lease_timeouts $lease]
-		if { $lease } {
+		set allist [get_ack_lease_timeouts $use(lease)]
+		if { $use(lease) } {
 			#
 			# We need to have an ack timeout > lease timeout.
 			# Otherwise txns can get committed without waiting
@@ -508,6 +572,30 @@ proc reptest_make_config { savedir nsites edirs st lease peers kill \
 		} else {
 			lappend cfglist { "rep_set_timeout" \
 			    "db_rep_ack_timeout [lindex $allist 0]" }
+		}
+
+		#
+		# Add datadirs and the metadir, if needed.  If we are using
+		# datadirs, then set which one is the create dir.
+		#
+		if { $use(metadir) } {
+			file mkdir $dirs(env.$i)/METADIR
+			lappend cfglist { "set_metadata_dir" "METADIR" }
+		}
+		if { $use(datadir) } {
+			for { set diri 1 } { $diri <= $use(datadir) } \
+			    { incr diri } {
+				file mkdir $dirs(env.$i)/DATA.$diri
+				#
+				# Need to add to list in 2 steps otherwise
+				# $diri in the list will not get evaluated
+				# until later.
+				#
+				set litem [list add_data_dir DATA.$diri]
+				lappend cfglist $litem
+			}
+			lappend cfglist { "set_create_dir" \
+			    "DATA.$use(createdir)" }
 		}
 
 		#
@@ -554,27 +642,37 @@ proc reptest_make_config { savedir nsites edirs st lease peers kill \
 		# known_master (either master or group creator) set the
 		# group creator flag on.
 		#
+		# Must use explicit 127.0.0.1 rather than localhost because
+		# localhost can be configured differently on different
+		# machines or platforms.  Use of localhost can cause 
+		# available_ports to return ports that are actually in use.
+		#
 		set lport($i) [lindex $portlist [expr $i - 1]]
 		if { $i == $known_master } {
+			#
+			# Any change to this generated syntax will probably
+			# require a change to get_orig_baseport, which relies
+			# on this ordering and these embedded spaces.
+			#
 			set litem [list repmgr_site \
-			    "localhost $lport($i) db_local_site on \
+			    "127.0.0.1 $lport($i) db_local_site on \
 			    db_group_creator on"]
 		} else {
 			set litem [list repmgr_site \
-			    "localhost $lport($i) db_local_site on"]
+			    "127.0.0.1 $lport($i) db_local_site on"]
 		}
 		lappend cfglist $litem
-		set rport($i) [get_rport $portlist $i $nsites \
+		set rport($i) [get_rport $portlist $i $use(nsites) \
 		    $known_master $cfgtype]
 		#
 		# Declare all sites bootstrap helpers.
 		#
 		foreach p $rport($i) {
-			if { $peers } {
-				set litem [list repmgr_site "localhost $p \
+			if { $use(peers) } {
+				set litem [list repmgr_site "127.0.0.1 $p \
 				    db_bootstrap_helper on db_repmgr_peer on"]
 			} else {
-				set litem [list repmgr_site "localhost $p \
+				set litem [list repmgr_site "127.0.0.1 $p \
 				    db_bootstrap_helper on"]
 			}
 			#
@@ -588,18 +686,18 @@ proc reptest_make_config { savedir nsites edirs st lease peers kill \
 		#
 		# Now write out the DB_CONFIG file.
 		#
-		set cid [open $envdirs($i)/DB_CONFIG a]
+		set cid [open $dirs(env.$i)/DB_CONFIG a]
 		foreach c $cfglist {
 			set carg [subst [lindex $c 0]]
 			set cval [subst [lindex $c 1]]
 			puts $cid "$carg $cval"
 		}
 		close $cid
-		set cid [open $envdirs($i)/DB_CONFIG r]
+		set cid [open $dirs(env.$i)/DB_CONFIG r]
 		set cfg [read $cid]
 		close $cid
 	
-		save_db_reptest $savedir CONFIG $i $cfg
+		save_db_reptest $dirs(save) CONFIG $i $cfg
 	}
 
 }
@@ -629,9 +727,9 @@ proc save_db_reptest { savedir op site savelist } {
 	close $cid
 }
 
-proc run_db_reptest { savedir edirs numsites runtime use_lease } {
+proc run_db_reptest { dirsarr numsites runtime use_lease } {
 	source ./include.tcl
-	upvar $edirs envdirs
+	upvar $dirsarr dirs
 	global killed_procs
 
 	set pids {}
@@ -645,8 +743,8 @@ proc run_db_reptest { savedir edirs numsites runtime use_lease } {
 	    [expr $ack_timeout / 1000000] * $numsites]
 	for {set i 1} {$i <= $numsites} {incr i} {
 		lappend pids [exec $tclsh_path $test_path/wrap_reptest.tcl \
-		    $savedir/DB_REPTEST_ARGS.$i $envdirs($i) \
-		    $savedir/site$i.log &]
+		    $dirs(save)/DB_REPTEST_ARGS.$i $dirs(env.$i) \
+		    $dirs(save)/site$i.log &]
 		tclsleep 1
 	}
 	watch_procs $pids 15 $watch_time
@@ -656,22 +754,27 @@ proc run_db_reptest { savedir edirs numsites runtime use_lease } {
 	}
 }
 
-proc verify_db_reptest { num_sites edirs kill } {
-	upvar $edirs envdirs
+proc verify_db_reptest { num_sites dirsarr usearr kill site_rem } {
+	upvar $dirsarr dirs
+	upvar $usearr use
 
 	set startenv 1
 	set cmpeid 2
-	if { $kill == 1 } {
+	if { $kill == 1 || $site_rem == 1 } {
 		set startenv 2
 		set cmpeid 3
 	}
-	set envbase [berkdb_env_noerr -home $envdirs($startenv)]
+	set envbase [berkdb_env_noerr -home $dirs(env.$startenv)]
+	set datadir ""
+	if { $use(createdir) } {
+		set datadir DATA.$use(createdir)
+	}
 	for { set i $cmpeid } { $i <= $num_sites } { incr i } {
-		if { $i == $kill } {
+		if { $i == $kill || $i == $site_rem } {
 			continue
 		}
-		set cmpenv [berkdb_env_noerr -home $envdirs($i)]
-		puts "Compare $envdirs($startenv) with $envdirs($i)"
+		set cmpenv [berkdb_env_noerr -home $dirs(env.$i)]
+		puts "Compare $dirs(env.$startenv) with $dirs(env.$i)"
 		#
 		# Compare 2 envs.  We assume the name of the database that
 		# db_reptest creates and know it is 'am1.db'.
@@ -679,8 +782,8 @@ proc verify_db_reptest { num_sites edirs kill } {
 		# 0 - compare_shared_portion
 		# 1 - match databases
 		# 0 - don't compare logs (for now)
-		rep_verify $envdirs($startenv) $envbase $envdirs($i) $cmpenv \
-		    0 1 0 am1.db
+		rep_verify $dirs(env.$startenv) $envbase $dirs(env.$i) $cmpenv \
+		    0 1 0 am1.db $datadir
 		$cmpenv close
 	}
 	$envbase close
@@ -746,7 +849,7 @@ proc get_lease { cfgtype restoredir } {
 	# we only know we have at least 1 site.
 	#
 	if { $cfgtype == "restore" } {
-		set use_lease 0
+		set uselease 0
 		set cid [open $restoredir/DB_CONFIG.1 r]
 		while { [gets $cid cfglist] } {
 #			puts "Read in: $cfglist"
@@ -757,13 +860,13 @@ proc get_lease { cfgtype restoredir } {
 			if { $cfg == "rep_set_config" } {
 				set lease [lindex $cfglist 1]
 				if { $lease == "db_rep_conf_lease" } {
-					set use_lease 1
+					set uselease 1
 					break;
 				}
 			}
 		}
 		close $cid
-		return $use_lease
+		return $uselease
 	}
 	if { $cfgtype == "random" } {
 		set leases { 1 0 0 0 }
@@ -786,20 +889,29 @@ proc get_lease { cfgtype restoredir } {
 # a site to do the removal.
 #
 # We return a list with the kill type and the sites.  Return
-# an empty list if we don't kill any site.  There are 2 variants:
+# an empty list if we don't kill any site.  There are a few variants:
 #
 # 1: Die - A site just kills itself but remains part of the group.
-# Return a list {1 deadsite# 0}.
+# Return a list {DIE deadsite# 0}.
 # 2: Removal - A site kills itself, and some site will also remove
-# the dead site from the group. (Could be the same site that is dying).
-# {2 deadsite# removalsite#}.
+# the dead site from the group. (Could be the same site that is dying,
+# in which case the removal is done right before it exits.)
+# {REMOVE deadsite# removalsite#}.
+# 3. Live removal - Some site removes another live site from the group.
+# (Could be itself.)
+# {LIVE_REM killsite# removalsite#}.
 #
-proc get_kill { cfgtype restoredir num_sites } {
+proc get_kill { cfgtype restoredir num_sites basept } {
+	upvar $basept baseport
+
 	set nokill ""
 	if { $cfgtype == "restore" } {
 		set ksite 0
-		set ktype 0
+		set localkill 0
+		set rkill 0
 		set rsite 0
+		set kport 0
+		set ktype NONE
 		for { set i 1 } { $i <= $num_sites } { incr i } {
 			set cid [open $restoredir/DB_REPTEST_ARGS.$i r]
 			# !!!
@@ -811,14 +923,15 @@ proc get_kill { cfgtype restoredir num_sites } {
 			set dokill [lsearch $arglist "-k"]
 			set dorem [lsearch $arglist "-K"]
 			#
-			# Only 1 of those 3 should ever be set.  If we
-			# find -K, we have all the information we need
-			# and can break the loop.  If we find a -k we might
-			# find a later -K so we keep looking.
+			# Only 1 of those args should ever be set for a given
+			# input line.  We need to look at all sites in order
+			# to determine the kill type.  If we find both -k and
+			# -K, the site will be the same, so overwriting it
+			# no matter what order the sites, is okay.
 			#
-			if { $dokill != -1 } {
+			if { $dokill >= 0 } {
 				set ksite $i
-				set ktype 1
+				set localkill 1
 			}
 			#
 			# If it is a remote removal kill type, we are
@@ -828,42 +941,72 @@ proc get_kill { cfgtype restoredir num_sites } {
 			# The site in the arg is the port number so grab
 			# the site number out of it.
 			#
-			if { $dorem != -1 } {
-				set ktype 2
+			if { $dorem >= 0 } {
+				set rkill 1
 				set kport [lindex $arglist [expr $dorem + 1]]
-				set ksite [site_from_port $kport $num_sites]
+				set ksite [expr $kport - $baseport(orig)]
+				# Convert kport to current baseport if needed.
+				if { $baseport(curr) != $baseport(orig) } {
+					set kport [expr $kport - \
+					    $baseport(orig) + $baseport(curr)]
+				}
 				set rsite $i
-				break
 			}
 		}
-		if { $ktype == 0 } {
+		#
+		# If we have a remote kill, then we decide the kill type
+		# based on whether the killed site will be dead or alive.
+		# If we found no site to kill/remove, we know it is not
+		# a kill test.
+		#
+		if { $ksite == 0 } {
 			return $nokill
 		} else {
+			#
+			# See proc comment for a definition of each kill type.
+			#
+			if { $localkill == 1 && $rkill == 0 } {
+				set ktype DIE
+			}
+			if { $localkill == 1 && $rkill == 1 } {
+				set ktype REMOVE
+			}
+			if { $localkill == 0 && $rkill == 2 } {
+				set ktype LIVE_REM
+			}
 			return [list $ktype $ksite $rsite]
 		}
 	}
 	if { $cfgtype == "random" } {
-		# Do a kill test half the time.
+		# Do a kill and/or removal test half the time.
 		set k { 0 0 0 1 1 1 0 1 1 0 }
 		set len [expr [llength $k] - 1]
 		set i [berkdb random_int 0 $len]
-		if { [lindex $k $i] == 1 } {
-			set ktype 1
-			set ksite [berkdb random_int 1 $num_sites]
-			set rsite 0
-			# Do a removal half the time we do a kill.
-			set k { 0 0 0 1 1 1 0 1 1 0 }
-			set len [expr [llength $k] - 1]
-			set i [berkdb random_int 0 $len]
-			if { [lindex $k $i] == 1 } {
-				set ktype 2
-				set rsite [berkdb random_int 1 $num_sites]
-			}
-			set klist [list $ktype $ksite $rsite]
-		} else {
-			set klist $nokill
+		set dokill [lindex $k $i]
+		set i [berkdb random_int 0 $len]
+		set dorem [lindex $k $i]
+		#
+		# Set up for the possibilities listed above.
+		#
+		if { $dokill == 0 && $dorem == 0 } {
+			return $nokill
 		}
-		return $klist
+		#
+		# Choose which sites to kill and do removal.
+		#
+		set ksite [berkdb random_int 1 $num_sites]
+		set rsite [berkdb random_int 1 $num_sites]
+		if { $dokill == 1 && $dorem == 0 } {
+			set ktype DIE
+			set rsite 0
+		}
+		if { $dokill == 1 && $dorem == 1 } {
+			set ktype REMOVE
+		}
+		if { $dokill == 0 && $dorem == 1 } {
+			set ktype LIVE_REM
+		}
+		return [list $ktype $ksite $rsite]
 	}
 	if { $cfgtype == "basic0" || $cfgtype == "basic1" } {
 		return $nokill
@@ -878,13 +1021,8 @@ proc get_kill { cfgtype restoredir num_sites } {
 # it will return 0 if no removal test.  Sites are numbered
 # starting at 1.
 #
-proc get_remove { cfgtype nsites } {
-#
-# For now, until the "restart a dead carcass" work is done
-# post-5.2, we don't use this option.  5.2 requires a site
-# to shutdown if it gets removed while it is alive.
-#
-return 0
+proc get_remove { cfgtype restoredir nsites } {
+	set rsite 0
 	if { $cfgtype == "random" } {
 		# Do a remove test half the time we're called.
 		set k { 0 0 0 1 1 1 0 1 1 0 }
@@ -892,13 +1030,33 @@ return 0
 		set i [berkdb random_int 0 $len]
 		if { [lindex $k $i] == 1 } {
 			set rsite [berkdb random_int 1 $nsites]
-		} else {
-			set rsite 0
 		}
-		return $rsite
-	} else {
-		return 0
+	} elseif { $cfgtype == "restore" } {
+		#
+		# If we're restoring we still need to know if a site is
+		# running its own removal test so we know to skip it for verify.
+		#
+		for { set i 1 } { $i <= $nsites } { incr i } {
+			set cid [open $restoredir/DB_REPTEST_ARGS.$i r]
+			# !!!
+			# We currently assume the args file is 1 line.
+			# This code also assumes only 1 site ever does removal.
+			#
+			gets $cid arglist
+			close $cid
+#			puts "Read in: $arglist"
+			set dorem [lsearch $arglist "-r"]
+			if { $dorem >= 0 } {
+				set rsite $i
+				#
+				# If we find one, we know no other site will
+				# be doing removal.  So stop now.
+				#
+				break
+			}
+		}
 	}
+	return $rsite
 }
 
 #
@@ -1117,6 +1275,103 @@ proc get_ack_lease_timeouts { useleases } {
 	}
 }
 
+#
+# Use datadir half the time.  Then pick how many and which datadir
+# the database should reside in.  Use a metadata dir 25% of the time.
+#
+proc get_datadirs { cfgtype usearr dirarr } {
+	upvar $usearr use
+	upvar $dirarr dir
+
+	set use(datadir) 0
+	set use(createdir) 0
+	set use(metadir) 0
+	if { $cfgtype == "random" } {
+		set meta { 0 0 0 1 }
+		#
+		# Randomly pick if we use datadirs, and if so, how many, up to 4.
+		# Although we may create several datadirs, we only choose one
+		# of them in which to create the database.
+		#
+		set data { 0 0 0 0 1 2 3 4 }
+		set mlen [expr [llength $meta] - 1]
+		set dlen [expr [llength $data] - 1]
+		set im [berkdb random_int 0 $mlen]
+		set id [berkdb random_int 0 $dlen]
+		set use(datadir) [lindex $data $id]
+		set use(metadir) [lindex $meta $im]
+		#
+		# If we're using datadirs, then randomly pick the creation dir.
+		#
+		if { $use(datadir) != 0 } {
+			set use(createdir) [berkdb random_int 1 $use(datadir)]
+		}
+	} elseif { $cfgtype == "restore" } {
+		set cid [open $dir(restore)/DB_CONFIG.1 r]
+		set cfg [read $cid]
+		# Look for metadata_dir, add_data_dir and set_create_dir.
+		set use(metadir) [regexp -all {(set_metadata_dir)} $cfg]
+		set use(datadir) [regexp -all {(add_data_dir)} $cfg]
+		if { $use(datadir) } {
+			set c [regexp {(set_create_dir )(DATA.[0-9])} $cfg m cr]
+			#
+			# We need to extract the directory number from the
+			# createdir directory name.  I.e., DATA.2 needs '2'.
+			#
+			regexp {(DATA.)([0-9])} $m match d use(createdir)
+		}
+		close $cid
+	}
+	return 0
+}
+
+#
+# Get the original baseport for a configuration to be restored by using
+# the local site port number for its first site because every configuration
+# will have a first site.
+#
+proc get_orig_baseport { cfgtype { restoredir NULL } } {
+	if { $cfgtype != "restore" } {
+		return 0
+	} else {
+		set cid [open $restoredir/DB_CONFIG.1 r]
+		set cfg [read $cid]
+		# Look for a number between "127.0.0.1" and "db_local_site on".
+		# The spaces after 127.0.0.1 and before db_local_site are
+		# significant in the pattern match.
+		regexp {(127.0.0.1 )([0-9]+)( db_local_site on)} $cfg \
+		    match p1 pnum
+		close $cid
+		return [expr $pnum - 1]
+	}
+}
+
+#
+# Convert DB_CONFIG file port numbers following "127.0.0.1 " to use a 
+# different baseport.  regsub -all substitutes all occurrences of pattern,
+# which is "127.0.0.1 " and a number.  The result of regsub contains a tcl
+# expression with the number (\2, the second part of the pattern), operators
+# and variable names, e.g.:
+#     -K [expr 30104 - $baseport(orig) + $baseport(curr)]
+# and then subst evalutes the tcl expression.
+#
+# Writes a converted copy of orig_file to new_file.
+#
+proc convert_config_ports { orig_file new_file basept } {
+	upvar $basept baseport
+
+	set cid [open $orig_file r]
+	set cfg [read $cid]
+	regsub -all {(127.0.0.1 )([0-9]+)} $cfg \
+	    {127.0.0.1 [expr \2 - $baseport(orig) + $baseport(curr)]} cfg
+	set cfg [subst $cfg]
+	close $cid
+	set cid [open $new_file a]
+	puts -nonewline $cid $cfg
+	close $cid
+	return 0
+}
+
 proc parse_runtime { progargs } {
 	set i [lsearch $progargs "-T"]
 	set val [lindex $progargs [expr $i + 1]]
@@ -1125,7 +1380,6 @@ proc parse_runtime { progargs } {
 
 proc print_summary { } {
 	source ./include.tcl
-	global envdirs
 
 	set ret [catch {glob $testdir/summary.*} result]
 	if { $ret == 0 } {

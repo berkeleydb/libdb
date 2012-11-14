@@ -1,11 +1,14 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2002, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2002, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 
 #include "db_cxx.h"
 #include <stdlib.h>
+#ifdef HAVE_STRING_H
+#include <string.h>
+#endif
 using namespace std;
 
 void test1()
@@ -45,8 +48,10 @@ void test1()
 				DbMultipleKeyDataIterator i(multidata);
 				while(err==0 && i.next(key,data))
 				{
-					int actualKey= *((int*)key.get_data());
-					int actualData= *((int*)data.get_data());
+					int actualKey;
+					int actualData;
+					memmove(&actualKey, key.get_data(), sizeof(actualKey));
+					memmove(&actualData, data.get_data(), sizeof(actualData));
 					if(actualKey!=actualData)
 					{
 						std::cout << "Error: key/data mismatch. " << actualKey << "!=" << actualData << std::endl;
@@ -118,7 +123,8 @@ void test2()
 				DbMultipleDataIterator i(multidata);
 				while(err==0 && i.next(data))
 				{
-					int actualData= *((int*)data.get_data());
+					int actualData;
+					memmove(&actualData, data.get_data(), sizeof(actualData));
 					if(numberOfKeysRead!=actualData)
 					{
 						std::cout << "Error: key/data mismatch. " << numberOfKeysRead << "!=" << actualData << std::endl;
@@ -176,7 +182,8 @@ void test3()
 				DbMultipleRecnoDataIterator i(multidata);
 				while(err==0 && i.next(recno,data))
 				{
-					int actualData= *((int*)data.get_data());
+					u_int32_t actualData;
+					memmove(&actualData, data.get_data(), sizeof(actualData));
 					if(recno!=actualData+1)
 					{
 						std::cout << "Error: recno/data mismatch. " << recno << "!=" << actualData << "+1" << std::endl;

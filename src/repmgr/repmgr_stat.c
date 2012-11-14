@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -339,10 +339,18 @@ __repmgr_site_list(dbenv, countp, listp)
 		 * does indeed have a connection established (db_stat can't know
 		 * that).
 		 */
-		status[i].status = db_rep->selector == NULL ? 0 :
-		    (site->state == SITE_CONNECTED &&
-		    IS_READY_STATE(site->ref.conn->state) ?
-		    DB_REPMGR_CONNECTED : DB_REPMGR_DISCONNECTED);
+		if (db_rep->selector == NULL)
+			status[i].status = 0;
+		else if (site->state != SITE_CONNECTED)
+			status[i].status = DB_REPMGR_DISCONNECTED;
+		else if ((site->ref.conn.in != NULL &&
+		    IS_READY_STATE(site->ref.conn.in->state)) ||
+		    (site->ref.conn.out != NULL &&
+		    IS_READY_STATE(site->ref.conn.out->state)))
+			status[i].status = DB_REPMGR_CONNECTED;
+		else
+			status[i].status = DB_REPMGR_DISCONNECTED;
+
 		i++;
 	}
 

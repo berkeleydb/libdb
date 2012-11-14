@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -603,7 +603,7 @@ __db_coff(dbc, dbt, match, cmpfunc, cmpp)
 	PAGE *dbt_pagep, *match_pagep;
 	db_pgno_t dbt_pgno, match_pgno;
 	u_int32_t cmp_bytes, dbt_bufsz, dbt_len, match_bufsz;
-	u_int32_t match_len, max_data, page_sz;
+	u_int32_t match_len, max_data, page_space;
 	u_int8_t *p1, *p2;
 	int ret;
 	void *dbt_buf, *match_buf;
@@ -612,7 +612,7 @@ __db_coff(dbc, dbt, match, cmpfunc, cmpp)
 	ip = dbc->thread_info;
 	txn = dbc->txn;
 	mpf = dbp->mpf;
-	page_sz = dbp->pgsize;
+	page_space = P_MAXSPACE(dbp, dbp->pgsize);
 	*cmpp = 0;
 	dbt_buf = match_buf = NULL;
 
@@ -664,7 +664,7 @@ err1:		if (dbt_buf != NULL)
 			    mpf, ip, dbt_pagep, DB_PRIORITY_UNCHANGED);
 			return (ret);
 		}
-		cmp_bytes = page_sz < max_data ? page_sz : max_data;
+		cmp_bytes = page_space < max_data ? page_space : max_data;
 		for (p1 = (u_int8_t *)dbt_pagep + P_OVERHEAD(dbp),
 		    p2 = (u_int8_t *)match_pagep + P_OVERHEAD(dbp);
 		    cmp_bytes-- > 0; ++p1, ++p2)
@@ -675,7 +675,7 @@ err1:		if (dbt_buf != NULL)
 
 		dbt_pgno = NEXT_PGNO(dbt_pagep);
 		match_pgno = NEXT_PGNO(match_pagep);
-		max_data -= page_sz;
+		max_data -= page_space;
 		if ((ret = __memp_fput(mpf,
 		     ip, dbt_pagep, DB_PRIORITY_UNCHANGED)) != 0) {
 			(void)__memp_fput(mpf,

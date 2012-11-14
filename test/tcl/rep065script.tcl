@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2006, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -52,16 +52,16 @@ proc rep065scr_reptest { repenv oplist markerdb } {
 }
 
 proc rep065scr_repget { repenv oplist mydir markerfile } {
-	set dbname "$mydir/test.db"
+	set dbname "$mydir/DATADIR/test.db"
 	set i 0
 	while { [file exists $dbname] == 0 } {
 		tclsleep 2
 		incr i
 		if { $i >= 15 && $i % 5 == 0 } {
-			puts "After $i seconds, no database exists."
+			puts "After $i seconds, no database $dbname exists."
 		}
 		if { $i > 180 } {
-			error "Database never created."
+			error "Database $dbname never created."
 		}
 	}
 	set loop 1
@@ -113,33 +113,19 @@ proc rep065scr_starttest { role oplist envid msgdir mydir allids markerfile } {
 	set logbuf [expr 16 * 1024]
 	set logmax [expr $logbuf * 4]
 	if { $role == "MASTER" } {
-		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
-		    -log_max $logmax -log_buffer $logbuf $repmemargs \
-		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
-		    -errpfx MASTER -txn -rep_master \
-		    -rep_transport \[list $envid replsend_noenv\]"
-		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
-		    -log_max $logmax -log_buffer $logbuf $repmemargs \
-		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
-		    -errpfx MASTER -txn -rep_master \
-		    -verbose {rep on} -errfile /dev/stderr \
-		    -rep_transport \[list $envid replsend_noenv\]"
+		set rolearg "-rep_master"
 	} elseif { $role == "CLIENT" } {
-		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
-		    -log_max $logmax -log_buffer $logbuf $repmemargs \
-		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
-		    -errpfx CLIENT -txn -rep_client \
-		    -rep_transport \[list $envid replsend_noenv\]"
-		set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
-		    -log_max $logmax -log_buffer $logbuf $repmemargs \
-		    -lock_max_objects $lockmax -lock_max_locks $lockmax \
-		    -errpfx CLIENT -txn -rep_client \
-		    -verbose {rep on} -errfile /dev/stderr \
-		    -rep_transport \[list $envid replsend_noenv\]"
+		set rolearg "-rep_client"
 	} else {
 		puts "FAIL: unrecognized replication role $role"
 		return
 	}
+	set rep_env_cmd "berkdb_env_noerr -create -home $mydir \
+	    -log_max $logmax -log_buffer $logbuf $repmemargs \
+	    -lock_max_objects $lockmax -lock_max_locks $lockmax \
+	    -errpfx $role -txn $rolearg -data_dir DATADIR \
+	    -verbose {rep on} -errfile /dev/stderr \
+	    -rep_transport \[list $envid replsend_noenv\]"
 
 	# Change directories to where this will run.
 	# !!!
@@ -231,25 +217,18 @@ proc rep065scr_msgs { role envid msgdir mydir allids markerfile } {
 
 	puts "set up env cmd"
 	if { $role == "MASTER" } {
-		set rep_env_cmd "berkdb_env_noerr -home $mydir \
-		    -errpfx MASTER -txn -rep_master $repmemargs \
-		    -rep_transport \[list $envid replsend_noenv\]"
-		set rep_env_cmd "berkdb_env_noerr -home $mydir \
-		    -errpfx MASTER -txn -rep_master $repmemargs \
-		    -verbose {rep on} -errfile /dev/stderr \
-		    -rep_transport \[list $envid replsend_noenv\]"
+		set rolearg "-rep_master"
 	} elseif { $role == "CLIENT" } {
-		set rep_env_cmd "berkdb_env_noerr -home $mydir \
-		    -errpfx CLIENT -txn -rep_client $repmemargs \
-		    -rep_transport \[list $envid replsend_noenv\]"
-		set rep_env_cmd "berkdb_env_noerr -home $mydir \
-		    -errpfx CLIENT -txn -rep_client $repmemargs \
-		    -verbose {rep on} -errfile /dev/stderr \
-		    -rep_transport \[list $envid replsend_noenv\]"
+		set rolearg "-rep_client"
 	} else {
 		puts "FAIL: unrecognized replication role $role"
 		return
 	}
+	set rep_env_cmd "berkdb_env_noerr -home $mydir \
+	    -errpfx $role -txn $rolearg $repmemargs \
+	    -verbose {rep on} -errfile /dev/stderr \
+	    -data_dir DATADIR \
+	    -rep_transport \[list $envid replsend_noenv\]"
 
 	# Change directories to where this will run.
 	cd $mydir
@@ -296,6 +275,7 @@ proc rep065scr_verify { oplist mydir id } {
 	global util_path
 
 	set rep_env_cmd "berkdb_env_noerr -home $mydir -txn \
+	    -data_dir DATADIR \
 	    -rep_transport \[list $id replnoop\]"
 
 	# Change directories to where this will run.
@@ -311,18 +291,21 @@ proc rep065scr_verify { oplist mydir id } {
 		set repenv [eval $rep_env_cmd]
 		error_check_good env_open [is_valid_env $repenv] TRUE
 		if { $op == "DB" } {
-			set dbname "$mydir/test.db"
+			set dbname "$mydir/DATADIR/test.db"
+			puts "Open db: $dbname"
 			set db [berkdb_open -env $repenv -rdonly $dbname]
 			error_check_good dbopen [is_valid_db $db] TRUE
 			set txn ""
 			set method [$db get_type]
+			set dumpfile "$mydir/VERIFY/dbdump"
 			if { [is_record_based $method] == 1 } {
-				dump_file $db $txn $mydir/VERIFY/dbdump \
+				dump_file $db $txn $dumpfile \
 				    rep_test_upg.recno.check
 			} else {
-				dump_file $db $txn $mydir/VERIFY/dbdump \
+				dump_file $db $txn $dumpfile \
 				    rep_test_upg.check
 			}
+			puts "Done dumping $dbname to $dumpfile"
 			error_check_good dbclose [$db close] 0
 		}
 		if { $op == "LOG" } {

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1998, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1998, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -43,6 +43,7 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 {
 	DBC *dbc;
 	DBC_INTERNAL *cp;
+	DB_LOCKREQ req;
 	ENV *env;
 	db_threadid_t tid;
 	int allocated, envlid, ret;
@@ -306,6 +307,42 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 		F_SET(dbc, DBC_RECOVER);
 	if (F_ISSET(dbp, DB_AM_COMPENSATE))
 		F_SET(dbc, DBC_DONTLOCK);
+	/*
+	* If this database is exclusive then the cursor
+	* does not need to get locks.
+	*/
+	if (F2_ISSET(dbp, DB2_AM_EXCL)) {
+		F_SET(dbc, DBC_DONTLOCK);
+		if (IS_REAL_TXN(txn)&& !LF_ISSET(DBC_OPD | DBC_DUPLICATE)) {
+			/* 
+			 * Exclusive databases can only have one active 
+			 * transaction at a time since there are no internal 
+			 * locks to prevent one transaction from reading and
+			 * writing another's uncommitted changes. 
+			 */
+			if (dbp->cur_txn != NULL && dbp->cur_txn != txn) {
+			    __db_errx(env, DB_STR("0749",
+"Exclusive database handles can only have one active transaction at a time."));
+				ret = EINVAL;
+				goto err;
+			}
+			/* Do not trade a second time. */
+			if (dbp->cur_txn != txn) {
+				/* Trade the handle lock to the txn locker. */
+				memset(&req, 0, sizeof(req));
+				req.lock = dbp->handle_lock;
+				req.op = DB_LOCK_TRADE;
+				if ((ret = __lock_vec(env, txn->locker, 0, 
+				    &req, 1, 0)) != 0)
+					goto err;
+				dbp->cur_txn = txn;
+				dbp->cur_locker = txn->locker;
+				if ((ret = __txn_lockevent(env, txn, dbp,
+				    &dbp->handle_lock, dbp->locker)) != 0)
+					goto err;
+			}
+		}
+	}
 #ifdef HAVE_REPLICATION
 	/*
 	 * If we are replicating from a down rev version then we must
@@ -361,7 +398,7 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 		dbc->thread_info = ip;
 #ifdef DIAGNOSTIC
 		if (dbc->locker != NULL)
-			ip->dbth_locker = 
+			ip->dbth_locker =
 			    R_OFFSET(&(env->lk_handle->reginfo), dbc->locker);
 		else
 			ip->dbth_locker = INVALID_ROFF;
@@ -399,6 +436,7 @@ __db_put(dbp, ip, txn, key, data, flags)
 	DBT *key, *data;
 	u_int32_t flags;
 {
+	DB_HEAP_RID rid;
 	DBC *dbc;
 	DBT tdata, tkey;
 	ENV *env;
@@ -505,6 +543,10 @@ __db_put(dbp, ip, txn, key, data, flags)
 			    tdata.data, tdata.size);
 			if (bulk_kptr == NULL || bulk_ptr == NULL)
 				break;
+			if (dbp->type == DB_HEAP) {
+				memcpy(&rid, tkey.data, sizeof(DB_HEAP_RID));
+				tkey.data = &rid;
+			}
 			ret = __dbc_put(dbc, &tkey, &tdata,
 			    LF_ISSET(DB_OPFLAGS_MASK));
 			if (ret == 0)
@@ -528,6 +570,10 @@ __db_put(dbp, ip, txn, key, data, flags)
 				    tkey.size, tdata.data, tdata.size);
 			if (bulk_ptr == NULL)
 				break;
+			if (dbp->type == DB_HEAP) {
+				memcpy(&rid, tkey.data, sizeof(DB_HEAP_RID));
+				tkey.data = &rid;
+			}
 			ret = __dbc_put(dbc, &tkey, &tdata,
 			    LF_ISSET(DB_OPFLAGS_MASK));
 			if (ret == 0)
@@ -560,6 +606,7 @@ __db_del(dbp, ip, txn, key, flags)
 	DBT *key;
 	u_int32_t flags;
 {
+	DB_HEAP_RID rid;
 	DBC *dbc;
 	DBT data, tkey;
 	void *bulk_ptr;
@@ -630,6 +677,11 @@ bulk_next:	if (dbp->type == DB_QUEUE || dbp->type == DB_RECNO)
 			    tkey.data, tkey.size, data.data, data.size);
 		if (bulk_ptr == NULL)
 			goto err;
+		if (dbp->type == DB_HEAP) {
+			memcpy(&rid, tkey.data, sizeof(DB_HEAP_RID));
+			tkey.data = &rid;
+		}
+
 	}
 
 	/* We're not interested in the data -- do not return it. */
@@ -979,7 +1031,7 @@ __db_secondary_close(sdbp, flags)
 	int doclose;
 
 	/*
-	 * If the opening trasaction is rolled back then the db handle
+	 * If the opening transaction is rolled back then the db handle
 	 * will have already been refreshed, we just need to call
 	 * __db_close to free the data.
 	 */

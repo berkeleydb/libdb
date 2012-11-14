@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -301,7 +301,7 @@ struct __cursor {
 	 * We store prevcursor in order to be able to perform one level of
 	 * DB_PREV by returning prevKey/prevData. We need prev2cursor to more
 	 * efficiently do a subsequent DB_PREV with a linear search from the
-	 * begining of the compressed chunk.
+	 * beginning of the compressed chunk.
 	 *
 	 * When we delete entries, we set the cursor to point to the next entry
 	 * after the last deleted key, and set C_COMPRESS_DELETED. The del_key
@@ -394,13 +394,13 @@ struct __cursor {
  * We leave the loop only by breaking out if we do not have a subdb
  * or we are sure the have the right revision.
  *
- * It must be guranteed that we cannot read an old root pgno and a
+ * It must be guaranteed that we cannot read an old root pgno and a
  * current revision number.  We note that the global revision number
  * and DB handle information are only updated while holding the latches
  * and locks of the master database pages.
- * If another thread is sychronizing the DB handle with the master
+ * If another thread is synchronizing the DB handle with the master
  * database it will exclusively latch both the old and new pages so we will
- * sychronize on that.
+ * synchronize on that.
  */
 #define BAM_GET_ROOT(dbc, root_pgno, 					\
 	     page, get_mode, lock_mode, lock, ret) do {			\
@@ -541,7 +541,7 @@ typedef enum {
 #define	BPI_SPACEONLY	0x01		/* Only check for space to update. */
 #define	BPI_NORECNUM	0x02		/* Not update the recnum on the left. */
 #define	BPI_NOLOGGING	0x04		/* Don't log the update. */
-#define	BPI_REPLACE	0x08		/* Repleace the record. */
+#define	BPI_REPLACE	0x08		/* Replace the record. */
 
 #if defined(__cplusplus)
 }

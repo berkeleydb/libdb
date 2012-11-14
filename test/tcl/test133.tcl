@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -70,16 +70,21 @@ proc test133 {method {nentries 1000} {tnum "133"} {subdb 0} args} {
 	}
 
 	cleanup $testdir $env
-	set sec_args $args
+	set orig_args $args
 	set args [convert_args $method $args]
 
 	puts "Test$tnum: $method ($args)\
 	    Cursor Cleanup Test $sub_msg."	
 
-
-	set secdb_types {"-btree" "-hash"}
+	# Hash does not have compression support.
+	if {[is_compressed $orig_args]} {
+		set secdb_types {"-btree"}
+	} else {
+		set secdb_types {"-btree" "-hash"}
+	}
 	set i 0
 	foreach sec_method $secdb_types {
+		set sec_args [convert_args $sec_method $orig_args]
 		test133_sub "\tTest$tnum.$i" $basename $subdb $method $args \
 		    $sec_method $sec_args $i
 		incr i

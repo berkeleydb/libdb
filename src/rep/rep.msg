@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -48,8 +48,24 @@ END
 
 /*
  * file info
+ *
+ * NOTE:  The order of the DBTs is important and relevant in the
+ * GET_CURINFO macro.
  */
 BEGIN_MSG fileinfo	alloc check_length version
+ARG	pgsize		u_int32_t
+ARG	pgno		db_pgno_t
+ARG	max_pgno	db_pgno_t
+ARG	filenum		u_int32_t
+ARG	finfo_flags	u_int32_t		
+ARG	type		u_int32_t
+ARG	db_flags	u_int32_t
+ARG	uid		DBT
+ARG	info		DBT
+ARG	dir		DBT
+END
+
+BEGIN_MSG fileinfo_v6	alloc check_length version
 ARG	pgsize		u_int32_t
 ARG	pgno		db_pgno_t
 ARG	max_pgno	db_pgno_t

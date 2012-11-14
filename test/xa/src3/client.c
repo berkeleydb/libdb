@@ -1,3 +1,9 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ */
+
 /*
  * This is the multithreaded test for XA.  The client creates several threads
  * and uses each thread to send requests to the servers, which are also
@@ -25,21 +31,16 @@
 
 #include <db.h>
 
+#include "../utilities/bdb_xa_util.h"
+
 #define	HOME	"../data"
 #define	TABLE1	"../data/table1.db"
 #define	TABLE2	"../data/table2.db"
 #define NUM_SERVERS 3
 
-#ifdef VERBOSE
-static int verbose = 1;				/* Debugging output. */
-#else
-static int verbose = 0;
-#endif
 static int expected_error = 0;
 
 char *progname;					/* Client run-time name. */
-
-int   check_data(void);
 
 int
 usage()
@@ -207,12 +208,16 @@ main(int argc, char* argv[])
 	pthread_t threads[NUM_SERVERS];
 	void *results = NULL;
 	char *names[NUM_SERVERS];
+	DB_ENV *dbenv;
+	u_int32_t flags = DB_INIT_MPOOL | DB_INIT_LOG | DB_INIT_TXN |
+	  DB_INIT_LOCK | DB_CREATE | DB_THREAD | DB_RECOVER | DB_REGISTER;
 
 	names[0] = "1";
 	names[1] = "2";
 	names[2] = "3";
 	progname = argv[0];
 	num_threads = 2;
+	dbenv = NULL;
 
 	while ((ch = getopt(argc, argv, "n:vk")) != EOF)
 		switch (ch) {
@@ -259,103 +264,23 @@ main(int argc, char* argv[])
 	}	
 
 	/* If the kill thread was not used, check the data in the two tables.*/
-	if (num_threads < NUM_SERVERS)
-	        ret = check_data();
+	if (num_threads < NUM_SERVERS) {
+	    /* Join the DB environment. */
+		if ((ret = db_env_create(&dbenv, 0)) != 0 ||
+		    (ret = dbenv->open(dbenv, HOME, flags, 0)) != 0) {
+			fprintf(stderr,
+			    "%s: %s: %s\n", progname, HOME, db_strerror(ret));
+			goto err;
+		}
+		ret = check_data(dbenv, TABLE1, dbenv, TABLE2, progname);
+	}
 
 	if (0) {
 err:		ret = EXIT_FAILURE;
 	}
 
-	return (ret);
-}
-
-/*
- * check_data --
- *	Compare committed data in the two tables, should be identical.
- */
-int
-check_data()
-{
-	DB *dbp1, *dbp2;
-	DBC *dbc1, *dbc2;
-	DB_ENV *dbenv;
-	DBT key1, data1, key2, data2;
-	int ret, ret1, ret2;
-	u_int32_t flags = DB_INIT_MPOOL | DB_INIT_LOG | DB_INIT_TXN |
-	  DB_INIT_LOCK | DB_CREATE | DB_THREAD | DB_RECOVER | DB_REGISTER;
-	char *home = HOME;
-
-	dbp1 = dbp2 =  NULL;
-	dbc1 = dbc2 = NULL;
-	dbenv = NULL;
-
-	/* Join the DB environment. */
-	if ((ret = db_env_create(&dbenv, 0)) != 0 ||
-	    (ret = dbenv->open(dbenv, home, flags, 0)) != 0) {
-		fprintf(stderr,
-		    "%s: %s: %s\n", progname, home, db_strerror(ret));
-		goto err;
-	}
-
-	/* Open the tables. */
-	if ((ret = db_create(&dbp1, dbenv, 0)) != 0 ||
-	    (ret = db_create(&dbp2, dbenv, 0)) != 0 ||
-	    ((ret = dbp1->open(
-	    dbp1, NULL, TABLE1, NULL, DB_UNKNOWN, DB_RDONLY, 0)) != 0) ||
-	    ((ret = dbp2->open(
-	    dbp2, NULL, TABLE2, NULL, DB_UNKNOWN, DB_RDONLY, 0)) != 0)) {
-		fprintf(stderr,
-		    "%s: %s: %s\n", progname, TABLE1, db_strerror(ret));
-		goto err;
-	}
-	if (verbose)
-		printf("%s: opened tables OK\n", progname);
-
-	/* Open cursors. */
-	if ((ret = dbp1->cursor(dbp1, NULL, &dbc1, 0)) != 0 ||
-	    (ret = dbp2->cursor(dbp2, NULL, &dbc2, 0)) != 0) {
-		fprintf(stderr,
-		    "%s: DB->cursor: %s\n", progname, db_strerror(ret));
-		goto err;
-	}
-	if (verbose)
-		printf("%s: opened cursors OK\n", progname);
-
-	/* Compare the two databases, they should be identical. */
-	memset(&key1, 0, sizeof(key1));
-	memset(&data1, 0, sizeof(data1));
-	memset(&key2, 0, sizeof(key2));
-	memset(&data2, 0, sizeof(data2));
-	for (;;) {
-	  
-		ret1 = dbc1->c_get(dbc1, &key1, &data1, DB_NEXT);
-		ret2 = dbc2->c_get(dbc2, &key2, &data2, DB_NEXT);
-		if (ret1 != 0 || ret2 != 0)
-			break;
-		if (key1.size != key2.size ||
-		    memcmp(key1.data, key2.data, key1.size) != 0 ||
-		    data1.size != data2.size ||
-		    memcmp(data1.data, data2.data, data1.size) != 0)
-			goto mismatch;
-	}
-	if (ret1 != DB_NOTFOUND || ret2 != DB_NOTFOUND) {
-mismatch:	fprintf(stderr,
-		    "%s: DB_ERROR: databases 1 and 2 weren't identical\n",
-		    progname);
-		ret = 1;
-	}
-
-err:	if (dbc1 != NULL)
-		(void)dbc1->c_close(dbc1);
-	if (dbc2 != NULL)
-		(void)dbc2->c_close(dbc2);
-	if (dbp1 != NULL)
-		(void)dbp1->close(dbp1, 0);
-	if (dbp2 != NULL)
-		(void)dbp2->close(dbp2, 0);
 	if (dbenv != NULL)
-		(void)dbenv->close(dbenv, 0);
-
-	return (ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
+		dbenv->close(dbenv, 0);
+	return (ret);
 }
 

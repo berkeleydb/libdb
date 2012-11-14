@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # Code to load up the tests in to the Queue database
 # $Id$
@@ -309,6 +309,7 @@ proc mkparalleldirs { nprocs basename queuedir } {
 
 		regsub {test_path } $d {test_path ../} d
 		regsub {src_root } $d {src_root ../} d
+		regsub {tcl_utils } $d {tcl_utils ../} d
 		set tdir "TESTDIR.$i"
 		regsub -all {TESTDIR} $d $tdir d
 		set outfile [open $destdir/include.tcl w]

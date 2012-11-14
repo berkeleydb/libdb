@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -32,6 +32,8 @@ extern "C" {
 #define	REPLSNHIST	"__db.lsn.history"
 #define	REPMEMBERSHIP	"__db.membership"
 #define	REPSYSDBPGSZ	1024
+#define IS_REP_FILE(name)	(strcmp(name, REPSYSDBNAME) == 0)
+				    
 
 /* Current version of commit token format, and LSN history database format. */
 #define	REP_COMMIT_TOKEN_FMT_VERSION	1
@@ -122,6 +124,7 @@ extern "C" {
 #define	DB_LOGVERSION_50	17
 #define	DB_LOGVERSION_51	17
 #define	DB_LOGVERSION_52	18
+#define	DB_LOGVERSION_53	19
 #define	DB_LOGVERSION_MIN	DB_LOGVERSION_44
 #define	DB_REPVERSION_INVALID	0
 #define	DB_REPVERSION_44	3
@@ -132,7 +135,8 @@ extern "C" {
 #define	DB_REPVERSION_50	5
 #define	DB_REPVERSION_51	5
 #define	DB_REPVERSION_52	6
-#define	DB_REPVERSION		DB_REPVERSION_52
+#define	DB_REPVERSION_53	7
+#define	DB_REPVERSION		DB_REPVERSION_53
 #define	DB_REPVERSION_MIN	DB_REPVERSION_44
 
 /*
@@ -389,6 +393,7 @@ typedef struct __rep { /* SHARED */
 	u_int		site_max;	/* Total array slots allocated. */
 	int		self_eid;	/* Where to find the local site. */
 	u_int		siteinfo_seq;	/* Number of updates to this info. */
+	u_int32_t	min_log_file;	/* Earliest log needed by repgroup. */
 
 	pid_t		listener;
 
@@ -626,7 +631,7 @@ do {									\
  * between the time of this call and the use of the pointers.
  *
  * The current file information (curinfo) is stored in shared region
- * memory and accessed via an offset.  It contains two DBTs that themselves
+ * memory and accessed via an offset.  It contains DBTs that themselves
  * point to allocated data.  __rep_nextfile() manages this information in a
  * single chunk of shared memory.
  *
@@ -647,6 +652,12 @@ do {									\
 		    sizeof(__rep_fileinfo_args) + (curinfo)->uid.size);	\
 	else								\
 		(curinfo)->info.data = NULL;				\
+	if ((curinfo)->dir.size > 0)					\
+		(curinfo)->dir.data = R_ADDR(infop, rep->curinfo_off +	\
+		    sizeof(__rep_fileinfo_args) + (curinfo)->uid.size +	\
+		    (curinfo)->info.size);				\
+	else								\
+		(curinfo)->dir.data = NULL;				\
 } while (0)
 
 /*
@@ -795,10 +806,14 @@ struct __db_rep {
 	socket_t	listen_fd;
 	db_timespec	last_bcast;	/* Time of last broadcast msg. */
 
-	int		finished; /* Repmgr threads should shut down. */
+	/*
+	 * Status of repmgr.  It is ready when repmgr is not yet started.  It
+	 * is running after repmgr is (re)started.  It is stopped if the env
+	 * of the running repmgr is closed, or the site is removed. 
+	 */
+	enum { ready, running, stopped } repmgr_status;
 	int		new_connection;	  /* Since last master seek attempt. */
 	int		takeover_pending; /* We've been elected master. */
-	int		mgr_started;
 	int		gmdb_busy;
 	int		client_intent;	/* Will relinquish master role. */
 	int		gmdb_dirty;

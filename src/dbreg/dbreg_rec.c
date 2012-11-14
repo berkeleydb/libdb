@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -74,9 +74,11 @@ __dbreg_register_recover(env, dbtp, lsnp, op, info)
 
 	opcode = FLD_ISSET(argp->opcode, DBREG_OP_MASK);
 	switch (opcode) {
-	case DBREG_REOPEN:
-	case DBREG_PREOPEN:
 	case DBREG_OPEN:
+	case DBREG_PREOPEN:
+	case DBREG_REOPEN:
+	case DBREG_XOPEN:
+	case DBREG_XREOPEN:
 		/*
 		 * In general, we redo the open on REDO and abort on UNDO.
 		 * However, a reopen is a second instance of an open of
@@ -86,7 +88,7 @@ __dbreg_register_recover(env, dbtp, lsnp, op, info)
 		if ((DB_REDO(op) ||
 		    op == DB_TXN_OPENFILES || op == DB_TXN_POPENFILES))
 			do_open = 1;
-		else if (opcode != DBREG_REOPEN)
+		else if (opcode != DBREG_REOPEN && opcode != DBREG_XREOPEN)
 			do_close = 1;
 		break;
 	case DBREG_CLOSE:
@@ -110,6 +112,7 @@ __dbreg_register_recover(env, dbtp, lsnp, op, info)
 			do_close = 1;
 		break;
 	case DBREG_CHKPNT:
+	case DBREG_XCHKPNT:
 		if (DB_UNDO(op) ||
 		    op == DB_TXN_OPENFILES || op == DB_TXN_POPENFILES)
 			do_open = 1;
@@ -124,7 +127,8 @@ __dbreg_register_recover(env, dbtp, lsnp, op, info)
 		 * We must open the db even if the meta page is not
 		 * yet written as we may be creating subdatabase.
 		 */
-		if (op == DB_TXN_OPENFILES && opcode != DBREG_CHKPNT)
+		if (op == DB_TXN_OPENFILES && opcode != DBREG_CHKPNT
+		    && opcode != DBREG_XCHKPNT)
 			F_SET(dblp, DBLOG_FORCE_OPEN);
 
 		/*
@@ -216,8 +220,10 @@ __dbreg_register_recover(env, dbtp, lsnp, op, info)
 				 * inside a currently aborting transaction
 				 * but not by the recovery code.
 				 */
-				do_rem = F_ISSET(dbp, DB_AM_RECOVER) ?
-				    op != DB_TXN_ABORT : op == DB_TXN_ABORT;
+				do_rem = (F_ISSET(dbp, DB_AM_RECOVER) ||
+				    F2_ISSET(dbp, DB2_AM_EXCL)) ?
+				    op != DB_TXN_ABORT :
+				    op == DB_TXN_ABORT;
 				MUTEX_UNLOCK(env, dblp->mtx_dbreg);
 			} else if (dbe->deleted) {
 				MUTEX_UNLOCK(env, dblp->mtx_dbreg);
@@ -330,7 +336,8 @@ __dbreg_open_file(env, txn, argp, info)
 		 * bit and try to open it again.
 		 */
 		if ((dbp = dbe->dbp) != NULL) {
-			if (opcode == DBREG_REOPEN ||
+			if (opcode == DBREG_REOPEN || 
+			    opcode == DBREG_XREOPEN ||
 			    !F_ISSET(dbp, DB_AM_OPEN_CALLED) ||
 			    dbp->meta_pgno != argp->meta_pgno ||
 			    argp->name.size == 0 ||

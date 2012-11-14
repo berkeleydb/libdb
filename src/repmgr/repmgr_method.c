@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -102,10 +102,16 @@ __repmgr_start(dbenv, nthreads, flags)
 		return (EINVAL);
 	}
 
-	if (db_rep->finished) {
-		__db_errx(env, DB_STR("3638", "repmgr is shutting down"));
-		return (EINVAL);
+	/* Check if it is a shut-down site, if so, clean the resources. */
+	if (db_rep->repmgr_status == stopped) {
+		if ((ret = __repmgr_stop(env)) != 0) {
+			__db_errx(env, DB_STR("3638",
+			    "Could not clean up repmgr"));
+			return (ret);
+		}
+		db_rep->repmgr_status = ready;
 	}
+
 	db_rep->init_policy = flags;
 	if ((ret = __rep_set_transport_int(env,
 	    db_rep->self_eid, __repmgr_send)) != 0)
@@ -182,7 +188,8 @@ __repmgr_start(dbenv, nthreads, flags)
 			} else
 				ret = __repmgr_join_group(env);
 			ENV_LEAVE(env, ip);
-		}
+		} else if (ret == DB_DELETED)
+			ret = DB_REP_UNAVAIL;
 	}
 	if (ret != 0)
 		return (ret);
@@ -191,10 +198,19 @@ __repmgr_start(dbenv, nthreads, flags)
 	    SITE_FROM_EID(db_rep->self_eid)->membership == SITE_PRESENT);
 
 	/*
+	 * If we're the first repmgr_start() call, we will have to start threads.
+	 * Therefore, we require a flags value (to tell us how).
+	 */
+	if (db_rep->repmgr_status != running && flags == 0) {
+		__db_errx(env, DB_STR("3639",
+	"a non-zero flags value is required for initial repmgr_start() call"));
+		return (EINVAL);
+	}
+
+	/*
 	 * Figure out the current situation.  The current invocation of
 	 * repmgr_start() is either the first one (on the given env handle), or
-	 * a subsequent one.  If we've already got a select thread running, then
-	 * this must be a subsequent one.
+	 * a subsequent one.
 	 *
 	 * Then, in case there could be multiple processes, we're either the
 	 * main listener process or a subordinate process.  On a "subsequent"
@@ -207,12 +223,12 @@ __repmgr_start(dbenv, nthreads, flags)
 	 */
 	LOCK_MUTEX(db_rep->mutex);
 	locked = TRUE;
-	if (db_rep->mgr_started) {
+	if (db_rep->repmgr_status == running) {
 		first = FALSE;
 		is_listener = !IS_SUBORDINATE(db_rep);
 	} else {
 		first = TRUE;
-		db_rep->mgr_started = TRUE;
+		db_rep->repmgr_status = running;
 
 		ENV_ENTER(env, ip);
 		MUTEX_LOCK(env, rep->mtx_repmgr);
@@ -225,18 +241,6 @@ __repmgr_start(dbenv, nthreads, flags)
 		}
 		MUTEX_UNLOCK(env, rep->mtx_repmgr);
 		ENV_LEAVE(env, ip);
-
-		/*
-		 * Since we're the first repmgr_start() call, we will have to
-		 * start threads.  Therefore, we require a flags value (to tell
-		 * us how).
-		 */
-		if (flags == 0) {
-			__db_errx(env, DB_STR("3639",
-	"a non-zero flags value is required for initial repmgr_start() call"));
-			ret = EINVAL;
-			goto err;
-		}
 	}
 	UNLOCK_MUTEX(db_rep->mutex);
 	locked = FALSE;
@@ -383,8 +387,8 @@ err:
 		(void)__repmgr_stop_threads(env);
 		UNLOCK_MUTEX(db_rep->mutex);
 		locked = FALSE;
-		(void)__repmgr_await_threads(env);
 	}
+	(void)__repmgr_await_threads(env);
 	if (!locked)
 		LOCK_MUTEX(db_rep->mutex);
 	(void)__repmgr_net_close(env);
@@ -618,7 +622,7 @@ __repmgr_autostart(env)
 	    db_rep->self_eid, __repmgr_send)) != 0)
 		goto out;
 
-	if (db_rep->selector == NULL && !db_rep->finished)
+	if (db_rep->selector == NULL && db_rep->repmgr_status != running)
 		ret = __repmgr_start_selector(env);
 
 out:
@@ -662,20 +666,57 @@ __repmgr_start_selector(env)
 
 /*
  * PUBLIC: int __repmgr_close __P((ENV *));
+ *
+ * Close repmgr during env close.  It stops repmgr, frees sites array and
+ * its addresses.
  */
 int
 __repmgr_close(env)
 	ENV *env;
 {
 	DB_REP *db_rep;
+	REPMGR_SITE *site;
+	int ret;
+	u_int i;
+
+	db_rep = env->rep_handle;
+	ret = 0;
+
+	ret = __repmgr_stop(env);
+	if (db_rep->sites != NULL) {
+		for (i = 0; i < db_rep->site_cnt; i++) {
+			site = &db_rep->sites[i];
+			DB_ASSERT(env, TAILQ_EMPTY(&site->sub_conns));
+			__repmgr_cleanup_netaddr(env, &site->net_addr);
+		}
+		__os_free(env, db_rep->sites);
+		db_rep->sites = NULL;
+	}
+
+	return (ret);
+}
+
+/*
+ * PUBLIC: int __repmgr_stop __P((ENV *));
+ *
+ * Stop repmgr either when closing the env or removing the current repmgr from
+ * replication group.  It stops threads if necessary, frees resources allocated
+ * after __repmgr_start, and cleans up site membership.
+ */
+int
+__repmgr_stop(env)
+	ENV *env;
+{
+	DB_REP *db_rep;
+	REPMGR_SITE *site;
 	int ret, t_ret;
+	u_int i;
 
 	ret = 0;
 	db_rep = env->rep_handle;
+
 	if (db_rep->selector != NULL) {
-		if (!db_rep->finished) {
-			RPRINT(env, (env, DB_VERB_REPMGR_MISC,
-				"Stopping repmgr threads"));
+		if (db_rep->repmgr_status != stopped) {
 			LOCK_MUTEX(db_rep->mutex);
 			ret = __repmgr_stop_threads(env);
 			UNLOCK_MUTEX(db_rep->mutex);
@@ -685,12 +726,24 @@ __repmgr_close(env)
 		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 		    "Repmgr threads are finished"));
 	}
-
-	if ((t_ret = __repmgr_net_close(env)) != 0 && ret == 0)
-		ret = t_ret;
-
+	__repmgr_net_destroy(env, db_rep);
 	if ((t_ret = __repmgr_deinit(env)) != 0 && ret == 0)
 		ret = t_ret;
+	if ((t_ret = __repmgr_queue_destroy(env)) != 0 && ret == 0)
+		ret = t_ret;
+	if (db_rep->restored_list != NULL) {
+		__os_free(env, db_rep->restored_list);
+		db_rep->restored_list = NULL;
+	}
+	/*
+	 * Clean up current site membership and state, so that the obsolete
+	 * membership won't mislead us for the next repmgr start.
+	 */
+	for (i = 0; i < db_rep->site_cnt; i++) {
+		site = &db_rep->sites[i];
+		site->state = SITE_IDLE;
+		site->membership = 0;
+	}
 
 	return (ret);
 }
@@ -810,14 +863,6 @@ __repmgr_env_destroy(env, db_rep)
 	ENV *env;
 	DB_REP *db_rep;
 {
-	if (db_rep->restored_list != NULL)
-		__os_free(env, db_rep->restored_list);
-	(void)__repmgr_queue_destroy(env);
-	__repmgr_net_destroy(env, db_rep);
-	if (db_rep->messengers != NULL) {
-		__os_free(env, db_rep->messengers);
-		db_rep->messengers = NULL;
-	}
 	if (db_rep->mutex != NULL) {
 		(void)__repmgr_destroy_mutex(env, db_rep->mutex);
 		db_rep->mutex = NULL;
@@ -838,7 +883,8 @@ __repmgr_stop_threads(env)
 
 	db_rep = env->rep_handle;
 
-	db_rep->finished = TRUE;
+	db_rep->repmgr_status = stopped;
+	RPRINT(env, (env, DB_VERB_REPMGR_MISC, "Stopping repmgr threads"));
 	if ((ret = __repmgr_signal(&db_rep->check_election)) != 0)
 		return (ret);
 
@@ -1023,8 +1069,8 @@ __repmgr_channel(dbenv, eid, dbchannelp, flags)
 	 * Note that repmgr_start() checks DB_INIT_REP, ENV_THREAD and
 	 * APP_IS_BASEAPI.
 	 */
-	if (db_rep->finished) {
-		__db_errx(env, DB_STR("3651", "repmgr is shutting down"));
+	if (db_rep->repmgr_status == stopped) {
+		__db_errx(env, DB_STR("3651", "repmgr is stopped"));
 		return (EINVAL);
 	}
 
@@ -2601,11 +2647,12 @@ site_by_addr(env, host, port, sitep)
 	} else
 		locked = FALSE;
 	ret = __repmgr_find_site(env, host, port, &eid);
+	DB_ASSERT(env, IS_VALID_EID(eid));
 	site = SITE_FROM_EID(eid);
 	/*
 	 * Point to the stable, permanent copy of the host name.  That's the one
 	 * we want the DB_SITE handle to point to; just like site_by_eid() does.
-	 */ 
+	 */
 	host = site->net_addr.host;
 	if (locked) {
 		ENV_LEAVE(env, ip);
@@ -2747,6 +2794,7 @@ __repmgr_get_config(dbsite, which, valuep)
 	if ((ret = refresh_site(dbsite)) != 0)
 		return (ret);
 	LOCK_MUTEX(db_rep->mutex);
+	DB_ASSERT(env, IS_VALID_EID(dbsite->eid));
 	site = SITE_FROM_EID(dbsite->eid);
 	if (REP_ON(env)) {
 		rep = db_rep->region;
@@ -2799,12 +2847,10 @@ __repmgr_site_config(dbsite, which, value)
 		}
 		break;
 	case DB_GROUP_CREATOR:
-		if (IS_VALID_EID(db_rep->self_eid) &&
-		    dbsite->eid != db_rep->self_eid) {
-			__db_errx(env, DB_STR("3664",
-			    "Site config value not applicable to remote site"));
-			return (EINVAL);
-		}
+		/*
+		 * Ignore if this is set on remote site.  Users will often
+		 * copy and edit a DB_CONFIG for all sites.
+		 */
 		break;
 	case DB_LEGACY:
 		/* Applicable to either local or remote site. */
@@ -2823,6 +2869,7 @@ __repmgr_site_config(dbsite, which, value)
 		return (EINVAL);
 	}
 
+	DB_ASSERT(env, IS_VALID_EID(dbsite->eid));
 	if (REP_ON(env)) {
 		rep = db_rep->region;
 		infop = env->reginfo;
@@ -2877,11 +2924,11 @@ set_local_site(dbsite, value)
 	COMPQUIET(ip, NULL);
 	env = dbsite->env;
 	db_rep = env->rep_handle;
+	ret = 0;
 
 	locked = FALSE;
 	if (REP_ON(env)) {
 		rep = db_rep->region;
-
 		LOCK_MUTEX(db_rep->mutex);
 		ENV_ENTER(env, ip);
 		MUTEX_LOCK(env, rep->mtx_repmgr);
@@ -2890,7 +2937,6 @@ set_local_site(dbsite, value)
 		if (IS_VALID_EID(rep->self_eid))
 			db_rep->self_eid = rep->self_eid;
 	}
-	ret = 0;
 	if (!value && db_rep->self_eid == dbsite->eid) {
 		__db_errx(env, DB_STR("3666",
 		    "A previously given local site may not be unset"));
@@ -2901,6 +2947,7 @@ set_local_site(dbsite, value)
 		    "A (different) local site has already been set"));
 		ret = EINVAL;
 	} else {
+		DB_ASSERT(env, IS_VALID_EID(dbsite->eid));
 		site = SITE_FROM_EID(dbsite->eid);
 		if (FLD_ISSET(site->config,
 		    DB_BOOTSTRAP_HELPER | DB_REPMGR_PEER)) {
@@ -2988,15 +3035,15 @@ __repmgr_remove_site(dbsite)
 	db_rep = env->rep_handle;
 	rep = db_rep->region;
 
-	if (db_rep->finished || !SELECTOR_RUNNING(db_rep)) {
-		__db_errx(env, DB_STR("3669",
-		    "repmgr threads are not running"));
+	if (db_rep->repmgr_status != running || !SELECTOR_RUNNING(db_rep)) {
+		__db_errx(env, DB_STR("3669", "repmgr is not running"));
 		return (EINVAL);
 	}
 
 	if (!IS_VALID_EID((master = rep->master_id)))
 		return (DB_REP_UNAVAIL);
 	LOCK_MUTEX(db_rep->mutex);
+	DB_ASSERT(env, IS_VALID_EID(master));
 	addr = SITE_FROM_EID(master)->net_addr;
 	UNLOCK_MUTEX(db_rep->mutex);
 

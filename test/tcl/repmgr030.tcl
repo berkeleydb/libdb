@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2007, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -57,18 +57,13 @@ proc repmgr030_sub { method niter tnum largs } {
 	file mkdir $clientdir2
 	file mkdir $clientdir3
 
-	# Use different connection retry timeout values to handle any
-	# collisions from starting sites at the same time by retrying
-	# at different times.
-
 	# Open a master.
 	puts "\tRepmgr$tnum.a: Start a master."
 	set ma_envcmd "berkdb_env_noerr -create $verbargs \
 	    -errpfx MASTER -home $masterdir -txn -rep -thread"
 	set masterenv [eval $ma_envcmd]
 	$masterenv repmgr -ack all -pri 100 \
-	    -timeout {connection_retry 20000000} \
-	    -local [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 0]] \
 	    -start master
 
 	# Open three clients, setting first two as peers of the third and
@@ -78,11 +73,10 @@ proc repmgr030_sub { method niter tnum largs } {
 	    -errpfx CLIENT -home $clientdir -txn -rep -thread"
 	set clientenv [eval $cl_envcmd]
 	$clientenv repmgr -ack all -pri 80 \
-	    -timeout {connection_retry 10000000} \
-	    -local [list localhost [lindex $ports 1]] \
-	    -remote [list localhost [lindex $ports 0]] \
-	    -remote [list localhost [lindex $ports 2]] \
-	    -remote [list localhost [lindex $ports 3]] \
+	    -local [list 127.0.0.1 [lindex $ports 1]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
+	    -remote [list 127.0.0.1 [lindex $ports 2]] \
+	    -remote [list 127.0.0.1 [lindex $ports 3]] \
 	    -start client
 	await_startup_done $clientenv
 
@@ -90,11 +84,10 @@ proc repmgr030_sub { method niter tnum largs } {
 	    -errpfx CLIENT2 -home $clientdir2 -txn -rep -thread"
 	set clientenv2 [eval $cl2_envcmd]
 	$clientenv2 repmgr -ack all -pri 50 \
-	    -timeout {connection_retry 5000000} \
-	    -local [list localhost [lindex $ports 2]] \
-	    -remote [list localhost [lindex $ports 0]] \
-	    -remote [list localhost [lindex $ports 1]] \
-	    -remote [list localhost [lindex $ports 3]] \
+	    -local [list 127.0.0.1 [lindex $ports 2]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
+	    -remote [list 127.0.0.1 [lindex $ports 1]] \
+	    -remote [list 127.0.0.1 [lindex $ports 3]] \
 	    -start client
 	await_startup_done $clientenv2
 
@@ -102,11 +95,10 @@ proc repmgr030_sub { method niter tnum largs } {
 	    -errpfx CLIENT3 -home $clientdir3 -txn -rep -thread"
 	set clientenv3 [eval $cl3_envcmd]
 	$clientenv3 repmgr -ack all -pri 50 \
-	    -timeout {connection_retry 75000000} \
-	    -local [list localhost [lindex $ports 3]] \
-	    -remote [list localhost [lindex $ports 0]] \
-	    -remote [list localhost [lindex $ports 1] peer] \
-	    -remote [list localhost [lindex $ports 2] peer] \
+	    -local [list 127.0.0.1 [lindex $ports 3]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
+	    -remote [list 127.0.0.1 [lindex $ports 1] peer] \
+	    -remote [list 127.0.0.1 [lindex $ports 2] peer] \
 	    -start client
 	await_startup_done $clientenv3
 

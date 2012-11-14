@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -317,8 +317,14 @@ proc rep079_sub { method tnum logset largs } {
 	# (And this will be the 'before we commit' check that returns
 	# an error, not the 'after' check that panics).
 	#
+	# We need to create a txn that actually generates log records.
+	#
+	set omethod [convert_method $method]
 	set txn [$masterenv txn]
+	set db [berkdb_open_noerr -create $omethod -env $masterenv -txn $txn \
+	    -mode 0644 lease.db]
 	set stat [catch {$txn commit} ret]
+	error_check_good close [$db close] 0
 	error_check_good stat $stat 1
 	error_check_good exp [is_substr $ret REP_LEASE_EXPIRED] 1
 

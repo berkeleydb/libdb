@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1997, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1997, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -101,6 +101,7 @@ __dbreg_log_files(env, opcode)
 	DB_LSN r_unused;
 	FNAME *fnp;
 	LOG *lp;
+	u_int32_t lopcode;
 	int ret;
 
 	dblp = env->lg_handle;
@@ -133,9 +134,12 @@ __dbreg_log_files(env, opcode)
 		 * For this we output DBREG_RCLOSE records so the files will be
 		 * closed on the forward pass.
 		 */
+		lopcode = opcode;
+		if ( opcode == DBREG_CHKPNT && F_ISSET(fnp, DBREG_EXCL))
+			lopcode = DBREG_XCHKPNT;
 		if ((ret = __dbreg_register_log(env, NULL, &r_unused,
 		    F_ISSET(fnp, DB_FNAME_DURABLE) ? 0 : DB_LOG_NOT_DURABLE,
-		    opcode | F_ISSET(fnp, DB_FNAME_DBREG_MASK),
+		    lopcode | F_ISSET(fnp, DB_FNAME_DBREG_MASK),
 		    dbtp, &fid_dbt, fnp->id, fnp->s_type, fnp->meta_pgno,
 		    TXN_INVALID)) != 0)
 			break;
@@ -631,11 +635,15 @@ retry_inmem:
 		goto skip_open;
 	}
 
-	if (opcode == DBREG_REOPEN || try_inmem) {
+	if (opcode == DBREG_REOPEN || opcode == DBREG_XREOPEN || try_inmem) {
 		MAKE_INMEM(dbp);
 		fname = NULL;
 		dname = name;
 	}
+
+	if (opcode == DBREG_XOPEN || opcode == DBREG_XCHKPNT ||
+	    opcode == DBREG_XREOPEN)
+		F2_SET(dbp, DB2_AM_EXCL|DB2_AM_INTEXCL);
 
 	if ((ret = __db_open(dbp, NULL, txn, fname, dname, ftype,
 	    DB_DURABLE_UNKNOWN | DB_ODDFILESIZE,
@@ -692,7 +700,8 @@ err:		if (cstat == TXN_UNEXPECTED)
 		 * handling those cases specially, above.
 		 */
 		if (try_inmem == 0 &&
-		    opcode != DBREG_PREOPEN && opcode != DBREG_REOPEN) {
+		    opcode != DBREG_PREOPEN && opcode != DBREG_REOPEN && 
+		    opcode != DBREG_XREOPEN) {
 			if ((ret = __db_close(dbp, NULL, DB_NOSYNC)) != 0)
 				return (ret);
 			try_inmem = 1;

@@ -32,7 +32,7 @@ typedef struct ___rep_egen_args {
 	u_int32_t	egen;
 } __rep_egen_args;
 
-#define	__REP_FILEINFO_SIZE	36
+#define	__REP_FILEINFO_SIZE	40
 typedef struct ___rep_fileinfo_args {
 	u_int32_t	pgsize;
 	db_pgno_t	pgno;
@@ -43,7 +43,21 @@ typedef struct ___rep_fileinfo_args {
 	u_int32_t	db_flags;
 	DBT		uid;
 	DBT		info;
+	DBT		dir;
 } __rep_fileinfo_args;
+
+#define	__REP_FILEINFO_V6_SIZE	36
+typedef struct ___rep_fileinfo_v6_args {
+	u_int32_t	pgsize;
+	db_pgno_t	pgno;
+	db_pgno_t	max_pgno;
+	u_int32_t	filenum;
+	u_int32_t	finfo_flags;
+	u_int32_t	type;
+	u_int32_t	db_flags;
+	DBT		uid;
+	DBT		info;
+} __rep_fileinfo_v6_args;
 
 #define	__REP_GRANT_INFO_SIZE	8
 typedef struct ___rep_grant_info_args {
@@ -102,5 +116,5 @@ typedef struct ___rep_lsn_hist_data_args {
 	u_int32_t	hist_nsec;
 } __rep_lsn_hist_data_args;
 
-#define	__REP_MAXMSG_SIZE	36
+#define	__REP_MAXMSG_SIZE	40
 #endif

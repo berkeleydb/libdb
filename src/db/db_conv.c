@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -847,7 +847,7 @@ __db_recordswap(op, size, hdr, data, pgin)
 	case P_HASH:
 	case P_HASH_UNSORTED:
 		switch (OP_MODE_GET(op)) {
-		/* KEYDATA and DUPLICATE records do not inclued the header. */
+		/* KEYDATA and DUPLICATE records do not include the header. */
 		case H_KEYDATA:
 			break;
 		case H_DUPLICATE:

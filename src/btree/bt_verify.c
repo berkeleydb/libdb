@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -52,16 +52,11 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		return (ret);
 
 	/*
-	 * If VRFY_INCOMPLETE is not set, then we didn't come through
-	 * __db_vrfy_pagezero and didn't incompletely
-	 * check this page--we haven't checked it at all.
-	 * Thus we need to call __db_vrfy_meta and check the common fields.
-	 *
-	 * If VRFY_INCOMPLETE is set, we've already done all the same work
-	 * in __db_vrfy_pagezero, so skip the check.
+	 * If we came through __db_vrfy_pagezero, we have already checked the
+	 * common fields.  However, we used the on-disk metadata page, it may
+	 * have been stale.  We now have the page from mpool, so check that.
 	 */
-	if (!F_ISSET(pip, VRFY_INCOMPLETE) &&
-	    (ret = __db_vrfy_meta(dbp, vdp, &meta->dbmeta, pgno, flags)) != 0) {
+	if ((ret = __db_vrfy_meta(dbp, vdp, &meta->dbmeta, pgno, flags)) != 0) {
 		if (ret == DB_VERIFY_BAD)
 			isbad = 1;
 		else
@@ -914,9 +909,12 @@ __bam_vrfy_itemorder(dbp, vdp, ip, h, pgno, nentries, ovflok, hasdups, flags)
 	BKEYDATA *bk;
 	BOVERFLOW *bo;
 	BTREE *bt;
+	DB_MPOOLFILE *mpf;
 	DBC *dbc;
 	DBT dbta, dbtb, dup_1, dup_2, *p1, *p2, *tmp;
 	ENV *env;
+	PAGE *child;
+	db_pgno_t cpgno;
 	VRFY_PAGEINFO *pip;
 	db_indx_t i, *inp;
 	int adj, cmp, freedup_1, freedup_2, isbad, ret, t_ret;
@@ -957,7 +955,38 @@ __bam_vrfy_itemorder(dbp, vdp, ip, h, pgno, nentries, ovflok, hasdups, flags)
 		func = __bam_defcmp;
 		if (dbp->bt_internal != NULL) {
 			bt = (BTREE *)dbp->bt_internal;
-			if (bt->bt_compare != NULL)
+			if (TYPE(h) == P_IBTREE && (bt->bt_compare != NULL ||
+			    dupfunc != __bam_defcmp)) {
+				/*
+				 * The problem here is that we cannot
+				 * tell the difference between an off
+				 * page duplicate internal page and
+				 * a main database internal page.
+				 * Walk down the tree to figure it out.
+				 */
+				mpf = dbp->mpf;
+				child = h;
+				while (TYPE(child) == P_IBTREE) {
+					bi = GET_BINTERNAL(dbp, child, 0);
+					cpgno = bi->pgno;
+					if (child != h &&
+					    (ret = __memp_fput(mpf,
+					    vdp->thread_info, child,
+					    DB_PRIORITY_UNCHANGED)) != 0)
+						goto err;
+					if ((ret = __memp_fget(mpf,
+					    &cpgno, vdp->thread_info,
+					    NULL, 0, &child)) != 0)
+						goto err;
+				}
+				if (TYPE(child) == P_LDUP)
+					func = dupfunc;
+				else if (bt->bt_compare != NULL)
+					func = bt->bt_compare;
+				if ((ret = __memp_fput(mpf, vdp->thread_info,
+				    child, DB_PRIORITY_UNCHANGED)) != 0)
+					goto err;
+			} else if (bt->bt_compare != NULL)
 				func = bt->bt_compare;
 		}
 	}
@@ -1063,7 +1092,8 @@ retry:	p1 = &dbta;
 			 * if overflow items are unsafe.
 			 */
 overflow:		if (!ovflok) {
-				F_SET(pip, VRFY_INCOMPLETE);
+				if (pip != NULL)
+					F_SET(pip, VRFY_INCOMPLETE);
 				goto err;
 			}
 
@@ -1194,7 +1224,9 @@ overflow:		if (!ovflok) {
 					if (dup_1.data == NULL ||
 					    dup_2.data == NULL) {
 						DB_ASSERT(env, !ovflok);
-						F_SET(pip, VRFY_INCOMPLETE);
+						if (pip != NULL)
+							F_SET(pip,
+							    VRFY_INCOMPLETE);
 						goto err;
 					}
 
@@ -1204,7 +1236,8 @@ overflow:		if (!ovflok) {
 					 * until we do the structure check
 					 * and see whether DUPSORT is set.
 					 */
-					if (dupfunc(dbp, &dup_1, &dup_2) > 0)
+					if (dupfunc(dbp, &dup_1, &dup_2) > 0 &&
+					    pip != NULL)
 						F_SET(pip, VRFY_DUPS_UNSORTED);
 
 					if (freedup_1)

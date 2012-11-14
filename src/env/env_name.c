@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -183,6 +183,10 @@ __db_appname(env, appname, file, dirp, namep)
 	case DB_APP_TMP:
 		if (dbenv != NULL)
 			dir = dbenv->db_tmp_dir;
+		break;
+	case DB_APP_META:
+		if (dbenv != NULL)
+			dir = dbenv->db_md_dir;
 		break;
 	}
 

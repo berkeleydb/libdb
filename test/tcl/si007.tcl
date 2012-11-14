@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -125,6 +125,7 @@ proc si007 { methods {nentries 10} {tnum "007"} args } {
 				    {$key [chop_data $pmethod $datum]}]
 				error_check_good put($n) $ret 0
 			}
+			close $did 
 
 			# Open and associate the secondaries, with -create.
 			puts "\tSi$tnum.b: Associate secondaries with -create."

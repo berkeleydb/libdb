@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -465,7 +465,7 @@ retry:	pg = NULL;
 		 * The stack will be rooted at the page that spans
 		 * the current and next pages. The two subtrees
 		 * are returned below that.  For BTREE the current
-		 * page subtreee will be first while for RECNO the
+		 * page subtree will be first while for RECNO the
 		 * next page subtree will be first
 		 */
 		if (ndbc == NULL && (ret = __dbc_dup(dbc, &ndbc, 0)) != 0)
@@ -773,7 +773,7 @@ retry:	pg = NULL;
 	     P_FREESPACE(dbp, pg) > factor && c_data->compact_pages != 0) {
 		/*
 		 * merging may have to free the parent page, if it does,
-		 * refetch it but do it decending the tree.
+		 * refetch it but do it descending the tree.
 		 */
 		epg = &cp->csp[-1];
 		if ((ppg = epg->page) == NULL) {
@@ -1735,7 +1735,7 @@ fits:	memset(&bi, 0, sizeof(bi));
 		 * If we merged any records then we will revisit this
 		 * node when we merge its leaves.  If not we will return
 		 * NOTGRANTED and our caller will do a retry.  We only
-		 * need to do this if we are in a transation. If not then
+		 * need to do this if we are in a transaction. If not then
 		 * we cannot abort and things will be hosed up on error
 		 * anyway.
 		 */
@@ -1798,7 +1798,7 @@ fits:	memset(&bi, 0, sizeof(bi));
 		/*
 		 * __bam_dpages may decide to collapse the tree
 		 * so we need to free our other stack.  The tree
-		 * will change in hight and our stack will nolonger
+		 * will change in height and our stack will nolonger
 		 * be valid.
 		 */
 		cp->csp = save_csp;
@@ -2051,6 +2051,7 @@ __bam_truncate_root_page(dbc, pg, indx, c_data)
 	BOVERFLOW *bo;
 	DB *dbp;
 	db_pgno_t *pgnop;
+	u_int32_t tlen;
 
 	COMPQUIET(c_data, NULL);
 	COMPQUIET(bo, NULL);
@@ -2060,16 +2061,21 @@ __bam_truncate_root_page(dbc, pg, indx, c_data)
 		if (B_TYPE(bi->type) == B_OVERFLOW) {
 			bo = (BOVERFLOW *)(bi->data);
 			pgnop = &bo->pgno;
-		} else
+			tlen = bo->tlen;
+		} else {
+			/* Tlen is not used if this is not an overflow. */
+			tlen = 0;
 			pgnop = &bi->pgno;
+		}
 	} else {
 		bo = GET_BOVERFLOW(dbp, pg, indx);
 		pgnop = &bo->pgno;
+		tlen = bo->tlen;
 	}
 
 	DB_ASSERT(dbp->env, IS_DIRTY(pg));
 
-	return (__db_truncate_root(dbc, pg, indx, pgnop, bo->tlen));
+	return (__db_truncate_root(dbc, pg, indx, pgnop, tlen));
 }
 
 /*
@@ -2618,9 +2624,11 @@ err:	if (txn != NULL && ret != 0)
 	else
 		sflag = 0;
 	if (txn == NULL) {
-		if ((t_ret = __LPUT(dbc, meta_lock)) != 0 && ret == 0)
+		if (dbc != NULL &&
+		    (t_ret = __LPUT(dbc, meta_lock)) != 0 && ret == 0)
 			ret = t_ret;
-		if ((t_ret = __LPUT(dbc, root_lock)) != 0 && ret == 0)
+		if (dbc != NULL &&
+		    (t_ret = __LPUT(dbc, root_lock)) != 0 && ret == 0)
 			ret = t_ret;
 	}
 	if (meta != NULL && (t_ret = __memp_fput(dbp->mpf,

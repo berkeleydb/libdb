@@ -1,7 +1,13 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ */
+
 /*
  * Basic smoke test for XA transactions.  The client randomly sends requests
  * to each of the servers to insert data into table 1, and inserts the
- * same data into table 3 using regular transactions.
+ * same data into table 2 using regular transactions.
  */
 
 #include <sys/types.h>
@@ -23,43 +29,37 @@
 #include "datafml.h"
 #include "hdbrec.h"
 #include "htimestampxa.h"
+#include "../utilities/bdb_xa_util.h"
 
-#define HOME	"../data3"
+#define HOME	"../data2"
 #define	TABLE1	"../data/table1.db"
-#define	TABLE3	"../data3/table3.db"
+#define	TABLE2	"../data2/table2.db"
 
-#ifdef VERBOSE
-static int verbose = 1;				/* Debugging output. */
-#else
-static int verbose = 0;
-#endif
-
-DB_ENV *dbenv;
 char *progname;					/* Client run-time name. */
 
-int   check_data(DB *);
-char *db_buf(DBT *);
 int   usage(void);
 
 int
 main(int argc, char* argv[])
 {
-	DB *dbp3;
+	DB *dbp2;
 	DBT key, data;
 	FBFR *buf, *replyBuf;
 	HDbRec rec;
 	TPINIT *initBuf;
+        DB_ENV *dbenv2, *dbenv1;
 	long len, replyLen, seqNo;
 	int ch, cnt, cnt_abort, cnt_commit, cnt_server1, i, ret;
 	char *target;
 	char *home = HOME;
 	u_int32_t flags = DB_INIT_MPOOL | DB_INIT_LOG | DB_INIT_TXN |
-	  DB_INIT_LOCK | DB_CREATE | DB_THREAD | DB_RECOVER | DB_REGISTER;
-	u_int32_t dbflags = DB_CREATE | DB_THREAD;
+	  DB_INIT_LOCK | DB_CREATE | DB_RECOVER | DB_REGISTER;
+	u_int32_t dbflags = DB_CREATE;
 
 	progname = argv[0];
 
-	dbp3 = NULL;
+	dbenv2 = dbenv1  = NULL;
+	dbp2 = NULL;
 	buf = replyBuf = NULL;
 	initBuf = NULL;
 	cnt = 1000;
@@ -98,29 +98,29 @@ main(int argc, char* argv[])
 		printf("%s: tpalloc(\"TPINIT\") OK\n", progname);
 
 	/* Create the DB environment. */
-	if ((ret = db_env_create(&dbenv, 0)) != 0 ||
-	    (ret = dbenv->open(dbenv, home, flags, 0)) != 0) {
+	if ((ret = db_env_create(&dbenv2, 0)) != 0 ||
+	    (ret = dbenv2->open(dbenv2, home, flags, 0)) != 0) {
 		fprintf(stderr,
 		    "%s: %s: %s\n", progname, home, db_strerror(ret));
 		goto err;
 	}
-	dbenv->set_errfile(dbenv, stderr);
+	dbenv2->set_errfile(dbenv2, stderr);
 	if (verbose)
 		printf("%s: opened %s OK\n", progname, home);
 
 	/* 
-	 * Open table #3 -- Data is inserted into table 1 using XA
-	 * transactions, and inserted into table 3 using regular transactions.
+	 * Open table #2 -- Data is inserted into table 1 using XA
+	 * transactions, and inserted into table 2 using regular transactions.
 	 */
-	if ((ret = db_create(&dbp3, dbenv, 0)) != 0 ||
-	    (ret = dbp3->open(dbp3,
-	    NULL, TABLE3, NULL, DB_BTREE, dbflags, 0660)) != 0) {
+	if ((ret = db_create(&dbp2, dbenv2, 0)) != 0 ||
+	    (ret = dbp2->open(dbp2,
+	    NULL, TABLE2, NULL, DB_BTREE, dbflags, 0660)) != 0) {
 		fprintf(stderr,
-		    "%s: %s %s\n", progname, TABLE3, db_strerror(ret));
+		    "%s: %s %s\n", progname, TABLE2, db_strerror(ret));
 		goto err;
 	}
 	if (verbose)
-		printf("%s: opened %s OK\n", progname, TABLE3);
+		printf("%s: opened %s OK\n", progname, TABLE2);
 
 	/* Allocate send buffer. */
 	len = Fneeded(1, 3 * sizeof(long));
@@ -180,19 +180,19 @@ main(int argc, char* argv[])
 				printf("%s: tpcommit() OK\n", progname);
 
 			/*
-			 * Store a copy of the key/data pair into table #3
-			 * on success, we'll compare table #1 and table #3
+			 * Store a copy of the key/data pair into table #2
+			 * on success, we'll compare table #1 and table #2
 			 * after the run finishes.
 			 */
 			seqNo = rec.SeqNo;
 			key.data = &seqNo;
 			key.size = sizeof(seqNo);
-			data.data = &rec;
-			data.size = sizeof(rec);
+			data.data = &seqNo;
+			data.size = sizeof(seqNo);
 			if ((ret =
-			    dbp3->put(dbp3, NULL, &key, &data, 0)) != 0) {
+			    dbp2->put(dbp2, NULL, &key, &data, 0)) != 0) {
 				fprintf(stderr, "%s: DB->put: %s %s\n",
-				    progname, TABLE3, db_strerror(ret));
+				    progname, TABLE2, db_strerror(ret));
 				goto err;
 			}
 		} else {
@@ -212,7 +212,14 @@ main(int argc, char* argv[])
 	printf("%s: %d sent to server #1, %d sent to server #2\n",
 	    progname, cnt_server1, cnt - cnt_server1);
 
-	ret = check_data(dbp3);
+	/* Check that database 1 and database 2 are identical. */
+	if (dbp2 != NULL)
+		(void)dbp2->close(dbp2, 0);
+	dbp2 = NULL;
+	if ((ret = db_env_create(&dbenv1, 0)) != 0 ||
+	    (ret = dbenv1->open(dbenv1, "../data", flags, 0)) != 0) 
+		goto err;
+	ret = check_data(dbenv1, TABLE1, dbenv2, TABLE2, progname);
 
 	if (0) {
 tuxedo_err:	fprintf(stderr, "%s: TUXEDO ERROR: %s (code %d)\n",
@@ -233,122 +240,18 @@ err:		ret = EXIT_FAILURE;
 		tpfree((char *)buf);
 	if (initBuf != NULL)
 		tpfree((char *)initBuf);
-	if (dbp3 != NULL)
-		(void)dbp3->close(dbp3, 0);
-	if (dbenv != NULL)
-		(void)dbenv->close(dbenv, 0);
+	if (dbp2 != NULL)
+		(void)dbp2->close(dbp2, 0);
+	if (dbenv1 != NULL)
+		(void)dbenv1->close(dbenv1, 0);
+	if (dbenv2 != NULL)
+		(void)dbenv2->close(dbenv2, 0);
 
 	tpterm();
 	if (verbose)
 		printf("%s: tpterm() OK\n", progname);
 
 	return (ret);
-}
-
-/*
- * check_data --
- *	Compare committed data with our local copy, stored in table3.
- */
-int
-check_data(dbp3)
-	DB *dbp3;
-{
-	DB *dbp1;
-	DBC *dbc1, *dbc3;
-	DBT key1, data1, key3, data3;
-	int ret, ret1, ret3;
-	DB_ENV *dbenv1;
-	u_int32_t flags = DB_INIT_MPOOL | DB_INIT_LOG | DB_INIT_TXN |
-	  DB_INIT_LOCK | DB_THREAD;
-
-	dbp1 = NULL;
-	dbc1 = dbc3 = NULL;
-	dbenv1 = NULL;
-
-	if ((ret = db_env_create(&dbenv1, 0)) != 0 ||
-	    (ret = dbenv1->open(dbenv1, "../data", flags, 0)) != 0) 
-		goto err;	
-	/* Open table #1. */
-	if ((ret = db_create(&dbp1, dbenv1, 0)) != 0 ||
-	    (ret = dbp1->open(
-	    dbp1, NULL, TABLE1, NULL, DB_UNKNOWN, DB_RDONLY, 0)) != 0) {
-		fprintf(stderr,
-		    "%s: %s: %s\n", progname, TABLE1, db_strerror(ret));
-		goto err;
-	}
-	if (verbose)
-		printf("%s: opened %s OK\n", progname, TABLE1);
-
-	/* Open cursors. */
-	if ((ret = dbp1->cursor(dbp1, NULL, &dbc1, 0)) != 0 ||
-	    (ret = dbp3->cursor(dbp3, NULL, &dbc3, 0)) != 0) {
-		fprintf(stderr,
-		    "%s: DB->cursor: %s\n", progname, db_strerror(ret));
-		goto err;
-	}
-	if (verbose)
-		printf("%s: opened cursors OK\n", progname);
-
-	/* Compare the two databases. */
-	memset(&key1, 0, sizeof(key1));
-	memset(&data1, 0, sizeof(data1));
-	memset(&key3, 0, sizeof(key3));
-	memset(&data3, 0, sizeof(data3));
-	for (;;) {
-		ret1 = dbc1->c_get(dbc1, &key1, &data1, DB_NEXT);
-		ret3 = dbc3->c_get(dbc3, &key3, &data3, DB_NEXT);
-		if (verbose) {
-			printf("get: key1: %s\n", db_buf(&key1));
-			printf("get: key3: %s\n", db_buf(&key3));
-			printf("get: data1: %s\n", db_buf(&data1));
-			printf("get: data3: %s\n", db_buf(&data3));
-		}
-		if (ret1 != 0 || ret3 != 0)
-			break;
-		/*
-		 * Only compare the first N bytes, the saved message chunks
-		 * are different.
-		 */
-		if (key1.size != key3.size ||
-		    memcmp(key1.data, key3.data, key1.size) != 0 ||
-		    data1.size != data3.size ||
-		    memcmp(data1.data, data3.data,
-		    sizeof(long) + sizeof(HTimestampData)) != 0)
-			goto mismatch;
-	}
-	if (ret1 != DB_NOTFOUND || ret3 != DB_NOTFOUND) {
-mismatch:	fprintf(stderr, 
-		    "%s: DB_ERROR: databases 1 and 3 weren't identical\n", 
-		    progname);
-		ret = 1;
-	}
-
-err:	if (dbc1 != NULL)
-		(void)dbc1->c_close(dbc1);
-	if (dbc3 != NULL)
-		(void)dbc3->c_close(dbc3);
-	if (dbp1 != NULL)
-		(void)dbp1->close(dbp1, 0);
-	if(dbenv1 != NULL)
-	  (void)dbenv1->close(dbenv1, 0); 
-
-	return (ret == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
-}
-
-char *
-db_buf(dbt)
-	DBT *dbt;
-{
-	static u_char buf[1024];
-	size_t len;
-	u_char *p, *b;
-
-	for (p = dbt->data, len = dbt->size, b = buf; len > 0; ++p, --len)
-		if (isprint(*p))
-			b += sprintf((char *)b, "%c", *p);
-		else
-			b += sprintf((char *)b, "%#o", *p);
-	return ((char *)buf);
 }
 
 int

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -20,7 +20,8 @@
 static int __fop_set_pgsize __P((DB *, DB_FH *, const char *));
 static int __fop_inmem_create __P((DB *, const char *, DB_TXN *, u_int32_t));
 static int __fop_inmem_dummy __P((DB *, DB_TXN *, const char *, u_int8_t *));
-static int __fop_inmem_read_meta __P((DB *, DB_TXN *, const char *, u_int32_t));
+static int __fop_inmem_read_meta __P((DB *, DB_TXN *, const char *, u_int32_t,
+	    u_int32_t));
 static int __fop_inmem_swap __P((DB *, DB *, DB_TXN *,
 	       const char *, const char *, const char *, DB_LOCKER *));
 static int __fop_ondisk_dummy __P((DB *, DB_TXN *, const char *, u_int8_t *));
@@ -113,9 +114,11 @@ __fop_lock_handle(env, dbp, locker, mode, elockp, flags)
 
 	/*
 	 * If we are in recovery, the only locking we should be
-	 * doing is on the global environment.
+	 * doing is on the global environment.  The one exception
+	 * is if we are opening an exclusive database on a client 
+	 * syncing with the master.
 	 */
-	if (IS_RECOVERING(env))
+	if (IS_RECOVERING(env) && !F2_ISSET(dbp, DB2_AM_INTEXCL))
 		return (elockp == NULL ? 0 : __ENV_LPUT(env, *elockp));
 
 	memcpy(lock_desc.fileid, dbp->fileid, DB_FILE_ID_LEN);
@@ -126,6 +129,8 @@ __fop_lock_handle(env, dbp, locker, mode, elockp, flags)
 	fileobj.data = &lock_desc;
 	fileobj.size = sizeof(lock_desc);
 	DB_TEST_SUBLOCKS(env, flags);
+	if (F2_ISSET(dbp, DB2_AM_INTEXCL))
+	    flags |= DB_LOCK_IGNORE_REC;
 	if (elockp == NULL)
 		ret = __lock_get(env, locker,
 		    flags, &fileobj, mode, &dbp->handle_lock);
@@ -217,6 +222,7 @@ __fop_file_setup(dbp, ip, txn, name, mode, flags, retidp)
 	int created_locker, create_ok, ret, retries, t_ret, tmp_created;
 	int truncating, was_inval;
 	char *real_name, *real_tmpname, *tmpname;
+	db_lockmode_t lockmode;
 
 	*retidp = TXN_INVALID;
 
@@ -227,12 +233,17 @@ __fop_file_setup(dbp, ip, txn, name, mode, flags, retidp)
 	created_locker = tmp_created = truncating = was_inval = 0;
 	real_name = real_tmpname = tmpname = NULL;
 	dflags = F_ISSET(dbp, DB_AM_NOT_DURABLE) ? DB_LOG_NOT_DURABLE : 0;
-	aflags = LF_ISSET(DB_INTERNAL_DB) ? DB_APP_NONE : DB_APP_DATA;
-	LF_CLR(DB_INTERNAL_DB);
+	aflags = LF_ISSET(DB_INTERNAL_PERSISTENT_DB) ? DB_APP_META :
+	    (LF_ISSET(DB_INTERNAL_TEMPORARY_DB) ? DB_APP_NONE : DB_APP_DATA);
+	LF_CLR(DB_INTERNAL_PERSISTENT_DB | DB_INTERNAL_TEMPORARY_DB);
 
 	ret = 0;
 	retries = 0;
 	save_type = dbp->type;
+	if (F2_ISSET(dbp, DB2_AM_EXCL))
+		lockmode = DB_LOCK_WRITE;
+	else
+		lockmode = DB_LOCK_READ;
 
 	/*
 	 * Get a lockerid for this handle.  There are paths through queue
@@ -286,7 +297,8 @@ retry:
 	 * If we cannot create the file, only retry a few times.  We
 	 * think we might be in a race with another create, but it could
 	 * be that the backup filename exists (that is, is left over from
-	 * a previous crash).
+	 * a previous crash).  It is also possible to read the metadata
+	 * page while it is being written and fail the checksum.
 	 */
 	if (++retries > DB_RETRY) {
 		__db_errx(env, DB_STR_A("0002",
@@ -357,7 +369,8 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 			if (LOGGING_ON(env) && (ret = __env_dbreg_setup(dbp,
 			    txn, NULL, name, TXN_INVALID)) != 0)
 				return (ret);
-			ret = __fop_inmem_read_meta(dbp, txn, name, flags);
+			ret = __fop_inmem_read_meta(
+			    dbp, txn, name, flags, DB_CHK_META|DB_CHK_ONLY);
 		} else {
 			ret = __fop_read_meta(env, real_name, mbuf,
 			    sizeof(mbuf), fhp,
@@ -381,11 +394,43 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 				goto done;
 			}
 
-			/* Case 4: This is a valid file. */
+			/* 
+			 * Case 4: This is a valid file.  Now check the
+			 * checksum and decrypt the file so the file 
+			 * id can be obtained for the handle lock.  Note that
+			 * the checksum can fail if the database is being
+			 * written (possible because the handle lock has
+			 * not been obtained yet).  So on checksum fail retry
+			 * until the checksum succeeds or the number of 
+			 * retries is exhausted, then throw an error.
+			 */
+			if (ret == 0 && (ret = __db_chk_meta(env, dbp,
+			    (DBMETA *)mbuf, DB_CHK_META)) == DB_CHKSUM_FAIL) {
+				if ((t_ret = __ENV_LPUT(env, elock)) != 0) {
+					ret = t_ret;
+					goto err;
+				}
+				/* 
+				 * Retry unless the number of retries is
+				 * exhausted.
+				 */
+				if (!(retries < DB_RETRY)) {
+					__db_errx(env, DB_STR_A("0210",
+			"%s: metadata page checksum error", "%s"), real_name);
+					if (F_ISSET(dbp, DB_AM_RECOVER))
+						ret = ENOENT;
+					else
+						ret = EINVAL;
+					goto err;
+				}
+				if ((ret = __os_closehandle(env, fhp)) != 0)
+					goto err;
+				goto retry;
+			}
+			/* Get the file id for the handle lock. */
 			if (ret == 0)
-				ret = __db_meta_setup(env, dbp, real_name,
-				    (DBMETA *)mbuf, flags, DB_CHK_META);
-
+				memcpy(dbp->fileid,
+				((DBMETA *)mbuf)->uid, DB_FILE_ID_LEN);
 		}
 
 		/* Case 5: Invalid file. */
@@ -394,11 +439,12 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 
 		/* Now, get our handle lock. */
 		if ((ret = __fop_lock_handle(env,
-		    dbp, locker, DB_LOCK_READ, NULL, DB_LOCK_NOWAIT)) == 0) {
+		    dbp, locker, lockmode, NULL, DB_LOCK_NOWAIT)) == 0) {
 			if ((ret = __ENV_LPUT(env, elock)) != 0)
 				goto err;
 		} else if (ret != DB_LOCK_NOTGRANTED ||
-		    (txn != NULL && F_ISSET(txn, TXN_NOWAIT)))
+		    ((txn != NULL && (F_ISSET(txn, TXN_NOWAIT))) ||
+		    F2_ISSET(dbp, DB2_AM_NOWAIT)))
 			goto err;
 		else {
 			PERFMON3(env,
@@ -424,7 +470,7 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 				fhp = NULL;
 			}
 			if ((ret = __fop_lock_handle(env,
-			    dbp, locker, DB_LOCK_READ, &elock, 0)) != 0) {
+			    dbp, locker, lockmode, &elock, 0)) != 0) {
 				if (F_ISSET(dbp, DB_AM_INMEM))
 					RESET_MPF(dbp, 0);
 				goto err;
@@ -436,9 +482,10 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 			 * To be sure we have the correct information we
 			 * try again.
 			 */
-			if ((ret = __db_refresh(dbp,
-			    txn, DB_NOSYNC, NULL, 1)) != 0)
-				goto err;
+			if (F_ISSET(dbp, DB_AM_INMEM)) {
+				RESET_MPF(dbp, 0);
+				MAKE_INMEM(dbp);
+			}
 			if ((ret =
 			    __ENV_LPUT(env, dbp->handle_lock)) != 0) {
 				LOCK_INIT(dbp->handle_lock);
@@ -448,7 +495,20 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 
 		}
 
-		/* If we got here, then we have the handle lock. */
+		/* 
+		 * If we got here, then we have the handle lock, it is now
+		 * safe to check the rest of the meta data, since the file
+		 * will not be deleted out from under the handle.
+		 */
+		if (F_ISSET(dbp, DB_AM_INMEM)) {
+			if ((ret = __fop_inmem_read_meta(
+			    dbp, txn, name, flags, DB_SKIP_CHK)) != 0)
+				goto err;
+		} else {
+			if ((ret = __db_meta_setup(env, dbp, real_name, 
+			    (DBMETA *)mbuf, flags, DB_SKIP_CHK)) != 0)
+				goto err;
+		}
 
 		/*
 		 * Check for a file in the midst of a rename.  If we find that
@@ -637,7 +697,8 @@ creat2:	if (!F_ISSET(dbp, DB_AM_INMEM)) {
 	}
 
 	if (name != NULL && (ret = __fop_lock_handle(env,
-	    dbp, locker, DB_LOCK_WRITE, NULL, NOWAIT_FLAG(txn))) != 0)
+	    dbp, locker, DB_LOCK_WRITE, NULL, NOWAIT_FLAG(txn)|
+	    (F2_ISSET(dbp,DB2_AM_NOWAIT) ? DB_LOCK_NOWAIT : 0))) != 0)
 		goto err;
 	if (tmpname != NULL &&
 	    tmpname != name && (ret = __fop_rename(env, stxn, tmpname,
@@ -827,11 +888,12 @@ retry:	if ((ret = __db_master_open(dbp,
 	 */
 
 	memcpy(dbp->fileid, mdbp->fileid, DB_FILE_ID_LEN);
-	lkmode = F_ISSET(dbp, DB_AM_CREATED) || LF_ISSET(DB_WRITEOPEN) ?
-	    DB_LOCK_WRITE : DB_LOCK_READ;
+	lkmode = F_ISSET(dbp, DB_AM_CREATED) || LF_ISSET(DB_WRITEOPEN) ||
+	    F2_ISSET(dbp, DB2_AM_EXCL) ? DB_LOCK_WRITE : DB_LOCK_READ;
 	if ((ret = __fop_lock_handle(env, dbp,
 	    txn == NULL ? dbp->locker : txn->locker, lkmode, NULL,
-	    NOWAIT_FLAG(txn))) != 0)
+	    NOWAIT_FLAG(txn) |
+	    (F2_ISSET(dbp, DB2_AM_NOWAIT) ? DB_LOCK_NOWAIT : 0))) != 0)
 		goto err;
 
 	if ((ret = __db_init_subdb(mdbp, dbp, name, ip, txn)) != 0) {
@@ -991,7 +1053,8 @@ retry:	if (LOCKING_ON(env)) {
 
 	/* Get meta-data */
 	if (F_ISSET(dbp, DB_AM_INMEM))
-		ret = __fop_inmem_read_meta(dbp, txn, name, flags);
+		ret = __fop_inmem_read_meta(
+		    dbp, txn, name, flags, DB_CHK_META);
 	else if ((ret = __fop_read_meta(env,
 	    name, mbuf, sizeof(mbuf), fhp, 0, NULL)) == 0)
 		ret = __db_meta_setup(env, dbp,
@@ -1327,11 +1390,12 @@ err:
 }
 
 static int
-__fop_inmem_read_meta(dbp, txn, name, flags)
+__fop_inmem_read_meta(dbp, txn, name, flags, chkflags)
 	DB *dbp;
 	DB_TXN *txn;
 	const char *name;
 	u_int32_t flags;
+	u_int32_t chkflags;
 {
 	DBMETA *metap;
 	DB_THREAD_INFO *ip;
@@ -1346,7 +1410,13 @@ __fop_inmem_read_meta(dbp, txn, name, flags)
 	pgno  = PGNO_BASE_MD;
 	if ((ret = __memp_fget(dbp->mpf, &pgno, ip, txn, 0, &metap)) != 0)
 		return (ret);
-	ret = __db_meta_setup(dbp->env, dbp, name, metap, flags, DB_CHK_META);
+	if (FLD_ISSET(chkflags, DB_CHK_ONLY)) {
+		if ((ret = __db_chk_meta(dbp->env, dbp, metap, chkflags)) == 0)
+			memcpy(dbp->fileid,
+			    ((DBMETA *)metap)->uid, DB_FILE_ID_LEN);
+	} else 
+		ret = __db_meta_setup(
+		    dbp->env, dbp, name, metap, flags, chkflags);
 
 	if ((t_ret =
 	    __memp_fput(dbp->mpf, ip, metap, dbp->priority)) && ret == 0)
@@ -1661,7 +1731,8 @@ retry:	LOCK_INIT(elock);
 		 * and allow this rename to succeed if that's the case.
 		 */
 
-		if ((ret = __fop_inmem_read_meta(tmpdbp, txn, new, 0)) != 0) {
+		if ((ret = __fop_inmem_read_meta(
+		    tmpdbp, txn, new, 0, DB_CHK_META)) != 0) {
 			ret = EEXIST;
 			goto err;
 		}

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -52,6 +52,7 @@ __env_attach(env, init_flagsp, create_ok, retry_ok)
 
 	/* Repeated initialization. */
 loop:	renv = NULL;
+	rp = NULL;
 
 	/* Set up the ENV's REG_INFO structure. */
 	if ((ret = __os_calloc(env, 1, sizeof(REGINFO), &infop)) != 0)
@@ -548,6 +549,9 @@ retry:	/* Close any open file handle. */
 
 		(void)__env_sys_detach(env,
 		    infop, F_ISSET(infop, REGION_CREATE));
+
+		if (rp != NULL && F_ISSET(env, DB_PRIVATE))
+			__env_alloc_free(infop, rp);
 	}
 
 	/* Free the allocated name and/or REGINFO structure. */
@@ -744,6 +748,30 @@ __env_ref_decrement(env)
 	/* If a private environment, we're done with the mutex, destroy it. */
 	return (F_ISSET(env, ENV_PRIVATE) ?
 	    __mutex_free(env, &renv->mtx_regenv) : 0);
+}
+
+/*
+ * __env_ref_get --
+ *	Get the number of environment references.  This is an unprotected
+ *	read of refcnt to simply provide a spot check of the value.  It
+ *	is only intended for use as an internal utility routine.
+ *
+ * PUBLIC: int __env_ref_get __P((DB_ENV *, u_int32_t *));
+ */
+int
+__env_ref_get(dbenv, countp)
+	DB_ENV *dbenv;
+	u_int32_t *countp;
+{
+	ENV *env;
+	REGENV *renv;
+	REGINFO *infop;
+
+	env = dbenv->env;
+	infop = env->reginfo;
+	renv = infop->primary;
+	*countp = renv->refcnt;
+	return (0);
 }
 
 /*
@@ -965,8 +993,7 @@ __env_remove_file(env)
 	 */
 	for (lastrm = -1, cnt = fcnt; --cnt >= 0;) {
 		/* Skip anything outside our name space. */
-		if (strncmp(names[cnt],
-		    DB_REGION_PREFIX, sizeof(DB_REGION_PREFIX) - 1))
+		if (!IS_DB_FILE(names[cnt]))
 			continue;
 
 		/* Skip queue extent files. */
@@ -1088,6 +1115,10 @@ err:	/* Discard the underlying region. */
 	if (infop->addr != NULL)
 		(void)__env_sys_detach(env,
 		    infop, F_ISSET(infop, REGION_CREATE));
+	else if (infop->name != NULL) {
+		__os_free(env, infop->name);
+		infop->name = NULL;
+	}
 	infop->rp = NULL;
 	infop->id = INVALID_REGION_ID;
 

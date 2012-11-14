@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST	repmgr032
 # TEST	The (undocumented) AUTOROLLBACK config feature.
@@ -76,7 +76,7 @@ proc repmgr032_sub { method tnum test_case largs } {
 	set enva [eval $cmda]
 	$enva rep_config {mgrelections off}
 	eval $enva repmgr $common_mgr -ack allavailable \
-	    -local {[list localhost $porta]} -start master
+	    -local {[list 127.0.0.1 $porta]} -start master
 
 	if { $nimdbs } {
 		set omethod [convert_method $method]
@@ -91,7 +91,7 @@ proc repmgr032_sub { method tnum test_case largs } {
 	set envb [eval $cmdb]
 	$envb rep_config {mgrelections off}
 	eval $envb repmgr $common_mgr -start client \
-	    -local {[list localhost $portb]} -remote {[list localhost $porta]}
+	    -local {[list 127.0.0.1 $portb]} -remote {[list 127.0.0.1 $porta]}
 	await_startup_done $envb
 
 	set cmdc "berkdb_env_noerr $common -errpfx SITE_C -home $dirc"
@@ -99,7 +99,7 @@ proc repmgr032_sub { method tnum test_case largs } {
 	$envc rep_config {mgrelections off}
 	$envc rep_config {autorollback off}
 	eval $envc repmgr $common_mgr -start client \
-	    -local {[list localhost $portc]} -remote {[list localhost $porta]}
+	    -local {[list 127.0.0.1 $portc]} -remote {[list 127.0.0.1 $porta]}
 	await_startup_done $envc
 
 	puts "\tRepmgr$tnum.b: Run some transactions at master."
@@ -130,14 +130,14 @@ proc repmgr032_sub { method tnum test_case largs } {
 	set envb [eval $cmdb]
 	$envb rep_config {mgrelections off}
 	eval $envb repmgr $common_mgr -start master \
-	    -local {[list localhost $portb]} -remote {[list localhost $portc]}
+	    -local {[list 127.0.0.1 $portb]} -remote {[list 127.0.0.1 $portc]}
 
 	if { $do_close } {
 		set envc [eval $cmdc -recover]
 		$envc rep_config {autorollback off}
 		eval $envc repmgr $common_mgr -start client \
-		    -local {[list localhost $portc]} \
-		    -remote {[list localhost $portb]}
+		    -local {[list 127.0.0.1 $portc]} \
+		    -remote {[list 127.0.0.1 $portb]}
 	}
 	puts "\tRepmgr$tnum.e: Wait for WOULD_ROLLBACK event."
 	await_condition {[is_event_present $envc would_rollback]}

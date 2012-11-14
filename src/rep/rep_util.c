@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -1184,6 +1184,16 @@ __db_rep_enter(dbp, checkgen, checklock, return_now)
 		if (F_ISSET(renv, DB_REGENV_REPLOCKED))
 			return (EINVAL);
 	}
+
+	/*
+	 * Return a dead handle if an internal handle is trying to
+	 * get an exclusive lock on this database.
+	 */
+	if (checkgen && dbp->mpf->mfp && IS_REP_CLIENT(env)) {
+		if (dbp->mpf->mfp->excl_lockout) 
+			return (DB_REP_HANDLE_DEAD);
+	}
+
 	REP_SYSTEM_LOCK(env);
 	/*
 	 * !!!
@@ -1821,6 +1831,44 @@ __rep_msg_to_old(version, rectype)
 	    29,			/* REP_VERIFY_REQ */
 	    30,			/* REP_VOTE1 */
 	    31			/* REP_VOTE2 */
+	},
+	/*
+	 * From 5.3 message number To 4.7 message number.  There are
+	 * NO message differences between 4.7 and 5.3.  The
+	 * content of fileinfo changed.
+	 */
+	{   REP_INVALID,	/* NO message 0 */
+	    1,			/* REP_ALIVE */
+	    2,			/* REP_ALIVE_REQ */
+	    3,			/* REP_ALL_REQ */
+	    4,			/* REP_BULK_LOG */
+	    5,			/* REP_BULK_PAGE */
+	    6,			/* REP_DUPMASTER */
+	    7,			/* REP_FILE */
+	    8,			/* REP_FILE_FAIL */
+	    9,			/* REP_FILE_REQ */
+	    10,			/* REP_LEASE_GRANT */
+	    11,			/* REP_LOG */
+	    12,			/* REP_LOG_MORE */
+	    13,			/* REP_LOG_REQ */
+	    14,			/* REP_MASTER_REQ */
+	    15,			/* REP_NEWCLIENT */
+	    16,			/* REP_NEWFILE */
+	    17,			/* REP_NEWMASTER */
+	    18,			/* REP_NEWSITE */
+	    19,			/* REP_PAGE */
+	    20,			/* REP_PAGE_FAIL */
+	    21,			/* REP_PAGE_MORE */
+	    22,			/* REP_PAGE_REQ */
+	    23,			/* REP_REREQUEST */
+	    24,			/* REP_START_SYNC */
+	    25,			/* REP_UPDATE */
+	    26,			/* REP_UPDATE_REQ */
+	    27,			/* REP_VERIFY */
+	    28,			/* REP_VERIFY_FAIL */
+	    29,			/* REP_VERIFY_REQ */
+	    30,			/* REP_VOTE1 */
+	    31			/* REP_VOTE2 */
 	}
 	};
 	return (table[version][rectype]);
@@ -1955,6 +2003,44 @@ __rep_msg_from_old(version, rectype)
 	/*
 	 * From 4.7 message number To 5.2 message number.  There are
 	 * NO message differences between them.  The vote1 contents
+	 * changed.
+	 */
+	{   REP_INVALID,	/* NO message 0 */
+	    1,			/* 1, REP_ALIVE */
+	    2,			/* 2, REP_ALIVE_REQ */
+	    3,			/* 3, REP_ALL_REQ */
+	    4,			/* 4, REP_BULK_LOG */
+	    5,			/* 5, REP_BULK_PAGE */
+	    6,			/* 6, REP_DUPMASTER */
+	    7,			/* 7, REP_FILE */
+	    8,			/* 8, REP_FILE_FAIL */
+	    9,			/* 9, REP_FILE_REQ */
+	    10,			/* 10, REP_LEASE_GRANT */
+	    11,			/* 11, REP_LOG */
+	    12,			/* 12, REP_LOG_MORE */
+	    13,			/* 13, REP_LOG_REQ */
+	    14,			/* 14, REP_MASTER_REQ */
+	    15,			/* 15, REP_NEWCLIENT */
+	    16,			/* 16, REP_NEWFILE */
+	    17,			/* 17, REP_NEWMASTER */
+	    18,			/* 18, REP_NEWSITE */
+	    19,			/* 19, REP_PAGE */
+	    20,			/* 20, REP_PAGE_FAIL */
+	    21,			/* 21, REP_PAGE_MORE */
+	    22,			/* 22, REP_PAGE_REQ */
+	    23,			/* 22, REP_REREQUEST */
+	    24,			/* 24, REP_START_SYNC */
+	    25,			/* 25, REP_UPDATE */
+	    26,			/* 26, REP_UPDATE_REQ */
+	    27,			/* 27, REP_VERIFY */
+	    28,			/* 28, REP_VERIFY_FAIL */
+	    29,			/* 29, REP_VERIFY_REQ */
+	    30,			/* 30, REP_VOTE1 */
+	    31			/* 31, REP_VOTE2 */
+	},
+	/*
+	 * From 4.7 message number To 5.3 message number.  There are
+	 * NO message differences between them.  The fileinfo contents
 	 * changed.
 	 */
 	{   REP_INVALID,	/* NO message 0 */

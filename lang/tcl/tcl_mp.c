@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -426,6 +426,7 @@ tcl_MpStat(interp, objc, objv, dbenv)
 		MAKE_WSTAT_LIST("Pages created", (*fsp)->st_page_create);
 		MAKE_WSTAT_LIST("Pages read in", (*fsp)->st_page_in);
 		MAKE_WSTAT_LIST("Pages written", (*fsp)->st_page_out);
+		MAKE_WSTAT_LIST("Backup spins", (*fsp)->st_backup_spins);
 		/*
 		 * Now that we have a complete "per-file" stat list, append
 		 * that to the other list.

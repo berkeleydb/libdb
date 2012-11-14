@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -47,15 +47,18 @@ __memp_fopen_pp(dbmfp, path, flags, mode, pagesize)
 		return (ret);
 
 	/*
-	 * Require a non-zero, power-of-two pagesize, smaller than the
-	 * clear length.
+	 * Require a power-of-two pagesize, smaller than the clear length.  A
+	 * non-zero page size is only allowed if opening an existing, in-memory
+	 * db.
 	 */
-	if (pagesize == 0 || !POWER_OF_TWO(pagesize)) {
+	if (!POWER_OF_TWO(pagesize) ||
+	    (pagesize == 0 && (LF_ISSET(DB_CREATE) ||
+	    !FLD_ISSET(dbmfp->config_flags, DB_MPOOL_NOFILE)))) {
 		__db_errx(env, DB_STR("3033",
 		    "DB_MPOOLFILE->open: page sizes must be a power-of-2"));
 		return (EINVAL);
 	}
-	if (dbmfp->clear_len > pagesize) {
+	if (pagesize != 0 && dbmfp->clear_len > pagesize) {
 		__db_errx(env, DB_STR("3034",
 		    "DB_MPOOLFILE->open: clear length larger than page size"));
 		return (EINVAL);
@@ -83,6 +86,12 @@ __memp_fopen_pp(dbmfp, path, flags, mode, pagesize)
 }
 
 /*
+ * Generate the number of user opens.  If there is no backing file
+ * there is an extra open count to keep the in memory db around.
+ */
+#define MFP_OPEN_CNT(mfp)	((mfp)->mpf_cnt - ((mfp)->neutral_cnt +	\
+				   (u_int32_t)(mfp)->no_backing_file))
+/*
  * __memp_fopen --
  *	DB_MPOOLFILE->open.
  *
@@ -109,7 +118,7 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 	size_t maxmap;
 	db_pgno_t last_pgno;
 	u_int32_t bucket, mbytes, bytes, oflags, pagesize;
-	int refinc, ret;
+	int refinc, ret, isdir;
 	char *rpath;
 
 	/* If this handle is already open, return. */
@@ -122,7 +131,7 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 	mp = dbmp->reginfo[0].primary;
 	alloc_mfp = NULL;
 	mbytes = bytes = 0;
-	refinc = ret = 0;
+	refinc = ret = isdir = 0;
 	rpath = NULL;
 
 	/*
@@ -148,6 +157,33 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 			goto alloc;
 
 		/*
+		 * If fileid is not set but the file exists on the disk,
+		 * we try to use __os_fileid to set it. We do this
+		 * because we want to use the fileid to check if we have
+		 * opened the mpoolfile as early as possible.
+		 *
+		 * Note: DB layer always calls __memp_fopen with fileid set,
+		 * so this is only for using mpool api to open a file.
+		 */
+
+		if (!FLD_ISSET(dbmfp->config_flags, DB_MPOOL_NOFILE) &&
+		    !F_ISSET(dbmfp, MP_FILEID_SET)) {
+			if ((ret = __db_appname(env,
+			     DB_APP_DATA, path, dirp, &rpath)) != 0)
+				goto err;
+			ret = __os_exists(env, rpath, &isdir);
+			if (ret == 0 && isdir) {
+				ret = EINVAL;
+				goto err;
+			} else if (ret == 0) {
+				if  ((ret = __os_fileid(env,
+				    rpath, 0, dbmfp->fileid)) != 0)
+					goto err;
+				F_SET(dbmfp, MP_FILEID_SET);
+			}
+		}
+
+		/*
 		 * Hash to the proper file table entry and walk it.
 		 *
 		 * The fileID is a filesystem unique number (e.g., a
@@ -165,27 +201,40 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 		 * we ensure that it's never found again, and we create
 		 * a new entry for the current request.
 		 */
+		if (FLD_ISSET(dbmfp->config_flags, DB_MPOOL_NOFILE) ||
+		    F_ISSET(dbmfp, MP_FILEID_SET)) {
+			if (FLD_ISSET(dbmfp->config_flags, DB_MPOOL_NOFILE))
+				bucket = FNBUCKET(path, strlen(path));
+			else
+				bucket = FNBUCKET(dbmfp->fileid,
+				    DB_FILE_ID_LEN);
 
-		if (FLD_ISSET(dbmfp->config_flags, DB_MPOOL_NOFILE))
-			bucket = FNBUCKET(path, strlen(path));
-		else
-			bucket = FNBUCKET(dbmfp->fileid, DB_FILE_ID_LEN);
-		hp += bucket;
-
-		/*
-		 * If we are passed a FILEID find the MPOOLFILE and inc
-		 * its ref count.  That way it cannot go away while we
-		 * open it.
-		 */
-		if (F_ISSET(dbmfp, MP_FILEID_SET)) {
+			hp += bucket;
+			/*
+			 * If we find the MPOOLFILE and inc its ref count.
+			 * That way it cannot go away while we open it.
+			 */
 			MUTEX_LOCK(env, hp->mtx_hash);
 			ret =
-			    __memp_mpf_find(env, dbmfp, hp, path, flags,&mfp);
+			    __memp_mpf_find(env, dbmfp, hp, path, flags, &mfp);
+			if (ret == 0 && mfp != NULL) {
+				refinc = 1;
+
+				if (LF_ISSET(DB_MULTIVERSION)) {
+					if (MFP_OPEN_CNT(mfp) > (u_int32_t)
+					    (LF_ISSET(DB_RDONLY) ? 0 : 1) &&
+					    atomic_read(
+					    &mfp->multiversion) == 0) {
+						MUTEX_UNLOCK(env, hp->mtx_hash);
+						goto mvcc_err;
+					}
+					atomic_inc(env, &mfp->multiversion);
+					F_SET(dbmfp, MP_MULTIVERSION);
+				}
+			}
 			MUTEX_UNLOCK(env, hp->mtx_hash);
 			if (ret != 0)
 				goto err;
-			if (mfp != NULL)
-				refinc = 1;
 		}
 	} else {
 		/*
@@ -195,7 +244,31 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 		 */
 		MUTEX_LOCK(env, mfp->mutex);
 		if (!mfp->deadfile) {
+			if (LF_ISSET(DB_MULTIVERSION)) {
+				MUTEX_UNLOCK(env, mfp->mutex);
+				if (MFP_OPEN_CNT(mfp) > 0 &&
+				     atomic_read(&mfp->multiversion) == 0) {
+mvcc_err:				__db_errx(env, DB_STR("3041",
+"DB_MULTIVERSION cannot be specified on a database file which is already open"));
+					ret = EINVAL;
+					goto err;
+				}
+
+				atomic_inc(env, &mfp->multiversion);
+				F_SET(dbmfp, MP_MULTIVERSION);
+			}
+			/*
+			 * Increment the reference count.  We also track
+			 * those references that don't effect the ability
+			 * to convert the handle to either NOT_DURABLE or
+			 * MVCC.  These are readonly opens or threads that
+			 * are using the handle just to flush a buffer.
+			 */
 			++mfp->mpf_cnt;
+			if (LF_ISSET(DB_FLUSH | DB_RDONLY))
+				++mfp->neutral_cnt;
+			if (LF_ISSET(DB_FLUSH))
+				F_SET(dbmfp, MP_FOR_FLUSH);
 			refinc = 1;
 		}
 		MUTEX_UNLOCK(env, mfp->mutex);
@@ -206,10 +279,16 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 		 * the file to flush a buffer races with the Db::remove method.
 		 * The error will be ignored, so don't output an error message.
 		 */
-		if (mfp->deadfile)
-			return (EINVAL);
+		if (mfp->deadfile) {
+			ret = EINVAL;
+			goto err;
+		}
 	}
 
+	if (LF_ISSET(DB_RDONLY))
+		F_SET(dbmfp, MP_READONLY);
+	if (LF_ISSET(DB_FLUSH))
+		F_SET(dbmfp, MP_FLUSH);
 	/*
 	 * Share the underlying file descriptor if that's possible.
 	 */
@@ -222,6 +301,7 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 				++tmp_dbmfp->fhp->ref;
 				dbmfp->fhp = tmp_dbmfp->fhp;
 				dbmfp->addr = tmp_dbmfp->addr;
+				dbmfp->len = tmp_dbmfp->len;
 				break;
 			}
 		MUTEX_UNLOCK(env, dbmp->mutex);
@@ -240,10 +320,8 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 			oflags |= DB_OSO_CREATE;
 		if (LF_ISSET(DB_DIRECT))
 			oflags |= DB_OSO_DIRECT;
-		if (LF_ISSET(DB_RDONLY)) {
-			F_SET(dbmfp, MP_READONLY);
+		if (LF_ISSET(DB_RDONLY))
 			oflags |= DB_OSO_RDONLY;
-		}
 
 		/*
 		 * XXX
@@ -266,12 +344,20 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 		 * the path name stored in the region, __memp_nameop may
 		 * be simultaneously renaming the file.
 		 */
+
+		ret = 0;
 		if (mfp != NULL) {
 			MPOOL_SYSTEM_LOCK(env);
 			path = R_ADDR(dbmp->reginfo, mfp->path_off);
+			if (rpath != NULL) {
+				__os_free(env, rpath);
+				rpath = NULL;
+			}
 		}
-		if ((ret = __db_appname(env,
-		     DB_APP_DATA, path, dirp, &rpath)) == 0)
+		if (rpath == NULL)
+			ret = __db_appname(env,
+			    DB_APP_DATA, path, dirp, &rpath);
+		if (ret == 0)
 			ret = __os_open(env, rpath,
 			     (u_int32_t)pagesize, oflags, mode, &dbmfp->fhp);
 		if (mfp != NULL)
@@ -305,6 +391,8 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 		 * truncated file; if the file size is not a multiple of the
 		 * page size, round down to a page, we'll take care of the
 		 * partial page outside the mpool system.
+		 *
+		 * Pagesize of 0 is only allowed for in-mem dbs.
 		 */
 		DB_ASSERT(env, pagesize != 0);
 		if (bytes % pagesize != 0) {
@@ -330,6 +418,8 @@ __memp_fopen(dbmfp, mfp, path, dirp, flags, mode, pgsize)
 			     __os_fileid(env, rpath, 0, dbmfp->fileid)) != 0)
 				goto err;
 			F_SET(dbmfp, MP_FILEID_SET);
+			bucket = FNBUCKET(dbmfp->fileid, DB_FILE_ID_LEN);
+			hp += bucket;
 			goto alloc;
 		}
 	}
@@ -353,6 +443,7 @@ check:	MUTEX_LOCK(env, hp->mtx_hash);
 		alloc_mfp = NULL;
 		SH_TAILQ_INSERT_HEAD(&hp->hash_bucket, mfp, q, __mpoolfile);
 	} else if (mfp != NULL) {
+		refinc = 1;
 		/*
 		 * Some things about a file cannot be changed: the clear length,
 		 * page size, or LSN location.  However, if this is an attempt
@@ -383,6 +474,15 @@ check:	MUTEX_LOCK(env, hp->mtx_hash);
 			goto err;
 		}
 	}
+	if (mfp != NULL && LF_ISSET(DB_MULTIVERSION)) {
+		if (MFP_OPEN_CNT(mfp) > 1 &&
+		    atomic_read(&mfp->multiversion) == 0) {
+			MUTEX_UNLOCK(env, hp->mtx_hash);
+			goto mvcc_err;
+		}
+		atomic_inc(env, &mfp->multiversion);
+		F_SET(dbmfp, MP_MULTIVERSION);
+	}
 
 	MUTEX_UNLOCK(env, hp->mtx_hash);
 	if (alloc_mfp != NULL) {
@@ -402,18 +502,7 @@ check:	MUTEX_LOCK(env, hp->mtx_hash);
 			goto err;
 		}
 
-alloc:		/*
-		 * Get the file ID if we weren't given one.  Generated file
-		 * ID's don't use timestamps, otherwise there'd be no
-		 * chance of any other process joining the party.
-		 */
-		if (path != NULL &&
-		     !FLD_ISSET(dbmfp->config_flags, DB_MPOOL_NOFILE) &&
-		     !F_ISSET(dbmfp, MP_FILEID_SET) && (ret =
-			    __os_fileid(env, rpath, 0, dbmfp->fileid)) != 0)
-				goto err;
-
-		if ((ret = __memp_mpf_alloc(dbmp,
+alloc:		if ((ret = __memp_mpf_alloc(dbmp,
 		     dbmfp, path, pagesize, flags, &alloc_mfp)) != 0)
 			goto err;
 
@@ -440,6 +529,12 @@ alloc:		/*
 			goto check;
 
 		mfp = alloc_mfp;
+
+		if (LF_ISSET(DB_MULTIVERSION)) {
+			atomic_inc(env, &mfp->multiversion);
+			F_SET(dbmfp, MP_MULTIVERSION);
+		}
+
 		/* This is a temp, noone else can see it, put it at the end. */
 		MUTEX_LOCK(env, hp->mtx_hash);
 		SH_TAILQ_INSERT_TAIL(&hp->hash_bucket, mfp, q);
@@ -463,11 +558,6 @@ have_mfp:
 			ret = EINVAL;
 			goto err;
 		}
-	}
-
-	if (LF_ISSET(DB_MULTIVERSION)) {
-		atomic_inc(env, &mfp->multiversion);
-		F_SET(dbmfp, MP_MULTIVERSION);
 	}
 
 	/*
@@ -551,6 +641,10 @@ err:		if (refinc) {
 			 */
 			MUTEX_LOCK(env, mfp->mutex);
 			--mfp->mpf_cnt;
+			if (LF_ISSET(DB_FLUSH | DB_RDONLY)) {
+				DB_ASSERT(env, mfp->neutral_cnt != 0);
+				--mfp->neutral_cnt;
+			}
 			MUTEX_UNLOCK(env, mfp->mutex);
 		}
 
@@ -640,6 +734,10 @@ __memp_mpf_find(env, dbmfp, hp, path, flags, mfpp)
 			continue;
 		}
 		++mfp->mpf_cnt;
+		if (LF_ISSET(DB_FLUSH | DB_RDONLY))
+			++mfp->neutral_cnt;
+		if (LF_ISSET(DB_FLUSH))
+			F_SET(dbmfp, MP_FOR_FLUSH);
 		MUTEX_UNLOCK(env, mfp->mutex);
 
 		/* Initialize any fields that are not yet set. */
@@ -679,6 +777,10 @@ __memp_mpf_alloc(dbmp, dbmfp, path, pagesize, flags, retmfp)
 		goto err;
 	memset(mfp, 0, sizeof(MPOOLFILE));
 	mfp->mpf_cnt = 1;
+	if (LF_ISSET(DB_FLUSH | DB_RDONLY))
+		mfp->neutral_cnt = 1;
+	if (LF_ISSET(DB_FLUSH))
+		F_SET(dbmfp, MP_FOR_FLUSH);
 	mfp->ftype = dbmfp->ftype;
 	mfp->pagesize = pagesize;
 	mfp->lsn_off = dbmfp->lsn_offset;
@@ -752,6 +854,11 @@ __memp_mpf_alloc(dbmp, dbmfp, path, pagesize, flags, retmfp)
 	if ((ret = __mutex_alloc(env,
 	    MTX_MPOOLFILE_HANDLE, 0, &mfp->mutex)) != 0)
 		goto err;
+#ifndef HAVE_ATOMICFILEREAD
+	if ((ret = __mutex_alloc(env,
+	    MTX_MPOOLFILE_HANDLE, DB_MUTEX_SHARED, &mfp->mtx_write)) != 0)
+		goto err;
+#endif
 	*retmfp = mfp;
 
 err:	return (ret);
@@ -845,7 +952,7 @@ __memp_fclose(dbmfp, flags)
 	}
 
 	/* Discard any mmap information. */
-	if (dbmfp->addr != NULL &&
+	if (dbmfp->addr != NULL && dbmfp->fhp != NULL &&
 	    (ret = __os_unmapfile(env, dbmfp->addr, dbmfp->len)) != 0)
 		__db_err(env, ret, "%s", __memp_fn(dbmfp));
 
@@ -890,6 +997,12 @@ __memp_fclose(dbmfp, flags)
 		MUTEX_LOCK(env, mfp->mutex);
 	if (F_ISSET(dbmfp, MP_MULTIVERSION))
 		atomic_dec(env, &mfp->multiversion);
+	if (F_ISSET(dbmfp, MP_READONLY) ||
+	    (LF_ISSET(DB_FLUSH) && F_ISSET(dbmfp, MP_FOR_FLUSH))) {
+		DB_ASSERT(env, mfp->neutral_cnt != 0);
+		--mfp->neutral_cnt;
+	}
+	DB_ASSERT(env, mfp->neutral_cnt < mfp->mpf_cnt);
 	if (--mfp->mpf_cnt == 0 || LF_ISSET(DB_MPOOL_DISCARD)) {
 		if (LF_ISSET(DB_MPOOL_DISCARD) ||
 		    F_ISSET(mfp, MP_TEMP) || mfp->unlink_on_close) {
@@ -907,7 +1020,7 @@ __memp_fclose(dbmfp, flags)
 				__os_free(env, rpath);
 			}
 		}
-		if (mfp->mpf_cnt == 0) {
+		if (MFP_OPEN_CNT(mfp) == 0) {
 			F_CLR(mfp, MP_NOT_DURABLE);
 			F_SET(mfp, MP_DURABLE_UNKNOWN);
 		}
@@ -986,6 +1099,10 @@ __memp_mf_discard(dbmp, mfp, hp_locked)
 	MUTEX_UNLOCK(env, mfp->mutex);
 	if ((t_ret = __mutex_free(env, &mfp->mutex)) != 0 && ret == 0)
 		ret = t_ret;
+#ifndef HAVE_ATOMICFILEREAD
+	if ((ret = __mutex_free(env, &mfp->mtx_write)) != 0 && ret == 0)
+		ret = t_ret;
+#endif
 
 	/*
 	 * Lock the bucket and delete from the list of MPOOLFILEs.

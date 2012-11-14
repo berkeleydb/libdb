@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -40,18 +40,24 @@ __os_id(dbenv, pidp, tidp)
 			*pidp = dbenv->env->pid_cache;
 	}
 
+/* 
+ * When building on MinGW, we define both HAVE_PTHREAD_SELF and DB_WIN32,
+ * and we are using pthreads instead of Windows threads implementation.
+ * So here, we need to check the thread implementations before checking
+ * the platform.
+ */
 	if (tidp != NULL) {
-#if defined(DB_WIN32)
-		*tidp = GetCurrentThreadId();
+#if defined(HAVE_PTHREAD_SELF)
+		*tidp = pthread_self();
 #elif defined(HAVE_MUTEX_UI_THREADS)
 		*tidp = thr_self();
-#elif defined(HAVE_PTHREAD_SELF)
-		*tidp = pthread_self();
+#elif defined(DB_WIN32)
+		*tidp = GetCurrentThreadId();
 #else
 		/*
 		 * Default to just getpid.
 		 */
-		*tidp = 0;
+		DB_THREADID_INIT(*tidp);
 #endif
 	}
 }

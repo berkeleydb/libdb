@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -460,9 +460,8 @@ __mutex_resource_return(env, infop)
 		    (size -= sizeof(*mutexp)) < sizeof(*mutexp)) {
 			mutexp = __env_get_chunk(&mtxmgr->reginfo,
 			    &chunk, &size);
-			mutexp = ALIGNP_INC(mutexp,
-			    mtxregion->stat.st_mutex_align);
 		}
+		mutexp = ALIGNP_INC(mutexp, mtxregion->stat.st_mutex_align);
 	}
 	env->mutex_handle = orig_handle;
 }

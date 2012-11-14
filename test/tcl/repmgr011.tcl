@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2007, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -50,18 +50,13 @@ proc repmgr011_sub { method niter tnum largs } {
 	file mkdir $clientdir
 	file mkdir $clientdir2
 
-	# Use different connection retry timeout values to handle any
-	# collisions from starting sites at the same time by retrying
-	# at different times.
-
 	# Open first client as master and set 2site_strict.
 	puts "\tRepmgr$tnum.a: Start first client as master."
 	set cl_envcmd "berkdb_env_noerr -create $verbargs \
 	    -errpfx CLIENT -home $clientdir -txn -rep -thread"
 	set clientenv [eval $cl_envcmd]
 	$clientenv repmgr -ack all \
-	    -timeout {connection_retry 20000000} \
-	    -local [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 0]] \
 	    -start master
 	error_check_good c1strict [$clientenv rep_config {mgr2sitestrict on}] 0
 
@@ -71,9 +66,8 @@ proc repmgr011_sub { method niter tnum largs } {
 	    -errpfx CLIENT2 -home $clientdir2 -txn -rep -thread"
 	set clientenv2 [eval $cl2_envcmd]
 	$clientenv2 repmgr -ack all \
-	    -timeout {connection_retry 10000000} \
-	    -local [list localhost [lindex $ports 1]] \
-	    -remote [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 1]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
 	    -start client
 	await_startup_done $clientenv2
 	error_check_good c2strict [$clientenv2 rep_config \
@@ -99,9 +93,8 @@ proc repmgr011_sub { method niter tnum largs } {
 	puts "\tRepmgr$tnum.g: Restart first client as master"
 	set clientenv [eval $cl_envcmd]
 	$clientenv repmgr -ack all \
-	    -timeout {connection_retry 20000000} \
-	    -local [list localhost [lindex $ports 0]] \
-	    -remote [list localhost [lindex $ports 1]] \
+	    -local [list 127.0.0.1 [lindex $ports 0]] \
+	    -remote [list 127.0.0.1 [lindex $ports 1]] \
 	    -start master
 	await_expected_master $clientenv
 

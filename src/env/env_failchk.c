@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -88,6 +88,9 @@ __env_failchk_int(dbenv)
 	if (TXN_ON(env) &&
 	    ((ret = __txn_failchk(env)) != 0 ||
 	    (ret = __dbreg_failchk(env)) != 0))
+		goto err;
+
+	if ((ret = __memp_failchk(env)) != 0)
 		goto err;
 
 #ifdef HAVE_REPLICATION_THREADS
@@ -428,7 +431,11 @@ __env_set_state(env, ipp, state)
 #else
 		if (memcmp(&id.pid, &ip->dbth_pid, sizeof(id.pid)) != 0)
 			continue;
+#ifdef HAVE_MUTEX_PTHREADS
+		if (pthread_equal(id.tid, ip->dbth_tid) == 0)
+#else
 		if (memcmp(&id.tid, &ip->dbth_tid, sizeof(id.tid)) != 0)
+#endif
 			continue;
 		break;
 #endif
@@ -441,7 +448,7 @@ __env_set_state(env, ipp, state)
 	if (state == THREAD_VERIFY) {
 		DB_ASSERT(env, ip != NULL && ip->dbth_state != THREAD_OUT);
 		if (ipp != NULL) {
-			if (ip == NULL) /* The control block wasnt found */
+			if (ip == NULL) /* The control block wasn't found */
 				return (EINVAL);
 			*ipp = ip;
 		}

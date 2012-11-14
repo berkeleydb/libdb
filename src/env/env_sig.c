@@ -30,7 +30,7 @@
 #ifdef HAVE_MIXED_SIZE_ADDRESSING
 #define	__STRUCTURE_COUNT	41
 #else
-#define	__STRUCTURE_COUNT	(41 + 103)
+#define	__STRUCTURE_COUNT	(41 + 104)
 #endif
 
 /*
@@ -127,6 +127,7 @@ __env_struct_sig()
 	__ADD(__pin_list);
 	__ADD(__env_thread_info);
 	__ADD(__flag_map);
+	__ADD(__db_backup_handle);
 	__ADD(__env);
 	__ADD(__dbc_internal);
 	__ADD(__dbpginfo);

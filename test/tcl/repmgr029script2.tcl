@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 
@@ -33,7 +33,7 @@ error_check_good a_txn_A_1 $active_txn_1 1
 
 puts "Repmgr029script2: Start up B. It finishes when the txn has been aborted."
 set envB [berkdb env -create -errpfx B -home $dirB -txn -rep -thread]
-$envB repmgr -local [list localhost $portB] -remote [list localhost $portA] \
+$envB repmgr -local [list 127.0.0.1 $portB] -remote [list 127.0.0.1 $portA] \
     -start client
 await_startup_done $envB
 error_check_good a_txn_A_0 [stat_field $envA txn_stat "Number active txns"] 0

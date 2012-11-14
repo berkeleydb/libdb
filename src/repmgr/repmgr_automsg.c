@@ -433,7 +433,10 @@ __repmgr_membership_key_unmarshal(env, argp, bp, max, nextp)
 	if (max < needed)
 		goto too_few;
 	DB_NTOHL_COPYIN(env, argp->host.size, bp);
-	argp->host.data = bp;
+	if (argp->host.size == 0)
+		argp->host.data = NULL;
+	else
+		argp->host.data = bp;
 	needed += (size_t)argp->host.size;
 	if (max < needed)
 		goto too_few;
@@ -580,7 +583,10 @@ __repmgr_gm_fwd_unmarshal(env, argp, bp, max, nextp)
 	if (max < needed)
 		goto too_few;
 	DB_NTOHL_COPYIN(env, argp->host.size, bp);
-	argp->host.data = bp;
+	if (argp->host.size == 0)
+		argp->host.data = NULL;
+	else
+		argp->host.data = bp;
 	needed += (size_t)argp->host.size;
 	if (max < needed)
 		goto too_few;
@@ -687,7 +693,10 @@ __repmgr_site_info_unmarshal(env, argp, bp, max, nextp)
 	if (max < needed)
 		goto too_few;
 	DB_NTOHL_COPYIN(env, argp->host.size, bp);
-	argp->host.data = bp;
+	if (argp->host.size == 0)
+		argp->host.data = NULL;
+	else
+		argp->host.data = bp;
 	needed += (size_t)argp->host.size;
 	if (max < needed)
 		goto too_few;

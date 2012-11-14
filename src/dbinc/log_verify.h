@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -115,7 +115,7 @@ struct __lv_filereg_info {
 struct __lv_filelife {
 	int32_t dbregid;	/* The primary key. */
 	DBTYPE dbtype;		/* The database type. */
-	u_int32_t lifetime;	/* DBREG_OPEN, DBREG_CHKPNT, DBREG_CLOSE */
+	u_int32_t lifetime;	/* DBREG_CHKPNT, DBREG_CLOSE, DBREG_OPEN, DBREG_XCHKPNT, DBREG_XOPEN */
 	db_pgno_t meta_pgno;	/* The meta_pgno; */
 	u_int8_t fileid[DB_FILE_ID_LEN];
 	DB_LSN lsn;		/* The lsn of log updating lifetime. */
@@ -193,11 +193,13 @@ struct __ckp_verify_params {
 #define INVAL_DBREGID -1
 
 /* 
- * During recovery, DBREG_CHKPNT can be seen as open, and it's followed by 
- * a DBREG_RCLOSE or DBREG_CLOSE. 
+ * During recovery, DBREG_CHKPNT and DBREG_XCHKPNT can be seen as open,
+ * and it's followed by a DBREG_RCLOSE or DBREG_CLOSE. 
  */
 #define IS_DBREG_OPEN(opcode) (opcode == DBREG_OPEN || opcode == \
-	DBREG_PREOPEN || opcode == DBREG_REOPEN || opcode == DBREG_CHKPNT)
+	DBREG_PREOPEN || opcode == DBREG_REOPEN || opcode == DBREG_CHKPNT \
+	|| opcode == DBREG_XCHKPNT || opcode == DBREG_XOPEN || \
+	opcode == DBREG_XREOPEN)
 #define IS_DBREG_CLOSE(opcode) (opcode == DBREG_CLOSE || opcode == DBREG_RCLOSE)
 
 #define IS_LOG_VRFY_SUPPORTED(version) ((version) == DB_LOGVERSION)

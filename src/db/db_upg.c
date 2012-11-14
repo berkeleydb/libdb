@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -316,6 +316,11 @@ __db_upgrade(dbp, fname, flags)
 			goto err;
 		}
 		break;
+	case DB_HEAPMAGIC:
+		/*
+		 * There's no upgrade needed for Heap yet.
+		 */
+		break;
 	case DB_QAMMAGIC:
 		switch (((DBMETA *)mbuf)->version) {
 		case 1:
@@ -352,6 +357,7 @@ __db_upgrade(dbp, fname, flags)
 		switch (((DBMETA *)mbuf)->magic) {
 		case DB_BTREEMAGIC:
 		case DB_HASHMAGIC:
+		case DB_HEAPMAGIC:
 		case DB_QAMMAGIC:
 			__db_errx(env, DB_STR_A("0670",
 		"%s: DB->upgrade only supported on native byte-order systems",

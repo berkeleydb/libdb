@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -143,12 +143,13 @@ __repmgr_wake_waiters(env, w)
 	db_rep = env->rep_handle;
 	waiters = *w;
 	for (i = 0; i < waiters->next_avail; i++) {
-		 slot = &waiters->array[i];
-		 if (!WAITER_SLOT_IN_USE(slot))
-			 continue;
-		 if ((*slot->pred)(env, slot->ctx) || db_rep->finished)
-			 if (!SetEvent(slot->event) && ret == 0)
-				 ret = GetLastError();
+		slot = &waiters->array[i];
+		if (!WAITER_SLOT_IN_USE(slot))
+			continue;
+		if ((*slot->pred)(env, slot->ctx) ||
+		    db_rep->repmgr_status == stopped)
+			if (!SetEvent(slot->event) && ret == 0)
+				ret = GetLastError();
 	}
 	return (ret);
 }
@@ -194,7 +195,7 @@ __repmgr_await_cond(env, pred, ctx, timeout, waiters_p)
 
 	LOCK_MUTEX(db_rep->mutex);
 	free_wait_slot(env, i, waiters);
-	if (db_rep->finished)
+	if (db_rep->repmgr_status == stopped)
 		ret = DB_REP_UNAVAIL;
 
 err:
@@ -245,6 +246,14 @@ allocate_wait_slot(env, resultp, table)
 		w = &table->array[i];
 		table->first_free = w->next_free;
 	}
+	/*
+	 * Make sure this event state is nonsignaled. It is possible that
+	 * late processing could have signaled this event after the end of
+	 * the previous wait but before reacquiring the mutex, and this
+	 * extra signal would incorrectly cause the next wait to return
+	 * immediately.
+	 */ 
+	(void)WaitForSingleObject(w->event, 0);
 	*resultp = i;
 	return (0);
 }
@@ -332,7 +341,7 @@ __repmgr_await_drain(env, conn, timeout)
 		} else
 			DB_ASSERT(env, ret == WAIT_OBJECT_0);
 
-		if (db_rep->finished)
+		if (db_rep->repmgr_status == stopped)
 			return (0);
 		if (conn->state == CONN_DEFUNCT)
 			return (DB_REP_UNAVAIL);
@@ -682,7 +691,7 @@ __repmgr_select_loop(env)
 		UNLOCK_MUTEX(db_rep->mutex);
 		ret = WSAWaitForMultipleEvents(
 		    io_info.nevents, events, FALSE, select_timeout, FALSE);
-		if (db_rep->finished) {
+		if (db_rep->repmgr_status == stopped) {
 			ret = 0;
 			goto out;
 		}
@@ -732,6 +741,11 @@ unlock:
 out:
 	if (!CloseHandle(listen_event) && ret == 0)
 		ret = GetLastError();
+	if (ret == DB_DELETED)
+		ret = __repmgr_bow_out(env);
+	LOCK_MUTEX(db_rep->mutex);
+	(void)__repmgr_net_close(env);
+	UNLOCK_MUTEX(db_rep->mutex);
 	return (ret);
 }
 

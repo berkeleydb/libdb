@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2004, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2004, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -212,6 +212,9 @@ master:		LOG_SYSTEM_LOCK(env);
 		FLD_SET(rep->elect_flags, REP_E_PHASE0);
 		egen = rep->egen;
 		REP_SYSTEM_UNLOCK(env);
+		VPRINT(env, (env, DB_VERB_REP_ELECT,
+		    "PHASE0 waittime from rep_lease_waittime: %lu",
+		    (u_long)timeout));
 		(void)__rep_send_message(env, DB_EID_BROADCAST,
 		    REP_MASTER_REQ, NULL, NULL, 0, 0);
 
@@ -246,8 +249,12 @@ master:		LOG_SYSTEM_LOCK(env);
 		    "after PHASE0 wait, flags 0x%x, elect_flags 0x%x",
 		    rep->flags, rep->elect_flags));
 		if (!FLD_ISSET(repflags, REP_E_PHASE0) ||
-		    __rep_islease_granted(env) || egen != rep->egen)
+		    __rep_islease_granted(env) || egen != rep->egen) {
+			VPRINT(env, (env, DB_VERB_REP_ELECT,
+    "PHASE0 Done: repflags 0x%x, egen %d rep->egen %d, lease_granted %d",
+    repflags, egen, rep->egen, __rep_islease_granted(env)));
 			goto unlck_lv;
+		}
 		F_SET(rep, REP_F_LEASE_EXPIRED);
 	}
 
@@ -917,8 +924,6 @@ __rep_vote2(env, rp, rec, eid)
 		LOG_SYSTEM_LOCK(env);
 		lsn = lp->lsn;
 		LOG_SYSTEM_UNLOCK(env);
-		STAT_INC(env,
-		    rep, election_won, rep->stat.st_elections_won, rep->egen);
 		(void)__rep_send_message(env,
 		    DB_EID_BROADCAST, REP_NEWMASTER, &lsn, NULL, 0, 0);
 		if (IS_USING_LEASES(env))

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2004, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2004, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -103,11 +103,17 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	set log_buf [expr $pagesize * 2]
 	set log_max [expr $log_buf * 4]
 
+	set cacheargs ""
+	if { $databases_in_memory } {
+		set cachesize [expr 1024 * 1024]
+		set cacheargs "-cachesize { 0 $cachesize 1 }"
+	}
+
 	# Open a master.
 	repladd 1
 	set ma_envcmd "berkdb_env_noerr -create -txn nosync \
 	    -log_buffer $log_buf -log_max $log_max $envargs \
-	    -errpfx MASTER $verbargs $repmemargs \
+	    -errpfx MASTER $verbargs $repmemargs $cacheargs \
 	    -home $masterdir -rep_transport \[list 1 replsend\]"
 	set masterenv [eval $ma_envcmd $recargs -rep_master]
 
@@ -115,7 +121,7 @@ proc rep033_sub { method niter tnum envargs recargs clean when largs } {
 	repladd 2
 	set cl_envcmd "berkdb_env_noerr -create -txn nosync \
 	    -log_buffer $log_buf -log_max $log_max $envargs \
-	    -errpfx CLIENT $verbargs $repmemargs \
+	    -errpfx CLIENT $verbargs $repmemargs $cacheargs \
 	    -home $clientdir -rep_transport \[list 2 replsend\]"
 	set clientenv [eval $cl_envcmd $recargs -rep_client]
 

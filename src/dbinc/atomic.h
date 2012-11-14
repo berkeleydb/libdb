@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -29,7 +29,7 @@ extern "C" {
  *	    If the db_atomic_t's value is still oldval, set it to newval.
  *	    It returns 1 for success or 0 for failure.
  *
- * The ENV * paramter is used only when HAVE_ATOMIC_SUPPORT is undefined.
+ * The ENV * parameter is used only when HAVE_ATOMIC_SUPPORT is undefined.
  *
  * If the platform does not natively support any one of these operations,
  * then atomic operations will be emulated with this sequence:

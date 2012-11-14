@@ -26,6 +26,7 @@ void __log_inmem_copyin __P((DB_LOG *, size_t, void *, size_t));
 void __log_set_version __P((ENV *, u_int32_t));
 int __log_get_oldversion __P((ENV *, u_int32_t *));
 int __log_archive_pp __P((DB_ENV *, char **[], u_int32_t));
+int __log_archive __P((ENV *, char **[], u_int32_t));
 int __log_get_stable_lsn __P((ENV *, DB_LSN *, int));
 void __log_autoremove __P((ENV *));
 int __log_check_page_lsn __P((ENV *, DB *, DB_LSN *));

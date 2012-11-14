@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2006, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2006, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -119,7 +119,9 @@ proc rep065_sub { iter mv nsites slist } {
 		set histdirs($sid) $histtestdir/SITE.$i
 		set upgdir($sid) $controldir/$testdir/SITE.$i
 		file mkdir $histdirs($sid)
+		file mkdir $histdirs($sid)/DATADIR
 		file mkdir $upgdir($sid)
+		file mkdir $upgdir($sid)/DATADIR
 	}
 
 	# Open master env running 4.4.
@@ -378,20 +380,34 @@ proc get_master { nsites verslist } {
 }
 
 proc method_version { } {
-	global valid_methods
 
-	set methods $valid_methods
+	set mv {}
+
+	# Set up version 5.2, which adds the method 'heap'.  Since 
+	# heap is new, we'd like to test it heavily.  Always test a 
+	# 5.2/heap pair, plus one other 5.2 with a random non-heap 
+	# version.  Here's the hard-coded one:
+	set db52 "db-5.2.36"
+	lappend mv [list heap $db52]
+
+	set methods {btree rbtree recno frecno rrecno queue queueext hash}
+	set methods_len [expr [llength $methods] - 1]
+	set midx [berkdb random_int 0 $methods_len]
+	set method [lindex $methods $midx]
+	lappend mv [list $method $db52]
+
+	# Now take care of versions 4.4 though 5.1, which share
+	# the same list of eight valid methods.
 	set remaining_methods $methods
 	set methods_len [expr [llength $remaining_methods] - 1]
 
-	set versions {db-5.1.25 db-5.0.26 \
+	set versions {db-5.1.25 db-5.0.32 \
 	    db-4.8.30 db-4.7.25 db-4.6.21 db-4.5.20 db-4.4.20}
 	set remaining_versions $versions
 	set versions_len [expr [llength $remaining_versions] - 1]
 
 	# Walk through the list of methods and the list of versions and
 	# pair them at random.  Stop when either list is empty.
-	set mv {}
 	while { $versions_len >= 0 && $methods_len >= 0 } {
 		set vidx [berkdb random_int 0 $versions_len]
 		set midx [berkdb random_int 0 $methods_len]
@@ -405,20 +421,18 @@ proc method_version { } {
 		incr versions_len -1
 		incr methods_len -1
 
-		if { $method != "heap" } {
-			lappend mv [list $method $version]
-		}
+		lappend mv [list $method $version]
 	}
-		
+
 	# If there are remaining versions, randomly assign any of 
 	# the original methods to each one.
 	while { $versions_len >= 0 } {
 
-		set methods_len [expr [llength $valid_methods] - 1]
+		set methods_len [expr [llength $methods] - 1]
 		set midx [berkdb random_int 0 $methods_len]
 
 		set version [lindex $remaining_versions 0]
-		set method [lindex $valid_methods $midx]
+		set method [lindex $methods $midx]
 
 		set remaining_versions [lreplace $remaining_versions 0 0]
 		incr versions_len -1

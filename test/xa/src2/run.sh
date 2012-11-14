@@ -42,19 +42,24 @@ test "$DVERBOSE" == 1 && {
 	DVERBOSE_FLAG="-v"
 }
 CFLAGS="$COMPILE_FLAGS -I$DB_INSTALL/include -L$DB_INSTALL/lib"; export CFLAGS
-buildserver $DVERBOSE_FLAG -f ../../src2/bdb1.c -o bdb1 -r "BERKELEY-DB" -s WRITE  -s CURSOR
+UTILITY_FILES="-f ../../utilities/bdb_xa_util.c"
+
+buildserver $DVERBOSE_FLAG $UTILITY_FILES \
+-f ../../src2/bdb1.c -o bdb1 -r "BERKELEY-DB" -s WRITE  -s CURSOR
 test "$?" -eq 0 || {
 	echo "FAIL: buildserver 1 failed."
 	exit 1
 }
 
-buildserver $DVERBOSE_FLAG -f ../../src2/bdb2.c -o bdb2 -r "BERKELEY-DB" -s WRITE2
+buildserver $DVERBOSE_FLAG $UTILITY_FILES \
+-f ../../src2/bdb2.c -o bdb2 -r "BERKELEY-DB" -s WRITE2
 test "$?" -eq 0 || {
 	echo "FAIL: buildserver 2 failed."
 	exit 1
 }
 
-buildclient $DVERBOSE_FLAG -f ../../src2/client.c -o client
+buildclient $DVERBOSE_FLAG $UTILITY_FILES \
+-r "BERKELEY-DB" -f ../../src2/client.c -o client
 test "$?" -eq 0 || {
 	echo "FAIL: buildclient failed."
 	exit 1

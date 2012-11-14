@@ -156,7 +156,8 @@ if test "$db_cv_mingw" = yes; then
 fi
 
 if test "$db_cv_mutex" = no; then
-	# User-specified POSIX or UI mutexes.
+	# Check for the availability of POSIX or UI mutexes; also check
+	# whether the user has specified POSIX with --enable-posixmutexes.
 	#
 	# There are two different reasons to specify mutexes: First, the
 	# application is already using one type of mutex and doesn't want
@@ -178,21 +179,35 @@ if test "$db_cv_mutex" = no; then
 
 	# POSIX.1 pthreads: pthread_XXX
 	#
-	# If the user specified we use POSIX pthreads mutexes, and we fail to
-	# find the full interface, try and configure for just intra-process
-	# support.
-	if test "$db_cv_mutex" = no -o "$db_cv_mutex" = posix_only; then
-		LIBS="$LIBS -lpthread"
-		AM_PTHREADS_SHARED(POSIX/pthreads/library)
-		AM_PTHREADS_CONDVAR_DUPINITCHK
-		AM_PTHREADS_RWLOCKVAR_DUPINITCHK
-		LIBS="$orig_libs"
-	fi
-	if test "$db_cv_mutex" = no -o "$db_cv_mutex" = posix_only; then
-		AM_PTHREADS_SHARED(POSIX/pthreads)
-		AM_PTHREADS_CONDVAR_DUPINITCHK
-		AM_PTHREADS_RWLOCKVAR_DUPINITCHK
-	fi
+	# If we find POSIX pthreads mutexes but not the full interface,
+	# try to configure for just intra-process support.
+	case "$host_os" in
+	    darwin*)
+		# Mac OS 10.7 Lion has broken pthread_*_setpshared() calls.
+		# Most BSD-like operating systems have pointers in their mutex
+		# and condition variables, and cannot be shared between
+		# proceses.  Earlier Mac OS releases correctly returned EINVAL
+		# from *_setpshared(PTHREAD_PROCESS_SHARED), but 10.7 returns
+		# success. Since we can't trust those calls anymore we now
+		# avoid these probes for multiprocess pthreads.
+		;;
+	    *)
+		if test "$db_cv_mutex" = no -o "$db_cv_mutex" = posix_only; then
+			LIBS="$LIBS -lpthread"
+			AM_PTHREADS_SHARED(POSIX/pthreads/library)
+			AM_PTHREADS_CONDVAR_DUPINITCHK
+			AM_PTHREADS_RWLOCKVAR_DUPINITCHK
+			LIBS="$orig_libs"
+		fi
+		if test "$db_cv_mutex" = no -o "$db_cv_mutex" = posix_only; then
+			AM_PTHREADS_SHARED(POSIX/pthreads)
+			AM_PTHREADS_CONDVAR_DUPINITCHK
+			AM_PTHREADS_RWLOCKVAR_DUPINITCHK
+		fi
+		;;
+	esac
+	# We probe for private pthreads only when the user has asked for posix
+	# mutexes and we don't have a multiprocess pthreads library available. 
 	if test "$db_cv_mutex" = posix_only; then
 		AM_PTHREADS_PRIVATE(POSIX/pthreads/private)
 		AM_PTHREADS_CONDVAR_DUPINITCHK

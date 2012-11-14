@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -574,7 +574,8 @@ __db_hybrid_mutex_suspend(env, mutex, timespec, exclusive)
 	MUTEX_MEMBAR(mutexp->wait);
 	while (exclusive ? MUTEXP_IS_BUSY(mutexp) :
 	    atomic_read(&mutexp->sharecount) == MUTEX_SHARE_ISEXCLUSIVE) {
-		t_ret = __db_pthread_mutex_condwait(env, mutex, mutexp, timespec);
+		t_ret = __db_pthread_mutex_condwait(env,
+		    mutex, mutexp, timespec);
 		if (t_ret != 0) {
 			if (t_ret == DB_TIMEOUT)
 				break;

@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2007, 2011 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2007, 2012 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -52,17 +52,12 @@ proc repmgr013_sub { method niter tnum largs } {
 	file mkdir $clientdir
 	file mkdir $clientdir2
 
-	# Use different connection retry timeout values to handle any
-	# collisions from starting sites at the same time by retrying
-	# at different times.
-
 	puts "\tRepmgr$tnum.a: Start a master."
 	set ma_envcmd "berkdb_env_noerr -create $verbargs \
 	    -errpfx MASTER -home $masterdir -txn -rep -thread"
 	set masterenv [eval $ma_envcmd]
 	$masterenv repmgr -ack all \
-	    -timeout {connection_retry 20000000} \
-	    -local [list localhost [lindex $ports 0]] \
+	    -local [list 127.0.0.1 [lindex $ports 0]] \
 	    -start master
 
 	puts "\tRepmgr$tnum.b: Start first client."
@@ -70,10 +65,9 @@ proc repmgr013_sub { method niter tnum largs } {
 	    -errpfx CLIENT -home $clientdir -txn -rep -thread"
 	set clientenv [eval $cl_envcmd]
 	$clientenv repmgr -ack all \
-	    -timeout {connection_retry 10000000} \
-	    -local [list localhost [lindex $ports 1]] \
-	    -remote [list localhost [lindex $ports 0]] \
-	    -remote [list localhost [lindex $ports 2]] \
+	    -local [list 127.0.0.1 [lindex $ports 1]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
+	    -remote [list 127.0.0.1 [lindex $ports 2]] \
 	    -start client
 	await_startup_done $clientenv
 
@@ -82,10 +76,9 @@ proc repmgr013_sub { method niter tnum largs } {
 	    -errpfx CLIENT2 -home $clientdir2 -txn -rep -thread"
 	set clientenv2 [eval $cl2_envcmd]
 	$clientenv2 repmgr -ack all \
-	    -timeout {connection_retry 5000000} \
-	    -local [list localhost [lindex $ports 2]] \
-	    -remote [list localhost [lindex $ports 0]] \
-	    -remote [list localhost [lindex $ports 1] peer] \
+	    -local [list 127.0.0.1 [lindex $ports 2]] \
+	    -remote [list 127.0.0.1 [lindex $ports 0]] \
+	    -remote [list 127.0.0.1 [lindex $ports 1] peer] \
 	    -start client
 	await_startup_done $clientenv2
 
@@ -113,7 +106,7 @@ proc verify_sitelist { env numsites peervec } {
 	foreach tuple $sitelist {
 		error_check_good eidchk [string is integer -strict \
 					     [lindex $tuple 0]] 1
-		error_check_good hostchk [lindex $tuple 1] "localhost"
+		error_check_good hostchk [lindex $tuple 1] "127.0.0.1"
 		set port [lindex $tuple 2]
 		error_check_good portchk [string is integer -strict $port] 1
 		error_check_good statchk [lindex $tuple 3] connected

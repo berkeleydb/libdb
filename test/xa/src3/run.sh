@@ -33,11 +33,12 @@ test "$DVERBOSE" == 1 && {
 	DVERBOSE_FLAG="-v"
 }
 COMPILE_FLAGS="$CFLAGS $COMPILE_FLAGS -g -I../../.."
+UTILITY_FILES="-f ../../utilities/bdb_xa_util.c"
 
 msg "BUILDING CLIENT"
 CFLAGS="$COMPILE_FLAGS"; export CFLAGS
 buildclient -r BERKELEY-DB $DVERBOSE_FLAG -o client \
- -f ../../src3/client.c
+$UTILITY_FILES -f ../../src3/client.c
 test "$?" -eq 0 || {
 	echo "FAIL: buildclient failed."
 	exit 1
@@ -46,7 +47,7 @@ test "$?" -eq 0 || {
 msg "BUILDING SERVER #1"
 CFLAGS="$COMPILE_FLAGS -DSERVER1"; export CFLAGS
 buildserver -r BERKELEY-DB  $DVERBOSE_FLAG -t -o server1 \
-  -s TestThread1:TestThread1 -f ../../src3/server.c
+  -s TestThread1:TestThread1 $UTILITY_FILES -f ../../src3/server.c
 test "$?" -eq 0 || {
 	echo "FAIL: buildserver failed."
 	exit 1
@@ -55,7 +56,7 @@ test "$?" -eq 0 || {
 msg "BUILDING SERVER #2"
 CFLAGS="$COMPILE_FLAGS -DSERVER2"; export CFLAGS
 buildserver -r BERKELEY-DB  $DVERBOSE_FLAG -t -o server2 \
-   -s TestThread2:TestThread2 -f ../../src3/server.c
+   -s TestThread2:TestThread2 $UTILITY_FILES -f ../../src3/server.c
 test "$?" -eq 0 || {
 	echo "FAIL: buildserver failed."
 	exit 1

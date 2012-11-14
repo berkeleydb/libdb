@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2011 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -48,6 +48,8 @@ static int  __db_get_encrypt_flags __P((DB *, u_int32_t *));
 static int  __db_set_encrypt __P((DB *, const char *, u_int32_t));
 static int  __db_get_feedback __P((DB *, void (**)(DB *, int, int)));
 static int  __db_set_feedback __P((DB *, void (*)(DB *, int, int)));
+static int  __db_get_lk_exclusive __P((DB *, int *, int *));
+static int  __db_set_lk_exclusive __P((DB *, int));
 static void __db_map_flags __P((DB *, u_int32_t *, u_int32_t *));
 static int  __db_get_pagesize __P((DB *, u_int32_t *));
 static int  __db_set_paniccall __P((DB *, void (*)(DB_ENV *, int)));
@@ -207,7 +209,7 @@ err:	if (dbp != NULL) {
 		__os_free(env, dbp);
 	}
 
-	if (F_ISSET(env, ENV_DBLOCAL))
+	if (dbp != NULL && F_ISSET(env, ENV_DBLOCAL))
 		(void)__env_close(dbp->dbenv, 0);
 
 	return (ret);
@@ -279,6 +281,8 @@ __db_init(dbp, flags)
 	dbp->get_type = __db_get_type;
 	dbp->join = __db_join_pp;
 	dbp->key_range = __db_key_range_pp;
+	dbp->get_lk_exclusive = __db_get_lk_exclusive;
+	dbp->set_lk_exclusive = __db_set_lk_exclusive;
 	dbp->open = __db_open_pp;
 	dbp->pget = __db_pget_pp;
 	dbp->put = __db_put_pp;
@@ -757,6 +761,30 @@ __db_set_feedback(dbp, feedback)
 	void (*feedback) __P((DB *, int, int));
 {
 	dbp->db_feedback = feedback;
+	return (0);
+}
+
+static int
+__db_get_lk_exclusive(dbp, onoff, nowait)
+	DB *dbp;
+	int *onoff;
+	int *nowait;
+{
+	*onoff = (F2_ISSET(dbp, DB2_AM_EXCL) ? 1 : 0);
+	*nowait = (F2_ISSET(dbp, DB2_AM_NOWAIT) ? 1 : 0);
+	return (0);
+}
+
+static int
+__db_set_lk_exclusive(dbp, nowait)
+	DB *dbp;
+	int nowait;
+{
+	DB_ILLEGAL_AFTER_OPEN(dbp, "DB->set_lk_exclusive");
+
+	F2_CLR(dbp, DB2_AM_NOWAIT);
+	F2_SET(dbp, (nowait ? DB2_AM_NOWAIT|DB2_AM_EXCL :
+	    DB2_AM_EXCL));
 	return (0);
 }
 

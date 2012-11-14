@@ -936,7 +936,7 @@ if test "$db_cv_build_replication" = "yes"; then
 	AH_TEMPLATE(HAVE_REPLICATION_THREADS,
 	    [Define to 1 if building the Berkeley DB replication framework.])
 
-	if test "$ac_cv_header_pthread_h" = yes; then
+	if test "$ac_cv_header_pthread_h" = yes -a "$db_cv_mingw" != "yes"; then
 		AC_DEFINE(HAVE_REPLICATION_THREADS)
 
 		if test "$with_stacksize" != "no"; then
@@ -955,6 +955,7 @@ if test "$db_cv_build_replication" = "yes"; then
 		esac
 		ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(REPMGR_OBJS)"
 	else
+		AC_MSG_WARN([Replication manager is not supported.])
 		ADDITIONAL_OBJS="$ADDITIONAL_OBJS repmgr_stub${o}"
 	fi
 else
