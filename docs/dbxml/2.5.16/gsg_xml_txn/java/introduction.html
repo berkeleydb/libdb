@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 1. Introduction</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML Transaction Processing" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB XML Transaction Processing" />
+    <link rel="prev" href="preface.html" title="Preface" />
+    <link rel="next" href="txnintro.html" title="Transaction Benefits" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 1. Introduction</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="preface.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="txnintro.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="introduction"></a>Chapter 1. Introduction</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="introduction.html#whytxn">Why Transactions?</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="txnintro.html">Transaction Benefits</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="sysfailure.html">A Note on System Failure</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="apireq.html">Application Requirements</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="multithread-intro.html">Multi-threaded 
+        <span>and Multi-process</span>
+        Applications</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="recovery-intro.html">Recoverability</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="perftune-intro.html">Performance Tuning</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+    This book provides a thorough introduction and discussion on transactions as
+    used with Berkeley DB XML (BDB XML). 
+    
+     
+        
+    It begins by offering a general overview to
+    transactions, the guarantees they provide, and the general application
+    infrastructure required to obtain full transactional protection for your
+    data. 
+  </p>
+      <p>
+    This book also provides detailed examples on how to write a
+    transactional application. Both single threaded and multi-threaded <span>(as well as multi-process
+    applications)</span> are discussed. A detailed description of various
+    backup and recovery strategies is included in this manual, as is a
+    discussion on performance considerations for your transactional application.
+  </p>
+      <p>
+    You should understand the concepts from the
+        
+        <span>
+            <em class="citetitle">Getting Started with Berkeley DB XML</em>
+        </span>
+        
+     guide before reading this book.
+  </p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="whytxn"></a>Why Transactions?</h2>
+            </div>
+          </div>
+        </div>
+        <p>
+          It is entirely possible that your application does not require
+          transactions, and that you can therefore skip this manual. 
+          That is, for what applications are transactions useful?
+      </p>
+        <p>
+          It is true that applications which are mostly involved in
+          read-only access to their containers can and probably should avoid
+          transactions. But even applications that perform a lot of
+          container writes might be able to skip using transactions.
+      </p>
+        <p>
+          If any of the following conditions are true, then you should
+          consider using transactions, and so need to read this manual:
+      </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    You need to perform multiple modifications to your
+                    containers in such a way as all the modifications
+                    succeed, or they all fail. 
+              </p>
+            </li>
+            <li>
+              <p>
+                  You are writing an application that might attempt to
+                  update the same document simultaneously from multiple
+                  threads or even processes.
+              </p>
+            </li>
+            <li>
+              <p>
+                  Your application needs to perform 
+                  long-running document updates — updates that could take
+                  minutes or even hours to complete — and you want to
+                  be sure that the document is left in a consistent state
+                  at the end of the update, regardless of whether the
+                  update succeeds or fails.
+              </p>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="preface.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="txnintro.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Preface </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Transaction Benefits</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

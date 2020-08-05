@@ -1,0 +1,791 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Examining Query Results</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 5. Using XQuery with BDB XML" />
+    <link rel="prev" href="externalfunc.html" title="Working with External Functions" />
+    <link rel="next" href="managedoc.html" title="Chapter 6. Managing Documents in Containers" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Examining Query Results</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="externalfunc.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 5. Using XQuery with BDB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="managedoc.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="examineresults"></a>Examining Query Results</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="examineresults.html#examinedocvalues">Examining Document Values</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="examineresults.html#examinemetadata">Examining Metadata</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="examineresults.html#copyresult">Copying Result Sets</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="examineresults.html#eventreader">Using Event Readers</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+            When you perform a query against BDB XML, you receive a results set
+            in the form of an <code class="classname">XmlResults</code> object. To
+            examine the results, you iterate over this result set, retrieving
+            each element of the set as an <code class="classname">XmlValue</code>
+            object.
+        </p>
+      <p>
+            Once you have an individual result element, you can obtain the data
+            encapsulated in the <code class="classname">XmlValue</code> object in a
+            number of ways. For example, you can obtain the information as a
+            string object using
+                
+                <span><code class="methodname">XmlValue.asString()</code>.</span>
+            Alternatively, you could obtain the data as an
+            <code class="classname">XmlDocument</code> object using
+                
+                <span><code class="methodname">XmlValue.asDocument()</code>.</span>
+        </p>
+      <p>
+            It is also possible to use DOM-like navigation on the
+            <code class="classname">XmlValue</code> object since that class offers
+            navigational methods such as
+                
+                <span><code class="methodname">XmlValue.getFirstChild()</code>,</span>
+
+                
+                <span><code class="methodname">XmlValue.getNextSibling()</code>,</span>
+
+                
+                <span><code class="methodname">XmlValue.getAttributes()</code>,</span>
+            and so forth. For details on these and other
+            <code class="classname">XmlValue</code> attributes, see the
+                
+                <span>BDB XML Javadoc.</span>
+        </p>
+      <p>
+            For example, the following code fragment performs a query and then
+            loops over the result set, obtaining and displaying the document's
+            name from an <code class="classname">XmlDocument</code> object before
+            displaying the document itself.
+        </p>
+      <a id="java_query7"></a>
+      <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlQueryContext;
+import com.sleepycat.dbxml.XmlResults;
+import com.sleepycat.dbxml.XmlValue;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    // Get a query context
+    XmlQueryContext context = myManager.createQueryContext();
+
+    // Declare a namespace
+    context.setNamespace("fruits", "http://groceryItem.dbxml/fruits");
+
+    // Declare the query string. Find all the product documents 
+    // in the fruits namespace.
+    String myQuery = "collection('exampleData.dbxml')/fruits:product";
+
+    // Perform the query.
+    XmlResults results = myManager.query(myQuery, context);
+
+    // Show the size of the result set
+    String message = "Found ";
+    message += results.size() + " documents for query: '";
+    message += myQuery + "'\n";
+    System.out.println(message);
+
+    // Display the result set
+    XmlValue value = results.next();
+    while (value != null) {
+        XmlDocument theDoc = value.asDocument();
+        String docName = theDoc.getName();
+        String docString = value.asString();
+
+        message = "Document ";
+        message += theDoc.getName() + ":\n";
+        message += value.asString();
+        message += "===============================\n";
+
+        System.out.println(message);
+        value = results.next();
+     }
+
+     results.delete();
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="examinedocvalues"></a>Examining Document Values</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            It is frequently useful to retrieve a document from BDB XML and then
+            perform follow-on queries to retrieve individual values from the
+            document itself. You do this by creating and executing a query,
+            except that you pass the specific 
+            <code class="classname">XmlValue</code> object that you want to query to the 
+            
+            <code class="methodname">XmlQueryExpression.execute()</code>
+            method. You must then iterate over a result set exactly as you would
+            when retrieving information from a container.
+        </p>
+        <p>    
+            For example, suppose you have an address book
+            product that manages individual contacts using XML documents such
+            as:
+        </p>
+        <pre class="programlisting">&lt;contact&gt;
+    &lt;familiarName&gt;John&lt;/familiarName&gt;
+    &lt;surname&gt;Doe&lt;/surname&gt;
+    &lt;phone work="555 555 5555" home="555 666 777" /&gt;
+    &lt;address&gt;
+        &lt;street&gt;1122 Somewhere Lane&lt;/street&gt;
+        &lt;city&gt;Nowhere&lt;/city&gt;
+        &lt;state&gt;Minnesota&lt;/state&gt;
+        &lt;zipcode&gt;11111&lt;/zipcode&gt;
+    &lt;/address&gt;
+&lt;/contact&gt;</pre>
+        <p>
+        Then you could retrieve individual documents and pull data off of them
+        like this:
+    </p>
+        <a id="java_query8"></a>
+        <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlQueryContext;
+import com.sleepycat.dbxml.XmlResults;
+import com.sleepycat.dbxml.XmlValue;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    // Declare the query string. Retrieves all the documents
+    // for people with the last name 'Doe'.
+    String myQuery = "collection('exampleData.dbxml')/contact";
+                                                                                                                                  
+    // Query to get the familiar name from the
+    // document.
+    String fn = "distinct-values(/contact/familiarName)";
+                                                                                                                                  
+    // Query to get the surname from the
+    // document.
+    String sn = "distinct-values(/contact/surname)";
+                                                                                                                                  
+    // Work phone number
+    String wrkPhone = "distinct-values(/contact/phone/@work)";
+                                                                                                                                  
+    // Get the context for the XmlManager query
+    XmlQueryContext managerContext = myManager.createQueryContext();
+                                                                                                                                  
+    // Get a context for the document queries
+    XmlQueryContext documentContext = myManager.createQueryContext();
+   
+    // Prepare the XmlManager query
+    XmlQueryExpression managerQuery = 
+        myManager.prepare(myQuery, managerContext);
+                                                                                                                                  
+    // Prepare the individual document queries
+    XmlQueryExpression fnExpr = myManager.prepare(fn, documentContext);
+    XmlQueryExpression snExpr = myManager.prepare(sn, documentContext);
+    XmlQueryExpression wrkPhoneExpr = 
+        myManager.prepare(wrkPhone, documentContext);
+                                                                                                                                  
+    // Perform the query.
+    XmlResults results = managerQuery.execute(managerContext, 0);
+
+    // Display the result set
+    XmlValue value = results.next();
+    while (value != null) {
+        // Get the individual values
+        XmlResults fnResults = fnExpr.execute(value, documentContext);
+        XmlResults snResults = snExpr.execute(value, documentContext);
+        XmlResults phoneResults = 
+            wrkPhoneExpr.execute(value, documentContext);
+                                                                                                                                  
+        String fnString;
+        if (fnResults.size() &gt; 0) {
+            XmlValue fnValue = fnResults.next();
+            fnString = fnValue.asString();
+        } else {
+            continue;
+        }
+                                                                                                                                  
+        String snString;
+        if (snResults.size() &gt; 0) {
+            XmlValue snValue = snResults.next();
+            snString = snValue.asString();
+        } else {
+            continue;
+        }
+                                                                                                                                  
+        String phoneString;
+        if (phoneResults.size() &gt; 0) {
+            XmlValue phoneValue = phoneResults.next();
+            phoneString = phoneValue.asString();
+        } else {
+            continue;
+        }
+                                                                                                                                  
+    String message = fnString + " " + snString + ": " + phoneString;
+    System.out.println(message);
+    value = results.next();
+
+    results.delete();
+    wrkPhoneExpr.delete();
+    snExpr.delete();
+    fnExpr.delete();
+    managerQuery.delete();
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+        <p>
+        Note that you can use the same basic mechanism to pull information out
+        of very long documents, except that in this case you need to maintain
+        the query's focus; that is, the location in the document that the result
+        set item is referencing. For example suppose you have a document
+        with 2,000 <code class="literal">contact</code> nodes and you want to get the
+        <code class="literal">name</code> attribute from some particular <code class="literal">contact</code>
+        in the document.
+    </p>
+        <p>
+        There are several ways to perform this query. You could, for example,
+        ask for the node based on the value of some other attribute or element
+        in the node:
+    </p>
+        <pre class="programlisting">/document/contact[category='personal']</pre>
+        <p>   
+        Or you could create a result set that holds all of the
+        document's <code class="literal">contact</code> nodes:
+    </p>
+        <pre class="programlisting">/document/contact</pre>
+        <p>
+        Regardless of how you get your result set, you can then go ahead and
+        query each value in the result set for information contained in the
+        value. To do this:
+    </p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+                Iterate over the result set as normal.
+            </p>
+            </li>
+            <li>
+              <p>
+                Query for document information as described above. However, in
+                this case change the query so that you reference the self
+                access. That is, for the surname query 
+                described above, you would use the following query instead so as to
+                reference nodes relative to the current node (notice the
+                self-access (.) in use in the following query):
+            </p>
+              <pre class="programlisting">distinct-values(./surname)</pre>
+            </li>
+          </ol>
+        </div>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="examinemetadata"></a>Examining Metadata</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            When you retrieve a document from BDB XML, there are two ways to
+            examine the metadata associated with that document. The first is to
+            use 
+                
+                <span><code class="methodname">XmlDocument.getMetaData()</code>.</span>
+            Use this form if you want to examine the value for a specific
+            metadata value.
+         </p>
+        <p>
+
+            The second way to examine metadata is to obtain an <code class="classname">XmlMetaDataIterator</code>
+            object using 
+                
+                <span><code class="methodname">XmlDocument.getMetaDataIterator()</code>.</span>
+            You can use this mechanism to loop over and display every piece of
+            metadata associated with the document.
+        </p>
+        <p>
+            For example:
+        </p>
+        <a id="java_query9"></a>
+        <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlMetaData;
+import com.sleepycat.dbxml.XmlMetaDataIterator;
+import com.sleepycat.dbxml.XmlQueryContext;
+import com.sleepycat.dbxml.XmlResults;
+import com.sleepycat.dbxml.XmlValue;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    // Get a query context
+    XmlQueryContext context = myManager.createQueryContext();
+
+    // Declare a namespace
+    context.setNamespace("fruits", "http://groceryItem.dbxml/fruits");
+
+    // Declare the query string. Find all the product documents 
+    // in the fruits namespace.
+    String myQuery = "collection('exampleData.dbxml')/fruits:product";
+
+    // Perform the query.
+    XmlResults results = myManager.query(myQuery, context);
+
+    // Display the result set
+    XmlValue value = results.next();
+    while (value != null) {
+        XmlDocument theDoc = value.asDocument();
+        String docName = theDoc.getName();
+        String docString = value.asString();
+
+
+        // Display all of the metadata set for this document
+        XmlMetaDataIterator mdi = theDoc.getMetaDataIterator();
+
+        String message = "For document '" + theDoc.getName();
+               message += "' found metadata:";
+        System.out.println(message);
+
+        XmlMetaData md = mdi.next();
+        while (md != null) {
+            message = "\tURI: " + md.get_uri();
+            message += ", attribute name: " + md.get_name();
+            message += ", value: " + md.get_value() + "\n";
+            System.out.println(message);
+
+            md = mdi.next();
+        }
+
+        // Display a single metadata value:
+        String URI = "http://dbxmlExamples/timestamp";
+        String attrName = "timeStamp";
+        XmlValue newRetValue = null;
+
+        boolean gotResult = theDoc.getMetaData(URI, attrName, newRetValue);
+        if (gotResult) {
+            message = "For URI: " + URI + ", and attribute: " + attrName;
+            message += ", found: " + newRetValue + "\n";
+            System.out.println(message);
+        }
+
+        message = "===============================\n";
+        System.out.println(message);
+        value = results.next();
+     }
+
+     results.delete();
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="copyresult"></a>Copying Result Sets</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            When you create an <code class="classname">XmlResults</code> object by executing a query, the
+            object actually references database objects. That is, the object is non-transient which
+            means that if the objects in the database are modified or deleted in some way, then the
+            contents of your <code class="classname">XmlResults</code> object can also be modified or
+            deleted.
+        </p>
+        <p>
+            One way to guard against this is to use tansactions to provide isolation guarantees for
+            your <code class="classname">XmlResults</code> objects. Transactions are described in the
+            <em class="citetitle">Berkeley DB XML Getting Started with Transaction Processing</em> guide.
+        </p>
+        <p>
+            Another way to guard against this is to create a transient copy of your
+            <code class="classname">XmlResults</code> object. You do this by using the
+             
+            <code class="methodname">XmlResults.copyResults()</code> 
+            method. This method causes all of the <code class="classname">XmlValue</code> objects contained
+            in the results set to no longer be references to database objects. As a result, you can
+            safely use the result set outside of a transaction, and you can modify the copied results set
+            without concern that you are modifying the container.
+        </p>
+        <p>
+            This method simply returns a new <code class="classname">XmlResults</code> object, which you can
+            use in the same way you would use any <code class="classname">XmlResults</code> object.
+        </p>
+        <pre class="programlisting">...
+
+XmlResults results = myManager.query(myQuery, context);
+XmlResults transResults = results.copyResults(); 
+
+...</pre>
+        <p>
+            It is also possible to concatenate two results sets together using the 
+             
+            <code class="methodname">XmlResults.concatResults()</code> 
+            method. This method is can only be used with transient results sets (that is, 
+            <code class="classname">XmlResults</code> objects created using 
+            the <code class="methodname">copyResults()</code> method. In this case, the results set
+            provided as an argument to the <code class="methodname">concatResults()</code> method is 
+            concatenated to the <code class="classname">XmlResults</code> object that the method is called
+            on.
+        </p>
+        <pre class="programlisting">...
+
+XmlResults results1 = myManager.query(myQuery1, context);
+XmlResults results2 = myManager.query(myQuery2, context);
+XmlResults transResults1 = results1.copyResults(); 
+XmlResults transResults2 = results2.copyResults(); 
+
+// Concatenate results2 to results1
+transResults1.concatResults(transResults2);
+
+...</pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="eventreader"></a>Using Event Readers</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                   Once you have retrieved a document or node, you can
+                   examine that retrieved item using an <span class="emphasis"><em>event
+                   reader</em></span>. Event readers provide a pull
+                   iterface that allows you to move through a document, or
+                   a portion of a document, using an iterator-style
+                   interface.
+            </p>
+        <p>
+                    When you iterate over a document or node using an
+                    event reader, you are examing individual objects in the
+                    document. In this, the event reader behaves much like a
+                    SAX parser in that it allows you to discover what sort
+                    of information you are examining (for example, a start
+                    element, an end element, whitespace, characters, and so
+                    forth), and then retrieve relevant information about
+                    that data. (Note, however, that the event reader
+                    interface differs significantly from SAX in that SAX is a push
+                    interface while <code class="classname">XmlEventReader</code>
+                    is a pull interface.)
+    </p>
+        <p>
+            The document events for which you can test using the event
+            reader are:
+    </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                            StartElement
+                    </p>
+            </li>
+            <li>
+              <p>
+                       EndElement
+                    </p>
+            </li>
+            <li>
+              <p>
+                        Characters
+                    </p>
+            </li>
+            <li>
+              <p>
+                       CDATA
+                    </p>
+            </li>
+            <li>
+              <p>
+                            Comment
+                    </p>
+            </li>
+            <li>
+              <p>
+                        Whitespace
+                    </p>
+            </li>
+            <li>
+              <p>
+                        StartDocument
+                    </p>
+            </li>
+            <li>
+              <p>
+                       EndDocument
+                    </p>
+            </li>
+            <li>
+              <p>
+                         StartEntityReference
+                    </p>
+            </li>
+            <li>
+              <p>
+                        EndEntityReference
+                    </p>
+            </li>
+            <li>
+              <p>
+                        ProcessingInstruction
+                    </p>
+            </li>
+            <li>
+              <p>
+                        DTD
+                    </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            In addition for testing for specific portions of a document,
+            you can also retrieve information about those portions of the
+            document.  For example, if you are examining a starting element,
+            you can retrieve the name of that element. You can also
+            retrieve an attribute count on that element, and then
+            retrieve information about each attribute based on it's
+            indexed value in the start node. That is, suppose you
+            have the following document stored in a container:
+    </p>
+        <pre class="programlisting">&lt;a&gt;
+&lt;b a1="one" b2="two"&gt;b node&lt;/b&gt;
+&lt;c&gt;c node&lt;/c&gt;
+&lt;/a&gt; </pre>
+        <p>
+        Then you can examine this document as follows:
+</p>
+        <pre class="programlisting">try {
+    // Container declaration and open omitted for brevity
+    ...
+    String dname = "doc1";
+    XmlDocument doc1 = container.getDocument(dname);
+    String content = doc1.getContentAsString();
+    System.out.println("Doc: \n " + content);
+
+    XmlDocument tdoc = container.getDocument(dname);
+    // Get an XmlEventReader
+    XmlEventReader reader = tdoc.getContentAsEventReader();
+
+    // Now iterate over the document elements, examining only
+    // those of interest to us:
+    while (reader.hasNext()) {
+        int type = reader.next();
+        if (type == XmlEventReader.StartElement) {
+            System.out.println("Found start node: " +
+                reader.getLocalName());
+            System.out.println("There are " + reader.getAttributeCount()  +
+                " attributes on this node.");
+            // Show all the attributes on the start element node
+            for (int i = 0; i &lt; reader.getAttributeCount(); i++) {
+                System.out.println("Attribute '" + 
+                    reader.getAttributeLocalName(i) +
+                    "' has a value of '" +  
+                    reader.getAttributeValue(i) + "'");
+            }
+        }
+    }
+
+    // When we are done, we close the reader to free-up resources.
+    reader.close();
+} catch (XmlException xe) {
+    System.err.println("Exception: " + xe.toString());
+} </pre>
+        <p>
+        Running this code fragment yields:
+</p>
+        <pre class="programlisting">Found start node: a
+There are 0 attributes on this node.
+Found start node: b
+There are 2 attributes on this node.
+Attribute 'a1' has a value of 'one'
+Attribute 'b2' has a value of 'two'
+Found start node: c
+There are 0 attributes on this node.</pre>
+        <p>
+        Note that you can also use event readers on <code class="classname">XmlValue</code>
+        objects, provided that the object is an element node. For example:
+</p>
+        <pre class="programlisting">try {
+    // Container declaration and open omitted for brevity
+    // As are the manager, query and XmlQueryContext 
+    // declarations.
+    ...
+    while ((val = res.next()) != null) {
+
+        if (val.isNode() &amp;&amp;
+            (val.getNodeType() == XmlValue.ELEMENT_NODE)) {
+
+            XmlEventReader reader = val.asEventReader();
+
+            // Now iterate over the document elements, examining only
+            // those of interest to us:
+            while (reader.hasNext()) {
+                int type = reader.next();
+                if (type == XmlEventReader.StartElement) {
+                    System.out.println("Found start node: " + 
+                        reader.getLocalName());
+                    System.out.println("There are " + 
+                        reader.getAttributeCount() +
+                        " attributes on this node.");
+
+                    // Show all the attributes on the start element node
+                    for (int i = 0; i &lt; reader.getAttributeCount(); i++) {
+                        System.out.println("Attribute '" + 
+                            reader.getAttributeLocalName(i) +
+                            "' has a value of '" + 
+                            reader.getAttributeValue(i) + "'");
+                    }
+                }
+            }
+            // When we are done, we close the reader to free-up resources.
+            reader.close();
+        }
+    }    
+
+} catch (XmlException xe) {
+    System.err.println("Exception: " + xe.toString());
+} </pre>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="externalfunc.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="managedoc.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Working with External Functions </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Chapter 6. Managing Documents in Containers</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

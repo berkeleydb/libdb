@@ -1,0 +1,763 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Modifying XML Documents</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="managedoc.html" title="Chapter 6. Managing Documents in Containers" />
+    <link rel="prev" href="updatedocument.html" title="Replacing Documents" />
+    <link rel="next" href="compression.html" title="Compressing XML Documents" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Modifying XML Documents</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="updatedocument.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 6. Managing Documents in Containers</th>
+          <td width="20%" align="right"> <a accesskey="n" href="compression.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="modifydocument"></a>Modifying XML Documents</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="modifydocument.html#xqueryupdaterules">XQuery Update Introduction</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="modifydocument.html#xqu-insert">Inserting Nodes Using XQuery Update</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="modifydocument.html#xqu-delete">Deleting Nodes Using XQuery Update</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="modifydocument.html#xqu-replace">Replacing Nodes Using XQuery Update</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="modifydocument.html#xqu-rename">Renaming Nodes Using XQuery Update</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="modifydocument.html#xqu-updatefunction">Updating Functions</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="modifydocument.html#xqu-transform">Transform Functions</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="modifydocument.html#xqu-multiple">Resolving Conflicting Updates</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+                BDB XML allows you to modify documents already stored in
+                its containers using XQuery Update statements.  This
+                section provides a brief introduction to update statements
+                so as to help you get going with them.
+        </p>
+      <p>
+            Note that if you use update statements on a document stored in a whole
+            document container, then you might lose some of your document's
+            formatting. This is because update statements reparse the
+            documents they operate upon and then ultimately store them back in
+            the container in the format used for node storage containers. 
+            For this reason, if the formatting of your XML documents are 
+            very important to you, you should avoid using XQuery Update 
+            Statements on your documents.
+        </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xqueryupdaterules"></a>XQuery Update Introduction</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                        XQuery Update allows you to insert, delete, replace
+                        and rename nodes using built-in keywords (insert,
+                        delete, replace and rename, respectively). You can
+                        also perform a node update by declaring an update
+                        function.
+                </p>
+        <p>
+                        XQuery Update does not perform updates (node
+                        insertion, deletion, and so forth) until after the
+                        query has completed. This means a couple of things.
+                        First, you cannot perform an update and return the
+                        results in the same query. 
+                </p>
+        <p>
+                        Also, update statements are order independent,
+                        although in some cases conflicting 
+                        updates are performed in an order defined by the
+                        XQuery Update statement specification).
+                </p>
+        <p>
+                        Finally, updates are generally expected to be performed in isolation from
+                        other queries. You can not, for example, perform a
+                        search and then in a subsequent statement perform an
+                        update, all in the same query.
+                </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                                XQuery Update is described in the W3C
+                                specification, <em class="citetitle">XQuery Update
+                                        Facility 1.0</em>. This
+                                specification is currently a working draft.
+                                BDB XML implements the version of the
+                                specification dated 
+                                <a class="ulink" href="http://www.w3.org/TR/2007/WD-xquery-update-10-20070828/" target="_top">
+                                28 August 2007
+                                </a>
+                        </p>
+        </div>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xqu-insert"></a>Inserting Nodes Using XQuery Update</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                        To insert a node into an existing document, you must identify the node that
+                        you want to insert, and the location in the document where you want the
+                        insertion to be performed. You indicate that you are performing an insertion
+                        operation using the XQuery <code class="literal">insert</code> keyword.
+                </p>
+        <p>
+                        The general format of this expression is:
+                </p>
+        <pre class="programlisting">   insert nodes <span class="emphasis"><em>nodes</em></span> <span class="emphasis"><em>keyword</em></span> <span class="emphasis"><em>position</em></span></pre>
+        <p>
+                        where 
+                </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                                         <span class="emphasis"><em>nodes</em></span> is the content that you want to
+                                         insert. This can be a string, or it can be an XQuery selection
+                                         statement.
+                                </p>
+            </li>
+            <li>
+              <p>
+                                         <span class="emphasis"><em>keywords</em></span> indicates how you would like
+                                         the new content to be inserted.
+                                </p>
+            </li>
+            <li>
+              <p>
+                                         <span class="emphasis"><em>position</em></span> indicates the document and
+                                         the location in that document where the insertion is to occur.
+                                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+                        Be aware that <span class="emphasis"><em>position</em></span> must be an XQuery expression
+                        that selects exactly one location in the document. Also,
+                        <span class="emphasis"><em>keywords</em></span> can be one of several keywords that indicate
+                        where the new content is to be inserted relative to the location in the
+                        document that is indicated by <span class="emphasis"><em>position</em></span>. See
+                        the next section for information on the available keywords.
+                </p>
+        <p>
+                        For example, consider the document:
+                </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                        Assuming this document is called 'mydoc.xml', then you can insert a node,
+                        <code class="literal">b4</code> after node <code class="literal">b2</code> using the following
+                        query expression:
+                </p>
+        <pre class="programlisting">insert nodes &lt;b4&gt;inserted child&lt;/b4&gt; after 
+doc("dbxml:/con.dbxml/mydoc.xml")/a/b2  </pre>
+        <p>
+                    The above expression applied to the XML document results in a document like
+                    this:
+            </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;&lt;b4&gt;inserted child&lt;/b4&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                Note that if the query expression provided above happens to match more than one
+                node, then the query will fail. For multiple node
+                insertions, use an XQuery FLWOR expression. For example if our
+                original working document is:
+            </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;
+   &lt;b2&gt;another second child&lt;/b2&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                Then to insert a node after every
+                <code class="literal">&lt;b2&gt;</code> node in the document, use
+                this:
+            </p>
+        <pre class="programlisting">for $i in doc('dbxml:/con.dbxml/mydoc.xml')/a/b2 return 
+insert nodes &lt;b4&gt;inserted child&lt;/b4&gt; after $i  </pre>
+        <p>
+                This results in the document:
+            </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;&lt;b4&gt;inserted child&lt;/b4&gt;
+   &lt;b2&gt;another second child&lt;/b2&gt;&lt;b4&gt;inserted child&lt;/b4&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="positionkeywords"></a>Position Keywords</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                            XQuery Update expressions that add content to a document must first
+                            select the location in the document where the content is to be added,
+                            and then it must identify where the content is to be added relative to
+                            the selected location. You do this by specifying the appropriate
+                            keywords to the update expression.
+                    </p>
+          <p>
+                            Valid keywords are:
+                    </p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p>
+                                            <code class="literal">before</code>
+                                    </p>
+                <p>
+                                        The new content precedes the target node.
+                                    </p>
+              </li>
+              <li>
+                <p>
+                                            <code class="literal">after</code>
+                                    </p>
+                <p>
+                                        The new content follows the target node.
+                                    </p>
+              </li>
+              <li>
+                <p>
+                                            <code class="literal">as first into</code>
+                                    </p>
+                <p>
+                                        The new content becomes the first child of the target node.
+                                    </p>
+              </li>
+              <li>
+                <p>
+                                            <code class="literal">as last into</code>
+                                    </p>
+                <p>
+                                        The new content becomes the last child of the target node.
+                                    </p>
+              </li>
+              <li>
+                <p>
+                                            <code class="literal">into</code>
+                                    </p>
+                <p>
+                                        The new content is inserted as the last child of the target
+                                        node, provided that this keyword is not used in an update
+                                        expression that also makes use of the keywords noted above.
+                                        It that happens, the node is inserted so that it does not
+                                        interfere with the indicated position of the other new
+                                        nodes.
+                                    </p>
+                <p>
+                                            Note that the behavior described here is an artifact
+                                            of BDB XML's current implementation of the XQuery Update
+                                            specification. The specification does not require the
+                                            inserted node to be placed as the last child of the
+                                            target node, so this behavior may change for some future
+                                            release of the product.
+                                    </p>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="insertion_rules"></a>Insertion Rules</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                            When inserting elements, the selection expression must be non-updating,
+                            and it must not result in an empty set.  
+                     </p>
+          <p>
+                            If any form of the
+                            <code class="literal">into</code> keyword is specified, the selection expression
+                            must result in a single element or document node.  Also, if
+                            <code class="literal">before</code> or <code class="literal">after</code> is provided, the
+                            selection expression result must be a single element, text, comment or
+                            processing instruction node.  
+                     </p>
+          <p>
+                            If an attribute node is selected, then the
+                            new content must provide an attribute.
+                     </p>
+        </div>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xqu-delete"></a>Deleting Nodes Using XQuery Update</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                        You can delete zero or more nodes using a <code class="literal">delete nodes</code>
+                        query.  For example, given the document named "mydoc.xml" in container "con.dbxml":
+                </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;&lt;b4&gt;inserted child&lt;/b4&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                         The following query deletes the <code class="literal">b4</code> node:
+                 </p>
+        <pre class="programlisting">  delete nodes doc("dbxml:/con.dbxml/mydoc.xml")/a/b4  </pre>
+        <p>
+                      Note that if the document had more than one
+                      <code class="literal">&lt;b4&gt;</code> node, then they all
+                      would be deleted by this query.
+                  </p>
+        <p>
+                        The selection expression that you provide must be a non-updating
+                        expression, and the result must be a sequence of zero or more nodes. If the
+                        selection expression selects a node that has no parent, then the result is
+                        to delete the entire document from the container.
+                </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xqu-replace"></a>Replacing Nodes Using XQuery Update</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                        You can use XQuery Update statements to either replace an entire node, or
+                        a node's value. To replace a node, use the <code class="literal">replace node</code>
+                        query. For example, given the document named "mydoc.xml" in container
+                        "con.dbxml":
+                </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                    You can replace node <code class="literal">b2</code> with a different node such
+                    as <code class="literal">&lt;r1&gt;replacement child&lt;/r1&gt;</code> using the following
+                    query:
+            </p>
+        <pre class="programlisting">  replace node doc("dbxml:/con.dbxml/mydoc.xml")/a/b2 
+  with &lt;z1&gt;replacement node&lt;/z1&gt;  </pre>
+        <p>
+                    The result of this replacement query is:
+            </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;z1&gt;replacement node&lt;/z1&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                To replace multiple nodes in the document,
+                use an XQuery FLWOR statement like this:
+            </p>
+        <pre class="programlisting">for $i in doc("dbxml:/con.dbxml/mydoc.xml")/a/b2 return 
+replace node $i with &lt;z1&gt;replacement node&lt;/z1&gt; </pre>
+        <p>
+                    The replacement value can also be a selection expression. For example, suppose
+                    you had a second document named <code class="literal">replace.xml</code>: 
+            </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;rep&gt;more replacement data&lt;/rep&gt;
+&lt;/a&gt; </pre>
+        <p>
+                Then you can replace node <code class="literal">z1</code> with the <code class="literal">rep</code> node
+                using the following query:
+        </p>
+        <pre class="programlisting">replace node doc("dbxml:/con.dbxml/mydoc.xml")/a/z1
+with doc("dbxml:/con.dbxml/replace.xml")/a/rep </pre>
+        <p>
+            Or, as an XQuery FLWOR expression:
+        </p>
+        <pre class="programlisting">for $i in doc("dbxml:/con.dbxml/mydoc.xml")/a/z1 return 
+replace node $i with doc("dbxml:/con.dbxml/replace.xml")/a/rep" </pre>
+        <p>
+                Either expression results in the document:
+        </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;rep&gt;more replacement data&lt;/rep&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                    In addition to the <code class="literal">replace node ... with ...</code> form, you can
+                    also replace node values. Do this using 
+                    <code class="literal">replace value of node ... with ...</code> queries.
+            </p>
+        <p>
+                    For example, to replace the value of the <code class="literal">rep</code> node, above,
+                    use:
+            </p>
+        <pre class="programlisting">replace value of node doc("dbxml:/con.dbxml/mydoc.xml")/a/rep
+  with "random replacement text".   </pre>
+        <p>
+                The results of this query is:
+        </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;rep&gt;random replacement text&lt;/rep&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="replacementrules"></a>Replacement Rules</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                            When replacing elements, the selection expression used to select the
+                            target must be non-updating, and it must not result in an empty set. 
+                    </p>
+          <p>
+                            Selection results must consist of a single element, text, 
+                            comment or processing instruction. In addition, 
+                            the selection expression must not select a node without a
+                            parent node. 
+                    </p>
+          <p>
+                             Finally, If you replace an attribute node, its replacement value must not have a 
+                             namespace property that
+                             conflicts with the <code class="literal">namespaces</code> property of the parent node.
+                     </p>
+        </div>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xqu-rename"></a>Renaming Nodes Using XQuery Update</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                        You can rename a node using <code class="literal">rename node</code> query. For
+                        example, given the document named "mydoc.xml" in container "con.dbxml": 
+                </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                            You can rename node <code class="literal">b3</code> to <code class="literal">z1</code> using
+                            the following query:
+                    </p>
+        <pre class="programlisting">rename node doc("dbxml:/con.dbxml/mydoc.xml")/a/b3 as "z1" </pre>
+        <p>
+                    Or, as an XQuery FLWOR expression if you are renaming multiple
+                    nodes:
+                </p>
+        <pre class="programlisting">for $i in doc("dbxml:/con.dbxml/mydoc.xml")/a/b3 return
+rename node $i as "z1" </pre>
+        <p>
+                        The selection expression that you provide must be a non-updating
+                        expression, and the result must be non-empty and consist of a single
+                        element, attribute, or processing instruction node.
+                </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xqu-updatefunction"></a>Updating Functions</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                        You can create a function that performs an update, so long as it is declared
+                        to be an updating function. In addition, this function must not have a
+                        return value, and the argument passed to the function cannot be an update
+                        query.
+                </p>
+        <p>
+                        For example, the following query creates a function that renames any element
+                        node passed to it, to the value passed in the second argument. The function
+                        is then called for <code class="literal">b1</code> in document
+                        <code class="literal">mydoc.xml</code>, which is stored in container
+                        <code class="literal">con.dbxml</code>:
+                </p>
+        <pre class="programlisting">declare updating function
+    local:renameNode($elem as element(),
+                     $rep as xs:string)
+    {
+        rename node $elem as $rep
+    };
+
+    local:renameNode(doc("dbxml:/con.dbxml/mydoc.xml")/a/b1, "aab1")  </pre>
+        <p>
+                    If the prior query is called on a document such as this:
+            </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b1&gt;first child&lt;/b1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                            then that document becomes:
+                    </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;aab1&gt;first child&lt;/aab1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xqu-transform"></a>Transform Functions</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                       While it is true that you cannot run an update query and simultaneously
+                       return the results, there is a way to almost do the same thing. You do this
+                       by making a copy of the nodes that you want to modify, then perform the
+                       modifications against that copy. The result of the modification is returned
+                       to you. This type of an operation is called a
+                       <span class="emphasis"><em>transformation</em></span>.
+                </p>
+        <p>
+                        Note that when you perform a transformation, the original nodes that you
+                        copied are <span class="emphasis"><em>not</em></span> modified. For this reason,
+                        transformations are often limited only to situations where you want to
+                        modify a query result — for reporting purposes, for example.
+                </p>
+        <p>
+                        To run a transformation, use the
+                </p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+                                        <code class="literal">copy</code> keyword to copy the nodes of interest 
+                                </p>
+            </li>
+            <li>
+              <p>
+                                        <code class="literal">modify</code> keyword to perform the XQuery
+                                        Update against the newly copied nodes
+                                </p>
+            </li>
+            <li>
+              <p>
+                                        <code class="literal">return</code> keyword to return the result of
+                                        the transformation.
+                                </p>
+            </li>
+          </ol>
+        </div>
+        <p>
+                        For example, given the following XML document 
+                        (which is identified as document <code class="literal">mydoc.xml</code>, and is stored in container
+                        <code class="literal">con.dbxml</code>):
+                </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;aab1&gt;first child&lt;/aab1&gt;
+   &lt;b2&gt;second child&lt;/b2&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+        <p>
+                        then the following transformation:
+                </p>
+        <pre class="programlisting">
+copy $c := doc("dbxml:/con.dbxml/mydoc.xml")/a
+    modify (delete nodes $c/aab1,
+            replace value of node $c/b2 with "replacement value")
+    return $c
+ </pre>
+        <p>
+                         results in the following document:
+                 </p>
+        <pre class="programlisting">&lt;a&gt;
+   &lt;b2&gt;replacement value&lt;/b2&gt;
+   &lt;b3&gt;third child&lt;/b3&gt;
+&lt;/a&gt; </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xqu-multiple"></a>Resolving Conflicting Updates</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                        Modifications that you specify as a part of an update query are not actually
+                        made until after the query is completed. The order in which update
+                        statements are made may or may not be relevant when it comes time to apply
+                        the update. As a result, it's possible to request an update that on its own
+                        is acceptable, but when used with other update statement may result in an
+                        error.
+                </p>
+        <p>
+                        Keep the following rules in mind as you use update expressions:
+                </p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+                                        And exception is raised if:
+                                </p>
+              <div class="orderedlist">
+                <ol type="a">
+                  <li>
+                    <p>
+                                                        Two or more <code class="literal">rename</code>
+                                                        expressions target the same node.
+                                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                                        Two or more <code class="literal">replace</code>
+                                                        expressions or <code class="literal">replace value
+                                                                of</code> expressions target the
+                                                        same node.
+                                                </p>
+                  </li>
+                </ol>
+              </div>
+            </li>
+            <li>
+              <p>
+                                        The following expressions are made effective, in the
+                                        following order:
+                                </p>
+              <div class="orderedlist">
+                <ol type="a">
+                  <li>
+                    <p>
+                                                        All <code class="literal">insert into</code>,
+                                                        <code class="literal">insert attributes</code> and
+                                                        <code class="literal">replace value</code> expressions
+                                                        in the order they are supplied.
+                                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                                        All <code class="literal">insert before</code>,
+                                                        <code class="literal">insert after</code>,
+                                                        <code class="literal">insert as first</code>, and
+                                                        <code class="literal">insert as last</code>
+                                                        expressions in the order they are supplied.
+                                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                                        All <code class="literal">replace</code> expressions.
+                                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                                        All <code class="literal">replace value of</code>
+                                                        expressions.
+                                                </p>
+                  </li>
+                  <li>
+                    <p>
+                                                        All <code class="literal">delete</code> expressions.
+                                                </p>
+                  </li>
+                </ol>
+              </div>
+            </li>
+          </ol>
+        </div>
+        <p>
+                        Note that atomicity of the expression is guaranteed; either the entire
+                        expression is made effective with regard to the original document, or no
+                        aspect of the expression is made effective.
+                </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="updatedocument.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="managedoc.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="compression.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Replacing Documents </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Compressing XML Documents</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

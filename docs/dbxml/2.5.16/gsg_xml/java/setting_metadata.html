@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Setting Metadata</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="adddocument.html" title="Chapter 4. Adding XML Documents to Containers" />
+    <link rel="prev" href="eventwriter.html" title="Constructing Documents using Event Writers" />
+    <link rel="next" href="xquery.html" title="Chapter 5. Using XQuery with BDB XML" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Setting Metadata</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="eventwriter.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 4. Adding XML Documents to Containers</th>
+          <td width="20%" align="right"> <a accesskey="n" href="xquery.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="setting_metadata"></a>Setting Metadata</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+        Every XML document stored in BDB XML actually consists of two kinds of
+        information: the document itself, and metadata.
+    </p>
+      <p>
+        Metadata can contain an arbitrarily complex set of information.
+        Typically it contains information about the document that 
+        you do not or can not include in the document itself. As an example, you
+        could carry information about the date and time a document was added to
+        the container, last modified, or possibly an expiration time. Metadata
+        might also be used to store information about the document that is
+        external to BDB XML, such as the on-disk location where the document was
+        originally stored, or possibly notes about the document that might be
+        useful to the document's maintainer.
+    </p>
+      <p>
+        In other words, metadata can contain anything — BDB XML places no
+        restrictions on what you can use it for. Further, you can both query and
+        index metadata (see 
+        <a class="xref" href="indices.html" title="Chapter 7. Using BDB XML Indices">Using BDB XML Indices</a>
+        for more information). It is even possible to
+        have a document in your container that contains only metadata.
+    </p>
+      <p>
+        In order to set metadata onto a document, you must:
+    </p>
+      <div class="orderedlist">
+        <ol type="1">
+          <li>
+            <p>
+                Optionally (but recommended), create a URI for each piece of metadata
+                (in the form of a string).
+            </p>
+          </li>
+          <li>
+            <p>
+                Create an attribute name to use for the metadata, again in the
+                form of a string.
+            </p>
+          </li>
+          <li>
+            <p>
+                Create the attribute value — the actual metadata
+                information that you want to carry on the document —
+                either as an <code class="classname">XmlValue</code> or as an
+                
+                <span>Java <code class="literal">byte[]</code> array.</span>
+            </p>
+          </li>
+          <li>
+            <p>
+                Set this information on a <code class="classname">XmlDocument</code>
+                object.
+            </p>
+          </li>
+          <li>
+            <p>
+                Optionally (but commonly) set the actual XML document to the
+                same <code class="classname">XmlDocument</code> object.
+            </p>
+          </li>
+          <li>
+            <p>
+                Add the <code class="classname">XmlDocument</code> to the container.    
+            </p>
+          </li>
+        </ol>
+      </div>
+      <p>
+        For example:
+    </p>
+      <a id="java_adddoc3"></a>
+      <pre class="programlisting">package dbxml.gettingStarted;
+                                                                                                                                     
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlDocument;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlInputStream;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlValue;
+
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+// The document
+String docString = "/export/testdoc1.xml";
+
+// The document's name.
+String docName = "testDoc1";
+
+
+try {
+    // URI, attribute name, and attribute value used for
+    // the metadata. We will carry a timestamp here
+    // (hard coded for clarity purposes).
+    String URI = "http://dbxmlExamples/metadata";
+    String attrName = "createdOn";
+    XmlValue attrValue =
+         new XmlValue(XmlValue.DATE_TIME, "2005-10-5T04:18:36");
+
+    myManager = new XmlManager();
+    // Assumes the container currently exists.
+
+    myContainer = 
+        myManager.openContainer("container.bdbxml");
+
+    // Get the input stream.
+    XmlInputStream theStream = 
+        myManager.createLocalFileInputStream(fileName);
+
+    // Get an XmlDocument
+    XmlDocument myDoc = myManager.createDocument();
+
+    // Set the document's name
+    myDoc.setName(docName);
+    // Set the content
+    myDoc.setContentAsXmlInputStream(theStream);
+    // Set the metadata
+    myDoc.setMetaData(URI, attrName, attrValue);
+
+    // Put the document into the container
+    myContainer.putDocument(myDoc,        // The actual document.
+                             null);       // XmlDocumentConfig object
+} catch (XmlException e) {
+    // Error handling goes here. You may want to check
+    // for XmlException.UNIQUE_ERROR, which is raised
+    // if a document with that name already exists in
+    // the container. If this exception is thrown, 
+    // try the put again with a different name.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    }
+} </pre>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="eventwriter.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="adddocument.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="xquery.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Constructing Documents using Event Writers </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Chapter 5. Using XQuery with BDB XML</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

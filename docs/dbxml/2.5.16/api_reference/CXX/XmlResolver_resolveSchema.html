@@ -1,0 +1,48 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlResolver::resolveSchema</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlResolver::resolveSchema</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual XmlInputStream *XmlResolver::resolveSchema(
+    XmlTransaction *txn, XmlManager &mgr,
+    const std::string &schemaLocation,
+    const std::string &nameSpace, std::string &result) const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlResolver::resolveSchema</b>
+<p>When implemented, should resolve schema location and namespace
+information to a new <a href="../../api_reference/CXX/XmlInputStream.html">XmlInputStream</a>. If this information cannot
+be resolved by this resolver, this method should return NULL.  The
+XmlInputStream object will be deleted by the caller.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If a transaction is in force, a pointer to the <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a>
+object; otherwise, NULL.</ul>
+ <b>mgr</b><ul compact><li>The <a href="../../api_reference/CXX/XmlManager.html">XmlManager</a> object associated with the operation.</ul>
+ <b>schemaLocation</b><ul compact><li>The location where the schema resides.</ul>
+ <b>nameSpace</b><ul compact><li>The namespace used by the schema.</ul>
+ <b>result</b><ul compact><li>The string in which the results of the resolution are to be placed.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

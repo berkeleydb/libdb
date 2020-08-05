@@ -1,0 +1,49 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainerConfig::setMode</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainerConfig::setMode</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlContainerConfig::setMode(int mode)
+<p>
+int XmlContainerConfig::getMode() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainerConfig::setMode</b>
+<p>Sets the mode for the files created for the container, ignored on Windows or if
+the container already exists.</p>
+<b>Parameters</b> <br>
+ <b>mode</b><ul compact><li>On Windows systems, the mode parameter is ignored.
+<p>On UNIX systems or in IEEE/ANSI Std 1003.1 (POSIX) environments, files created by 
+are created with mode <b>mode</b> (as described in <b>chmod</b>(2))
+and modified by the process' umask value at the time of creation (see
+<b>umask</b>(2)).  Created files are owned by the process owner; the
+group ownership of created files is based on the system and directory
+defaults, and is not further specified by Berkeley DB.  System shared memory
+segments created by  are created with mode <b>mode</b>, unmodified
+by the process' umask value.  If <b>mode</b> is 0,  will use a
+default mode of readable and writable by both owner and group.</p></ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

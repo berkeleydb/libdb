@@ -1,0 +1,51 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: dbxml:node()</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Berkeley DB XML XQuery Extensions</dl></b></td>
+<td align=right><a href="../xquery/metadata.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>dbxml:node()</b></p>
+<p><b>dbxml:handle-to-node($containerName as xs:string, $handle as xs:string) as node()</b>
+<p>
+<b>dbxml:node-to-handle() as xs:string</b>
+<p>
+<b>dbxml:node-to-handle($node as node()) as xs:string</b>
+</p>
+<hr size=1 noshade>
+<b>Description: dbxml:handle-to-node()</b>
+<p>dbxml:handle-to-node() will return the node from the specified container as referenced
+by the handle.  If the specified container does not exist or cannot be opened an error is
+raised.  An error is raised if the handle is invalid or the node specified does not exist.
+</p>
+<hr size=1 noshade>
+<b>Description: dbxml:node-to-handle()</b>
+<p>dbxml:node-to-handle() will return an opaque node "handle" for the given node.  The string returned
+is base-64 encoded raw data, and is suitable for embedding in a URI.  The handle can be used to
+retrieve the node at a later time, if the node is still present in its container, using
+dbxml:handle-to-node().
+</p>
+<b>Parameters</b> <br>
+ <b>$containerName</b><ul compact><li>The name of the container to use to find the specified node.
+</ul>
+ <b>$handle</b><ul compact><li>A string handle representing a node in a container.  This handle must be
+obtained using dbxml:node-to-handle() or <a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeHandle</a>.
+</ul>
+ <b>$node</b><ul compact><li>The node for which a handle is created.  If $node is not specified, the behavior is identical
+to calling the function with the context item "(.)" as an argument.  If the context item is not
+a node, an error is raised
+<a href="http://www.w3.org/TR/xpath-functions/#ERRFODC0001">[err:FODC0001]</a>.
+</ul>
+<br>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xquery/metadata.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

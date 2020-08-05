@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 1. Overview</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="prev" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="next" href="running.html" title="Running the Shell" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 1. Overview</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="index.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="running.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="introduction"></a>Chapter 1. Overview</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="introduction.html#basicconcepts">Basic Concepts</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="running.html">Running the Shell</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="gettinghelp.html">Getting Help</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+            Welcome to Berkeley DB XML (BDB XML), an embeddable XML
+            database engine that provides support for XQuery access.  This
+            document will introduce you to BDB XML's feature set.  After
+            reading this document you should have a good understanding of
+            what BDB XML can do for you and how it might be used to manage
+            XML data within your systems and applications.  Follow along
+            with the examples and try out BDB XML on your system.
+        </p>
+      <p>
+             BDB XML is an embedded database specifically designed for the
+             storage and retrieval of XML-formatted documents.  Built on
+             the award-winning Berkeley DB, BDB XML provides for efficient
+             queries against millions of XML documents using XQuery.
+             XQuery is a query language designed for the examination and
+             retrieval of portions of XML documents.
+        </p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="basicconcepts"></a>Basic Concepts</h2>
+            </div>
+          </div>
+        </div>
+        <p>
+                Typically, BDB XML is used as a library that is linked directly 
+                into your application. In addition, BDB XML has a command line 
+                shell that allows you to work with XML documents outside of the 
+                programming languages that you normally use to interact with BDB XML. 
+                You can use the command line shell as part of your application, as a 
+                management tool, or simply as a means to explore the features of the 
+                product as we do here.         
+            </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                    Remember that BDB XML is an
+                    <span class="emphasis"><em>embedded</em></span> database engine that
+                    supports XML data and queries against that data.
+                    This means that in contrast to other database systems,
+                    Berkeley DB (and BDB XML) is not a relational database,
+                    is not a database server, and it does not support SQL
+                    queries. Instead, it is a libarary that is meant to be
+                    used directly with your code and which provides XQuery
+                    queries against the XML data that you store within the
+                    engine.
+            </p>
+        </div>
+        <p>
+                 In BDB XML, all XML data is stored within files called containers. 
+                 The BDB XML shell provides a simple and convenient way to work with 
+                 these containers and exposes most of the BDB XML functionality in a 
+                 friendly, interactive environment, without requiring the use of a 
+                 programming language. 
+            </p>
+        <p>
+                Containers are really a collection of XML documents and
+                information about those documents. For example, containers
+                include any indexes that are being maintained for the
+                documents. 
+             </p>
+        <p>
+                Containers also store XML documents as either whole
+                documents or as nodes. When containers store whole
+                documents, the XML document is stored all as one unit in
+                the container exactly as it was presented to the system.
+                When documents are stored as nodes, the XML document is
+                deconstructed into smaller pieces – nodes – and
+                those small chunks are what is stored in the container.
+             </p>
+        <p>
+                For the node storage case, retrieval of the document still
+                returns the document in <span class="emphasis"><em>mostly</em></span> the
+                same formatting state (assuming you didn't modify it) as it
+                was in when it was stored in the container. The only
+                difference is how the document is physically held within
+                the container. Note that node storage typically offers
+                better performance than does whole document storage, and
+                for this reason node storage is the default container type. 
+            </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                    In some cases, node storage may change your document
+                    slightly. For example, an empty node in your document 
+                    like this: 
+                </p>
+          <pre class="programlisting">&lt;node1&gt;&lt;/node1&gt;</pre>
+          <p>
+                    Will be stored in the container and returned as this:
+                </p>
+          <pre class="programlisting">&lt;node1/&gt;</pre>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="index.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="running.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Introduction to Berkeley DB XML </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Running the Shell</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,97 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlManager::createIndexLookup</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlManager::createIndexLookup</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlIndexLookup XmlManager::createIndexLookup(
+	XmlContainer &container, const std::string &uri, const std::string &name,
+	const std::string &index, const XmlValue &value = XmlValue(),
+	XmlIndexLookup::Operation op = XmlIndexLookup::EQ)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlManager::createIndexLookup</b>
+<p>Instantiates an new <a href="../../api_reference/CXX/XmlIndexLookup.html">XmlIndexLookup</a> object for performing index
+lookup operations.  Only a single index may be specified, and substring
+indices are not supported.</p>
+<b>Parameters</b> <br>
+ <b>container</b><ul compact><li>The target container for the lookup operation.</ul>
+ <b>uri</b><ul compact><li>The namespace of the node to be used. The default namespace is
+selected by passing an empty string for the namespace.</ul>
+ <b>name</b><ul compact><li>The name of the element or attribute node to be used.</ul>
+ <b>index</b><ul compact><li>A string that represents the indexing strategy.
+The string must contain the following information in the following order:
+<blockquote><pre><b>unique</b>-{path type}-{node type}-{key type}-{syntax}</pre></blockquote>
+<p>where:</p>
+<p><b>unique</b> indicates that the indexed value is unique in the
+container. If this keyword does not appear on the index string, then the
+indexed value is not required to be unique in the container.</p>
+<p>{path type} is either <b>node</b> or <b>edge</b>.</p>
+<p>{node type} is one of <b>element</b>, <b>attribute</b>, or
+<b>metadata</b>. If <b>metadata</b> is specified, then {path type}
+must be <b>node</b>.</p>
+<p>{key type} is one of <b>presence</b> or <b>equality</b>.</p>
+<p>{syntax} identifies the type of information being indexed. It must be one of the
+following values:</p>
+<p><ul type=disc>
+<li>none
+<li>base64Binary
+<li>boolean
+<li>date
+<li>dateTime
+<li>decimal
+<li>double
+<li>duration
+<li>float
+<li>gDay
+<li>gMonth
+<li>gMonthDay
+<li>gYear
+<li>gYearMonth
+<li>hexBinary
+<li>string
+<li>time
+</ul>
+<p>Note that if {key type} is <b>presence</b>, then {syntax} must be
+<b>none</b> or simply not specified.</p>
+<p>For example, examples index strings are:</p>
+<blockquote><pre><b>unique-node-element-presence</b></pre></blockquote>
+<blockquote><pre><b>node-element-equality-string</b></pre></blockquote>
+<blockquote><pre><b>node-attribute-equality-decimal</b></pre></blockquote>
+<blockquote><pre><b>edge-element-presence-none</b></pre></blockquote></ul>
+ <b>value</b><ul compact><li>The value to be used as the single value for an equality or inequality
+lookup, or as the lower bound of a range lookup.  An empty value is
+specified using an uninitialized <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> object.</ul>
+ <b>op</b><ul compact><li>Selects the operation to be performed.  Must be one of:
+<br>
+<b>XmlIndexLookup::NONE</b><ul compact><li>None</ul>
+<b>XmlIndexLookup::EQ</b><ul compact><li>Equal</ul>
+<b>XmlIndexLookup::LT</b><ul compact><li>Less than</ul>
+<b>XmlIndexLookup::LTE</b><ul compact><li>Less than or equal</ul>
+<b>XmlIndexLookup::GT</b><ul compact><li>Greater than</ul>
+<b>XmlIndexLookup::GTE</b><ul compact><li>Greater than or equal</ul>
+<br></ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

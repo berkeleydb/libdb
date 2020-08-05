@@ -1,0 +1,60 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlEventReader::getEventType</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlEventReader::getEventType</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual enum XmlEventType XmlEventReader::getEventType() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlEventReader::getEventType</b>
+<p>Return the event type of the current <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> event.</p>
+<p>Valid events include
+<br>
+<b>XmlEventReader::StartElement</b><ul compact><li>The current event is the start of an element.</ul>
+<b>XmlEventReader::EndElement</b><ul compact><li>The current event is the end of an element.</ul>
+<b>XmlEventReader::Characters</b><ul compact><li>The current event is text characters.</ul>
+<b>XmlEventReader::CDATA</b><ul compact><li>The current event is CDATA text.</ul>
+<b>XmlEventReader::Comment</b><ul compact><li>The current event is comment text.</ul>
+<b>XmlEventReader::Whitespace</b><ul compact><li>The current event is ignorable whitespace.</ul>
+<b>XmlEventReader::StartDocument</b><ul compact><li>The current event is the start of the document.</ul>
+<b>XmlEventReader::EndDocument</b><ul compact><li>The current event is the end of the document.</ul>
+<b>XmlEventReader::StartEntityReference</b><ul compact><li>The current event marks the start of expanded entity text.</ul>
+<b>XmlEventReader::EndEntityReference</b><ul compact><li>The current event marks the end of expanded entity text.</ul>
+<b>XmlEventReader::ProcessingInstruction</b><ul compact><li>The current event is a processing instruction.</ul>
+<b>XmlEventReader::DTD</b><ul compact><li>The current event is the text of a DTD.</ul>
+<br>
+</p>
+<br><b>Errors</b>
+<p>The XmlEventReader::getEventType method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>EVENT_ERROR</b><ul compact><li>An error occurred during processing of an <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a>
+object.  Most likely the error is requesting state that is not valid in the
+context of the current event.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Working with Data from Multiple Containers</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+    <link rel="prev" href="sortingresults.html" title="Sorting the Result" />
+    <link rel="next" href="specificdocument.html" title="Working with Data from a Specific Document" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Working with Data from Multiple Containers</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="sortingresults.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 2. XQuery and Berkeley DB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="specificdocument.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="morethanonecontainer"></a>Working with Data from Multiple Containers</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            An application may use one or more containers. BDB XML and XQuery provides
+            excellent support for this situation. First, create a second container and 
+            add some additional data. A few simple documents will be enough to 
+            demonstrate this feature. To begin, we add them the new container:
+        </p>
+      <pre class="programlisting">dbxml&gt; createContainer components.dbxml
+
+Creating node storage container with nodes indexed
+
+dbxml&gt; putDocument component1 '&lt;component number="1"&gt;
+&lt;uses-part&gt;89&lt;/uses-part&gt;
+&lt;uses-part&gt;150&lt;/uses-part&gt;
+&lt;uses-part&gt;899&lt;/uses-part&gt;
+&lt;/component&gt;'
+
+Document added, name = component1
+
+dbxml&gt; putDocument component2 '&lt;component number="2"&gt;
+&lt;uses-part&gt;901&lt;/uses-part&gt;
+&lt;uses-part&gt;87&lt;/uses-part&gt;
+&lt;uses-part&gt;189&lt;/uses-part&gt;
+&lt;/component&gt;'
+
+Document added, name = component2
+
+dbxml&gt; preload parts.dbxml
+
+dbxml&gt; preload components.dbxml</pre>
+      <p>
+            These new documents are intended to represent a larger component 
+            consisting of several of the parts defined earlier.  To output an 
+            XHTML view of all the components and their associated parts across 
+            containers, use: 
+        </p>
+      <pre class="programlisting">dbxml&gt; query '&lt;html&gt;&lt;body&gt;
+  &lt;ul&gt;
+    {
+      for $component in collection("components.dbxml")/component
+      return 
+        &lt;li&gt;
+          &lt;b&gt;Component number: {$component/@number/string()}&lt;/b&gt;&lt;br/&gt;
+          {
+            for $part-ref in $component/uses-part
+            return                    
+              for $part in collection("parts.dbxml")/part[@number = 
+                $part-ref cast as xs:decimal]
+              return
+                &lt;p&gt;{$part/description/string()}&lt;/p&gt;
+          }                
+        &lt;/li&gt;
+    }
+  &lt;/ul&gt;
+&lt;/body&gt;&lt;/html&gt;'
+1 objects returned for eager expression '&lt;html&gt;&lt;body&gt;
+  &lt;ul&gt;
+    {
+      for $component in collection("components.dbxml")/component
+      return 
+        &lt;li&gt;
+          &lt;b&gt;Component number: {$component/@number/string()}&lt;/b&gt;&lt;br/&gt;
+          {
+            for $part-ref in $component/uses-part
+            return                    
+              for $part in collection("parts.dbxml")/part[@number = 
+                $part-ref cast as xs:decimal]
+              return
+                &lt;p&gt;{$part/description/string()}&lt;/p&gt;
+          }                
+        &lt;/li&gt;
+    }
+  &lt;/ul&gt;
+&lt;/body&gt;&lt;/html&gt;'</pre>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title">Note</h3>
+        This query will take advantage of one of the indexes we created earlier.  
+        XQuery assigns the variable <code class="literal">$part-ref</code> the very 
+        general XPath <code class="literal">number</code> type.
+        The index we defined earlier applies only to 
+        <code class="literal">decimal</code> values which is
+        a more specific numeric type than <code class="literal">number</code>.
+        To get the query to use that index 
+        we need to provide some help to the query optimizer by
+        using the <code class="literal">cast as xs:decimal</code> clause. This provides 
+        more specific type information about the data we are comparing. If we 
+        do not use this, the query optimizer cannot use the decimal index 
+        because the type XQuery is using and the type of the index is using do not match. 
+    </div>
+      <p>
+        The output of the query, reformatted for readability, is: 
+    </p>
+      <pre class="programlisting">dbxml&gt; print
+&lt;html&gt;&lt;body&gt;
+    &lt;ul&gt;
+        &lt;li&gt;
+            &lt;b&gt;Component number: 1&lt;/b&gt;&lt;br/&gt;
+            &lt;p&gt;Description of 89&lt;/p&gt;
+            &lt;p&gt;Description of 150&lt;/p&gt;
+            &lt;p&gt;Description of 899&lt;/p&gt;
+        &lt;/li&gt;
+        &lt;li&gt;
+            &lt;b&gt;Component number: 2&lt;/b&gt;&lt;br/&gt;
+            &lt;p&gt;Description of 901&lt;/p&gt;
+            &lt;p&gt;Description of 87&lt;/p&gt;
+            &lt;p&gt;Description of 189&lt;/p&gt;
+        &lt;/li&gt;
+    &lt;/ul&gt;
+&lt;/body&gt;&lt;/html&gt;</pre>
+      <p>The following shows the previous HTML as displayed in a web browser:</p>
+      <div class="mediaobject">
+        <img src="components.jpg" />
+      </div>
+      <p>
+            The BDB XML container model provides a great deal of flexibility because 
+            there is no specific XML schema associated with a container. XML documents 
+            of varying structures can coexist in a single container . Alternatively, 
+            separate containers can contain XML documents that are identical along conceptual 
+            lines, or for other purposes. Container and document organization should be 
+            tailored to the needs of your application. 
+        </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="sortingresults.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="specificdocument.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Sorting the Result </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Working with Data from a Specific Document</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

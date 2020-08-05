@@ -1,0 +1,40 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::getContainerType</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::getContainerType</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+ContainerType XmlContainer::getContainerType() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::getContainerType</b>
+<p>Returns the container's type. Possible return values are:.</p>
+<br>
+<b><a name="XmlContainer::NodeContainer">XmlContainer::NodeContainer</a></b><ul compact><li>Documents are broken down into their component nodes, and these nodes
+are stored individually in the container. This is the preferred
+container storage type.</ul>
+<b><a name="XmlContainer::WholedocContainer">XmlContainer::WholedocContainer</a></b><ul compact><li>Documents are stored intact; all white space and formatting is preserved.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

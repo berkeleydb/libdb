@@ -1,0 +1,69 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlManager::reindexContainer</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlManager::reindexContainer</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlManager::reindexContainer(
+	const std::string &name, XmlUpdateContext &context)
+<p>
+void XmlManager::reindexContainer(
+	XmlTransaction &txn, const std::string &name,
+	XmlUpdateContext &context)
+<p>
+void XmlManager::reindexContainer(
+	const std::string &name, XmlUpdateContext &context, 
+	const XmlContainerConfig &flags)
+<p>
+void XmlManager::reindexContainer(
+	XmlTransaction &txn, const std::string &name,
+	XmlUpdateContext &context, 
+	const XmlContainerConfig &flags)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlManager::reindexContainer</b>
+<p>Reindex an entire container.  The container should be backed
+up prior to using this method, as it destroys existing indices
+before reindexing.  If the operation fails, and your container
+is not backed up, you may lose information.</p>
+<p>Use this call to change the type of indexing used for a container
+between document-level indices and node-level indices.  This method can
+take a very long time to execute, depending on the size of the
+container, and should not be used casually.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>name</b><ul compact><li>The path to the container to be reindexed.
+</ul>
+ <b>context</b><ul compact><li>The update context to use for the reindex operation.
+</ul>
+ <b>flags</b><ul compact><li>Set <a href="../../api_reference/CXX/XmlContainerConfig_setIndexNodes.html">XmlContainerConfig::setIndexNodes</a> to On to change the container's index type to node indexes, and
+set <a href="../../api_reference/CXX/XmlContainerConfig_setIndexNodes.html">XmlContainerConfig::setIndexNodes</a> to Off to change the index type to document indexes. Set <a href="../../api_reference/CXX/XmlContainerConfig_setStatistics.html">XmlContainerConfig::setStatistics</a> to On
+to add a structural statistics database to the container during reindexing, and set  <a href="../../api_reference/CXX/XmlContainerConfig_setStatistics.html">XmlContainerConfig::setStatistics</a> to Off
+to remove an existing structural statistics database.
+</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

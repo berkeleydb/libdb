@@ -1,0 +1,44 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: dbxml:metadata()</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Berkeley DB XML XQuery Extensions</dl></b></td>
+<td align=right><a href="../xquery/lookup.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/node.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>dbxml:metadata()</b></p>
+<p><b>dbxml:metadata($qname as xs:string) as xs:anyAtomicType?</b>
+<p>
+<b>dbxml:metadata($qname as xs:string, $node as node()) as xs:anyAtomicType?</b>
+</p>
+<hr size=1 noshade>
+<b>Description: dbxml:metadata()</b>
+<p>
+The dbxml:metadata() extension functions return the named metadata items from the
+document to which the specified node belongs.  If the specified metdata does not exist
+in the document specified by $node, the empty sequence is returned, otherwise the type
+of the item returned is the same as the type of the metadata set in the document.
+If the context item is not a node, an error is raised
+<a href="http://www.w3.org/TR/xpath-functions/#ERRFODC0001">[err:FODC0001]</a>.
+</p>
+<b>Parameters</b> <br>
+ <b>$qname</b><ul compact><li>This argument is cast to an xs:QName, resolving its prefix if one exists, using
+the in scope namespace prefixes.  The resulting URI and localname pair are used to look
+up the metadata.
+</ul>
+ <b>$node</b><ul compact><li>If specified, the node's document is used for the metadata lookup operation.
+If $node is not specified,
+the behavior is identical to calling the function with the context item, "(.)" as the argument.
+</ul>
+<br>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xquery/lookup.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/node.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

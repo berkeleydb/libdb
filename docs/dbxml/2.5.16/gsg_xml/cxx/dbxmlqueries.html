@@ -1,0 +1,599 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Retrieving BDB XML Documents using XQuery</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 5. Using XQuery with BDB XML" />
+    <link rel="prev" href="xquery.html" title="Chapter 5. Using XQuery with BDB XML" />
+    <link rel="next" href="externalfunc.html" title="Working with External Functions" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Retrieving BDB XML Documents using XQuery</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="xquery.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 5. Using XQuery with BDB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="externalfunc.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="dbxmlqueries"></a>Retrieving BDB XML Documents using XQuery</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="dbxmlqueries.html#xmlquerycontext">The Query Context</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="dbxmlqueries.html#queries">Performing Queries</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+            Documents are retrieved from BDB XML when they match an XQuery path
+            expression. Queries are either performed or prepared using an
+            <code class="classname">XmlManager</code> object, but the query itself
+            usually restricts its scope to a single container or document
+            using one of the XQuery
+            <a class="xref" href="xquery.html#navigationfunctions" title="Navigation Functions">Navigation Functions</a>.
+         </p>
+      <p>
+            When you perform a query, you must provide:
+         </p>
+      <div class="orderedlist">
+        <ol type="1">
+          <li>
+            <p>
+                    The XQuery expression to be used for the query contained in
+                    a single string object.
+                </p>
+          </li>
+          <li>
+            <p>
+                    An <code class="classname">XmlQueryContext</code> object that
+                    identifies contextual information about the query, such as
+                    the namespaces in use and what you want for results (entire
+                    documents, or document values).
+                </p>
+          </li>
+        </ol>
+      </div>
+      <p>
+            What you then receive back is a result set that is returned in the
+            form of an <code class="classname">XmlResults</code> object. You iterate
+            over this result sets in order to obtain the individual documents or
+            values returned as a result of the query.
+         </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xmlquerycontext"></a>The Query Context</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                <span class="emphasis"><em>Context</em></span> is a term that is heavily used in both BDB XML
+                and XQuery. While overlap exists in how the term is used between
+                the two, it is important to understand that differences exist
+                between what BDB XML means by context and
+                what the XQuery language means by it.
+            </p>
+        <p>
+                In XQuery, the context defines aspects of the query that aid in
+                query navigation. For example, the XQuery context defines things
+                like the namespace(s) and variables used by the query,
+                the query's focus (which changes over the course of executing
+                the query), and the functions and collations used by the query.
+                Most thorough descriptions of XQuery will describe these things
+                in detail.
+            </p>
+        <p>
+                In BDB XML, however, the context is a physical object
+                (<code class="classname">XmlQueryContext</code>) that is used for very
+                limited things (compared to what is meant by the XQuery context). 
+                You can use <code class="classname">XmlQueryContext</code> to control
+                only part of the XQuery context. You also use
+                <code class="classname">XmlQueryContext</code> to control BDB XML's
+                behavior toward the query in ways that have no corresponding
+                concept for XQuery contexts.
+            </p>
+        <p>
+                Specifically, you use <code class="classname">XmlQueryContext</code> to:
+            </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+					Define the namespaces to be used by the query.
+				</p>
+            </li>
+            <li>
+              <p>
+					Define any variables that might be needed for the query,
+                    although, these are not the same as the variables
+                    used by XQuery FLWOR expressions (see 
+                    <a class="xref" href="dbxmlqueries.html#definevariables" title="Defining Variables">Defining Variables</a>).
+				</p>
+            </li>
+            <li>
+              <p>
+					Defining whether the query is processed "eagerly" or
+                    "lazily" (see 
+                    <a class="xref" href="dbxmlqueries.html#defineevaluationtype" title="Defining the Evaluation Type">Defining the Evaluation Type</a>).
+				</p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            Note that BDB XML also uses the
+            <code class="classname">XmlQueryContext</code> to identify the query's
+            focus as you iterate over a result set. See 
+            <a class="xref" href="examineresults.html#examinedocvalues" title="Examining Document Values">Examining Document Values</a>
+            for more information.
+        </p>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="definenamespace"></a>Defining Namespaces</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                In order for you to use a namespace prefix in your query, you
+                must first declare that namespace to BDB XML. When you do this,
+                you must identify the URI that corresponds to the prefix, and
+                this URI must match the URI in use on your documents.
+            </p>
+          <p>
+                You can declare as many namespaces as are needed for your query.
+            </p>
+          <p>
+                To declare a namespace, use 
+                    <span><code class="methodname">XmlQueryContext::setNamespace()</code>.</span>
+                    
+                For example:
+            </p>
+          <a id="cxx_query1"></a>
+          <pre class="programlisting">#include "DbXml.hpp"
+...
+
+using namespace DbXml;
+
+...
+
+// Get a manager object.
+XmlManager myManager;
+
+// Open a container
+XmlContainer myContainer = 
+    myManager.openContainer("exampleData.dbxml");
+
+// Get a query context
+XmlQueryContext context = myManager.createQueryContext();
+
+// Declare a namespace
+context.setNamespace("fruits", "http://groceryItem.bdbxml/fruits");
+context.setNamespace("vegetables", "http://groceryItem.bdbxml/vegetables"); </pre>
+          <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+            <h3 class="title">Note</h3>
+            <p>
+                            If you pass an empty prefix to
+                            <code class="methodname">setNamespace()</code>, 
+                            the URI you provide is set as the default URI.
+                    </p>
+          </div>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="definevariables"></a>Defining Variables</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                In XQuery FLWOR expressions, you can set variables using the
+                <code class="literal">let</code> clause. In addition to this, you can use
+                variables that are defined by BDB XML You define these variables
+                using 
+                    <span><code class="methodname">XmlQueryContext::setVariableValue()</code>.</span>
+                    
+            </p>
+          <p>
+                You can declare as many variables using
+                    <span><code class="methodname">XmlQueryContext::setVariableValue()</code></span>
+                    
+                as you need. 
+            </p>
+          <a id="cxx_query2"></a>
+          <pre class="programlisting">#include "DbXml.hpp"
+...
+
+using namespace DbXml;
+
+...
+
+// Get a manager object.
+XmlManager myManager;
+
+// Open a container
+XmlContainer myContainer = 
+    myManager.openContainer("exampleData.dbxml");
+
+// Get a query context
+XmlQueryContext context = myManager.createQueryContext();
+
+// Declare a variable. Note that this method really wants an XmlValue
+// object as the variable's argument. However, we just give it a
+// string here and allow XmlValue's string constructor to create
+// the XmlValue object for us.
+context.setVariableValue("myVar", "Tarragon"); 
+
+// Declare the query string
+std::string myQuery = 
+    "collection('exampleData.dbxml')/product[item=$myVar]";</pre>
+        </div>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="defineevaluationtype"></a>Defining the Evaluation Type</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+                The evaluation type defines how much work BDB XML performs as a
+                part of the query, and how much it defers until the results are
+                evaluated. There are two evaluation types:
+            </p>
+          <div class="informaltable">
+            <table border="1" width="90%">
+              <colgroup>
+                <col align="center" />
+                <col align="left" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th align="center">Evaluation Type</th>
+                  <th align="center">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td align="center">
+                    <p>
+                      <code class="literal">Eager</code>
+                    </p>
+                  </td>
+                  <td align="left">
+                            <p>
+                                The query is executed and its resultant values
+                                are derived and stored in-memory before the
+                                query returns. This is the default.
+                            </p>
+                        </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p>
+                      <code class="literal">Lazy</code>
+                    </p>
+                  </td>
+                  <td align="left">
+                        <p>
+                            Minimal processing is performed before
+                            the query returns, and the
+                            remaining processing is deferred until 
+                            you iterate over the result set.
+                        </p>
+                        </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+                You use 
+                    <code class="methodname">XmlQueryContext::setEvaluationType()</code>
+                    
+                to set a query's return type. For example:
+            </p>
+          <a id="cxx_query4"></a>
+          <pre class="programlisting">#include "DbXml.hpp"
+...
+
+using namespace DbXml;
+
+...
+
+// Get a manager object.
+XmlManager myManager;
+
+// Open a container
+XmlContainer myContainer = 
+    myManager.openContainer("exampleData.dbxml");
+
+// Get a query context
+XmlQueryContext context = myManager.createQueryContext();
+
+// Set the evaluation type to Lazy.
+context.setEvaluationType(XmlQueryContext::Lazy); </pre>
+        </div>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="queries"></a>Performing Queries</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            You perform queries using an <code class="classname">XmlManager</code>
+            object. When you perform a query, you can either:
+        </p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+                    Perform a one-off query using 
+                        <span><code class="methodname">XmlManager::query()</code>.</span>
+                        
+                    This is useful if you are performing queries that you know
+                    you will never repeat within the process scope. For example,
+                    if you are writing a command line utility to perform a
+                    query, display the results, then shut down, you may want to
+                    use this method.
+                </p>
+            </li>
+            <li>
+              <p>
+                    Perform the same query repeatedly by using
+                        <span><code class="methodname">XmlManager::prepare()</code></span>
+                        
+                    to obtain an <code class="classname">XmlQueryExpression</code>
+                    object. You can then run the query repeatedly by calling
+                        <span><code class="methodname">XmlQueryExpression::execute()</code>.</span>
+                        
+                </p>
+              <p>
+                    Creation of a query expression is fairly expensive, so any
+                    time you believe you will perform a given query more than
+                    one time, you should use this approach over the
+                    <code class="methodname">query()</code> method.
+                </p>
+            </li>
+          </ol>
+        </div>
+        <p>
+            Regardless of how you want to run your query, you must restrict the
+            scope of your query to one or more containers, documents, or nodes. Usually you
+            use one of the XQuery navigation functions to do this.  See 
+            <a class="xref" href="xquery.html#navigationfunctions" title="Navigation Functions">Navigation Functions</a> 
+            for more information.
+        </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+            You can configure the query to be performed lazily.  If it is
+            performed lazily, then only those portions of the document that
+            are actually required to satisfy the query are returned in the
+            results set immediately. All other portions of the document may
+            then be retrieved by BDB XML as you iterate over and use the
+            items in the result set.
+        </p>
+          <p>
+            If you are using node-level storage, then a lazy query
+            may result in only the document being returned, but not its
+            metadata, or the metadata but not the document itself. In this
+            case, use
+                <code class="methodname">XmlDocument::fetchAllData()</code>
+                
+            to ensure that you have both the document and its metadata.
+        </p>
+          <p>
+            To specify laziness for the query,
+                <span>
+                    use DBXML_LAZY_DOCS as a flag value to either
+                </span> 
+                
+
+                <code class="methodname">XmlManager::query()</code>
+                
+            or
+                <span><code class="methodname">XmlQueryExpression::execute()</code>.</span>
+                
+         </p>
+          <p>
+            Be aware that lazy docs is different from lazy evaluation. Lazy docs
+            determines whether all document data and document metadata is
+            returned as a result of the query. Lazy evaluation determines how
+            much query processing is deferred until the results set is actually
+            examined.
+         </p>
+        </div>
+        <p>
+            For example, the following executes a query against an
+            <code class="classname">XmlContainer</code> using 
+                <span><code class="methodname">XmlManager::prepare()</code>.</span>
+                
+        </p>
+        <a id="cxx_query5"></a>
+        <pre class="programlisting">#include "DbXml.hpp"
+...
+
+using namespace DbXml;
+
+...
+
+// Get a manager object.
+XmlManager myManager;
+
+// Open a container
+XmlContainer myContainer = 
+    myManager.openContainer("exampleData.dbxml");
+
+// Get a query context
+XmlQueryContext context = myManager.createQueryContext();
+
+// Declare a namespace
+context.setNamespace("fruits", "http://groceryItem.dbxml/fruits");
+
+// Declare the query string
+std::string myQuery = 
+    "collection('exampleData.dbxml')/fruits:product[item=$myVar]";
+
+// Prepare (compile) the query
+XmlQueryExpression qe = myManager.prepare(myQuery, context);
+
+// Run the query. Note that you can perform this query many times 
+// without suffering the overhead of re-creating the query expression.
+// Notice that the only thing we are changing is the variable value,
+// which allows us to control exactly what gets returned for the query.
+XmlResults results = qe.execute(context, 0); 
+
+context.setVariableValue(myVar, "Tarragon");
+XmlResults results = qe.execute(context); 
+
+// Do something with the results
+
+context.setVariableValue(myVar, "Oranges");
+results = qe.execute(context); 
+
+// Do something with the results
+
+context.setVariableValue(myVar, "Kiwi");
+results = qe.execute(context); </pre>
+        <p>
+        Finally, note that when you perform a query, by default BDB XML
+        will read and validate the document and any attached schema or
+        DTDs. This can cause performance problems, so to avoid it you can
+
+        <span>
+                pass the <code class="literal">DBXML_WELL_FORMED_ONLY</code> flag to 
+                <code class="methodname">XmlQueryExpression::execute()</code>.
+        </span>
+
+        
+
+                This can improve performance by causing the scanner to
+                examine only the XML document itself, but it can also cause
+                parsing errors if the document references information that
+                might have come from a schema or DTD.
+
+</p>
+        <div class="sect3" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h4 class="title"><a id="querymetadata"></a>Metadata Based Queries</h4>
+              </div>
+            </div>
+          </div>
+          <p>
+            You can query for documents based on the metadata that you set for
+            them. To do so, do the following: 
+        </p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p>
+                    Define a namespace for the query that uses the URI that you
+                    set for the metadata against which you will perform the
+                    query. If you did not specify a namespace for your metadata
+                    when you added it to the document, then use an empty string.
+                    
+                </p>
+              </li>
+              <li>
+                <p>
+                    Perform the query using the special
+                    <code class="function">dbxml:metadata()</code> from within a
+                    predicate.
+                </p>
+              </li>
+            </ul>
+          </div>
+          <p>
+            For example, suppose you placed a timestamp in your metadata using
+            the URI '<code class="literal">http://dbxmlExamples/timestamp</code>' and the
+            attribute name '<code class="literal">timeStamp</code>'. Then you can query
+            for documents that use a specific timestamp as follows:
+        </p>
+          <a id="cxx_query6"></a>
+          <pre class="programlisting">#include "DbXml.hpp"
+...
+
+using namespace DbXml;
+
+...
+
+// Get a manager object.
+XmlManager myManager;
+
+// Open a container
+XmlContainer myContainer = 
+    myManager.openContainer("exampleData.dbxml");
+std::string col = "collection('exampleData.dbxml')";
+
+// Get a query context
+XmlQueryContext context = myManager.createQueryContext();
+
+// Declare a namespace. The first argument, 'ts', is the
+// namespace prefix and in this case it can be anything so
+// long as it is not reused with another URI within the same
+// query.
+context.setNamespace("ts", "http://dbxmlExamples/timestamp");
+
+// Declare the query string
+std::string myQuery = col;
+myQuery += "/*[dbxml:metadata('ts:timeStamp')=00:28:38]";
+
+// Prepare (compile) the query
+XmlQueryExpression qe = myManager.prepare(myQuery, context);
+
+// Run the query. 
+XmlResults results = qe.execute(context, 0); </pre>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="xquery.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="externalfunc.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 5. Using XQuery with BDB XML </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Working with External Functions</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

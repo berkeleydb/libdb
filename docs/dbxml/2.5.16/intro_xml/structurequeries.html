@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Queries Involving Document Structure</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+    <link rel="prev" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+    <link rel="next" href="valuequeries.html" title="Value Queries" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Queries Involving Document Structure</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="xquery.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 2. XQuery and Berkeley DB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="valuequeries.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="structurequeries"></a>Queries Involving Document Structure</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            Notice that the parts container can contain documents with different 
+            structures. The ability to manage structured data in a flexible manner 
+            is one of the fundamental differences between XML and relational databases. 
+            In this example, a single container manages documents of two different 
+            structures sharing certain common elements.  The fact that the documents 
+            partially overlap in structure allows for efficient queries and common 
+            indexes. This can be used to model a union of related data. Structural 
+            queries exploit such natural unions in XML data.  Here are some example 
+            structural queries.
+        </p>
+      <p>
+            First select all <code class="literal">part</code> records containing 
+            <code class="literal">parent-part</code> nodes in their document structure. 
+            In english, the following XQuery would read: "from the container named 
+            <code class="literal">parts</code> select all <code class="literal">part</code> elements that 
+            also contain a <code class="literal">parent-part</code> element as a direct child of 
+            that element". As XQuery code, it is: 
+        </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("parts.dbxml")/part[parent-part]'
+
+10000 objects returned for eager expression '
+collection("parts.dbxml")/part[parent-part]'</pre>
+      <p>
+            To examine the query results, use the '<code class="literal">print</code>' command: 
+        </p>
+      <pre class="programlisting">dbxml&gt; print
+&lt;part number="0"&gt;&lt;description&gt;Description of 0&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;0&lt;/parent-part&gt;&lt;/part&gt;
+&lt;part number="10"&gt;&lt;description&gt;Description of 10&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;0&lt;/parent-part&gt;&lt;/part&gt;
+...
+&lt;part number="99980"&gt;&lt;description&gt;Description of 99980&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;0&lt;/parent-part&gt;&lt;/part&gt;
+&lt;part number="99990"&gt;&lt;description&gt;Description of 99990&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;0&lt;/parent-part&gt;&lt;/part&gt;
+</pre>
+      <p>
+            To display only the <code class="literal">parent-part</code> element without displaying 
+            the rest of the document, the query changes only slightly:                    
+        </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("parts.dbxml")/part/parent-part'
+
+10000 objects returned for eager expression '
+collection("parts.dbxml")/part/parent-part'
+
+dbxml&gt; print
+&lt;parent-part&gt;0&lt;/parent-part&gt;
+&lt;parent-part&gt;1&lt;/parent-part&gt;
+&lt;parent-part&gt;2&lt;/parent-part&gt;
+...
+&lt;parent-part&gt;1&lt;/parent-part&gt;
+&lt;parent-part&gt;2&lt;/parent-part&gt;
+&lt;parent-part&gt;0&lt;/parent-part&gt;</pre>
+      <p>
+           Alternately, to retrieve the value of the <code class="literal">parent-part</code> 
+           element, the query becomes:   
+        </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("parts.dbxml")/part/parent-part/string()'
+
+10000 objects returned for eager expression '
+collection("parts.dbxml")/part/parent-part/string()'
+
+dbxml&gt; print
+0
+1
+2
+...
+1
+2
+0</pre>
+      <p>
+             Invert the earlier example to select all documents that do not have 
+            <code class="literal">parent-part</code> elements:
+        </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("parts.dbxml")/part[not(parent-part)]'
+
+90000 objects returned for eager expression '
+collection("parts.dbxml")/part[not(parent-part)]'
+
+dbxml&gt; print
+...
+&lt;part number="99989"&gt;&lt;description&gt;Description of 99989&lt;/description&gt;
+&lt;category&gt;9&lt;/category&gt;&lt;/part&gt;
+&lt;part number="99991"&gt;&lt;description&gt;Description of 99991&lt;/description&gt;
+&lt;category&gt;1&lt;/category&gt;&lt;/part&gt;
+&lt;part number="99992"&gt;&lt;description&gt;Description of 99992&lt;/description&gt;
+&lt;category&gt;2&lt;/category&gt;&lt;/part&gt;
+&lt;part number="99993"&gt;&lt;description&gt;Description of 99993&lt;/description&gt;
+&lt;category&gt;3&lt;/category&gt;&lt;/part&gt;
+&lt;part number="99994"&gt;&lt;description&gt;Description of 99994&lt;/description&gt;
+&lt;category&gt;4&lt;/category&gt;&lt;/part&gt;
+&lt;part number="99995"&gt;&lt;description&gt;Description of 99995&lt;/description&gt;
+&lt;category&gt;5&lt;/category&gt;&lt;/part&gt;
+&lt;part number="99996"&gt;&lt;description&gt;Description of 99996&lt;/description&gt;
+&lt;category&gt;6&lt;/category&gt;&lt;/part&gt;
+&lt;part number="99997"&gt;&lt;description&gt;Description of 99997&lt;/description&gt;
+&lt;category&gt;7&lt;/category&gt;&lt;/part&gt;
+&lt;part number="99998"&gt;&lt;description&gt;Description of 99998&lt;/description&gt;
+&lt;category&gt;8&lt;/category&gt;&lt;/part&gt;
+&lt;part number="99999"&gt;&lt;description&gt;Description of 99999&lt;/description&gt;
+&lt;category&gt;9&lt;/category&gt;&lt;/part&gt; </pre>
+      <p>
+            Structural queries are somewhat like relational joins, except that 
+            they are easier to express and manage over time. Some structural queries 
+            are even impossible or impractical to model with more traditional 
+            relational databases. This is in part due to the nature of XML as a 
+            self describing, yet flexible, data representation. Collections of XML
+            documents attain commonality based on the similarity in their structures 
+            just as much as the similarity in their content. Essentially, relationships 
+            are implicitly expressed within the XML structure itself. The utility 
+            of this feature becomes more apparent when you start combining structural 
+            queries with value based queries.
+        </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="xquery.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="valuequeries.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 2. XQuery and Berkeley DB XML </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Value Queries</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,68 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlIndexSpecification</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlIndexSpecification</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlIndexSpecification {
+public:
+	XmlIndexSpecification();
+	XmlIndexSpecification(const XmlIndexSpecification &);
+	~XmlIndexSpecification();
+	XmlIndexSpecification &operator = (const XmlIndexSpecification &)
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlIndexSpecification</b>
+<p>The XmlIndexSpecification class encapsulates the indexing specification
+of a container. An indexing specification can be retrieved with the
+<a href="../../api_reference/CXX/XmlContainer_getIndexSpecification.html">XmlContainer::getIndexSpecification</a> method, and modified using the
+<a href="../../api_reference/CXX/XmlContainer_setIndexSpecification.html">XmlContainer::setIndexSpecification</a> method.</p>
+<p>The XmlIndexSpecification class provides an interface for manipulating
+the indexing specification through the
+<a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a>,
+<a href="../../api_reference/CXX/XmlIndexSpecification_deleteIndex.html">XmlIndexSpecification::deleteIndex</a>, and
+<a href="../../api_reference/CXX/XmlIndexSpecification_replaceIndex.html">XmlIndexSpecification::replaceIndex</a> methods. The class interface
+also provides the
+<a href="../../api_reference/CXX/XmlIndexSpecification_next.html">XmlIndexSpecification::next</a> and
+<a href="../../api_reference/CXX/XmlIndexSpecification_reset.html">XmlIndexSpecification::reset</a> methods for iterating through the
+specified indices. The <a href="../../api_reference/CXX/XmlIndexSpecification_find.html">XmlIndexSpecification::find</a> method
+can be used to search for the indexing strategy for a known node.</p>
+<p>Finally, you can set a default index specification for a container using
+<a href="../../api_reference/CXX/XmlIndexSpecification_addDefaultIndex.html">XmlIndexSpecification::addDefaultIndex</a>. You can replace and
+delete the default index using
+<a href="../../api_reference/CXX/XmlIndexSpecification_replaceDefaultIndex.html">XmlIndexSpecification::replaceDefaultIndex</a> and
+<a href="../../api_reference/CXX/XmlIndexSpecification_deleteDefaultIndex.html">XmlIndexSpecification::deleteDefaultIndex</a>.</p>
+<p>Note that adding an index to a container results in re-indexing all of
+the documents in that container, which can take a very long time.  It
+is good practice to design an application to add useful indices before
+populating a container.</p>
+<p>A copy constructor and assignment operator are provided for this class.
+The class is implemented using a handle-body idiom.  When a handle is
+copied both handles maintain a reference to the same body.</p>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

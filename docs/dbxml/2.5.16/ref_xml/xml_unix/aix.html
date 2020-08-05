@@ -1,0 +1,53 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: AIX</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml_unix/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/solaris.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>AIX</b></p>
+See Also <a href="../../programmer_reference/build_unix_aix.html">Berkeley DB notes on AIX</a>
+<ol>
+<p><li><b>Normal build command for AIX using xlC_r and xlc_r and no options:</b>
+<blockquote><pre>sh buildall.sh -x xlC_r -c xlc_r</pre></blockquote>
+<p><li>
+<b>I get a link error regarding open and open64 on AIX 5.3 while linking against Berkeley DB.</b>
+<p>On AIX 5.3, you may see a link failure while building Berkeley DB XML against Berkeley DB 4.8.x
+with "open" or "open64" in the message.  This may occur when trying to link dbxml_dump
+or dbxml_load.
+</p>
+<p>This can be worked around by adding this line to db-4.8.x/build_unix/db_cxx.h:
+<blockquote><pre>
+#include &lt;fcntl.h&gt;
+</pre></blockquote>
+It should be added near the top of the file, before the include of db.h.
+After this, rebuild Berkeley DB by changing to the directory db-4.8.x/build_unix and
+running "make clean; make; make install."
+</p>
+<p><li>
+<b>I get an error regarding truncate64 and stat64 on AIX 5.3 while building Berkeley DB.</b>
+<p>On AIX 5.3, you may see a compilation failure while building Berkeley DB 4.3.29
+of the nature, "...truncate64 is not a member of..."
+or "...stat64 is not a member of..."
+</p>
+<p>This can be worked around by adding this line to db-4.3.29/dbinc/db.in:
+<blockquote><pre>
+#include &lt;unistd.h&gt;
+</pre></blockquote>
+It should be added just after the line "#ifndef __NO_SYSTEM_INCLUDES."
+After this, re-run the buildall.sh script, and be sure that Berkeley DB
+configures itself again, regnerating the file, db-4.3.29/build_unix/db.h.
+</p>
+</ol>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/faq.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/solaris.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

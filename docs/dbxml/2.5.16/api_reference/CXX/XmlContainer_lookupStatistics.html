@@ -1,0 +1,109 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::lookupStatistics</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::lookupStatistics</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlStatistics XmlContainer::lookupStatistics(const std::string &uri,
+    const std::string &name, const std::string &index,
+    const XmlValue &value = XmlValue())
+<p>
+XmlStatistics XmlContainer::lookupStatistics(XmlTransaction &txn,
+    const std::string &uri, const std::string &name,
+    const std::string &index, const XmlValue &value = XmlValue())
+<p>
+XmlStatistics XmlContainer::lookupStatistics(const std::string &uri,
+    const std::string &name, const std::string &parent_uri,
+    const std::string &parent_name, const std::string &index,
+    const XmlValue &value = XmlValue())
+<p>
+XmlStatistics XmlContainer::lookupStatistics(XmlTransaction &txn,
+    const std::string &uri, const std::string &name,
+    const std::string &parent_uri, const std::string &parent_name,
+    const std::string &index, const XmlValue &value = XmlValue())
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::lookupStatistics</b>
+<p>Returns an <a href="../../api_reference/CXX/XmlStatistics.html">XmlStatistics</a> object for the identified index. This
+object identifies the number of keys (both total and unique) maintained
+for the identified index.</p>
+<hr size=1 noshade>
+<b>Description: XmlStatistics XmlContainer::lookupStatistics(XmlTransaction &txn, const std::string &uri, const std::string &name, const std::string &index, const XmlValue &value = XmlValue())</b>
+<p>Lookup statistics for the identified index. Note that this form of this
+method cannot be used to return statistics on edge indices.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>uri</b><ul compact><li>The namespace of the node to which this index is applied.</ul>
+ <b>name</b><ul compact><li>The name of the node to which this index is applied.</ul>
+ <b>index</b><ul compact><li>Identifies the index for which you want the statistics returned.  The
+value supplied here must be a valid index. See
+<a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a> for a description of valid index
+specifications.</ul>
+ <b>value</b><ul compact><li>Provides the value to which equality indices must be equal. This
+parameter is required when returning statistics on equality indices, and
+it is ignored for all other types of indices.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::lookupStatistics method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>UNKNOWN_INDEX</b><ul compact><li>Unknown index specification</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlStatistics XmlContainer::lookupStatistics(XmlTransaction &txn, const std::string &uri, const std::string &name, const std::string &parent_uri, const std::string &parent_name, const std::string &index, const XmlValue &value = XmlValue())</b>
+<p>Lookup statistics for the identified index. Use this form of this method
+to return statistics on edge indices.</p>
+<p>Edge indices are indices maintained for those locations in a document
+where two nodes (a parent node and a child node) meet. See the Berkeley DB XML
+Getting Started Guide for details.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>uri</b><ul compact><li>The namespace of the node to which this edge index is applied.</ul>
+ <b>name</b><ul compact><li>The name of the node to which this edge index is applied.</ul>
+ <b>parent_uri</b><ul compact><li>The namespace of the parent node to which this edge index is applied.</ul>
+ <b>parent_name</b><ul compact><li>The name of the parent node to which this edge index is applied.</ul>
+ <b>index</b><ul compact><li>Identifies the index for which you want the statistics returned.  The
+value supplied here must be a valid index. See
+<a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a> for a description of valid index
+specifications.</ul>
+ <b>value</b><ul compact><li>Provides the value to which equality indices must be equal. This
+parameter is required when returning statistics on equality indices, and
+it is ignored for all other types of indices.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::lookupStatistics method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>UNKNOWN_INDEX</b><ul compact><li>Unknown index specification</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

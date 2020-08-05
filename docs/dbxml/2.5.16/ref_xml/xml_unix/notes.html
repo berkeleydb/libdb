@@ -1,0 +1,66 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Building and Using Berkeley DB XML Applications on UNIX</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml_unix/shlib.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/faq.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Building and Using Berkeley DB XML Applications on UNIX</b></p>
+<p>Any application which uses Berkeley DB XML, regardless of language API used, relies on four libraries: Berkeley DB XML,
+Berkeley DB, XQilla and Xerces C++.  When compiling, the include files
+from these packages must be available, and the libraries must be
+included when linking the application.</p>
+<p>When running an application, each of the shared libraries must be
+located by the dynamic linker, usually controlled by system settings and
+the <b>LD_LIBRARY_PATH</b> environment variable.  This applies to both
+C++ and Java applications.  See <a href="../../ref_xml/xml_unix/shlib.html">Dynamic shared libraries</a> for
+more information</p>
+<b>Building C++ Applications</b>
+<p>Assuming Berkeley DB XML, Berkeley DB, Xerces C++ and XQilla have all been
+built using <i>buildall.sh</i> and installed in the default location, a typical command to compile C++ code
+that uses Berkeley DB XML is:</p>
+<blockquote><pre>g++ -c -Ipath_to_distribution/install/include -c myapp.cpp</pre></blockquote>
+<p>If the libraries are in different locations, such as Xerces and XQilla
+in <b>/usr/local</b>, Berkeley DB in
+<b>/usr/local/BerkeleyDB.4.8</b>, and Berkeley DB XML in
+<b>/usr/local/BerkeleyDBXML.2.5</b>, a command might
+be:</p>
+<blockquote><pre>g++ -c -I/usr/local/include
+-I/usr/local/BerkeleyDBXML.2.5/include
+-I/usr/local/BerkeleyDB.4.8/include -c myapp.cpp</pre></blockquote>
+<p>Then, corresponding link commands are:</p>
+<blockquote><pre>g++ -o myapp myapp.o -Lpath_to_distribution/install/lib
+   -lxqilla -lxerces-c -ldbxml-2.5 -ldb_cxx-4.8</pre></blockquote>
+<p>and</p>
+<blockquote><pre>g++ -o myapp myapp.o -L/usr/local/lib
+    -L/usr/local/BerkeleyDBXML.2.5/lib
+    -L/usr/local/BerkeleyDB.4.8/lib -lxqilla
+    -l xerces-c -ldbxml-2.5 -ldb_cxx-4.8</pre></blockquote>
+<p>Note the use of <b>-ldb_cxx-4.8</b> and not <b>-ldb-4.8</b>.  Berkeley DB XML
+uses the Berkeley DB C++ API internally, so the link step will fail if the
+wrong library is used.</p>
+<b>Building Java Applications</b>
+<p>Java applications compile normally using javac and require both <b>db.jar</b> and
+<b>dbxml.jar</b> in their <b>CLASSPATH</b>.  Assuming buildall.sh and default
+installation directories were used these reside in the directory
+path_to_distribution/install/lib.  This is a reasonable javac line:
+<blockquote><pre>javac -cp"path_to_distribution/install/lib/db.jar:path_to_distribution/install/lib/dbxml.jar" MyClass.java
+</pre></blockquote>
+In order to run the resulting program both <b>CLASSPATH</b> and <b>LD_LIBRARY_PATH</b> (or equivalent) 
+must be set properly, e.g.
+<blockquote><pre>export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:path_to_distribution/install/lib
+export CLASSPATH=$CLASSPATH:path_to_distribution/install/lib/db.jar:path_to_distribution/install/lib/dbxml.jar
+java MyClass
+</pre></blockquote>
+</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/shlib.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/faq.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

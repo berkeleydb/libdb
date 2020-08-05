@@ -1,0 +1,74 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlTransaction::commit</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlTransaction::commit</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlTransaction::commit(u_int32_t flags = 0)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlTransaction::commit</b>
+<p>The XmlTransaction::commit method ends the transaction. Container and
+document modifications made within the scope of the transaction are by
+default written to stable storage.</p>
+<p>After XmlTransaction::commit has been called, regardless of its
+return, the <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle may not be accessed again.  If
+XmlTransaction::commit encounters an error, the transaction and
+all child transactions of the transaction are aborted.</p>
+<p>The XmlTransaction::commit method
+throws an exception that encapsulates a non-zero
+error value on failure.
+</p>
+<b>Parameters</b> <br>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or
+one of the following values:
+<br>
+<b><a name="DB_TXN_NOSYNC">DB_TXN_NOSYNC</a></b><ul compact><li>Do not synchronously flush the log.  This means the transaction will
+exhibit the ACI (atomicity, consistency, and isolation) properties, but
+not D (durability); that is, database integrity will be maintained, but
+it is possible that this transaction may be undone during recovery.</ul>
+<p>This behavior may also be set for a Berkeley DB environment using the
+UNREF==dbenv_set_flags method or for a single transaction using the
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a> method.  Any value specified to this
+method overrides both of those settings.</p>
+<b><a name="DB_TXN_SYNC">DB_TXN_SYNC</a></b><ul compact><li>Synchronously flush the log.  This means the transaction will exhibit
+all of the ACID (atomicity, consistency, isolation, and durability)
+properties.
+<p>This behavior is the default for Berkeley DB environments unless the
+<a href="../../api_reference/CXX/envset_flags.html#DB_TXN_NOSYNC">DB_TXN_NOSYNC</a> flag was specified to the
+UNREF==dbenv_set_flags method.  This behavior may also be set for a single
+transaction using the <a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a> method.  Any value
+specified to this method overrides both of those settings.</p></ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlTransaction::commit method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>TRANSACTION_ERROR</b><ul compact><li>Cannot use XmlTransaction once committed or aborted</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

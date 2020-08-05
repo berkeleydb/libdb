@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Specifying Index Strategies</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="indices.html" title="Chapter 7. Using BDB XML Indices" />
+    <link rel="prev" href="syntaxtype.html" title="Syntax Types" />
+    <link rel="next" href="nodeindex.html" title="Specifying Index Nodes" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Specifying Index Strategies</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="syntaxtype.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 7. Using BDB XML Indices</th>
+          <td width="20%" align="right"> <a accesskey="n" href="nodeindex.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="indexdeclarations"></a>Specifying Index Strategies</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+        The combined index type and syntax type is called the <span class="emphasis"><em>index
+                strategy</em></span>. To specify an index, you declare it
+        using a string that specifies your index strategy.  This string is formatted
+            as follows:
+        </p>
+      <div class="blockquote">
+        <blockquote class="blockquote">
+          <pre class="programlisting">[unique]-{path type}-{node type}-{key type}-{syntax type}</pre>
+        </blockquote>
+      </div>
+      <p>
+            where:
+        </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                    <code class="literal">unique</code> is the actual value that you
+                    provide in this position on the string. If you provide this
+                    value, then indexed values must be unique.
+                    If you do not want indexed values to
+                    be unique, provide nothing for this position in the string. 
+                </p>
+            <p>
+                    See <a class="xref" href="indices.html#uniquetype" title="Uniqueness">Uniqueness</a>
+                    for more information.
+                </p>
+          </li>
+          <li>
+            <p>
+                    <code class="literal">{path type}</code> identifies the path type. Valid values are:
+                </p>
+            <div class="itemizedlist">
+              <ul type="circle">
+                <li>
+                  <p>
+                            <code class="literal">node</code>
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">edge</code>
+                        </p>
+                </li>
+              </ul>
+            </div>
+            <p>
+                    See <a class="xref" href="indices.html#pathtype" title="Path Types">Path Types</a>
+                    for more information.
+                </p>
+          </li>
+          <li>
+            <p>
+                    <code class="literal">{node type}</code> identifies the type of node
+                    being indexed. Valid values are:
+                </p>
+            <div class="itemizedlist">
+              <ul type="circle">
+                <li>
+                  <p>
+                            <code class="literal">element</code>
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">attribute</code>
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">metadata</code>
+                        </p>
+                </li>
+              </ul>
+            </div>
+            <p>
+                    If metadata is specified, then {path type} must be
+                    <code class="literal">node</code>.
+                </p>
+            <p>
+                    See <a class="xref" href="indices.html#nodetype" title="Node Types">Node Types</a> for more
+                    information.
+                </p>
+          </li>
+          <li>
+            <p>
+                    {key type} identifies the sort of test that the index
+                    supports. The following key types are supported:
+                </p>
+            <div class="itemizedlist">
+              <ul type="circle">
+                <li>
+                  <p>
+                            <code class="literal">presence</code>
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">equality</code>
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">substring</code>
+                        </p>
+                </li>
+              </ul>
+            </div>
+            <p>
+                    See <a class="xref" href="indices.html#keytype" title="Key Types">Key Types</a>
+                    for more information.
+                </p>
+          </li>
+          <li>
+            <p>
+                    {syntax type} identifies the syntax to use for the indexed
+                    value. Specify one of the following values:
+                </p>
+            <div class="itemizedlist">
+              <ul type="circle">
+                <li>
+                  <p>
+                    <code class="literal">none</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">anyURI</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">base64Binary</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">boolean</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">date</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">dateTime</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">dayTimeDuration</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">decimal</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">double</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">duration</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">float</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">gDay</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">gMonth</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">gMonthDay</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">gYear</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">gYearMonth</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">hexBinary</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">NOTATION</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">QName</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">string</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">time</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">yearMonthDuration</code>
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code class="literal">untypedAtomic</code>
+                  </p>
+                </li>
+              </ul>
+            </div>
+            <p>
+                    Note that if the key type is <code class="literal">presence</code>, then the syntax type should be
+                    <code class="literal">none</code>. Also, for queries that examine
+                    numerical data without specifying the cast explicitly, 
+                    use <code class="literal">double</code> instead
+                    of <code class="literal">decimal</code> for the index. This is because the XQuery
+                    specification requires implict casts of numerical data
+                    to be performed as a <code class="literal">double</code>.
+                </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+            The following are some example index strategies:
+        </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                    <code class="literal">node-element-presence-none</code>
+                </p>
+            <p>
+                    Index an element node for presence queries. That is, queries
+                    that test whether the node exists in the document. 
+                </p>
+          </li>
+          <li>
+            <p>
+                    <code class="literal">unique-node-metadata-equality-string</code>
+                </p>
+            <p>
+                    Index a metadata node for equality string compares. The
+                    value provided for this node must be unique within the
+                    container.
+                </p>
+            <p>
+                    This strategy is actually used by default for all documents
+                    in a container. It is used to index the document's name.
+                </p>
+          </li>
+          <li>
+            <p>
+                    <code class="literal">edge-attribute-equality-float</code>
+                </p>
+            <p>
+                     Defines an equality float index for an attribute's edge. 
+                     Improves performance for queries that examine whether a 
+                     specific element/@attribute path is equal to a float value.
+                </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+            Also, be aware that you can specify multiple indices at a time by
+            providing a space-separated list of index strategies in the string.
+            For example, you can specify two index strategies at a time using:
+        </p>
+      <div class="blockquote">
+        <blockquote class="blockquote">
+          <pre class="programlisting">"node-element-presence-none edge-attribute-equality-float"</pre>
+        </blockquote>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="syntaxtype.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="indices.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="nodeindex.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Syntax Types </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Specifying Index Nodes</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

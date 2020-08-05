@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Value Queries</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+    <link rel="prev" href="structurequeries.html" title="Queries Involving Document Structure" />
+    <link rel="next" href="introducingindexes.html" title="Introducing Indices" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Value Queries</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="structurequeries.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 2. XQuery and Berkeley DB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="introducingindexes.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="valuequeries"></a>Value Queries</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            XQuery is equally adept at finding data based on value.  The following 
+            examples combine structural queries with restrictions on the values returned 
+            in the result. 
+        </p>
+      <p>
+            To select all <code class="literal">part</code>s that have a <code class="literal">parent-part</code> 
+            as a child and also have a 
+            <code class="literal">parent-part</code> value of <code class="literal">1</code>:   
+        </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("parts.dbxml")/part[parent-part = 1]'  
+
+3333 objects returned for eager expression '
+collection("parts.dbxml")/part[parent-part = 1]'</pre>
+      <p>
+            Notice that the query is identical to the query used in the previous 
+            example, except that it uses '<code class="literal">[parent-part = 1]</code>'.  
+            The results follow: 
+        </p>
+      <pre class="programlisting">dbxml&gt; print
+...
+&lt;part number="99820"&gt;&lt;description&gt;Description of 99820&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;1&lt;/parent-part&gt;&lt;/part&gt;
+&lt;part number="99850"&gt;&lt;description&gt;Description of 99850&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;1&lt;/parent-part&gt;&lt;/part&gt;
+&lt;part number="99880"&gt;&lt;description&gt;Description of 99880&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;1&lt;/parent-part&gt;&lt;/part&gt;
+&lt;part number="99910"&gt;&lt;description&gt;Description of 99910&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;1&lt;/parent-part&gt;&lt;/part&gt;
+&lt;part number="99940"&gt;&lt;description&gt;Description of 99940&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;1&lt;/parent-part&gt;&lt;/part&gt;
+&lt;part number="99970"&gt;&lt;description&gt;Description of 99970&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;1&lt;/parent-part&gt;&lt;/part&gt; </pre>
+      <p>
+           XQuery also provides a full set of expressions that you can use to 
+           select documents from the container. For instance, if we wanted to 
+           look up the parts with part numbers 1070 and 1032 we could run the 
+           following query: 
+        </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                This query is searching on the value of an attribute rather
+                than the value of an element. This is an equally valid way
+                to search for documents.
+            </p>
+      </div>
+      <pre class="programlisting">dbxml&gt; query '
+collection("parts.dbxml")/part[@number = 1070 or @number = 1032]'
+
+2 objects returned for eager expression '
+collection("parts.dbxml")/part[@number = 1070 or @number = 1032]'
+
+dbxml&gt; print
+&lt;part number="1070"&gt;&lt;description&gt;Description of 1070&lt;/description&gt;
+&lt;category&gt;0&lt;/category&gt;&lt;parent-part&gt;2&lt;/parent-part&gt;&lt;/part&gt;
+&lt;part number="1032"&gt;&lt;description&gt;Description of 1032&lt;/description&gt;
+&lt;category&gt;2&lt;/category&gt;&lt;/part&gt;</pre>
+      <p>
+            Standard inequality operators and other expressions are also 
+            available and help to isolate the required subset of data within 
+            a container: 
+        </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("parts.dbxml")/part[@number &gt; 100 and @number &lt; 105]'
+
+4 objects returned for eager expression '
+collection("parts.dbxml")/part[@number &gt; 100 and @number &lt; 105]'
+
+dbxml&gt; print
+&lt;part number="101"&gt;&lt;description&gt;Description of 101&lt;/description&gt;
+&lt;category&gt;1&lt;/category&gt;&lt;/part&gt;
+&lt;part number="102"&gt;&lt;description&gt;Description of 102&lt;/description&gt;
+&lt;category&gt;2&lt;/category&gt;&lt;/part&gt;
+&lt;part number="103"&gt;&lt;description&gt;Description of 103&lt;/description&gt;
+&lt;category&gt;3&lt;/category&gt;&lt;/part&gt;
+&lt;part number="104"&gt;&lt;description&gt;Description of 104&lt;/description&gt;
+&lt;category&gt;4&lt;/category&gt;&lt;/part&gt;</pre>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="structurequeries.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="introducingindexes.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Queries Involving Document Structure </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Introducing Indices</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

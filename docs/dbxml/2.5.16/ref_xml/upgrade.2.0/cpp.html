@@ -1,0 +1,190 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Migrating Berkeley DB XML C++ Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Upgrading Berkeley DB XML Applications</dl></b></td>
+<td align=right><a href="../upgrade.2.0/features.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.2.0/java.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Migrating Berkeley DB XML C++ Applications</b></p>
+<b>XmlManager</b>
+<p>The XmlManager is a new object in 2.0.  It is used as a
+factory object for many Berkeley DB XML objects, as well as providing
+context for operations such as queries.  Some of the common
+operations on XmlManager are:</p>
+<p><ul type=disc>
+<li>XmlManager::createContainer()
+<li>XmlManager::openContainer()
+<li>XmlManager::createTransaction()
+<li>XmlManager::query()
+</ul>
+<p>
+Many of the operations that were previously methods on
+XmlContainer are now methods on XmlManager.
+</p>
+<b>XmlContainer Management</b>
+<p>The following is a comparison of 1.2.1 and 2.0 code to
+create an XmlContainer and insert a new document:</p>
+<blockquote><pre>// Create a container, insert a document
+// Do not use environment or transactions
+//
+// In 1.2.1
+	XmlContainer container(0, "test.dbxml");
+	container.open(0, DB_CREATE|DB_EXCL, 0);
+	XmlDocument doc;
+	doc.setContent("&lt;root&gt;newdoc&lt;/root&gt;");
+	container.putDocument(0, doc, 0);
+	container.close(0);
+//
+// In 2.0
+	XmlManager mgr;
+	XmlContainer container = mgr.createContainer("test.dbxml");
+	// createContainer and openContainer return opened containers
+	XmlUpdateContext uc = mgr.createUpdateContext();
+	container.putDocument("doc1", "&lt;root&gt;newdoc&lt;/root&gt;", uc);
+	// container and manager are closed when objects go out of scope
+</pre></blockquote>
+<p>The points to notice are:</p>
+<p><ul type=disc>
+<li>XmlManager is a factory object
+<li>2.0 requires an XmlUpdateContext object for all modifications.
+This was happening under the covers in 1.2.X.
+<li>2.0 does not require creation of an XmlDocument object in
+order to insert content.  It is still an option.
+<li>2.0 no longer exposes numeric document IDs.  It
+requires names for documents, and the names must be
+unique within a container.  The flag, DBXML_GEN_NAME,
+can be used to tell the system to generate a unique
+name if names are not important to an application.
+<li>Valid XmlContainer objects are implicitly opened when
+created.
+<li>Object scoping is used for automatic cleanup and exception safety.
+Internally, the 2.0 XmlManager and XmlContainer objects are reference
+counted, and closed upon release of last reference.
+<li>XmlManager has an openContainer() method that must be used to
+open existing containers.  It can also be used to create new containers.
+</ul>
+<b>XmlManager and Berkeley DB DbEnv</b>
+<p>In the 1.2.X API, the XmlContainer constructor takes
+a DbEnv * parameter which is used if a DbEnv is required.
+In 2.0, the DbEnv (Berkeley DB environment) is associated with
+the XmlManager object.  In 1.2.X, the DbEnv, if provided,
+is managed externally to Berkeley DB XML.  In 2.0, there is an
+option of passing the flag, DBXML_ADOPT_DBENV.  If the
+DbEnv is adopted, it is owned by the XmlManager object,
+and is closed when the XmlManager destructor runs:</p>
+<blockquote><pre>	DbEnv *env = new DbEnv(0);
+	env-&gt;open("path", DB_INIT_MPOOL|DB_CREATE, 0);
+	XmlManager mgr(env, DBXML_ADOPT_DBENV);
+	// XmlManager will close and delete the DbEnv
+	// object when it goes out of scope
+</pre></blockquote>
+<b>Queries</b>
+<p>The addition of the XmlManager object and the introduction of the XQuery
+query language to 2.0 change the way that queries are performed in two
+ways:</p>
+<ol>
+<p><li>Query language is XQuery, and no longer XPath 1.0.  Most XPath 1.0
+queries are valid in XQuery, usually with the addition of additional
+required syntax in XQuery.
+<p><li>The Query context for 2.0 is the XmlManager object, and not constrained
+to a specific XmlContainer.  A single XQuery can reference more than one
+container, and even reference specific documents, by name.
+</ol>
+<p>The following code compares a simple query in 1.2.X and 2.0:</p>
+<blockquote><pre>// Assume an open container and XmlManager
+// Assume container name is "test.dbxml"	   
+// Do not use environment or transactions
+//
+// In 1.2.1
+	   XmlResults results(container.queryWithXPath(0, "/vendor", 0));
+	   XmlValue value;
+	   while (results.next(value)) {
+		   // do something
+	   }      
+//
+// In 2.0
+	   // XmlQueryContext is required
+	   XmlQueryContext qc = mgr.createQueryContext();
+	   XmlResults results = mgr.query("collection('test.dbxml')/vendor",
+					  qc);
+	   XmlValue value;
+	   while (results.next(value)) {
+		   // do something
+	   }
+</pre></blockquote>
+<p>The points to notice are:</p>
+<p><ul type=disc>
+<li>XmlQueryContext is required in 2.0.  In 1.2.X, it was created
+under the covers if it was defaulted.
+<li>The 2.0 query requires the string "collection('test.dbxml')" to point
+to a specific container.  There are a number of ways to control query
+context in 2.0, both in the XQuery expression itself, and through the
+query interfaces.
+</ul>
+<b>Transactions</b>
+<p>2.0 introduces a new object, XmlTransaction, which is used to wrap the
+Berkeley DB DbTxn object, and aids in internal transaction management.  Rather
+than using an optional DbTxn * argument to a single interface, 2.0
+defines 2 separate interfaces for each operation that may be transacted.
+One takes an XmlTransaction & argument, and the other does not.  The
+following code compares 1.2.X and 2.0 code that performs a simple,
+transacted operation:</p>
+<blockquote><pre>// Create a container, insert a document
+// Use environment and transactions
+// Assume DbEnv* has been constructed as dbEnv;
+//
+// In 1.2.1
+	   DbEnv *dbEnv;
+	   ...
+	   XmlContainer container(dbEnv, "test.dbxml");
+	   DbTxn *txn;
+	   dbEnv-&gt;txn_begin(0, &txn, 0);
+	   container.open(txn, DB_CREATE|DB_EXCL, 0);
+	   txn-&gt;commit(0);
+	   // new transaction for insert
+	   DbTxn *txn1;
+	   dbEnv-&gt;txn_begin(0, &txn1, 0);
+	   XmlDocument doc;
+	   doc.setContent("&lt;root&gt;newdoc&lt;/root&gt;");
+	   container.putDocument(txn1, doc, 0);
+	   txn1-&gt;commit(0);
+	   ...
+	   container.close(0);
+	   dbEnv-&gt;close(0);
+//
+// In 2.0
+	   DbEnv *dbEnv;
+	   ...
+	   XmlManager mgr(dbEnv, DBXML_ADOPT_DBENV); // adopt env
+	   // create a transacted container
+	   XmlContainer container =
+	          mgr.createContainer("test.dbxml", DBXML_TRANSACTIONAL);
+	   XmlTransaction txn = mgr.createTransaction();
+	   // createContainer and openContainer return opened containers
+	   XmlUpdateContext uc = mgr.createUpdateContext();
+	   container.putDocument(txn, "doc1", "&lt;root&gt;newdoc&lt;/root&gt;", uc);
+	   txn.commit();
+</pre></blockquote>
+<p>The points to notice are:</p>
+<p><ul type=disc>
+<li>2.0 adds a DBXML_TRANSACTIONAL flag that can be passed to
+createContainer() and openContainer() to avoid the necessity of creating
+and committing a transaction for this purpose.
+<li>The DBXML_ADOPT_DBENV flag simplifies cleanup in 2.0.
+<li>The use of XmlTransaction and XmlManager::createTransaction() allows an
+application to ignore DB objects for most operations.
+<li>There is an XmlManager::createTransaction() method that takes a DbTxn *
+argument, allowing a DbTxn to be wrapped.
+</ul>
+<table width="100%"><tr><td><br></td><td align=right><a href="../upgrade.2.0/features.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.2.0/java.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

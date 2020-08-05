@@ -1,0 +1,93 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: <a href="../../api_reference/CXX/XmlDebugListener.html">XmlDebugListener</a></title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b><a href="../../api_reference/CXX/XmlDebugListener.html">XmlDebugListener</a></b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlDebugListener {
+public:
+	virtual ~XmlDebugListener()
+	virtual void start(const XmlStackFrame *stack)
+	virtual void end(const XmlStackFrame *stack)
+	virtual void enter(const XmlStackFrame *stack)
+	virtual void exit(const XmlStackFrame *stack)
+	virtual void error(const XmlException &error, const XmlStackFrame *stack)
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: <a href="../../api_reference/CXX/XmlDebugListener.html">XmlDebugListener</a></b>
+<p>The XmlDebugListener class allows the user to track the progress of a query as it executes.
+The XmlStackFrame argument to the methods of this class gives access to the point in the query
+plan corresponding to the current execution state, as well as the execution stack trace and 
+parts of the dynamic context for that stack frame.</p>
+<p>During evaluation of a query, BDB XML will evaluate the sub-expressions of the query.
+The start() method is called when evaluation of a sub-expression starts and the end() method
+is called when it ends. This can occur more than once for the same sub-expression 
+if the expression is in a loop or in a function that is called more than once.</p>
+<p>When evaluating a sub-expression BDB XML calls into that sub-expression a number of times
+to retrieve parts of its result. For eager evaluation, this will happen only once, but for
+lazy evalution this will happen once per item in the result. The enter() method is called when
+BDB XML requests results from a sub-expression and the exit() method is called when the results
+requested have been calculated.
+</p>
+<hr size=1 noshade>
+<b>Description: void XmlDebugListener::start(const XmlStackFrame *stack)</b>
+<p>This method is called when BDB XML starts evaluation of a sub-expression.
+</p>
+<b>Parameters</b> <br>
+ <b>stack</b><ul compact><li>The <a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame</a> for the current execution context.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: void XmlDebugListener::end(const XmlStackFrame *stack)</b>
+<p>This method is called when BDB XML ends evaluation of a sub-expression.
+</p>
+<b>Parameters</b> <br>
+ <b>stack</b><ul compact><li>The <a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame</a> for the current execution context.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: void XmlDebugListener::enter(const XmlStackFrame *stack)</b>
+<p>This method is called when BDB XML requests results from a sub-expression.
+</p>
+<b>Parameters</b> <br>
+ <b>stack</b><ul compact><li>The <a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame</a> for the current execution context.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: void XmlDebugListener::exit(const XmlStackFrame *stack)</b>
+<p>This method is called when a sub-expression has finished calculating the results
+requested.
+</p>
+<b>Parameters</b> <br>
+ <b>stack</b><ul compact><li>The <a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame</a> for the current execution context.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: void XmlDebugListener::error(const XmlException &error, const XmlStackFrame *stack)</b>
+<p>This method is called if an error occurs during query evaluation. It is normal to throw the XmlException
+argument at the end of an implementation of the error() method.
+</p>
+<b>Parameters</b> <br>
+ <b>error</b><ul compact><li>The <a href="../../api_reference/CXX/XmlException.html">XmlException</a> representing the error.</ul>
+ <b>stack</b><ul compact><li>The <a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame</a> for the current execution context.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlContainer {
+public:
+	XmlContainer()
+	XmlContainer(const XmlContainer &o)
+	XmlContainer &operator=(const XmlContainer &o)
+	~XmlContainer()
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer</b>
+<p>The XmlContainer class encapsulates a document container and its
+related indices and statistics. XmlContainer exposes methods for
+managing (putting and deleting) <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> objects, managing
+indices, and retrieving container statistics.</p>
+<p>If the container has never before been opened, use
+<a href="../../api_reference/CXX/XmlManager_createContainer.html">XmlManager::createContainer</a> to instantiate an XmlContainer
+object.  If the container already exists, use
+<a href="../../api_reference/CXX/XmlManager_openContainer.html">XmlManager::openContainer</a> instead.  XmlContainers are always
+opened until the last referencing handle is destroyed.</p>
+<p>You can delete containers using <a href="../../api_reference/CXX/XmlManager_removeContainer.html">XmlManager::removeContainer</a> and
+rename containers using <a href="../../api_reference/CXX/XmlManager_renameContainer.html">XmlManager::renameContainer</a>.</p>
+<p>A copy constructor and assignment operator are provided for this class.
+The class is implemented using a handle-body idiom.  When a handle is
+copied both handles maintain a reference to the same body.</p>
+This object is free threaded, and can be safely shared among threads in
+an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

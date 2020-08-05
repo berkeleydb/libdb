@@ -1,0 +1,48 @@
+<!--$Id: XmlContainerConfig_setPageSize.so Exp $-->
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainerConfig::setPageSize</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainerConfig::setPageSize</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlContainerConfig::setPageSize(u_int32_t pageSize)
+<p>
+u_int32_t XmlContainerConfig::getPageSize()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainerConfig::setPageSize</b>
+<p>The XmlContainerConfig::setPageSize method sets the size of the pages
+used to store documents in the database. The size is specified in bytes
+in the range 512 bytes to 64K bytes.  If no page size is specified
+the system will create containers with page size 8192 for node storage
+containers and 16384 for wholedoc storage containers.  Page size affects
+the amount of I/O performed as well as granularity of locking as Berkeley DB
+performs page-level locking.  These needs are often at odds with one another.
+The page size cannot be changed once a container has been created.
+This value is ignored unless the container is being created.</p>
+<b>Parameters</b> <br>
+ <b>pagesize</b><ul compact><li>The page size in bytes.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

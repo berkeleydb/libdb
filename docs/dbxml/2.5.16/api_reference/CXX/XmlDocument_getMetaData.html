@@ -1,0 +1,51 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlDocument::getMetaData</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlDocument::getMetaData</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+bool XmlDocument::getMetaData(const std::string &uri,
+    const std::string &name, XmlValue &value);
+<p>
+bool XmlDocument::getMetaData(const std::string &uri,
+    const std::string &name, XmlData &value) const;
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlDocument::getMetaData</b>
+<p>Returns the value of the specified metadata.
+The value of the metadata attribute can be retrieved as a typed or
+untyped value. Typed values are retrieved by passing an XmlValue to the
+API.  Untyped values are retrieved by passing an <a href="../../api_reference/CXX/XmlData.html">XmlData</a> object
+(Dbt) through the API.</p>
+<p>This method returns true if metadata is found for the XmlDocument that
+matches the given URI and name; otherwise, it returns false.</p>
+<b>Parameters</b> <br>
+ <b>uri</b><ul compact><li>The namespace within which the name resides. The empty string refers to
+the default namespace.</ul>
+ <b>name</b><ul compact><li>The name of the metadata attribute.</ul>
+ <b>value</b><ul compact><li>The <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> or <a href="../../api_reference/CXX/XmlData.html">XmlData</a> object in which the metadata
+value is to be placed.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

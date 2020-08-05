@@ -1,0 +1,276 @@
+<html>
+
+<head>
+<title>The Berkeley DB XML Package: BDB XML 2.2.X Change Log</title>
+<meta name="description"
+content="Berkeley DB XML: A database programmatic toolkit.">
+<meta name="keywords"
+content="embedded,database,programmatic,toolkit,XML,XQuery">
+</head>
+
+<body bgcolor="white">
+<h2 align="center">Berkeley DB XML 2.2.13 Change Log</h2>
+
+<p>
+Changes since Release 2.2.8 are described here. A full list of all
+changes since BDB XML 2.1.8 is also available below.
+
+<p>
+It recommended that all users move to this release. Also see the
+documentation included in your download package or on our
+<a href="http://www.oracle.com/technology/documentation/berkeley-db/xml/index.html">website</a>.
+
+<hr>
+
+<h3 align="center"><u>Changes in BDB XML 2.2.13</u></h3>
+
+<h4>Upgrade Requirements</h4>
+
+None, relative to BDB XML 2.2.8, but because of the issue in [#13820]
+(see below) it is recommended that any containers that were:
+
+<ol>
+<li>used with BDB XML 2.2.8, and
+<li>are using node indices (DBXML_INDEX_NODES), and
+<li>have been modified using either XmlModify or
+XmlContainer::updateDocument()
+</ol>
+be reindexed.  This can be achieved using either dbxml_dump followed by
+dbxml_load, or the in-place dbxml shell command, "reindexContainer."
+
+<h4>New Features</h4>
+
+None.
+
+<h4>General API Changes</h4>
+
+None.
+
+<h4>Java-specific API changes</h4>
+<ol>
+
+<li>Added XmlDocument.getContentAsInputStream() to Java API to enable
+use of a java.io.InputStream object for document output [#13701]
+<li>Eliminated default constructors for Java objects [#13640]
+
+</ol>
+<h4>General Functionality Changes</h4>
+<ol>
+
+<li>Fixed a bug where variables declared at global scope in an XQuery
+expression would fail with a null pointer reference [#13588]
+<li>Fixed bug in node storage containers where concurrent applications
+could receive a deadlock exception that was ignored, resulting in an
+assertion failure or bad pointer reference [#13597]
+<li>Support for CDS now requires setting of the DB_CDB_ALLDB flag if the
+DB_INIT_CDB flag is set in a DB environment.  This is because BDB XML
+modifications affect more than one DB database.  This may affect
+existing applications, which will need to change to set the DB_CDB_ALLDB
+flag [#13568]
+<li>Fixed a bug where a query using descendant-or-self() would return
+all named elements that follow the target node in document order, rather
+than just returning descendants [#13618]
+<li>Changed XmlException to DOCUMENT_NOT_FOUND when calling
+XmlContainer::updateDocument() for a document that does not exist.
+Previously, it would throw with the code, DATABASE_ERROR and errno,
+DB_NOTFOUND [#13691]
+<li>Fixed some problems when DbTxn and XmlTransaction were used together
+[#13679]
+<li>Fixed a bug where, if Xerces is initialized separately from BDB
+XML, and it outlives the last XmlManager, it is possible for it to
+contain a reference to deallocated memory [#13722]
+<li>Fixed a bug where adding and then deleting an index on an empty
+container caused an exception [#13724]
+<li>Fixed problem where an open of an existing container with a
+non-default page size using DB_CREATE would throw an exception from
+Berkeley DB  with the message "Different pagesize specified on existent
+file" and errno EINVAL [#13768]
+<li>Fixed a bug where a crash could occur in the function,
+NsWriter::~NsWriter().  The problem was calling pop_back() on an empty
+STL vector [#13826]
+<li>Fixed a bug where the first result could be left out of query
+results.  Certain ueries using the descendant axis are most vulnerable
+[#13816]
+<li>Fixed a bug where index entries could be mistakenly removed
+following a document update (via XmlModify or
+XmlContainer::updateDocument) [#13820]
+<li>Fixed XmlManager::reindexContainer(), which was introduced in BDB
+XML 2.2.8 to work correctly.  Previously, the index type would change,
+but the entries created would not [#13850]
+<li>Fixed a bug where some node indices on attributes failed to be
+optimized, resulting in slower than expected queries.  This only affects
+containers with node indices enabled [#13642]
+<li>Fixed a bug that occurred when a user-defined function was called
+from more than one place in the query, and the function used either
+fn:collection() or fn:doc(). This happened because a query plan was
+generated for the user-defined function body more than once - with the
+last generation replacing the former. The two query plans are now
+combined to make the correct query plan. [#13639]
+
+</ol>
+<h4>PHP-Specific Functionality Changes</h4>
+<ol>
+
+<li>Added a global declaration of the XmlIndexLookup class that was
+missing from php_dbxml.cpp.  This resulted in undefined references to
+this class that look like: <pre>undefined symbol:
+php_dbxml_XmlIndexLookup_ce</pre>
+
+</ol>
+<h4>Utility Changes</h4>
+<ol>
+
+<li>Added a "time" sub-command to the dbxml shell utility [#13571]
+
+</ol>
+<h4>Configuration, Documentation, Portability and Build Changes</h4>
+<ol>
+
+<li>Added support for building with Microsoft's Visual Studio 2005
+[#13491]
+<li>Changed Windows debug information to "Program Database"
+consistently.  This means the /Zi flag is used rather than /Z7 [#13737]
+<li>Changed debug .pdb filename for Pathan from PathanD.pdb to
+PathanD_7.1.pdb [#13737]
+<li>Fixed incorrect documentation regarding use of DB_DEGREE_2 in
+container create/open flags.  The correct flag to be documented is
+DB_DIRTY_READ, which will be DB_READ_UNCOMMITTED in future releases that
+bundle DB 4.4 or higher [#13592]
+<li>Example code in the Getting Started Guide documentation was reviewed
+and updated to be correct [#13602]
+<li>The Getting Started Guide documentation was corrected where it
+erroneously stated that the XQuery expression "/Node1/Node2/Node3" would
+only return the first Node3 element, when it would really return all
+matching elements [#13604]
+
+</ol>
+
+<hr>
+
+<h3 align="center">
+<a name="hist228"><u>Changes in BDB XML 2.2.8</u></a></h3>
+
+<h4>Upgrade Requirements</h4>
+<ol>
+
+<li>Changed database format from BDB XML 2.1.8 to provide better
+Berkeley DB Btree page fill factor.  Users must read documentation on
+container upgrade before performing an upgrade, or there is risk of data
+loss [#12947]
+
+</ol>
+<h4>New Features</h4>
+<ol>
+
+<li>Add XmlManager::existsContainer(), used to check for existence of a
+container in an efficient, non-destructive, non-intrusive manner
+[#11018]
+<li>Implement support for "fn:doc-available()" Xquery function and
+default collections [#12762]
+<li>Add XmlIndexLookup class to perform lookup operations, including
+equality, range lookups, and controlling the sort order of results
+(forward and reverse) [#12556]
+<li>Version 2.7 of the Xerces library is now used [#13177]
+<li>XQuery implementation has been upgraded to support the April, 2005
+draft specification
+
+</ol>
+<h4>General API Changes</h4>
+<ol>
+
+<li>Add XmlIndexLookup class to perform lookup operations, including
+equality, range lookups, and controlling the sort order of results
+(forward and reverse) [#12556]
+<li>Fix a bug where XmlResults::hasNext() and XmlResults::peek()could
+result in uncatchable exceptions with Lazy results [#13053]
+<li>Added XmlQueryContext get/setVariableValue variant that takes
+XmlResults to allow sequence variables [#13060]
+<li>Add XmlManager::reindexContainer() to allow an application to change
+the index type between node-level and document-level [#12819]
+<li>Add XmlManager::get/setDefaultSequenceIncrement() interfaces to
+allow control over the cache size of the DbSequence object used to
+allocate document ids [#13099]
+<li>Add XmlValue::BINARY as a valid XmlValue type.  Add
+XmlValue::isBinary() interfaces to support the new type [#13221]
+<li>Add support for the DB_TXN_NOT_DURABLE flag when creating and
+opening an XmlContainer [#13263]
+<li>AddXmlManager::openContainer() method that takes XmlContainerType
+and mode arguments [#13285]
+<li>AddXmlContainer::getIndexNodes() to indicate if the container has
+node-level indices or not
+
+</ol>
+<h4>General Functionality Changes</h4>
+<ol>
+
+<li>Modify internal data structures so that fewer lockers are required
+when running without transactions.  This eliminates many problems that
+appear to be locker "leaks."[#12104]
+<li>Implement April 2005 drafts of XQuery 1.0 and XPath 2.0
+<li>Implement numerous query optimizations that should increase the
+query speed on all storage formats. This includes support for node-level
+indices specified using DBXML_INDEX_NODES [#12615]
+<li>Fix a bug so that unique indices will find constraint violations
+within a single document and between documents in a container[#12838]
+<li>Fix a bug where index database creation could conflict with other
+updates [#12839]
+<li>Fix a bug in QueryPlanHolder that could cause a segment fault
+[#13069]
+<li>Fix a bug during container open where the containers page size is
+different from the XmlManagers default page size [#13260]
+
+</ol>
+<h4>Java-specific Functionality Changes</h4>
+<ol>
+
+<li>Change path to example package from
+com.sleepycat.dbxml.examples.gettingStarted to dbxml.gettingStarted
+[#12108]
+<li>Fix a bug so that valid DatabaseException objects are now created
+for all XmlExceptions of type DATABASE_ERROR [#12962]
+<li>Fix a bug so that XmlDocument.getMetaData() will correctly return
+binary metadata [#13193]
+<li>Fix a bug in XmlInputStream so that other classes can now be derived
+from this class [#13289]
+
+</ol>
+<h4>Perl-specific Functionality Changes</h4>
+<ol>
+
+<li>Compiler information from configure is now used to set the compiler
+in the Perl build [#12491]
+
+</ol>
+<h4>Python-specific Functionality Changes</h4>
+<ol>
+
+<li>Add pre-compiled Python binaries (2.4) to the Windows binary
+installer
+<li>Ship copy of the pybsddb project for convenience and ease of build
+
+</ol>
+<h4>Utility Changes</h4>
+<ol>
+
+<li>Fix a bug in dbxml shell so that if h flag is not specified an
+attempt is made to join an environment in the current directory[#12993]
+<li>Add support for new XmlIndexLookup object in the dbxml shell's
+commands [#12556]
+
+</ol>
+<h4>Configuration, Documentation, Portability and Build Changes</h4>
+<ol>
+
+<li>Add a version check to insure that languages such as Perl, Python,
+and PHP use a compatible version of Berkeley DB [#12681]
+<li>Change default in buildall.sh script to build thread support for
+Xerces platform code [#12784]
+<li>Add documentation for the c flag in dbxml shell [#12848]
+<li>Add documentation for all DatabaseConfig methods that are used
+byXmlContainerConfig that extends DatabaseConfig [#13375]
+<li>Add support for Berkeley DB 4.4
+
+</ol>
+
+</body>
+</html>

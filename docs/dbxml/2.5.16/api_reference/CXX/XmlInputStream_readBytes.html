@@ -1,0 +1,44 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlInputStream::readBytes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlInputStream::readBytes</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual unsigned int XmlInputStream::readBytes(
+    char *toFill, const unsigned int maxToRead)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlInputStream::readBytes</b>
+<p>Reads <b>maxToRead</b> number of bytes from the input stream and
+places those bytes in <b>toFill</b>. Returns the number of bytes read,
+or 0 if the end of the stream has been reached.</p>
+<b>Parameters</b> <br>
+ <b>toFill</b><ul compact><li>Specifies a pointer to a buffer used to place the bytes read from the
+input stream. It is the responsibility of the programmer to ensure that
+the buffer provided here is large enough for the amount of data to be
+read.</ul>
+ <b>maxToRead</b><ul compact><li>Identifies the maximum number of bytes to read from the input stream.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

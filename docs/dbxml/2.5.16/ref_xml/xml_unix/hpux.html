@@ -1,0 +1,33 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: HP-UX</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml_unix/freebsd.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/macosx.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>HP-UX</b></p>
+See Also <a href="../../programmer_reference/build_unix_hpux.html">Berkeley DB notes on HP-UX</a>
+<ol>
+<p><li><b>Normal build command for HP-UX on the IA64 platform using aCC and cc and no options:</b>
+<blockquote><pre>bash ./buildall.sh -b 64 -c aCC -x aCC --with-configure-env="CFLAGS='-AA -mt +DD64' CXXFLAGS='-AA -mt +DD64' LDFLAGS='-AA -mt +DD64'"</pre></blockquote>
+<p>
+If you want to build with debug enabled, you should do this:
+<blockquote><pre>
+bash ./buildall.sh -b 64 -c aCC -x aCC --with-configure-env="CFLAGS='-AA -mt +DD64' CXXFLAGS='-AA -g0 -mt +DD64' LDFLAGS='-AA -mt +DD64'"</pre></blockquote>
+<p>
+Gnu tar should be used to uncompress the Berkeley DB XML archive as the default tar does not handle
+long file names and some test directories can be truncated.  This will not affect the product
+itself.</p></p>
+</ol>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/freebsd.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/macosx.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

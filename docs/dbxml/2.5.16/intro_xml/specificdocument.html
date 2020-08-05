@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Working with Data from a Specific Document</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+    <link rel="prev" href="morethanonecontainer.html" title="Working with Data from Multiple Containers" />
+    <link rel="next" href="metadata.html" title="Using Metadata" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Working with Data from a Specific Document</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="morethanonecontainer.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 2. XQuery and Berkeley DB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="metadata.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="specificdocument"></a>Working with Data from a Specific Document</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            Previous queries have executed against all the documents in a container, 
+            but there are cases where  access to data in a single document is the goal. 
+            It is possible to isolate a single document component based on the name we 
+            assigned to it, and then perform XQuery expressions against it alone.         
+        </p>
+      <p>
+            For example, to select the number attribute from a document named 
+            <code class="literal">component1</code> in the <code class="literal">components.dbxml</code> container:
+        </p>
+      <pre class="programlisting">dbxml&gt; query '
+doc("components.dbxml/component1")/component/@number'
+1 objects returned for eager expression '
+doc("components.dbxml/component1")/component/@number'
+
+dbxml&gt; print
+{}number="1" </pre>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title">Note</h3>
+            The doc function shown here can be used to access XML 
+            data external to any BDB XML managed container. For instance, to 
+            integrate with a web service that returns XML over HTTP use the doc 
+            function to execute that web service and then use the resulting data 
+            as part of an XQuery query. 
+        </div>
+      <p>
+            A web service that is able to look up the price of a particular part could 
+            be knit into a HTML page as it's built in a single XQuery FLWOR
+            expression, and this page can then be hosted under a normal
+            webserver.  It is then possible to access that pricing data using the 
+            <code class="literal">doc</code> function in an XQuery expression. 
+         </p>
+      <p>
+                 For example, suppose you had this page, which provide the prices of
+                 the parts of our components:
+         </p>
+      <pre class="programlisting">&lt;prices&gt;
+    &lt;part number="87"&gt;29.95&lt;/part&gt;
+    &lt;part number="89"&gt;19.95&lt;/part&gt;
+    &lt;part number="150"&gt;24.95&lt;/part&gt;
+    &lt;part number="189"&gt;5.00&lt;/part&gt;
+    &lt;part number="899"&gt;9.95&lt;/part&gt;
+    &lt;part number="901"&gt;15.00&lt;/part&gt;
+&lt;/prices&gt;</pre>
+      <p>
+                    And suppose this page was available from at the
+                    following location:
+            </p>
+      <pre class="programlisting">http://www.oracle.com/fakefile.html</pre>
+      <p>
+                In this case, we can enhance our earlier parts query to add prices 
+            for all the parts. At the same time we'll also convert it to use an HTML table
+            to display the data.
+        </p>
+      <pre class="programlisting">dbxml&gt; query '&lt;html&gt;&lt;body&gt;
+  &lt;ul&gt;
+    {
+      for $component in collection("dbxml:components.dbxml")/component
+      return 
+        &lt;li&gt;
+          &lt;b&gt;Component number: {$component/@number/string()}&lt;/b&gt;&lt;br/&gt;
+          &lt;table&gt;
+          {
+            for $part-ref in $component/uses-part
+            return                    
+              for $part in collection("dbxml:parts.dbxml")/part[@number = 
+                    $part-ref cast as xs:decimal]
+                return                            
+                &lt;tr&gt;&lt;td&gt;{$part/description/string()}&lt;/td&gt;
+                &lt;td&gt;{
+                    doc("http://www.oracle.com/fakefile.html")//part[
+                        @number = $part/@number]/string()                            
+                }&lt;/td&gt;&lt;/tr&gt; 
+         }                
+         &lt;/table&gt;
+      &lt;/li&gt;
+    }
+  &lt;/ul&gt;
+&lt;/body&gt;&lt;/html&gt;'
+1 objects returned for eager expression '&lt;html&gt;&lt;body&gt;
+  &lt;ul&gt;
+    {
+      for $component in collection("dbxml:components.dbxml")/component
+      return 
+        &lt;li&gt;
+          &lt;b&gt;Component number: {$component/@number/string()}&lt;/b&gt;&lt;br/&gt;
+          &lt;table&gt;
+          {
+            for $part-ref in $component/uses-part
+            return                    
+              for $part in collection("dbxml:parts.dbxml")/part[@number = 
+                    $part-ref cast as xs:decimal]
+                return                            
+                &lt;tr&gt;&lt;td&gt;{$part/description/string()}&lt;/td&gt;
+                &lt;td&gt;{
+                  doc("http://www.oracle.com/fakefile.html")//part[
+                        @number = $part/@number]/string()                            
+                }&lt;/td&gt;&lt;/tr&gt; 
+         }                
+         &lt;/table&gt;
+      &lt;/li&gt;
+    }
+  &lt;/ul&gt;
+&lt;/body&gt;&lt;/html&gt;'</pre>
+      <p>
+            And the result with formatting for readability:
+        </p>
+      <pre class="programlisting">dbxml&gt; print
+&lt;html&gt;
+    &lt;body&gt;
+        &lt;ul&gt;
+            &lt;li&gt;
+                &lt;b&gt;Component number: 1&lt;/b&gt;
+                &lt;br/&gt;
+                &lt;table&gt;
+                    &lt;tr&gt;
+                        &lt;td&gt;Description of 89&lt;/td&gt;
+                        &lt;td&gt;19.95&lt;/td&gt;
+                    &lt;/tr&gt;
+                    &lt;tr&gt;
+                        &lt;td&gt;Description of 150&lt;/td&gt;
+                        &lt;td&gt;24.95&lt;/td&gt;
+                    &lt;/tr&gt;
+                    &lt;tr&gt;
+                        &lt;td&gt;Description of 899&lt;/td&gt;
+                        &lt;td&gt;9.95&lt;/td&gt;
+                    &lt;/tr&gt;
+                &lt;/table&gt;
+            &lt;/li&gt;
+            &lt;li&gt;
+                &lt;b&gt;Component number: 2&lt;/b&gt;
+                &lt;br/&gt;
+                &lt;table&gt;
+                    &lt;tr&gt;
+                        &lt;td&gt;Description of 901&lt;/td&gt;
+                        &lt;td&gt;15.00&lt;/td&gt;
+                    &lt;/tr&gt;
+                    &lt;tr&gt;
+                        &lt;td&gt;Description of 87&lt;/td&gt;
+                        &lt;td&gt;29.95&lt;/td&gt;
+                    &lt;/tr&gt;
+                    &lt;tr&gt;
+                        &lt;td&gt;Description of 189&lt;/td&gt;
+                        &lt;td&gt;5.00&lt;/td&gt;
+                    &lt;/tr&gt;
+                &lt;/table&gt;
+            &lt;/li&gt;
+        &lt;/ul&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+      <p>The following shows the previous HTML as displayed in a web browser:</p>
+      <div class="mediaobject">
+        <img src="prices.jpg" />
+      </div>
+      <p>
+            This ability to bring in data from outside BDB XML as part of any 
+            query from a web service or other source of XML data provides tremendous 
+            power and flexibility when building applications. 
+        </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="morethanonecontainer.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="metadata.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Working with Data from Multiple Containers </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Using Metadata</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,83 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlResults</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlResults</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlResults {
+public:
+	XmlResults();
+	XmlResults(const XmlResults &);
+	~XmlResults();
+	XmlResults &operator = (const XmlResults &)
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlResults</b>
+<p>The XmlResults class encapsulates the results of a query or other
+lookup operation.  XmlResults is a
+collection of <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> objects, which may represent
+any one of the supported types.</p>
+<p>An XmlResults object is created by executing a query, calling
+<a href="../../api_reference/CXX/XmlIndexLookup_execute.html">XmlIndexLookup::execute</a> or calling <a href="../../api_reference/CXX/XmlManager_createResults.html">XmlManager::createResults</a>.
+There are several ways that a query is performed. One
+is to call <a href="../../api_reference/CXX/XmlManager_query.html">XmlManager::query</a> directly. This mechanism is
+appropriate for one-off queries that will not be repeated.</p>
+<p>A second approach is to create an <a href="../../api_reference/CXX/XmlQueryExpression.html">XmlQueryExpression</a> using
+<a href="../../api_reference/CXX/XmlManager_prepare.html">XmlManager::prepare</a>. You then execute the query expression using
+<a href="../../api_reference/CXX/XmlQueryExpression_execute.html">XmlQueryExpression::execute</a>. This approach is appropriate for
+queries that will be performed more than once as it means that the
+expense of compiling the query can be amortized across multiple
+queries.</p>
+<p>Note that when you perform a query, you must provide an
+<a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a> object. Using this object, you can indicate
+whether you want the query to be performed eagerly or lazily.  If eager
+evaluation is specified (the default), then the resultant values are
+stored within the XmlResults object.  If lazy evaluation is selected,
+then the resultant values will be computed as needed. In this case the
+XmlResults object will maintain a reference to the affected
+containers (<a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a>), query context (<a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a>), and
+expression (<a href="../../api_reference/CXX/XmlQueryExpression.html">XmlQueryExpression</a>).</p>
+<p>The XmlResults class provides an iteration interface through the
+<a href="../../api_reference/CXX/XmlResults_next.html">XmlResults::next</a> method. <a href="../../api_reference/CXX/XmlResults_next.html">XmlResults::next</a> method returns false and
+the null value when no more results are available
+(<a href="../../api_reference/CXX/XmlValue.html">XmlValue</a>::isNull returns true).
+<a href="../../api_reference/CXX/XmlResults_reset.html">XmlResults::reset</a> method can be called to reset the
+iterator, and the subsequent call to the <a href="../../api_reference/CXX/XmlResults_next.html">XmlResults::next</a> method will
+return the first value of the result set.</p>
+<p>The copy constructor and assignment operator are provided for this
+class. The class is implemented using a handle-body idiom. When a handle
+is copied both handles maintain a reference to the same body.</p>
+<p>An object returned from a query or other container-based operation
+may contains <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> objects that refer to persistent data that 
+cannot be safely addressed once a transaction commits.  It is possible to
+construct an entirely transient copy of a result set using
+<a href="../../api_reference/CXX/XmlResults_copyResults.html">XmlResults::copyResults</a>.  Such a copy can be used as long as 
+the object remains in scope but its values will no longer refer to 
+data in any container.</p>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

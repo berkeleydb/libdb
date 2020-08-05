@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>In-Memory Transaction Example</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML Transaction Processing" />
+    <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
+    <link rel="prev" href="txnexample_xml_java.html" title="Transaction Example" />
+    <link rel="next" href="runprogram_xml.html" title="Runtime Analysis" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">In-Memory Transaction Example</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="txnexample_xml_java.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 6. Summary and Examples</th>
+          <td width="20%" align="right"> <a accesskey="n" href="runprogram_xml.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="inmem_dbxml_java_txnexample"></a>In-Memory Transaction Example</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+        Some applications use XML documents in a transient manner. That is,
+        they create and store XML documents as a part of their run time,
+        but there is no need for the documents to persist between
+        application restarts. For these class of applications, overall
+        throughput can be improved by abandoning the transactional
+        durability guarantee. To do this, you
+        keep your environment, containers, and logs entirely in-memory so
+        as to avoid the performance impact of unneeded disk I/O.
+    </p>
+      <p>
+        To do this:
+    </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                Refrain from specifying a home directory when you open your
+                environment. The exception to this is if you are using the
+                <code class="literal">DB_CONFIG</code> configuration file — in
+                that case you must identify the environment's home
+                directory so that the configuration file can be found.
+            </p>
+          </li>
+          <li>
+            <p>
+                Configure your environment to back your regions from
+                system memory instead of the filesystem.
+            </p>
+          </li>
+          <li>
+            <p>
+                Configure your logging subsystem such that log files are kept
+                entirely in-memory.
+            </p>
+          </li>
+          <li>
+            <p>
+                Increase the size of your in-memory log buffer so that it
+                is large enough to hold the largest set of concurrent write operations.
+            </p>
+          </li>
+          <li>
+            <p>
+                Increase the size of your in-memory cache so that it can
+                hold your entire data set. You do not want your cache to
+                page to disk.
+            </p>
+          </li>
+          <li>
+            <p>
+                Specify an empty string when you open your container. Note
+                that for in-memory operations, you are limited to just one
+                container.
+            </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+        As an example, this section takes the transaction example provided
+        in <a class="xref" href="txnexample_xml_java.html" title="Transaction Example">Transaction Example</a>
+        and it updates that example so that the environment, container, log
+        files, and regions are all kept entirely in-memory. 
+    </p>
+      <p>
+        To do this, we only need to modify our main class,
+        <code class="classname">TxnGuide.java</code>. To begin, we can simplify
+        things a bit because we no longer need to know the environment
+        home. We also don't need a container name and because we are not
+        opening anything on disk, we no longer need to import
+        <code class="classname">java.io.File</code>. Therefore, we:
+    </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                Remove the <code class="classname">java.io.File</code> import
+                statement.
+            </p>
+          </li>
+          <li>
+            <p>
+                Remove two private data members:
+                <code class="literal">myEnvPath</code> and
+                <code class="literal">containerName</code>.
+            </p>
+          </li>
+          <li>
+            <p>
+                Remove the <code class="literal">-h</code> option from our usage
+                instructions.
+            </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+        The beginning of our program now looks like this:
+    </p>
+      <pre class="programlisting">package dbxml.txn;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlContainerConfig;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlManagerConfig;
+
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.LockDetectMode;
+
+import java.io.FileNotFoundException;
+
+public class TxnGuideInMemory {
+
+    // DBXML handles
+    private static Environment myEnv = null;
+    private static XmlManager mgr = null;
+    private static XmlContainer container = null;
+
+    private static InfoKeeper ik = null;
+
+    private static void usage() {
+        String msg =  "\nThis program writes XML documents to a DB XML";
+               msg += "container. The documents are written using any\n";
+               msg += "number of threads that will perform writes\n";
+               msg += "using 50 transactions. Each transaction writes \n";
+               msg += "10 documents. You can choose to perform the ";
+               msg += "writes using default isolation, or using \n";
+               msg += "READ COMMITTED isolation. If READ COMMITTED ";
+               msg += "is used, the application will see fewer";
+               msg += "deadlocks.\n\n";
+
+               msg += "Note that you can vary the size of the documents ";
+               msg += "written to the container by defining the number\n";
+               msg += "of nodes in the documents. Up to a point, and";
+               msg += "depending on your system's performance,\n";
+               msg += "increasing the number of nodes will increase\n";
+               msg += "the number of deadlocks that your application\n";
+               msg += "will see.\n\n";
+
+               msg += "Command line options are: \n";
+               msg += " [-t &lt;number of threads&gt;]\n";
+               msg += " [-n &lt;number of nodes per document&gt;]\n";
+               msg += " [-w]       (create a Wholedoc container)\n";
+               msg += " [-2]       (use READ COMMITTED isolation)\n";
+
+        System.out.println(msg);
+        System.exit(-1);
+    }  </pre>
+      <p>
+    Our <code class="methodname">main()</code> and
+    <code class="methodname">closeEnv()</code> methods are exactly identical to
+    the code that we presented in 
+    <a class="xref" href="txnexample_xml_java.html" title="Transaction Example">Transaction Example</a>
+    so we will not repeat that here. The entire rest of the update occurs
+    in the <code class="methodname">openEnv()</code> method.
+</p>
+      <p>
+    Until now we have only eliminated things from the program. This is to
+    be expected; after all, we need to collect less information in order to
+    operate and so our code should be slightly simpler. 
+</p>
+      <p>
+    But now we need to start adding information to tell the Berkeley DB
+    library that it must keep information in-memory only. We start by
+    making the environment private; this causes all the region files to be
+    kept in memory. (Additional code is in <strong class="userinput"><code>bold</code></strong>.)
+</p>
+      <p>
+        Note that we also change
+        <code class="methodname">EnvironmentConfig.setRunRecovery()</code> 
+        to <code class="literal">false</code>.  Because our containers,
+        logs, and regions are maintained in-memory, there can never be anything to recover.
+    </p>
+      <pre class="programlisting">    private static void openEnv() throws DatabaseException {
+        System.out.println("opening env");
+
+        // Set up the environment.
+        EnvironmentConfig myEnvConfig = new EnvironmentConfig();
+        
+        <strong class="userinput"><code>// Region files are not backed by the filesystem, they are
+        // backed by heap memory.
+        myEnvConfig.setPrivate(true);</code></strong>
+
+        myEnvConfig.setAllowCreate(true);
+        myEnvConfig.setInitializeCache(true);
+        myEnvConfig.setInitializeLocking(true);
+        myEnvConfig.setInitializeLogging(true);
+        myEnvConfig.setRunRecovery(<strong class="userinput"><code>false</code></strong>);
+        myEnvConfig.setTransactional(true);
+</pre>
+      <p>
+        Now we configure our environment to keep the log files in memory,
+        increase the log buffer size to 10 MB, and increase our in-memory
+        cache to 10 MB. These values should be more than enough for our
+        application's workload.
+      </p>
+      <pre class="programlisting">        <strong class="userinput"><code>// Specify in-memory logging
+        myEnvConfig.setLogInMemory(true);
+        // Specify the size of the in-memory log buffer
+        // Must be large enough to handle the log data created by
+        // the largest transaction.
+        myEnvConfig.setLogBufferSize(10 * 1024 * 1024);
+        // Specify the size of the in-memory cache
+        // Set it large enough so that it won't page.
+        myEnvConfig.setCacheSize(10 * 1024 * 1024); </code></strong></pre>
+      <p>
+    Next, we open the environment and setup our lock detection. This is
+    identical to how the example previously worked, except that we do not
+    provide a location for the environment's home directory.
+ </p>
+      <pre class="programlisting">        // Indicate that we want to internally perform deadlock 
+        // detection. Also indicate that the transaction that has
+        // performed the least amount of write activity to
+        // receive the deadlock notification, if any.
+        myEnvConfig.setLockDetectMode(LockDetectMode.MINWRITE);
+
+        try {
+            // Open the environment
+            myEnv = new Environment(<strong class="userinput"><code>null,</code></strong>    // Env home
+                                    myEnvConfig);
+
+        } catch (FileNotFoundException fnfe) {
+            System.err.println("openEnv: " + fnfe.toString());
+            System.exit(-1);
+        } </pre>
+      <p>
+        When we open our container, we provide an empty string for the
+        container name. This causes the container to be kept entirely in
+        memory. Notice that we also remove the code that causes our manager
+        to delete the existing container. Obviously, because everything
+        will be kept entirely in-memory, there will never be anything to
+        delete.
+    </p>
+      <pre class="programlisting">        // Open the manager and container
+        try {
+            XmlManagerConfig managerConfig = new XmlManagerConfig();
+            // Close the environment when the manager closes
+            managerConfig.setAdoptEnvironment(true);
+            mgr = new XmlManager(myEnv, managerConfig);
+
+            // Open the container
+            XmlContainerConfig containerConf = new XmlContainerConfig();
+            containerConf.setTransactional(true);
+            containerConf.setAllowCreate(true);
+            // Declare the container type; that is, whether it is a 
+            // node-storage or a whole doc container. If -w is specified
+            // at the command line, the container is set to wholedoc,
+            // otherwise node-storage is used.
+            containerConf.setNodeContainer(ik.getIsNodeStorage());
+            container = mgr.openContainer(<strong class="userinput"><code>""</code></strong>, containerConf);
+        } catch (XmlException xe) {
+            System.err.println("TxnGuide: " + xe.toString());
+            xe.printStackTrace();
+        }
+    } </pre>
+      <p>
+    That completes the update to <code class="methodname">openEnv()</code>. The
+    only other thing left to do is to modify the <code class="methodname">parseArgs()</code>
+    method so that it no longer accepts the <code class="literal">-h</code> option,
+    or tries to set the <code class="literal">myEnvPath</code> variable that we
+    deleted earlier in this example. Once completed,
+    <code class="methodname">parseArgs()</code> looks like this:
+  </p>
+      <pre class="programlisting">    private static void parseArgs(String args[]) {
+        for(int i = 0; i &lt; args.length; ++i) {
+            if (args[i].startsWith("-")) {
+                switch(args[i].charAt(1)) {
+                    case 't':
+                        ik.setNumThreads(Integer.parseInt(args[++i]));
+                        break;
+                    case 'n':
+                        ik.setNumNodes(Integer.parseInt(args[++i]));
+                        break;
+                    case 'w':
+                        ik.setIsNodeStorage(false);
+                        break;
+                    case '2':
+                        ik.setReadCommit(true);
+                        break;
+                    default:
+                        usage();
+                }
+            }
+        }
+    }
+}  </pre>
+      <p>
+        That completes the updates we must make in order to cause the
+        application to keep its environment, container, and logs entirely
+        in memory. The <code class="classname">XMLWriter</code> and
+        <code class="classname">InfoKeeper</code> classes are left entirely
+        unchanged.
+   </p>
+      <p>
+    If you would like to experiment with this code, you can find the example in the following
+    location in your BDB XML distribution:
+</p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="txnexample_xml_java.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="wrapup.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="runprogram_xml.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Transaction Example </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Runtime Analysis</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

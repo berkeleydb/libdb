@@ -1,0 +1,122 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlManager</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlManager</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlManager::XmlManager(DB_ENV *dbenv, u_int32_t flags = 0)
+XmlManager::XmlManager(u_int32_t flags)
+XmlManager::XmlManager()
+XmlManager::XmlManager(const XmlManager &o)
+XmlManager &operator = (const XmlManager &o)
+XmlManager::~XmlManager()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlManager</b>
+<p>Provides a high-level object used to manage various aspects of Berkeley DB XML
+usage. You use XmlManager to perform activities such as container
+management (including creation and open), preparing XQuery queries,
+executing one-off queries, creating transaction objects, creating update
+and query context objects, and creating input streams.</p>
+<p>A copy constructor and assignment operator are provided for this class.
+The class is implemented using a handle-body idiom.  When a handle is
+copied both handles maintain a reference to the same body.</p>
+This object is free threaded, and can be safely shared among threads in
+an application.
+<hr size=1 noshade>
+<b>Description: XmlManager(DB_ENV *dbenv, u_int32_t flags = 0)</b>
+<p>XmlManager constructor that uses the provided <a href="../../api_reference/C/env.html">DB_ENV</a> for the
+underlying environment.  The Berkeley DB subsystems initiated by this
+environment (for example, transactions, logging, the memory pool), are
+the subsystems that are available to Berkeley DB XML when operations are
+performed using this manager object.</p>
+<b>Parameters</b> <br>
+ <b>dbenv</b><ul compact><li>The <a href="../../api_reference/C/env.html">DB_ENV</a> to use for the underlying database environment. The
+environment provided here must be opened.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+or more of the following values:
+<br>
+<b><a name="DBXML_ALLOW_EXTERNAL_ACCESS">DBXML_ALLOW_EXTERNAL_ACCESS</a></b><ul compact><li>If set, this flag allows XQuery queries to access data sources external
+to the container, such as files on disk or http URIs.  By default, such
+access is not allowed.</ul>
+<b><a name="DBXML_ALLOW_AUTO_OPEN">DBXML_ALLOW_AUTO_OPEN</a></b><ul compact><li>If set, XQuery queries that reference unopened containers will
+automatically open those containers, and close them when references
+resulting from the query are released.  By default, a query will fail
+if it refers to containers that are not open.</ul>
+<b><a name="DBXML_ADOPT_DBENV">DBXML_ADOPT_DBENV</a></b><ul compact><li>If set, the XmlManager object will close and delete the underlying
+<a href="../../api_reference/C/env.html">DB_ENV</a> handle at the end of the XmlManager's life.</ul>
+<br>
+<br></ul>
+<br><b>Errors</b>
+<p>The XmlManager method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>INVALID_VALUE</b><ul compact><li>Null DB_ENV pointer, or invalid flags passed as parameter to XmlManager.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlManager(u_int32_t flags)</b>
+<p>XmlManager constructor that uses a private internal database
+environment. This environment is opened with
+DB_PRIVATE|DB_CREATE|DB_INIT_MPOOL. These flags allow the underlying
+environment to be created if it does not already exist. In addition, the
+memory pool (in-memory cache) is initialized and available.  Finally,
+the environment is private, which means that no external processes can
+join the environment, but the XmlManager object can be shared between
+threads within the opening process.</p>
+<p>Note that for this form of the constructor, the environment home is
+located in either the current working directory, or in the directory
+identified by the DB_HOME environment variable.</p>
+<b>Parameters</b> <br>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+or more of the following values:
+<br>
+<b><a name="DBXML_ALLOW_EXTERNAL_ACCESS">DBXML_ALLOW_EXTERNAL_ACCESS</a></b><ul compact><li>If set, this flag allows XQuery queries to access data sources external
+to the container, such as files on disk or http URIs.  By default, such
+access is not allowed.</ul>
+<b><a name="DBXML_ALLOW_AUTO_OPEN">DBXML_ALLOW_AUTO_OPEN</a></b><ul compact><li>If set, XQuery queries that reference unopened containers will
+automatically open those containers, and close them when references
+resulting from the query are released.  By default, a query will fail
+if it refers to containers that are not open.</ul>
+<br>
+<br></ul>
+<br><b>Errors</b>
+<p>The XmlManager method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>INTERNAL_ERROR</b><ul compact><li>Error opening default database environment</ul>
+<br>
+<br>
+<b>INVALID_VALUE</b><ul compact><li>Invalid flags passed as parameter to XmlManager.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlManager()</b>
+<p>A default XmlManager constructor.  This constructor provides the same
+behavior as passing a flags parameter of 0 to the constructor that takes
+a single flags parameter.  This constructor is provided for convenience.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

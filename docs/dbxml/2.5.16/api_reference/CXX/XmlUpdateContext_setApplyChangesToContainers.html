@@ -1,0 +1,42 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlUpdateContext::setApplyChangesToContainers</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlUpdateContext::setApplyChangesToContainers</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlUpdateContext::setApplyChangesToContainers(bool applyChanges)
+<p>
+bool XmlUpdateContext::getApplyChangesToContainers()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlUpdateContext::setApplyChangesToContainers</b>
+<p>The XmlUpdateContext::setApplyChangesToContainers method controls
+whether modifications made during an update caused by
+<a href="../../api_reference/CXX/XmlModify_execute.html">XmlModify::execute</a> are written to the corresponding
+<a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a>.  If <b>applyChanges</b> is true (the default
+value), changes are written to the container.  This allows modifications
+to be grouped before being written, as well as modifications that are
+not written at all.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<html>
+<head>		
+<title>The Berkeley DB XML Package: DB XML 2.0.9 Change Log</title>		
+<meta name="description" content="Berkeley DB XML: An XML database programmatic toolkit.">
+<meta name="keywords" content="XML,embedded,database,programmatic,toolkit,transaction,transactions">
+</head>
+
+<body bgcolor="white">		
+<h1 align="center">Berkeley DB XML 2.0.7 & 2.0.9 Change Log</h1>
+
+<h3>Upgrade Requirements:</h3>		
+<ol>
+
+<li>The database format has changed due to the large number of new
+features and new storage and indexing options in in 2.0.  These changes
+are incompatible with DB XML 1.2.1 databases.  Consequently applications
+will need to manually dump any existing DB XML 1.2.1 databases and load
+them into a new DB XML 2.0 database or reload them from the source XML
+documents.
+
+</ol>		
+<h3>New Features:</h3>		
+<ol>
+
+<li>Support for XPath 2.0, including new data types.
+<li>Support for XQuery 1.0.
+<li>Support for additional index types.
+<li>Improved large document support. 
+<li>Significant API improvement and extension to support new functions.
+Introduction of factory methods to create objects.
+<li>Support for fine grained document storage. 
+<li>Naming and cross-container operation support. 
+<li>Enhanced Metadata support. 
+<li>Support for document loading. Documents can now be loaded from input
+streams (including local files and URLs) or raw memory locations.
+<li>Enhanced document update functionality.
+<li>Support for DOM-like navigation methods on XmlValue.
+<li>New classes for XmlInputStream, XmlData, XmlManager, XmlStatistics,
+XmlMetaDataIterator and XmlTransaction.
+
+</ol>		
+<h3>General Functionality Changes:</h3>		
+<ol>
+
+<li>Fix a bug where XmlContainer::getDocument() was not passing in user
+supplied flags. [#9607]
+<li>Fix a bug where a Container::Close() did not reset ID members, so a
+re-create failed to write them to a new container. Fix a bug where
+open() and versionCheck() would attempt to write even when the flags
+specified DB_READONLY. [#9608]
+<li>Fix a bug where duplicate index keys were not sorted, causing poor
+performance for deleteDocument(). [#9737]
+<li>Fix a bug where adding an index to a container which contains
+documents in a CDS configured environment would cause the thread to
+self-deadlock.  [#9925]
+<li>Fix a bug where documents weren't being returned for queries on the
+presence of metadata when the metadata was indexed. [#10487]
+<li>Fix a double-free bug in Node Storage for certain size/shaped
+documents. [#11641]
+
+</ol>		
+<h3>API Changes:</h3>		
+<ol>
+
+<li>New classes for XmlInputStream, XmlData, XmlManager, XmlStatistics,
+XmlMetaDataIterator and XmlTransaction.
+<li>Extensive changes to XmlModify. 
+
+</ol>		
+<h3>Java-specific API Changes:</h3>		
+<ol>
+
+<li>Add Environment and Transaction objects.
+<li>Add XmlManagerConfig, XmlContainerConfig and XmlDocumentConfig
+objects.
+
+</ol>		
+<h3>Python-specific API Changes:</h3>		
+None.		
+
+<h3>PHP-specific API Changes:</h3>		
+<ol>
+<li>Add a third party supported PHP API to the distribution, including
+enhanced support for Apache integration.
+
+</ol>		
+<h3>Tcl-specific API Changes:</h3>		
+
+None.		
+
+<h3>Utility Changes:</h3>		
+<ol>
+<li>Add dbxml_shell utility to allow direct interaction with DB XML
+containers, indices and documents.
+<li>Add dbxml_load_container utility to facilitate initial loading of
+documents into a container.
+
+</ol>		
+<h3>Configuration, Documentation, Portability and Build Changes:</h3>		
+<ol>
+
+<li>Simplify installation to include all required packages.
+<li>Support for Berkeley DB 4.3.
+<li>Fixed bugs in header files on Linux Fedora Core 3 installation. [#11650]
+
+</ol>		
+
+</body>
+</html>

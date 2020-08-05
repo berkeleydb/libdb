@@ -1,0 +1,437 @@
+<html>
+<!--$Id$ -->
+
+<head>
+<title>The Berkeley DB XML Package: BDB XML 2.4.16 Change Log</title>
+<meta name="description"
+content="Berkeley DB XML: A database programming toolkit.">
+<meta name="keywords"
+content="embedded,database,native,programming,toolkit,XML,XQuery">
+</head>
+
+<body bgcolor="white">
+<h2 align="center"><u>2.4 Release Overview</u></h2>
+The major focus areas for release 2.4 include:
+<ul>
+<li>Implementation of declarative update expressions, conforming to the Last
+Call Working Draft of W3C's XQuery Update 1.0.
+<li>Scalability improvements in terms of reducing memory footprint
+required during query processing and results handling.
+<li>Performance improvements by using more intelligent, cost-based
+query processing.
+<li>Performance improvements by using iterator-based processing
+instead of tree-processing.
+<li>General bug fixes and improvements.
+</ul>
+
+<h3 align="center"><u>Changes in BDB XML 2.4.16</u></h3>
+
+BDB XML 2.4.16 is a bug-fix release that addresses a number of
+issues found since release of <a href="#hist2413">2.4.13</a>.  It is source and
+binary compatible with earlier 2.4.x releases.
+This section describes changes in BDB XML 2.4.16 relative
+to release 2.4.13.
+
+<h4>Upgrade Requirements</h4>
+None relative to 2.4.13.  See <a href="#hist2413">2.4.13</a>
+for upgrade details and recommendations.
+
+<h4>General Functionality Changes</h4>
+<ol>
+<li>Fixed a problem in the BDB XML XQuery Extension function 
+dbxml:node-to-handle() where it could return an exception/error 
+when attempting to create a handle for an attribute node. [#16180]</li>
+<li>Fixed a bug in query optimization which resulted in exponential 
+query preparation time increases as the number of negative predicates 
+used was increased. [#16181]</li>
+<li>Fixed a problem where it was not possible to open a 
+container using the DB_RDONLY flag. [#16186]</li>
+<li>Fixed a problem related to [#16186] where it was not possible
+to open a replicated container because they are implicitly 
+marked read-only. [#16394]</li>
+<li>Fixed the generation of an incorrect query plan for a numeric 
+predicate in a where clause, and a memory corruption when JIT optimizing 
+a DecisionPointQP nested inside another DecisionPointQP.[#16206]</li>
+<li>Fixed a query problem where expressions starting with "/"
+would succeed on XML without a document node (e.g. constructed XML)
+when they should fail. [#16230]</li>
+<li>Fixed a bug where metadata indexes would not be used in query
+optimization. [#16273] </li>
+<li>Fixed a bug in node construction across module boundaries. 
+[#16288] </li>
+<li>Fixed a bug where queries that performed multiple concurrent
+sequencial scans on a whole document container would return 
+incorrect results. [#16438] </li>
+<li>Fixed a bug in optimization of certain query predicates that 
+resulted in an inappropriate re-ordering of the results. [#16287] </li>
+<li>Added a parameter to the QueryPlan optimisation methods
+that decreases the number of optimisations returned with the depth of 
+the query plan. This limits the exponential growth of optimisation time 
+as queries get bigger. [#16321]</li>
+<li>Fixed a problem in wholedoc containers iterating over the
+same document multiple times. [#16328]</li>
+<li>Fixed a bug in the BufferQP optimisation logic.[#16330]</li>
+<li>Fixed user defined default element namespaces in 
+XmlQueryContext. [#16336]</li>
+<li>Fixed querying of a no-content document to not SEGV. [#16338]</li>
+<li>Fixed a bug where insertion of new content could
+result in a document that appeared fine but would no longer query correctly
+under all circumstances. [#16340]</li>
+<li>Fixed a problem where valid URIs passed to fn:put() 
+would appear invalid. [#16254]</li>
+<li>Fixed a bug in optimization of certain predicates that 
+resulted in an inappropriate document order re-ordering of the results.
+[#16287]</li>
+<li>Fixed a bug in node construction accross module boundaries. [#16288]</li>
+<li>Eliminated overly-aggressive flags checking in calls to 
+XmlManager::reindexContainer().  This prevented certain types of reindexing,
+specifically from Java where the C++ flags are not under direct user control.</li>
+<li>Allow DBXML_WELL_FORMED_ONLY flag for all 
+XmlContainer::putDocument() variants.</li>
+<li>Fixed preprocessor macros involving _MSC_VER that
+caused some platform/compiler combinations to fail to build. [#16354]</li>
+<li>Fixed a SEGV that could result from an invalid XQuery Update expression [#16373]</li>
+<li>Fixed a bug due to a typo in the optimisation code for UnionQP. [#16402]</li>
+<li>Fixed a race condition when reading the DecisionPointQP linked list. [#16413]</li>
+<li>Modifications to reduce memory consumption of prepared queries.</li>
+<li>Fixed a bug in node size calculations that resulted in incorrect statistics in
+the structural statistics database, leading to gradual query performance
+degradation if lots of documents were removed or updated in place. [#16405]</li>
+<li>Fixed a problem in which results obtained via XmlContainer::getAllDocuments()
+or other index lookup operation, when used as context for an XmlModify 
+or XQuery Update operation could cause a self-deadlock/hang.  This would only
+occur when using transactions. [#16397]</li>
+<li>Added DB_RMW flag to transacted document updates and deletes to reduce
+potential for deadlock. [#16464]</li>
+<li>Fixed and assertion failure (SEGV in release mode) related to
+using the count() function in a predicate in the where clause [#16470]</li>
+<li>Allow DBXML_WELL_FORMED_ONLY flag in XmlIndexLookup::execute() and 
+XmlContainer::getAllDocuments() [#16518]</li>
+<li>Fixed a problem related to partial reindexing during XQuery Update that
+  could result in DB_BUFFER_SMALL errors among others [#16551]</li>
+</ol>
+
+<h4>Java-specific Functionality Changes</h4>
+<ol>
+<li>Fixed problem in the XmlQueryContext copy constructor
+where the XmlManager object was not being copied [#16177]</li>
+<li>Fixed a problem where an XmlValue.getAttributes() call on
+an XmlValue object that was not the result of a query (e.g. directly
+from an XmlDocument) could result in an error [#16179]</li>
+<li>Fixed a problem where XmlManager.reindexContainer() might fail a
+flags check when it should not [#16221]</li>
+<li>[#16236].  Fixed a Java-specific problem where some context queries
+against constructed XML could cause a SIGSEGV.</li>
+<li>Fixed a problem that could cause a crash in the JVM if a null
+XmlUpdateContext object were passed.[#16222]</li>
+<li>Fixed a problem where XmlDocument.setContent(String) could 
+improperly store characters, resulting in an exception when attempting 
+to insert the document into a container. [#16257]</li>
+<li>Fixed a bug with XmlDocument that could result in the metadata 
+no longer being accessible after the document content was retrieved. [#16296]</li>
+<li>Made the XmlDocument copy constructor public. [#16353]</li>
+<li>Fixed unnecessary materialization/parsing of wholedoc documents during
+XmlResults iteration [#16517]</li>
+</ol>
+
+<h4>PHP-specific Functionality Changes</h4>
+<ol>
+<li>Added missing createLocalFileInputStream() to XmlManager
+API. [#16351]</li>
+</ol>
+
+<h4>Perl-specific Functionality Changes</h4>
+<ol>
+<li>Fixed Perl tests to run correctly</li>
+</ol>
+
+<h4>Utility Changes:</h4>
+
+<ol>
+<li>Changed dbxml shell to not allow opening or creating of containers
+in an explicit transaction.  In a transactional shell those operations will
+implicitly open the container in a transaction.  The additional transaction
+can only create problems. [#16408]</li>
+</ol>
+
+<a name="hist2413">
+<h3 align="center">Berkeley DB XML 2.4.13 Change Log</h3>
+
+<h4>Upgrade Requirements</h4>
+
+Upgrade is only required for containers created using release 2.2.13
+or earlier. Containers creating using 2.3.X do not require upgrade.
+However, most queries will benefit from reindexing 2.3.X-based containers
+to add new structural statistics information used in query cost analysis
+so it is highly recommended.  Reindexing is <b>required</b> in order
+to enable the substring index to be used on 1- and 2-character strings (a
+new feature in 2.4).
+<p>Reindexing should generally be performed offline as it is an expensive
+operation that reads all content and regenerates index databases.</p>
+<p>If an upgrade is performed (e.g. from 2.2.13) it is recommended
+that the resulting container be run through dbxml_dump/dbxml_load to
+reduce its file size.</p>
+
+<h4>New Features:</h4>
+<ol>
+<li>Conformance to Last-Call Working Draft of XQuery Update 1.0</li>
+<li>Added the ability to use "document projection" when querying whole-document
+containers.  This performance and memory optimization results in only 
+materializing that portion of the document relevant to the query.</li>
+<li>Partial document modifications will now only reindex those portions
+of the document(s) affected by the modification itself.  This is a
+significant performance enhancement for partial update of large documents.</li>
+</ol>
+
+<h4>API Changes:</h4>
+Unless otherwise noted, the API additions apply to all language bindings,
+and all bindings use the same method name.
+<ol>
+<li>Added the DBXML_DOCUMENT_PROJECTION flag to the various query interfaces
+to enable use of this feature.  In Java, this behavior is controlled by 
+XmlDocumentConfig.setDocumentProjection()</li>
+<li>Added a new XQuery extension function, dbxml:contains(), that
+allows case- and diacritic-insensitive string searches and can
+be optimized by a substring index</li>
+<li>Removed all C++ interfaces that used Xerces-C DOM, including:
+<ul>
+<li>XmlDocument::setContentAsDOM()</li>
+<li>XmlDocument::getContentAsDOM()</li>
+<li>XmlValue::asNode()</li>
+</ul>
+</li>
+<li>XmlModify is now a deprecated (but still-supported) class.  XQuery Update
+should be used instead.  One method
+has been removed as it is no longer supported by the internal 
+infrastructure: XmlModify::setNewEncoding()</li>
+<li>Added a new constructor to XmlEventReaderToWriter that allows an
+XmlEventWriter instance to be multiple-use.  This makes it possible to
+write to it from multiple reader sources to concatenate content, for example.</li>
+<li>Removed XmlUpdateContext::{get,set}ApplyChangesToContainers() methods.  This
+behavior is no longer controllable.  Changes to documents that are in containers
+will always be written.  If transient changes are required, content must be 
+copied (XQuery Update has syntax to do this directly)</li>
+<li>Removed unused variant of XmlValue::asString(std::string &amp;encoding).  This variant never actually changed the encoding [#15822]</li>
+<li>Added DBXML_STATISTICS and DBXML_NO_STATISTICS flags to enable/disable
+creation of an additional statistics database that is used for query
+optimization.  The default is to create the database.  Upgraded
+containers will NOT have a statistics database added unless they are
+explicitly reindexed.  The cost of this optimization is a bit of extra
+work during document insertion.  In Java this behavior is controlled by
+XmlContainerConfig.setStatisticsEnabled()</li>
+<li>
+Added the DBXML_NO_AUTO_COMMIT flag, which can be specified to the XmlQueryExpression::execute()
+methods to turn off auto-commit of update queries when it is not appropriate.
+</li>
+<li>
+Some XmlException error codes have changed - DOM_PARSER_ERROR and NO_VARIABLE_BINDING have
+been removed, XPATH_PARSER_ERROR is now called QUERY_PARSER_ERROR, and XPATH_EVALUATION_ERROR
+is now called QUERY_EVALUATION_ERROR. [#15792]
+</li>
+<li>The enumeration,  XmlQueryContext::DeadValues, has been removed.
+The related method, XmlQueryContext::setReturnType() remains but is
+a no-op.  All results are LiveValues.  This will not affect the vast
+majority of applications.</li>
+<li>Added XmlQueryExpression::isUpdateExpression() to allow users to 
+know whether an expression is updating or not</li>
+</ol>
+
+<h4>Changes That May Require Application Modification:</h4>
+<ol>
+<li>Some of the API changes above may result in the need to
+make minor code changes</li>
+<li>Not all modification patterns that use XmlModify will
+continue to work given the new infrastructure.  Specifically,
+operations that would both copy and delete the same content (emulating
+a "move" operation) may not work.  In all cases, such code can
+be rewritten to use XQuery Update directly, resulting in simpler
+code.  Special attention should be paid to multi-step operations
+that include such side effects.</li>
+<li>Changed default indexing type on containers to be node indexes
+for node storage containers and document indexes for document storage
+containers [#15863].</li>
+<li>Java only -- the function XmlContainer.getNode() 
+function has changed its signature and will require code change if used.
+See details below under "Java-specific Functionality Changes."</li>
+</ol>
+
+<h4>General Functionality Changes:</h4>
+<ol>
+<li>Partial document modification will result in only reindexing those
+portions of document(s) affected by the modification</li>
+<li>The system now keeps better cost information and statistics
+and the query optimizer uses this information to perform more effective
+cost-based optimization</li>
+<li>The content processing internals have been reworked to make 
+heavy use of iterators and temporary Berkeley DB databases to 
+significantly reduce the memory footprint of query handling as well
+as reduce the number of objects created and destroyed by a query.
+This leads to a more scalable, high-performance system</li>
+<li>Substring indexes will now work on any length search string (e.g. 2-char)
+rather than be restricted to a 3-character minimum.  Reindexing the container
+is required to get this functionality.</li>
+<li>Various fixes and memory leak elimination in XmlEventWriter[#15405]</li>
+<li>Fixed a problem where removing a default index could remove index
+entries for an overlapping non-default index[#15412]</li>
+<li>Changed semantics of XmlQueryContext::setNamespace() to treat an empty 
+namespace prefix as the default element namespace[#15630]</li>
+<li>Fixed problem in XmlModify that could result in malformed XML if
+a prefixed element name were used without a mapping for that prefix[#15586]</li>
+<li>Fixed URI resolution code to <em>not</em> add the base URI when the
+URI being resolved is absolute[#15583]</li>
+<li>Fixed code to force explicit transactions (vs auto-commit) when 
+using XmlContainer::putDocumentAsEventWriter.  This is necessary because
+of the 2-part nature of this interface [#15578]</li>
+<li>Fixed a crash that could occur if XmlResults.next() were called
+at the end of a result set [#15621]</li>
+<li>Fixed a bug where XQuery expressions involving unused global 
+variables were not being optimized correctly [#15661]</li>
+<li>Fixed problem in XmlEventReader::nextTag() where it would
+mistakenly throw an exception on character data.  Also changed 
+semantics of XmlEventReader to always return start and end document
+events so that callers can know when content starts and ends [#15686]</li>
+<li>Fixed case where the '>' character was not being escaped
+properly (according to the XML specificiation).  This case is when it
+occurs in the sequence, "]]>" [#15739]</li>
+<li>Fixed a problem in XmlModify where removing a node that was the last
+child and had leading text could cause a SEGV [#15615]</li>
+<li>Enhanced XmlEventReaderToWriter API to not unconditionally close
+the XmlEventWriter object, allowing a single XmlEventWriter to be used
+more than once via that API.  This allows XmlEventReaderToWriter to be used
+for example, to coalesce a number of results into one document [#15446]</li>
+<li>Fixed a problem with XmlIndexLookup where a GT lookup that happens 
+to start with the last entry in the index might return results when 
+it should return none[#15408]</li>
+<li>Fixed a bug which incorrectly reported an error for fractional seconds 
+when the seconds filed was "59" [#15389]</li>
+<li>Fixed a problem in statistics calculation for substring indexes that
+could cause a crash in fn:contains() [#15823]</li>
+<li>Fixed a bad exception that might be thrown when inserting a
+schema-invalid document, due to the length of the error message [#15824]</li>
+<li>Fixed a problem where a query that uses an XmlDocument that has just been
+"put" into a continer as context for the query might hang if done in the
+same transaction as the putDocument call[#15905]</li>
+<li>Fixed a problem where querying empty CDATA sections could cause an 
+assertion failure or bad memory refernce[#15906]</li>
+<li>Fixed a latent bug that could result in missing index entries after
+updateDocument or modifyDocument call.  This is very obscure and has never
+been seen by a user.  It requires an odd combination of indexes and
+updates[#15943]</li>
+<li>Fix open/close race condition on XmlContainer.  An application that
+concurrently opened/closed XmlContainer objects (not recommended...)
+could possibly reference bad memory [#15890]</li>
+<li>Fixed several memory leaks that could occur if deadlock exceptions
+are thrown during document processing (most likely put and delete)</li>
+<li>All update operations now work inside internal child transactions
+to ensure that they are properly aborted if necessary.  This is not
+user visible</li>
+<li>Internal buffer size for DB get operations on nodes is
+tuned to the calling operation (bulk vs single get)[#15607]</li>
+<li>Fixed a bug in XmlEventWriter where the behavior was dependent on an uninitialized variable [#15968]</li>
+<li>Changed dbxml_load_container to take a '-e' flag that causes the program to stop document loading in the event of a parse error.  The default is to continue with the next document [#15777].</li>
+<li>Fixed problem in XmlModify where newly-inserted element content could
+cause a bad memory reference and/or crash while calculating a new node id [#15974].</li>
+</ol>
+
+<h4>Utility Changes:</h4>
+
+<ol>
+<li>The dbxml shell added commands:
+<ul>
+<li>setProjection allows control of the document projection feature</li>
+</ul>
+</li>
+<li>The dbxml shell can be invoked using the #! syntax in a *nix
+shell command, e.g. with the first ilne:<br>
+#!<absolute_path>/dbxml -s
+<br>
+</li>
+<li>Handling of '#' comment lines in the dbxml shell has been improved
+so that they can occur anywhere in a line [#15689]</li>
+</ol>
+
+<h4>Java-specific Functionality Changes:</h4>
+<ol>
+<li>Fixed a problem where committed or aborting a transaction that was
+already committed or aborted could crash, especially after a failed
+XmlManager.openContainer() call [#15729]</li>
+<li>Is it no longer be necessary to explicitly delete objects of type XmlValue,
+XmlDocument, XmlQueryContext, XmlMetaData, XmlMetaDataIterator and XmlUpdateContext.  
+They are implemented entirely as pure Java
+objects with no native memory to release.  It will still be necessary
+to explicitly delete other Java objects to release native memory.
+In general the validity of XmlValue and XmlDocument objects returned
+via XmlResults (queries, index lookups, etc) is under control of the
+XmlResults object.  When the XmlResults object is deleted node values
+that may have been associated with that object may no longer be
+accessible and an exception will be thrown if accessed [#15194]</li>
+<li>Added -source 1.5 -target 1.5 to Java builds to be explicit, especially
+for Windows binary build.  The current code *will* work with 1.4 or 1.6 if the arguments are 
+changed (manually) [#15986]</li>
+<li>The function XmlContainer.getNode() function has changed its signature.
+Instead of XmlValue it now returns XmlResults.  The XmlValue that was 
+previously returned can be retrieved using XmlResults.next().  There will
+never be more than one value in this result.  It is necessary
+to explicitly delete the returned XmlResults object (XmlResults.delete())
+when the application no longer needs access to the returned value.  Once
+deleted the information in the XmlValue may no longer be accessible.</li>
+</ol>
+
+<h4>Python-specific Functionality Changes:</h4>
+<ol>
+<li>Fixed XmlEventReader in Python so that methods returning unsigned char *
+would be mapped properly into Python strings [#15608]</li>
+<li>Changed implementation of XmlException and related classes to make them
+part of the dbxml (vs _dbxml) module [#15617]</li>
+<li>Changed names of XmlException attributes to start with lower-case letters.
+See src/python/README.exceptions.</li>
+<li>Moved examples to dbxml/examples/python directory and added some additional
+basic examples</li>
+</ol>
+
+<h4>PHP-specific Functionality Changes:</h4>
+<ol>
+<li>Fixed code that resulted in build and runtime errors on 64-bit
+platforms.  One symptom was "std::bad_alloc" exceptions.  The issue
+was a mix of 64- and 32-bit types resulting in attempts to allocate
+huge amounts of memory [#15587]</li>
+<li>Fixed compilation problems in a threaded (ZTS) environment related
+to the use of incorrect macros in a few places [#15746]</li>
+<li>Fixed problem (SEGV) constructing XmlIndexLookup objects as well as several
+other problems with this class implementation [#16168]</li>
+<li>Moved examples to dbxml/examples/php</li>
+<li>Fixed XmlValue constructor to accept explicitly typed strings [#15996]</li>
+</ol>
+
+<h4>Perl-specific Functionality Changes:</h4>
+<ol>
+<li>Moved examples to dbxml/examples/perl</li>
+</ol>
+
+<h4>Example Code Changes</h4>
+<ol>
+<li>Added examples/cxx/xerces directory with example code that
+provides the same functionality that the Xerces-C DOM interfaces
+previously provided.  They are written as example code to
+illustrate an integration with Xerces-C DOM and to also illustrate
+use of the XmlEvent* classes for such an adapter</li>
+<li>Moved examples for all languages to dbxml/examples/* to
+consolidate them and make packaging simpler</li>
+</ol>
+
+<h4>Configuration, Documentation, Portability and Build Changes:</h4>
+<ol>
+<li>XQilla 2.0 is bundled.  XQilla 2.0 is released under a permissive
+(Apache) license</li>
+<li>Windows static build projects are included</li>
+<li>Project and solution files for Visual Studio version 8.00 have been added
+for use by Visual Studio 2005 and later releases.  The new solution file is BDBXML_all_vs8.sln.</li>
+<li>Added Berkeley DB project files to the BDB XML build_windows directory for 
+Visual Studio 7.1 and 8 builds.  This means that the included DB projects will be built
+directly in the BDB XML tree and not in the Berkeley DB tree.  This does not apply to
+the VC6 projects and workspace and does not affect where the default build installs
+executables and libraries. VS7.1 project files for Berkeley DB examples are no longer  included.</li>
+</ol>
+</body>
+</html>
+

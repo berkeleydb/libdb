@@ -1,0 +1,46 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlResolver::resolveModule</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlResolver::resolveModule</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual XmlInputStream *XmlResolver::resolveModule(
+    XmlTransaction *txn, XmlManager &mgr, const std::string &moduleLocation,
+    const std::string &nameSpace) const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlResolver::resolveModule</b>
+<p>When implemented, should resolve a module location (URI) and namespace
+to a new <a href="../../api_reference/CXX/XmlInputStream.html">XmlInputStream</a>. If the location and namespace cannot
+be resolved by this resolver, this method should return NULL.  The
+XmlInputStream object will be deleted by the caller.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If a transaction is in force, a pointer to the <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a>
+object; otherwise, NULL.</ul>
+ <b>mgr</b><ul compact><li>The <a href="../../api_reference/CXX/XmlManager.html">XmlManager</a> object associated with the operation.</ul>
+ <b>moduleLocation</b><ul compact><li>The URI for the module resolve.</ul>
+ <b>nameSpace</b><ul compact><li>The namespace of the module to resolve.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

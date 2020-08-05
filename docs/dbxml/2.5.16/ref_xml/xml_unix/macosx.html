@@ -1,0 +1,39 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Mac OS X</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml_unix/hpux.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/cygwin.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Mac OS X</b></p>
+See Also <a href="../../programmer_reference/build_unix_macosx.html">Berkeley DB notes on OS X</a>
+<ol>
+<p><li><b>Normal build command for OS X and no options:</b>
+<blockquote><pre>sh buildall.sh</pre></blockquote>
+<p>
+To build debug using the dwarf format (quite useful):
+<blockquote><pre>bash buildall.sh --with-configure-env="CXXFLAGS='-g -gdwarf-2'" --with-configure-env="CFLAGS='-g -gdwarf-2'" --enable-debug</pre></blockquote>
+</p>
+<p><li><b>When trying to link multiple Berkeley DB XML language interfaces (for
+example, Tcl, C++, Java, Python) into a single process, I get "multiple
+definitions" errors from dyld.</b>
+<p>This problem will most often occur with Python, PHP, or Tcl,
+where libraries are dynamically loaded.
+To fix this problem, set the environment variable MACOSX_DEPLOYMENT_TARGET
+to 10.3 (or your current version of OS X), and reconfigure and rebuild
+Berkeley DB XML from scratch.  See the OS X ld(1) and dyld(1) man pages for information
+about how OS X handles symbol namespaces, as well as undefined and
+multiply-defined symbols.</p>
+</ol>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/hpux.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/cygwin.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

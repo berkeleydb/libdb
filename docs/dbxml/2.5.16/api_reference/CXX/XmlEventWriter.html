@@ -1,0 +1,53 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlEventWriter</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlEventWriter</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual XmlEventWriter::~XmlEventWriter()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlEventWriter</b>
+<p>The XmlEventWriter class enables applications to construct
+document content without using serialized XML.  This allows use of
+application-provided parsers and other XML processing mechanisms. The
+XmlEventWriter is a push-style interface, with content written
+via explicit interfaces.</p>
+<p>The XmlEventWriter maintains state based on information written,
+and an exception is thrown if an operation is performed that is not
+valid for the current state.  All strings must be null-terminated const
+unsigned char * values encoded in UTF-8.  The values are copied by the
+underlying implementation, as necessary.  When a document is completed,
+the <a href="../../api_reference/CXX/XmlEventReader_close.html">XmlEventReader::close</a> method must be called to finalize the
+operation and release resources.</p>
+<p><a href="../../api_reference/CXX/XmlContainer_putDocumentAsEventWriter.html">XmlContainer::putDocumentAsEventWriter</a> can be used to obtain an
+instance of XmlEventWriter that is used to create document
+content in Berkeley DB XML.  <a href="../../api_reference/CXX/XmlEventReaderToWriter.html">XmlEventReaderToWriter</a> can be used to attach
+an <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> directly to an XmlEventWriter for
+copying of content.  An XmlEventWriter may also be obtained via
+an application-written class derived from XmlEventWriter.</p>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

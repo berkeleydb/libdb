@@ -1,0 +1,496 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 1. Introduction to Berkeley DB XML</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="prev" href="moreinfo.html" title="For More Information" />
+    <link rel="next" href="gettingit.html" title="Getting and Using BDB XML" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 1. Introduction to Berkeley DB XML</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="moreinfo.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="gettingit.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="introduction"></a>Chapter 1. Introduction to Berkeley DB XML</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="introduction.html#overview">Overview</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="introduction.html#benefits">Benefits</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="introduction.html#xmlfeatures">XML Features</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="introduction.html#dbfeatures">Database Features</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="introduction.html#id1471937">Languages and Platforms</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="gettingit.html">Getting and Using BDB XML</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="gettingit.html#support">Documentation and Support</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="gettingit.html#dependencies">Library Dependencies</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="gettingit.html#building">Building and Running BDB XML Applications</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+        </dl>
+      </div>
+      <p>
+        Welcome to Berkeley DB XML (BDB XML). BDB XML is an embedded
+        database specifically designed for the storage and retrieval of 
+        XML-formatted documents.  Built on the award-winning Berkeley DB,
+        BDB XML provides for efficient queries against millions of XML documents
+        using XQuery.  XQuery is a query language designed for the examination and
+        retrieval of portions of XML documents.
+	</p>
+      <p>
+        This document introduces BDB XML. It is intended to provide a rapid
+        introduction to the BDB XML API set and related concepts.  The goal of
+        this document is to provide you with an efficient mechanism with which
+        you can evaluate BDB XML against your project's technical requirements.
+        As such, this document is intended for <span>Java</span>
+        developers and senior software architects who are looking for an
+        in-process XML data management solution. No prior experience with
+        BDB XML is expected or required.
+	</p>
+      <p>
+		Note that while this document uses 
+        
+        <span>Java</span> 
+        for its examples, the concepts described here should
+		apply equally to all language bindings in which the BDB XML API is available. 
+        Be aware that a version of this document also exists for the 
+        
+        <span>C++</span> 
+        language.
+	</p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="overview"></a>Overview</h2>
+            </div>
+          </div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="introduction.html#benefits">Benefits</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="introduction.html#xmlfeatures">XML Features</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="introduction.html#dbfeatures">Database Features</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="introduction.html#id1471937">Languages and Platforms</a>
+              </span>
+            </dt>
+          </dl>
+        </div>
+        <p>
+			BDB XML is an embedded database that is tuned for managing and querying hundreds,
+			thousands, or even millions of XML documents. You use BDB XML through a programming 
+            API that allows you to manage, query, and modify your documents via
+            an in-process database engine. Because BDB XML is an embedded
+            engine, you 
+                
+                <span>use it with</span>
+            your application in the same was as you would any third-party
+                
+                <span>package.</span>
+        </p>
+        <p>
+            In BDB XML documents are stored in <span class="emphasis"><em>containers</em></span>,
+            which you create and manage using <code class="classname">XmlManager</code>
+            objects. Each such object can open multiple containers at a time.
+        </p>
+        <p>
+            Each container can hold millions of documents. For each document
+            placed in a container, the container holds all the document data, 
+            any metadata that you have created for the document, and 
+            any indices maintained for the documents in the container.
+        </p>
+        <p>
+            (<span class="emphasis"><em>Metadata</em></span> is information that you associate with
+            your document that might not readily fit into the document schema
+            itself. For example, you might use metadata to track the last time a
+            document was modified instead of maintaining that information from
+            within the actual document.)
+        </p>
+        <p>
+            XML documents may be stored in BDB XML containers in one of two ways:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    Whole documents.
+                </p>
+              <p>
+                    Documents are stored in their entirety. This method works
+                    best for smaller documents (that is, documents under a megabyte in size).
+                </p>
+            </li>
+            <li>
+              <p>
+                    As document nodes.
+                </p>
+              <p>
+                    Documents stored as nodes are broken down into their
+                    individual document element nodes and each such node is then
+                    stored as an individual record in the container. Along with
+                    each such record, BDB XML also stores all node attributes,
+                    and the text nodes, if any.
+                </p>
+              <p>
+                    This type of storage is best for large XML documents
+                    (greater than 1 megabyte in size).
+                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            From an API-usage perspective, there are very few differences
+            between whole document and node storage containers. For more
+            information, see 
+            <a class="xref" href="containers.html#containertypes" title="Container Types">Container Types</a>.
+        </p>
+        <p>
+            Once a document has been placed in a container, you can use XQuery
+            to retrieve one or more documents. You can also use XQuery to
+            retrieve one or more portions of one or more documents. 
+            Queries are performed using <code class="classname">XmlManager</code>
+            objects.  The queries themselves, however, limit the scope 
+            of the query to a specified list of containers or documents.
+            documents. 
+        </p>
+        <p>
+            BDB XML supports the entire XQuery specification. You can read
+            the specification here:
+        </p>
+        <p>
+                <a class="ulink" href="http://www.w3.org/TR/xquery/" target="_top">http://www.w3.org/TR/xquery/</a>
+        </p>
+        <p>
+            Also, because XQuery is an extension to XPath 2.0, BDB XML
+            provides full support for that query language as well.
+        </p>
+        <p>
+            Finally, BDB XML provides a robust document modification facility
+            that allows you to easily add, delete, or modify selected portions
+            of documents. This means you can avoid writing modification code
+            that manipulates (for example) DOM trees — BDB XML can handle
+            all those details for you.
+        </p>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="benefits"></a>Benefits</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+                BDB XML provides a series of features that makes it more
+                suitable for storing XML documents than other common XML storage
+                mechanisms. BDB XML's ability to provide efficient indexed
+                queries means that it is a far more efficient storage mechanism
+                than simply storing XML data in the filesystem. And because
+                BDB XML provides the same transaction protection as does
+                Berkeley DB, it is a much safer choice than is the filesystem
+                for applications that might have multiple simultaneous readers
+                and writers of the XML data.
+		    </p>
+          <p>
+                More, because BDB XML stores XML data in its native format,
+                BDB XML enjoys the same extensible schema that has attracted
+                many developers to XML. It is this flexibility that makes
+                BDB XML a better choice than relational database offerings that
+                must translate XML data into internal tables and rows, thus
+                locking the data into a relational database schema.
+		    </p>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="xmlfeatures"></a>XML Features</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+				BDB XML is implemented to conform to the W3C standards for XML,
+                XML Namespaces, and the XQuery working draft.
+				In addition, it offers the following features specifically designed to support XML
+				data management and queries:
+			</p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p>
+							Containers. A container is a single file that contains one or more
+							XML documents, and their metadata and indices. You
+                            use containers to add, delete, and modify documents,
+                            and to manage indices. 
+					</p>
+              </li>
+              <li>
+                <p>
+							Indices. BDB XML indices greatly enhance the performance of queries against
+							the corresponding XML data set. BDB XML indices are based on the structure of
+							your XML documents, and as such you declare indices based on the nodes that
+							appear in your documents as well the data that appears on those nodes.
+					</p>
+                <p>
+                            Note that you can also declare indices against
+                            metadata.
+                    </p>
+              </li>
+              <li>
+                <p>
+							Queries. BDB XML queries are performed using the
+                            XQuery 1.0 language. XQuery is a
+							W3C draft specification 
+                            (<a class="ulink" href="http://www.w3.org/XML/Query/" target="_top">http://www.w3.org/XML/Query</a>).
+					</p>
+              </li>
+              <li>
+                <p>
+							Query results. BDB XML retrieves documents that
+                            match a given XQuery query.
+							BDB XML query results are always returned as a set. The set can contain either
+							matching documents, or a set of values from those matching documents.
+					</p>
+              </li>
+              <li>
+                <p>
+							Storage. If you use node-level storage for you
+                            documents (see 
+                            <a class="xref" href="containers.html#containertypes" title="Container Types">Container Types</a>), 
+                            then BDB XML
+                            automatically transcodes your documents to Unicode
+                            UTF-8. If you use whole document storage, then the
+                            document is stored in whatever encoding that it
+                            uses. Note that in either case, your documents must
+                            use an encoding supported by Xerces before they can
+                            be stored in BDB XML containers.
+					</p>
+                <p>
+							Beyond the encoding, documents are stored (and retrieved) in 
+                            their native format with all whitespace preserved.
+					</p>
+              </li>
+              <li>
+                <p>
+							Metadata attribute support. Each document stored in BDB XML can have metadata
+							attributes associated with it. This allows information to be associated with
+							the document without actually storing that information in the document. For
+							example, metadata attributes might identify the last accessed and last
+							modified timestamps for the document.
+					</p>
+              </li>
+              <li>
+                <p>
+                            Document modification. BDB XML provides a robust
+                            mechanism for modifying documents. Using this
+                            mechanism, you can add, replace, and delete nodes 
+                            from your document. This mechanism allows you to
+                            modify both element and attribute nodes, as well as
+                            processing instructions and comments.
+                    </p>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="dbfeatures"></a>Database Features</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+                Beyond XML-specific features, BDB XML inherits a great many
+                features from Berkeley DB, which allows BDB XML to provide the
+                same fast, reliable, and scalable database support as does
+                Berkeley DB. The result is that BDB XML is an ideal candidate
+                for mission-critical applications that must manage XML data.
+			</p>
+          <p>
+				Important features that BDB XML inherits from Berkeley DB are:
+			</p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p>
+                        In-process data access. BDB XML is compiled in the same way as
+                        any library. It runs in the same process space as your
+                        application. The result is database support in a small
+                        footprint without the IPC-overhead required by
+                        traditional client/server-based database
+                        implementations.
+					</p>
+              </li>
+              <li>
+                <p>
+						Ability to manage databases up to 256 terabytes in size.
+					</p>
+              </li>
+              <li>
+                <p>
+                        Database environment support. BDB XML environments
+                        support all of the same features as Berkeley DB
+                        environments, including multiple databases,
+                        transactions, deadlock detection, lock and page control,
+                        and encryption.  In particular, this means that BDB XML
+                        databases can share an environment with Berkeley DB
+                        databases, thus allowing an application to gracefully
+                        use both.
+					</p>
+              </li>
+              <li>
+                <p>
+                        Atomic operations. Complex sequences of read and write
+                        access can be grouped together into a single atomic
+                        operation using BDB XML's transaction support.  Either
+                        all of the read and write operations within a
+                        transaction succeed, or none of them succeed.
+					</p>
+              </li>
+              <li>
+                <p>
+                        Isolated operations. Operations performed inside a
+                        transaction see all XML documents as if no other
+                        transactions are currently operating on them.  
+					</p>
+              </li>
+              <li>
+                <p>
+                        Recoverability. BDB XML's transaction support ensures
+                        that all committed data is available no matter how the
+                        application or system might subsequently fail. 
+					</p>
+              </li>
+              <li>
+                <p>
+                            Concurrent access. Through the combined use of
+                            isolation mechanisms built into BDB XML, plus
+                            deadlock handling supplied by the application,
+                            multiple threads and processes can concurrently
+                            access the XML data set in a safe manner.
+					</p>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="id1471937"></a>Languages and Platforms</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+				The official BDB XML distribution provides the library in the
+                C++, Java, Perl, Python, PHP, and Tcl
+				languages. Because BDB XML is available under an open source license, a growing list
+				of third-parties are providing BDB XML support in languages other than those that are
+				officially supported.  
+    		</p>
+          <p>
+                BDB XML is supported on a very large number of platforms.  Check
+                with the BDB XML mailing lists for the latest news on supported
+                platforms, as well as for information as to whether your
+                preferred language provides BDB XML support.
+			</p>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="moreinfo.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="gettingit.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">For More Information </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Getting and Using BDB XML</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

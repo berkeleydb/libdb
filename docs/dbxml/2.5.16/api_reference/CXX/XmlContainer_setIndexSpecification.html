@@ -1,0 +1,61 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::setIndexSpecification</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::setIndexSpecification</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlContainer::setIndexSpecification(const XmlIndexSpecification &index,
+    XmlUpdateContext &context)
+<p>
+void XmlContainer::setIndexSpecification(XmlTransaction &txn,
+    const XmlIndexSpecification &index, XmlUpdateContext &context)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::setIndexSpecification</b>
+<p>Defines the type of indexing to be maintained for a container of
+documents. The currently defined indexing specification can be retrieved
+with the <a href="../../api_reference/CXX/XmlContainer_getIndexSpecification.html">XmlContainer::getIndexSpecification</a> method.</p>
+<p>If the container is not empty then the contained documents are
+incrementally indexed.  Index keys for disabled index strategies are
+removed and index keys for enabled index strategies are added. Note that
+the length of time taken to perform this re-indexing operation is
+proportional to the size of the container.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>index</b><ul compact><li>The indexing specification for the container.</ul>
+ <b>context</b><ul compact><li>The update context to use for the index modification.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::setIndexSpecification method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>DATABASE_ERROR</b><ul compact><li>An error occurred in an underlying Berkeley DB database. The
+<a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a> method will return the error code for the error.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Migrating Berkeley DB XML Java Applications</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Upgrading Berkeley DB XML Applications</dl></b></td>
+<td align=right><a href="../upgrade.2.0/cpp.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.2.0/data.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Migrating Berkeley DB XML Java Applications</b></p>
+<p>The Java interface to Berkeley DB XML is similar to the C++ interface in spirit.
+In addition to the changes to the interface due to functional changes
+in Berkeley DB XML, the Java interface has changed to be more compatible with the
+Berkeley DB Java interface.</p>
+<b>XmlManager and Environment</b>
+<p>The Berkeley DB Java interface replaces the DbEnv object with an Environment
+object.  It also replaces the DbTxn object with Transaction.  The
+interface also replaces the use of integer flags with configuration
+objects.  Berkeley DB XML has adopted this mechanism as well.</p>
+<b>Configuration Object</b>
+<p>There are 3 new configuration objects in Berkeley DB XML, replacing corresponding
+use of flags:</p>
+<ol>
+<p><li>XmlManagerConfig: use this object to configure a new XmlManager
+object.
+<p><li>XmlContainerConfig: use this object to configure XmlContainer objects.
+A default XmlContainerConfig object can be set on an XmlManager object
+that affects all containers it creates and opens.  This object extends
+DatabaseConfig, and inherits state, such as encryption, read isolation
+level, threading configuration, and read-only.
+<p><li>XmlDocumentConfig: use this object to configure XmlDocument-level state,
+such as DBXML_LAZY_DOCS or DBXML_GEN_NAME (C++ flags).
+</ol>
+<b>Delete, GC and Object Life Cycle</b>
+<p>Because Java objects in Berkeley DB XML are wrappers for native (C++) objects,
+the Java VM is not aware of memory consumed by the native objects.
+Therefore, GC on objects may not happen in a timely manner, if at all.
+This can result in out of memory conditions, outside of the Java VM
+control.</p>
+<p>
+For this reason, it is necessary to explicitly delete most Berkeley DB XML
+Java objects when they are not longer required.  This is especially
+true for the XmlResult, XmlValue, and XmlDocument objects, of which there
+can be many.  All of the objects include delete() methods for this purpose.
+</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../upgrade.2.0/cpp.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.2.0/data.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

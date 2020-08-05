@@ -1,0 +1,48 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlQueryContext::setReturnType</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlQueryContext::setReturnType</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlQueryContext::setReturnType(ReturnType type);
+<p>
+ReturnType XmlQueryContext::getReturnType();
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlQueryContext::setReturnType</b>
+<p>The XmlQueryContext::setReturnType method allows the application to
+define the return type of the query result values.  Not configuration at this
+time.</p>
+<b>Parameters</b> <br>
+ <b>type</b><ul compact><li>The type parameter specifies which of documents or values to return, and
+must be set to one of the following values:</ul>
+<br>
+<b>XmlQueryContext::LiveValues</b><ul compact><li>A reference to the data stored in Berkeley DB XML is returned.</ul>
+<br>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlQueryContext::getReturnType</b>
+<p>Retrieve the return type defined for this <a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a>.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

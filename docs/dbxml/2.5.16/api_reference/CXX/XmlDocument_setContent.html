@@ -1,0 +1,49 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlDocument::setContent</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlDocument::setContent</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlDocument::setContent(const std::string &content)
+<p>
+void XmlDocument::setContent(const XmlData &content)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlDocument::setContent</b>
+<p>Sets the document's content to the provided content. If this document
+is a new document (that is, its name is currently not in use by another
+document in the container), you can add it to a container using
+<a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a>. If you are updating an already
+existing document, you can update the document in the container using
+<a href="../../api_reference/CXX/XmlContainer_updateDocument.html">XmlContainer::updateDocument</a>.</p>
+<b>Parameters</b> <br>
+ <b>content</b><ul compact><li>The string or <a href="../../api_reference/CXX/XmlData.html">XmlData</a> object containing the new document
+contents. Note that the document contents must be well-formed XML.
+However, in the event of incorrect content, an exception is not thrown
+until an attempt is made to place the contents into a container using
+either <a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a> or
+<a href="../../api_reference/CXX/XmlContainer_updateDocument.html">XmlContainer::updateDocument</a>.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Using Berkeley DB XML on Windows</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for Windows systems</dl></b></td>
+<td align=right><a href="../xml_win/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_win/bin.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Using Berkeley DB XML on Windows</b></p>
+<p>An application which uses Berkeley DB XML relies on four libraries: Berkeley DB XML,
+Berkeley DB, XQilla, and Xerces C++.  When compiling, some include
+files from these packages must be available, and the libraries must be
+included when linking the application.</p>
+<p>When running the application, each of the DLLs must be available in a
+directory in the <b>PATH</b>.  You can achieve this either by copying
+all of the DLLs into a directory that is already in your <b>PATH</b>,
+such as <b>windows/system32</b>, or by adding each of the directories
+containing one of the DLLs to your <b>PATH</b> variable.  The default
+build of Berkeley DB XML places all library DLLs into a single directory to
+simplify this process.</p>
+<b>Berkeley DB XML Include File Locations</b>
+<p>A typical Berkeley DB XML application requires only include files from Berkeley DB XML and
+Berkeley DB. If an application uses interfaces from the Xerces C++
+library, it must include Xerces header files as well.</p>
+<p>The following are include file locations you may need
+for the Berkeley DB XML distribution.  The include files are copied
+during the build.  If you have a successful build, or
+you have the binary distribution, only the first location is
+necessary.
+Version numbers may need to be modified to match your distribution:</p>
+<blockquote><pre><b>dbxml-2.5.16/include</b>
+<b>dbxml-2.5.16/dbxml/include</b>
+<b>dbxml-2.5.16/db-4.8.12/build_windows</b>
+<b>dbxml-2.5.16/xerces-c-src/src</b></pre></blockquote>
+<b>Berkeley DB XML Library Filenames and Locations</b>
+<p>The Berkeley DB XML build places libraries against which applications must link
+in <b>dbxml-2.5.16/lib</b>.  This
+directory holds both Release and Debug .lib files.  An application that
+uses only Berkeley DB XML interfaces is only required to link with the Berkeley DB XML
+library.  If an application uses Berkeley DB or Xerces C++ interfaces, it is
+necessary to link with those libraries as well.</p>
+<p>The following are the important library filenames for the Berkeley DB XML
+distribution (version numbers may need to be modified to match your
+distribution):</p>
+<table border=1 align=center>
+<tr><th>Release Build</th><th>Debug Build</th></tr>
+<tr>    <td align=center>libdbxml25.lib</td>    <td align=center>libdbxml25d.lib</td>    </tr>
+<tr>    <td align=center>libdb48.lib</td>    <td align=center>libdb48d.lib</td>    </tr>
+<tr>    <td align=center>xerces-c_3.lib</td>    <td align=center>xerces-c_3D.lib</td>    </tr>
+</table>
+<b>Berkeley DB XML DLL Names and Locations</b>
+<p>The Berkeley DB XML build process places DLLs and executable files in
+<b>dbxml-2.5.16/bin</b> for the Release
+build, and <b>dbxml-2.5.16/bin/debug</b> for
+the Debug build.  Unlike header files and .lib files, all library DLLs
+must be available at run time in the application's <b>PATH</b>
+environment variable.</p>
+<p>The following are the DLLs required for Berkeley DB XML applications (version
+numbers may need to be modified to match your distribution):</p>
+<table border=1 align=center>
+<tr><th>Release Build</th><th>Debug Build</th></tr>
+<tr>    <td align=center>libdbxml25.dll</td>    <td align=center>libdbxml25d.dll</td>    </tr>
+<tr>    <td align=center>libdb48.dll</td>    <td align=center>libdb48d.dll</td>    </tr>
+<tr>    <td align=center>xerces-c_3.dll</td>    <td align=center>xerces-c_3D.dll</td>    </tr>
+<tr>    <td align=center>xqilla22.dll</td>    <td align=center>xqilla22d.dll</td>    </tr>
+</table>
+<p>A good way to ensure that your application uses the necessary header
+files and libraries is to use one of the Berkeley DB XML example projects
+(<b>dbxml/build_windows/dbxml_example*</b>) as a template for your
+application's project file.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_win/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_win/bin.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

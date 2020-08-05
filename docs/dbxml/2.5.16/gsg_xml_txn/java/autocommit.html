@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Auto Commit</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML Transaction Processing" />
+    <link rel="up" href="usingtxns.html" title="Chapter 3. Transaction Basics" />
+    <link rel="prev" href="abortresults.html" title="Aborting a Transaction" />
+    <link rel="next" href="nestedtxn.html" title="Nested Transactions" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Auto Commit</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="abortresults.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 3. Transaction Basics</th>
+          <td width="20%" align="right"> <a accesskey="n" href="nestedtxn.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="autocommit"></a>Auto Commit</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            While transactions are frequently used to provide atomicity to
+            multiple container 
+            
+            operations, it is sometimes necessary to perform
+            a single container 
+            
+            operation under the control of a transaction.
+            Rather than force you to obtain a transaction, perform the single 
+            write operation, and then either commit or abort the transaction,
+            you can automatically group this sequence of events using
+            <span class="emphasis"><em>auto commit</em></span>.
+        </p>
+      <p>
+            To use auto commit:
+        </p>
+      <div class="orderedlist">
+        <ol type="1">
+          <li>
+            <p>
+                        Open your environment and your containers 
+                        
+                        so that they support
+                    transactions.  See <a class="xref" href="enabletxn.html" title="Chapter 2. Enabling Transactions">Enabling Transactions</a> 
+                    for details.
+                </p>
+          </li>
+          <li>
+            <p>
+                    Do not provide a transactional handle to the method that is
+                    performing the container 
+                        
+                    write operation.
+                </p>
+          </li>
+        </ol>
+      </div>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                Never have more than one active transaction in your thread
+                at a time. This is especially a problem if you mix an
+                explicit transaction with another operation that uses auto
+                commit. Doing so can result in undetectable deadlocks.
+            </p>
+      </div>
+      <p>
+            For example, the following uses auto commit to perform the container write operation:
+        </p>
+      <pre class="programlisting">package dbxml.txn;
+                                                                                                                                   
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+                                                                                                                                   
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlContainerConfig;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlManagerConfig;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+
+...
+                                                                                                                                   
+Environment myEnv = null;
+File envHome = new File("/export1/testEnv");
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+try {
+    EnvironmentConfig envConf = new EnvironmentConfig();
+    envConf.setAllowCreate(true);         // If the environment does not
+                                          // exits, create it.
+    envConf.setInitializeCache(true);     // Turn on the shared memory
+                                          // region.
+    envConf.setInitializeLocking(true);   // Turn on the locking subsystem.
+    envConf.setInitializeLogging(true);   // Turn on the logging subsystem.
+    envConf.setTransactional(true);       // Turn on the transactional
+                                          // subsystem.
+                                                                                                                                   
+    myEnv = new Environment(envHome, envConf);
+                                                                                                                                   
+    XmlManagerConfig managerConfig = new XmlManagerConfig();
+    myManager = new XmlManager(myEnv, managerConfig);
+
+    XmlContainerConfig containerConf = new XmlContainerConfig();
+    containerConf.setTransactional(true);
+    containerConf.setAllowCreate(true);
+    String containerName = "myContainer.dbxml";
+    myContainer = myManager.openContainer(containerName, containerConf);
+
+
+    String file = "doc1.xml";
+    try {
+        // Need an update context for the put.
+        XmlUpdateContext theContext = myManager.createUpdateContext();
+                                                                                                                                     
+        // Get the input stream.
+        XmlInputStream theStream =
+            myManager.createLocalFileInputStream(file1);
+                                                                                                                                     
+        // Put the document. Because the container was opened to 
+        // support transactions, this write is performed using 
+        // auto commit.
+        myContainer.putDocument(file,       // The document's name
+                                theStream,   // The actual document.
+                                theContext,  // The update context
+                                             // (required).
+                                0);          // Put flags.
+                                                                                                                                     
+    } catch (XmlException e) {
+        System.out.println("Error in document write: ");
+        System.out.println(e.what());
+    } 
+} catch (DatabaseException de) {
+    // Exception handling goes here
+} catch (FileNotFoundException fnfe) {
+    // Exception handling goes here
+} catch (Exception e) {
+    // Exception handling goes here
+} finally {
+    try {
+        if (myManager != null) {
+            myManager.close();
+        }
+        if (myEnv != null) {
+            myEnv.close();
+        }
+    } catch (Exception ce) {
+        // Exception handling goes here
+    } catch (DatabaseException de) {
+        // Exception handling goes here
+    }
+} </pre>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="abortresults.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="usingtxns.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="nestedtxn.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Aborting a Transaction </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Nested Transactions</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

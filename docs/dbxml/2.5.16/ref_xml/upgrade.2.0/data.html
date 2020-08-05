@@ -1,0 +1,55 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Migrating Berkeley DB XML Data to 2.0</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Upgrading Berkeley DB XML Applications</dl></b></td>
+<td align=right><a href="../upgrade.2.0/java.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.2.1/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Migrating Berkeley DB XML Data to 2.0</b></p>
+<p>The database format is new in Berkeley DB XML release 2.0, and there is no
+upgrade utility at this time.  If it is not possible to reload data from
+external files, it is possible to write a small, custom application to
+dump 1.2.X data, and load it into 2.0.  The Berkeley DB XML dbxml_dump and
+dbxml_load programs will not work for this purpose.</p>
+<b>Information Necessary for Load into 2.0</b>
+<p>Migrating data is best thought about in terms of what information is
+needed to load into 2.0.  A load comprises the following operations:</p>
+<ol>
+<p><li>Create a container.  Choose a name, and type of container (node storage
+vs whole document storage -- a new feature in 2.0).
+<p><li>Specify indices.  The same indices from a 1.2.X container will work;
+however, 2.0 introduces a number of new options and index types that can
+be used.
+<p><li>Load XML documents.  2.0 requires names, and 1.2.X XmlDocument objects
+have numeric IDs, not names.  The numeric IDs can serve as names, or the
+system can generate unique names, using the DBXML_GEN_NAME flag.
+<p><li>Load XML document metadata.  2.0 has changed, and extended handling of
+metadata, including metadata indices.  Also, in 2.0, metadata is no
+longer part of the document.
+</ol>
+<b>Information to Dump from 1.2.X</b>
+<p>The remaining task is thinking about how to dump a 1.2.X container such
+that the information above is available:</p>
+<ol>
+<p><li>The XmlContainer name and type are an application choice, based on
+expected usage.  If the application performed well with 1.2.X, then
+using whole document storage may be preferred.
+<p><li>XmlIndexSpecification information can be extracted from a 1.2.X
+container.
+<p><li>XML documents can be dumped to local files, for reloading.
+<p><li>Obtaining 1.2.X metadata is more difficult.  In this case, the
+application needs to know that the metadata exists, and acquire it and
+dump it to a format that can be used in the load step.
+</ol>
+<table width="100%"><tr><td><br></td><td align=right><a href="../upgrade.2.0/java.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade.2.1/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

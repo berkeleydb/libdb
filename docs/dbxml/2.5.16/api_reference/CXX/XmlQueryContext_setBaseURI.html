@@ -1,0 +1,53 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlQueryContext::setBaseURI</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlQueryContext::setBaseURI</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlQueryContext::setBaseURI(const std::string &baseURI)
+<p>
+std::string XmlQueryContext::getBaseURI();
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlQueryContext::setBaseURI</b>
+<p>Sets the base URI used for relative paths in query expressions. For example, a
+base URI of 'file:///export/expression/', and a relative path of
+'../another/expression', resolves to 'file:///export/another/expression'.</p>
+<b>Parameters</b> <br>
+ <b>baseURI</b><ul compact><li>The base URI, as a string.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlQueryContext::setBaseURI method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>INVALID_ERROR</b><ul compact><li>The base URI string is not a valid URI scheme.  It
+must begin with a string of the form, scheme:/.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: <a href="../../api_reference/CXX/XmlQueryContext_setBaseURI.html">XmlQueryContext::getBaseURI</a></b>
+<p>Returns the base URI set for this XmlQueryContext object.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

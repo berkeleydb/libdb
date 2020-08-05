@@ -1,0 +1,42 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Solaris</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml_unix/aix.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/freebsd.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Solaris</b></p>
+See Also <a href="../../programmer_reference/build_unix_solaris.html">Berkeley DB notes on Solaris</a>
+<ol>
+<p><li><b>Solaris build commands</b>
+<p>Normal build command for Solaris using Sun Workshop 64-bit and no options:</p>
+<blockquote><pre>bash ./buildall.sh -c cc -x CC --with-configure-env="CFLAGS='-xarch=v9' CXXFLAGS='-xarch=v9' LDFLAGS='-xarch=v9'"
+</pre></blockquote>
+<p>Normal build command for Solaris using Gnu tools and no options, 32-bit:</p>
+<blockquote><pre>bash ./buildall.sh -c gcc -x g++ --with-configure-env="CFLAGS='-mcpu=v9' CXXFLAGS='-mcpu=v9' LDFLAGS='-mcpu=v9 -L$PWD/install/lib'"
+</pre></blockquote>
+<p>Normal build command for Solaris using Gnu tools and no options, 64-bit:</p>
+<blockquote><pre>export LD_LIBRARY_PATH=/usr/sfw/lib/64
+bash ./buildall.sh -c gcc -x g++ --with-configure-env="CFLAGS='-m64 -mcpu=v9' CXXFLAGS='-m64 -mcpu=v9 -L$PWD/install/lib' LDFLAGS='-m64 -mcpu=v9 -L$PWD/install/lib
+</pre></blockquote>
+<p>
+Some Solaris system can't build debug library with -g option, it is a know issue in sun's C++ library, http://wikis.sun.com/display/SunStudio/Sun+Studio+Express+3.09+Known+Problems+and+Workarounds. Use -g0 instead.
+</p>
+<p>
+When building using Sun Workshop there may be a link error indicating
+that the symbol "pow" or "sqrt" is undefined.  If this occurs add "-lm"
+to LDFLAGS in the build command.
+</p>
+</ol>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/aix.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/freebsd.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

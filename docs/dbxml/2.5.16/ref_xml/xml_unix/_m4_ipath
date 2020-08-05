@@ -1,0 +1,33 @@
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__2 @configuring Berkeley DB XML for UNIX/POSIX systems
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__3 configuring Berkeley DB XML for @UNIX/POSIX systems
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--enable-debug Configuring Berkeley DB XML for UNIX/POSIX systems@--enable-debug
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__4 configuring the @Java API
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--enable-java Configuring Berkeley DB XML for UNIX/POSIX systems@--enable-java
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__5 disabling @shared libraries
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__6 disabling @static libraries
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--enable-shared Configuring Berkeley DB XML for UNIX/POSIX systems@--enable-shared
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--enable-static Configuring Berkeley DB XML for UNIX/POSIX systems@--enable-static
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__7 configuring the Berkeley DB XML @test suite
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--enable-test Configuring Berkeley DB XML for UNIX/POSIX systems@--enable-test
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__8 configuring the Berkeley DB XML @test suite
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--with-junit Configuring Berkeley DB XML for UNIX/POSIX systems@--with-junit
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--with-berkeleydb=DIR Configuring Berkeley DB XML for UNIX/POSIX systems@--with-berkeleydb=DIR
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--with-xerces=DIR Configuring Berkeley DB XML for UNIX/POSIX systems@--with-xerces=DIR
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--with-xqilla=DIR Configuring Berkeley DB XML for UNIX/POSIX systems@--with-xqilla=DIR
+__APIREL__/ref_xml/xml_unix/conf.html__OCT__--with-tcl=DIR Configuring Berkeley DB XML for UNIX/POSIX systems@--with-tcl=DIR
+__APIREL__/ref_xml/xml_unix/flags.html__OCT__2 changing @compile or load options
+__APIREL__/ref_xml/xml_unix/flags.html__OCT__3 changing compile or @load options
+__APIREL__/ref_xml/xml_unix/install.html__OCT__2 @installing Berkeley DB XML for UNIX systems
+__APIREL__/ref_xml/xml_unix/intro.html__OCT__2 @building Berkeley DB XML for UNIX/POSIX
+__APIREL__/ref_xml/xml_unix/intro.html__OCT__3 building Berkeley DB XML for @UNIX/POSIX
+__APIREL__/ref_xml/xml_unix/shlib.html__OCT__2 @shared libraries
+__APIREL__/ref_xml/xml_unix/libs.html__OCT__2 @building Berkeley DB XML libraries for UNIX/POSIX
+__APIREL__/ref_xml/xml_unix/libs.html__OCT__3 building Berkeley DB XML libraries for @UNIX/POSIX
+__APIREL__/ref_xml/xml_unix/faq.html__OCT__2 @building for UNIX FAQ
+__APIREL__/ref_xml/xml_unix/faq.html__OCT__3 building for @UNIX FAQ
+__APIREL__/ref_xml/xml_unix/aix.html__OCT__2 @AIX
+__APIREL__/ref_xml/xml_unix/hpux.html__OCT__2 @HP-UX
+__APIREL__/ref_xml/xml_unix/macosx.html__OCT__2 @Mac OS X
+__APIREL__/ref_xml/xml_unix/freebsd.html__OCT__2 @FreeBSD
+__APIREL__/ref_xml/xml_unix/solaris.html__OCT__2 @Solaris
+__APIREL__/ref_xml/xml_unix/cygwin.html__OCT__2 @Cygwin

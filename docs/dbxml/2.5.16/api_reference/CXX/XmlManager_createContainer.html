@@ -1,0 +1,180 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlManager::createContainer</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlManager::createContainer</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlContainer XmlManager::createContainer(const std::string &name)
+XmlContainer XmlManager::createContainer(
+    XmlTransaction &txn, const std::string &name)
+XmlContainer XmlManager::createContainer(const std::string &name, const XmlContainerConfig &config)
+XmlContainer XmlManager::createContainer(
+    XmlTransaction &txn, const std::string &name, XmlContainerConfig config)
+XmlContainer XmlManager::createContainer(const std::string &name,
+    const XmlContainerConfig &flags, XmlContainer::ContainerType type, int mode = 0)
+XmlContainer XmlManager::createContainer(XmlTransaction &txn,
+    const std::string &name, const XmlContainerConfig &flags,
+    XmlContainer::ContainerType type, int mode = 0)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlManager::createContainer</b>
+<p>Creates and opens a container, returning a handle to an
+<a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a> object. If the container already exists at the time
+this method is called, an exception is thrown.</p>
+<p>Use <a href="../../api_reference/CXX/XmlManager_openContainer.html">XmlManager::openContainer</a> to open a container that has
+already been created.</p>
+<p>Containers always remain open until the last handle referencing the
+container is destroyed.</p>
+<hr size=1 noshade>
+<b>Description: XmlManager::createContainer(XmlTransaction &txn, const std::string &name)</b>
+<p>Creates a default container. The container is created using the settings <a href="../../api_reference/CXX/XmlContainerConfig_setAllowCreate.html">XmlContainerConfig::setAllowCreate</a> and <a href="../../api_reference/CXX/XmlContainerConfig_setExclusiveCreate.html">XmlContainerConfig::setExclusiveCreate</a> set to true unless the default behavior has been overridden
+using <a href="../../api_reference/CXX/XmlManager_setDefaultContainerConfig.html">XmlManager::setDefaultContainerConfig</a>. In addition, the
+container is set up to use node-level storage unless <a href="../../api_reference/CXX/XmlManager_setDefaultContainerConfig.html">XmlManager::setDefaultContainerConfig</a> is used.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>The <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> object to use for this container creation.</ul>
+ <b>name</b><ul compact><li>The container's name. The container is created relative to the
+underlying environment's home directory (see <a href="../../api_reference/CXX/XmlManager.html">XmlManager</a> for more
+information) unless an absolute path is used for the name; in that case
+the container is created in the location identified by the path.</ul>
+<p>The name provided here must be unique for the environment or an
+exception is thrown.</p>
+<br>
+<br><b>Errors</b>
+<p>The XmlManager::createContainer method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>CONTAINER_EXISTS</b><ul compact><li>Error: Db::open: File exists</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlManager::createContainer(XmlTransaction &txn, const
+    std::string &name, const XmoContaienrConfig &flags,
+    XmlContainer::ContainerType type, int mode = 0)</b>
+<p>Creates a container.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>The <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> object to use for this container creation.</ul>
+ <b>name</b><ul compact><li>The container's name. The container is created relative to the
+underlying environment's home directory (see <a href="../../api_reference/CXX/XmlManager.html">XmlManager</a> for more
+information) unless an absolute path is used for the name; in that case
+the container is created in the location identified by the path.</ul>
+<p>The name provided here must be unique for the environment or an
+exception is thrown.</p>
+ <b>flags</b><ul compact><li>The <a href="../../api_reference/CXX/XmlContainerConfig.html">XmlContainerConfig</a> used to set the flags to use for this container creation.</ul>
+The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+or more of the following values:
+<br>
+<b><a name="DB_CREATE">DB_CREATE</a></b><ul compact><li>If the container does not currently exist, create it.</ul>
+<b><a name="DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a></b><ul compact><li>This operation will support degree 1 isolation; that is, read operations
+may return data that has been modified by other transactions but which
+has not yet been committed.
+Silently ignored if the <a href="../../api_reference/CXX/dbopen.html#DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a> flag 
+was not specified when the underlying container was opened.
+</ul>
+<b><a name="DB_EXCL">DB_EXCL</a></b><ul compact><li>Return an error if the container already exists.  The <a href="../../api_reference/CXX/dbopen.html#DB_EXCL">DB_EXCL</a>
+flag is only meaningful when specified with the <a href="../../api_reference/CXX/envopen.html#DB_CREATE">DB_CREATE</a>
+flag.</ul>
+<b><a name="DB_MULTIVERSION">DB_MULTIVERSION</a></b><ul compact><li>Open the database with support for <a href="../../programmer_reference/transapp_read.html">multiversion concurrency control</a>.  This will cause updates to the
+container to follow a copy-on-write protocol, which is required to
+support snapshot isolation.  The <a href="../../api_reference/CXX/dbopen.html#DB_MULTIVERSION">DB_MULTIVERSION</a> flag requires
+that the container be transactionally protected during its open.</ul>
+<b><a name="DB_NOMMAP">DB_NOMMAP</a></b><ul compact><li>Do not map this container into process memory (see the
+UNREF==dbenv_set_mp_mmapsize method for further information).</ul>
+<b><a name="DB_RDONLY">DB_RDONLY</a></b><ul compact><li>Open the container for reading only.  Any attempt to modify items in the
+container will fail, regardless of the actual permissions of any
+underlying files.</ul>
+<b><a name="DB_THREAD">DB_THREAD</a></b><ul compact><li>Cause the container handle to be <i>free-threaded</i>;
+that is, concurrently usable by multiple
+threads in the address space.</ul>
+<b><a name="DBXML_CHKSUM">DBXML_CHKSUM</a></b><ul compact><li>Do checksum verification of pages read into the cache from the backing
+filestore.  Berkeley DB XML uses the SHA1 Secure Hash Algorithm if encryption is
+configured and a general hash algorithm if it is not.</ul>
+<b><a name="DBXML_ENCRYPT">DBXML_ENCRYPT</a></b><ul compact><li>Encrypt the database using the cryptographic password specified to
+UNREF==dbenv_set_encrypt.</ul>
+<b><a name="DB_TXN_NOT_DURABLE">DB_TXN_NOT_DURABLE</a></b><ul compact><li>If set, Berkeley DB XML will not write log records for this database.  This means
+that updates of this database exhibit the ACI (atomicity, consistency,
+and isolation) properties, but not D (durability); that is, database
+integrity will be maintained, but if the application or system fails,
+integrity will not persist.  The database file must be verified and/or
+restored from backup after a failure.</ul>
+<b><a name="DBXML_INDEX_NODES">DBXML_INDEX_NODES</a></b><ul compact><li>Causes the indexer to create index targets that reference nodes 
+rather than documents. This allows index lookups during query processing
+to more efficiently find target nodes and avoid walking the document tree.
+It can apply to both container types, and is the default for containers
+of type XmlContainer::NodeContainer.</ul>
+<b><a name="DBXML_NO_INDEX_NODES">DBXML_NO_INDEX_NODES</a></b><ul compact><li>Causes the indexer to create index targets that reference documents rather than
+nodes. This can be more desirable for simple queries that only need to 
+return documents and do relatively little navigation during querying.
+It can apply to both container types, and is the default for containers
+of type XmlContainer::WholedocContainer.</ul>
+<b><a name="DBXML_STATISTICS">DBXML_STATISTICS</a></b><ul compact><li>Causes the container to be created to include structural statistics
+information, which is very useful for cost based query optimisation. Containers
+created with these statistics will take longer to load and update, since the
+statistics must also be updated.  This is the default.</ul>
+<b><a name="DBXML_NO_STATISTICS">DBXML_NO_STATISTICS</a></b><ul compact><li>Causes the container to be created without structural statistics
+information - by default structural statistics are created.</ul>
+<b><a name="DBXML_TRANSACTIONAL">DBXML_TRANSACTIONAL</a></b><ul compact><li>Cause the container to support transactions. If this flag is set, an
+<a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> object may be used with any method that supports
+transactional protection. Also, if this flag is used, and if an
+XmlTransaction object is not provided to a method that modifies an
+<a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a> or <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> object, then auto commit is
+automatically used for the operation.</ul>
+<b><a name="DBXML_ALLOW_VALIDATION">DBXML_ALLOW_VALIDATION</a></b><ul compact><li>When loading documents into the container, validate the XML if it refers
+to a DTD or XML Schema.</ul>
+<br>
+<p>Note that regardless the setting of your flags, <a href="../../api_reference/CXX/XmlContainerConfig_setAllowCreate.html">XmlContainerConfig::setAllowCreate</a> and <a href="../../api_reference/CXX/XmlContainerConfig_setExclusiveCreate.html">XmlContainerConfig::setExclusiveCreate</a> will be set to true.</p>
+ <b>type</b><ul compact><li>The type of container to create.</ul>
+The container type must be one of the following values:
+<br>
+<b><a name="XmlContainer::NodeContainer">XmlContainer::NodeContainer</a></b><ul compact><li>Documents are broken down into their component nodes, and these nodes
+are stored individually in the container. This is the preferred
+container storage type.</ul>
+<b><a name="XmlContainer::WholedocContainer">XmlContainer::WholedocContainer</a></b><ul compact><li>Documents are stored intact; all white space and formatting is preserved.</ul>
+<br>
+The default is XmlContainer::NodeContainer.
+ <b>config</b><ul compact><li>The <a href="../../api_reference/CXX/XmlContainerConfig.html">XmlContainerConfig</a> object used to set the properties of the container.</ul>
+ <b>mode</b><ul compact><li>On Windows systems, the mode parameter is ignored.
+<p>On UNIX systems or in IEEE/ANSI Std 1003.1 (POSIX) environments, files created by 
+are created with mode <b>mode</b> (as described in <b>chmod</b>(2))
+and modified by the process' umask value at the time of creation (see
+<b>umask</b>(2)).  Created files are owned by the process owner; the
+group ownership of created files is based on the system and directory
+defaults, and is not further specified by Berkeley DB.  System shared memory
+segments created by  are created with mode <b>mode</b>, unmodified
+by the process' umask value.  If <b>mode</b> is 0,  will use a
+default mode of readable and writable by both owner and group.</p></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlManager::createContainer method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>CONTAINER_EXISTS</b><ul compact><li>Error: Db::open: File exists</ul>
+<br>
+<br>
+<b>INVALID_VALUE</b><ul compact><li>Invalid flags to method XmlManager::openContainer</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

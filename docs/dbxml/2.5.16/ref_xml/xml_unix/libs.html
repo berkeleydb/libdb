@@ -1,0 +1,144 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Building Berkeley DB XML Libraries for UNIX/POSIX</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a><a name="3"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml_unix/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/conf.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Building Berkeley DB XML Libraries for UNIX/POSIX</b></p>
+<p>The <i>buildall.sh</i> script is a wrapper around
+separate build procedures for each third-party library.  If
+there are problems using the script, or if it is necessary to
+build libraries individually, it is possible to build
+manually.  Building manually gives you finer control over
+configuration, build and installation.
+If you are able to build successfully
+using buildall.sh, the information on this page is not
+necessary.</p>
+<b>Building Individual Libraries</b>
+<p>These instructions assume that the third-party libraries
+are in the directory,
+dbxml-2.5.16.  They apply
+regardless of actual location.</p>
+<br>
+<b><a href="http://www.oracle.com/database/berkeley-db/index.html">Berkeley DB</a></b><ul compact><li>Berkeley DB XML requires Berkeley DB 4.3.28 or newer.  This release includes
+Berkeley DB 4.8.x.  Adjust the path below to match the version bundled
+with the distribution.
+<p>
+When you build Berkeley DB, you must specify the --enable-cxx configuration
+option, so the minimal build commands for Berkeley DB are:
+<blockquote><pre>cd dbxml-2.5.16/db-4.8.x/build_unix
+../dist/configure --enable-cxx
+make
+make install</pre></blockquote></p>
+<p>This will install Berkeley DB in <b>/usr/local/BerkeleyDB.4.8</b>.  If you
+want to install in a different directory, add
+<i>--prefix=/path/to/install</i> to the configure line.</p>
+<p>If you want to use the Berkeley DB XML Java API, you must also build Berkeley DB with
+Java support by adding <i>--enable-java</i> to the configure
+line.</p>
+</ul>
+<b><a href="http://xml.apache.org/xerces-c/index.html">Xerces</a></b><ul compact><li>Xerces is the Apache implementation of XML parsing technology
+and DOM.  The build requires a source
+release of Xerces, not just a binary release.  This release of Berkeley DB XML
+bundles Xerces-C 3.0.1, and requires the Xerces 3.0.0 release or newer.
+<p>Example Bourne shell build commands for Xerces are:
+<blockquote><pre>cd dbxml-2.5.16/xerces-c-src
+export XERCESCROOT=`pwd`
+cd src/xercesc
+./configure --disable-pretty-make
+make
+make install</pre></blockquote></p>
+<p>The option --disable-pretty-make is added because that eliminates the requirement
+for GNU make.  It results in more verbose output.  If it is not used GNU
+make will be required.</p>
+<p>This will install Xerces under <b>/usr/local</b>.  If you want to
+install in a different directory, add
+<i>-P/path/to/install</i> to the configure line.</p></ul>
+<b><a href="http://xqilla.sourceforge.net">XQilla</a></b><ul compact><li>XQilla is an implementation of XQuery 1.0 and XPath 2.0.
+This release of Berkeley DB XML bundles the XQilla version that is required.
+Other versions may work, but are not implicitly supported.  Generally
+releases with the same major and minor number will be compatible.
+<p>An example Bourne shell build command for XQilla is:</p>
+<blockquote><pre>cd dbxml-2.5.16/xqilla
+mkdir build
+cd build
+../configure --with-xerces=../../xerces-c-src
+make
+make install</pre></blockquote>
+<p>This will install XQilla under <b>/usr/local</b>.  If you want to
+install in a different directory, add
+<i>--prefix=/path/to/install</i> to the configure line.
+The --with-xerces directive is required, and must point to
+a valid installed Xerces tree.</p></ul>
+<p>To build multiple UNIX versions of XQilla in the same source tree,
+create a new directory at the same level as the build directory,
+and then configure and build in that directory as described
+previously.</p>
+<br>
+<b>Configuring and building Berkeley DB XML</b>
+<p>The <a href="../../ref_xml/xml_unix/conf.html">--with-berkeleydb</a>,
+<a href="../../ref_xml/xml_unix/conf.html">--with-xerces</a>, and
+<a href="../../ref_xml/xml_unix/conf.html">--with-xqilla</a>
+configuration
+options can be used to specify the location of the install trees.
+Alternatively, the CFLAGS, LDFLAGS and other standard environment
+variables can be used to specify the location of the already installed
+include and library files.</p>
+<p>To do a standard UNIX build of Berkeley DB XML using default paths and
+installations of the third-party libraries,
+change to the <b>build_unix</b> directory
+and then enter the following two commands, adjusting the paths as
+necessary:</p>
+<blockquote><pre>cd dbxml-2.5.16/dbxml/build_unix
+../dist/configure
+make</pre></blockquote>
+<p>If you have changed the locations where Berkeley DB, Xerces,
+or XQilla are installed from the defaults, add the arguments
+<i>--with-berkeleydb=/path/to/db</i>,
+<i>--with-xqilla=/path/to/xqilla</i> and/or
+<i>--with-xerces=/path/to/xerces</i> to configure.</p>
+<p>By default, Berkeley DB XML is installed in
+<b>/usr/local/BerkeleyDBXML.2.5</b>.  To change
+that, add <i>--prefix=/path/to/install</i> to configure.  To install
+the Berkeley DB XML library, enter the following command:</p>
+<blockquote><pre>make install</pre></blockquote>
+<p>To rebuild Berkeley DB XML, enter:</p>
+<blockquote><pre>make clean
+make</pre></blockquote>
+<p>If you change your mind about how Berkeley DB XML is to be configured, you must
+start from scratch by entering the following command:</p>
+<blockquote><pre>make distclean
+../dist/configure
+make</pre></blockquote>
+<p>To build multiple UNIX versions of Berkeley DB XML in the same source tree,
+create a new directory at the same level as the build_unix directory,
+and then configure and build in that directory as described
+previously.</p>
+<b>Building the Java API</b>
+<p>To build the DB XML Java API, make sure there is a working
+<b>javac</b> in your <b>PATH</b>, and specify
+<i>--enable-java</i> when running both the Berkeley DB and Berkeley DB XML
+configure scripts.  When you run <i>make</i>, the Java support
+library for Berkeley DB XML will be built, creating the file <b>dbxml.jar</b>
+in your build directory.  By default -source 1.5 and -target 1.5 
+are passed to <b>javac</b> to build <b>dbxml.jar</b> and 
+<b>dbxmlexamples.jar</b>.  If another target is desired it is possible 
+to modify the file <b>dist/Makefile.defs.in</b> where these flags are set.</p>
+<p>To make use of the DB XML Java API set your environment variable
+<b>CLASSPATH</b> to include the full pathname of the
+<b>dbxml.jar</b> file, as well as the <b>db.jar</b> file from Berkeley DB,
+and your environment variable <b>LD_LIBRARY_PATH</b> (or equivalent)
+to include the <b>.libs</b> subdirectory of your build directory.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/conf.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

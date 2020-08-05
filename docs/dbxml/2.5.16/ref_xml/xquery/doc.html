@@ -1,0 +1,42 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: fn:doc()</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Berkeley DB XML XQuery Extensions</dl></b></td>
+<td align=right><a href="../xquery/contains.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/lookup.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>fn:doc()</b></p>
+<p><b>fn:doc($uri as xs:string?) as document-node()?</b>
+</p>
+<hr size=1 noshade>
+<b>Description: fn:doc()</b>
+<p>Returns a document using an xs:anyURI supplied as xs:string.
+See the <a href="http://www.w3.org/TR/xpath-functions/#func-doc">specification</a>
+for details.
+</p>
+<b>Parameters</b> <br>
+ <b>$uri</b><ul compact><li>A URI representing the document.  For a URI that begins with "dbxml:/" or that uses
+a base URI of "dbxml:/" (the default) only the component following the last '/' in
+the URI is treated as the document name.  Components of the URI before that are assumed
+to be the path to the container.  This means that a document name in the "dbxml:" URI
+scheme cannot contain the character '/'.  For example, the URI "dbxml:/a/b/c/doc" used
+as $uri refers to the document "doc" in the container found via the relative URI "a/b/c."
+<p>
+It is also possible to use a URI from another scheme, such as "http://website/path-to-document"
+or "file://path-to-document" if you have enabled external file access during construction of
+the <a href="../../api_reference/CXX/XmlManager.html">XmlManager</a> object.
+</p>
+</ul>
+<br>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xquery/contains.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/lookup.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

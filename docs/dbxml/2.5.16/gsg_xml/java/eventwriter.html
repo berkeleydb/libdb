@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Constructing Documents using Event Writers</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="adddocument.html" title="Chapter 4. Adding XML Documents to Containers" />
+    <link rel="prev" href="puttingdocuments.html" title="Adding Documents" />
+    <link rel="next" href="setting_metadata.html" title="Setting Metadata" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Constructing Documents using Event Writers</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="puttingdocuments.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 4. Adding XML Documents to Containers</th>
+          <td width="20%" align="right"> <a accesskey="n" href="setting_metadata.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="eventwriter"></a>Constructing Documents using Event Writers</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+                In the previous section we showed you how to load a
+                document into a container by reading that document from
+                disk, or by providing the document as a string object. As
+                an alternative, you can construct your document using an
+                <code class="classname">XmlEventWriter</code> class object, which stores the
+                document in an <code class="classname">XmlDocument</code> object. 
+                You can then put that <code class="classname">XmlDocument</code> 
+                object to the container as described in the previous
+                section.
+        </p>
+      <p>
+                <code class="classname">XmlEventWriter</code> provides methods that
+                allow you to describe the individual, descrete sections of
+                the document. It is useful if, for example, you are already
+                parsing a document using a SAX parser and you want to write
+                the information your parser discovers to a container.
+        </p>
+      <p>
+                To use an event writer:
+        </p>
+      <div class="orderedlist">
+        <ol type="1">
+          <li>
+            <p>
+                                Create the <code class="classname">XmlDocument</code>
+                                instance.
+                        </p>
+          </li>
+          <li>
+            <p>
+                                Give it a name using the
+                                
+                                <code class="methodname">XmlDocument.setName()</code>
+                                method.
+                        </p>
+          </li>
+          <li>
+            <p>
+                                Put the document to your container using the
+                                
+                                <code class="methodname">XmlContainer.putDocumentAsEventWriter()</code>
+                                method. Note that at this point you have
+                                not actually written any document data to the
+                                container, since your document is currently
+                                empty.
+                        </p>
+            <p>
+                                This method returns an
+                                <code class="classname">XmlEventWriter</code>
+                                object.
+                        </p>
+          </li>
+          <li>
+            <p>
+                                Use the <code class="classname">XmlEventWriter</code> 
+                                object to start new document.
+                                You do this using the
+                                
+                                <code class="methodname">XmlEventWriter.writeStartDocument()</code>
+                                method, which allows you to describe
+                                information about the XML document such as
+                                its encoding and it's XML version
+                                identification. 
+                        </p>
+          </li>
+          <li>
+            <p>
+                                Once you have started your document, you
+                                can write beginning and end elements,
+                                attributes, processing instructions, text,
+                                CDATA, and all the other features that you
+                                might expect to place on an XML document.
+                                <code class="classname">XmlEventWriter</code>
+                                provides methods that allow you to do these
+                                things.
+                        </p>
+          </li>
+          <li>
+            <p>
+                                Once you have have completed your document,
+                                close it using the
+                                
+                                <code class="methodname">XmlEventWriter.close()</code>
+                                method. This completes the container put
+                                operation that you began in step 3.
+                        </p>
+          </li>
+        </ol>
+      </div>
+      <p>
+        For example, suppose you wanted to write the following document to
+        a container:
+</p>
+      <pre class="programlisting">&lt;a&gt;
+&lt;b a1="one" b2="two"&gt;b node text&lt;/b&gt;
+&lt;c&gt;c node text&lt;/c&gt;
+&lt;/a&gt; </pre>
+      <p>
+        Then the following code fragment would accomplish that task:
+</p>
+      <pre class="programlisting">         // Manager and container opens omitted for brevity.
+
+         // create a new document
+         XmlDocument doc = mgr.createDocument();
+         doc.setName(dname);
+
+         XmlEventWriter writer = 
+            container.putDocumentAsEventWriter(doc);
+         writer.writeStartDocument(null, null, null); // no XML decl
+
+        // Write the document's root node. It has no prefixes or
+        // attributes. This node is not empty.
+        writer.writeStartElement("a", null, null, 0, false);
+
+        // Write a new start element. This time for the "b" node.
+        // It has two attributes and its content is also not empty.
+        writer.writeStartElement("b", null, null, 2, false);
+        // Write the "a1" and "b2" attributes on the "b" node
+        writer.writeAttribute("a1", null, null, "one", true);
+        writer.writeAttribute("b2", null, null, "two", true);
+        // Write the "b" node's content. Note that there are 11
+        // characters in this text, and we provide that information
+        // to the method.
+        writer.writeText(XmlManager.Characters, "b node text", 11);
+        // End the "b" node
+        writer.writeEndElement("b", null, null);
+        // Start the "c" node. There are no attributes on this node.
+        writer.writeStartElement("c", null, null, 0, false);
+        // Write the "c" node's content
+        writer.writeText(XmlManager.Characters, "c node text", 11);
+        // End the "c" node and then the "a" (the root) node
+        writer.writeEndElement("c", null, null);
+        writer.writeEndElement("a", null, null);
+
+        // End the document
+        writer.writeEndDocument();
+        // Close the document
+        writer.close(); </pre>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="puttingdocuments.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="adddocument.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="setting_metadata.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Adding Documents </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Setting Metadata</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

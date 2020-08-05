@@ -1,0 +1,49 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlUpdateContext</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlUpdateContext</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlUpdateContext {
+public:
+	XmlUpdateContext();
+	XmlUpdateContext(const XmlUpdateContext &);
+	~XmlUpdateContext();
+	XmlUpdateContext &operator = (const XmlUpdateContext &)
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlUpdateContext</b>
+<p>The XmlUpdateContext class encapsulates the context within which
+update operations are performed against an <a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a>.</p>
+<p>A copy constructor and assignment operator are provided for this class.
+The class is implemented using a handle-body idiom.  When a handle is
+copied both handles maintain a reference to the same body.</p>
+<p>XmlUpdateContext objects are instantiated using
+<a href="../../api_reference/CXX/XmlManager_createUpdateContext.html">XmlManager::createUpdateContext</a>.</p>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

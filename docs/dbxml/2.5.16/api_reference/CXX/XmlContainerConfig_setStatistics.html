@@ -1,0 +1,55 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainerConfig::setStatistics</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainerConfig::setStatistics</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlContainerConfig::setStatistics(XmlContainerConfig::ConfigState state)
+<p>
+XmlContainerConfig::ConfigState XmlContainerConfig::getStatistics() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainerConfig::setStatistics</b>
+<p>Sets whether the structural statistics are stored in the container.  These 
+statisitics are used in query optimization.  The default setting is UseDefault
+and the default is to use statistics.
+This value is ignored unless the container is being created or reindexed.</p>
+<p>Structural statistics information is very useful for cost based query 
+optimisation. Containers created with these statistics will take slightly 
+longer to load and update, since the statistics must also be updated.  In 
+addition the statistics affect the concurrent behavior in the face of updates.</p>
+<p>If the state is set to Off then the container is created without structural statistics.
+If the state is set to On or UseDefault the container is created with 
+structural statistics.</p>
+<b>Parameters</b> <br>
+ <b>state</b><ul compact><li>Whether the container includes structural statistics.</ul>
+The container property must have one of the following values:
+<br>
+<b><a name="XmlContainerConfig::On">XmlContainerConfig::On</a></b><ul compact><li>The container property is turned on.</ul>
+<b><a name="XmlContainerConfig::Off">XmlContainerConfig::Off</a></b><ul compact><li>The container property is turned off.</ul>
+<b><a name="XmlContainerConfig::UseDefaults">XmlContainerConfig::UseDefaults</a></b><ul compact><li>The container property is set to whatever the default is for the given container type.</ul>
+<br>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

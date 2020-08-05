@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 8. Administering Berkeley DB XML Applications</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="prev" href="verifyqueryplan.html" title="Verifying Indices using Query Plans" />
+    <link rel="next" href="mvcc.html" title="A Note on Snapshot Isolation" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 8. Administering Berkeley DB XML Applications</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="verifyqueryplan.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="mvcc.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="admin"></a>Chapter 8. Administering Berkeley DB XML Applications</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="admin.html#tmpfiles">Temporary Files</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="mvcc.html">A Note on Snapshot Isolation</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+            This book has until now been an introduction on how to use the
+            BDB XML  API to add a native XML database to your application.
+            But having written that application, there's some
+            administrative concerns that you should keep in mind as your
+            application moves into production. These concerns are described
+            in this chapter.
+	</p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="tmpfiles"></a>Temporary Files</h2>
+            </div>
+          </div>
+        </div>
+        <p>
+                    All Berkeley DB XML applications are capable of writing
+                    temporary files to disk. This happens when the disk
+                    cache fills up and so BDB XML is forced to write
+                    overflow pages. For the most part, these temporary
+                    files can be safely ignored.
+            </p>
+        <p>
+                    However, for some class of applications, the presence
+                    of the temporary overflow files can be problematic.
+                    You can prevent temporary files from being created on your hard drive
+                    by creating your disk cache large enough that it can contain your entire working
+                    set of data. You do this 
+                    
+                    <span>
+                            using the
+                            <code class="methodname">EnvironmentConfig.setCacheSize()</code>
+                            method.
+                    </span>
+            </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                            It is always safe to delete temporary overflow
+                            files written by BDB XML after the application
+                            has shutdown.
+                    </p>
+        </div>
+        <p>
+                            Temporary database files are placed in the directory identified by
+                            the
+                            
+                            <code class="methodname">EnvironmentConfig::setTemporaryDirectory()</code>
+                            method. If this method is not called by the application, then the
+                            application will use the directory identified on an environment
+                            variable, if your application is configured to do this. Assuming that it
+                            is appropriately configured, then the following environment variables
+                            are checked to see if they have been set.  The following
+                            order of precedence matters; the first of the following environment 
+                            variables found to be set is used to determine the location of the
+                            temporary directory:
+                    </p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+                                            <code class="literal">TMPDIR</code>
+                                    </p>
+            </li>
+            <li>
+              <p>
+                                            <code class="literal">TEMP</code>
+                                    </p>
+            </li>
+            <li>
+              <p>
+                                            <code class="literal">TMP</code>
+                                    </p>
+            </li>
+            <li>
+              <p>
+                                            <code class="literal">TempFolder</code>
+                                    </p>
+            </li>
+            <li>
+              <p>
+                                            <code class="literal">TMPDIR</code>
+                                    </p>
+            </li>
+          </ol>
+        </div>
+        <p>
+                            If none of these environment variables are set, BDB XML checks the value
+                            returned by the <code class="classname">GetTempPath</code> interface to see if
+                            that is set. If not, then the default location identified above are
+                            attempted.
+                    </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                                    Environment variables are not used by BDB XML applications
+                                    unless 
+                                    
+                                    <span>
+                                            <code class="methodname">EnvironmentConfig.setUseEnvironment()</code>
+                                            or
+                                            <code class="methodname">EnvironmentConfig.setUseEnvironmentRoot()</code>
+                                            is called prior to opening the environment.
+                                    </span>
+                            </p>
+        </div>
+        <p>
+                            If no other method of determining the location of the temporary file
+                            directory can be found, then BDB XML will resort to using built-in
+                            default values. That is, the first of the following locations found to
+                            exist is used, if a temporary file directory is not otherwise identified
+                            for BDB XML:
+                    </p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+                                            The directory <code class="literal">/var/tmp</code>
+                                    </p>
+            </li>
+            <li>
+              <p>
+                                            The directory <code class="literal">/usr/tmp</code>
+                                    </p>
+            </li>
+            <li>
+              <p>
+                                            The directory <code class="literal">/temp</code>
+                                    </p>
+            </li>
+            <li>
+              <p>
+                                            The directory <code class="literal">/tmp</code>
+                                    </p>
+            </li>
+            <li>
+              <p>
+                                            The directory <code class="literal">C:/temp</code>
+                                    </p>
+            </li>
+            <li>
+              <p>
+                                            The directory <code class="literal">C:/tmp</code>
+                                    </p>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="verifyqueryplan.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="mvcc.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Verifying Indices using Query Plans </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> A Note on Snapshot Isolation</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

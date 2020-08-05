@@ -1,0 +1,51 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: Berkeley DB XML: XmlValue and Related Methods</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<p align=center><b>Berkeley DB XML: XmlValue and Related Methods</b></p>
+<table border=1 align=center>
+<tr><th>XmlValue</th><th>Description</th></tr>
+<!--XmlValue::--><tr><td><a href="../../api_reference/CXX/XmlValue.html">XmlValue</a></td><td>A single result value.</td></tr>
+<!--XmlValue::isNull--><tr><td><a href="../../api_reference/CXX/XmlValue.html">XmlValue::isNull</a></td><td>Check if the value is initialized.</td></tr>
+<!--XmlValue::equals--><tr><td><a href="../../api_reference/CXX/XmlValue.html">XmlValue::equals</a></td><td>Compare two <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> objects.</td></tr>
+<!--XmlValue::operator==--><tr><td><a href="../../api_reference/CXX/XmlValue.html">XmlValue::operator==</a></td><td>Compare two <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> objects.</td></tr>
+<tr><th>Type Information</th><th><br></th></tr>
+<!--XmlValue::getType--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::getType</a></td><td>Get the type enumeration of the value.</td></tr>
+<!--XmlValue::getTypeURI--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::getTypeURI</a></td><td>Get the URI for the type.</td></tr>
+<!--XmlValue::getTypeName--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::getTypeName</a></td><td>Get the name of the type.</td></tr>
+<!--XmlValue::isType--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isType</a></td><td>Check type of value.</td></tr>
+<!--XmlValue::isNumber--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isNumber</a></td><td>Check if value is a number .</td></tr>
+<!--XmlValue::isString--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isString</a></td><td>Check if value is a string .</td></tr>
+<!--XmlValue::isBoolean--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isBoolean</a></td><td>Check if value is a boolean.</td></tr>
+<!--XmlValue::isBinary--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isBinary</a></td><td>Check if value is binary.</td></tr>
+<!--XmlValue::isNode--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isNode</a></td><td>Check if value is node.</td></tr>
+<tr><th>Value Retrieval</th><th><br></th></tr>
+<!--XmlValue::asNumber--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asNumber</a></td><td>Return value as a double.</td></tr>
+<!--XmlValue::asString--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asString</a></td><td>Return value as a string.</td></tr>
+<!--XmlValue::asBoolean--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asBoolean</a></td><td>Return value as a boolean.</td></tr>
+<!--XmlValue::asDocument--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asDocument</a></td><td>Return value as <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a>.</td></tr>
+<!--XmlValue::asEventReader--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asEventReader</a></td><td>Return value as <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a>.</td></tr>
+<tr><th>Node Manipulation</th><th><br></th></tr>
+<!--XmlValue::getNodeHandle--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeHandle</a></td><td>Return a string node handle for the value.</td></tr>
+<!--XmlValue::getNodeName--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeName</a></td><td>Get the name of the node value.</td></tr>
+<!--XmlValue::getNodeValue--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeValue</a></td><td>Get the value of the node.</td></tr>
+<!--XmlValue::getNamespaceURI--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNamespaceURI</a></td><td>Get the node's namespace URI.</td></tr>
+<!--XmlValue::getPrefix--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getPrefix</a></td><td>Get the node's namespace prefix.</td></tr>
+<!--XmlValue::getLocalName--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getLocalName</a></td><td>Get the node's local name.</td></tr>
+<!--XmlValue::getNodeType--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeType</a></td><td>Get the node type of the node.</td></tr>
+<!--XmlValue::getParentNode--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getParentNode</a></td><td>Get the node's parent node.</td></tr>
+<!--XmlValue::getFirstChild--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getFirstChild</a></td><td>Get the node's first child.</td></tr>
+<!--XmlValue::getLastChild--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getLastChild</a></td><td>Get the node's last child.</td></tr>
+<!--XmlValue::getPreviousSibling--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getPreviousSibling</a></td><td>Get the node's previous sibling node.</td></tr>
+<!--XmlValue::getNextSibling--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNextSibling</a></td><td>Get the node's next sibling node.</td></tr>
+<!--XmlValue::getAttributes--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getAttributes</a></td><td>Get the node's attributes.</td></tr>
+<!--XmlValue::getOwnerElement--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getOwnerElement</a></td><td>Get the node's owner element.</td></tr>
+</table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

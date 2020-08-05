@@ -1,0 +1,43 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlMetaDataIterator::next</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlMetaDataIterator::next</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+bool XmlMetaDataIterator::next(
+    std::string &uri, std::string &name, XmlValue &value)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlMetaDataIterator::next</b>
+<p>Returns the next item in the <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a>'s metadata list. If
+there is no next item, this method returns false. Otherwise, it returns
+true.</p>
+<b>Parameters</b> <br>
+ <b>uri</b><ul compact><li>Contains the URI used for the metadata item retrieved by this method.</ul>
+ <b>name</b><ul compact><li>Contains the name used for the metadata item retrieved by this method.</ul>
+ <b>value</b><ul compact><li>Contains the <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> contained by the metadata item retrieved
+by this method.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

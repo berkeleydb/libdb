@@ -1,0 +1,60 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: fn:collection()</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Berkeley DB XML XQuery Extensions</dl></b></td>
+<td align=right><a href="../xquery/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/contains.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>fn:collection()</b></p>
+<p><b>fn:collection() as node()*</b>
+<p>
+<b>fn:collection($arg as xs:string?) as node()*</b>
+</p>
+<hr size=1 noshade>
+<b>Description: fn:collection()</b>
+<p>Returns a sequence of nodes obtained by interpreting $arg as an
+xs:anyURI.  If $arg is not specified, the default collection is used if
+it is set.  See the
+<a href="http://www.w3.org/TR/xpath-functions/#func-collection">specification</a> for details.</p>
+<b>Parameters</b> <br>
+ <b>$arg</b><ul compact><li>A URI representing the collection.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: URI Resolution in Berkeley DB XML</b>
+<p>A URI representing an Berkeley DB XML container is of the form,
+"dbxml:/container_alias," where "container_alias" is an absolute or
+relative path to the container, or an alias added using
+<a href="../../api_reference/CXX/XmlContainer_addAlias.html">XmlContainer::addAlias</a>.  If the URI is either of the form
+"dbxml:////absolute_path_to_container" or
+"dbxml:/C:/absolute_windows_path_to_container" (Windows) then the path
+is considered absolute; otherwise, it is relative to the Berkeley DB
+environment's data directory.  In general, it's simplest to use an
+explicit alias.  It is also important to note that the Berkeley DB XML query
+optimizer uses the argument to fn:collection() to determine which
+indices may be appropriate for a given query.</p>
+<p>By default, the base URI in an <a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a> is "dbxml:/"
+which allows use of "collection('relative_path_to_container')" without
+any additional code.  It is possible to use
+<a href="../../api_reference/CXX/XmlQueryContext_setBaseURI.html">XmlQueryContext::setBaseURI</a> to change the default base URI.
+Note also that the Windows pathname separator, '\', is not a valid
+separator in a URI; the forward slash ('/') must be used, even on
+Windows.</p>
+<p>Some applications may choose to implement their own name resolution
+scheme for the argument to fn:collection().  This is supported by
+allowing applications to control the resolution process using an
+application-provided instance of the <a href="../../api_reference/CXX/XmlResolver.html">XmlResolver</a> class, and
+using a URI that looks like (for example)
+"myscheme:/my_name_for_container."   Collections located in this manner
+cannot currently be optimized by indices.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xquery/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/contains.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

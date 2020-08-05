@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Compressing XML Documents</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="managedoc.html" title="Chapter 6. Managing Documents in Containers" />
+    <link rel="prev" href="modifydocument.html" title="Modifying XML Documents" />
+    <link rel="next" href="indices.html" title="Chapter 7. Using BDB XML Indices" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Compressing XML Documents</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="modifydocument.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 6. Managing Documents in Containers</th>
+          <td width="20%" align="right"> <a accesskey="n" href="indices.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="compression"></a>Compressing XML Documents</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="compression.html#compress_off">Turning Compression Off</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="compression.html#custom_compress">Using Custom Compression</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        By default all documents stored in a BDB XML whole document containers
+        are compressed when they are stored in those containers, and
+        uncompressed when they are retrieved from those containers. This
+        requires a little bit of overhead on document storage and
+        retrieval, but it also saves on disk space.
+	</p>
+      <p>
+        Note that only documents are compressed; metadata and indexes are
+        not compressed.
+    </p>
+      <p>
+        You can cause compression to be turned off. You can also implement
+        your own custom compression routine.
+    </p>
+      <p>
+        Note that whatever compression you use when you initially add
+        documents to your container must be used for the lifetime of the
+        container. You cannot, for example, turn compression off for some
+        documents in the container and leave it on for others. You also
+        cannot use more than one compression technique for the container.
+    </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="compress_off"></a>Turning Compression Off</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            You turn compression off by setting
+                
+                <code class="literal">XmlContainerConfig.NO_COMPRESSION</code>
+            for the 
+                
+                <code class="methodname">XmlContainerConfig.setCompressionName()</code>
+
+            method.  Note that you must do this on every container open or an
+            <code class="classname">XmlException</code> is thrown when you attempt to retrieve a document
+            from the container.
+
+        </p>
+        <p>
+            For example:
+        </p>
+        <pre class="programlisting">try {
+    // Set the container type as WholedocContainer and turn off
+    // compression
+    XmlContainerConfig contConf;
+    contConf.setAllowCreate(true);
+    contConf.setContainerType(XmlContainer::WholedocContainer);
+    contConf.setCompressionName(XmlContainerConfig::NO_COMPRESSION);
+
+    // Open container
+
+    // mgr is the XmlManager, opened at some point prior to this
+    // code fragment.
+    XmlContainer cont = mgr.openContainer("container.dbxml", contConf);
+
+    // From here you store and retrieve documents exactly in the same
+    // way as you always would.  
+    } catch (XmlException e) {
+        // If you are turning off compression for a container that has
+        // already stored compressed documents, BDB XML will not notice
+        // until you try to retrieve a document that is compressed.
+    }  </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="custom_compress"></a>Using Custom Compression</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            You can implement custom compression routine for use with you
+            BDB XML whole document containers. When you do this, you must
+            register the compression routine when you create and open your
+            container, and you must always use the same compression for all
+            subsequent uses of the container.
+        </p>
+        <p>
+            You create a custom compression routine by providing an
+            implementation of <code class="classname">XmlCompression</code>.
+            You must implement methods that both compress and decompress your 
+            documents. Each of these methods must return
+            <code class="literal">true</code> on success and
+            <code class="literal">false</code> on failure.
+        </p>
+        <p>
+            
+            
+            Notice that these member methods do not perform actual container
+            activity; rather, they operate on the data found in the source
+            <code class="classname">XmlData</code> parameter, and store the results
+            in the destination <code class="classname">XmlData</code>
+            parameter.
+        </p>
+        <pre class="programlisting">
+class MyCompression extends XmlCompression {
+
+    public boolean compress(XmlTransaction txn, 
+        XmlData source, XmlData dest) {
+
+        try {
+            // Get the data to compress
+            byte[] src = source.get_data();
+
+            // Use JDK's ZLIB compress 
+            java.util.zip.Deflater compressor = 
+                new java.util.zip.Deflater();
+            compressor.setInput(src);
+            compressor.finish();
+
+            java.io.ByteArrayOutputStream bos = 
+                new java.io.ByteArrayOutputStream(src.length);
+
+            // Compress the data
+            byte[] buf = new byte[1024];
+            while (!compressor.finished()) {
+                int count = compressor.deflate(buf);
+                bos.write(buf, 0, count);
+            }
+            bos.close();
+
+            byte[] data = bos.toByteArray();
+
+            // Set the compressed data
+            dest.set(data);
+
+        } catch (Exception e) {
+            // If any exception, return false
+            return true;
+        }
+
+        // Successful return true
+        return true;
+    }
+
+    public boolean decompress(XmlTransaction txn, 
+        XmlData source, XmlData dest) {
+
+        try {
+            // Get the data to decompress
+            byte[] src = source.get_data();
+
+            // Use JDK's ZLIB decompress
+            java.util.zip.Inflater decompressor = 
+                new java.util.zip.Inflater();
+            decompressor.setInput(src);
+
+            java.io.ByteArrayOutputStream bos = 
+                new java.io.ByteArrayOutputStream(src.length);
+
+            // Decompress the data
+            byte[] buf = new byte[1024];
+            while (!decompressor.finished()) {
+                int count = decompressor.inflate(buf);
+                bos.write(buf, 0, count);
+            }
+            bos.close();
+
+            byte[] data = bos.toByteArray();
+
+            // Set the decompressed data
+            dest.set(data);
+
+        } catch (Exception e) {
+            // If any exception, return false
+            return false;
+        }
+
+        // Successful return true
+        return true;
+    }
+} </pre>
+        <p>
+        To use this class implementation, you register your implementation
+        with BDB XML, giving it a unique name as you do so. You then set
+        that compression name to the container before opening it. All other
+        container operations are performed as normal.
+    </p>
+        <pre class="programlisting">...
+
+        String containerName = "compressionContainer.dbxml";
+        String docName = "doc1.xml";
+        String content = "&lt;root&gt;&lt;a&gt;&lt;/a&gt;&lt;/root&gt;";
+        String compressionName = "myCompression";
+
+        try {
+
+            XmlManager mgr = new XmlManager();
+
+           // Register user's compression object into XmlManager
+            mgr.registerCompression(compressionName, new MyCompression());
+
+            containerConfig = new XmlContainerConfig();
+            containerConfig.setContainerType(XmlContainer.WholedocContainer);
+
+            // Set XmlContainerConfig custom compression
+            containerConfig.setCompression(compressionName);
+
+            cont = mgr.createContainer(containerName, containerConfig);
+
+            // Put a document in
+            doc = mgr.createDocument();
+            doc.setName(docName);
+            doc.setContent(content);
+            cont.putDocument(doc);
+
+            // Get the content
+            System.out.println("Content of the document: "+
+                cont.getDocument(docName).getContentAsString());
+
+            // Clean up
+            cont.delete();
+            mgr.delete();
+
+        } catch (XmlException e) {
+            System.out.println("Exception: " + e.getMessage());
+        } </pre>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="modifydocument.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="managedoc.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="indices.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Modifying XML Documents </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Chapter 7. Using BDB XML Indices</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

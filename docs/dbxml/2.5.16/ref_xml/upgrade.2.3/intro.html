@@ -1,0 +1,47 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Upgrading Berkeley DB XML Applications to 2.3</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Upgrading Berkeley DB XML Applications</dl></b></td>
+<td align=right><a href="../upgrade.2.2/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Upgrading Berkeley DB XML Applications to 2.3</b></p>
+<p>The database format has changed in Berkeley DB XML release 2.3 and existing
+containers created in 2.x-based applications must be upgraded,
+and applications should be recompiled.</p>
+<b>Upgrading 2.x-based Containers</b>
+<p>It is possible to upgrade containers created with 2.0, 2.1, or 2.2.
+It is not possible to upgrade containers created with a 1.x release
+of BDB XML.  Containers can be upgraded in one of two ways.  Using
+the <a href="../../utility/dbxmlsh.html">dbxml</a> shell facility, or using the
+<a href="../../api_reference/CXX/XmlManager_upgradeContainer.html">XmlManager::upgradeContainer</a> method.  The shell program
+method is simpler.</p>
+<p>Once the installation is built, these steps can be used to
+perform the upgrade:</p>
+<ol>
+<p><li><b>Important: </b>Make a backup copy of your container.
+<p><li>Assuming the dbxml program is in your PATH, type <i>dbxml</i>.
+<p><li><b>dbxml&gt; </b>upgradeContainer &lt;pathToContainer&gt;
+<p><li><b>dbxml&gt; </b>quit
+</ol>
+<p>The upgrade may take a few minutes, depending on the size of your
+container.  You can check to see if the upgrade was successful
+by opening the container with the <i>openContainer</i> sub-command
+in dbxml.</p>
+<p>Depending on the contents, node storage containers may bloat during
+an upgrade process, resulting in a noticeably larger container.
+If this is undesirable, it is possible to shrink the size by
+performing a <a href="../../utility/dbxml_dump.html">dbxml_dump</a> and <a href="../../utility/dbxml_load.html">dbxml_load</a> combination on the container,
+while is it not being accessed by any other programs.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../upgrade.2.2/intro.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

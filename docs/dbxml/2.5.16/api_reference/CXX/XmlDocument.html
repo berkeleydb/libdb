@@ -1,0 +1,74 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlDocument</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlDocument</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlDocument {
+public:
+	XmlDocument();
+	XmlDocument(const XmlDocument &);
+	~XmlDocument();
+	XmlDocument &operator = (const XmlDocument &)
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlDocument</b>
+<p>An XmlDocument is the unit of storage within an XmlContainer. A document
+consists of content, a name, and a set of metadata attributes.</p>
+<p>The document content is a byte stream. It must be well formed XML, but
+need not be valid.</p>
+<p>The document name is a unique identifier for the document. The name is
+specified when the document is first placed in the container. It can
+either be explicitly specified by the user, or it can be auto-generated
+by Berkeley DB XML. See <a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a> for details.</p>
+<p>The user can retrieve the document by name using
+<a href="../../api_reference/CXX/XmlContainer_getDocument.html">XmlContainer::getDocument</a>.  In addition, the document name can
+be referenced in an XQuery expression using the doc() navigation
+function. For example, suppose your document's name is 'doc1.xml' and
+the container that it exists in is 'container1.bdbxml'. In this case,
+you can explicitly request the document by it's name using:</p>
+<blockquote><pre>doc('dbxml:/container1.bdbxml/doc1.xml')</pre></blockquote>
+<p>The metadata attributes provide a means of associating information with
+a document, without having to store it within the document itself.
+Example metadata attributes might be: document owner, creation time,
+receipt time, originating source, final destination, and next processing
+phase. They are analogous to the attributes of a file in a file system.
+Each metadata attribute consists of a name-value pair.  The document's
+name is an implicit metadata attribute.</p>
+<p>You can access the metadata for a given document by using either
+<a href="../../api_reference/CXX/XmlDocument_getMetaData.html">XmlDocument::getMetaData</a>
+or by iterating over the document's metadata. Use
+<a href="../../api_reference/CXX/XmlDocument_getMetaDataIterator.html">XmlDocument::getMetaDataIterator</a> to retrieve an
+<a href="../../api_reference/CXX/XmlMetaDataIterator.html">XmlMetaDataIterator</a> object.</p>
+<p>You can instantiate an empty XmlDocument object using
+<a href="../../api_reference/CXX/XmlManager_createDocument.html">XmlManager::createDocument</a>.
+The copy constructor and assignment operator are provided for this
+class. The class is implemented using a handle-body idiom. When a handle
+is copied both handles maintain a reference to the same body.</p>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

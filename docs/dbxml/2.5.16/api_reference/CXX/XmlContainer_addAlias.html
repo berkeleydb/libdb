@@ -1,0 +1,43 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::addAlias</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::addAlias</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+bool addAlias(const std::string &alias)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::addAlias</b>
+<p>The XmlContainer::addAlias method adds a new name alias
+to the list maintained by the containing <a href="../../api_reference/CXX/XmlManager.html">XmlManager</a>.
+The new alias can then be used as a parameter
+to the collection() function in an XQuery expression.  Returns
+true if the alias is successfully added.  If the alias is
+already used by the containing <a href="../../api_reference/CXX/XmlManager.html">XmlManager</a> object,
+false is returned.</p>
+<b>Parameters</b> <br>
+ <b>alias</b><ul compact><li>The new alias to be added.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

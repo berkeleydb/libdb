@@ -1,0 +1,179 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::lookupIndex</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::lookupIndex</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlResults XmlContainer::lookupIndex(XmlQueryContext &context,
+    const std::string &uri, const std::string &name,
+    const std::string &index, const XmlValue &value = XmlValue(),
+    u_int32_t flags = 0)
+<p>
+XmlResults XmlContainer::lookupIndex(XmlTransaction &txn,
+    XmlQueryContext &context, const std::string &uri,
+    const std::string &name, const std::string &index,
+    const XmlValue &value = XmlValue(), u_int32_t flags = 0)
+<p>
+XmlResults XmlContainer::lookupIndex(XmlQueryContext &context,
+    const std::string &uri, const std::string &name,
+    const std::string &parent_uri, const std::string &parent_name,
+    const std::string &index,const XmlValue &value = XmlValue(),
+    u_int32_t flags = 0)
+<p>
+XmlResults XmlContainer::lookupIndex(XmlTransaction &txn,
+    XmlQueryContext &context, const std::string &uri,
+    const std::string &name, const std::string &parent_uri,
+    const std::string &parent_name, const std::string &index,
+    const XmlValue &value = XmlValue(),u_int32_t flags = 0)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::lookupIndex</b>
+<p>NOTE: this interface is deprecated, in favor of using
+<a href="../../api_reference/CXX/XmlManager_createIndexLookup.html">XmlManager::createIndexLookup</a> and <a href="../../api_reference/CXX/XmlIndexLookup_execute.html">XmlIndexLookup::execute</a>.</p>
+<p>For a specified index, return all the data referenced by the index's
+keys, optionally matching a specific value.</p>
+<hr size=1 noshade>
+<b>Description: XmlResults XmlContainer::lookupIndex(XmlTransaction &txn, XmlQueryContext &context, const std::string &uri, const std::string &name, const std::string &index, const XmlValue &value = XmlValue(), u_int32_t flags = 0)</b>
+<p>Return all the targets for which the identified index has keys. By
+default, entire documents are returned by this method. However, if the
+container is of type XmlContainer::NodeStorage (the default container
+type), and if DBXML_INDEX_NODES is set for the container, then this
+method will return the individual nodes referenced by the index keys.</p>
+<p>Note that you cannot use this form of this method to examine edge
+indices.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>context</b><ul compact><li>The <a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a> to use for this query.</ul>
+ <b>uri</b><ul compact><li>The namespace of the node to which this index is applied.</ul>
+ <b>name</b><ul compact><li>The name of the node to which this index is applied.</ul>
+ <b>index</b><ul compact><li>Identifies the index for which you want the documents returned. The
+value supplied here must be a valid index. See
+<a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a> for a description of valid index
+specifications.</ul>
+ <b>value</b><ul compact><li>Provides the value to which equality indices must be equal. This
+parameter is required when returning documents on equality indices, and
+it is ignored for all other types of indices.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+or more of the following values:
+<br>
+<b><a name="DBXML_CACHE_DOCUMENTS">DBXML_CACHE_DOCUMENTS</a></b><ul compact><li>Enables use of a cache mechanism that optimizes <a href="../../api_reference/CXX/XmlIndexLookup_execute.html">XmlIndexLookup::execute</a>
+operations that a large number of nodes from the same document.</ul>
+<b><a name="DBXML_LAZY_DOCS">DBXML_LAZY_DOCS</a></b><ul compact><li>Retrieve the document lazily. That is, retrieve document content and
+document metadata only on an as needed basis when reading the document.</ul>
+<b><a name="DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a></b><ul compact><li>This operation will support degree 1 isolation; that is, read operations
+may return data that has been modified by other transactions but which
+has not yet been committed.
+Silently ignored if the <a href="../../api_reference/CXX/dbopen.html#DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a> flag 
+was not specified when the underlying container was opened.
+</ul>
+<b><a name="DB_READ_COMMITTED">DB_READ_COMMITTED</a></b><ul compact><li>This operation will have degree 2 isolation.  This provides for cursor
+stability but not repeatable reads.  Data items which have been
+previously read by this transaction may be deleted or modified by other
+transactions before this transaction completes.
+</ul>
+<b><a name="DBXML_NO_INDEX_NODES">DBXML_NO_INDEX_NODES</a></b><ul compact><li>Relevant for node storage containers with node indices only.  Causes the
+<a href="../../api_reference/CXX/XmlIndexLookup_execute.html">XmlIndexLookup::execute</a> operations to return document nodes
+rather than direct pointers to the interior nodes.  This is more
+efficient if all that is desired is a reference to target documents.</ul>
+<b><a name="DB_RMW">DB_RMW</a></b><ul compact><li>Acquire write locks instead of read locks when doing the read, if
+locking is configured.  Setting this flag can eliminate deadlock during
+a read-modify-write cycle by acquiring the write lock during the read
+part of the cycle so that another thread of control acquiring a read
+lock for the same item, in its own read-modify-write cycle, will not
+result in deadlock.
+</ul>
+<b><a name="DBXML_REVERSE_ORDER">DBXML_REVERSE_ORDER</a></b><ul compact><li>Return results in reverse order relative to the sort of the index.</ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::lookupIndex method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>UNKNOWN_INDEX</b><ul compact><li>Unknown index specification</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlResults XmlContainer::lookupIndex(XmlTransaction &txn,
+XmlQueryContext &context, const std::string &uri, const std::string &name, const
+std::string &parent_uri, const std::string &parent_name, const std::string
+&index, const XmlValue &value = XmlValue(), u_int32_t flags = 0)</b>
+<p>Return all the targets for which the identified index has keys. By
+default, entire documents are returned by this method. However, if node
+storage containers are in use (the default container type) and if
+DBXML_INDEX_NODES is set for the container, then this method will return
+the individual nodes referenced by the index keys.</p>
+<p>Use this form of this method to return documents indexed by edge
+indices.</p>
+<p>Edge indices are indices maintained for those locations in a document
+where two nodes (a parent node and a child node) meet. See the Berkeley DB XML
+Getting Started Guide for details.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>context</b><ul compact><li>The <a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a> to use for this query.</ul>
+ <b>uri</b><ul compact><li>The namespace of the node to which this edge index is applied.</ul>
+ <b>name</b><ul compact><li>The name of the node to which this edge index is applied.</ul>
+ <b>parent_uri</b><ul compact><li>The namespace of the parent node to which this edge index is applied.</ul>
+ <b>parent_name</b><ul compact><li>The name of the parent node to which this edge index is applied.</ul>
+ <b>index</b><ul compact><li>Identifies the index for which you want the documents returned. The
+value supplied here must be a valid index. See
+<a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a> for a description of valid index
+specifications.</ul>
+ <b>value</b><ul compact><li>Provides the value to which equality indices must be equal. This
+parameter is required when returning documents indexed by equality
+indices, and it is ignored for all other types of indices.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+or more of the following values:
+<br>
+<b><a name="DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a></b><ul compact><li>This operation will support degree 1 isolation; that is, read operations
+may return data that has been modified by other transactions but which
+has not yet been committed.
+Silently ignored if the <a href="../../api_reference/CXX/dbopen.html#DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a> flag 
+was not specified when the underlying container was opened.
+</ul>
+<b><a name="DB_RMW">DB_RMW</a></b><ul compact><li>Acquire write locks instead of read locks when doing the read, if
+locking is configured.  Setting this flag can eliminate deadlock during
+a read-modify-write cycle by acquiring the write lock during the read
+part of the cycle so that another thread of control acquiring a read
+lock for the same item, in its own read-modify-write cycle, will not
+result in deadlock.
+</ul>
+<b><a name="DBXML_LAZY_DOCS">DBXML_LAZY_DOCS</a></b><ul compact><li>Retrieve the document lazily. That is, retrieve document content and
+document metadata only on an as needed basis when reading the document.</ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::lookupIndex method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>UNKNOWN_INDEX</b><ul compact><li>Unknown index specification</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

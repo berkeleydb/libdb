@@ -1,0 +1,65 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: dbxml_load</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>dbxml_load</b>
+</td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>dbxml_load [<b>-V</b>] [<b>-f file</b>] [<b>-h home</b>] [<b>-P password</b>] xml_container</pre></b>
+<b>Description</b>
+<a name="2"><!--meow--></a>
+<p>The dbxml_load utility reads from the standard input and loads
+it into the XML container <b>xml_container</b>.  The XML container
+<b>xml_container</b> is created if it does not already exist.</p>
+<p>The input to dbxml_load must be in the output format specified
+by the <a href="../utility/dbxml_dump.html">dbxml_dump</a> utility.</p>
+<p>The options are as follows:</p>
+<br>
+<b>-f</b><ul compact><li>Read from the specified <b>file</b> instead of from the standard
+input.</ul>
+<b>-h</b><ul compact><li>Specify a home directory for the database environment.
+<p>If a home directory is specified, the database environment is opened
+using the <a href="../api_reference/C/envopen.html#DB_INIT_LOCK">DB_INIT_LOCK</a>, <a href="../api_reference/C/envopen.html#DB_INIT_LOG">DB_INIT_LOG</a>,
+<a href="../api_reference/C/envopen.html#DB_INIT_MPOOL">DB_INIT_MPOOL</a>, <a href="../api_reference/C/envopen.html#DB_INIT_TXN">DB_INIT_TXN</a>, and <a href="../api_reference/C/envopen.html#DB_USE_ENVIRON">DB_USE_ENVIRON</a>
+flags to UNREF==dbenv_open.  (This means that dbxml_load can
+be used to load data into XML containers while they are in use by
+other processes.) If the UNREF==dbenv_open call fails, or if no home
+directory is specified, the XML container is still updated, but the
+environment is ignored; for example, no locking is done.</p></ul>
+<b>-P</b><ul compact><li>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.</ul>
+<b>-V</b><ul compact><li>Write the library version number to the standard output, and exit.</ul>
+<br>
+<p>The dbxml_load utility may be used with a Berkeley DB environment (as described for the
+<b>-h</b> option, the environment variable <b>DB_HOME</b>, or
+because the utility was run in a directory containing a Berkeley DB
+environment).  In order to avoid environment corruption when using a
+Berkeley DB environment, dbxml_load should always be given the chance to
+detach from the environment and exit gracefully.  To cause dbxml_load
+to release all environment resources and exit cleanly, send it an
+interrupt signal (SIGINT).</p>
+<p>The dbxml_load utility exits 0 on success, 1 if one or more
+key/data pairs were not loaded into the XML container because the key
+already existed, and &gt;1 if an error occurs.</p>
+<br><b>Environment Variables</b>
+<br>
+<b>DB_HOME</b><ul compact><li>If the <b>-h</b> option is not specified and the environment variable
+DB_HOME is set, it is used as the path of the database home, as described
+in UNREF==dbenv_open.</ul>
+<br>
+</tt>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

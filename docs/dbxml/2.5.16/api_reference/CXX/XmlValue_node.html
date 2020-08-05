@@ -1,0 +1,147 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlValue</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlValue</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlValue {
+public:
+	...
+	std::string getNodeHandle() const
+	std::string getNodeName() const
+	std::string getNodeValue() const
+	std::string getNamespaceURI() const
+	std::string getPrefix() const
+	std::string getLocalName() const
+	short getNodeType() const
+	XmlValue getParentNode() const
+	XmlValue getFirstChild() const
+	XmlValue getLastChild() const
+	XmlValue getPreviousSibling() const
+	XmlValue getNextSibling() const
+	XmlResults getAttributes() const
+	XmlValue getOwnerElement() const
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlValue</b>
+<p>Methods to retrieve information and values from an XmlValue object of type XmlValue::NODE.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getNodeHandle()</b>
+<p>Returns a string handle representing an XmlValue of
+type XmlValue::NODE, which can be used to construct
+a new XmlValue object representing the same node, at
+a later time, using <a href="../../api_reference/CXX/XmlContainer_getNode.html">XmlContainer::getNode</a>.  The
+handle returned encodes its document ID; however, it does
+not include its container.  Matching a node handle to container
+is the responsibility of the caller.</p>
+<p>Node handles are guaranteed to remain stable in the absence of
+modifications to a document.  If a document is modified, a handle
+may cease to exist, or may belong to a different node.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getNodeName() const</b>
+<p>Returns the name of the node contained in this XmlValue.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getNodeValue() const</b>
+<p>Returns the node's value.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getNamespaceURI() const</b>
+<p>Returns the URI used for the node's namespace.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getPrefix() const</b>
+<p>Returns the prefix set for the node's namespace.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getLocalName() const</b>
+<p>Returns the node's local name. For example, if a node has
+the namespace prefix, "prefix," and its qualified name is
+prefix:name, then 'name' is the local name.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getNodeType() const</b>
+<p>Returns the short value for this node's type (XmlValue::NodeType).</p>
+<p>Valid values for XmlValue::NodeType are
+ELEMENT_NODE, ATTRIBUTE_NODE, TEXT_NODE, CDATA_SECTION_NODE,
+ENTITY_REFERENCE_NODE, ENTITY_NODE, PROCESSING_INSTRUCTION_NODE,
+COMMENT_NODE, DOCUMENT_NODE, DOCUMENT_TYPE_NODE,
+DOCUMENT_FRAGMENT_NODE, NOTATION_NODE.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getParentNode() const</b>
+<p>Returns current node's parent. If the node has no parent, a null node is
+returned.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getFirstChild() const</b>
+<p>Returns current node's first child node. If the node has no children, a
+null node is returned.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getLastChild() const</b>
+<p>Returns current node's last child node. If the node has no children, a
+null node is returned.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getPreviousSibling() const</b>
+<p>Returns the sibling node immediately preceding this node in the
+document. If the current node had no siblings preceding it in the
+document, a null node is returned.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getNextSibling() const</b>
+<p>Returns the sibling node immediately following this node in the
+document. If the current node had no siblings following it in the
+document, a null node is returned.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getAttributes() const</b>
+<p>Returns returns a <a href="../../api_reference/CXX/XmlResults.html">XmlResults</a> that contains all of the attributes
+appearing on this node.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getOwnerElement() const</b>
+<p>If the current node is an attribute node, returns the document element
+node that contains this attribute node.</p>
+<p>If the node type is not XmlValue::NODE, XmlException::INVALID_VALUE is
+thrown.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

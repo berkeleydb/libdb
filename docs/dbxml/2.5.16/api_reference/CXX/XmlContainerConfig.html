@@ -1,0 +1,73 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainerConfig</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainerConfig</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlContainerConfig {
+public:
+	XmlContainerConfig();
+	XmlContainerConfig(const XmlContainerConfig &);
+	~XmlContainerConfig();
+	XmlContainerConfig &operator = (const XmlContainerConfig &)
+	enum ConfigState {
+	     On&#44
+	     Off&#44
+	     UseDefault
+	};
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainerConfig</b>
+<p>The XmlContainerConfig class encapsulates all the properties with which a container can be created or opened.  It is passed as an argument to <a href="../../api_reference/CXX/XmlManager_createContainer.html">XmlManager::createContainer</a> and <a href="../../api_reference/CXX/XmlManager_openContainer.html">XmlManager::openContainer</a> as well as other methods that previously accepted 
+unsigned int flags paramters.</p>
+<p>The default settings of the properties in an XmlContainerConfig object 
+are listed in the following table.
+<table border=1>
+<tr><th>Property</th><th>Value</th></tr>
+<tr><td>AllowCreate</td><td>false</td></tr>
+<tr><td>AllowValidation</td><td>false</td></tr>
+<tr><td>Checksum</td><td>false</td></tr>
+<tr><td>CompressionName</td><td>DEFAULT_COMPRESSION -- on for WholedocContainer; off for NodeContainer</td></tr>
+<tr><td>ContainerType</td><td>XmlContainer::NodeContainer</td></tr>
+<tr><td>Encrypted</td><td>false</td></tr>
+<tr><td>ExclusiveCreate</td><td>false</td></tr>
+<tr><td>IndexNodes</td><td>On for NodeContainer; Off for WholedocContainer</td></tr>
+<tr><td>Mode</td><td>0</td></tr>
+<tr><td>Multiversion</td><td>false</td></tr>
+<tr><td>NoMMap</td><td>false</td></tr>
+<tr><td>PageSize</td><td>8192 for NodeContainer; 16384 for WholedocContainer</td></tr>
+<tr><td>ReadOnly</td><td>false</td></tr>
+<tr><td>ReadUncommitted</td><td>false</td></tr>
+<tr><td>SequenceIncrement</td><td>5</td></tr>
+<tr><td>Statistics</td><td>On</td></tr>
+<tr><td>Threaded</td><td>false</td></tr>
+<tr><td>TransactionNotDurable</td><td>false</td></tr>
+</table>
+</p>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

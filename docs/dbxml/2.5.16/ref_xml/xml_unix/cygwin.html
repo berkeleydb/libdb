@@ -1,0 +1,63 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Cygwin</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml_unix/macosx.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_win/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Cygwin</b></p>
+<ol>
+<p><li><b>Cygwin build commands</b>
+<blockquote><pre>bash buildall.sh -c gcc -x g++ --with-configure-env="LDFLAGS='-no-undefined'"
+</pre></blockquote>
+<p><li><b>Building dbxml-tcl lib on cygwin</b>
+<p>Install tcl libs on cygwin by cygwin setup application.</p>
+<p>Modify db-4.8.x/dist/Makefile.in:</p>
+<blockquote><pre>- LIBTSO_LIBS=    @LIBTSO_LIBS@ @LIBSO_LIBS@
++ LIBTSO_LIBS=    @LIBTSO_LIBS@ @LIBSO_LIBS@ -ltcl
+</pre></blockquote>
+<p>Modify dbxml/Makefile.in:</p>
+<blockquote><pre>- libdbxml_tcl_la_LDFLAGS = -release $(DBXML_VERSION_MAJOR).$(DBXML_VERSION_MINOR) $(TCL_LIBRARY_EXTENSION)
++ libdbxml_tcl_la_LDFLAGS = -release $(DBXML_VERSION_MAJOR).$(DBXML_VERSION_MINOR) $(TCL_LIBRARY_EXTENSION) -no-undefined -ltcl -ltclstub
+</pre></blockquote>
+<p>Build dbxml:</p>
+<blockquote><pre>./buildall.sh --enable-test --with-tcl=/usr/lib/ --with-configure-env="LDFLAGS='-no-undefined'"
+</pre></blockquote>
+<p>Now the static libs of dbxml_tcl are generated. If you want dbxml_tcl.dll, continue to next step:</p>
+<p>Build dbxml_tcl-2-5.dll</p>
+<blockquote><pre>cd dbxml/build_unix
+g++ -shared -nostdlib .libs/libdbxml_tcl_la-dbxml_tcl_wrap.o -ldbxml -o ../../install/bin/cygdbxml_tcl-2-5.dll -lstdc++ -ltcl -lgcc -lcygwin -lkernel32 -ldb_tcl-4.8 -L../../install/lib -L.libs/
+cd ../../install/bin
+ln -sf cygdb_tcl-4.8.dll libdb_tcl-4.8.dll
+ln -sf cygdbxml_tcl-2-5.dll libdbxml_tcl-2-5.dll
+</pre></blockquote>
+<p><li><b>Building dbxml-java lib on cygwin</b>
+<p>Install JDK1.6 on Windows.</p>
+<p>Do a softlink for JDK for prevent naming issue on cygwin. Note that the JDK path is based on your machine:</p>
+<blockquote><pre>ln -sf "/cygdrive/c/Program Files/Java/jdk1.6.0_06" $HOME/jdk
+</pre></blockquote>
+<p>Modify dbxml/Makefile.in:</p>
+<blockquote><pre>- libdbxml_java_la_LDFLAGS = -release $(DBXML_VERSION_MAJOR).$(DBXML_VERSION_MINOR) -module $(JAVA_LIBRARY_EXTENSION)
++ libdbxml_java_la_LDFLAGS = -release $(DBXML_VERSION_MAJOR).$(DBXML_VERSION_MINOR) -module $(JAVA_LIBRARY_EXTENSION) -no-undefined
+- CLASSPATH=    $(JAVA_CLASSTOP):$(berkeleydb_jar):$(JUNIT_JAR)
++ CLASSPATH=    `cygpath -wp $(JAVA_CLASSTOP):$(berkeleydb_jar):$(JUNIT_JAR)`
+</pre></blockquote>
+<p>build:</p>
+<blockquote><pre>export JAVA_HOME="$HOME/jdk"
+export PATH=$JAVA_HOME/bin:$PATH
+export CXXFLAGS="-I$JAVA_HOME/include"
+./buildall.sh --enable-java --with-configure-env="LDFLAGS='-no-undefined'"
+</pre></blockquote>
+</ol>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/macosx.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_win/intro.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

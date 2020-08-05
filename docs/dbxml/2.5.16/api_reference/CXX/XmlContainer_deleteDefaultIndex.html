@@ -1,0 +1,101 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::deleteDefaultIndex</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::deleteDefaultIndex</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void
+XmlContainer::deleteDefaultIndex(const std::string &index,
+    XmlUpdateContext &context)
+<p>
+void
+XmlContainer::deleteDefaultIndex(XmlTransaction &txn,
+    const std::string &index, XmlUpdateContext &context)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::deleteDefaultIndex</b>
+<p>Deletes the default index for the container. This method is for
+convenience - see <a href="../../api_reference/CXX/XmlIndexSpecification_deleteDefaultIndex.html">XmlIndexSpecification::deleteDefaultIndex</a> for
+more information.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>index</b><ul compact><li>A comma-separated list of strings that represent the indexing strategy.
+The strings must contain the following information in the following order:
+<blockquote><pre><b>unique</b>-{path type}-{node type}-{key type}-{syntax}</pre></blockquote>
+<p>where:</p>
+<p><b>unique</b> indicates that the indexed value is unique in the
+container. If this keyword does not appear on the index string, then the
+indexed value is not required to be unique in the container.</p>
+<p>{path type} is either <b>node</b> or <b>edge</b>.</p>
+<p>{node type} is one of <b>element</b>, <b>attribute</b>, or
+<b>metadata</b>. If <b>metadata</b> is specified, then {path type}
+must be <b>node</b>.</p>
+<p>{key type} is one of <b>presence</b>, <b>equality</b>, or
+<b>substring</b>.</p>
+<p>{syntax} identifies the type of information being indexed. It must be one of the
+following values:</p>
+<p><ul type=disc>
+<li>none
+<li>base64Binary
+<li>boolean
+<li>date
+<li>dateTime
+<li>decimal
+<li>double
+<li>duration
+<li>float
+<li>gDay
+<li>gMonth
+<li>gMonthDay
+<li>gYear
+<li>gYearMonth
+<li>hexBinary
+<li>string
+<li>time
+</ul>
+<p>Note that if {key type} is <b>presence</b>, then {syntax} must be
+<b>none</b> or simply not specified.</p>
+<p>For example, examples index strings are:</p>
+<blockquote><pre><b>unique-node-element-presence</b></pre></blockquote>
+<blockquote><pre><b>node-element-equality-string</b></pre></blockquote>
+<blockquote><pre><b>edge-element-presence-none</b></pre></blockquote>
+<blockquote><pre><b>node-element-equality-float</b></pre></blockquote></ul>
+ <b>context</b><ul compact><li>The <a href="../../api_reference/CXX/XmlUpdateContext.html">XmlUpdateContext</a> to use for this operation.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::deleteDefaultIndex method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>DATABASE_ERROR</b><ul compact><li>An error occurred in an underlying Berkeley DB database. The
+<a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a> method will return the error code for the error.</ul>
+<br>
+<br>
+<b>UNKNOWN_INDEX</b><ul compact><li>Unknown index specification</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

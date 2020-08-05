@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Verifying Indices using Query Plans</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="indices.html" title="Chapter 7. Using BDB XML Indices" />
+    <link rel="prev" href="managingindices.html" title="Managing BDB XML Indices" />
+    <link rel="next" href="admin.html" title="Chapter 8. Administering Berkeley DB XML Applications" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Verifying Indices using Query Plans</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="managingindices.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 7. Using BDB XML Indices</th>
+          <td width="20%" align="right"> <a accesskey="n" href="admin.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="verifyqueryplan"></a>Verifying Indices using Query Plans</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="verifyqueryplan.html#queryplan">Query Plans</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="verifyqueryplan.html#dbxmlsh-indx">Using the dbxml Shell to Examine Query Plans</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        When designing your indexing strategy, you should create indices to
+        improve the performance of your most frequently occurring queries.
+        Without indices, BDB XML must walk every document in the container in
+        order to satisfy the query. For containers that contain large numbers of
+        documents, or very large documents, or both, this can be a
+        time-consuming process.
+    </p>
+      <p>
+        However, when you set the appropriate index(es) for your container, the
+        same query that otherwise takes minutes to complete can now complete in
+        a time potentially measured in milliseconds. So setting the appropriate 
+        indices for your container is a
+        key ingredient to improving your application's performance.
+    </p>
+      <p>
+        That said, the question then becomes, how do you know that a given index
+        is actually being used by a given query? That is, how do you do this
+        without loading the container with enough data that it is noticeably
+        faster to complete a query with an index set than it is to complete the
+        query without the index?
+    </p>
+      <p>
+        The way to do this is to examine BDB XML's query plan for the query to
+        see if it intends to use an index for the query. And the best and easiest
+        way to examine a query plan is by using the <span class="command"><strong>dbxml</strong></span>
+        command line utility.
+    </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="queryplan"></a>Query Plans</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            The query plan is literally BDB XML's plan for how it will satisfy a
+            query. When you use 
+                <span><code class="methodname">XmlManager::prepare()</code>,</span>
+                
+            one of the things you are doing is regenerating a query plan so
+            that BDB XML does not have to continually re-create it every time you
+            run the query.
+        </p>
+        <p>
+            Printed out, the query plan looks like an XML document that
+            describes the steps the query processor will take to fulfill a
+            specific query.
+        </p>
+        <p>
+            For example, suppose your container holds documents that look like
+            the following:
+        </p>
+        <pre class="programlisting">&lt;a&gt;
+    &lt;docId id="aaUivth" /&gt;
+    &lt;b&gt;
+        &lt;c&gt;node1&lt;/c&gt;
+        &lt;d&gt;node2&lt;/d&gt;
+    &lt;/b&gt;
+&lt;/a&gt;</pre>
+        <p>
+        Also, suppose you will frequently want to retrieve the document based on
+        the value set for the <code class="literal">id</code> parameter on the <code class="literal">docId</code>
+        node. That is, you will frequently perform queries that look like this:
+    </p>
+        <div class="blockquote">
+          <blockquote class="blockquote">
+            <pre class="programlisting">collection("myContainer.dbxml")/a/docId[@id='bar']</pre>
+          </blockquote>
+        </div>
+        <p>
+        In this case, if you print out the query plan (we describe how to do
+        this below), you will see something like this:
+    </p>
+        <pre class="programlisting">&lt;XQuery&gt;
+  &lt;QueryPlanToAST&gt;
+    &lt;NodePredicateFilterQP uri="" name="#tmp5"&gt;
+      &lt;StepQP axis="child" name="docId" nodeType="element"&gt;
+        &lt;StepQP axis="child" name="a" nodeType="element"&gt;
+          &lt;SequentialScanQP container="myContainer.dbxml" 
+            nodeType="document"/&gt;
+        &lt;/StepQP&gt;
+      &lt;/StepQP&gt;
+      &lt;ValueFilterQP comparison="eq" general="true"&gt;
+        &lt;StepQP axis="attribute" name="id" nodeType="attribute"&gt;
+          &lt;VariableQP name="#tmp5"/&gt;
+        &lt;/StepQP&gt;
+        &lt;Sequence&gt;
+          &lt;AnyAtomicTypeConstructor value="bar" 
+          typeuri="http://www.w3.org/2001/XMLSchema" typename="string"/&gt;
+        &lt;/Sequence&gt;
+      &lt;/ValueFilterQP&gt;
+    &lt;/NodePredicateFilterQP&gt;
+  &lt;/QueryPlanToAST&gt;
+&lt;/XQuery&gt; </pre>
+        <p>
+        While a complete description of the query plan is outside the scope of
+        this manual, notice that there is no element specified in the query
+        plan that includes an <code class="literal">index</code> attribute. This
+        attribute can appear on different element nodes, depending on the
+        nature of the query and the actual index that the query wants to
+        use. For example, queries that use indexes which examine the value
+        of a node might specify a <code class="literal">ValueQP</code> node. 
+    </p>
+        <pre class="programlisting">&lt;ValueQP container="myContainer.dbxml" 
+index="node-attribute-equality-string" operation="eq" child="id" 
+value="bar"/&gt;</pre>
+        <p>
+        Other indexes that simply test for the presence of a node would
+        specify the index on a <code class="literal">PresenceQP</code> element:
+    </p>
+        <pre class="programlisting">&lt;PresenceQP container="parts.dbxml"
+index="node-element-presence-none" operation="eq"
+child="parent-part"/&gt; </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="dbxmlsh-indx"></a>Using the dbxml Shell to Examine Query Plans</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            <span class="command"><strong>dbxml</strong></span> is a command line utility that allows you
+            to gracefully interact with your BDB XML containers.
+            You can perform a great many operations on your containers and
+            documents using this utility, but of interest to the current
+            discussion is the utility's ability to allow you add and delete
+            indices to your containers, to query for documents, and to examine
+            query plans.
+        </p>
+        <p>
+            The <code class="literal">dbxml</code> shell is described in the
+            <em class="citetitle">Introduction to Berkeley DB XML</em> guide.
+        </p>
+        <p>
+            Note that while you can create containers and load XML documents into those
+            containers using <span class="command"><strong>dbxml</strong></span>, we assume here that you have
+            already performed these activities using some other mechanism.
+
+        </p>
+        <p>
+           In order to examine query plans using <span class="command"><strong>dbxml</strong></span>, do
+           the following (the following assumes the container already
+           exists and contains documents):
+        </p>
+        <pre class="programlisting">&gt; dbxml
+dbxml&gt; openContainer myContainer.dbxml </pre>
+        <p>
+        Next, examine your query plan using the <span class="command"><strong>qPlan</strong></span> command.
+        Note that we assume your container only has the standard, default index that
+        all containers have when they are first created.
+    </p>
+        <pre class="programlisting">dbxml&gt; qPlan 'collection("myContainer.dbxml")/a/docId[@id="aaUivth"]'
+&lt;XQuery&gt;
+  &lt;QueryPlanToAST&gt;
+    &lt;NodePredicateFilterQP uri="" name="#tmp5"&gt;
+      &lt;StepQP axis="child" name="docId" nodeType="element"&gt;
+        &lt;StepQP axis="child" name="a" nodeType="element"&gt;
+            &lt;SequentialScanQP container="myContainer.dbxml" 
+                nodeType="document"/&gt;
+        &lt;/StepQP&gt;
+      &lt;/StepQP&gt;
+      &lt;ValueFilterQP comparison="eq" general="true"&gt;
+        &lt;StepQP axis="attribute" name="id" nodeType="attribute"&gt;
+          &lt;VariableQP name="#tmp5"/&gt;
+        &lt;/StepQP&gt;
+        &lt;Sequence&gt;
+          &lt;AnyAtomicTypeConstructor value="aaUivth" 
+             typeuri="http://www.w3.org/2001/XMLSchema" 
+             typename="string"/&gt;
+        &lt;/Sequence&gt;
+      &lt;/ValueFilterQP&gt;
+    &lt;/NodePredicateFilterQP&gt;
+  &lt;/QueryPlanToAST&gt;
+&lt;/XQuery&gt; </pre>
+        <p>
+        Notice that this query plan does not make use of an index. No index
+        is identified anywhere in the query plan, and it calls for only a
+        sequential scan.  Now add the index that you want to test.
+    </p>
+        <pre class="programlisting">dbxml&gt; addindex "" id "node-attribute-equality-string"
+Adding index type: node-attribute-equality-string to node: {}:id</pre>
+        <p>
+            Now try the query plan again. Notice that there's a
+            <code class="literal">ValueQP</code> element that specifies our newly
+            added index using a <code class="literal">index</code> attribute.
+    </p>
+        <pre class="programlisting">dbxml&gt; qplan collection("myContainer.dbxml")/a/docId[@id='aaUivth']
+&lt;XQuery&gt;
+  &lt;QueryPlanToAST&gt;
+    &lt;ParentOfAttributeJoinQP&gt;
+      &lt;ValueQP container="myContainer.dbxml" 
+          index="node-attribute-equality-string" operation="eq" 
+           child="id" value="aaUivth"/&gt;
+      &lt;StepQP axis="child" name="docId" nodeType="element"&gt;
+        &lt;StepQP axis="child" name="a" nodeType="element"&gt;
+            &lt;SequentialScanQP container="myContainer.dbxml" 
+                nodeType="document"/&gt;
+        &lt;/StepQP&gt;
+      &lt;/StepQP&gt;
+    &lt;/ParentOfAttributeJoinQP&gt;
+  &lt;/QueryPlanToAST&gt;
+&lt;/XQuery&gt; </pre>
+        <p>
+        You are done testing your index. To exit <span class="command"><strong>dbxml</strong></span>,
+        use the <span class="command"><strong>quit</strong></span> command:
+    </p>
+        <pre class="programlisting">dbxml&gt; quit</pre>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="managingindices.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="indices.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="admin.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Managing BDB XML Indices </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Chapter 8. Administering Berkeley DB XML Applications</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

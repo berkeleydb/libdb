@@ -1,0 +1,57 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlEventWriter::writeAttribute</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlEventWriter::writeAttribute</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual void XmlEventWriter::writeAttribute(const unsigned char *localName,
+	     				    const unsigned char *prefix,
+	     				    const unsigned char *uri,
+	     				    const unsigned char *value,
+	     				    bool isSpecified)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlEventWriter::writeAttribute</b>
+<p>Write a single attribute to the <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>.  Namespace
+declarations are written as normal attributes.</p>
+<b>Parameters</b> <br>
+ <b>localName</b><ul compact><li>Local name of the attribute.</ul>
+ <b>prefix</b><ul compact><li>Namespace prefix, or NULL.</ul>
+ <b>uri</b><ul compact><li>Namespace uri, or NULL.</ul>
+ <b>value</b><ul compact><li>The attribute's value.</ul>
+ <b>isSpecified</b><ul compact><li>True if the attribute is specified, rather than defaulted
+from a DTD or schema.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlEventWriter::writeAttribute method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>EVENT_ERROR</b><ul compact><li>An error occurred during processing of an <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>
+object.  Most likely the error is attempting to write a type or value
+that is not valid in the current state of the object.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

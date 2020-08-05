@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Getting Help</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="introduction.html" title="Chapter 1. Overview" />
+    <link rel="prev" href="running.html" title="Running the Shell" />
+    <link rel="next" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Getting Help</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="running.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 1. Overview</th>
+          <td width="20%" align="right"> <a accesskey="n" href="xquery.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="gettinghelp"></a>Getting Help</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+                The BDB XML shell has a built in help facility, simply type 
+                <code class="literal">help</code> at the command line:                
+            </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                            The text displayed by the
+                            <code class="literal">help</code> command changes
+                            frequently, and so what you see in your version
+                            of the BDB XML shell may differ from what is
+                            shown below.
+                    </p>
+      </div>
+      <pre class="programlisting">dbxml&gt; help
+
+Command Summary
+---------------
+
+#                 - Comment. Does nothing
+abort             - Aborts the current transaction
+addAlias          - Add an alias to the default container
+addIndex          - Add an index to the default container
+commit            - Commits the current transaction, and starts a new one
+compactContainer  - Compact a container to shrink it's size
+contextQuery      - Execute query expression using the last results as 
+                    the context item
+cquery            - Execute an expression in the context of the default 
+                    container
+createContainer   - Creates a new container, which becomes the default 
+                    container
+debug             - Debug the given query expression, or the default 
+                    pre-parsed query
+debugOptimization - Debug optimization command -- internal use only
+delIndex          - Delete an index from the default container
+echo              - Echo to output
+getDocuments      - Gets document(s) by name from default container
+getMetaData       - Get a metadata item from the named document
+help              - Print help information.  Use 'help commandName' for 
+                    extended help
+info              - Get info on default container
+listIndexes       - List all indexes in the default container
+lookupEdgeIndex   - Performs an edge index lookup in the default container
+lookupIndex       - Performs an index lookup in the default container
+lookupStats       - Look up index statistics on the default container
+openContainer     - Opens a container, and uses it as the default 
+                    container
+preload           - Pre-loads (opens) a container
+prepare           - Prepare the given query expression as the default 
+                    pre-parsed query
+print             - Prints most recent results, optionally to a file
+putDocument       - Insert a document into the default container
+query             - Execute the given query expression, or the default 
+                    pre-parsed query
+queryPlan         - Prints the query plan for the specified query 
+                    expression
+quit              - Exit the program
+reindexContainer  - Reindex a container, optionally changing index type
+removeAlias       - Remove an alias from the default container
+removeContainer   - Removes a container
+removeDocument    - Remove a document from the default container
+run               - Runs the given file as a script
+setAutoIndexing   - Set auto-indexing state of the default container
+setBaseUri        - Set/get the base uri in the default context
+setIgnore         - Tell the shell to ignore script errors
+setLazy           - Sets lazy evaluation on or off in the default context
+setMetaData       - Set a metadata item on the named document
+setNamespace      - Create a prefix-&gt;namespace binding in the default 
+                    context
+setProjection     - Enables or disables the use of the document 
+                    projection optimization
+setQueryTimeout   - Set a query timeout in seconds in the default context
+setReturnType     - Sets the return type on the default context
+setTypedVariable  - Set a variable to the specified type in the default 
+                    context
+setVariable       - Set a variable in the default context
+setVerbose        - Set the verbosity of this shell
+sync              - Sync current container to disk
+time              - Wrap a command in a wall-clock timer
+transaction       - Create a transaction for all subsequent operations 
+                    to use
+upgradeContainer - Upgrade a container to the current container format </pre>
+      <p>
+                Any given command has additional detailed help. For example: 
+            </p>
+      <pre class="programlisting">dbxml&gt; help createContainer
+            
+createContainer -- Creates a new container, which becomes the default 
+container
+
+Usage: createContainer &lt;containerName&gt; [n|in|d|id] [[no]validate]
+Creates a new default container; the old default is closed.
+The default is to create a node storage container, with node indexes.
+A second argument of "d" creates a Wholedoc storage container, and
+"id" creates a document storage container with node indexes.
+A second argument of "n" creates a node storage container, and
+"in" creates a node storage container with node indexes.
+The optional third argument indicates whether or not to validate
+documents on insertion
+A containerName of "" creates an in-memory container.
+This command uses the XmlManager::createContainer() method.  </pre>
+      <p>
+                The help text has valuable information about the command 
+                and the API calls that are used to implement a particular 
+                command. This helps you to find the relevant section of the 
+                API documentation where more detail is available and also serves 
+                as a way to explore a commonly used subset of the API calls in an 
+                interactive fashion.
+            </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                    The <code class="literal">debug</code> command provides a
+                    debugging facility for XQueries. However, it is
+                    currently only useful for developers with a deep
+                    understanding of query plans. That said, you can try
+                    out the debugger by typing:
+                </p>
+        <pre class="programlisting">debug <span class="emphasis"><em>xquery</em></span></pre>
+        <p>
+                    where <span class="emphasis"><em>xquery</em></span> is the query that you want to debug.
+                    (XQueries are described in the next chapter of this manual). 
+                </p>
+        <p>
+                    Once in the debugger, you can get debugger-specific help by using the
+                    <code class="literal">help</code> command. Use the <code class="literal">step</code> command to step 
+                    forward one instruction in the query plan. Use <code class="literal">run</code> to 
+                    execute the remainder of the query plan. 
+                </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="running.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="introduction.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="xquery.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Running the Shell </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Chapter 2. XQuery and Berkeley DB XML</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

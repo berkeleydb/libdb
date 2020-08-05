@@ -1,0 +1,52 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlEventReader::needsEntityEscape</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlEventReader::needsEntityEscape</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual bool XmlEventReader::needsEntityEscape(int index = 0) const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlEventReader::needsEntityEscape</b>
+<p>If the current event is Characters, and <a href="../../api_reference/CXX/XmlEventReader_hasEntityEscapeInfo.html">XmlEventReader::hasEntityEscapeInfo</a> is true, returns whether the current text string requires
+escaping of entities for XML serialization.</p>
+<p>If the current event is StartElement, and <a href="../../api_reference/CXX/XmlEventReader_hasEntityEscapeInfo.html">XmlEventReader::hasEntityEscapeInfo</a> is true, returns whether the attribute value specified by the
+index parameter requires escaping of entities for XML serialization.</p>
+<b>Parameters</b> <br>
+ <b>index</b><ul compact><li>If the current event is StartElement, index is the attribute index
+used to specify an attribute.  If the current event is Characters, it
+is ignored.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlEventReader::needsEntityEscape method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>EVENT_ERROR</b><ul compact><li>An error occurred during processing of an <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a>
+object.  Most likely the error is requesting state that is not valid in the
+context of the current event.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

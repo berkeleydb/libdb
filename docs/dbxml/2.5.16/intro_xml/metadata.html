@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Using Metadata</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+    <link rel="prev" href="specificdocument.html" title="Working with Data from a Specific Document" />
+    <link rel="next" href="modifyingdocuments.html" title="Modifying Documents" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Using Metadata</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="specificdocument.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 2. XQuery and Berkeley DB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="modifyingdocuments.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="metadata"></a>Using Metadata</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            Metadata is data about data. That is, it provides additional information 
+            about a document that isn't really part of that document. For example, 
+            documents added to the <code class="literal">components.dbxml</code> container were 
+            given a name. Each name represents metadata about each individual document. 
+            Other common metadata might include the time a document was modified or the 
+            name of the person who modified it. In addition, there are cases when 
+            modifying the actual document is not possible and additional data is 
+            required to track desired information about the document. As an example, 
+            you may be required to keep track of what user last altered a document within
+            a container, and you may need to do this in a way that does not modify the 
+            document itself.  For this reason, BDB XML stores metadata separately from 
+            the document, while still allowing you to perform indexed searches against 
+            the metadata as if it were actually part of the document.          
+        </p>
+      <p>
+            To add custom metadata to a document, use the 
+            <code class="literal">setMetaData</code> command. 
+        </p>
+      <pre class="programlisting">dbxml&gt; openContainer components.dbxml
+
+dbxml&gt; setMetaData component1 '' modifyuser string john                            
+
+MetaData item 'modifyuser' added to document component1
+
+dbxml&gt; setMetaData component2 '' modifyuser string mary
+
+MetaData item 'modifyuser' added to document component2</pre>
+      <p>
+            In BDB XML metadata names are of the form:
+        </p>
+      <pre class="programlisting">URI:name</pre>
+      <p>
+            where the <code class="literal">URI</code>. is some unique name that can be common to
+            multiple metadata items, and the <code class="literal">name</code>
+            is a name associated with the metadata. The combination of the
+            URI and the name must represent a unique identifier for your
+            container.
+        </p>
+      <p>
+            In the example, above, a <code class="literal">URI</code> is not used because a 
+            <code class="literal">URI</code> is optional so long as the
+            <code class="literal">name</code> uniquely identifies the metadata within
+            the container. If you wanted to use
+            <code class="literal">modifyuser</code> for more than one type of
+            metadata, then you would be required to provide a unique
+            <code class="literal">URI</code> for both types of metadata.
+        </p>
+      <p>
+            Note that all metadata defined by BDB XML uses the
+            <code class="literal">dbxml</code> URI. So, for example, all documents
+            have metadata which identifies the document name. This metadata
+            is defined by BDB XML, and it has the identifier:
+            <code class="literal">dbxml:name</code>.
+        </p>
+      <p>
+            To query metadata, use the built-in extension function
+            <code class="literal">dbxml:metadata</code>. For example:
+        </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("components.dbxml")/component[dbxml:metadata("modifyuser")="john"]'
+
+1 objects returned for eager expression '
+collection("components.dbxml")/component[dbxml:metadata("modifyuser")="john"]'
+
+dbxml&gt; print
+&lt;component number="1"&gt;
+&lt;uses-part&gt;89&lt;/uses-part&gt;
+&lt;uses-part&gt;150&lt;/uses-part&gt;
+&lt;uses-part&gt;899&lt;/uses-part&gt;
+&lt;/component&gt;</pre>
+      <p>
+            Notice how the metadata doesn't actually appear in the result document. 
+            The metadata is not part of the document; it exists only within the 
+            container and with respect to a particular document. If you retrieve the 
+            document from BDB XML and transfer it to another system, the metadata will 
+            not be included. This is useful when you need to preserve the original 
+            state of a document, but also want to track some additional information 
+            while it's stored within BDB XML.
+        </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="specificdocument.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="modifyingdocuments.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Working with Data from a Specific Document </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Modifying Documents</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

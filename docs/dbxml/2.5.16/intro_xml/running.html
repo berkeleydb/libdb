@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Running the Shell</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="introduction.html" title="Chapter 1. Overview" />
+    <link rel="prev" href="introduction.html" title="Chapter 1. Overview" />
+    <link rel="next" href="gettinghelp.html" title="Getting Help" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Running the Shell</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="introduction.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 1. Overview</th>
+          <td width="20%" align="right"> <a accesskey="n" href="gettinghelp.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="running"></a>Running the Shell</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+                The shell command is located in the <code class="literal">&lt;path where 
+                BDB XML is installed&gt;/bin</code> directory and is named
+                <code class="literal">dbxml</code>.
+            </p>
+      <p>
+                To run the shell, simply type dbxml at the command prompt 
+                for your operating system. Assuming that you have the dbxml 
+                shell in your operating system's command line path, you'll 
+                then be greeted by the  <code class="literal">dbxml&gt;</code> prompt.
+            </p>
+      <pre class="programlisting">user&gt; dbxml
+dbxml&gt;</pre>
+      <p>
+                In the examples that follow, you'll see the <code class="literal">dbxml&gt;</code> prompt 
+                followed by the command that should be entered. Most commands 
+                are simple one line commands. However, some are more complicated 
+                XQuery examples that will span multiple lines. Each example will 
+                show both the command to enter and the resulting output.  When the 
+                output is too long, ellipsis (<code class="literal">...</code>) will be used to abbreviate the 
+                intermediate results.
+            </p>
+      <p>
+                When using BDB XML you will find that document content is stored in 
+                a <code class="literal">container</code>.  This is the first basic concept in BDB XML: containers 
+                hold collections of XML documents. The documents within a container 
+                may or may not share the same schema.                
+            </p>
+      <p>
+                To begin exploring BDB XML, create a container. Our first example models a simple 
+                phonebook database.  The container's name will be <code class="literal">phone.dbxml</code>. 
+            </p>
+      <pre class="programlisting">dbxml&gt; createContainer phone.dbxml      
+
+Creating node storage container</pre>
+      <p>
+                The command and output in this case was very simple. It was meant to 
+                merely confirm command execution. Note that a file named <code class="literal">phone.dbxml</code> 
+                was created in your working directory. This is the new document storage 
+                container.  Containers hold the XML data, indexes, document metadata, 
+                and any other useful information and are managed by BDB XML.  Never 
+                edit a container directly, always allow the BDB XML library to manage 
+                it for you. The '<code class="literal">.dbxml</code>' extension helps to identify 
+                the BDB XML database 
+                on disk, but is simply a naming convention that is not strictly required.
+            </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title">Note</h3>
+                In addition to creating the container,
+                the BDB XML shell also automatically opened it and made it ready
+                for us to use.
+            </div>
+      <p>
+                This phonebook example's data model uses XML entries of the following format:
+            </p>
+      <pre class="programlisting">&lt;phonebook&gt;
+    &lt;name&gt;
+        &lt;first&gt;Tom&lt;/first&gt;
+        &lt;last&gt;Jones&lt;/last&gt;
+    &lt;/name&gt;   
+    &lt;phone type="home"&gt;420-203-2032&lt;/phone&gt;
+&lt;/phonebook&gt;</pre>
+      <p>
+                Now add a few phone book entries to the container in the following manner:
+            </p>
+      <pre class="programlisting">dbxml&gt; putDocument phone1 '&lt;phonebook&gt;
+    &lt;name&gt;
+        &lt;first&gt;Tom&lt;/first&gt;
+        &lt;last&gt;Jones&lt;/last&gt;
+    &lt;/name&gt;   
+    &lt;phone type="home"&gt;420-203-2032&lt;/phone&gt;
+&lt;/phonebook&gt;' s
+
+Document added, name = phone1
+
+dbxml&gt; putDocument phone2 '&lt;phonebook&gt;
+    &lt;name&gt;
+        &lt;first&gt;Lisa&lt;/first&gt;
+        &lt;last&gt;Smith&lt;/last&gt;
+    &lt;/name&gt;   
+    &lt;phone type="home"&gt;420-992-4801&lt;/phone&gt;
+    &lt;phone type="cell"&gt;390-812-4292&lt;/phone&gt;
+&lt;/phonebook&gt;' s
+
+Document added, name = phone2</pre>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title">Note</h3>
+                The XML document content is wrapped in single quote
+                characters and the command is terminated by an 
+                <code class="literal">s</code> character. This indicates that we are 
+                adding a new document using a string. The single quote 
+                characters are used for any command parameter that either 
+                contains spaces or needs to span multiple lines. 
+            </div>
+      <p>
+                Now the container has a few phonebook entries. The following 
+                few examples demonstrate some basic XQuery queries based solely
+                on XPath statements. Subsequent sections will demonstrate more 
+                complex XQuery statements.  
+            </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><h3 class="title">Note</h3>
+                XPath is a central part of the XQuery specification.  It serves 
+                much the same function as the SELECT statement does in SQL. It is 
+                essentially used to identify a subset of data within the data set.
+            </div>
+      <p>
+                To retrieve all the last names stored in the container: 
+            </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("phone.dbxml")/phonebook/name/last/string()'
+
+2 objects returned for eager expression '
+collection("phone.dbxml")/phonebook/name/last/string()'
+
+dbxml&gt; print
+Jones
+Smith            </pre>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                    The <code class="function">string()</code> function does not
+                    return the targeted node, but instead returns the
+                    string value of the targeted node.
+                </p>
+      </div>
+      <p>
+                To find Lisa's home phone number:  
+            </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("phone.dbxml")/phonebook[name/first = "Lisa"]/phone[@type = 
+"home"]/string()'
+
+1 objects returned for eager expression '
+collection("phone.dbxml")/phonebook[name/first = "Lisa"]/phone[@type = 
+"home"]/string()'
+
+dbxml&gt; print
+420-992-4801</pre>
+      <p>
+                To find all phone numbers in the 420 area code: 
+            </p>
+      <pre class="programlisting">dbxml&gt; query '
+collection("phone.dbxml")/phonebook/phone[starts-with(., "420")]/string()'
+
+2 objects returned for eager expression '
+collection("phone.dbxml")/phonebook/phone[starts-with(., "420")]/string()'
+
+dbxml&gt; print
+420-203-2032
+420-992-4801</pre>
+      <p>
+                These queries simply retrieve subsets of data, just like a
+                basic <code class="literal">SELECT</code> statement would in a
+                relational database.  Each query consists of two parts.
+                The first part of the query identifies the set of documents
+                to be examined (equivalent to a projection).  This is done
+                with an XQuery navigation function such as
+                <code class="literal">collection()</code>.  In this example,
+                <code class="literal">collection("phone.dbxml")</code> specifies the
+                container against which we want to apply our query. The
+                second part is an XPath statement (equivalent to a
+                selection).  The first example's XPath statement was
+                <code class="literal">/phonebook/name/last/string()</code> which,
+                based on our document structure, will retrieve all last
+                names and present them as a string. 
+            </p>
+      <p>
+                Understanding XPath is the first step toward understanding XQuery.
+            </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                    You can perform a query against multiple containers using the union operator ("|") with the 
+                    <code class="literal">collection()</code> function. For example, to
+                    query against containers <code class="literal">c1.dbxml</code> and <code class="literal">c2.dbxml</code>, you would use the
+                    following expression:
+                </p>
+        <div class="blockquote">
+          <blockquote class="blockquote">
+            <p>
+<code class="literal">(collection("c1.dbxml") | 
+         collection("c2.dbxml"))/name/string()</code>
+</p>
+          </blockquote>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="introduction.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="introduction.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="gettinghelp.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 1. Overview </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Getting Help</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

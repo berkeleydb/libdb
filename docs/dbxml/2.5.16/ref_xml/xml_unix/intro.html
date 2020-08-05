@@ -1,0 +1,205 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Building Berkeley DB XML for UNIX/POSIX</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a><a name="3"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml/arch.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/libs.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Building Berkeley DB XML for UNIX/POSIX</b></p>
+<a href="../../ref_xml/xml_unix/intro.html#buildall">About Building and Building Berkeley DB XML Using the buildall.sh Script</a><br>
+<a href="../../ref_xml/xml_unix/libs.html">Building Individual Libraries</a><br>
+<a href="../../ref_xml/xml_unix/conf.html">Configuring Berkeley DB XML</a><br>
+<a href="../../ref_xml/xml_unix/flags.html">Changing compilation and link options</a><br>
+<a href="../../ref_xml/xml_unix/install.html">Installing Berkeley DB XML</a><br>
+<a href="../../ref_xml/xml_unix/shlib.html">Dynamic Shared Libraries</a><br>
+<a href="../../ref_xml/xml_unix/notes.html">Using Berkeley DB XML on UNIX/POSIX Systems</a><br>
+<a href="../../ref_xml/xml_unix/faq.html">Architecture Independent Build FAQ</a><br>
+<a href="../../ref_xml/xml_unix/aix.html">AIX Notes</a><br>
+<a href="../../ref_xml/xml_unix/solaris.html">Solaris Notes</a><br>
+<a href="../../ref_xml/xml_unix/freebsd.html">FreeBSD Notes</a><br>
+<a href="../../ref_xml/xml_unix/hpux.html">HP-UX Notes</a><br>
+<a href="../../ref_xml/xml_unix/macosx.html">OS X Notes</a><br>
+<a href="../../ref_xml/xml_unix/cygwin.html">Cygwin</a><br>
+<p></p>
+<a id="buildall"></a>
+<b>About Building Berkeley DB XML and Using the buildall.sh Script</b>
+<p>The Berkeley DB XML distribution comprises several libraries: a base C++ library,
+three third-party libraries, and optional libraries for additional language
+interfaces such as Java, Perl, Python, PHP, and Tcl.  Instructions for building
+the base libraries as well as Java and Tcl interfaces are included here.  Instructions
+for the other language bindings appear in their respective directories:
+dbxml-2.5.16/dbxml/src/{perl,php,python}.
+All bindings require the C++ library and third-party libraries.
+Building for Linux, Mac OS X, and Cygwin (Windows) is the same as building
+for a conventional UNIX platform.</p>
+<p>The Berkeley DB XML distribution uses the Free Software Foundation's
+<a href="http://www.gnu.org/software/autoconf/autoconf.html">autoconf</a> and
+<a href="http://www.gnu.org/software/libtool/libtool.html">libtool</a>
+tools to build on UNIX platforms.  In general, the standard
+configuration and installation options for these tools apply to the
+Berkeley DB XML distribution.  For ease of use Berkeley DB XML uses a shell script called
+<i>buildall.sh</i> to drive the build process.  It wraps the configure and
+make steps associated with autoconf</p>
+<b>Preparing to build</b>
+<p>Berkeley DB XML makes use of several third-party libraries.  Berkeley DB XML provides
+a shell program that makes it possible to build all of the libraries in
+one command.  The Berkeley DB XML distribution includes the complete source for compatible
+versions of the third-party libraries.  No additional downloads
+are required.   Use of other versions may not
+work, and may not be supported.</p>
+<p>  Each of these packages is freely
+available and distributed under an Open Source license, although
+Berkeley DB XML depends on specific versions of each.  To build Berkeley DB XML,
+you will need the following third-party libraries:</p>
+<br>
+<b><a href="http://www.oracle.com/database/berkeley-db/index.html">Berkeley DB</a></b><ul compact><li>Berkeley DB is a general purpose database toolkit.  This release of Berkeley DB XML
+includes Berkeley DB 4.8.x release, and requires the Berkeley DB 4.3.28 release or later.</ul>
+<b><a href="http://xml.apache.org/xerces-c/index.html">Xerces</a></b><ul compact><li>Xerces is the Apache implementation of XML parsing technology
+and DOM.  The build requires a source
+release of Xerces, not just a binary release.  This release of Berkeley DB XML
+bundles Xerces-C 3.0.1, and requires the Xerces 2.7.0 release or newer.</ul>
+<b><a href="http://xqilla.sourceforge.net">XQilla</a></b><ul compact><li>XQilla is an open source implementation of XQuery 1.0 and XPath 2.0.
+Berkeley DB XML bundles a specific public release of XQilla which must
+be used.  Later versions of XQilla may work, but are not implicitly supported.</ul>
+<br>
+<p>
+It is necessary to use GNU make (gmake) to build Berkeley DB XML and
+its third-party libraries.  If you do not already have GNU make
+on your system, you will need to install it.
+When using gcc/g++, Berkeley DB XML requires at least a 3.x release of
+gcc.
+</p>
+<b>Building Berkeley DB XML and third-party libraries</b>
+<p>
+These instructions assume that you are building in the Berkeley DB XML
+distribution.
+The simplest possible build command is the following:
+<blockquote><pre>cd dbxml-2.5.16
+sh buildall.sh
+</pre></blockquote>
+This will configure, build, and install all of the libraries using default
+settings, which installs them into the directory <b>dbxml-2.5.16/install</b>.  The default build supports the C++ interface
+only.  The default build also compiles Berkeley DB XML examples, and places
+them in the directory
+<b>dbxml-2.5.16/dbxml/build_unix</b>.
+</p>
+<p>
+The <i>buildall.sh</i> script has a number of configuration
+options.  You can see them with this command:
+<blockquote><pre>sh buildall.sh --help
+</pre></blockquote>
+Some common options include:
+<p><ul type=disc>
+<li><i>--enable-debug</i> to build debug libraries
+<li><i>--prefix=path</i> to change the default common installation
+path (from ./install)
+<li><i>--enable-java</i> to build the Java API.  This also requires
+that there is a working <b>javac</b> in your <b>PATH</b>.
+The resulting <b>.jar</b> files are created in the install/lib
+directory.  Java examples are also built, and put in
+<b>dbxml-2.5.16/dbxml/build_unix/dbxmlexamples.jar</b>.
+<li><i>--enable-perl</i> to build the Perl interface
+<li><i>--disable-compression</i> to disable default compression.
+<li><i>--clean</i> to clean (make clean) the entire build
+<li><i>--distclean</i> to clean (make distclean) the entire build.  This option
+clears the configuration state as well as the compilation state.
+</ul>
+</p>
+<p>
+There is no option for per-library clean or
+rebuild in buildall.sh.  See
+<a href="../../ref_xml/xml_unix/libs.html">building individual libraries</a>
+for information on how to work with each library build.</p>
+<b>Configuring Berkeley DB XML and third-party libraries</b>
+<p>
+The <i>buildall.sh</i> script has a number of configuration
+flags to handle platform-specific issues, change
+target and destination directories, as well as product configuration
+options.  The flags that start with "<i>--with-</i>" apply
+to each of the libraries, depending on the name used.  In
+these examples, "libname" is used to represent one of "dbxml,"
+"xerces," "xqilla," or "berkeleydb."  For example,
+a valid flag may be "<i>--with-berkeleydb-prefix=path</i>"
+or "<i>--with-xerces-prefix=path</i>."
+The following is a partial list of options:</p>
+<br>
+<b>--help</b><ul compact><li>Use this flag to return a help message for buildall.sh.</ul>
+<b>--enable-debug</b><ul compact><li>To build with <b>-g</b> as a compiler flag and with
+<b>DEBUG</b> #defined during compilation, enter --enable-debug as an
+argument to buildall.sh.  This will create libraries and utilities
+with debugging symbols.  This argument should not be specified when
+configuring to build production binaries.</ul>
+<b>--enable-java</b><ul compact><li>To build with Java support, use --enable-java.  This builds Java support
+for both Berkeley DB and Berkeley DB XML.  It is necessary to ensure that there is a
+working <b>javac</b> in your <b>PATH</b>.  The resulting
+<b>.jar</b> files are created in the install/lib directory.  Java
+examples are also built, and put in
+<b>dbxml-2.5.16/dbxml/build_unix/dbxmlexamples.jar</b>.  By default -source 1.5 and -target 1.5 
+are passed to <b>javac</b> to build <b>dbxml.jar</b> and 
+<b>dbxmlexamples.jar</b>.  If another target is desired it is possible 
+to modify the file <b>dbxml/dist/Makefile.defs.in</b> where these flags are set.
+</ul>
+<b>--enable-perl</b><ul compact><li>To build with Perl support, use --enable-perl.  This builds Perl support
+for both Berkeley DB and Berkeley DB XML.  This option requires a working <b>perl</b>
+program in your <b>PATH</b>.</ul>
+<b>--with-tcl=path</b><ul compact><li>To build with Tcl support, use --with-tcl=path, where path is the
+directory in which the Tcl tclConfig.sh file may be found.  See
+<a href="../../programmer_reference/tcl.html">Loading Berkeley DB with Tcl</a> for information
+on sites from which you can download Tcl and which Tcl versions are
+compatible with Berkeley DB XML.</ul>
+<b>--disable-compression</b><ul compact><li>Disables default compression.  Compression is turned on by default.  Default compression requires the library ZLIB.  --with-zlib can by used to specify the path to the ZLIB installation.</ul>
+<b>--enable-static-zlib</b><ul compact><li>Causes the ZLIB library to be linked statically instead of dynamically</ul>
+<b>--with-zlib=path</b><ul compact><li>Default compression requires the ZLIB library.  If ZLIB is not installed in the directory /usr/local then use this argument to specify the directory in which it is installed.  If no ZLIB installation can be found then default compression is disabled automatically.</ul>
+<b>--enable-test</b><ul compact><li>Enables test suite support.  This option requres --with-tcl and
+--enable-debug, and if using --enable-java it also requires --with-junit.</ul>
+<b>--with-junit</b><ul compact><li>Path to a JUnit (4) .jar file.  This option is required if
+both --enable-test and -enable-java are specified.</ul>
+<b>-p platform</b><ul compact><li>To specify a platform type to the Xerces runConfigure script, use -p
+platform.  For most platforms, configure guesses the type correctly.
+Use this option only if there are configuration errors without it.</ul>
+<b>-c C compiler name</b><ul compact><li>To build with C compiler other than gcc, specify the name of the
+compiler, for example, -c cc.</ul>
+<b>-x C++ compiler name</b><ul compact><li>To build with C++ compiler other than g++, specify the name of the
+compiler, for example, -x cxx.</ul>
+<b>-m make_command</b><ul compact><li>To build with <b>make</b> program other than <i>make</i>, specify
+the name of the program.  For example, -m gmake.</ul>
+<b>--no-configure</b><ul compact><li>To build without re-running the configure step for each library, enter
+--no-configure as an argument to buildall.sh.</ul>
+<b>--clean</b><ul compact><li>To clean compilation and linking object from all libraries, use
+--clean.</ul>
+<b>--distclean</b><ul compact><li>To clean configuration state from all libraries, use --distclean.  After
+this is done, configuration must be run again in order to build.</ul>
+<b>--build-one=library</b><ul compact><li>To build, or clean only one of the libraries, use --build-one=library,
+where library is one of berkeleydb, xerces, xqilla or dbxml.</ul>
+<b>--prefix=path</b><ul compact><li>To change the common installation directory prefix from the default
+(./install), specify an alternate path.</ul>
+<b>--with-libname=path</b><ul compact><li>To use library sources from a location other than the default, specify
+a path to the source.  For example, if Xerces source were located in
+/home/xerces-c-src_3_0_1, specify, --with-xerces="/home/xerces-c-src_3_0_1"</ul>
+<b>--with-libname-prefix=path</b><ul compact><li>To change the installation directory for <b>only</b> a single library,
+specify the path using --with-libname-prefix=path.  For example, if
+Berkeley DB is to be installed in /usr/local/BerkeleyDB.4.8, specify,
+--with-berkeleydb-prefix="/usr/local/BerkeleyDB.4.8"</ul>
+<b>--with-libname-conf=configure flags</b><ul compact><li>All of the library configurations use the <i>configure</i> program.
+Use --with-libname-conf=configure flags to pass library-specific
+configuration flags.</ul>
+<br>
+<b>Advanced Building and Troubleshooting</b>
+<p>If <i>buildall.sh</i> does not provide enough control for your
+environment, or if you have trouble with any of these commands, please
+see <a href="../../ref_xml/xml_unix/libs.html">building individual
+libraries</a>, which goes into more detail on build options for each
+product.  At the end of that page, there is information on what to do
+if build problems persist.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml/arch.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/libs.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

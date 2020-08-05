@@ -1,0 +1,70 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlQueryContext</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlQueryContext</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlQueryContext {
+public:
+	XmlQueryContext();
+	XmlQueryContext(const XmlQueryContext &);
+	~XmlQueryContext();
+	XmlQueryContext &operator = (const XmlQueryContext &)
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlQueryContext</b>
+<p>The XmlQueryContext class encapsulates the context within which a query
+is performed against an <a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a>. The context includes
+namespace mappings, variable bindings, and flags that indicate how the
+query result set should be determined and returned to the caller.
+Multiple queries can be executed within the same XmlQueryContext;
+however, XmlQueryContext is not thread-safe, and can only be
+used by one thread at a time.</p>
+<p>XmlQueryContext objects are instantiated using
+<a href="../../api_reference/CXX/XmlManager_createQueryContext.html">XmlManager::createQueryContext</a>.</p>
+<p>XmlQueryContext allows you to define whether queries executed within the
+context are to be evaluated lazily or eagerly, and whether the query is
+to return live or dead values. For detailed descriptions of these
+parameters see <a href="../../api_reference/CXX/XmlQueryContext_setReturnType.html">XmlQueryContext::setReturnType</a> and
+<a href="../../api_reference/CXX/XmlQueryContext_setEvaluationType.html">XmlQueryContext::setEvaluationType</a>. Note that these values are
+also set when you create a query context using
+<a href="../../api_reference/CXX/XmlManager_createQueryContext.html">XmlManager::createQueryContext</a>.</p>
+<p>The XQuery syntax permits expressions to refer to namespace prefixes,
+and to define them.  The XmlQueryContext class provides namespace
+management methods so that the caller may manage the namespace prefix
+to URI mapping outside of a query. By default the prefix "dbxml" is
+defined to be "http://www.sleepycat.com/2002/dbxml".</p>
+<p>The XQuery syntax also permits expressions to refer to externally
+defined variables.  The XmlQueryContext class provides methods that
+allow the caller to manage the externally-declared variable to value
+bindings.</p>
+<p>A copy constructor and assignment operator are provided for this class.
+The class is implemented using a handle-body idiom.  When a handle is
+copied both handles maintain a reference to the same body.</p>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

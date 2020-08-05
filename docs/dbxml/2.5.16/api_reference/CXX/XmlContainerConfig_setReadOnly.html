@@ -1,0 +1,42 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainerConfig::setReadOnly</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainerConfig::setReadOnly</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlContainerConfig::setReadOnly(bool value)
+<p>
+bool XmlContainerConfig::getReadOnly() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainerConfig::setReadOnly</b>
+<p>If set to true the container is opened for reading only.  Any attempt to modify 
+items in the container will fail regardless of the permissions of the
+underlying files.  If set to false then the container can be modified.  The 
+default value is false and can only be set to true for existing containers.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>When set to true then the container cannot be modified.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

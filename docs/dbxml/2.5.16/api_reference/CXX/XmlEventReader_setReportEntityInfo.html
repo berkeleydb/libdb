@@ -1,0 +1,55 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlEventReader::setReportEntityInfo</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlEventReader::setReportEntityInfo</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual void XmlEventReader::setReportEntityInfo(bool value)
+<p>
+virtual bool XmlEventReader::getReportEntityInfo() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlEventReader::setReportEntityInfo</b>
+<p>The events of type StartEntityReference and EndEntityReference are used
+to report the start and end of XML that was originally an entity reference
+in the XML text, but has since been expanded.
+These events, if available, are useful for
+serialization of XML that includes such expanded entities.  It allows
+the entity references to be restored during serialization.  Most
+of the internal implementations of <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> have this
+information available.  By default, these events are not reported.</p>
+<hr size=1 noshade>
+<b>Description: XmlEventReader::setReportEntityInfo(bool value)</b>
+<p>Sets whether the <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> should include events
+of type StartEntityReference and EndEntityReference, if it is
+possible.</p>
+<hr size=1 noshade>
+<b>Description: XmlEventReader::getReportEntityInfo() const</b>
+<p>Gets whether the <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> will include events
+of type StartEntityReference and EndEntityReference.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>Use true to report entity events.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

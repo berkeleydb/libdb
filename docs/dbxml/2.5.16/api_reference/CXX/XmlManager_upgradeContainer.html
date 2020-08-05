@@ -1,0 +1,61 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlManager::upgradeContainer</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlManager::upgradeContainer</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlManager::upgradeContainer(const std::string &name,
+    XmlUpdateContext &context);
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlManager::upgradeContainer</b>
+<p>Upgrades the container from a previous version of Berkeley DB XML, or Berkeley DB, to
+the current version.  A Berkeley DB upgrade is first performed using the
+<a href="../../api_reference/CXX/db_upgrade.html">Db::upgrade</a> method, and then the Berkeley DB XML container is upgraded. If no
+upgrade is needed, then no changes are made.</p>
+<p><b>Container upgrades are done in place and are destructive. For example,
+if pages need to be allocated and no disk space is available, the
+container may be left corrupted.  Backups should be made before
+containers are upgraded.  See <a href="../../programmer_reference/upgrade.html">Upgrading
+databases</a> for more information.</b></p>
+<p>The container must be closed; the system throws an exception if the
+container is open.</p>
+<b>Parameters</b> <br>
+ <b>name</b><ul compact><li>The name of the container to be upgraded.</ul>
+ <b>context</b><ul compact><li>The <a href="../../api_reference/CXX/XmlUpdateContext.html">XmlUpdateContext</a> object to be used for this operation.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlManager::upgradeContainer method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>CONTAINER_OPEN</b><ul compact><li>The container is open.</ul>
+<br>
+<br>
+<b>DATABASE_ERROR</b><ul compact><li>An error occurred in an underlying Berkeley DB database. The
+<a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a> method will return the error code for the error.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

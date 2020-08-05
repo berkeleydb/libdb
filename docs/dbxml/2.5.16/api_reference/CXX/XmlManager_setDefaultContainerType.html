@@ -1,0 +1,49 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlManager::setDefaultContainerType</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlManager::setDefaultContainerType</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlManager::setDefaultContainerType(XmlContainer::ContainerType type)
+<p>
+XmlContainer::ContainerType XmlManager::getDefaultContainerType() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlManager::setDefaultContainerType</b>
+<p>Sets the default type used for containers opened and created by this
+XmlManager object. If a form of <a href="../../api_reference/CXX/XmlManager_createContainer.html">XmlManager::createContainer</a> or
+<a href="../../api_reference/CXX/XmlManager_openContainer.html">XmlManager::openContainer</a> is used that takes a type argument,
+the settings provided using this method are ignored.</p>
+<b>Parameters</b> <br>
+ <b>type</b><ul compact><li>The type of container to create.</ul>
+The container type must be one of the following values:
+<br>
+<b><a name="XmlContainer::NodeContainer">XmlContainer::NodeContainer</a></b><ul compact><li>Documents are broken down into their component nodes, and these nodes
+are stored individually in the container. This is the preferred
+container storage type.</ul>
+<b><a name="XmlContainer::WholedocContainer">XmlContainer::WholedocContainer</a></b><ul compact><li>Documents are stored intact; all white space and formatting is preserved.</ul>
+<br>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

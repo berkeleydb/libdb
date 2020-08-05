@@ -1,0 +1,156 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Berkeley DB XML Binaries for Windows systems</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Berkeley DB XML Binaries for Windows systems</dl></b></td>
+<td align=right><a href="../xml_win/notes.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_win/troubleshooting.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Berkeley DB XML Binaries for Windows systems</b></p>
+<p>Executable files and libraries are available for Berkeley DB XML.  They may be downloaded
+in the form of a Windows installer package <b>dbxml-2.5.16.msi</b>
+which must then be installed.
+The binaries are built using Microsoft Visual Studio .NET 2003 and include language bindings
+for C++, Java, Python, Perl and PHP.  Java is compiled using -target 1.5, Python is compiled
+against the 2.5.1 release of ActivePython, Perl is compiled using ActivePerl 5.8.8 and PHP 
+support is compiled against version 5.2.5 of PHP.</p>
+<p>There are several installation options for installing Windows binaries ranging from
+a simple runtime-only deployment to a development installation
+for all languages.  Source code other than examples is not available in the Windows installer
+package.  If source code is desired one of the source downloads must be used.
+</p>
+<b>Windows Installer Options</b>
+<p>When installing Berkeley DB XML using the Windows installer you can choose to install
+any or all of a number of options.  By default all options are selected.
+</p>
+<p><ul type=disc>
+<li><b>Core Runtime</b>.  This option includes only the .dll and .exe files
+required to run Berkeley DB XML C++ applications.  This option can only be used to run already-built
+applications; it cannot be used to build new C++ applications.  Program Database (.pdb) files
+are included for executables and libraries.  This option includes the PHP runtime libraries.
+<li><b>C++ Development</b>.  This option bundles the
+runtime libraries and adds the header files
+and libraries (.lib files) required to compile and link new C++ applications.  
+<li><b>Documentation</b>.  This option installs the Berkeley DB XML documentation set.
+<li><b>Examples</b>.  This option installs example programs for all language
+bindings.
+<li><b>Java Runtime</b>.  This option installs the Java runtime files (.jar) along with
+the core runtime (native) libraries which are also required for Berkeley DB XML Java applications.
+<li><b>Python Runtime</b> This option installs executables for Python that require
+further installation for use.  See instructions below.
+<li><b>Perl Runtime</b> This option installs the core runtime  and Perl binaries 
+which require further installation for use.  See instructions below.
+</ul>
+<b>Installation Layout</b>
+<p>The Windows installer allows a choice of installation location.  All paths used
+below are relative to that directory.  The installation layout is the same as it is
+for the default build from source:
+</p>
+<p><ul type=disc>
+<li><b>bin</b> -- holds exectuables for the core runtime
+<li><b>lib</b> -- holds libraries (.lib) for the C++ development option
+<li><b>include</b> -- holds header files for the C++ development option
+<li><b>jar</b> -- holds Java jar files for the Java runtime option
+<li><b>dbxml/doc</b> -- holds the Berkeley DB XML documentation.  This is placed in the <b>dbxml</b>
+directory for consistency with the build from source
+<li><b>dbxml/examples</b> -- holds Berkeley DB XML examples for all languages
+<li><b>perl</b> -- holds Perl binaries
+<li><b>python</b> -- holds Python binaries
+</ul>
+<b>General Note on Using Windows Binaries</b>
+<p>Because of the nature of some of the scripting language integrations it
+can be necessary to use the same compiler for the scripting language itself
+as for language extensions such as Berkeley DB XML support.  For this reason the binaries
+provided may not work in all cases.  If a particular installation has problems
+it may be necessary to compile from source in the case of Python, Perl and PHP.
+</p>
+<b>Using C++ Runtime Libraries and Programs</b>
+<p>It is necessary to set your PATH to run all Berkeley DB XML C++ and Java applications
+PATH needs <b>&lt;InstallDir&gt;/bin</b>.
+By default the installer will set the PATH and CLASSPATH of the installing user to 
+include the relevant directories
+and files.
+</p>
+<p>
+C++ example programs, if installed, can be found in <b>&lt;InstallDir&gt;/dbxml/examples/cxx</b>.
+Visual Studio project files for the examples are in <b>&lt;InstallDir&gt;/dbxml/build_windows</b>
+and can be used as templates for new applications.
+</p>
+<b>Using Java Binaries</b>
+<p>It is necessary to set your PATH and CLASSPATH to run Berkeley DB XML Java applications.  CLASSPATH
+needs <b>&lt;InstallDir&gt;/jar/db.jar;&lt;InstallDir&gt;/jar/dbxml.jar</b>.  See above for PATH
+additions.  By default the installer will
+set the PATH and CLASSPATH of the installing user to include the relevant directories
+and files.
+</p>
+<p>
+Java example programs, if installed, can be found in <b>&lt;InstallDir&gt;/dbxml/examples/java</b>.
+Many users develop and deploy Berkeley DB XML Java applications in an application server environment such
+as Tomcat.  Most of these servers ignore PATH and CLASSPATH for applications (for security reasons)
+so it is necessary to follow product-specific instructions for correct application deployment.
+</p>
+<b>Installing and Using Python Binaries</b>
+<p>Python binaries are built and packaged in executable files that can be installed 
+on a machine that has ActivePython 2.5.1 already installed.  There are two files that need to be
+installed:
+</p>
+<ol>
+<p><li><b>&lt;InstallDir&gt;/python/bsddb3-4.7.6.win32-py2.5.exe</b> -- execute this to install pybsddb release
+4.5.0
+<p><li><b>&lt;InstallDir&gt;/python/dbxml-2.5.16.win32-py2.5.exe</b> -- 
+execute this to install Berkeley DB XML libraries
+</ol>
+<p>The executables above include <b>all</b> of the dependent libraries so it is not necessary
+to install either of the core runtime libraries.  The installation will fail if Python 2.5 
+is not installed on the target machine.
+</p>
+<p>
+Python example programs, if installed, can be found in <b>&lt;InstallDir&gt;/dbxml/examples/python</b>.
+A simple smoke test that can be done after installation is running the Python example script <b>&lt;InstallDir&gt;/dbxml/examples/python/basic/helloWorld.py</b>.  If this works then your installation is good.
+</p>
+<b>Installing and Using Perl Binaries</b>
+<p>Perl binaries are built and bundled into the compressed tar archive file <b>&lt;InstallDir&gt;/perl/dbxml_perl.tar.gz</b>.
+There is also an ActivePerl PPD file -- <b>&lt;InstallDir&gt;/perl/dbxml_perl.ppd</b> -- which can be used
+by the PPM program for installation.  If you have ActivePerl version 5.8.8 installed on your system and it
+includes PPM, then you can do this to install the Perl binaries after initial installation:
+</p>
+<p><ul type=disc>
+<li>change directory to <b>&lt;InstallDir&gt;/perl</b>
+<li>type "ppm install dbxml_perl.ppd"
+</ul>
+This will install the Berkeley DB XML Perl binary files in the appropriate location for your system.
+<p>
+Perl example programs, if installed, can be found in <b>&lt;InstallDir&gt;/dbxml/examples/perl/gettingStarted</b>.
+When using these examples, always start with <b>loadExamplesData.pl</b>.  There is a Readme.txt file
+for the gettingStarted examples in this directory.
+</p>
+<b>Using PHP Binaries</b>
+<p>There are two shared libraries that comprise the PHP extension modules.  These are:
+</p>
+<ol>
+<p><li><b>&lt;InstallDir&gt;/bin/php_db4.dll</b> -- Berkeley DB extension module, compiled
+<b>without</b> support for mod_db4
+<p><li><b>&lt;InstallDir&gt;/bin/php_dbxml.dll</b> -- Berkeley DB XML extension module
+</ol>
+<p>These modules can be used in-place with the proper references from a php.ini file or
+other configuration.
+</p>
+<p>
+PHP example programs, if installed, can be found in <b>&lt;InstallDir&gt;/dbxml/examples/php</b>.
+That directory contains a sample php.ini file that needs to be edited in order to work properly.
+Instructions are in the file itself.  There are 3 lines that need to be adjusted.  The first one
+starts with "extension_dir" and needs to be uncommented and the path edited to point to the
+directory containing the .dll's referenced above, e.g. <b>C:\Program Files\Oracle\Berkeley DB XML 2.5.16\bin</b>.  The next two lines simply need to be uncommented to tell PHP to load the shared libraries.
+Once this is done you can see if PHP works on the command line by running one of the examples: "php -c . 01.php"
+</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_win/notes.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_win/troubleshooting.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

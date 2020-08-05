@@ -1,0 +1,77 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlException</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlException</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlException : public std::exception {
+public:
+	virtual const char *what() const throw();
+	ExceptionCode getExceptionCode();
+	int getDbErrno();
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlException</b>
+<p>The XmlException class represents an error condition that has occurred
+within the Berkeley DB XML system. The system throws an XmlException if an API
+method call results in an error condition.  Methods on this class
+may be used to get further information regarding the exception.  Some of
+these include <a href="../../api_reference/CXX/XmlException_what.html">XmlException::what</a> and
+<a href="../../api_reference/CXX/XmlException_getExceptionCode.html">XmlException::getExceptionCode</a>.</p>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+<p>Below is a description of the exceptions codes that may be
+returned from <a href="../../api_reference/CXX/XmlException_getExceptionCode.html">XmlException::getExceptionCode</a>:
+<br>
+<b>XmlException::CONTAINER_CLOSED</b><ul compact><li>An operation was performed that requires the container to be open.</ul>
+<b>XmlException::CONTAINER_EXISTS</b><ul compact><li>An attempt was made to create an existing container.</ul>
+<b>XmlException::CONTAINER_NOT_FOUND</b><ul compact><li>The specified container was not found.</ul>
+<b>XmlException::CONTAINER_OPEN</b><ul compact><li>An operation was performed that requires the
+container to be closed.</ul>
+<b>XmlException::DATABASE_ERROR</b><ul compact><li>An unexpected error was returned from Berkeley DB.</ul>
+<b>XmlException::DOCUMENT_NOT_FOUND</b><ul compact><li>A named document was not found.</ul>
+<b>XmlException::EVENT_ERROR</b><ul compact><li>An error occurred during the use of the event reader or writer interface.</ul>
+<b>XmlException::INDEXER_PARSER_ERROR</b><ul compact><li>There was an XML parsing error while attempting to index
+a document.</ul>
+<b>XmlException::INTERNAL_ERROR</b><ul compact><li>An internal error has occurred inside BDB XML.</ul>
+<b>XmlException::INVALID_VALUE</b><ul compact><li>An invalid operation was attempted, or an invalid value passed to an operation.</ul>
+<b>XmlException::LAZY_EVALUATION</b><ul compact><li>An operation that requires eager evaluation was attempted on a lazily 
+evaluated result set.</ul>
+<b>XmlException::NO_MEMORY_ERROR</b><ul compact><li>An attempt to allocate memory failed.</ul>
+<b>XmlException::NULL_POINTER</b><ul compact><li>An attempt was made to use a NULL pointer, most likely from
+a non-C++ API, such as Java or Python.</ul>
+<b>XmlException::OPERATION_INTERRUPTED</b><ul compact><li>A query operation was interrupted by the application.</ul>
+<b>XmlException::OPERATION_TIMEOUT</b><ul compact><li>A query operation timed out.</ul>
+<b>XmlException::TRANSACTION_ERROR</b><ul compact><li>An attempt was made to refer to a transaction that was already committed or aborted.</ul>
+<b>XmlException::UNIQUE_ERROR</b><ul compact><li>An index uniqueness constraint was violated.</ul>
+<b>XmlException::UNKNOWN_INDEX</b><ul compact><li>The referenced indexing strategy is not known.</ul>
+<b>XmlException::VERSION_MISMATCH</b><ul compact><li>The container version and library version are not compatible.</ul>
+<b>XmlException::QUERY_EVALUATION_ERROR</b><ul compact><li>An error occurred during evaluation of an XQuery expression.</ul>
+<b>XmlException::QUERY_PARSER_ERROR</b><ul compact><li>An error occurred attempting to parse an XQuery expression.</ul>
+<br>
+</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Database Features</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="wrapup.html" title="Chapter 3. Wrapping Up" />
+    <link rel="prev" href="xmlfeatures.html" title="XML Features" />
+    <link rel="next" href="languages.html" title="Languages and Platforms" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Database Features</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="xmlfeatures.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 3. Wrapping Up</th>
+          <td width="20%" align="right"> <a accesskey="n" href="languages.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="dbfeatures"></a>Database Features</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            Berkeley DB XML inherits a great many features from Berkeley DB. 
+            These features put it years ahead of the competition and makes it 
+            an ideal candidate for mission-critical applications that must manage XML data. 
+        </p>
+      <p>
+            Important features that BDB XML inherits from Berkeley DB are:
+        </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                    In-process data access. BDB XML is compiled in the same way as
+                    any library. It runs in the same process space as your
+                    application. The result is database support in a small
+                    footprint without the IPC-overhead required by
+                    traditional client/server-based database
+                    implementations.
+                </p>
+          </li>
+          <li>
+            <p>
+                    Ability to manage databases up to 256 terabytes in size.
+                </p>
+          </li>
+          <li>
+            <p>
+                    Database environment support. BDB XML environments
+                    support all of the same features as Berkeley DB
+                    environments, including multiple databases,
+                    shared data cache,
+                    transactions, deadlock detection,
+                    lock and page control,
+                    and encryption.  In particular, this means that BDB XML
+                    databases can share an environment with Berkeley DB
+                    databases, thus allowing an application to gracefully
+                    use both.
+                </p>
+          </li>
+          <li>
+            <p>
+                    Atomic operations. Complex sequences of read and write
+                    access can be grouped together into a single atomic
+                    operation using BDB XML's transaction support.  Either
+                    all of the read and write operations within a
+                    transaction succeed, or none of them succeed.
+                </p>
+          </li>
+          <li>
+            <p>
+                    Isolated operations. Operations performed inside a
+                    transaction see all XML documents as if no other
+                    transactions are currently operating on them.  
+                </p>
+          </li>
+          <li>
+            <p>
+                    Recoverability. BDB XML's transaction support ensures
+                    that all committed data is available no matter how the
+                    application or system might subsequently fail. 
+                </p>
+          </li>
+          <li>
+            <p>
+                        Concurrent access. Through the combined use of
+                        isolation mechanisms built into BDB XML, plus
+                        deadlock handling supplied by the application,
+                        multiple threads and processes can concurrently
+                        access the XML data set in a safe manner.
+                </p>
+          </li>
+          <li>
+            <p>
+                    Replication. BDB XML provides the ability to distribute 
+                    updates made to a master database
+                    to multiple replica databases. This provides the application 
+                    with the ability to support fail-over for
+                    High Availability applications, as well as scalability 
+                    for load balancing of queries across multiple systems. 
+                </p>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="xmlfeatures.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="wrapup.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="languages.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">XML Features </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Languages and Platforms</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

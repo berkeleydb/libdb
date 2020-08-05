@@ -1,0 +1,74 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlEventReaderToWriter</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlEventReaderToWriter</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlEventReaderToWriter {
+public:
+	XmlEventReaderToWriter(XmlEventReader &reader,
+                               XmlEventWriter &writer,
+                               bool ownsReader = true)
+	XmlEventReaderToWriter(XmlEventReader &reader,
+                               XmlEventWriter &writer,
+                               bool ownsReader,
+			       bool ownsWriter)
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlEventReaderToWriter</b>
+<p>The XmlEventReaderToWriter class enables events read from
+an <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> to be written directly to an <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>.
+This is useful for processing XML document content, efficient copying, and
+other application integration tasks.  Use
+<a href="../../api_reference/CXX/XmlEventReaderToWriter_start.html">XmlEventReaderToWriter::start</a> to begin processing.</p>
+<p>The method constructs an object from the reader and writer that
+will pipe events from the reader directly to the writer.</p>
+<b>Parameters</b> <br>
+ <b>reader</b><ul compact><li>An <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> object from which events will be read.
+To create the reader, use one of
+<a href="../../api_reference/CXX/XmlDocument_getContentAsEventReader.html">XmlDocument::getContentAsEventReader</a>,
+<a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asEventReader</a>,
+or implement an application-defined class derived
+from <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a>.</ul>
+ <b>writer</b><ul compact><li>An <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a> object to which events will be written.  When
+all events are processed, <a href="../../api_reference/CXX/XmlEventWriter_close.html">XmlEventWriter::close</a> is called on the
+object unless the <b>ownsWriter</b> parameter is false.
+To create the writer, use one of
+<a href="../../api_reference/CXX/XmlContainer_putDocumentAsEventWriter.html">XmlContainer::putDocumentAsEventWriter</a>,
+or implement an application-defined class derived
+from <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>.</ul>
+ <b>ownsReader</b><ul compact><li>If true (the default), <a href="../../api_reference/CXX/XmlEventReader_close.html">XmlEventReader::close</a> will be called
+when all events have been processed; otherwise, the reader is left
+intact upon completion.</ul>
+ <b>ownsWriter</b><ul compact><li>If true (the default), <a href="../../api_reference/CXX/XmlEventWriter_close.html">XmlEventWriter::close</a> will be called
+when all events have been processed; otherwise, the writer is left
+intact upon completion.  Setting this parameter to false allows applications
+to apply a number of XmlEventReader objects to the same XmlEventWriter.</ul>
+<br>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

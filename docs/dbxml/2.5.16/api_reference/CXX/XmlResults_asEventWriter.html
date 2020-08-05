@@ -1,0 +1,50 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlResults::asEventWriter</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlResults::asEventWriter</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlEventWriter &XmlResults::asEventWriter()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlResults::asEventWriter</b>
+<p>Returns an instance of <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a> that can be used to write events
+into the XmlResults object. Please note that only one active <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a> 
+is allowed for an XmlResults object.</p>
+<p>The XmlResults object must be freshly created by <a href="../../api_reference/CXX/XmlManager_createResults.html">XmlManager::createResults</a>
+and empty or an exception is thrown.  Multiple node and atomic value events
+can be written into the returned object.  When the event writing is complete the 
+<a href="../../api_reference/CXX/XmlEventWriter_close.html">XmlEventWriter::close</a> method must be called.  The XmlResults object can then
+be bound to a variable using <a href="../../api_reference/CXX/XmlQueryContext_setVariableValue.html">XmlQueryContext::setVariableValue</a> and used in 
+queries.</p>
+<br><b>Errors</b>
+<p>The XmlResults::asEventWriter method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>INVALID_VALUE</b><ul compact><li>The XmlResults object is not empty</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

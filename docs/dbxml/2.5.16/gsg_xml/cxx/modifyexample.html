@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Modification Example</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="updatewithxmodify.html" title="Appendix A. Updating Documents with XmlModify" />
+    <link rel="previous" href="stepmethods.html" title="Modification Methods" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Modification Example</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="stepmethods.html">Prev</a> </td>
+          <th width="60%" align="center">Appendix A. Updating Documents with XmlModify</th>
+          <td width="20%" align="right"> </td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="modifyexample"></a>Modification Example</h2>
+          </div>
+        </div>
+        <div></div>
+      </div>
+      <p>
+                To illustrate document modification, we will:
+            </p>
+      <div class="orderedlist">
+        <ol type="1">
+          <li>
+            <p>
+                        Retrieve a document named "doc1.xml" from a container.
+                    </p>
+          </li>
+          <li>
+            <p>
+                        Rename an attribute node called 'attr1' to
+                        'myAttribute'.
+                    </p>
+          </li>
+          <li>
+            <p>
+                        Add a child node called "newChild" to node "node2".
+                    </p>
+          </li>
+          <li>
+            <p>
+                        Remove a node called "removeNode".
+                    </p>
+          </li>
+          <li>
+            <p>
+                        Update the contents of attribute node 'myAttribute' with
+                        the string "replacement content".
+                    </p>
+          </li>
+        </ol>
+      </div>
+      <p>
+                The document that we will update is as follows:
+            </p>
+      <pre class="programlisting">&lt;sampleDocument&gt;
+    &lt;node1 attr1="an attribute node" /&gt;
+    &lt;removeNode&gt;Some content to remove&lt;/removeNode&gt;
+    &lt;node2 /&gt;
+&lt;/sampleDocument&gt;</pre>
+      <p>
+                Notice that in performing the modification, we are not required
+                to explicitly save the modified document back into the container;
+                that is done for us under the covers.
+            </p>
+      <a id="cxx_modify1"></a>
+      <pre class="programlisting">#include "DbXml.hpp"
+...
+
+using namespace DbXml;
+
+...
+
+// Get a manager object.
+XmlManager myManager;
+
+// Open a container
+XmlContainer myContainer = 
+    myManager.openContainer("exampleData.dbxml");
+
+XmlQueryContext qc = myManager.createQueryContext();
+XmlUpdateContext uc = myManager.createUpdateContext();
+XmlModify mod = myManager.createModify();
+
+// Build the modification object.
+// Rename the attribute node from 'attr1' to 'myAttribute'.
+XmlQueryExpression select = 
+    myManager.prepare("/sampleDocument/node1/@attr1", qc);
+mod.addRenameStep(select, "myAttribute");
+
+// Add '&lt;newChild&gt;' node to '&lt;node2&gt;'
+std::string newChildContent = "&lt;c1&gt;some content&lt;/c1&gt;";
+select = myManager.prepare("/sampleDocument/node2", qc);
+mod.addAppendStep(select, 
+                  XmlModify::Element, 
+                  "newChild", 
+                  newChildContent);
+
+// Remove &lt;removeNode&gt; from the document
+select = myManager.prepare("/sampleDocument/removeNode", qc);
+mod.addRemoveStep(select);
+
+// Replace the contents of /sampleDocument/node1/@myAttribute. Notice
+// the attribute was renamed from attr1 in the first step of this
+// modification. Modifications are performed in the specified order.
+std::string attrContent = "replacement content";
+select = myManager.prepare("/sampleDocument/node1/@myAttribute", qc);
+mod.addUpdateStep(select, attrContent);
+
+// Now retrieve the document we want to modify from the container. 
+// Notice that we could have performed a query against the container,
+// and then handed the entire result set to this method. In that case,
+// every document contained in the result set is modified.
+XmlDocument retDoc = myContainer.getDocument("doc1.xml");
+XmlValue docValue(retDoc);
+mod.execute(docValue, qc, uc);
+
+// Show that the modification was performed
+// and written to the container.
+XmlDocument retDoc2 = myContainer.getDocument("doc1.xml");
+std::string doc1String;
+std::cout &lt;&lt; retDoc2.getName() &lt;&lt; ":\n" 
+          &lt;&lt; retDoc2.getContent(doc1String) 
+          &lt;&lt; "\n\n" &lt;&lt; std::endl; </pre>
+      <p>
+        When we run this code, the program displays the modified document which
+        is now:
+    </p>
+      <pre class="programlisting">doc1.xml:
+&lt;sampleDocument&gt;
+    &lt;node1 myAttribute="replacement content" /&gt;
+    
+    &lt;node2&gt;&lt;newChild&gt;&lt;c1&gt;some content&lt;/c1&gt;&lt;/newChild&gt;&lt;/node2&gt;
+&lt;/sampleDocument&gt;</pre>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="stepmethods.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="updatewithxmodify.html">Up</a>
+          </td>
+          <td width="40%" align="right"> </td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Modification Methods </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

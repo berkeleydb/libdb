@@ -1,0 +1,56 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlDocument::setContentAsEventReader</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlDocument::setContentAsEventReader</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlDocument::setContentAsEventReader(XmlEventReader &reader)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlDocument::setContentAsEventReader</b>
+<p>Sets the document's content to the provided reader. If this document
+is a new document (that is, its name is currently not in use by another
+document in the container), you can add it to a container using
+<a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a>. If you are updating an already
+existing document, you can update the document in the container using
+<a href="../../api_reference/CXX/XmlContainer_updateDocument.html">XmlContainer::updateDocument</a>.</p>
+<p>The <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> reference is used to read the
+content on demand.  When the reading is done, the
+<a href="../../api_reference/CXX/XmlEventReader_close.html">XmlEventReader::close</a> method is called.</p>
+<b>Parameters</b> <br>
+ <b>reader</b><ul compact><li>The event reader to be used for content creation.
+To create the reader, use one of
+<a href="../../api_reference/CXX/XmlDocument_getContentAsEventReader.html">XmlDocument::getContentAsEventReader</a>,
+<a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asEventReader</a>,
+or implement an application-defined class derived
+from <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a>.</ul>
+<p>The content provided by the reader must be well-formed XML.
+However, in the event of incorrect content, an exception is not thrown
+until an attempt
+is made to place the contents into a container using either
+<a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a> or
+<a href="../../api_reference/CXX/XmlContainer_updateDocument.html">XmlContainer::updateDocument</a>.</p>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

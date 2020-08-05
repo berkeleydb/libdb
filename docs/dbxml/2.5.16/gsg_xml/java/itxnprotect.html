@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+    <title>Transactionally Protecting Container Operations</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="transaction.html" title="Chapter 8. Using Transactions" />
+    <link rel="previous" href="transaction.html" title="Chapter 8. Using Transactions" />
+    <link rel="next" href="txnconsiderations.html" title="Transactions Considerations" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Transactionally Protecting Container Operations</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="transaction.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 8. Using Transactions</th>
+          <td width="20%" align="right"> <a accesskey="n" href="txnconsiderations.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="itxnprotect"></a>Transactionally Protecting Container Operations</h2>
+          </div>
+        </div>
+        <div></div>
+      </div>
+      <p>
+            To transactionally protect one or more container operations, do the
+            following:
+        </p>
+      <div class="orderedlist">
+        <ol type="1">
+          <li>
+            <p>
+                    Open your environment and containers such that they support
+                    transactions, as described in the previous section. 
+                </p>
+          </li>
+          <li>
+            <p>
+                    Create an <tt class="classname">XmlTransaction</tt>
+                    object. These objects are created using
+                    
+                    <span><tt class="methodname">XmlManager.createTransaction()</tt>.</span>
+                </p>
+          </li>
+          <li>
+            <p>
+                    Perform your operations, handing the
+                    <tt class="classname">XmlTransaction</tt>
+                    object to each container read and write method that is
+                    participating in the transaction. 
+                </p>
+            <p>
+                    Be aware that you can use the same 
+                    <tt class="classname">XmlTransaction</tt> for read and
+                    write operations performed on different containers and
+                    databases, provided that those containers and databases
+                    all exist in the same environment; there is no limit to the
+                    number of containers and databases that can participate in
+                    the transaction.
+                </p>
+          </li>
+          <li>
+            <p>
+                    When you have performed all of your transaction's
+                    operations, call 
+                    
+                    <span><tt class="methodname">XmlManager.commit()</tt></span>
+                    
+                    to commit the transaction. This causes the write operations
+                    performed under the protection of the transaction to be
+                    written to the files backing your containers and databases
+                    on disk.
+                </p>
+            <p>
+                    Once committed, the <tt class="classname">XmlTransaction</tt>
+                    object is no longer valid. That is, you cannot reuse it. If
+                    you want to perform another transaction, you must
+                    instantiate another <tt class="classname">XmlTransaction</tt>
+                    object.
+                </p>
+          </li>
+          <li>
+            <p>
+                    If the operations participating in your transaction should
+                    throw an exception or otherwise indicate an operational
+                    failure, terminate the transaction by calling
+                    
+                    <span><tt class="methodname">XmlManager.abort()</tt>.</span>
+                    This causes all of the write operations performed under the
+                    control of the transaction to be discarded.
+                </p>
+            <p>
+                    As is the case with
+                    
+                    <span><tt class="methodname">XmlManager.commit()</tt>,</span>
+                    an aborted <tt class="classname">XmlTransaction</tt>
+                    object is no longer valid and can not be reused.
+                </p>
+          </li>
+        </ol>
+      </div>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+               Note that when you create an <tt class="classname">XmlTransaction</tt>
+               object, you can create a transaction based on an existing
+                        
+                        <tt class="classname">Transaction</tt>
+               object. If you do this, then the following rules apply: 
+            </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                        Any handle for a transaction object can commit or abort
+                        that transaction. Once committed or aborted, all handles
+                        to the transaction are no longer valid.
+                    </p>
+            </li>
+            <li>
+              <p>
+                        If the <tt class="classname">XmlTransaction</tt> object goes
+                        out of scope without being committed or aborted, then
+                        the external
+                        
+                        <tt class="classname">Transaction</tt>
+                        object that was used to create it is still valid and the
+                        underlying transaction is still active (until
+                        such a time as the transaction is either committed or
+                        aborted in some other location in your code).
+                    </p>
+            </li>
+            <li>
+              <p>
+                        Likewise, if the parent
+                        
+                        <tt class="classname">Transaction</tt>
+                        object goes out scope while the
+                        <tt class="classname">XmlTransaction</tt>
+                        object is still active, then the underlying transaction
+                        is still active until such a time as the
+                        <tt class="classname">XmlTransaction</tt>
+                        object calls either commit or abort.
+                    </p>
+            </li>
+            <li>
+              <p>
+                        If all <tt class="classname">XmlTransaction</tt> objects go
+                        out of scope and there are no in-scope 
+                        
+                        <tt class="classname">Transaction</tt>
+                        objects, then the underlying transaction is
+                        automatically aborted.
+                    </p>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                Never perform both transactional and non-transactional writes 
+                on the same container. Doing so can cause your underlying
+                databases to no longer be recoverable in the event that recovery
+                is needed.
+            </p>
+        <p>
+                If you open a container transactionally, and you do not provide
+                a transaction for your write operations, BDB XML will
+                automatically transactionally protect that write for you.
+                However, if you perform writes to a transactional container,
+                close the container and then open it without transactional
+                support, then the writes to that container are not protected by
+                a transaction.
+            </p>
+      </div>
+      <p>
+            The following provides an example of how to create, use, commit, and
+            abort a transaction:
+        </p>
+      <a id="java_txn_operate1"></a>
+      <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlContainerConfig;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlManagerConfig;
+import com.sleepycat.dbxml.XmlTransaction;
+
+...
+// Environment, manager, and container opens omitted
+// for brevity
+...
+
+String file1 = &quot;doc1.xml&quot;;
+String file2 = &quot;doc2.xml&quot;;
+XmlTransaction txn = null;
+
+try {
+    txn = myManager.createTransaction();
+    // Need an update context for the put.
+    XmlUpdateContext theContext = myManager.createUpdateContext();
+
+    // Get the first input stream.
+    XmlInputStream theStream = 
+        myManager.createLocalFileInputStream(file1);
+
+    // Put the first document
+    myContainer.putDocument(txn,        // the transaction object
+                           file1,       // The document's name
+                           theStream,   // The actual document. 
+                           theContext,  // The update context 
+                                        // (required).
+                           null);       // XmlDocumentConfig object.
+
+    // Get the second input stream.
+    theStream = myManager.createLocalFileInputStream(file2);
+
+    // Put the second document
+    myContainer.putDocument(txn,         // the transaction object
+                            file2,       // The document's name
+                            theStream,   // The actual document. 
+                            theContext,  // The update context 
+                                         // (required).
+                            null);       // XmlDocumentConfig object.
+
+    // Finished. Now commit the transaction.
+    txn.commit();
+
+} catch (XmlException e) {
+    System.out.println(&quot;Error in transaction: &quot;);
+    System.out.println(e.what());
+    System.out.println(&quot;Aborting.&quot;);
+    txn.abort();
+} </pre>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="transaction.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="transaction.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="txnconsiderations.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 8. Using Transactions </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Transactions Considerations</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

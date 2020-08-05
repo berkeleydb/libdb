@@ -1,0 +1,77 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Configuring Berkeley DB XML for UNIX/POSIX systems</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a><a name="3"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml_unix/libs.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/flags.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Configuring Berkeley DB XML for UNIX/POSIX systems</b></p>
+<p>There are several arguments you can specify when configuring Berkeley DB XML.
+Although only the Berkeley DB XML-specific ones are described here, most of the
+standard autoconf arguments are available and supported.  To see a
+complete list of possible arguments, specify the --help flag to the
+configure program.</p>
+<p>The Berkeley DB XML specific arguments are as follows:</p>
+<br>
+<b><a name="--enable-debug">--enable-debug</a></b><ul compact><li>To build Berkeley DB XML with <b>-g</b> as a compiler flag and with
+the preprocessor variable <b>DEBUG</b> defined during compilation, 
+enter --enable-debug as an
+argument to configure.  This will create a Berkeley DB XML library and utilities
+with debugging symbols.  This argument should not be specified when
+configuring to build production binaries.</ul>
+<a name="4"><!--meow--></a>
+<b><a name="--enable-java">--enable-java</a></b><ul compact><li>To build the Berkeley DB XML Java API, enter --enable-java as an argument to
+configure. To build Java, you must also build with shared libraries.
+Before configuring, you must set your PATH environment variable to
+include javac.  Note that it is not sufficient to include a symbolic
+link to javac in your PATH because the configuration process uses the
+location of javac to determine the location of the Java include files
+(for example, jni.h). On some systems, additional include directories
+may be needed to process jni.h; see <a href="flags.html">Changing compile or
+load options</a> for more information.</ul>
+<a name="5"><!--meow--></a><a name="6"><!--meow--></a>
+<b><a name="--enable-shared">--enable-shared</a>, <a name="--enable-static">--enable-static</a></b><ul compact><li>On systems supporting shared libraries, Berkeley DB XML builds both static and
+shared libraries by default.  (Shared libraries are built using
+<a href="http://www.gnu.org/software/libtool/libtool.html">the GNU
+Project's Libtool</a> distribution, which supports shared library builds
+on many (although not all) systems.)  To not build shared libraries,
+configure using the --enable-shared='no' argument.  To not build static
+libraries, configure using the --enable-static='no' argument.</ul>
+<a name="7"><!--meow--></a>
+<b><a name="--enable-test">--enable-test</a></b><ul compact><li>To build the Berkeley DB XML test suite, enter --enable-test as an argument to
+configure.  To run the Berkeley DB XML test suite, you must also build the Tcl
+version of the Berkeley DB XML library by specifying--with-tcl=path.  If Java is
+enabled and you use --enable-test you will also be required to supply the
+--with-junit flag (see below).</ul>
+<a name="8"><!--meow--></a>
+<b><a name="--with-junit">--with-junit</a></b><ul compact><li>Path to the <a href="http://www.junit.org">JUnit</a> jar file, for example
+--with-junit=<path-to-junit-4.4.jar>.
+This option is required if both --enable-test and -enable-java are specified.</ul>
+<b><a name="--with-berkeleydb=DIR">--with-berkeleydb=DIR</a></b><ul compact><li>To specify the location of a Berkeley DB installation to be used when building
+Berkeley DB XML, enter --with-berkeleydb=DIR, replacing DIR with the path to the
+top-level directory of the Berkeley DB installation.</ul>
+<b><a name="--with-xerces=DIR">--with-xerces=DIR</a></b><ul compact><li>To specify the location of a Xerces installation to be used when building
+Berkeley DB XML, enter --with-xerces=DIR, replacing DIR with the path to the
+top-level directory of the Xerces installation.</ul>
+<b><a name="--with-xqilla=DIR">--with-xqilla=DIR</a></b><ul compact><li>To specify the location of a XQilla installation to be used when building
+Berkeley DB XML, enter --with-xqilla=DIR, replacing DIR with the path to the
+top-level directory of the XQilla installation.</ul>
+<b><a name="--with-tcl=DIR">--with-tcl=DIR</a></b><ul compact><li>To build the Tcl version of the Berkeley DB XML libraries, enter --with-tcl=DIR,
+replacing DIR with the directory in which the Tcl tclConfig.sh file may
+be found.  See <a href="../../programmer_reference/tcl.html">Loading Berkeley DB with Tcl</a>
+for information on sites from which you can download Tcl and which Tcl
+versions are compatible with Berkeley DB XML.  To build Tcl, you must also build
+with shared libraries.</ul>
+<br>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/libs.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/flags.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

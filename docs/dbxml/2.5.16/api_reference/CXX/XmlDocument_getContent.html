@@ -1,0 +1,44 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlDocument::getContent</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlDocument::getContent</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+std::string &XmlDocument::getContent(std::string &content) const
+<p>
+XmlData XmlDocument::getContent() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlDocument::getContent</b>
+<p>Returns a reference to the document content. The returned value is owned
+by the XmlDocument, and is destroyed when the document is destroyed.</p>
+<hr size=1 noshade>
+<b>Description: std::string &XmlDocument::getContent(std::string &content) const</b>
+<p>Copies the content of the document into a string and as a convenience
+returns a reference to the string.</p>
+<hr size=1 noshade>
+<b>Description: XmlData XmlDocument::getContent()</b>
+<p>Returns a reference to the content as an <a href="../../api_reference/CXX/XmlData.html">XmlData</a> object.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

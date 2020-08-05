@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Introducing Indices</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+    <link rel="prev" href="valuequeries.html" title="Value Queries" />
+    <link rel="next" href="reshapingresults.html" title="Reshaping the Result" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Introducing Indices</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="valuequeries.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 2. XQuery and Berkeley DB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="reshapingresults.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="introducingindexes"></a>Introducing Indices</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            One major advantage of modern native XML databases is their ability 
+            to index the XML documents they contain.  Proper use of indexes can 
+            significantly reduce the time required to execute a particular XQuery 
+            expression.  The previous examples likely executed in a perceptible 
+            amount of time, because BDB XML was evaluating each and every document 
+            in the container against the query.  Without indexes, BDB XML has no 
+            choice but to review each document in turn. With indexes, BDB XML can 
+            find a subset of matching documents with a single, or significantly 
+            reduced, set of lookups. By carefully applying BDB XML indexing 
+            strategies we can improve retrieval performance considerably. 
+        </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                By default, BDB XML turns several useful indexes on so you
+                do not have to worry about them. However, for the purposes
+                of this document we turned them off at the beginning of
+                this chapter. (Using the shell
+                <code class="literal">setAutoIndexing</code> command). We do this here so
+                we can see relative performance differences between
+                containers with no indexes, and containers with the indexes
+                that we set.
+            </p>
+      </div>
+      <p>
+                To examine the usefulness of our indexes, we will use the
+                <code class="literal">time</code> command with each of our queries. 
+                This will report how long it takes for each operation to complete.
+        </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                The following query execution times are relative to the
+                computer and operating system used by the author.  Your
+                query times will differ as they depend on many qualities of
+                your system.  However, the percentage in improvement in
+                query execution time should be relatively similar. 
+            </p>
+      </div>
+      <p>
+            Recall the first structural query: 
+        </p>
+      <pre class="programlisting">time query '
+collection("parts.dbxml")/part[parent-part]'
+10000 objects returned for eager expression '
+collection("parts.dbxml")/part[parent-part]'
+
+Time in seconds for command 'query': 0.437096 </pre>
+      <p>
+            Notice the query execution time. This query takes almost a half
+            a second to execute because the query is examining each document in turn as it 
+            searches for the presence of a parent-part element.  To improve our 
+            performance, we want to specify an index that allows BDB XML to identify 
+            the subset of documents containing the <code class="literal">parent-part</code> 
+            element without actually examining each document.
+        </p>
+      <p>
+            Indices are specified in four parts: path type, node type, key type, 
+            and uniqueness.  This query requires an index of the node elements to 
+            determine if something is present or not. Because the pattern is not 
+            expected to be unique, we do not want to turn on uniqueness.  Therefore, 
+            the BDB XML index type that we should use is 
+            <code class="literal">node-element-presence-none</code>. 
+        </p>
+      <pre class="programlisting">dbxml&gt; addIndex "" parent-part node-element-presence-none
+Adding index type: node-element-presence-none to node: {}:parent-part
+
+dbxml&gt; time query '
+collection("parts.dbxml")/part[parent-part]'
+10000 objects returned for eager expression '
+collection("parts.dbxml")/part[parent-part]'</pre>
+      <p>
+            Our query time improved from .4 seconds to .2 seconds. 
+            As containers grow in size or complexity, indexes increase performance even 
+            more dramatically.  
+        </p>
+      <p>
+            The previous index will also improve the performance of the value query 
+            designed to search for the value of the <code class="literal">parent-part</code> element. 
+            But for better results, we should index the node as a double
+            value. (You use double here instead of decimal because the
+            XQuery specification indicates that implicit numerical casts
+            should be cast to double).
+        </p>
+      <p>
+                To do this, use a <code class="literal">node-element-equality-double</code> index. 
+        </p>
+      <pre class="programlisting">dbxml&gt; time query '
+collection("parts.dbxml")/part[parent-part = 1]'
+3333 objects returned for eager expression '
+collection("parts.dbxml")/part[parent-part = 1]'
+
+Time in seconds for command 'query': 0.511752
+                
+dbxml&gt; addIndex "" parent-part node-element-equality-double
+
+Adding index type: node-element-equality-decimal to node: {}:parent-part
+dbxml&gt; time query '
+collection("parts.dbxml")/part[parent-part = 1]'
+3333 objects returned for eager expression '
+collection("parts.dbxml")/part[parent-part = 1]'
+
+Time in seconds for command 'query': 0.070674 </pre>
+      <p>
+            Additional indexes will improve performance for the other value queries. 
+        </p>
+      <pre class="programlisting">dbxml&gt; time query '
+collection("parts.dbxml")/part[@number &gt; 100 and @number &lt; 105]'
+4 objects returned for eager expression
+'collection("parts.dbxml")/part[@number &gt; 100 and @number &lt; 105]'
+
+Time in seconds for command 'query': 5.06106
+</pre>
+      <p>
+            At over 5 seconds there is plenty of room for improvement.  
+            To improve our range query, we can provide an index for the number 
+            attribute: 
+        </p>
+      <pre class="programlisting">dbxml&gt;  addIndex "" number node-attribute-equality-double
+
+Adding index type: node-attribute-equality-double to node: {}:number
+
+dbxml&gt; time query '
+collection("parts.dbxml")/part[@number &gt; 100 and @number &lt; 105]'
+4 objects returned for eager expression '
+collection("parts.dbxml")/part[@number &gt; 100 and @number &lt; 105]'
+
+Time in seconds for command 'query': 3.33212 </pre>
+      <p>
+            As you can see, proper use of indexes can dramatically effect query performance. 
+        </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+                We mentioned at the beginning of this section that we had
+                turned auto indexing off. If we had left it on, the
+                container would have automatically had the following
+                indexes:
+            </p>
+        <pre class="programlisting">        node-element-string-equality
+        node-attribute-string-equality
+        node-element-double-equality
+        node-attribute-double-equality </pre>
+        <p>
+                These indexes would have been added for all attribute and
+                leaf nodes. For this example, the indexes would have been added for
+                the <code class="literal">&lt;description&gt;</code>, 
+                <code class="literal">&lt;category&gt;</code> and
+                <code class="literal">&lt;parent-part&gt;</code> nodes. They would
+                have also been added for the <code class="literal">number</code>
+                attribute on the <code class="literal">&lt;part&gt;</code>
+                node.
+        </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="valuequeries.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="reshapingresults.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Value Queries </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Reshaping the Result</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

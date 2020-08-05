@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Explicit Transactions on Reads</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML Transaction Processing" />
+    <link rel="up" href="txnconcurrency.html" title="Chapter 4. Concurrency" />
+    <link rel="prev" href="txnnowait.html" title="No Wait on Blocks" />
+    <link rel="next" href="filemanagement.html" title="Chapter 5. Managing BDB XML Files" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Explicit Transactions on Reads</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="txnnowait.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 4. Concurrency</th>
+          <td width="20%" align="right"> <a accesskey="n" href="filemanagement.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="xmlexplicitreadtxns"></a>Explicit Transactions on Reads</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+        Concurrent BDB XML applications should take care to use explicit
+        transactions for read-only activity in the container, as well as
+        write-only and read/write container activity.  You <span class="emphasis"><em>should
+            not</em></span> perform reads without the benefit of an explicit
+        transaction handle in BDB XML if you are using multiple threads to
+        access  the container, and you are using transactions in the first
+        place.
+    </p>
+      <p>
+        The reason for this is that read operations take locks and can
+        still deadlock. Therefore, non-transactional reads that occur
+        concurrently with transactional operations (read or write) will
+        lead to hangs and/or unexpected exceptions.
+    </p>
+      <p>
+        In addition, your threads that perform container access should
+        always perform deadlock handling, even if the thread only ever
+        performs read-only access.  The exception to this rule for
+        read-only threads is if you are using snapshot isolation. In that
+        case, your application should not see deadlocks. 
+    </p>
+      <p>
+        For information on handling deadlocks, see
+        <a class="xref" href="lockingsubsystem.html" title="The Locking Subsystem">The Locking Subsystem</a>. 
+        For information on using snapshot isolation, see
+        <a class="xref" href="isolation.html#snapshot_isolation" title="Using Snapshot Isolation">Using Snapshot Isolation</a>.
+    </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="txnnowait.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="txnconcurrency.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="filemanagement.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">No Wait on Blocks </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Chapter 5. Managing BDB XML Files</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

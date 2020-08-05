@@ -1,0 +1,52 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlIndexLookup::setHighBound</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlIndexLookup::setHighBound</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlIndexLookup::setHighBound(
+     const XmlValue &value,
+     XmlIndexLookup::Operation op)
+<p>
+XmlIndexLookup::Operation XmlIndexLookup::getHighBoundOperation() const
+<p>
+const XmlValue &XmlIndexLookup::getHighBoundValue() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlIndexLookup::setHighBound</b>
+<p>Sets the operation and value to be used for the upper bound
+for a range index lookup operation.  The high bound must
+be specified to indicate a range lookup.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>The value to be used for the upper bound.  Use of
+an empty value results in an inequality lookup, rather than
+a range lookup.</ul>
+ <b>op</b><ul compact><li>The operation to be used on the upper bound.  Must be one of:
+<br>
+<b>XmlIndexLookup::LT</b><ul compact><li>less than</ul>
+<b>XmlIndexLookup::LTE</b><ul compact><li>less than or equal to</ul>
+<br></ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

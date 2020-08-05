@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Indexer Processing Notes</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="indices.html" title="Chapter 7. Using BDB XML Indices" />
+    <link rel="prev" href="nodeindex.html" title="Specifying Index Nodes" />
+    <link rel="next" href="autoindex.html" title="Automatic Indexes" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Indexer Processing Notes</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="nodeindex.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 7. Using BDB XML Indices</th>
+          <td width="20%" align="right"> <a accesskey="n" href="autoindex.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="indexerProcessing"></a>Indexer Processing Notes</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+			As you design your indexing strategy, keep the following in mind:
+		</p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+						As with all indexing mechanisms, the more indices that you maintain the
+						slower your write performance will be. Substring indices are particularly
+						heavy relative to write performance.
+				</p>
+          </li>
+          <li>
+            <p>
+					The indexer does not follow external references to document type definitions and
+					external entities. References to external entities are removed from the
+					character data. Pay particular attention to this when using equality 
+					and substring indices as element and attribute values (as indexed) may differ
+					from what you expect.
+				</p>
+          </li>
+          <li>
+            <p>
+					The indexer substitutes internal entity references with their replacement text. 
+				</p>
+          </li>
+          <li>
+            <p>
+					The indexer concatenates character data mixed with child data into a single
+					value. For example, as indexed the fragment:
+				</p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <pre class="programlisting">&lt;node1&gt;
+    This is some text with some 
+    &lt;inline&gt;inline &lt;/inline&gt; data.
+&lt;/node1&gt; </pre>
+              </blockquote>
+            </div>
+            <p>
+					has two elements. &lt;node1&gt; has the value:
+				</p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>"This is some text with some data"</p>
+              </blockquote>
+            </div>
+            <p>
+					while &lt;inline&gt; has the value:
+				</p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>"inline"</p>
+              </blockquote>
+            </div>
+          </li>
+          <li>
+            <p>
+					The indexer expands CDATA sections. For example, the fragment:
+				</p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <pre class="programlisting">&lt;node1&gt;
+    Reserved XML characters are &lt;![CDATA['&lt;', '&gt;', and '&amp;']]&gt;     
+&lt;/node1&gt; </pre>
+              </blockquote>
+            </div>
+            <p>
+					is indexed as if &lt;node1&gt; has the value:
+				</p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>"Reserved XML characters are '&lt;', '&gt;', and '&amp;'"</p>
+              </blockquote>
+            </div>
+          </li>
+          <li>
+            <p>
+					The indexer replaces namespace prefixes with the namespace URI to which they
+					refer. For example, the <code class="literal">class</code> attribute in the following code fragment:
+				</p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <pre class="programlisting">&lt;node1 myPrefix:class="test" 
+xlmns:myPrefix="http://dbxmlExamples/testPrefix /&gt; </pre>
+              </blockquote>
+            </div>
+            <p>
+					is indexed as
+				</p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <pre class="programlisting">&lt;node1 http://dbxmlExamples/testPrefix:class="test" 
+xlmns:myPrefix="http://dbxmlExamples/testPrefix /&gt; </pre>
+              </blockquote>
+            </div>
+            <p>
+						This normalization ensures that documents containing the same element types,
+						but with different prefixes for the same namespace, are indexed as if they
+						were identical.
+				</p>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="nodeindex.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="indices.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="autoindex.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Specifying Index Nodes </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Automatic Indexes</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

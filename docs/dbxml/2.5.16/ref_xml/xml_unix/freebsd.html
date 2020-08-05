@@ -1,0 +1,37 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: FreeBSD</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for UNIX/POSIX systems</dl></b></td>
+<td align=right><a href="../xml_unix/solaris.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/hpux.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>FreeBSD</b></p>
+See Also <a href="../../programmer_reference/build_unix_freebsd.html">Berkeley DB notes on FreeBSD</a>
+<ol>
+<p><li><b>Normal build command for FreeBSD and no options:</b>
+<blockquote><pre>sh buildall.sh</pre></blockquote>
+<p><li>
+<b>Known issue in Xerces 3.0.1.</b>
+<p>There is a known issue in xerces 3.0.1 where in the file xerces-c-src/src/xercesc/util/NetAccessors/Socket/UnixHTTPURLInputStream.cpp the "if (n<0)" should be "if(n!=0)".</p>
+<p><li><b>I can't run Berkeley DB XML on a FreeBSD 5.4 machine.</b>
+<p>On some installations of FreeBSD 5.4, you may see
+this runtime error:
+<blockquote><pre>Fatal error 'Spinlock called when not threaded.' at line 87 in file /usr/src/lib/libpthread/thread/thr_spinlock.c (errno = 0)
+</pre></blockquote>
+If this error is seen, it is necessary to create an /etc/libmap.conf
+file to map libc_r to libpthread.
+See "man 4 libmap.conf" for details on how to do this.
+</p>
+</ol>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/solaris.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_unix/hpux.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

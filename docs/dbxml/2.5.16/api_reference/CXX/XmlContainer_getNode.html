@@ -1,0 +1,86 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::getNode</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::getNode</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlValue getNode(const std::string &nodeHandle, u_int32_t flags = 0)
+<p>
+XmlDocument getNode(
+    XmlTransaction &txn, const std::string &nodeHandle, u_int32_t flags = 0)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::getNode</b>
+<p>The XmlContainer::getNode method returns the <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a>
+of type XmlValue::NODE representing the specified handle.  The handle
+must represent a node in a document in the <a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a>.  If
+the document or node has been removed, the operation may fail.</p>
+<p>Node handles are guaranteed to remain stable in the absence of
+modifications to a document.  If a document is modified, a handle
+may cease to exist, or may belong to a different node.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>nodeHandle</b><ul compact><li>The handle representing the node which must have been obtained using
+<a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeHandle</a>.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or
+one of the following values:
+<br>
+<b><a name="DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a></b><ul compact><li>This operation will support degree 1 isolation; that is, read operations
+may return data that has been modified by other transactions but which
+has not yet been committed.
+Silently ignored if the <a href="../../api_reference/CXX/dbopen.html#DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a> flag 
+was not specified when the underlying container was opened.
+</ul>
+<b><a name="DB_READ_COMMITTED">DB_READ_COMMITTED</a></b><ul compact><li>This operation will have degree 2 isolation.  This provides for cursor
+stability but not repeatable reads.  Data items which have been
+previously read by this transaction may be deleted or modified by other
+transactions before this transaction completes.
+</ul>
+<b><a name="DB_RMW">DB_RMW</a></b><ul compact><li>Acquire write locks instead of read locks when doing the read, if
+locking is configured.  Setting this flag can eliminate deadlock during
+a read-modify-write cycle by acquiring the write lock during the read
+part of the cycle so that another thread of control acquiring a read
+lock for the same item, in its own read-modify-write cycle, will not
+result in deadlock.
+</ul>
+<b><a name="DBXML_LAZY_DOCS">DBXML_LAZY_DOCS</a></b><ul compact><li>Retrieve the document lazily. That is, retrieve document content and
+document metadata only on an as needed basis when reading the document.</ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::getNode method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>DATABASE_ERROR</b><ul compact><li>An error occurred in an underlying Berkeley DB database. The
+<a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a> method will return the error code for the error.</ul>
+<br>
+<br>
+<b>DOCUMENT_NOT_FOUND</b><ul compact><li>The node and/or document specified by the handle is not in the XmlContainer.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

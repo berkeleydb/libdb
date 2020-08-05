@@ -1,0 +1,435 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Building Berkeley DB XML for Windows</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a><a name="3"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Building Berkeley DB XML for Windows systems</dl></b></td>
+<td align=right><a href="../xml_unix/cygwin.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_win/notes.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Building Berkeley DB XML for Windows</b></p>
+<a href="../../ref_xml/xml_win/intro.html#about">About Building and Building Berkeley DB XML Using Visual Studio Solution and Project Files</a><br>
+<a href="../../ref_xml/xml_win/intro.html#libs">Dependent Libraries</a><br>
+<a href="../../ref_xml/xml_win/intro.html#vs2008">Visual Studio 2008</a><br>
+<a href="../../ref_xml/xml_win/intro.html#vs2005">Visual Studio 2005</a><br>
+<a href="../../ref_xml/xml_win/intro.html#vs2005x">Visual Studio 2005 Express Edition</a><br>
+<a href="../../ref_xml/xml_win/intro.html#vs2003">Visual Studio 2003</a><br>
+<a href="../../ref_xml/xml_win/intro.html#vs6">Visual Studio 6</a><br>
+<a href="../../ref_xml/xml_win/intro.html#cppex">Running C++ Examples</a><br>
+<a href="../../ref_xml/xml_win/intro.html#java">Building the Java API</a><br>
+<a href="../../ref_xml/xml_win/intro.html#tcl">Building the Tcl API</a><br>
+<a href="../../ref_xml/xml_win/intro.html#compress">Disabling Compression</a><br>
+<a href="../../ref_xml/xml_win/intro.html#other">Building with Libraries in other Directories</a><br>
+<p></p>
+<a id="about"></a>
+<b>About Building Berkeley DB XML and Using Visual Studio Solutions</b>
+<p>If you want to build on Windows using Cygwin see the instructions for
+<a href="../../ref_xml/xml_unix/intro.html">building on Unix systems.</a></p>
+<p>The Berkeley DB XML distribution comprises several libraries: a base C++ library,
+three third-party libraries, and optional libraries for additional language
+interfaces such as Java, Perl, Python, PHP, and Tcl.  Instructions for building
+the base libraries as well as Java, Tcl and PHP interfaces are included here.  Instructions
+for the other language bindings appear in their respective directories:
+dbxml-2.5.16/dbxml/src/{perl,python}.
+All bindings require the C++ library and third-party libraries.</p>
+<a id="libs"></a>
+<b>Required Third-party Libraries</b>
+<p>Berkeley DB XML makes use of several open source libraries.  Each of these
+packages is freely available and distributed under an Open Source
+license.  The Berkeley DB XML distribution bundles compatible versions of all
+third-party libraries.  No additional downloads are required.  Use of
+other versions may not work.  If in doubt ask on the 
+<a href="http://forums.oracle.com/forums/forum.jspa?forumID=274.html">Berkeley DB XML 
+forum</a>. Berkeley DB XML requires
+the following third-party libraries:</p>
+<p><a href="http://www.oracle.com/database/berkeley-db/index.html">Berkeley DB</a>
+is a general purpose database toolkit.  This release of Berkeley DB XML
+includes the Berkeley DB 4.8.x release, and requires the Berkeley DB 4.3.28 release
+or later.</p>
+<p><a href="http://xml.apache.org/xerces-c/index.html">Xerces</a>
+is the Apache implementation of XML parsing technology and DOM.
+The build requires a source release of Xerces, not just a binary
+release.  This release of Berkeley DB XML bundles Xerces-C 3.0.1 and 
+requires the Xerces 3.0.0 release or newer.</p>
+<p><a href="http://xqilla.sourceforge.net">XQilla</a>
+is an open source implementation of XQuery 1.0 and XPath 2.0.
+Berkeley DB XML bundles the 2.2 release of XQilla.
+Later versions of XQilla may work, but are not implicitly supported.</p>
+<p><a href="http://www.zlib.net/">ZLIB</a>
+is an open source compression library.  This release of Berkeley DB XML bundles the binary release of ZLIB 1.2.3.
+It is not required if wholedoc container compression is not desired.</p>
+<a id="vs2008"></a>
+<b>Building with Microsoft Visual Studio 2008 and Express Edition</b>
+<ol>
+<p><li>Choose <i>File -&gt; Open -&gt; Project/Solution</i>.  Look in the
+<b>dbxml-2.5.16/dbxml/build_windows</b>
+directory for solution files, select <b>BDBXML_all_vs8.sln</b>, and press Open.
+<p><li>Visual Studio will prompt you about converting the project files to a newer
+format.  Allow this to proceeed.
+<p><li>Choose the project configuration from the drop-down menu on the Visual Studio
+tool bar.
+<p><li>To build, select <i>Build Solution</i> from the <i>Build</i>
+drop-down menu.
+  All library files (*.lib) are placed in
+<b>dbxml-2.5.16/lib</b>, DLLs and
+executables are installed in
+<b>dbxml-2.5.16/bin</b>
+or <b>dbxml-2.5.16/bin/debug</b>
+depending on the configuration you choose,
+.jar files are placed in
+<b>dbxml-2.5.16/jar</b>,
+and header (include) files for application development
+are copied to
+<b>dbxml-2.5.16/include</b>.
+<p><li>By default, <b>BDBXML_all_vs8.sln</b> builds all third-party libraries,
+Berkeley DB XML, and Berkeley DB XML C++ examples.  The examples are installed in
+<b>bin{/debug}</b> along with other executables.
+</ol>
+<a id="vs2005"></a>
+<b>Building with Microsoft Visual Studio 2005</b>
+<ol>
+<p><li>Choose <i>File -&gt; Open -&gt; Project/Solution</i>.  Look in the
+<b>dbxml-2.5.16/dbxml/build_windows</b>
+directory for solution files, select <b>BDBXML_all_vs8.sln</b>, and press Open.
+<p><li>Choose the project configuration from the drop-down menu on the Visual Studio
+tool bar.
+<p><li>To build, select <i>Build Solution</i> from the <i>Build</i>
+drop-down menu.
+  All library files (*.lib) are placed in
+<b>dbxml-2.5.16/lib</b>, DLLs and
+executables are installed in
+<b>dbxml-2.5.16/bin</b>
+or <b>dbxml-2.5.16/bin/debug</b>
+depending on the configuration you choose,
+.jar files are placed in
+<b>dbxml-2.5.16/jar</b>,
+and header (include) files for application development
+are copied to
+<b>dbxml-2.5.16/include</b>.
+<p><li>By default, <b>BDBXML_all_vs8.sln</b> builds all third-party libraries,
+Berkeley DB XML, and Berkeley DB XML C++ examples.  The examples are installed in
+<b>bin{/debug}</b> along with other executables.
+</ol>
+<a id="vs2005x"></a>
+<b>Building with Microsoft Visual C++ 2005 Express Edition</b>
+<ol>
+<p><li>Download and install Microsoft Platform SDK.
+<p><li>Choose <i>File -&gt; Open -&gt; Project/Solution</i>.  Look in the
+<b>dbxml-2.5.16/dbxml/build_windows</b>
+directory for solution files, select <b>BDBXML_all_vs8.sln</b>, and press Open.
+<p><li>Right click the <b>db</b> project and select <i>properties</i>.  On the properties
+page select <i>All Configurations</i> from the <i>Configuration menu</i> 
+in the top left corner.  Enter <b>ws2_32.lib advapi32.lib</b> for the 
+<i>Additional Dependencies</i> option of <i>Linker -&gt; Input</i>.  Select the <i>OK</i> button 
+to save the changes.
+<p><li>Select <i>Options...</i> from the <i>Tools</i> pull-down menu.  
+Choose <i>Projects and Solutions</i>, then <i>VC++ Directories</i>.  
+Select <i>Include files</i> from the <i>Show directories for</i> menu.
+  Add the complete path to <b>Microsoft Platform SDK\Include\mfc</b> and
+<b>Microsoft Platform SDK\Include</b> to the list of directories.  Next 
+select <i>Library files</i> from the <i>Show directories for:</i> menu.  
+Add the complete path too <b>Microsoft Platform SDK\Lib</b> to the list of 
+directories.
+<p><li>Choose the project configuration from the drop-down menu on the Visual Studio
+tool bar.
+<p><li>To build, select <i>Build Solution</i> from the <i>Build</i>
+drop-down menu.
+  All library files (*.lib) are placed in
+<b>dbxml-2.5.16/lib</b>, DLLs and
+executables are installed in
+<b>dbxml-2.5.16/bin</b>
+or <b>dbxml-2.5.16/bin/debug</b>
+depending on the configuration you choose,
+.jar files are placed in
+<b>dbxml-2.5.16/jar</b>,
+and header (include) files for application development
+are copied to
+<b>dbxml-2.5.16/include</b>.
+<p><li>By default, <b>BDBXML_all_vs8.sln</b> builds all third-party libraries,
+Berkeley DB XML, and Berkeley DB XML C++ examples.  The examples are installed in
+<b>bin{/debug}</b> along with other executables.
+</ol>
+<a id="vs2003"></a>
+<b>Building with Microsoft Visual Studio .NET 2003</b>
+<ol>
+<p><li>Choose <i>File -&gt; Open Solution</i>.  Look in the
+<b>dbxml-2.5.16/dbxml/build_windows</b>
+directory for solution files, select <b>BDBXML_all.sln</b>, and press Open.
+<p><li>Choose the project configuration from the drop-down menu on the .NET
+tool bar.
+<p><li>To build, select <i>Build Solution</i> from the <i>Build</i>
+drop-down menu.  All library files (*.lib) are placed in
+<b>dbxml-2.5.16/lib</b>, DLLs and
+executables are installed in
+<b>dbxml-2.5.16/bin</b>
+or <b>dbxml-2.5.16/bin/debug</b>
+depending on the configuration you choose,
+.jar files are placed in
+<b>dbxml-2.5.16/jar</b>,
+and header (include) files for application development
+are copied to
+<b>dbxml-2.5.16/include</b>.
+<p><li>By default, <b>BDBXML_all.sln</b> builds all third-party libraries,
+Berkeley DB XML, and Berkeley DB XML C++ examples.  The examples are installed in
+<b>bin{/debug}</b> along with other executables.
+</ol>
+<a id="vs6"></a>
+<b>Building with Microsoft Visual C++ 6.0</b>
+<ol>
+<p><li>Choose <i>File -&gt; Open Workspace</i>.  Look in the
+<b>dbxml-2.5.16/dbxml/build_windows</b>
+directory for Workspaces, select <b>BDBXML_all.dsw</b>, and press
+Open.
+<p>It is possible that while opening <b>BDBXML_all.dsw</b> there will be an
+error regarding the XercesLib project.  If that happens allow VC6 to "wrap"
+the project and save it as a new name (use the default).  The new name will
+appear in the Workspace's project list.  In this case build that project
+by itself <b>before</b> building anything else.  Once that is done
+continue with the directions below.
+</p>
+<p><li>Choose the desired project configuration by going to
+<i>Build -&gt; Set Active Configuration</i> and select the
+appropriate option to the all project. Then click OK.
+<p><li>To build, select <i>Build -&gt; Build all.exe</i>.
+  All library files (*.lib) are placed in
+<b>dbxml-2.5.16/lib</b>, DLLs and
+executables are installed in
+<b>dbxml-2.5.16/bin</b>
+or <b>dbxml-2.5.16/bin/debug</b>
+depending on the configuration you choose,
+.jar files are placed in
+<b>dbxml-2.5.16/jar</b>,
+and header (include) files for application development
+are copied to
+<b>dbxml-2.5.16/include</b>.
+<p><li>By default, <b>BDBXML_all.dsw</b> builds all third-party libraries,
+Berkeley DB XML, and Berkeley DB XML C++ examples.  The examples are installed in
+<b>bin{/debug}</b> along with other executables.
+</ol>
+<p>When building your application, you should normally use compile options
+"Debug Multithreaded DLL" and link against
+<b>lib/libdbxml25d.lib</b>.  You can
+also build using a release version of the libraries and tools, which
+will be placed in
+<b>lib/libdbxml25.lib</b>.  A safe way
+to construct a project file for your application is to adapt one of
+the Berkeley DB XML example projects.</p>
+<a id="cppex"></a>
+<b>Running C++ Examples</b>
+<p>After a successful build, the Berkeley DB XML example executable files are in
+<b>bin{/debug}</b>.  See
+<b>dbxml/examples/cxx/gettingStarted/Readme.txt</b> for instructions
+on building the C++ example containers and running examples.</p>
+<a id="java"></a>
+<b>Building the Java API with Visual Studio .NET or above</b>
+<p>The Berkeley DB XML Java API is not built automatically.  The following
+instructions assume that you have installed the Sun Java Development Kit
+in <b>d:/java</b>.  If you installed elsewhere or have
+different Java software you will need to adjust the pathnames
+accordingly.</p>
+<ol>
+<p><li>Set your include directories.  Choose
+<i>Tools -&gt; Options -&gt; Projects -&gt; VC++ Directories</i>.
+Under the "Show directories for" pull-down, select "Include files".  Add
+the full pathnames for the <b>java/include</b> and
+<b>java/include/win32</b> directories.  Then click OK.  These are the
+directories needed when including jni.h.
+<p><li>Set the executable files directories.  Choose
+<i>Tools -&gt; Options -&gt; Projects -&gt; VC++ Directories</i>.
+Under the "Show directories for" pull-down, select "Executable files".
+Add the full pathname for the <b>java/bin</b> directory, then click
+OK.  This is the directory needed to find javac.
+<p><li>Set the build type to Release or Debug (or other appropriate configuration) 
+in the drop-down on the .NET tool
+bar.
+<p><li>Right-click on db_java and select Build.  This builds the Java support
+library for Berkeley DB, which is required for Berkeley DB XML, and compiles all the
+java files, placing the resulting <b>db.jar</b> and
+<b>dbexamples.jar</b> files in <b>bin</b> or
+<b>bin/debug</b>.
+<p><li>Right-click on dbxml_java and select Build.  This builds the Java
+support library for Berkeley DB XML and compiles all the java files, placing the
+resulting <b>dbxml.jar</b> and <b>dbxmlexamples.jar</b> files in
+<b>jar</b>.
+</ol>
+<h4>Building Java with Visual C++ 6.0</h4>
+<ol>
+<p><li>Set the include directories.  Choose
+<i>Tools -&gt; Options -&gt; Directories</i>.
+Under the "Show directories for" pull-down, select "Include files".  Add
+the full pathnames for the <b>java/include</b> and
+<b>java/include/win32</b> directories.  These are the directories
+needed when including <b>jni.h</b>.
+<p><li>Set the executable files directories.  Choose
+<i>Tools -&gt; Options -&gt; Directories</i>.
+Under the "Show directories for" pull-down, select "Executable files".
+Add the full pathname for the <b>java/bin</b> directory.  This is the
+directory needed to find javac.
+<p><li>Go to <i>Build -&gt; Set Active Configuration</i> and select
+either the Debug or Release version of the db_java project.  Then press
+OK.
+<p><li>Select <i>Build -&gt; Build libdb_java48.dll</i>.  This builds
+the Java support library for Berkeley DB, which is required for Berkeley DB XML, and
+compiles all the java files, placing the resulting <b>db.jar</b> and
+<b>dbexamples.jar</b> files in <b>jar</b>.
+<p><li>Go to <i>Build -&gt; Set Active Configuration</i> and select
+either the Debug or Release version of the dbxml_java project.  Then
+press OK.
+<p><li>Select
+<i>Build -&gt; Build libdbxml_java25.dll</i>.
+This builds the Java support library for Berkeley DB XML, and compiles all the
+java files, placing the resulting <b>dbxml.jar</b> and
+<b>dbxmlexamples.jar</b> files in <b>jar</b>.
+</ol>
+<p>To run Java code, set your environment variable <b>CLASSPATH</b> to
+include the full pathname of these jar files, and your environment
+variable <b>PATH</b> to include the <b>bin</b> (Release build)
+ or <b>bin/debug</b> (Debug build)
+subdirectory.  The jar files for debug and release builds are identical, and 
+will attempt to load the approriate native libraries, first attempting to 
+load Release, then Debug libraries.  
+On Windows, remember that files or directories in the
+<b>CLASSPATH</b> and <b>PATH</b> variables must be separated by
+semicolons (unlike UNIX)</p>
+<b>Running Java Examples</b>
+<p>After a successful build, the Berkeley DB XML examples are in
+<b>jar/dbxmlexamples.jar</b>.  See
+<b>dbxml/examples/java/gettingStarted/Readme.txt</b> for instructions
+on building the Java example containers and running Java examples.</p>
+<a id="tcl"></a>
+<b>Building the Tcl API</b>
+<p>Tcl support is not built automatically.  You must have Tcl installed
+on the machine.  You should use at least version 8.4.
+These notes assume that Tcl is installed as
+<b>d:/tcl</b> but you can change that if you want.</p>
+<p>The Tcl library must be built as the same build type as the Berkeley DB and
+Berkeley DB XML libraries (both Release or both Debug).  We found that the binary
+release of Tcl can be used with the Release configurations of Berkeley DB and
+Berkeley DB XML, but you will need to build Tcl from sources for the Debug
+configuration.  Before building Tcl, you will need to modify its
+makefile to make sure that you are building a debug version, including
+thread support.  This is because the set of DLLs linked into the Tcl
+executable must match the corresponding set of DLLs used by Berkeley DB and
+Berkeley DB XML.</p>
+<h4>Building Tcl with Visual C++ .NET or higher</h4>
+<ol>
+<p><li>Set the include directories.  Choose
+<i>Tools -&gt; Options -&gt; Projects -&gt; VC++ Directories</i>.
+Under the "Show directories for" pull-down, select "Include files".  Add
+the full pathname for <b>tcl/include</b>, then click OK.  This is the
+directory that contains <b>tcl.h</b>.
+<p><li>Set the library files directory.  Choose
+<i>Tools -&gt; Options -&gt; Projects -&gt; VC++ Directories</i>.
+Under the "Show directories for" pull-down menu, select "Library files".
+Add the full pathname for the <b>tcl/lib</b> directory, then click OK.
+This is the directory needed to find
+<b>tcl84.lib</b> (or whatever the library
+is named in your distribution).
+<p><li>Set the build type to Release or Debug (or other appropriate configuration)
+in the drop-down on the .NET tool
+bar.
+<p><li>Right-click on db_tcl and select Build.  This builds the Tcl support
+library for Berkeley DB, which is required for Berkeley DB XML, placing the result into
+<b>bin/debug/libdb_tcl48d.dll</b> or
+<b>bin/libdb_tcl48.dll</b>.
+<p><li>Right-click on dbxml_tcl and select Build.  This builds the Tcl support
+library for Berkeley DB XML, placing the result into
+<b>bin/debug/libdbxml_tcl25d.dll</b> or
+<b>bin/libdbxml_tcl25.dll</b>.
+</ol>
+<p>If you use a version different from Tcl 8.4.x you will
+need to change the name of the Tcl library used in the build (for
+example, <b>tcl84.lib</b>) to the
+appropriate name.  To do this, right click on <i>db_tcl</i>, go to
+<i>Properties -&gt; Linker -&gt; Input -&gt; Additional
+dependencies</i> and change <b>tcl84.lib</b>
+to match the Tcl version you are using.</p>
+<h4>Building Tcl with Visual C++ 6.0</h4>
+<ol>
+<p><li>Set the include directories.  Choose <i>Tools -&gt; Options
+-&gt; Directories</i>.  Under the "Show directories for" pull-down menu,
+select "Include files".  Add the full pathname for <b>tcl/include</b>,
+then click OK.  This is the directory that contains <b>tcl.h</b>.
+<p><li>Set the library files directory.  Choose <i>Tools -&gt;
+Options -&gt; Directories</i>.  Under the "Show directories for"
+pull-down menu, select "Library files".  Add the full pathname for the
+<b>tcl/lib</b> directory, then click OK.  This is the directory needed
+to find <b>tcl84.lib</b> (or whatever the
+library is named in your distribution).
+<p><li>Go to <i>Build -&gt; Set Active Configuration</i> and select
+either the Debug or Release version of the db_tcl project.  Then press
+OK.
+<p><li>Select
+<i>Build -&gt; Build libdb_tcl48
+}.dll.
+This builds the Tcl support library for Berkeley DB</i>
+<p><li>Go to <i>Build -&gt; Set Active Configuration</i> and select
+either the Debug or Release version of the dbxml_tcl project.  Then
+press OK.
+<p><li>Select
+<i>Build -&gt; Build libdbxml_tcl25.dll</i>.
+This builds the Tcl support library for Berkeley DB XML, placing the result into
+<b>bin/debug/libdbxml_tcl25d.dll</b> or
+<b>bin/libdbxml_tcl25.dll</b>.
+</ol>
+<p>If you use a version different from Tcl 8.4.x you will
+need to change the name of the Tcl library used in the build (for
+example, <b>tcl84.lib</b>) to the
+appropriate name.  To do this, choose
+<i>Project -&gt; Settings -&gt; db_tcl</i>
+and change the Tcl library listed in the Object/Library modules
+<b>tcl84.lib</b> to match the Tcl version
+you are using.</p>
+<a id="compress"></a>
+<b>Disabling default compression</b>
+<p>Disabling default compression has the benefit of speeding up access to data in whole document containers at the cost of increasing container size.  Disabling default compression also removes the dependency on the ZLIB library.  Compression can be disabled by deleting the preprocessor definition <b>_DBXML_COMPRESSSION</b> and the linker dependency zdll.lib from the project dbxml, then rebuilding the project.  Be warned that containers created with default compression cannot be opened if default compression has been disabled.</p>
+<a id="other"></a>
+<b>Building with third-party libraries in other directories</b>
+<p>The Berkeley DB XML source distribution includes compatible versions of necessary
+third-party libraries.  The <b>BDBXML_all*</b> solution builds them.
+This section is for advanced building, where libraries are not located
+in the directories as expected by the distribution.  Berkeley DB XML can be built
+with third-party libraries that are not located in the Berkeley DB XML default
+location.  In this case, use the <b>BDBXML_all*</b> solution/workspace.
+Opening may generate warnings that project files cannot be found.  In this case,
+those warnings can be ignored.</p>
+<p>In Visual C++ open the Tools/Options tabbed dialog for adding
+directories. Add the include and library paths for the third-party
+libraries located elsewhere.  To do this, select <i>Options...</i>
+from the <i>Tools</i> pull-down menu.  In Visual C++ 6.0, a tabbed
+dialog should appear.  Choose the <i>Directories</i> tab in the
+dialog, and for the <i>Platform</i>, select <i>Win32</i>.  In
+Visual Studio .NET, a different window appears.  Choose
+<i>Projects</i>, then <i>VC++ Directories</i>.</p>
+<p>In either case, use <i>Include files</i> under <i>Show
+directories for</i> to add include directories, and <i>Library
+files</i> for library paths.</p>
+<p>For Berkeley DB add the include path <b>db-&lt;version&gt;</b>,
+<b>db-&lt;version&gt;/build_windows</b>. Also add the library paths
+<b>db-&lt;version&gt;/build_windows/Debug</b> and
+<b>db-&lt;version&gt;/build_windows/Release</b>.</p>
+<p>For the source release of Xerces add the include path
+<b>xerces-c-src/src</b>.  Then add the appropriate
+build directory for your compiler, for example,
+<b>xerces-c-src/build/win32/vc6/debug</b> and
+<b>xerces-c-src/build/win32/vc6/release</b>.  Use
+<b>vc7.1</b> instead of <b>vc6</b> for Visual Studio .NET.</p>
+<p>While there may be compatible releases of XQilla libraries
+available it is necessary to use those included in the Berkeley DB XML
+distribution in order to be supported.</p>
+<p>The dbxml_java project includes a Custom Build Step that includes the
+path to the Berkeley DB .jar file three times. These must be changed to
+<b>db-&lt;version&gt;/build_windows/debug/db.jar</b> for the Debug
+configuration, and to
+<b>db-&lt;version&gt;/build_windows/release/db.jar</b> for the
+Release configuration.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_unix/cygwin.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xml_win/notes.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

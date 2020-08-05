@@ -1,0 +1,800 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Managing BDB XML Indices</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="indices.html" title="Chapter 7. Using BDB XML Indices" />
+    <link rel="prev" href="autoindex.html" title="Automatic Indexes" />
+    <link rel="next" href="verifyqueryplan.html" title="Verifying Indices using Query Plans" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Managing BDB XML Indices</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="autoindex.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 7. Using BDB XML Indices</th>
+          <td width="20%" align="right"> <a accesskey="n" href="verifyqueryplan.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="managingindices"></a>Managing BDB XML Indices</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="managingindices.html#addindex">Adding Indices</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="managingindices.html#deleteindex">Deleting Indices</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="managingindices.html#replaceindex">Replacing Indices</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="managingindices.html#iterateindex">Examining Container Indices</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="managingindices.html#defaultindex">Working with Default Indices</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="managingindices.html#lookupindex">Looking Up Indexed Documents</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        Indices are set for a container using the container's index
+        specification. You can specify an index either against a specific node
+        and namespace, or you can define default indices that are applied to
+        every node in the container.
+    </p>
+      <p>
+		You add, delete, and replace indices using the container's index specification. 
+        You can also iterate through the specification, so as to examine each of the 
+        indices declared for the container.  Finally, if you want to retrieve all the 
+        indices maintained for a named node, you can use the index specification to find 
+        and retrieve them.
+	</p>
+      <p>
+        An API exists that allows you to retrieve all of the documents or nodes
+        referenced by a given index. 
+    </p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+				For simple programs, managing the index specification and then setting it to the
+				container (as is illustrated in the following examples) can be tedious. For this
+				reason, BDB XML also provides index management functions directly on the container.
+				Which set of functions your application uses is entirely up to your requirements and
+				personal tastes.
+			</p>
+      </div>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+            Performing index modifications (for example, adding and replacing
+            indices) on a container that
+            already contains documents can be a very expensive operation —
+            especially if the container holds a large number of documents, or
+            very large documents, or both. This is because indexing a container
+            requires BDB XML to traverse every document in the container.
+        </p>
+        <p>
+            If you are considering re-indexing a large container, be aware that
+            the operation can take a long time to complete.
+        </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="addindex"></a>Adding Indices</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+			To add an index to a container:
+		</p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+					Retrieve the index specification from the container.
+				</p>
+            </li>
+            <li>
+              <p>
+						Use 
+                         
+                        <code class="literal">XmlIndexSpecification.addIndex()</code> 
+                        to add the index to
+						the container. You must provide to this method the
+                        namespace and node name to which the index is applied.
+                        You must also identify the indexing strategy. 
+				</p>
+              <p>
+                        If the index already exists for the specified node, then the 
+                        method silently does nothing.
+                </p>
+            </li>
+            <li>
+              <p>
+						Set the updated index specification back to the container.
+				</p>
+            </li>
+          </ol>
+        </div>
+        <p>
+			For example:
+		</p>
+        <a id="java_addindex1"></a>
+        <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlIndexSpecification;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlValue;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    // Get the index specification
+    XmlIndexSpecification is = myContainer.getIndexSpecification();
+
+
+    // Add the index. We're indexing "node1" using the default
+    // namespace.
+    is.addIndex("", "node1", "node-element-presence-none");
+
+    // Save the index specification back to the container.
+    myContainer.setIndexSpecification(is);
+
+    is.delete();
+
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="deleteindex"></a>Deleting Indices</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+			To delete an index from a container:
+		</p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+					Retrieve the index specification from the container.
+				</p>
+            </li>
+            <li>
+              <p>
+						Use 
+                         
+                        <code class="literal">XmlIndexSpecification.deleteIndex()</code> 
+                        to delete the index from the index specification. 
+				</p>
+            </li>
+            <li>
+              <p>
+						Set the updated index specification back to the container.
+				</p>
+            </li>
+          </ol>
+        </div>
+        <p>
+			For example:
+		</p>
+        <a id="java_deleteindex1"></a>
+        <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlIndexSpecification;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlValue;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    // Get the index specification
+    XmlIndexSpecification is = myContainer.getIndexSpecification();
+
+    // Delete the index. We're deleting the index from "node1" in
+    // the default namespace that has the syntax strategy identified
+    // above. 
+    is.deleteIndex("", "node1", "node-element-presence-none");
+
+    // Save the index specification back to the container.
+    myContainer.setIndexSpecification(is);
+
+    is.delete();
+
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="replaceindex"></a>Replacing Indices</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            You can replace the indices maintained for a specific node by using
+				
+                <span><code class="methodname">XmlIndexSpecification.replaceIndex()</code>.</span>
+            When you replace the index for a specified node, all of the current
+            indices for that node are deleted and the replacement index
+            strategies that you provide are used in their place.
+		</p>
+        <p>
+            Note that all the indices for a specific node can be retrieved and
+            specified as a space- or comma-separated list in a single string.  So if you
+            set a node-element-equality-string and a node-element-presence index
+            for a given node, then its indices are identified as:
+		</p>
+        <div class="blockquote">
+          <blockquote class="blockquote">
+            <p>
+              <code class="literal">"node-element-equality-string node-element-presence"</code>
+            </p>
+          </blockquote>
+        </div>
+        <p>
+			For example:
+		</p>
+        <a id="java_replaceindex1"></a>
+        <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlIndexSpecification;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlValue;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    // Get the index specification
+    XmlIndexSpecification is = myContainer.getIndexSpecification();
+
+    // Replace the index.
+    String idxString = 
+        "node-element-equality-string node-element-presence";
+    is.replaceIndex("", "node1", idxString);
+
+    // Save the index specification back to the container.
+    myContainer.setIndexSpecification(is);
+
+    is.delete();
+
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="iterateindex"></a>Examining Container Indices</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            You can iterate over all the indices in a container using
+				
+                <span><code class="methodname">XmlIndexSpecification.next()</code>.</span>
+            
+            <span>
+                This method returns the index in the form of an 
+                <code class="classname">XmlIndexDeclaration</code> object.
+            </span>
+		</p>
+        <p>
+			For example:
+		</p>
+        <a id="java_countindex1"></a>
+        <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlIndexSpecification;
+import com.sleepycat.dbxml.XmlIndexDeclaration;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlValue;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    // Get the index specification
+    XmlIndexSpecification is = myContainer.getIndexSpecification();
+
+    int count = 0;
+    XmlIndexDeclaration idxDecl = null;
+    while((idxDecl = (idxSpec.next())) != null) {
+        System.out.println("For node '" + idxDecl.name +
+                           "', found index: '" +
+                           idxDecl.index + "'.");
+        count ++;
+    }
+    System.out.println(count + " indices found.");
+
+    is.delete();
+
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="defaultindex"></a>Working with Default Indices</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            Default indices are indices that are applied to all applicable nodes
+            in the container that are not otherwise indexed. For example, 
+            if you declare a default index for a
+            metadata node, then all metadata nodes will be indexed according to
+            that indexing strategy, unless some other indexing strategy is
+            explicitly set for them. In this way, you can avoid the labor of
+            specifying a given indexing strategy for all occurrences of a 
+            specific kind of a node.
+        </p>
+        <p>
+            You add, delete, and replace default indices using:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    
+                    <code class="methodname">XmlIndexSpecification.addDefaultIndex()</code>
+                </p>
+            </li>
+            <li>
+              <p>
+                    
+                    <code class="methodname">XmlIndexSpecification.deleteDefaultIndex()</code>
+                </p>
+            </li>
+            <li>
+              <p>
+                    
+                    <code class="methodname">XmlIndexSpecification.replaceDefaultIndex()</code>
+                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            When you work with a default index, you identify only the indexing
+            strategy; you do not identify a URI or node name to which the
+            strategy is to be applied. 
+        </p>
+        <p>
+            Note that just as is the case with other indexing methods, you can
+            use either strings or enumerated types to identify the index
+            strategy.
+        </p>
+        <p>
+            For example, to add a default index to a container:
+        </p>
+        <a id="java_adddefaultindex1"></a>
+        <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlIndexSpecification;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlValue;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    // Get the index specification
+    XmlIndexSpecification is = myContainer.getIndexSpecification();
+
+    // Add the default index.
+    is.addDefaultIndex("node-metadata-equality-string");
+
+    // Save the index specification back to the container.
+    myContainer.setIndexSpecification(is);
+
+    is.delete();
+
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="lookupindex"></a>Looking Up Indexed Documents</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            You can retrieve all of the values referenced by an index using
+            an <code class="classname">XmlIndexLookup</code> object, which is returned by
+            the 
+                
+                <code class="methodname">XmlManager.createIndexLookup()</code>
+            method.  <code class="classname">XmlIndexLookup</code> allows you to obtain 
+            an <code class="classname">XmlResults</code> object that
+            contains all of the nodes or documents for which the identified
+            index has keys. Whether nodes or documents is return depends on
+            several factors:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    If your container is of type
+                    <code class="literal">WholedocContainer</code>, then by default entire documents
+                    are always returned in this method's results set.
+                </p>
+            </li>
+            <li>
+              <p>
+                        If your container is of type <code class="literal">NodeContainer</code>
+                        then by default this method returns the nodes to which the index's keys refer.
+                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            For example, every container is created with a default index that
+            ensures the uniqueness of the document names in your container. The:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                        URI is <code class="literal">http://www.sleepycat.com/2002/dbxml</code>.
+                    </p>
+            </li>
+            <li>
+              <p>
+                        Node name is <code class="literal">name</code>.
+                    </p>
+            </li>
+            <li>
+              <p>
+                        Indexing strategy is <code class="literal">unique-node-metadata-equality-string</code>.
+                    </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+                Given this, you can efficiently retrieve every document in the
+                container using <code class="classname">XmlIndexLookup</code>.
+                as follows:
+            </p>
+        <a id="java_lookupindex1"></a>
+        <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlIndexLookup;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlResults;
+import com.sleepycat.dbxml.XmlValue;
+import com.sleepycat.dbxml.XmlQueryContext;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    XmlQueryContext qc = myManager.createQueryContext();
+
+    // Lookup the index
+    String uri = "http://www.sleepycat.com/2002/dbxml";
+    String name = "name";
+    String idxStrategy = "unique-node-metadata-equality-string";
+
+    // Get the XmlIndexLookup Object
+    XmlIndexLookup xil = myManager.createIndexLookup(myContainer, uri, 
+        name, idxStrategy);
+
+    // Now look it up. This returns every document in the container.
+    XmlResults res = xil.execute(qc);
+
+    // Iterate over the results set, printing each document in it
+    XmlDocument thedoc = myManager.createDocument();
+    while (res.next(thedoc)) {
+        System.out.println(thedoc.getName() + ": ");
+        System.out.println(thedoc.getContentAsString());
+    }
+
+    res.delete();
+    xil.delete();
+    qc.delete();
+
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+        <p>
+            In the event that you want to lookup an edge index, you must provide
+            the lookup method with both the node and the parent node that
+            together comprise the XML edge.
+        </p>
+        <p>
+            For example, suppose you have the following document in your
+            container:
+        </p>
+        <pre class="programlisting">&lt;mydoc&gt;
+   &lt;node1&gt;
+        &lt;node2&gt;
+            node2 1 
+        &lt;/node2&gt;
+        &lt;node2&gt;
+            node2 2
+        &lt;/node2&gt;
+   &lt;/node1&gt;
+&lt;/mydoc&gt; </pre>
+        <p>
+            Further suppose you indexed the presence of the node1/node2 edges. 
+            In this case, you can lookup the values referred to by this index
+            by doing the following:
+        </p>
+        <a id="java_lookupindex2"></a>
+        <pre class="programlisting">package dbxml.gettingStarted;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlResults;
+import com.sleepycat.dbxml.XmlValue;
+import com.sleepycat.dbxml.XmlQueryContext;
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+...
+
+try {
+    // Get a manager object.
+    myManager = new XmlManager();
+
+    // Open a container
+    myContainer = 
+        myManager.openContainer("exampleData.dbxml");
+
+    XmlQueryContext qc = myManager.createQueryContext();
+
+    // Node to lookup
+    String uri;
+    String name = "node2";
+
+    // Parent node to lookup
+    String parentURI;
+    String parentName = "node1";
+
+    String idxStrategy = "edge-element-presence";
+
+    // Get the XmlIndexLookup Object
+    XmlIndexLookup xil = myManager.createIndexLookup(myContainer, uri,
+        name, idxStrategy);
+
+    // Identify the parent node
+    xil.setParent(parentURI, parentName);
+
+    // Now look it up. 
+    XmlResults res = xil.execute(qc);
+
+    // Iterate over the results set, printing each value in it
+    while (res.hasNext()) {
+        XmlValue retValue = res.next();
+        System.out.println("Found: " + retValue.asString());
+    }
+    res.delete();
+    xil.delete();
+    qc.delete();
+
+} catch (XmlException e) {
+    // Error handling goes here.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    } </pre>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="autoindex.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="indices.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="verifyqueryplan.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Automatic Indexes </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Verifying Indices using Query Plans</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

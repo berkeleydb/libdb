@@ -1,0 +1,158 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlQueryExpression::execute</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlQueryExpression::execute</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlResults XmlQueryExpression::execute(
+    XmlQueryContext &queryContext, u_int32_t flags = 0)
+XmlResults XmlQueryExpression::execute(const XmlValue &contextItem,
+    XmlQueryContext &queryContext, u_int32_t flags = 0)
+XmlResults XmlQueryExpression::execute(
+    XmlTransaction &txn, XmlQueryContext &queryContext, u_int32_t flags = 0)
+XmlResults XmlQueryExpression::execute(XmlTransaction &txn,
+    const XmlValue &contextItem, XmlQueryContext &queryContext, u_int32_t flags = 0)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlQueryExpression::execute</b>
+<p>Evaluates (runs) an XQuery query that was previously prepared by
+<a href="../../api_reference/CXX/XmlManager_prepare.html">XmlManager::prepare</a> and returns an <a href="../../api_reference/CXX/XmlResults.html">XmlResults</a> set.</p>
+<p>There are two basic forms of this method: one that takes an
+<a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> object, and another that does not. For methods that do
+not take an XmlValue, the XQuery must restrict the scope of the query
+using either the collection() or the doc() XQuery navigation functions,
+or an exception is thrown.</p>
+<p>For those forms of this method that take an <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a>, the query
+is applied against that object.</p>
+<hr size=1 noshade>
+<b>Description: XmlQueryExpression.execute(
+    XmlTransaction &txn, XmlQueryContext &queryContext, u_int32_t flags = 0)</b>
+<p>Evaluates the XQuery expression against the containers and documents
+identified by the query, from within the scope of the provided
+<a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> object..</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>queryContext</b><ul compact><li>The <a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a> to use for this evaluation.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+or more of the following values:
+<br>
+<b><a name="DB_READ_COMMITTED">DB_READ_COMMITTED</a></b><ul compact><li>This operation will have degree 2 isolation.  This provides for cursor
+stability but not repeatable reads.  Data items which have been
+previously read by this transaction may be deleted or modified by other
+transactions before this transaction completes.
+</ul>
+<b><a name="DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a></b><ul compact><li>This operation will support degree 1 isolation; that is, read operations
+may return data that has been modified by other transactions but which
+has not yet been committed.
+Silently ignored if the <a href="../../api_reference/CXX/dbopen.html#DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a> flag 
+was not specified when the underlying container was opened.
+</ul>
+<b><a name="DB_RMW">DB_RMW</a></b><ul compact><li>Acquire write locks instead of read locks when doing the read, if
+locking is configured.  Setting this flag can eliminate deadlock during
+a read-modify-write cycle by acquiring the write lock during the read
+part of the cycle so that another thread of control acquiring a read
+lock for the same item, in its own read-modify-write cycle, will not
+result in deadlock.
+</ul>
+<b><a name="DBXML_LAZY_DOCS">DBXML_LAZY_DOCS</a></b><ul compact><li>Retrieve the document lazily. That is, retrieve document content and
+document metadata only on an as needed basis when reading the document.</ul>
+<b><a name="DBXML_DOCUMENT_PROJECTION">DBXML_DOCUMENT_PROJECTION</a></b><ul compact><li>When parsing a document in order to execute a query, use static analysis
+of the query to materialize only those portions of
+the document relevant to the query.  This can significantly enhance
+performance of queries against documents from containers of type XmlContainer::WholedocContainer and documents not in a container.  It should not be used if arbitrary navigation of the resulting nodes is
+to be performed, as not all nodes in the original document will be present and unexepcted results
+could be returned.  This flag has no effect on documents in containers of 
+type XmlContainer::NodeContainer.</ul>
+<b><a name="DBXML_WELL_FORMED_ONLY">DBXML_WELL_FORMED_ONLY</a></b><ul compact><li>Force the use of a scanner that will neither validate nor read
+schema or dtds associated with the document during parsing.  This
+is efficient, but can cause parsing errors if the document references
+information that might have come from a schema or dtd, such as entity
+references.</ul>
+<b><a name="DBXML_NO_AUTO_COMMIT">DBXML_NO_AUTO_COMMIT</a></b><ul compact><li>Do not create and automatically commit a transaction if one is not provided to this method. A query that
+performs an update under a transactional environment will automatically be transaction protected unless
+this flag is specified. This flag is only necessary if the update will make changes to both transactional
+and non-transactional containers.</ul>
+<br></ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlQueryExpression.execute(
+    XmlTransaction &txn, const XmlValue &contextItem, XmlQueryContext &queryContext, u_int32_t flags = 0)</b>
+<p>Evaluates the XQuery expression against the provided context item.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>The <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> object to use for this evaluation.</ul>
+ <b>contextItem</b><ul compact><li>The <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> object to perform the query against.</ul>
+ <b>queryContext</b><ul compact><li>The <a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a> to use for this evaluation.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or by bitwise inclusively <b>OR</b>'ing together one
+or more of the following values:
+<br>
+<b><a name="DB_READ_COMMITTED">DB_READ_COMMITTED</a></b><ul compact><li>This operation will have degree 2 isolation.  This provides for cursor
+stability but not repeatable reads.  Data items which have been
+previously read by this transaction may be deleted or modified by other
+transactions before this transaction completes.
+</ul>
+<b><a name="DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a></b><ul compact><li>This operation will support degree 1 isolation; that is, read operations
+may return data that has been modified by other transactions but which
+has not yet been committed.
+Silently ignored if the <a href="../../api_reference/CXX/dbopen.html#DB_READ_UNCOMMITTED">DB_READ_UNCOMMITTED</a> flag 
+was not specified when the underlying container was opened.
+</ul>
+<b><a name="DB_RMW">DB_RMW</a></b><ul compact><li>Acquire write locks instead of read locks when doing the read, if
+locking is configured.  Setting this flag can eliminate deadlock during
+a read-modify-write cycle by acquiring the write lock during the read
+part of the cycle so that another thread of control acquiring a read
+lock for the same item, in its own read-modify-write cycle, will not
+result in deadlock.
+</ul>
+<b><a name="DBXML_LAZY_DOCS">DBXML_LAZY_DOCS</a></b><ul compact><li>Retrieve the document lazily. That is, retrieve document content and
+document metadata only on an as needed basis when reading the document.</ul>
+<b><a name="DBXML_DOCUMENT_PROJECTION">DBXML_DOCUMENT_PROJECTION</a></b><ul compact><li>When parsing a document in order to execute a query, use static analysis
+of the query to materialize only those portions of
+the document relevant to the query.  This can significantly enhance
+performance of queries against documents from containers of type XmlContainer::WholedocContainer and documents not in a container.  It should not be used if arbitrary navigation of the resulting nodes is
+to be performed, as not all nodes in the original document will be present and unexepcted results
+could be returned.  This flag has no effect on documents in containers of 
+type XmlContainer::NodeContainer.</ul>
+<b><a name="DBXML_WELL_FORMED_ONLY">DBXML_WELL_FORMED_ONLY</a></b><ul compact><li>Force the use of a scanner that will neither validate nor read
+schema or dtds associated with the document during parsing.  This
+is efficient, but can cause parsing errors if the document references
+information that might have come from a schema or dtd, such as entity
+references.</ul>
+<b><a name="DBXML_NO_AUTO_COMMIT">DBXML_NO_AUTO_COMMIT</a></b><ul compact><li>Do not create and automatically commit a transaction if one is not provided to this method. A query that
+performs an update under a transactional environment will automatically be transaction protected unless
+this flag is specified. This flag is only necessary if the update will make changes to both transactional
+and non-transactional containers.</ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlQueryExpression::execute method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>INVALID_VALUE</b><ul compact><li>Invalid flags to method XmlQueryExpression::execute</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

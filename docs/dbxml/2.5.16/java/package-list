@@ -1,0 +1,11 @@
+com.sleepycat.bind
+com.sleepycat.bind.serial
+com.sleepycat.bind.tuple
+com.sleepycat.collections
+com.sleepycat.db
+com.sleepycat.dbxml
+com.sleepycat.persist
+com.sleepycat.persist.evolve
+com.sleepycat.persist.model
+com.sleepycat.persist.raw
+com.sleepycat.util

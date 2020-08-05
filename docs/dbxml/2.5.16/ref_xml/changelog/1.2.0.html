@@ -1,0 +1,208 @@
+<html>
+<head>
+<title>The Berkeley DB XML Package: DB XML 1.2.0 Change Log</title>
+<meta name="description" content="Berkeley DB XML: An XML database programmatic toolkit.">
+<meta name="keywords" content="XML,embedded,database,programmatic,toolkit,transaction,transactions">
+</head>
+<body bgcolor="white">
+<h1 align="center">Berkeley DB XML 1.2.0 Change Log</h1>
+<h3>Upgrade Requirements:</h3>
+<ol>
+
+<li>The container format has changed. Containers created with version
+1.1.0 of Berkeley DB XML must be upgraded by calling the
+XmlContainer::upgrade() method.  Attempting to open a 1.1.0 version
+container with the 1.2.0 library will return a VERSION_MISMATCH
+exception.
+
+</ol>
+<h3>New Features:</h3>
+<ol>
+
+<li>New API to perform in-place modification of documents, based on
+query results has been added. It addes XmlContainer::modifyDocument()
+and XmlDocument::modifyDocument(), along with a new class to specify the
+modification, XmlModify.
+
+</ol>
+<h3>General Functionality Changes:</h3>
+<ol>
+
+<li>Fix a query planner bug that would generate an incorrect plan when
+edge indices were enabled and the query included the text() function.
+Queries such as '/a/b/text()', where b is edge indexed, would generate
+a plan looking for edges a.b and b.b. [#8527]
+
+<li>Fix a query planner bug where it tried to map an XPath equality
+sub-expression onto an appropriate equality index, but if not avaliable
+did not look for a suitable presence index instead. [#8566]
+
+<li>Fix a bug where variable references in parsed query expressions only
+worked the first time. Each subsequent use of the expression would fail
+to make use of the current value defined in the query context.  [#8585]
+
+<li>Fix a bug where the XPath expression parser did not allow node names
+to have axis names, for example child, parent, etc. [#8781]
+
+<li>Fix a bug where queries of the form /a[b/c='foo'], where 'c' is
+indexed, always resulted in a sequential scan instead of an index
+lookup. [#8819]
+
+<li>Fix a bug where XPath queries of the form /ns:div and /ns:mod were
+not supported. [#8840]
+
+<li>Modify XPath functions substring-before and substring-after to make
+use of a substring index. [#8875]
+
+<li>Modify XPath function starts-with to make use of a substring index,
+if an equality index is not available. [#8875]
+
+<li>Remove support for XmlValue types NODELIST and ATTRIBUTE. They have
+been replaced with the type NODE. An XPath query that matches a list of
+nodes within a document will now return a list of XmlValue objects with
+type NODE. The XmlValue methods isNodeList, isAttribute, asNodeList, and
+asAttribute, have been replaced by isNode and asNode. [#8884]
+
+<li>Substring indices are now created using a normalized node value.
+All whitespace and punctuation characters are removed, and all upper
+case characters are converted to their lower case equivalents, except
+UTF-8 characters which are not changed. Each key is now three characters
+rather than three bytes, as a UTF-8 character can theoreticaly occupy
+as many as six bytes. Queries against substring indices will still
+return the same results. This change improves the performance of the
+indexer and reduces the storage space requiements of the substring
+index. The container format has changed meaning that containers created
+with version 1.1.0 of Berkeley DB XML must be upgraded by calling the
+XmlContainer::upgrade() method. [#8906]
+
+<li>Fix a bug where the namespace prefix was not stored with document
+metadata items. This had the consequence of the metadata item not being
+reflected into the document when retrieved as a DOM. [#8967]
+
+<li>Fix a bug where numeric comparisons were precision limited. [#8967]
+
+<li>Fix a bug where QueryContext should have been holding a reference
+to Xerces.  [#9050]
+
+<li>Fix the query processor to correctly identify opportunities to make
+use of edge indices. Queries such as /a[b and c] would not make use of
+edge indices for a.b or a.c. [#9009][#9334]</LI>
+
+</ol>
+<h3>API Changes:</h3>
+<ol>
+
+<li>Add XmlDocument::queryWithXPath(XmlQueryExpression...). Previously
+available on XmlContainer, but not XmlDocument. [#8591]
+
+<li>Add an option to XmlDocument::getDOM() for adoption of the contained
+DOM.  [#8229]
+
+<li>Remove support for XmlValue types NODELIST and ATTRIBUTE. They have
+been replaced with the type NODE. An XPath query that matches a list of
+nodes within a document will now return a list of XmlValue objects with
+type NODE. The XmlValue methods isNodeList, isAttribute, asNodeList, and
+asAttribute, have been replaced by isNode and asNode. [#8884]
+
+<li>DB_CHKSUM_SHA1 is now DB_CHECKSUM.
+
+<li>The DbTxn argument has been removed from the XmlResults::next()
+iterators.  It is not needed. Compatibility has been maintained for C++,
+but not for Java and scripting languages; some code may need to be
+changed. [#8903]
+
+<li>New API to perform in-place modification of documents, based on
+query results has been added.  It addes XmlContainer::modifyDocument()
+and XmlDocument::modifyDocument(), along with a new class to specify the
+modification, XmlModify.  The operations available are intended to
+provide the same update capabilities as those specified by <a
+href="http://www.xmldb.org/xupdate">XUpdate</a>, except via API rather
+than an XML language.  This API is not an implementation of the XML::DB
+API, but could be used as a basis for such an implementation.
+
+<li>XmlQueryContext::setWithMetaData(bool) has been added to allow an
+application to query a document, or documents, without including the
+document metadata as attributes on the root node.  There is cost
+associated with adding metadata as attributes, and if they are not
+required for correctness of a query, it is more efficient to leave them
+out.  The default, for compatibility, is to include the metadata in
+queries.  There is a corresponding getWithMetaData() function, as well.
+
+</ol>
+<h3>Java-specific API Changes:</h3>
+<ol>
+
+<li>Fix memory leaks. [#8555]
+
+<li>XmlContainer::queryWithXPathExpression renamed to
+XmlContainer::queryWithXPath.
+
+<li>XmlContainer::deleteByID renamed to XmlContainer::deleteDocument.
+
+<li>XmlResults::close removed in favor of XmlResults::delete.  </LI>
+
+</ol>
+<h3>Python-specific API Changes:</h3>
+<ol>
+
+<li>Fix memory leaks. [#8555]
+
+</ol>
+<h3>Tcl-specific API Changes:</h3>
+<ol>
+
+<li>Fix memory leaks. [#8555]
+
+</ol>
+<h3>Utility Changes:</h3>
+
+None.
+
+<h3>Configuration, Documentation, Portability and Build Changes:</h3>
+<ol>
+
+<li>The XPath union operator bug has been fixed in Pathan 1.2 release
+2. [#8528]
+
+<li>Fix test suite to pass in transactional mode and to work against
+Xerces-C++ version 2.3. [#8679]
+
+<li>Improve configure to deal with solaris configurations better.
+[#8810]
+
+<li>Fix creation of JNI library for Mac OS/X with the required extension
+of .jnilib. [#9013]
+
+<li>Test with Berkeley DB 4.2.52.
+
+<li>Test with Xerces 2.3 from download, Xerces 2.3 from CVS, and Xerces
+2.4.
+
+<li>Test with Pathan 1.1 release 2.
+
+<li>Update DB XML Getting Started Guide for C++.
+
+<li>Add DB XML Getting Started Guide for Java.
+
+</ol>
+<h3>Known Issues</h3>
+<ol>
+
+<li>Perl build on OS X may fail.  If you run into this (or fix it!),
+please let Sleepycat know.
+
+<li>Gcc 3.3 -- if you are using gcc 3.3, the build of Pathan1.2, release
+2 may fail.  If so, it's necessary to get the code directly from the CVS
+tree.
+
+<li>There is a bug in Python's use of overloaded functions in the class,
+XmlContainer, specifically, those that take a DbTxn * as the first
+argument -- deleteDocument() and queryWithXPath().  The error is a
+failure to find a matching function overload.  It only occurs when the
+DbTxn is other than "None."  This is fixed, and will be released in
+1.2.1.
+
+</ol>
+
+</body>
+</html>

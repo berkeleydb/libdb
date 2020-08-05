@@ -1,0 +1,433 @@
+<html>
+
+<head>
+<title>The Berkeley DB XML Package: BDB XML 2.5.16 Change Log</title>
+<meta name="description"
+content="Berkeley DB XML: A database programming toolkit.">
+<meta name="keywords"
+content="embedded,database,native,programming,toolkit,XML,XQuery">
+</head>
+
+<body bgcolor="white">
+<h2 align="center"><u>2.5 Release Overview</u></h2>
+Release 2.5 is
+primarily a feature release with a small number of useful features
+including:
+<ul>
+  <li>Automatic indexing of leaf elements and attributes</li>
+  <li>Whole Document container compression with optional user-defined
+  compression in C++ and Java</li>
+  <li>Improvements in node storage containers that reduce total size of
+  containers</li>
+  <li>User-defined external XQuery extension functions in C++, Java and
+  Python</li>
+  <li>XQuery debug API in C++, Java and Python</li>
+  <li>Improvements in the XmlResults class enabling better offline
+  results handling</li>
+</ul>
+
+<h3 align="center">Berkeley DB XML 2.5.16 Change Log</h3>
+BDB XML 2.5.16 is a bug-fix release that addresses a number of issues found since release of <a href="#hist2513">2.5.13</a>.  It is source and binary compatible with earlier 2.5.x releases.  This section describes changes in BDB XML relative
+to release 2.5.13.
+
+
+<h4>Upgrade Requirements</h4>
+None relative to 2.5.13.  See <a href="#hist2513">2.5.13</a>
+for upgrade details and recommendations.
+
+<h4>General Functionality Changes:</h4>
+<ol>
+  <li>Upgraded the packaged version of Berkeley DB to 4.8.26. Please see the Berkeley DB specific change log for relevant changes.</li>
+  <li>Fixed container creation so that it honors page size in
+  XmlContainerConfig [#17803]</li>
+  <li>Fix the base-uri of an attribute node when using WholedocContainer 
+    storage [#17872]</li>
+  <li>Fixed an assertion failure during query preparation with a recursive 
+    user defined function [#17866]</li>
+  <li>Fixed an assertion failure when an as-yet unseen URI in used in a 
+    query [#17867]</li>
+  <li>Fixed a problem where attribute indexes would not properly be updated
+    if there were no element indexes present.  This might have a symptom of
+    DB_NOTFOUND errors or duplicate index entries for attributes [#17671]</li>
+  <li>Changed the algorithm used to create node IDs during partial update
+    to be more efficient and create shorter node IDs in general [#17844]</li>
+  <li>Fixed a problem where deleting the XmlResults object returned 
+    by XmlValue.getAttributes() might cause an exception when the original
+    XmlResults for the XmlValue object was next accessed [#17796]</li>
+  <li>XQuery Update queries will no longer crash when statistics are 
+    disabled [#17898]</li>
+  <li>Fixed a bug in document level indexing that could result 
+    in index entries being deleted inappropriately when a node was deleted [#17758</li>
+  <li>Fixed fn:doc() to raise an error in all cases if the document does
+  not exist [#17870]</li>
+  <li>Fixed a bug occurring when fn:subsequence() and "order by" were used in certain
+    configurations [#17932]</li>
+  <li>Changed XmlResults.asEventWriter(), now only one active XmlEventWriter is allowed for an XmlResults object [#18049]</li>
+</ol>
+
+<h4>Utility Changes:</h4>
+<ol>
+</ol>
+
+<h4>Java-specific Functionality Changes:</h4>
+<ol>
+<li>Deleting the XmlResults returned by <code>XmlValue.getAttributes()</code> will no longer cause exceptions to be thrown when accessing other XmlResults.[#17792].</li>
+<li>Fixed a few memory leak issues in JNI code. Fixed leaks may happen in XmlEventWriter.writeXXX() methods, XmlDocuments.getContent(), XmlEventReaderToWriter.start(), XmlResults.copyResults(), XmlResults.concatResults().[#18049].</li>
+</ol>
+
+<h4>Python-specific Functionality Changes</h4>
+<ol>
+  <li>The latest Python code from the pybsddb project is bundled.</li>
+</ol>
+
+<h4>Perl-specific Functionality Changes:</h4>
+<ol>
+</ol>
+
+<h4>PHP-specific Functionality Changes:</h4>
+<ol>
+</ol>
+
+<h4>Example Code Changes</h4>
+<ol>
+</ol>
+
+<h4>Configuration, Documentation, Portability and Build Changes:</h4>
+<ol>
+<li>The zlib library will now be copied to both the release and debug directories on Windows.[#17894]</li>
+</ol>
+
+<a name="hist2513">
+<h3 align="center">Berkeley DB XML 2.5.13 Change Log</h3>
+
+<h4>Upgrade Requirements</h4> Containers do not require upgrade;
+however because 2.5 bundles Berkeley DB 4.8 environment directories
+and log files will not be compatible with previous releases.  This means
+checkpoint, backup and recovery procedures are necessary to start with a clean
+environment especially for transactional environments.
+
+<h4>New Features:</h4>
+<ol>
+  <li>Automatic indexing of leaf elements and attributes.  When a
+  container is set in the auto-indexing state it will automatically
+  detect new leaf elements and attributes and add string and double
+  indexes for them (node-*-equality-string and node-*-equality-double).
+  This feature has been added to enhance out-of-the-box performance of
+  queries and can be used to replace default indexes in most cases.  Default
+  value indexes have a tendency to over-index mixed content.
+  Newly-created containers will be in this state, which is controlled by
+  new API outlined below; some applications may wish to disable automatic indexing
+  immediately after creating a container.  Addition of new indexes can be a significant
+  operation so this behavior is best for containers that store similar
+  documents or it must be carefully controlled by the application.  When
+  enabled, addition of any new content can trigger the equivalent of
+  XmlContainer::setIndexSpecification(). [#15722]</li>
+  <li>Data compression for whole document storage.  XML documents can
+  now be compressed using a built-in implementation based on the zlib
+  compression library or user defined compression created by
+  implementing the class <code>XmlCompression</code>.  [#15471]</li>
+  <li>Debugging API and command line debugger. The command line debugger
+  can be started using the "debug" command in the DB XML shell.  The
+  debugging API is used by deriving a class from XmlDebugListener and
+  registering it with the XmlQueryContext::setDebugListener() method.
+  Access to the stack trace and dynamic context in each stack frame is
+  available through the XmlStackFrame class during
+  debugging. [#15999]</li>
+  <li>XQuery external functions.  The XmlExternalFunction class allows
+  the implementation of external XQuery functions in C++, Java and
+  Python. Users should derive a class from XmlExternalFunction,
+  implementing the execute() method to perform the function's action.
+  Arguments are provided to the execute() method via the XmlArguments
+  class. [#15610]</li>
+  <li>Enhanced results handling
+  <ul>
+    <li>Added XmlResults::asEventWriter() which can be called on an empty
+    (newly-created) XmlResults object to construct a sequence of elements
+    and/or atomic values that can be used in queries.  The constructed
+    object must be assigned to a variable to be used. [#16355]</li>
+    <li>Added XmlResults::copyResults() and XmlResults::concatResults()
+    which can be used to create and use "transient" copies of XmlResults
+    which can be used outside of the context of a transaction or
+    container</li>
+  </ul>
+</li>
+<li>Better node storage efficiency.  The storage algorithm for node
+storage containers has been modified to provide a better btree fill
+factor, resulting in smaller container files</li>
+</ol>
+
+<h4>API Changes:</h4> Unless otherwise noted, the API additions apply
+to all language bindings, and all bindings use the same method name.
+<ol>
+  <li>There are new classes for the external XQuery function
+  implementation noted above under features.  These are
+  XmlExternalFunction and XmlArguments and are available only in C++,
+  Java and Python.</li>
+  <li>New interfaces control automatic indexing behavior:
+  <ul>
+    <li><code>XmlIndexSpecification::setAutoIndexing(bool) and
+      XmlContainer::setAutoIndexing()</code><br> Use
+    these to control automatic indexing.  The method on 
+    XmlIndexSpecification will only take effect
+    once <code>XmlContainer::setIndexSpecification()</code> is called with
+    the modified XmlIndexSpecification object.  The method on XmlContainer
+    is a convenience method that uses its underlying XmlIndexSpecification</li>
+    <li><code>bool XmlIndexSpecification::getAutoIndexing() and
+      XmlContainer::getAutoIndexing()</code><br>
+    Returns the current state of automatic indexing for the container.
+    The method on XmlContainer is a convenience method that returns
+    the state from the XmlIndexSpecification</li>
+  </ul>
+  The modified XmlIndexSpecficiation instance must be set on the
+  container using XmlContainer::setIndexSpecification() in order for the
+  state change to occur.  The state is persistent and is set to true for
+  newly-created containers.
+</li>
+<li>Added XmlContainerConfig to the API.  XmlContainerConfig already
+existed in the Java API but has been expanded and is now available in
+all other language bindings.  XmlContainerConfig simplifies opening
+and creating of containers and is intended to replace the flags
+arguments to operations that create and open containers.  The flags
+versions still exist for now but will eventually disappear.</li>
+<li>Added XmlCompression as a class that can be used to create
+user-defined compression algorithms for wholedoc containers.  This
+class is available only in C++ and Java</li>
+<li>Added constructor <code>XmlValue(typeURI, typeName, value)</code>
+for creating atomic values with derived types.</li>
+<li>Added new functions to XmlData and changed it so that it functions
+as an actual buffer for binary data rather than a wrapper for an
+existing buffer.</li>
+<li>Added the functions <code>XmlValue.getResults()</code>
+and <code>XmlDocument.getResults()</code> to the Java API to return
+the XmlResults object (if any) associated with the current object
+[#16352]</li>
+<li>Removed all <code>finalize()</code> functions from the Java
+API. They served no useful purpose and could only cause problems by
+running at inconvenient times [#16352]</li>
+<li>Added XmlResults::asEventWriter() -- see description above under
+"Features" [#16355]</li>
+<li>Configuring a database as an XA-compliant resource manager using
+the flag DB_XA_CREATE is no longer supported because XA support has
+been removed from Berkeley DB [#16912]</li>
+<li> XmlModify has been removed, XQuery Update should be used instead
+[#16915]</li>
+<li>The Berkeley DB C++ objects in the C++ API have been replaced with
+their C equivalents.  This simplifies infrastructure and improves
+build/linking with the non-C++ interfaces.  It requires changes for
+C++ applications where they may have used DbEnv or DbTxn [#16951]</li>
+<li>Added the function <code>XmlIndexSpecification.getValueType(index)</code> 
+that returns the <code>XmlValue::Type</code> described in the given index 
+description. [#17362]</li>
+</ol>
+
+<h4>Changes That May Require Application Modification:</h4>
+<ol>
+  <li>C++ applications are required to change the use of the Berkeley DB
+  C++ objects in the public interface to their C equivalents.  Such
+  changes are mechanical, replacing DbEnv* with DB_ENV * and DbTxn *
+  with DB_TXN * and only a few interfaces are affected.  For example,
+  XmlManager::XmlManager(DbEnv *, u_int32_t) becomes
+  XmlManager::XmlManager::(DB_ENV *, u_int32_t).  The DbEnv object has a
+  method, DB_ENV *DbEnv::get_DB_ENV() that can be used.  Similarly,
+  DbTxn has a method DB_TXN *DbTxn::get_DB_TXN() that can be used.</li>
+  <li>Automatic indexing may require changes.  It is enabled on
+  newly-created containers by default and if an application wishes to
+  not have this feature enabled it will need to explicitly disable it,
+  post-creation.  Most applications will eventually want to disable this
+  state once they are confident that all useful indexes have been added.
+  An application that wants very explicit control over its indexes
+  should disable it.  If it is not desired at all then immediately after
+  creating a container call execute this sequence of operations (some
+  pieces are missing and this example does not use transactions but
+  these are the calls):<br>
+  <code>
+  XmlIndexSpecification is = container.getIndexSpecification();<br>
+  is.setAutoIndexing(false);<br> container.setIndexSpecification(is,
+  updateContext);<br>
+  </code>
+  <li>If compression is compiled in, which is the default, wholedoc
+  containers are by default compressed using zlib compression.  This can
+  be disabled using interfaces on XmlContainerConfig when creating the
+  container.  Existing containers are not affected</li>
+  <li>While the addition of XmlContainerConfig to the non-Java APIs does
+  not require change it is recommended that applications move to the
+  methods that use XmlContainerConfig as eventually the old interfaces
+  will be phased out</li>
+  <li>The functions in the XmlData class that use the Dbt object have
+  been removed, including one constructor, <code>set_data</code>
+  and <code>getDbt</code></li>
+  <li>Java objects that require clean up must be cleaned up manually by
+  calling the <code>delete()</code> function.  Failure to clean up
+  objects can result in memory leaks and the need to run database
+  recovery.  This has always been the case but removal of finalizers has
+  made it even more important for memory leak situations</li>
+  <li>The functions <code>XmlContainer.addIndex</code> and 
+  <code>XmlIndexSpecification.addIndex</code> will now throw an exception if
+  passed the index types <code>XmlValue.DAY_TIME_DURATION</code>, 
+  <code>XmlValue.YEAR_MONTH_DURATION</code>, or 
+  <code>XmlValue.UNTYPED_ATOMIC</code>.  If indexing the types 
+  <code>XmlValue.DAY_TIME_DURATION</code> or 
+  <code>XmlValue.YEAR_MONTH_DURATION</code> use <code>XmlValue.DURATION</code>.
+    If indexing the type <code>XmlValue.UNTYPED_ATOMIC</code> use 
+  <code>XmlValue.STRING</code>.  [#17365]</li>
+</ol>
+
+<h4>General Functionality Changes:</h4>
+<ol>
+  <li>The release bundles Berkeley DB 4.7.25</li>
+  <li>Added a "--disable-rpath" option to the configure script, to
+  facilitate building embedding rpath information in libraries
+  [#16607]</li>
+  <li>Fixed an uninitialized variable in NsEventWriter that could affect
+  use of XmlEventWriter [#16459]</li>
+  <li>Fixed a bug where putting a document from one container into
+  another would result in an empty document in the second container
+  [#16456]</li>
+  <li>Fixed a problem where a deadlock exception in XmlEventWriter would
+  mistakenly be reported as EINVAL and lost [#16343]</li>
+  <li>Fixed a bug where inserting a new root element into a document
+  would not properly index the new content [#16500] </li>
+  <li>The behavior of XQuery Update (and XmlModify) was changed so that
+  multiple document elements are no longer allowed.  XQuery Update can
+  also no longer be used to remove the document element to create an
+  empty document.  Such documents can still be created but only via
+  XmlContainer::putDocument() and XmlContainer::updateDocument()
+  [#16500] </li>
+  <li>Fixed a problem where text (comment, PI, text) updates that affect
+  elements that own multiple text nodes could trigger an assertion
+  failure or bad memory reference [#16543]</li>
+  <li>Fixed a problem where the behavior of eager and lazy results
+  iteration was not consistent [#16484]</li>
+  <li>Fixed a bug where constructed documents could not be created from
+  an XmlInputStream. [#16593]</li>
+  <li>XmlValues created from an empty document will no longer crash on
+  calls to certain functions. [#16608]</li>
+  <li>XmlInputStream will no longer lose its source if the XmlDocument
+  it came from is deleted.
+  Also, <code>XmlDocument.getContentAsXmlInputStream()</code> will now
+  always consume the content of constructed documents. [#16617]</li>
+  <li>Fixed a static initialization problem that appears on some Windows
+  platforms related to NsNid and results in an exception during
+  XmlManager construction. [#16565]</li>
+  <li>Fixed an assertion triggered when using a predicate against a
+  variable containing constructed nodes. [#16556]</li>
+  <li>Fixed a problem where variable references to deleted nodes could
+  lead to problems or incorrect behavior [#16583]</li>
+  <li>Fixed a segmentation fault that could occur if the last step of a
+  path was a comparison or contains() function. [#16772]</li>
+  <li>The flags DBXML_ENCRYPT and DBXML_CHKSUM will no longer result in
+  an exception when used correctly. [#16677]</li>
+  <li>Fixed an assertion failure that could happen when using numeric
+  predicates. [#16775]</li>
+  <li>Fixed a problem where a transactional XQuery Update expression
+  using fn:put() would fail during the transaction commit, indicating
+  that the transaction was already committed[#16808]</li>
+  <li>Change the close() methods in XmlEventReader and XmlEventWriter to
+  be pure virtual. Implementors of XmlEvent* must implement the close()
+  method which may need to delete "this" in order to free the
+  memory. [#16771]</li>
+  <li>Fixed XmlContainer::putDocument() and updateDocument() on wholedoc
+  containers to ensure that new namespace uri prefixes are added to the
+  dictionary. This could result in an exception during queries of read-only content
+  or stray updates during read operations [#17212]</li>
+  <li>Fixed a problem in partial updates where a delete of a node when
+  it has an ancestor with a presence index could result in removal of the
+  ancestor's index, resulting in incorrect query results [#17199]</li>
+  <li>Fixed some issues in partial updates that might result in problems
+  with indexes or missing records in the case where mixed content was being
+  indexed and a descendent node is deleted or modified [#17226]</li>
+  <li>Improved performance of partial reindexing when inserting a new element
+  into a node that already has a large number of child elements [#17393]</li>
+  <li>The functions <code>XmlContainer.addIndex</code> and 
+  <code>XmlIndexSpecification.addIndex</code> will now throw an exception if
+  passed the index types <code>XmlValue.DAY_TIME_DURATION</code>, 
+  <code>XmlValue.YEAR_MONTH_DURATION</code>, or 
+  <code>XmlValue.UNTYPED_ATOMIC</code>. </li>
+  <li>Fixed problems with partial updates and statistics that
+    affected both partial update performance and query plans resulting
+    in lowered performance after a number of updates[#17393]</li>
+  <li>Fixed XmlManager::compactContainer() so that space made available
+    is released to the file system on platforms that support this
+    behavior [#17658]</li>
+  <li>Fixed an optimizer issue where certain range queries might not use
+    an index if appropriate [#17649]</li>
+  <li>Fixed a partial update scenario where indexes could get corrupted
+    resulting in DB_NOTFOUND errors during queries or index lookups.  This could
+    only occur when inserting multiple elements into the same parent node and
+    not all the time [#17649]</li>
+</ol>
+
+<h4>Utility Changes:</h4>
+<ol>
+  <li>dbxml shell subcommands that reflected the XmlModify interface
+  have been removed</li>
+</ol>
+
+<h4>Java-specific Functionality Changes:</h4>
+<ol>
+  <li>Fixed a bug where accessing XmlValue objects created from XQuery
+  constructed nodes would cause a crash. [#16403]</li>
+  <li>Added the functions <code>XmlValue.getResults()</code>
+  and <code>XmlDocument.getResults()</code> to the Java
+  API. [#16352]</li>
+  <li>Fix a bug where updating queries that use nodes as variables would
+  cause the JVM to crash. [#16583]</li>
+  <li>Fix a bug where setVariableValue in Java API use XmlResult::size()
+  which lazily evaluated does not support.</li>
+  <li>Eliminated the possibility of XmlResolver objects being garbage
+  collected while the object is still needed.[#16595]</li>
+</ol>
+
+<h4>Python-specific Functionality Changes</h4>
+<ol>
+  <li>The latest Python code from the pybsddb project is bundled.</li>
+  <li>Modified interfaces that can legitimately return a NULL value (in
+  C++ or Java) to return None in Python. [#16678]</li>
+  <li>Fixed exception class constructors for XmlDatabaseError and
+  XmlException.  Arguments were out of order. [#16628]</li>
+  <li>Fixed a bug in the Python bindings for XmlEventWriter::writeText()
+  [#16626]</li>
+  <li>Fixed a typo that made XmlInvalidValue exception
+  unavailable[#16711]</li>
+</ol>
+
+<h4>Perl-specific Functionality Changes:</h4>
+<ol>
+  <li>The Perl Db module included with BDB XML still uses the Berkeley
+  DB C++ API.  This is not a change but a non-change that is the
+  only place remaining in the product bundle that still uses the
+  Berkeley DB C++ API.  This does not affect other languages at
+  all.</li>
+  <li>Added --perl-installdir to the buildall.sh script to allow users
+  to change the installation directory for perl packages</li>
+</ol>
+
+<h4>PHP-specific Functionality Changes:</h4>
+<ol>
+</ol>
+
+<h4>Example Code Changes</h4>
+<ol>
+  <li>C++ code uses XmlContainerConfig rather than flags</li>
+  <li>C++ examples have been rewritten to use the Berkeley DB C API
+  where appropriate</li>
+  <li>Examples have been added to illustrate external XQuery functions
+  in C++, Java and Python</li>
+  <li>Examples have been added to illustrate use of Wholedoc container
+  compression in C++ and Java</li>
+  <li>Examples have been added to illustrate use of the XQuery debug API
+  in C++, Java and Python</li>
+  <li>Examples have been added to illustrate use of Berkeley DB XML with
+  threads and in a server in Java</li>
+</ol>
+
+<h4>Configuration, Documentation, Portability and Build Changes:</h4>
+<ol>
+  <li>The build system for the BDB XML library on *nix now uses automake
+  for better maintainability and portability</li>
+  <li>Fixed XmlEventReader documentation to properly indicate that empty elements
+  will not result in an EndElement event [#17213]</li>
+</ol>
+</body>
+</html>
+

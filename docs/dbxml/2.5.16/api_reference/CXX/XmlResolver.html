@@ -1,0 +1,48 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlResolver</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlResolver</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual XmlResolver::~XmlResolver()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlResolver</b>
+<p>Provides an unimplemented base class that is used for file resolution
+policy.  Implementations of this class are used for URI resolution, or
+for public and system ids resolution. XmlResolver implementations are
+identified for use using <a href="../../api_reference/CXX/XmlManager_registerResolver.html">XmlManager::registerResolver</a>.</p>
+<p>The XmlResolver class allows applications to provide named access to
+application-specific objects, such as documents, collections of
+documents, DTDs, and XML schema.  Berkeley DB XML can resolve references to names
+within a container, or a file system; applications can create
+XmlResolver instances that can resolve entities in other locations.</p>
+<p>For an example of an XmlResolver implementation, see the Berkeley DB XML
+distribution file <b>test/cpp/util/TestResolver.cpp</b>.</p>
+<p>
+If an application uses multiple threads, custom implementations of
+XmlResolver must be free threaded, and allow multiple, simultaneous
+calls for resolution.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

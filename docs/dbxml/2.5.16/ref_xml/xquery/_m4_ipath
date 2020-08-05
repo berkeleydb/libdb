@@ -1,0 +1,7 @@
+__APIREL__/ref_xml/xquery/intro.html__OCT__2 @Berkeley DB XML XQuery Extensions
+__APIREL__/ref_xml/xquery/collection.html__OCT__2 @fn:collection()
+__APIREL__/ref_xml/xquery/contains.html__OCT__2 @dbxml:contains()
+__APIREL__/ref_xml/xquery/doc.html__OCT__2 @fn:doc()
+__APIREL__/ref_xml/xquery/lookup.html__OCT__2 @dbxml:lookup()
+__APIREL__/ref_xml/xquery/metadata.html__OCT__2 @dbxml:metadata()
+__APIREL__/ref_xml/xquery/node.html__OCT__2 @dbxml:node()

@@ -1,0 +1,161 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlValue</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlValue</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlValue {
+public:
+	XmlValue();
+	XmlValue(const std::string &value);
+	XmlValue(const char *value);
+	XmlValue(double value);
+	XmlValue(bool value);
+	XmlValue(const XmlDocument &document);
+	XmlValue(Type type, const std::string &value);
+	XmlValue(const std::string &typeURI, const std::string &typeName, const std::string &value);
+	XmlValue(Type type, const XmlData &data);
+<p>
+	virtual ~XmlValue();
+	XmlValue(const XmlValue &);
+	XmlValue &operator=(const XmlValue &);
+	bool operator==(const XmlValue &v) const
+	bool equals(const XmlValue &v) const;
+	bool isNull() const;
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlValue</b>
+<p>The XmlValue class encapsulates the value of a node in an XML document.
+The type of the value may be any one of the enumerated types in
+the XmlValue::Type enumeration.  There are convenience operators
+for specially handling the types of STRING, DOUBLE, and BOOLEAN,
+as well as a constructor to make an XmlValue from <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a>.</p>
+<p>The XmlValue class provides several constructors, each of which maps a
+C++ type or Berkeley DB XML class onto an appropriate XmlValue type. The
+following table lists the constructor parameter mappings.</p>
+<table border=1 align=center>
+<tr><th>C++ Type or Class</th><th>XmlValue Type</th></tr>
+<tr><td>No parameter</td><td>NONE</td></tr>
+<tr><td>std::string or const char*</td><td>STRING</td></tr>
+<tr><td>double</td><td>DOUBLE</td></tr>
+<tr><td>bool</td><td>BOOLEAN</td></tr>
+<tr><td><a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a></td><td>NODE</td></tr>
+<tr><td>Type and std::string</td><td>String is converted to the specified type.</td></tr>
+<tr><td>Type and XmlData</td><td>XmlData is converted to the specified type.</td></tr>
+</table>
+<p>The Type may be any of of the following:
+<p><ul type=disc>
+<li>XmlValue::NONE
+<li>XmlValue::ANY_URI
+<li>XmlValue::BASE_64_BINARY
+<li>XmlValue::BOOLEAN
+<li>XmlValue::DATE
+<li>XmlValue::DATE_TIME
+<li>XmlValue::DAY_TIME_DURATION
+<li>XmlValue::DECIMAL
+<li>XmlValue::DOUBLE
+<li>XmlValue::DURATION
+<li>XmlValue::FLOAT
+<li>XmlValue::G_DAY
+<li>XmlValue::G_MONTH
+<li>XmlValue::G_MONTH_DAY
+<li>XmlValue::G_YEAR
+<li>XmlValue::G_YEAR_MONTH
+<li>XmlValue::HEX_BINARY
+<li>XmlValue::NOTATION
+<li>XmlValue::QNAME
+<li>XmlValue::STRING
+<li>XmlValue::TIME
+<li>XmlValue::YEAR_MONTH_DURATION
+<li>XmlValue::UNTYPED_ATOMIC
+<li>XmlValue::BINARY
+</ul>
+</p>
+<p>The XmlValue class implements a set of methods that test if the XmlValue
+is of a named type.  The XmlValue class also implements a set of methods
+that return the XmlValue as a value of a specified type.  If the
+XmlValue is of type variable and no query context is provided when
+calling the test or cast methods, or no binding can be found for the
+variable, an exception is thrown.</p>
+<p>In addition to type conversion, the XmlValue class also provides
+DOM-like navigation functions. Using these, you can retrieve features
+from the underlying document, such as the parent, an attribute, or a
+child of the current node.</p>
+This object is not thread-safe, and can only be safely used by one
+thread at a time in an application.
+<hr size=1 noshade>
+<b>Description: XmlValue(std::string &value) or XmlValue(const char *value)</b>
+<p>Construct an XmlValue object of value type STRING.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>The XmlValue object value.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlValue(double value)</b>
+<p>Construct an XmlValue object of value type DOUBLE.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>The XmlValue object value.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlValue(bool value)</b>
+<p>Construct an XmlValue object of value type BOOLEAN.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>The XmlValue object value.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlValue(Type, const std::string &value) or XmlValue(Type, const XmlData &value)</b>
+<p>Construct an XmlValue object of the value Type provided, converting the
+string value to the specified type.</p>
+<b>Parameters</b> <br>
+ <b>type</b><ul compact><li>The XmlValue object value type.</ul>
+ <b>value</b><ul compact><li>The XmlValue object value.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlValue(const std::string &typeURI, const std::string &typeName, const std::string &value)</b>
+<p>Construct an XmlValue object of the URI and type name provided, converting the
+string value to the specified type.</p>
+<b>Parameters</b> <br>
+ <b>typeURI</b><ul compact><li>URI defining the type.</ul>
+ <b>typeName</b><ul compact><li>Name of the type.</ul>
+ <b>value</b><ul compact><li>The XmlValue object value.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlValue(XmlDocument &document)</b>
+<p>Construct an XmlValue object of value type NODE.</p>
+<b>Parameters</b> <br>
+ <b>document</b><ul compact><li>The XmlValue object value.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlValue::isNull()</b>
+<p>Returns true if the XmlValue has no value (type NONE).</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::equals(XmlValue &value)</b>
+<p>Determines if two XmlValue objects represent the same value. It returns
+true if the two XmlValue objects represent the same value.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>The value to compare this value with.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

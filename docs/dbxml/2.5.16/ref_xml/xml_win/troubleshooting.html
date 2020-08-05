@@ -1,0 +1,40 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: Troubleshooting Berkeley DB XML on Windows</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Troubleshooting Berkeley DB XML for Windows systems</dl></b></td>
+<td align=right><a href="../xml_win/bin.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade/version.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>Troubleshooting Berkeley DB XML on Windows</b></p>
+<b>Compiling Errors</b>
+<p><b>Compiling fails with the message "Error, cannot find include file windows.h" or "cannot open include file 'winres.h'".</b></p>
+<p>That problem happens because the file, which is needed to compile programs that make calls to the Windows operating system, is not installed.  To fix this, download and install the Microsoft Windows SDK for your system (it is free).</p>
+<p>Once the SDK is installed add the file paths to Visual Studio. Select <i>Options...</i> from the <i>Tools</i> pull-down menu. Choose <i>Projects and Solutions -&gt; VC++ Directories  -&gt; Show directories -&gt; Include files</i>. Add the complete path to <b>Microsoft Platform SDK\Include\mfc</b> and <b>Microsoft Platform SDK\Include</b> to the list of directories.  Next select <i>Show directories  -&gt; Library files</i>. Add the complete path too <b>Microsoft Platform SDK\Lib</b> to the list of directories.  These instructions my vary depending on your SDK and Visual Studio version.</p> 
+<b>Linking Errors</b>
+<p><b>Linking fails with the error "unsatisfied link error".</b></p>
+<p>This error can have multiple causes, and can mean that the library in question is missing or not in the <b>PATH</b>, or that one of the dependent libraries is missing or cannot be loaded properly.  A useful tool in debugging this error is the free program <a href="http://www.dependencywalker.com">depends.exe</a>.</p>
+<p>If depends.exe shows that the missing libraries do not have a name like MSVC*.dll, and the files are on the computer, then directories containing the libraries must be added to the <b>PATH</b> environment variable.  To do this add the directories to <i>Control Panel -&gt; System -&gt; Advance -&gt; Environment Variables</i>.</p>
+<b>Unable to find MSVC*.dll when linking, or program failed to execute because it could not find MSVC*.dll</b>
+<p>If the missing files have names like MSVC*, then the situation is a bit more complicated. These are the standard template libraries of C++ and C, and they have to be linked through a manifest that is embedded in the libraries. Simply moving the libraries into the <b>PATH</b> will not fix the problem. This problem can have several causes and solutions.</p>
+<ol>
+<p><li><b>Berkeley DB XML was compiled from source on a hard drive of type FAT.</b> Visual Studio has a bug were the manifest does not update properly on FAT hard drives. To fix this modify the Visual Studio projects xerces, dbxml, db, db_java, dbxml_java, and xqilla as follows: Right click the project and select <i>Properties -&gt; Configuration Properties -&gt; Manifest Tool -&gt; General</i> and change <i>Use FAT32 Work-around</i> to <i>Yes</i>. Then rebuild all of the projects.
+<p><li><b>Berkeley DB XML was compiled from source on a hard drive that is not of type FAT.</b>  In this case the files might not be installed on the computer. To fix this, download and install the Microsoft SDK as described in the <b>Compile Errors</b> section above.
+<p><li><b>The Berkeley DB XML binaries are installed.</b> In that case the files are installed by the binary installation, but some dependent operating system files may be missing. In that case download and install Microsoft Visual C++ 2005 or 2008 SP1 Redistributable Package (x86, IA64 or X64, depending on the system, although the binaries are all 32 bit, so the x86 version may be required even if the system is different). 
+</ol>
+<b>Execution Errors</b>
+<p><b>Running Java results in an "Internal Error" when trying to open an XmlManager or Environment.</b>  This has been reported as being caused by the Java cache being too large (especially on 64-bit systems running Java in 32-bit mode). The solutions is to reduce the size of the Java cache to below its maximum (which has been reported as being 486 MB, although this may very with different JVM) by starting Java with the flags <b>-Xms32m -Xmx300m</b>.</p>
+<p><b>The Berkeley DB XML binaries are installed and running the dbxml shell, or any other program, results in the error message "Program failed to initialized due to error X(######)".</b>  Missing files causes this.  To solve this download Microsoft Visual C++ 2005 (or 2008) SP1 Redistributable Package (x86, IA64 or X64, depending on the system, although the binaries are all 32 bit, so the x86 version may be required even if the system is different).</p>
+<b>Running Java from the Berkeley DB XML binaries on 64-bit Windows</b>
+<p>This can be done, but it requires that the 64-bit JVM be run in 32-bit mode and with the flags <b>-Xms32m -Xmx300m</b>.  To run in 64-bit mode requires that Berkeley DB XML be compiled from source as a 64-bit library.</p>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xml_win/bin.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../upgrade/version.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html> 

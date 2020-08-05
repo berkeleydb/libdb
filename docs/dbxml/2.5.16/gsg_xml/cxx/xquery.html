@@ -1,0 +1,943 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 5. Using XQuery with BDB XML</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="prev" href="setting_metadata.html" title="Setting Metadata" />
+    <link rel="next" href="dbxmlqueries.html" title="Retrieving BDB XML Documents using XQuery" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 5. Using XQuery with BDB XML</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="setting_metadata.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="dbxmlqueries.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="xquery"></a>Chapter 5. Using XQuery with BDB XML</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="xquery.html#xqueryintro">XQuery: A Brief Introduction</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="xquery.html#simplequeries">Referencing Portions of Documents using XQuery</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="xquery.html#predicates">Predicates</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="xquery.html#context">Context</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="xquery.html#wildcards">Wildcards</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="xquery.html#caseinsensitive">Case Insensitive Searches</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="xquery.html#navigationfunctions">Navigation Functions</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="xquery.html#flwor">Using FLWOR with BDB XML</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="dbxmlqueries.html">Retrieving BDB XML Documents using XQuery</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="dbxmlqueries.html#xmlquerycontext">The Query Context</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="dbxmlqueries.html#queries">Performing Queries</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="externalfunc.html">Working with External Functions</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="externalfunc.html#xmlexternalfunction">Implementing XmlExternalFunction</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="externalfunc.html#xmlresolver">Implementing XmlResolver</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="externalfunc.html#callingxfunc">Calling External Functions from XQuery</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="examineresults.html">Examining Query Results</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="examineresults.html#examinedocvalues">Examining Document Values</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="examineresults.html#examinemetadata">Examining Metadata</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="examineresults.html#copyresult">Copying Result Sets</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="examineresults.html#eventreader">Using Event Readers</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+        </dl>
+      </div>
+      <p>
+        Documents are retrieved from BDB XML containers using XQuery
+        expressions. XQuery is a language designed to query XML documents. Using
+        XQuery, you can retrieve entire documents, subsections of documents, or
+        values from one or more individual document nodes. You can also use
+        XQuery to manipulate or transform values returned by document queries.
+    </p>
+      <p>
+        Note that XQuery represents a superset of XPath 2.0, which in turn is
+        based on XPath 1.0. If you have prior experience with BDB XML 1.x, then
+        you should be familiar with XPath as that was the query language offered
+        by that library.
+    </p>
+      <p>
+        BDB XML supports the entire W3 XQuery specification. As of
+        this printing, the specification is dated July 2004.  However, BDB XML will be
+        updated to track any changes in the working specification that may occur.
+        You can find the XQuery specification at 
+        <a class="ulink" href="http://www.w3.org/XML/Query/" target="_top">http://www.w3.org/XML/Query</a>.
+    </p>
+      <p>
+       Beyond the W3C specifications, there are several good books on the market today 
+       that fully describe XQuery. In addition, there are many freely available
+       resources on the web that provide a good introduction to the language.
+       Searching for 'XQuery' in the Web search engine of your choice ought to
+       return a wealth of information and pointers on the language.
+    </p>
+      <p>
+        That said, this chapter begins with a very thin introduction to XQuery that
+        should be enough for you to understand any BDB XML concepts required to
+        proceed with usage of the library. In particular, the next section of
+        this manual highlights those aspects of XQuery that have unique meanings
+        relative to BDB XML usage. Be aware, however, that the following
+        introduction is not meant to be complete — a full treatment of
+        XQuery is beyond the scope of an introductory manual such as this.
+    </p>
+      <p>
+        We follow this brief introduction to XQuery with a general description
+        of querying documents stored in BDB XML containers, and examining the
+        results of those queries. See 
+        <a class="xref" href="dbxmlqueries.html" title="Retrieving BDB XML Documents using XQuery">Retrieving BDB XML Documents using XQuery</a>
+        for that information.
+	</p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="xqueryintro"></a>XQuery: A Brief Introduction</h2>
+            </div>
+          </div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="xquery.html#simplequeries">Referencing Portions of Documents using XQuery</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="xquery.html#predicates">Predicates</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="xquery.html#context">Context</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="xquery.html#wildcards">Wildcards</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="xquery.html#caseinsensitive">Case Insensitive Searches</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="xquery.html#navigationfunctions">Navigation Functions</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="xquery.html#flwor">Using FLWOR with BDB XML</a>
+              </span>
+            </dt>
+          </dl>
+        </div>
+        <p>
+        XQuery can be used to:
+    </p>
+        <div class="orderedlist">
+          <ol type="1">
+            <li>
+              <p>
+                Query for a document. Note that queries can be formed against an
+                individual document, or against multiple documents.
+            </p>
+            </li>
+            <li>
+              <p>
+                Query for document subsections, including values found on
+                individual document nodes.
+            </p>
+            </li>
+            <li>
+              <p>
+                Manipulate and transform the results of a query.
+            </p>
+            </li>
+            <li>
+              <p>
+                        Modify a document (see <a class="xref" href="modifydocument.html" title="Modifying XML Documents">Modifying XML Documents</a> for more
+                        information).
+                </p>
+            </li>
+          </ol>
+        </div>
+        <p>
+        To do this, XQuery views an XML document as a collection of element,
+        text, and attribute nodes.  For example, consider the following XML
+        document:
+	</p>
+        <pre class="programlisting">&lt;?xml version="1.0"?&gt;
+&lt;Node0&gt;
+&lt;Node1 class="myValue1"&gt;Node1 text &lt;/Node1&gt;
+&lt;Node2&gt;
+    &lt;Node3&gt;Node3 text&lt;/Node3&gt;
+    &lt;Node3&gt;Node3 text 2&lt;/Node3&gt;
+    &lt;Node3&gt;Node3 text 3&lt;/Node3&gt;
+    &lt;Node4&gt;300&lt;/Node4&gt;
+    &lt;/Node2&gt;
+&lt;/Node0&gt;</pre>
+        <p>
+        In the above document, <code class="literal">&lt;Node0&gt;</code> is the
+        <span class="emphasis"><em>document's root node</em></span>, and 
+        <code class="literal">&lt;Node1&gt;</code> is an element node. 
+        Further, the element node, <code class="literal">&lt;Node1&gt;</code>, contains a
+        single attribute node whose name is <code class="literal">class</code> and whose
+        value is <code class="literal">myValue1</code>. Finally,
+        <code class="literal">&lt;Node1&gt;</code> contains a text node whose value is
+        <code class="literal">Node1 text</code>.
+    </p>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="simplequeries"></a>Referencing Portions of Documents using XQuery</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+            A document's root can always be referenced using a single forward
+            slash:
+        </p>
+          <div class="blockquote">
+            <blockquote class="blockquote">
+              <p>
+            <code class="literal">/.</code>
+        </p>
+            </blockquote>
+          </div>
+          <p>
+            Subsequent element nodes in the document can be referenced using
+            Unix-style path notation:            
+        </p>
+          <div class="blockquote">
+            <blockquote class="blockquote">
+              <p>
+            <code class="literal">/Node1</code>
+        </p>
+            </blockquote>
+          </div>
+          <p>
+            To reference an attribute node, prefix the attribute node's name
+            with '<code class="literal">@</code>':
+        </p>
+          <div class="blockquote">
+            <blockquote class="blockquote">
+              <p>
+            <code class="literal">/Node1/@class</code>
+        </p>
+            </blockquote>
+          </div>
+          <p>
+            To return the value contained in a node's text node (remember that not all element nodes
+            contain a text node), use <code class="function">distinct-values()</code> function:
+        </p>
+          <div class="blockquote">
+            <blockquote class="blockquote">
+              <p>
+            <code class="literal">distinct-values(/Node1)</code>
+        </p>
+            </blockquote>
+          </div>
+          <p>
+            To return the value assigned to an attribute node, you also use the
+            <code class="function">distinct-values()</code> function:
+        </p>
+          <div class="blockquote">
+            <blockquote class="blockquote">
+              <p>
+            <code class="literal">distinct-values(/Node1/@class)</code>
+        </p>
+            </blockquote>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="predicates"></a>Predicates</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+            When you provide an XQuery path, what you receive back is a result
+            set.  You can further filter this result set by using
+            <span class="emphasis"><em>predicates</em></span>. Predicates are always contained in
+            brackets ([]) and there are two types of predicates that you can
+            use: numeric and boolean.
+        </p>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="numericpredicates"></a>Numeric Predicates</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+
+                Numeric predicates allow you to select a node based on its
+                position relative to another node in the document (that is,
+                based on its <span class="emphasis"><em>context</em></span>). 
+            </p>
+            <p>
+                For example, consider the document presented in 
+                <a class="xref" href="xquery.html#xqueryintro" title="XQuery: A Brief Introduction">XQuery: A Brief Introduction</a>. 
+                This document contains three &lt;Node3&gt; elements. If you
+                simply enter the XQuery expression:
+             </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+                    <code class="literal">/Node1/Node2/Node3</code>
+                </p>
+              </blockquote>
+            </div>
+            <p>
+                all &lt;Node3&gt; elements in the document are returned. To
+                return, say, the second &lt;Node3&gt; element, use a predicate:
+             </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+                    <code class="literal">/Node1/Node2/Node3[2]</code>
+                </p>
+              </blockquote>
+            </div>
+          </div>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="booleanpredicates"></a>Boolean Predicates</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+                Boolean predicates filter a query result so that only those
+                elements of the result are kept if the expression evaluates to
+                true. For example, suppose you want to select a node only if its
+                text node is equal to some value. Then:
+            </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+                    <code class="literal">/Node1/Node2[Node3="Node3 text 3"]</code>
+                </p>
+              </blockquote>
+            </div>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="context"></a>Context</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+            The meaning of an XQuery expression can change depending on the
+            current context. Within XQuery expressions, context is usually
+            only important if you want to use relative paths or if your
+            documents use namespaces. Do not confuse XQuery contexts with
+            BDB XML contexts.  While BDB XML contexts are related to XQuery
+            contexts, they differ in that BDB XML contexts are a data
+            structure that allows you to define namespaces, define
+            variables, and to identify the type of information that is
+            returned as the result of a query (all of these topics are
+            discussed later in this chapter).
+
+		</p>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="relativepaths"></a>Relative Paths</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+                Just like Unix filesystem paths, any path that does not begin
+                with a slash (<code class="literal">/</code>) is relative to your current
+                location in a document. Your current location in a document is
+                determined by your context. Thus, if in the document
+                presented in
+                <a class="xref" href="xquery.html#xqueryintro" title="XQuery: A Brief Introduction">XQuery: A Brief Introduction</a>
+                your context is set to <code class="literal">Node2</code>, you can refer
+                to <code class="literal">Node3</code> with the simple notation: 
+		    </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+				<code class="literal">Node3</code>
+			</p>
+              </blockquote>
+            </div>
+            <p>
+			    Further, you can refer to a parent node using the following familiar notation:
+		    </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+					<code class="literal">..</code>
+				</p>
+              </blockquote>
+            </div>
+            <p>
+			    and to the current node using:
+		    </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+					<code class="literal">.</code>
+				</p>
+              </blockquote>
+            </div>
+          </div>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="namespaces"></a>Namespaces</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+				Natural language and, therefore, tag names can be imprecise. Two different tags can
+				have identical names and yet hold entirely different sorts of information.
+				Namespaces are intended to resolve any such sources of confusion.
+			</p>
+            <p>
+				Consider the following document:
+			</p>
+            <pre class="programlisting">&lt;?xml version="1.0"?&gt;
+&lt;definition&gt;
+    &lt;ring&gt;
+        Jewelry that you wear.
+    &lt;/ring&gt;
+    &lt;ring&gt;
+        A sound that a telephone makes.
+    &lt;/ring&gt;
+    &lt;ring&gt;
+        A circular space for exhibitions.              
+    &lt;/ring&gt;
+&lt;/definition&gt; </pre>
+            <p>
+                As constructed, this document makes it difficult (though not
+                impossible) to select the node for, say, a ringing telephone.
+			</p>
+            <p>
+                To resolve any potential confusion in your schema or supporting
+                code, you can introduce namespaces to your documents. For
+                example:
+			</p>
+            <pre class="programlisting">&lt;?xml version="1.0"?&gt;
+&lt;definition&gt;
+    &lt;jewelry:ring xmlns:jewelry="http://myDefinition.dbxml/jewelry"&gt;
+        Jewelry that you wear.
+    &lt;/jewelry:ring&gt;
+    &lt;sounds:ring xmlns:sounds="http://myDefinition.dbxml/sounds"&gt;
+        A sound a telephone makes.
+    &lt;/sounds:ring&gt;
+    &lt;showplaces:ring 
+        xmlns:showplaces="http://myDefinition.dbxml/showplaces"&gt;
+        A circular space for exhibitions.
+    &lt;/showplaces:ring&gt;
+&lt;/definition&gt; </pre>
+            <p>
+                Now that the document has defined namespaces, you can precisely
+                query any given node:
+		    </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+				<code class="literal">/definition/sounds:ring</code>
+			</p>
+              </blockquote>
+            </div>
+            <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+              <h3 class="title">Note</h3>
+              <p>
+                In order to perform queries against a document stored in BDB XML
+                that makes use of namespaces, you must declare the namespace
+                to your query. You do this using 
+                    <span><code class="methodname">XmlQueryContext::setNamespace()</code>.</span>
+                    
+                See <a class="xref" href="dbxmlqueries.html#definenamespace" title="Defining Namespaces">Defining Namespaces</a> for more
+                information.
+            </p>
+            </div>
+            <p>
+            By identifying the namespace to which the node belongs, you are
+            declaring a context for the query.
+		</p>
+            <p>
+            The URI used in the namespace definition is not required to actually
+            resolve to anything. The only criteria is that it be unique within
+            the scope of any document set(s) in which it might be used.
+		</p>
+            <p>
+            Also, the namespace is only required to be declared once in the
+            document. All subsequent usages need only use the relevant prefix.
+            For example, we could have added the following to our previous
+            document:
+		</p>
+            <pre class="programlisting">&lt;jewelry:diamond&gt;
+    The centerpiece of many rings.
+&lt;/jewelry:diamond&gt;
+&lt;showplaces:diamond&gt;
+    A place where baseball is played.     
+&lt;/showplaces:diamond&gt;</pre>
+            <p>
+            Finally, namespaces can be used with attributes too. For an example:
+        </p>
+            <pre class="programlisting">&lt;clubMembers&gt;
+    &lt;surveyResults school:class="English" 
+        xmlns:school="http://myExampleDefinitions.dbxml/school" 
+        number="200"/&gt;
+    &lt;surveyResults school:class="Mathematics" 
+        number="165"/&gt;
+    &lt;surveyResults social:class="Middle" 
+        xmlns:social="http://myExampleDefinitions.dbxml/social"      
+        number="543"/&gt;
+&lt;/clubMembers&gt;</pre>
+            <p>
+            Once you have declared a namespace for an attribute, you can query
+            the attribute in the following way:
+        </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+            <code class="literal">/clubMembers/surveyResults/@school:class</code>
+            </p>
+              </blockquote>
+            </div>
+            <p>
+            And to retrieve the value set for the attribute:
+        </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+            <code class="literal">distinct-values(/clubMembers/surveyResults/@school:class)</code>
+            </p>
+              </blockquote>
+            </div>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="wildcards"></a>Wildcards</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+		  XQuery allows you to use wildcards when document elements are unknown. For example:
+		</p>
+          <div class="blockquote">
+            <blockquote class="blockquote">
+              <p>
+					<code class="literal">/Node0/*/Node6</code>
+			</p>
+            </blockquote>
+          </div>
+          <p>selects all the Node6 nodes that are 3 nodes deep in the document and whose path
+				starts with <code class="literal">Node0</code>. Other wildcard matches are:</p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p>
+								Selects all of the nodes in the document:
+						</p>
+                <div class="blockquote">
+                  <blockquote class="blockquote">
+                    <p>
+                      <code class="literal">//*</code>
+                    </p>
+                  </blockquote>
+                </div>
+              </li>
+              <li>
+                <p>
+							Selects all of the Node6 nodes that have three ancestors:
+						</p>
+                <div class="blockquote">
+                  <blockquote class="blockquote">
+                    <p>
+                      <code class="literal">/*/*/*/Node6</code>
+                    </p>
+                  </blockquote>
+                </div>
+              </li>
+              <li>
+                <p>
+							Selects all the nodes immediately beneath Node5:
+						</p>
+                <div class="blockquote">
+                  <blockquote class="blockquote">
+                    <p>
+                      <code class="literal">/Node0/Node5/*</code>
+                    </p>
+                  </blockquote>
+                </div>
+              </li>
+              <li>
+                <p>
+							Selects all of Node5's attributes:
+						</p>
+                <div class="blockquote">
+                  <blockquote class="blockquote">
+                    <p>
+                      <code class="literal">/Node0/Node5/@*</code>
+                    </p>
+                  </blockquote>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="caseinsensitive"></a>Case Insensitive Searches</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+                    It is possible to perform a case-insensitive and
+                    diacritic insensitive match using BDB XML's built-in
+                    function, <code class="literal">dbxml:contains()</code>. This
+                    function takes two parameters, both strings. The first
+                    identifies the attribute or element that you want to
+                    examine, and the second provides the string you want to
+                    match.
+            </p>
+          <p>
+                    For example, the search:
+            </p>
+          <pre class="programlisting">collection('myCollection.dbxml')/book[dbxml:contains(title, "Résumé")]</pre>
+          <p>
+                    matches "resume", "Resume", "Resumé" and so forth.
+            </p>
+          <p>
+                    Note that searches performed using
+                    <code class="literal">dbxml:contains()</code> can be backed by
+                    BDB XML's substring indexes.
+            </p>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="navigationfunctions"></a>Navigation Functions</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+            XQuery provides several functions that can be used for global
+            navigation to a specific document or collection of documents. From
+            the perspective of this manual, two of these are interesting because
+            they have specific meaning from within the context of BDB XML
+        </p>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="collectionfunction"></a>collection()</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+            Within XQuery, <code class="function">collection()</code> is a function that
+            allows you to create a named sequence. From within BDB XML, however,
+            it is also used to navigate to a specific container. In this
+            case, you must identify to <code class="function">collection()</code> the literal name
+            of the container. You do this either by passing the container name directly to the function, or by declaring
+            a default container name using the
+                <code class="methodname">XmlQueryContext::setDefaultCollection()</code>
+                
+            method.
+        </p>
+            <p>
+            Note that the container must have already been
+            opened by the <code class="classname">XmlManager</code> in order for
+            collection to reference that container. The exception to this is if
+            <code class="classname">XmlManager</code> was opened using the 
+                <span><code class="literal">DBXML_ALLOW_AUTO_OPEN flag</code>.</span>
+                
+        </p>
+            <p>
+            For example, suppose you want to perform a query against a container
+            named <code class="literal">container1.dbxml</code>. In this case, first open
+            the container using 
+                <code class="classname">XmlManager::openContainer()</code> 
+                 
+            and then specify the collection() function on the query. For
+            example:
+        </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+                  <code class="literal">collection("container1.dbxml")/Node0</code>
+                </p>
+              </blockquote>
+            </div>
+            <p>
+            Note that this is actually short-hand for:
+        </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+                  <code class="literal">collection("dbxml:/container1.dbxml")/Node0</code>
+                </p>
+              </blockquote>
+            </div>
+            <p>
+            <code class="literal">dbxml:/</code> is the default base URI for BDB XML. You
+            can change the base URI using 
+                <span><code class="methodname">XmlQueryContext::setBaseURI()</code>.</span>
+                
+        </p>
+            <p>
+            If you want to perform a query against multiple containers, use the union ("|") operator. For example, to
+            query against containers <code class="literal">c1.dbxml</code> and <code class="literal">c2.dbxml</code>, you would use the
+            following expression:
+        </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+                  <code class="literal">(collection("c1.dbxml") | collection("c2.dbxml"))/Node0</code>
+                </p>
+              </blockquote>
+            </div>
+            <p>
+            See <a class="xref" href="dbxmlqueries.html" title="Retrieving BDB XML Documents using XQuery">Retrieving BDB XML Documents using XQuery</a>
+            for more information on how to prepare and perform queries.
+        </p>
+          </div>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="docfunction"></a>doc()</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+                XQuery provides the <code class="function">doc()</code> function so that
+                you can trivially navigate to the root of a named document.
+                <code class="function">doc()</code> is required to take a URI. 
+            </p>
+            <p>
+                To use 
+                <code class="function">doc()</code> to navigate to a specific document
+                stored in BDB XML, provide an XQuery path that uses the
+                <code class="literal">dbxml:</code> base URI, and that identifies the
+                container in which the document can be found. The actual
+                document name that you provide is the same name that was set for
+                the document when it was added to the container (see
+                <a class="xref" href="puttingdocuments.html" title="Adding Documents">Adding Documents</a> for more
+                information).
+            </p>
+            <p>
+                For example, suppose you have a document named "mydoc1.xml" in
+                container "container1.dbxml". Then to perform a query against that
+                specific document, first open
+                <code class="literal">container1.dbxml</code> and then provide a query
+                something like this:
+            </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <p>
+                <code class="literal">doc("dbxml:/container1.dbxml/mydoc1.xml")/Node0</code>
+            </p>
+              </blockquote>
+            </div>
+            <p>
+            See <a class="xref" href="dbxmlqueries.html" title="Retrieving BDB XML Documents using XQuery">Retrieving BDB XML Documents using XQuery</a>
+            for more information on how to prepare and perform queries.
+        </p>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="flwor"></a>Using FLWOR with BDB XML</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+            XQuery offers iterative and transformative capabilities through FLWOR
+            (pronounced "flower") expressions. <span class="emphasis"><em>FLWOR</em></span> is an
+            acronym that stands for the five major clauses in a FLWOR
+            expression: <code class="literal">for, let, where, order by</code> and
+            <code class="literal">return</code>. Using FLWOR expressions, you can iterate
+            over sequences (frequently result sets in BDB XML), use variables,
+            and filter, group, and sort sequences. You can even use FLWOR to
+            perform joins of different data sources.
+        </p>
+          <p>
+            For example, suppose you had documents in your container that looked
+            like this:
+        </p>
+          <pre class="programlisting">&lt;product&gt;
+    &lt;name&gt;Widget A&lt;/name&gt;
+    &lt;price&gt;0.83&lt;/price&gt;
+&lt;/product&gt;</pre>
+          <p>
+            In this case, queries against the container for these documents
+            return the documents in order by their document name. But suppose
+            you wanted to see all such documents in your container, ordered by
+            price. You can do this with a FLWOR expression:
+        </p>
+          <pre class="programlisting">for $i in collection("myContainer.dbxml")/product
+order by $i/price descending
+return $i </pre>
+          <p>
+           Note that from within BDB XML, you must provide FLWOR expressions in
+           a single string. Lines can be separated either by a carriage return
+           ("\n") or by a space. Thus, the above expression would become:
+        </p>
+          <pre class="programlisting">std::string flwor="for $i in collection('myContainer.dbxml')/product\n";
+flwor += "order by $i/price descending\n";
+flwor += "return $i"</pre>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="setting_metadata.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="dbxmlqueries.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Setting Metadata </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Retrieving BDB XML Documents using XQuery</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,63 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::getIndexSpecification</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::getIndexSpecification</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlIndexSpecification XmlContainer::getIndexSpecification()
+<p>
+XmlIndexSpecification XmlContainer::getIndexSpecification(XmlTransaction &txn,
+    u_int32_t flags = 0)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::getIndexSpecification</b>
+<p>Retrieves the current indexing specification for the container. The
+indexing specification can be modified using
+<a href="../../api_reference/CXX/XmlContainer_setIndexSpecification.html">XmlContainer::setIndexSpecification</a>.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to one of the following values:
+<br>
+<b><a name="DB_RMW">DB_RMW</a></b><ul compact><li>Acquire write locks instead of read locks when doing the read, if
+locking is configured.  Setting this flag can eliminate deadlock during
+a read-modify-write cycle by acquiring the write lock during the read
+part of the cycle so that another thread of control acquiring a read
+lock for the same item, in its own read-modify-write cycle, will not
+result in deadlock.
+</ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::getIndexSpecification method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>DATABASE_ERROR</b><ul compact><li>An error occurred in an underlying Berkeley DB database. The
+<a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a> method will return the error code for the error.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

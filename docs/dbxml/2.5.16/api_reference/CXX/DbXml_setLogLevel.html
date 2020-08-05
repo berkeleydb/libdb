@@ -1,0 +1,82 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: DbXml::setLogLevel</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>DbXml::setLogLevel</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void DbXml::setLogLevel(LogLevel level, bool enabled)
+<p>
+void DbXml::setLogCategory(LogCategory category, bool enabled)
+<p>
+void DbXml::dbxml_version(int *majorp, int *minorp, int *patchp)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: DbXml::setLogLevel</b>
+<p>Berkeley DB XML can be configured to generate a stream of messages to help
+application debugging. The messages are categorized by subsystem, and
+by importance. The messages are sent to the output stream that is
+configured in the Berkeley DB environment associated with the XmlManager
+generating the message. The output is sent to std::cerr if no
+environment is associated with the XmlManager.</p>
+<b>Parameters</b> <br>
+ <b>level</b><ul compact><li>The log level to enable or disable.
+<blockquote><pre>DbXml::LEVEL_DEBUG - Enable program execution tracing messages.
+DbXml::LEVEL_INFO - Enable informational messages.
+DbXml::LEVEL_WARNING - Enable warning messages.
+DbXml::LEVEL_ERROR - Enable fatal error messages.
+DbXml::LEVEL_ALL - Enable all debug levels.</pre></blockquote></ul>
+ <b>enabled</b><ul compact><li>A Boolean flag that specifies whether to enable or disable the level
+or category.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: DbXml::setLogCategory(LogCategory category, bool enabled)</b>
+<p>Berkeley DB XML can be configured to generate a stream of messages to help
+application debugging. The messages are categorized by subsystem, and
+by importance. The messages are sent to the output stream that is
+configured in the Berkeley DB environment associated with the XmlManager
+generating the message. The output is sent to std::cerr if no
+environment is associated with the XmlManager.</p>
+<b>Parameters</b> <br>
+ <b>category</b><ul compact><li>The log category to enable or disable.
+<blockquote><pre>DbXml::CATEGORY_INDEXER - Enable indexer messages.
+DbXml::CATEGORY_QUERY - Enable query processor messages.
+DbXml::CATEGORY_OPTIMIZER - Enable optimizer messages.
+DbXml::CATEGORY_DICTIONARY - Enable dictionary messages.
+DbXml::CATEGORY_CONTAINER - Enable container messages.
+DbXml::CATEGORY_NODESTORE - Enable node storage messages.
+DbXml::CATEGORY_MANAGER - Enable manager messages.
+DbXml::CATEGORY_ALL - Enable all messages.</pre></blockquote></ul>
+ <b>enabled</b><ul compact><li>A Boolean flag that specifies whether to enable or disable the level
+or category.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: DbXml::dbxml_version(int *majorp, int *minorp, int *patchp)</b>
+<p>Returns the Berkeley DB XML release number.</p>
+<b>Parameters</b> <br>
+ <b>majorp</b><ul compact><li>The release's major version number.</ul>
+ <b>minorp</b><ul compact><li>The release's minor version number.</ul>
+ <b>patchp</b><ul compact><li>The release's patch version number.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

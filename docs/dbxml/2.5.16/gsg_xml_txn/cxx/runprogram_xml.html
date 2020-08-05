@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Runtime Analysis</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML Transaction Processing" />
+    <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
+    <link rel="prev" href="inmem_dbxml_txnexample.html" title="In-Memory Transaction Example" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Runtime Analysis</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="inmem_dbxml_txnexample.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 6. Summary and Examples</th>
+          <td width="20%" align="right"> </td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="runprogram_xml"></a>Runtime Analysis</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="runprogram_xml.html#defaultprogramrun">Default Program Run</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="runprogram_xml.html#largernodesize">Varying the Node Size</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="runprogram_xml.html#usingwholedoc">Using Wholedoc Storage</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="runprogram_xml.html#trydegree2">Using Read Committed Isolation</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="runprogram_xml.html#degree2wholedoc">Read Committed with Wholedoc Storage</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        The examples presented in this chapter allow you to manipulate certain runtime characteristics that will affect
+        the number of deadlocks the program will encounter. You can modify:
+    </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                The number of threads the program will use to write the container.
+            </p>
+          </li>
+          <li>
+            <p>
+                The number of nodes that will be created per document written to the container. The key thing here is
+                the size of the documents, as we will see later on in this section.
+            </p>
+          </li>
+          <li>
+            <p>
+                Whether default isolation is used for the container writes, or if read committed should be used instead.
+            </p>
+          </li>
+          <li>
+            <p>
+                Whether the container uses wholedoc or node storage.
+            </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+        The point of the application is to measure the number of deadlocks encountered for a given program run. By
+        counting the number of deadlocks, we can get a sense of the overall amount of lock contention occurring in our
+        application. Remember that deadlocks represent a race condition 
+        that your application lost. In order to occur, two more more threads had to
+        have attempted to lock database pages in such a way that the threads blocked waiting for locks that will never
+        be released (see <a class="xref" href="blocking_deadlocks.html" title="Locks, Blocks, and Deadlocks">Locks, Blocks, and Deadlocks</a> for a more complete description).
+        So by examining the number of deadlocks that we see, we can indirectly get a sense for the amount of lock
+        contention that the application encountered. Roughly speaking, the more deadlocks seen, the more lock contention
+        that was going on during the application run.
+    </p>
+      <p>
+        Note that as you modify these constraints, you will see that the program will encounter differing numbers of deadlocks per
+        program run. No two program runs will indicate the same number of deadlocks, but changing
+        these constraint can on average increase or decrease the number of deadlocks reported by the application.
+    </p>
+      <p>
+        The reason why this application sees deadlocks is because of what BDB XML does under the hood.
+        Recall that BDB XML writes XML documents to underlying Berkeley DB databases. Also, recall the Berkeley DB databases are
+        usually organized in pages; multiple database entries will exist on any given page. Also, Berkeley DB uses page-level
+        locking. The result is that
+        multiple XML documents (or portions of XML documents) can and will be stored on the same database
+        page. When multiple threads attempt to lock a database page, you get lock contention. When multiple database
+        pages are in use and they are locked out of order by the threads of control, you can see deadlocks.
+    </p>
+      <p>
+        Therefore, the things that will immediately affect the amount of lock contention our application will encounter
+        are:
+    </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                Number of threads. If you only ever use a single thread to write to your containers, you will never see any
+                lock contention or deadlocks. On the other hand, increasing the number of writer threads will increase the number
+                of deadlocks that are reported — up to a point. Recall that deadlocks are the result of losing a
+                race condition. As you increase the number of threads in use, your system will slow down due to
+                the overhead from context switching. This system slowdown will result in at least a leveling out of the
+                number of deadlocks, if not an outright reduction in them. Of course, the point at which this occurs
+                depends on the hardware in use.
+            </p>
+          </li>
+          <li>
+            <p>
+                XML document size relative to the underlying database page size. The fewer documents that share a
+                database page, the less chance there is for lock contention and therefore deadlocks. For our workload, 
+                the worse thing you can do is have lots of little database entries and a very large
+                page size. Using large documents relative to the page size allows the document to fill up the page,
+                which means that, for this example program anyway, there will only ever be one locker for that page. 
+            </p>
+            <p>
+                Note that selecting whole document versus node storage for the container plays into this equation. Whole document storage
+                causes the XML document to be written using a single database entry. As a result, the entry itself is
+                fairly large and so the underlying page is less likely to be shared by another document (depending on
+                document size, of course). Conversely, node storage stores the document's individual nodes as
+                individual database entries. Depending on the document, this can result in a lot of tiny database
+                entries, which can adversely affect write performance due to increased lock contention. (Of course, 
+                the flip side to that is that node
+                storage actually improves container query and read performance, but you will have to take our word for
+                it because our sample application does not model that behavior.)
+            </p>
+          </li>
+          <li>
+            <p>
+                Isolation level. Recall that by default, Berkeley DB hangs on to all write locks until the transaction either
+                commits or aborts. It does this so as to provide your threads of control with the maximum isolation
+                protection possible. However, hanging on to write locks like this means that our example application
+                will encounter more lock contention and therefore see more deadlocks.
+            </p>
+            <p>
+                If your application can accept a lessened isolation guarantee, and this one can, then you
+                can reduce the isolation so as to reduce the amount of lock contention. In our case, we provide a way to
+                use read committed (degree 2) isolation. Read committed causes the transaction to release the write lock 
+                as soon as it is finished writing to the page. Since the write locks are held for a shorter amount of
+                time, there is less risk of lock contention and, again, deadlocks.
+            </p>
+            <p>
+                For this workload, using read committed isolation results in a
+                dramatic decrease in the reported number of deadlocks, which means that our application is simply
+                working more efficiently.
+            </p>
+          </li>
+        </ul>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="defaultprogramrun"></a>Default Program Run</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            By default, the program makes the following choices:
+        </p>
+        <pre class="programlisting">&gt; ./TxnGuide -h myEnvironmentDirectory
+Number nodes per document:       1
+Number of writer threads:        5
+Isolation level:                 Default
+Container type:                  Node storage </pre>
+        <p>
+            This represents a worse-case situation for the application in all ways but one; it uses small documents
+            that are just one node in size. Running the example three times in a row results in 370, 317, and 382 reported
+            deadlocks for an an average of 356.333 deadlocks. Note that your own test results will likely differ
+            depending on the number and speed of your CPUs and the speed of your hard drive. For the record, these test
+            results were taken using a single CPU PowerPC G3 system with a slow (4200 RPM) laptop hard drive.
+        </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="largernodesize"></a>Varying the Node Size</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            With a default node size of 1, we saw an average of 356.333 reported deadlocks over three runs of the
+            program. Now lets try increasing the size of the document to see what it does to the number of reported
+            deadlocks:
+        </p>
+        <pre class="programlisting">&gt; ./TxnGuide -h myEnvironmentDirectory -n 10
+Number nodes per document:       10
+Number of writer threads:        5
+Isolation level:                 Default
+Container type:                  Node storage
+        </pre>
+        <p>
+            This results in 894, 854, and 861 deadlocks for an average of 869.667 reported deadlocks. Clearly the amount
+            of lock contention that we are seeing has increased, but why?
+        </p>
+        <p>
+            Remember that larger documents should fill up database pages, which should result in less lock contention
+            because there are fewer lockers per database page. However, we are using node storage which means that the
+            additional nodes results in additional small database entries. Given the way our application is writing
+            documents, adding 9 additional nodes per document simply increases the chance of even more documents placing
+            nodes on any given page.
+        </p>
+        <p>
+            Notice that there is a limit to the amount of lock contention that this application will see by simply
+            adding nodes to the documents it creates. For example, suppose we created documents with 100 nodes:
+        </p>
+        <pre class="programlisting">&gt; ./TxnGuide -h myEnvironmentDirectory -n 100
+Number nodes per document:       100
+Number of writer threads:        5
+Isolation level:                 Default
+Container type:                  Node storage
+        </pre>
+        <p>
+            In this case, we see an average of 316 deadlocks — less, even, than the single node case. Why? First,
+            the documents are now very large so there is a good chance that each document is filling up entire pages,
+            even though we are still using node-level storage. In addition, each thread is now busy creating documents
+            and then writing them to the containers, where they are being deconstructed into individual nodes. All of
+            this is CPU-intensive activity that is likely helping to prevent lock contention because each thread is
+            spending more time on document handling than it does with the smaller document sizes.
+        </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="usingwholedoc"></a>Using Wholedoc Storage</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            In the previous section we saw that specifying a document node size of 10 resulted in an average of 869.667
+            deadlocks across three program runs. This indicates a fairly high level of lock contention. It also
+            indicates that the program is not operating particularly efficiently.
+        </p>
+        <p>
+            One way we could improve the write throughput for our application is to use whole document storage instead
+            of node-level storage. This will result in fewer, but larger, database entries. The result should be fewer
+            threads of control fighting for locks on a given page because fewer individual documents will be held on any
+            given page.
+        </p>
+        <p>
+            Specifying a node size of 10 with whole document storage:
+        </p>
+        <pre class="programlisting">&gt; ./TxnGuide -h myEnvironmentDirectory -n 10 -w
+Number nodes per document:       10
+Number of writer threads:        5
+Isolation level:                 Default
+Container type:                  Wholedoc storage
+        </pre>
+        <p>
+            gives us an average deadlock count of 556 across three program runs. That's certainly a significant
+            improvement over node-level storage, although for many workloads you will pay for it in terms of the higher
+            query times that wholedoc storage will cost you.
+        </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="trydegree2"></a>Using Read Committed Isolation</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            Another way we can modestly improve our write performance is by using read committed isolation. This causes
+            our transactions to release write locks immediately, instead of waiting until the transaction is resolved.
+            Using read committed isolation does not gives us the dramatic write performance that does using wholedoc
+            storage (see the previous section) but it is still an improvement.
+        </p>
+        <pre class="programlisting">&gt; ./TxnGuide -h myEnvironmentDirectory -n 10 -2
+Number nodes per document:       10
+Number of writer threads:        5
+Isolation level:                 Read Committed
+Container type:                  Node storage
+        </pre>
+        <p>
+            The average number of deadlocks seen across three runs with these settings is 724, down from 869.667. This
+            is a modest improvement to be sure, but then you do not have to pay the query penalty that wholedoc
+            containers might cost you.
+        </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="degree2wholedoc"></a>Read Committed with Wholedoc Storage</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            Finally, the best improvement we can hope to see for this application, using 10 node documents and 5 writer threads, 
+            is to use read committed isolation to write to whole document containers.
+        </p>
+        <pre class="programlisting">&gt; ./TxnGuide -h myEnvironmentDirectory -n 10 -w -2
+Number nodes per document:       10
+Number of writer threads:        5
+Isolation level:                 Read Committed
+Container type:                  Wholedoc storage
+        </pre>
+        <p>
+        For three runs of the program with these settings, we observe 228.333 deadlocks — a remarkable
+        improvement over the worst-case 869.667 that we saw for 10 nodes, 5 writer threads! 
+    </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="inmem_dbxml_txnexample.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="wrapup.html">Up</a>
+          </td>
+          <td width="40%" align="right"> </td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">In-Memory Transaction Example </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>In-Memory Transaction Example</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML Transaction Processing" />
+    <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
+    <link rel="prev" href="txnexample_xml_cxx.html" title="Transaction Example" />
+    <link rel="next" href="runprogram_xml.html" title="Runtime Analysis" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">In-Memory Transaction Example</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="txnexample_xml_cxx.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 6. Summary and Examples</th>
+          <td width="20%" align="right"> <a accesskey="n" href="runprogram_xml.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="inmem_dbxml_txnexample"></a>In-Memory Transaction Example</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+        Some applications use XML documents in a transient manner. That is,
+        they create and store XML documents as a part of their run time,
+        but there is no need for the documents to persist between
+        application restarts. For these class of applications, overall
+        throughput can be improved by abandoning the transactional
+        durability guarantee. To do this, you
+        keep your environment, containers, and logs entirely in-memory so
+        as to avoid the performance impact of unneeded disk I/O.
+    </p>
+      <p>
+        To do this:
+    </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                Refrain from specifying a home directory when you open your
+                environment. The exception to this is if you are using the
+                <code class="literal">DB_CONFIG</code> configuration file — in
+                that case you must identify the environment's home
+                directory so that the configuration file can be found.
+            </p>
+          </li>
+          <li>
+            <p>
+                Configure your environment to back your regions from
+                system memory instead of the filesystem.
+            </p>
+          </li>
+          <li>
+            <p>
+                Configure your logging subsystem such that log files are kept
+                entirely in-memory.
+            </p>
+          </li>
+          <li>
+            <p>
+                Increase the size of your in-memory log buffer so that it
+                is large enough to hold the largest set of concurrent write operations.
+            </p>
+          </li>
+          <li>
+            <p>
+                Increase the size of your in-memory cache so that it can
+                hold your entire data set. You do not want your cache to
+                page to disk.
+            </p>
+          </li>
+          <li>
+            <p>
+                Specify an empty string when you open your container. Note
+                that for in-memory operations, you are limited to just one
+                container.
+            </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+        As an example, this section takes the transaction example provided
+        in <a class="xref" href="txnexample_xml_cxx.html" title="Transaction Example">Transaction Example</a>
+        and it updates that example so that the environment, container, log
+        files, and regions are all kept entirely in-memory. 
+    </p>
+      <p>
+        To begin, we simplify the beginning of our example a bit. Because
+        we no longer need an environment home directory, we can remove all
+        the code that we used to determine path delimiters.
+    </p>
+      <pre class="programlisting">// File TxnGuideInMemory.cpp
+
+// We assume an ANSI-compatible compiler
+#include "dbxml/DbXml.hpp"
+#include &lt;cstdlib&gt;
+#include &lt;iostream&gt;
+#include &lt;pthread.h&gt;
+#include &lt;sstream&gt;
+
+#ifdef _WIN32
+extern int getopt(int, char * const *, const char *);
+#endif
+
+using namespace DbXml;
+
+// Printing of pthread_t is implementation-specific, so we
+// create our own thread IDs for reporting purposes.
+int global_thread_num;
+int global_num_deadlocks;
+pthread_mutex_t thread_num_lock, thread_num_deadlocks;
+
+// Forward declarations
+int usage(void);
+void *writerThread(void *);
+
+struct ThreadVars {
+    XmlContainer container;
+    bool useReadCommitted;
+    int numNodes;
+};  </pre>
+      <p>
+    Next, we modify the <code class="function">usage()</code> function so that it no longer
+    mentions the <code class="literal">-h</code> option which was used to specify the environment home directory. 
+</p>
+      <pre class="programlisting">// Usage function
+int
+usage()
+{
+    std::cerr &lt;&lt; "\nThis program writes XML documents to a DB XML"
+              &lt;&lt; "container. The documents are written using any number\n"
+              &lt;&lt; "of threads that will perform writes "
+              &lt;&lt; "using 50 transactions. Each transaction writes \n"
+              &lt;&lt; "10 documents. You can choose to perform the "
+              &lt;&lt; "writes using default isolation, or using \n"
+              &lt;&lt; "READ COMMITTED isolation. If READ COMMITTED "
+              &lt;&lt; "is used, the application will see fewer deadlocks."
+              &lt;&lt; std::endl;
+     std::cerr &lt;&lt; "\nNote that you can vary the size of the documents "
+               &lt;&lt; "written to the container by defining the number of \n"
+               &lt;&lt; "nodes in the documents. Up to a point, and depending "
+               &lt;&lt; "on your system's performance, increasing the number \n"
+               &lt;&lt; "of nodes will increase the number of deadlocks that "
+               &lt;&lt; "your application will see." &lt;&lt; std::endl;
+    std::cerr &lt;&lt; "Command line options are: " &lt;&lt; std::endl;
+    std::cerr &lt;&lt; " [-t &lt;number of threads&gt;]" &lt;&lt; std::endl;
+    std::cerr &lt;&lt; " [-n &lt;number of nodes per document&gt;]" &lt;&lt; std::endl;
+    std::cerr &lt;&lt; " [-w]       (create a Wholedoc container)"   &lt;&lt; std::endl;
+    std::cerr &lt;&lt; " [-2]       (use READ COMMITTED isolation)" &lt;&lt; std::endl;
+    return (EXIT_FAILURE);
+}  </pre>
+      <p>
+    We are also able to eliminate the <code class="literal">containerName</code> and
+    <code class="literal">dbHomeDir</code> variables from our
+    <code class="function">main()</code>.
+</p>
+      <pre class="programlisting">int
+main(int argc, char *argv[])
+{
+
+    DB_ENV *envp = NULL;
+    XmlManager *mgrp = NULL;
+
+    ThreadVars threadInfo;
+    threadInfo.useReadCommitted = false;
+
+    // Initialize globals
+    global_thread_num = 0;
+    global_num_deadlocks = 0;
+
+    int ch, i, dberr;
+    int numThreads = 5;
+    u_int32_t envFlags;
+    XmlContainer::ContainerType containerType =
+        XmlContainer::NodeContainer;
+
+    // Application name
+    const char *progName = "TxnGuide-inmem";  </pre>
+      <p>
+    Parsing the command line arguments is somewhat simpler now too. We no
+    longer care about the difference in file path delimiters between a
+    windows and a unix system, and we no longer support the
+    <code class="literal">-h</code> option.
+</p>
+      <pre class="programlisting">    // Parse the command line arguments
+    while ((ch = getopt(argc, argv, "n:t:w2")) != EOF)
+        switch (ch) {
+        case 'n':
+            threadInfo.numNodes = atoi(optarg);
+            break;
+        case 't':
+            numThreads = atoi(optarg);
+            break;
+        case '2':
+            threadInfo.useReadCommitted = true;
+            break;
+        case 'w':
+            containerType = XmlContainer::WholedocContainer;
+            break;
+        case '?':
+        default:
+            return (usage());
+        }  </pre>
+      <p>
+    Until now we have only eliminated things from the program. This is to
+    be expected; after all, we need to collect less information in order to
+    operate and so our code should be slightly simpler. 
+</p>
+      <p>
+    But now we need to start adding information to tell the Berkeley DB
+    library that it must keep information in-memory only. We start by
+    making the environment private; this causes all the region files to be
+    kept in memory. (Additional code is in <strong class="userinput"><code>bold</code></strong>.)
+</p>
+      <p>
+        Note that we also remove the <code class="literal">DB_RECOVER</code> flag
+        from the environment open flags. Because our containers,
+        logs, and regions are maintained in-memory, there can never be anything to recover.
+    </p>
+      <pre class="programlisting">    // Find out how many nodes we'll write to the container
+    threadInfo.numNodes = threadInfo.numNodes &lt; 1 ? 1 :
+                          threadInfo.numNodes;
+
+    // Find out how many threads
+    numThreads = numThreads &lt; 1 ? 1 : numThreads;
+
+    std::cout &lt;&lt; "Number nodes per document:       "
+              &lt;&lt; threadInfo.numNodes &lt;&lt; std::endl;
+    std::cout &lt;&lt; "Number of writer threads:        " &lt;&lt; numThreads
+              &lt;&lt; std::endl;
+
+    std::string msg = threadInfo.useReadCommitted ?
+                        "Read Committed " :
+                        "Default";
+    std::cout &lt;&lt; "Isolation level:                 " &lt;&lt; msg
+              &lt;&lt; std::endl;
+
+    msg = containerType == XmlContainer::WholedocContainer ?
+                           "Wholedoc storage" : "Node storage";
+    std::cout &lt;&lt; "Container type:                  " &lt;&lt; msg &lt;&lt; "\n\n"
+              &lt;&lt; std::endl;
+
+    // Env open flags
+    envFlags =
+      DB_CREATE     |  // Create the environment if it does not exist
+      // Removed DB_RECOVER flag
+      DB_INIT_LOCK  |  // Initialize the locking subsystem
+      DB_INIT_LOG   |  // Initialize the logging subsystem
+      DB_INIT_TXN   |  // Initialize the transactional subsystem.
+      DB_INIT_MPOOL |  // Initialize the memory pool (in-memory cache)
+      <strong class="userinput"><code>DB_PRIVATE    |  // Region files are not backed by the filesystem.
+                       // Instead, they are backed by heap memory.</code></strong>
+      DB_THREAD;       // Cause the environment to be free-threaded </pre>
+      <p>
+        Now we configure our environment to keep the log files in memory,
+        increase the log buffer size to 10 MB, and increase our in-memory
+        cache to 10 MB. These values should be more than enough for our
+        application's workload.
+      </p>
+      <pre class="programlisting">
+    dberr = db_env_create(&amp;envp, 0);
+    if (dberr) {
+        std::cout &lt;&lt; "Unable to create environment: " &lt;&lt;
+            db_strerror(dberr) &lt;&lt; std::endl;
+        if (envp)
+            envp-&gt;close(envp, 0);
+        return (EXIT_FAILURE);
+    }
+
+<strong class="userinput"><code>    // Specify in-memory logging
+    envp-&gt;set_flags(envp, DB_LOG_INMEMORY, 1);
+
+    // Specify the size of the in-memory log buffer.
+    envp-&gt;set_lg_bsize(envp, 10 * 1024 * 1024);
+
+    // Specify the size of the in-memory cache
+    envp-&gt;set_cachesize(envp, 0, 10 * 1024 * 1024, 1); </code></strong></pre>
+      <p>
+    Next, we open the environment and setup our lock detection. This is
+    identical to how the example previously worked, except that we do not
+    provide a location for the environment's home directory.
+ </p>
+      <pre class="programlisting">
+    // Indicate that we want to internally perform deadlock 
+    // detection.  Also indicate that the transaction with 
+    // the fewest number of write locks will receive the 
+    // deadlock notification in the event of a deadlock.
+    envp-&gt;set_lk_detect(envp, DB_LOCK_MINWRITE);
+
+    envp-&gt;open(envp, <strong class="userinput"><code>NULL</code></strong>, env_flags, 0);
+
+    myManager = new XmlManager(envp, 0);
+    // Create and open a DB XML manager.
+    mgrp = new XmlManager(envp,
+                          DBXML_ADOPT_DBENV); // Close the env when 
+                          // the manager closes.  
+    try { </pre>
+      <p>
+        When we open our container, we provide an empty string for the
+        container name. This causes the container to be kept entirely in
+        memory.
+    </p>
+      <pre class="programlisting">        XmlContainerConfig cconfig;
+        cconfig.setTransactional(true);  // Container is transactional.
+        cconfig.setThreaded(true);
+        cconfig.setAllowCreate(true);    // Create the container if it
+                                         // does not exist.
+        cconfig.setContainerType(containerType);
+
+        // Open the container
+        threadInfo.container =
+            mgrp-&gt;openContainer(<strong class="userinput"><code>""</code></strong>,
+                cconfig); 
+    </pre>
+      <p>
+    After that, our <code class="function">main()</code> function is unchanged,
+    except that our error messages are changed so as to not reference the environment home directory. 
+  </p>
+      <pre class="programlisting">        // Initialize a pthread mutex. Used to help provide thread ids.
+        (void)pthread_mutex_init(&amp;thread_num_lock, NULL);
+        // Initialize a pthread mutex. Used to count the number of
+        // deadlocks encountered by the various threads in this example.
+        (void)pthread_mutex_init(&amp;thread_num_deadlocks, NULL);
+
+        // Start the writer threads.
+        pthread_t writerThreads[numThreads];
+        for (i = 0; i &lt; numThreads; i++)
+            (void)pthread_create(
+                &amp;writerThreads[i], NULL,
+                writerThread, (void *)&amp;threadInfo);
+
+        // Join the writers
+        for (i = 0; i &lt; numThreads; i++)
+            (void)pthread_join(writerThreads[i], NULL);
+
+    } catch(XmlException &amp;xe) {
+        std::cerr &lt;&lt; "Error opening XmlManager and Container: "
+                  &lt;&lt; std::endl;
+        std::cerr &lt;&lt; xe.what() &lt;&lt; std::endl;
+        return (EXIT_FAILURE);
+    } catch(std::exception &amp;ee) {
+        std::cerr &lt;&lt; "Unknown error: "
+                  &lt;&lt; ee.what() &lt;&lt; std::endl;
+        return (EXIT_FAILURE);
+    }
+
+    try {
+        // Close our manager if it was opened.
+        if (mgrp != NULL)
+            delete mgrp;
+
+        // We don't have to close our container or
+        // environment handles. The container closes
+        // when it goes out of scope. The environment
+        // is closed when the manager is deleted, because
+        // we specified DBXML_ADOPT_DBENV on the manager
+        // open.
+
+    } catch(XmlException &amp;xe) {
+        std::cerr &lt;&lt; progName &lt;&lt; "Error closing manager and environment."
+                  &lt;&lt; std::endl;
+        std::cerr &lt;&lt; xe.what() &lt;&lt; std::endl;
+        return (EXIT_FAILURE);
+    } catch(std::exception &amp;ee) {
+        std::cerr &lt;&lt; progName &lt;&lt; "Error closing manager and environment."
+                  &lt;&lt; std::endl;
+        std::cerr &lt;&lt; ee.what() &lt;&lt; std::endl;
+        return (EXIT_FAILURE);
+    }
+
+    // Final status message and return.
+
+    std::cout &lt;&lt; "I'm all done." &lt;&lt; std::endl;
+    std::cout &lt;&lt; "I saw " &lt;&lt; global_num_deadlocks
+              &lt;&lt; " deadlocks in this program run."
+              &lt;&lt; std::endl;
+    return (EXIT_SUCCESS);
+}  </pre>
+      <p>
+        That completes the updates we must make in order to cause the
+        application to keep its environment, container, and logs entirely
+        in memory. The <code class="function">writerThread()</code> is left entirely
+        unchanged.
+   </p>
+      <p>
+    If you would like to
+    experiment with this code, you can find the example in the following
+    location in your BDB XML distribution:
+</p>
+      <pre class="programlisting"><span class="emphasis"><em>BDBXML_INSTALL</em></span>/dbxml/examples/cxx/txn</pre>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="txnexample_xml_cxx.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="wrapup.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="runprogram_xml.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Transaction Example </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Runtime Analysis</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

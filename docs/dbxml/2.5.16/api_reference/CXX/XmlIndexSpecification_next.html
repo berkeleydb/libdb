@@ -1,0 +1,66 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlIndexSpecification::next</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlIndexSpecification::next</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+bool XmlIndexSpecification::next(std::string &uri, std::string &name,
+    std::string &index)
+<p>
+bool XmlIndexSpecification::next(std::string &uri, std::string &name,
+    Type &type, XmlValue::Type &syntax)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlIndexSpecification::next</b>
+<p>Obtains the next index in the <a href="../../api_reference/CXX/XmlIndexSpecification.html">XmlIndexSpecification</a>. Use
+<a href="../../api_reference/CXX/XmlIndexSpecification_reset.html">XmlIndexSpecification::reset</a> to reset this iterator.</p>
+<p>This method returns true if additional indices exist in the index list,
+otherwise it returns false.</p>
+<hr size=1 noshade>
+<b>Description: void XmlIndexSpecification::next(std::string &uri, std::string &name, std::string &index)</b>
+<p>Returns the next index in the index specification in a string format.</p>
+<b>Parameters</b> <br>
+ <b>uri</b><ul compact><li>Receives the namespace of the node to which this index is applied.</ul>
+ <b>name</b><ul compact><li>Receives the name of the node to which this index is applied.</ul>
+ <b>index</b><ul compact><li>Identifies the index type used by this index.  See
+<a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a> for a description of what this
+string means.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: void XmlIndexSpecification::next(std::string &uri, std::string &name, Type &type, XmlValue::Type &syntax)</b>
+<p>Returns the next index in the index specification using
+XmlIndexSpecification::Type and XmlValue::Type format.</p>
+<b>Parameters</b> <br>
+ <b>uri</b><ul compact><li>Receives the namespace of the node to which this index is applied.</ul>
+ <b>name</b><ul compact><li>Receives the name of the node to which this index is applied.</ul>
+ <b>type</b><ul compact><li>Identifies the XmlIndexSpecification::Type used by this index. The value
+presented here is 3 or 4 different XmlIndexSpecification::Type values
+<b>or</b>'d together.  See <a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a> for
+a listing of these enumeration values.</ul>
+ <b>syntax</b><ul compact><li>Identifies the syntax used by this index. The value presented here is
+and XmlValue::Type value.  See <a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a>
+for a listing of these enumeration values.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlDocument::setMetaData</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlDocument::setMetaData</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlDocument::setMetaData(
+    const std::string &uri,
+    const std::string &name,
+    const XmlValue &value);
+<p>
+void XmlDocument::setMetaData(
+    const std::string &uri,
+    const std::string &name,
+    const XmlData &value);
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlDocument::setMetaData</b>
+<p>Sets the value of the specified metadata attribute.  A metadata
+attribute is a name-value pair, which is stored with the document, but
+not as part of the document content.
+The value of a metadata attribute may be typed or untyped.</p>
+<p>A metadata attribute name consists of a namespace URI and a name. The
+namespace URI is optional but it should be used to avoid naming
+collisions.</p>
+<p>Typed values are passed to the API as an instance of <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a>,
+and may be of type Number, String, or Boolean.</p>
+<p>The metadata attribute can be queried using an XQuery query that makes
+use of the special dbxml:metadata() function from within a predicate.
+To make use of this function, you must define a namespace for use with
+the query (it can be any random namespace). For example, suppose you had
+metadata whose name was "dateStamp". Then to query for documents that
+have a specific dateStamp value:</p>
+<blockquote><pre>
+myQueryContext.setNamespace("ds", "http://randomNS/");
+std::string myQuery="/*dbxml:metadata('ds:dateStamp')='10/30/2004'";</pre></blockquote>
+<p>Untyped values are passed to the API as a <a href="../../api_reference/CXX/XmlData.html">XmlData</a>.</p>
+<p>If a given metadata attribute is indexed, it is possible to use
+<a href="../../api_reference/CXX/XmlContainer_lookupIndex.html">XmlContainer::lookupIndex</a> to perform fast lookup.</p>
+<b>Parameters</b> <br>
+ <b>uri</b><ul compact><li>The namespace within which the name resides. The empty string refers to
+the default namespace.</ul>
+ <b>name</b><ul compact><li>The name of the metadata attribute.</ul>
+ <b>value</b><ul compact><li>The <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> or <a href="../../api_reference/CXX/XmlData.html">XmlData</a> to be used for the metadata value.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

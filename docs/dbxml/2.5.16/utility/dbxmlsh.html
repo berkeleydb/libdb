@@ -1,0 +1,90 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: dbxml</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>dbxml</b>
+</td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>dbxml [<b>-ctVvx</b>] [<b>-h home</b>] [<b>-P password</b>] [<b>-s script</b>] [<b>-z size</b>] </pre></b>
+<b>Description</b>
+<a name="2"><!--meow--></a>
+<p>The dbxml utility provides an interactive shell that you can
+use to manipulate containers, documents and indices, and to perform
+XQuery queries against those containers.</p>
+<p>dbxml uses an optional Berkeley DB home (environment) directory, which
+defaults to the current directory.  An attempt is made to join an
+existing environment; if that fails, a private environment is created
+in the specified location.  dbxml has a concept of a
+<b>default</b> open container; that is, the container upon which
+container operations such as adding and deleting indices are performed.
+The default container is set by use of the <b>createContainer</b> and
+<b>openContainer</b> commands.  An in-memory container can be created
+using the command, <b>createContainer</b> "".  This is useful for
+using dbxml without file system side effects.</p>
+<p>For a list of the commands available in the shell, use the <b>help</b>
+command.  For help on a specific command, pass the command's name to the
+<b>help</b> command. For example:</p>
+<blockquote><pre>dbxmlsh&gt; help createContainer</pre></blockquote>
+<p>The options are as follows:</p>
+<br>
+<b>-c</b><ul compact><li>Create a new environment in the directory specified by the -h option.
+This option should only be used for debugging - since it does not allow
+you to specify important environment configuration options.</ul>
+<b>-h</b><ul compact><li>Specify a home directory for the database environment; by
+default, the current working directory is used.</ul>
+<b>-P</b><ul compact><li>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.</ul>
+<b>-s</b><ul compact><li>Execute the dbxml commands contained in the <b>script</b> file
+upon shell startup. The commands must be specified one to a line in the
+script file.  If any of the commands contained in the script file fail,
+the shell will not start.
+<p>For example, the following is the contents of a script that creates a
+container, loads several files into it, performs a query, and then
+prints the results:</p>
+<blockquote><pre>createContainer myContainer.dbxml
+putDocument a {&lt;a&gt;&lt;b name="doc1"&gt;doc1 n1&lt;/b&gt;&lt;c&gt;doc1 n2&lt;/c&gt;&lt;/a&gt;}
+putDocument a {&lt;a&gt;&lt;b name="doc2"&gt;doc2 n1&lt;/b&gt;&lt;c&gt;doc2 n2&lt;/c&gt;&lt;/a&gt;}
+putDocument a {&lt;a&gt;&lt;b name="doc3"&gt;doc3 n1&lt;/b&gt;&lt;c&gt;doc3 n2&lt;/c&gt;&lt;/a&gt;}
+query collection("myContainer.dbxml")/a/b
+print</pre></blockquote></ul>
+<b>-t</b><ul compact><li>Run in transaction mode. Transactions can be used, and they are required
+for writes.
+<p>Note that if you are running this utility against an existing
+environment, and that environment is transactional, this option will be
+automatically enabled.</p></ul>
+<b>-v</b><ul compact><li>Provide verbose output. Specify this option a second time to increase
+the shell's verbosity.</ul>
+<b>-V</b><ul compact><li>Write the library version number to the standard output, and exit.</ul>
+<b>-x</b><ul compact><li>Run in secure mode. XQuery queries cannot access the local filesystem
+or perform network access.</ul>
+<b>-z</b><ul compact><li>If creating an environment, specify the cache size in MB (default 64) in
+<b>size</b>.</ul>
+<br>
+<p>If you are using dbxml to manipulate containers that are managed
+by an existing database environment, you must specify the path to that
+existing database environment. dbxml cannot be used to create
+environment files that can be shared with other applications.  It will
+either create a private environment, or join an existing, shareable
+environment created by another application.</p>
+<br><b>Environment Variables</b>
+<br>
+<b>DB_HOME</b><ul compact><li>If the <b>-h</b> option is not specified and the environment variable
+DB_HOME is set, it is used as the path of the database home, as described
+in UNREF==dbenv_open.</ul>
+<br>
+</tt>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

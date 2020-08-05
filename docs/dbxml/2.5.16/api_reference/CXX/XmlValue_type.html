@@ -1,0 +1,119 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlValue</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlValue</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlValue {
+public:
+	...
+	Type getType() const;
+	std::string getTypeURI() const;
+	std::string getTypeName() const;
+<p>
+	bool isType(XmlValue::Type type) const
+	bool isNumber() const;
+	bool isString() const;
+	bool isBoolean() const;
+	bool isBinary() const;
+	bool isNode() const;
+<p>
+	double asNumber() const;
+	std::string asString() const;
+	bool asBoolean() const;
+	bool asBinary() const;
+	const XmlDocument &asDocument() const;
+	XmlEventReader &asEventReader() const;
+	...
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlValue</b>
+<p>Methods to retrieve information and values for any XmlValue.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::isNumber()</b>
+<p>Returns true if the XmlValue is one of the numeric types,
+such as DOUBLE, FLOAT, etc.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::isString()</b>
+<p>Returns true if the XmlValue is one of type STRING.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::isBinary()</b>
+<p>Returns true if the XmlValue is one of type BINARY.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::isBoolean()</b>
+<p>Returns true if the XmlValue is one of type BOOLEAN.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::isNode()</b>
+<p>Returns true if the XmlValue is one of type NODE.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::isNull()</b>
+<p>Returns true if the XmlValue has no value (type NONE).</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getType()</b>
+<p>Returns the type of the XmlValue from the enumeration XmlValue::Type.</p>
+<p>Valid values for XmlValue::Type are
+NONE, NODE, ANY_SIMPLE_TYPE, ANY_URI,
+BASE_64_BINARY, BOOLEAN, DATE, DATE_TIME,
+DAY_TIME_DURATION, DECIMAL, DOUBLE, DURATION,
+FLOAT, G_DAY, G_MONTH, G_MONTH_DAY, G_YEAR, G_YEAR_MONTH,
+HEX_BINARY, NOTATION, QNAME, STRING, TIME,
+YEAR_MONTH_DURATION, UNTYPED_ATOMIC, BINARY.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::isType(XmlValue::Type type)</b>
+<p>Indicates whether the XmlValue is of the specified type.</p>
+<p>Valid values for XmlValue::Type are
+NONE, NODE, ANY_SIMPLE_TYPE, ANY_URI,
+BASE_64_BINARY, BOOLEAN, DATE, DATE_TIME,
+DAY_TIME_DURATION, DECIMAL, DOUBLE, DURATION,
+FLOAT, G_DAY, G_MONTH, G_MONTH_DAY, G_YEAR, G_YEAR_MONTH,
+HEX_BINARY, NOTATION, QNAME, STRING, TIME,
+YEAR_MONTH_DURATION, UNTYPED_ATOMIC, BINARY.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getTypeURI()</b>
+<p>Returns the URI associated with the type of the XmlValue.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::getTypeName()</b>
+<p>Returns the string name of the type of the XmlValue.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::asNumber()</b>
+<p>Returns the value as a DOUBLE.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::asString()</b>
+<p>Returns the value as a STRING.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::asBinary()</b>
+<p>Returns the value as a BINARY if it of type XmlValue::BINARY.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::asBoolean()</b>
+<p>Returns the value as a BOOLEAN.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::asDocument()</b>
+<p>Returns the value as an XmlDocument.</p>
+<hr size=1 noshade>
+<b>Description: XmlValue::asEventReader()</b>
+<p>Returns the value as an <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a>.  Only valid
+for objects of type XmlValue::NODE.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

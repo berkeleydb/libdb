@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+    <title>Transactions Considerations</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="transaction.html" title="Chapter 8. Using Transactions" />
+    <link rel="previous" href="itxnprotect.html" title="Transactionally Protecting Container Operations" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Transactions Considerations</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="itxnprotect.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 8. Using Transactions</th>
+          <td width="20%" align="right"> </td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="txnconsiderations"></a>Transactions Considerations</h2>
+          </div>
+        </div>
+        <div></div>
+      </div>
+      <p>
+            Transactionally protecting your container operations is an important
+            ingredient to ensuring the integrity of your containers and
+            databases. However, be aware that transactions may impact your
+            application's performance.
+        </p>
+      <p>
+            The <i class="citetitle">Berkeley DB Programmer's Reference Guide</i>
+            contains a couple of sections that can help you understand the
+            performance impact transactions can have on your application. 
+            See the following sections in the
+            <i class="citetitle">Berkeley DB Programmers Reference Guide</i> for
+            this information:
+        </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                    <i class="citetitle">Transaction Tuning</i> 
+                    (<a href="http://www.sleepycat.com/docs/ref/transapp/tune.html" target="_top">http://www.sleepycat.com/docs/ref/transapp/tune.html</a>)
+                </p>
+          </li>
+          <li>
+            <p>
+                    <i class="citetitle">Transaction throughput</i> 
+                    (<a href="http://www.sleepycat.com/docs/ref/transapp/throughput.html" target="_top">http://www.sleepycat.com/docs/ref/transapp/throughput.html</a>)
+                </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+            The next several section in this guide provides a rough introduction
+            to this information.
+        </p>
+      <p>
+            There are two areas of consideration where it comes to transactional
+            performance. The first is disk I/O and the second has to do with
+            lock contention.
+        </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="txnio"></a>Transaction Disk I/O</h3>
+            </div>
+          </div>
+          <div></div>
+        </div>
+        <p>
+                Normally when you perform a write to a BDB XML container, the
+                write is not written to disk until a sync is called on the
+                in-memory cache. This syncing occurs either when you force it by
+                using 
+                    
+                    <span><tt class="methodname">DbEnv.sync</tt>,</span>
+                or when your
+                environment is closed. (Note that you can suppress the sync when
+                you close your environment, but this is not the normal case.)
+            </p>
+        <p>
+                When you transactionally protect your database writes, however,
+                the data modified by the write is written to disk every time the
+                transaction is committed. For applications that run for
+                extremely long periods of time, and which perform relatively few
+                write operations, this can will improve your
+                application's performance because the commit only writes those
+                portions of the cache that were dirtied (written) by the
+                transaction. A full sync, on the other hand, writes the entire
+                cache to disk which is considerably more expensive than the
+                partial write performed by a commit.
+            </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="txndeadlock"></a>Transaction and Lock Contention</h3>
+            </div>
+          </div>
+          <div></div>
+        </div>
+        <p>
+            Because transactions guarantee isolation from all other threads of
+            control, they must perform locking, and hold those locks for the
+            duration of the transaction. Holding these locks may cause other
+            thread of control to have to wait in order to be able to access the
+            locked data. How much this affects your application will depend on
+            its data access patterns.
+         </p>
+        <p>
+            Additionally, with transactional applications, it is possible that
+            conflicting lock requests from different threads of control can
+            cause a deadlock to occur. To understand more about deadlocks and
+            how to handle them, please refer to the 
+            <i class="citetitle">Deadlock detection</i> section of the 
+            <i class="citetitle">Berkeley DB Programmer's Reference Guide</i>
+            (available at: 
+            <a href="http://www.sleepycat.com/docs/ref/transapp/deadlock.html" target="_top">http://www.sleepycat.com/docs/ref/transapp/deadlock.html</a>).
+         </p>
+        <p>
+            The performance penalty that you might pay due to the additional
+            locking required by your transactions is dependent on a number of
+            factors:
+         </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    The amount of time that your transaction lives. If your
+                    transaction is short-lived (the ideal situation), then there
+                    is less chance that it will be holding a lock required by
+                    another transaction.
+                </p>
+            </li>
+            <li>
+              <p>
+                    The number of operations performed by the transaction. A
+                    transaction that must read and write hundreds of documents
+                    will hold considerably more locks for potentially longer
+                    periods of time than an application that reads and writes
+                    only a few documents.
+                </p>
+            </li>
+            <li>
+              <p>
+                    The number of transactions (typically this means threads of
+                    control) in existence at any given time. The more
+                    transactions there are, the greater the chance for deadlock
+                    contention.
+                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            Given this, for best results try to use only short-lived
+            transactions. Also, try to keep the number of operations performed
+            by your transactions small, or try to keep the number of
+            transactions in existence small. 
+         </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="transactionindexes"></a>Index Operations and Transactions</h3>
+            </div>
+          </div>
+          <div></div>
+        </div>
+        <p>
+            One final thing to consider when using transactions with BDB XML has
+            to do with re-indexing containers. If you are performing index add,
+            delete, or replace operations on a very large container (tens of
+            thousands of documents or greater), and you are using transactions 
+            to protect these operations, then the operation can potentially fail 
+            with the following error message:
+		</p>
+        <div class="blockquote">
+          <blockquote class="blockquote">
+            <p>
+			</p>
+            <pre class="programlisting">Lock table is out of available locks</pre>
+            <p>
+		</p>
+          </blockquote>
+        </div>
+        <p>
+            When you perform an index operation on a container, you are reading
+            and writing every document node in the container. This means that you are
+            asking Berkeley DB to read and write every record in the underlying
+            database.
+		</p>
+        <p>
+            Every time Berkeley DB performs a read or a write operation, it
+            acquires one or more locks on the database pages on which it is
+            operating. Normally, Berkeley DB releases those locks once it has
+            completed the operation. However, as discussed above, when you 
+            use transactions to protect write operations, Berkeley DB holds 
+            all locks that it acquires until the transaction completes 
+            (is either committed or aborted).
+		</p>
+        <p>
+            Locks are a finite resource, and so Berkeley DB maintains an
+            internal data structure that identifies how many locks it can use at
+            any given time. By default, this number is 1,000 locks.
+		</p>
+        <p>
+            The end result is, if you are performing index operations on large
+            containers and you are using transactions to protect those
+            operations, you can run out of locks. When this happens, Berkeley DB
+            fails the operation with the above noted error message.
+		</p>
+        <p>
+			To work around this problem, you must increase the number of locks 
+            available to Berkeley DB. You do this with 
+                
+                <span><tt class="methodname">EnvironmentConfig.setMaxLocks()</tt>.</span>
+            See the online Berkeley DB documentation for more information.
+        </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="itxnprotect.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="transaction.html">Up</a>
+          </td>
+          <td width="40%" align="right"> </td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Transactionally Protecting Container Operations </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

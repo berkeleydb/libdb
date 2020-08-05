@@ -1,0 +1,665 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 3. XmlManager and Containers</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="prev" href="exceptions.html" title="Chapter 2. Exception Handling and Debugging" />
+    <link rel="next" href="containers.html" title="Managing Containers" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 3. XmlManager and Containers</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="exceptions.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="containers.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="dbandcontainer"></a>Chapter 3. XmlManager and Containers</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="dbandcontainer.html#xmlmanager">XmlManager</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="dbandcontainer.html#environment">Berkeley DB Environments</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="dbandcontainer.html#dbcreate">XmlManager Instantiation and Destruction</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="containers.html">Managing Containers</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="containers.html#containerflags">Container Properties </a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="containers.html#containertypes">Container Types</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="containers.html#containerdelrename">Deleting and Renaming Containers</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+        </dl>
+      </div>
+      <p>
+        While containers are the mechanism that you use to store and manage XML
+        documents, you use <code class="classname">XmlManager</code> objects to create
+        and open <code class="classname">XmlContainer</code> objects. 
+        We therefore start with the <code class="classname">XmlManager</code>.
+    </p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="xmlmanager"></a>XmlManager</h2>
+            </div>
+          </div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="dbandcontainer.html#environment">Berkeley DB Environments</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="dbandcontainer.html#dbcreate">XmlManager Instantiation and Destruction</a>
+              </span>
+            </dt>
+          </dl>
+        </div>
+        <p>
+            <code class="classname">XmlManager</code> is a high-level class used to
+            manage many of the objects that you use in a BDB XML application.
+            The following are some of the things you can do with 
+            <code class="classname">XmlManager</code> objects:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    Manage containers. This management includes creating,
+                    opening, deleting, and renaming containers 
+                    (see <a class="xref" href="containers.html" title="Managing Containers">Managing Containers</a>).
+                </p>
+            </li>
+            <li>
+              <p>
+                    Create input streams used to load XML documents into
+                    containers (see <a class="xref" href="adddocument.html#adddoc_container" title="Input Streams and Strings">Input Streams and Strings</a>).
+                </p>
+            </li>
+            <li>
+              <p>
+                    Create <code class="classname">XmlDocument</code>,
+                    <code class="classname">XmlQueryContext</code>, and
+                    <code class="classname">XmlUpdateContext</code> objects.
+                </p>
+            </li>
+            <li>
+              <p>
+                    Prepare and run XQuery queries (see <a class="xref" href="xquery.html" title="Chapter 5. Using XQuery with BDB XML">Using XQuery with BDB XML</a>).
+                </p>
+            </li>
+            <li>
+              <p>
+                        Create a transaction object (see the
+                        <em class="citetitle">Berkeley DB XML Getting Started with Transaction Processing</em> guide
+                        for details).
+                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            Because <code class="classname">XmlManager</code> is the only way to
+            construct important BDB XML objects, it is central to your BDB XML
+            application.
+        </p>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="environment"></a>Berkeley DB Environments</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+                    Before you can instantiate an
+                    <code class="classname">XmlManager</code> object, you have to make
+                    some decisions about your Berkeley DB Environment. BDB XML
+                    requires you to use a database environment. You can use
+                    an environment explicitly, or you can allow the
+                    <code class="classname">XmlManager</code> constructor to manage the
+                    environment for you.
+                </p>
+          <p>
+                    If you explicitly create an environment, then you can turn
+                    on important features in BDB XML such as logging, transactional
+                    support, and support for multithreaded and multiprocess
+                    applications. It also provides you with an on-disk location 
+                    to store all of your application's containers.
+                </p>
+          <p>
+                    If you allow the <code class="classname">XmlManager</code>
+                    constructor to implicitly create and/or open an environment
+                    for you, then the environment is only configured to allow
+                    multithreaded sharing of the environment and the underlying
+                    databases (<code class="literal">DB_PRIVATE</code> is used). All other 
+                    features are not enabled for the environment.
+                </p>
+          <p>
+                    The next several sections describe the things you need to
+                    know in order to create and open an environment explicitly.
+                    We start with this activity first because it is likely to be
+                    the first thing you will do for all but the most trivial of
+                    BDB XML applications.
+                </p>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="envflags"></a>
+                        <span>Environment Open Flags</span>
+                        
+                    </h4>
+                </div>
+              </div>
+            </div>
+            <p>
+                    In order to use an environment, you must first open it. When
+                    you do this, there are a series of 
+                        <span>flags</span>
+                        
+                    that you can
+                    optionally specify. These 
+                        <span>flags are bitwise <span class="emphasis"><em>or</em></span>'d together,
+                        and they</span> 
+                     have the effect of enabling important subsystems
+                    (such as transactional support).
+                </p>
+            <p>
+                    There are a great many 
+                        <span>environment open flags</span>
+                        
+
+                    and these are described in the Berkeley
+                    DB documentation. However, there are a few that you
+                    are likely to want to use with your BDB XML application, so
+                    we describe them here:
+                </p>
+            <div class="itemizedlist">
+              <ul type="disc">
+                <li>
+                  <p>
+                            <code class="literal">DB_CREATE</code>
+                            
+                        </p>
+                  <p>
+                            
+                            <span>If</span>
+                            the environment does not exist at the time that
+                            it is opened, then create it. It is an error to
+                            attempt to open a database environment that has not
+                            been created. 
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">DB_INIT_LOCK</code>
+                            
+                        </p>
+                  <p>
+                            
+                            <span>Initializes</span>
+                        the locking subsystem. This
+                        subsystem is used when an application employs multiple threads or processes
+                        that are concurrently reading and writing Berkeley DB databases. In this
+                        situation, the locking subsystem, along with a deadlock detector, helps to
+                        prevent concurrent readers/writers from interfering with each other.
+                        </p>
+                  <p>
+                            Remember that under the covers BDB XML containers
+                            are using Berkeley DB databases, so if you want your
+                            containers to be accessible by multiple threads
+                            and/or multiple processes, then you should enable
+                            this subsystem.
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">DB_INIT_LOG</code>
+                            
+                        </p>
+                  <p>
+                            
+                            <span>Initializes</span>
+                            the logging subsystem. This subsystem is
+                            used for database recovery from application or
+                            system failures. For more information on normal and
+                            catastrophic recovery, see the
+                            <em class="citetitle">Berkeley DB XML Getting Started with Transaction Processing</em> guide.
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">DB_INIT_MPOOL</code>
+                            
+                        </p>
+                  <p>
+                            
+                            <span>Initializes</span>
+                            the shared memory pool subsystem. This
+                            subsystem is required for multithreaded BDB XML
+                            applications, and it provides an in-memory cache
+                            that can be shared by all threads and processes
+                            participating in this environment.
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">DB_INIT_TXN</code>
+                            
+                        </p>
+                  <p>
+                            
+                            <span>Initializes</span>
+                            the transaction subsystem. This
+                            subsystem provides atomicity for multiple database
+                            access operations.  When transactions are in use,
+                            recovery is possible if an error condition occurs
+                            for any given operation within the transaction. If
+                            this subsystem is turned on, then 
+                            the logging subsystem must also be turned on.
+                        </p>
+                  <p>
+                                We discuss writing transactional applications in the
+                                <em class="citetitle">Berkeley DB XML Getting Started with Transaction Processing</em> guide.
+                        </p>
+                </li>
+                <li>
+                  <p>
+                            <code class="literal">DB_RECOVER</code>
+                            
+                        </p>
+                  <p>
+                            
+                            <span>causes</span>
+                            normal recovery to be run against the underlying
+                            database. Normal recovery ensures that the database files
+                            are consistent relative to the operations recorded
+                            in the log files. This is useful if, for example,
+                            your application experienced an ungraceful shut down
+                            and there is consequently an possibility that some
+                            write operations were not flushed to disk.
+                         </p>
+                  <p>
+                            Recovery can only be run if the logging
+                            subsystem is turned on. Also, recovery must only be
+                            run by a single thread of control; typically it is
+                            run by the application's master thread before any
+                            other database operations are performed.
+                        </p>
+                </li>
+              </ul>
+            </div>
+            <p>
+                    Regardless of the 
+                        <span>flags</span>
+                        
+                        
+                    you decide to set at creation time,
+                    it is important to use the same ones on all subsequent
+                    environment opens (the exception to this is
+                        <code class="literal">DB_CREATE</code> 
+                        
+                    which is only
+                    required to create an environment).  In
+                    particular, avoid using 
+                        <span>flags</span>
+                        
+                    to open environments that were not used at creation time. This
+                    is because different subsystems require different data
+                    structures on disk, and it is therefore illegal to attempt
+                    to use subsystems that were not initialized when the
+                    environment was first created. 
+                </p>
+          </div>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="envopen"></a>Opening and Closing Environments</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+                        To use an environment, you must first open it. At open
+                        time, you must identify the directory in which it
+                        resides and this directory must exist prior to the open
+                        attempt. At open time, you also specify the open 
+                            <span>flags,</span>
+                            <span>properties,</span>
+                        if any, that you want to use for your environment.
+                   </p>
+            <p>
+                        When you are done with the environment, you must
+                        make sure it is closed. You can either do this
+                        explicitly, or you can have the <code class="classname">XmlManager</code> 
+                        object do it for you.
+                    </p>
+            <p>
+                        If you are explicitly closing your environment, you must
+                        make sure any containers opened in the environment have
+                        been closed before you close your environment.
+                        
+                    </p>
+            <p>
+                        For information on <code class="classname">XmlManager</code>
+                        instantiation, see 
+                            <a class="xref" href="dbandcontainer.html#dbcreate" title="XmlManager Instantiation and Destruction">XmlManager Instantiation and Destruction</a> 
+                    </p>
+            <p>
+                        For example:
+                    </p>
+            <a id="cxx_env1"></a>
+            <pre class="programlisting">#include "DbXml.hpp"
+...
+u_int32_t env_flags = DB_CREATE     |  // If the environment does not
+                                       // exist, create it.
+                      DB_INIT_LOCK  |  // Initialize the locking subsystem
+                      DB_INIT_LOG   |  // Initialize the logging subsystem
+                      DB_INIT_MPOOL |  // Initialize the cache
+                      DB_INIT_TXN;     // Initialize transactions
+char *envHome = "/export1/testEnv";
+DB_ENV *myEnv = NULL;
+int dberr;
+
+dberr = db_env_create(&amp;myEnv, 0);
+if (dberr) {
+    std::cout &lt;&lt; "Unable to create environment: " &lt;&lt;
+              db_strerror(dberr) &lt;&lt; std::endl;
+    if (myEnv)
+        myEnv-&gt;close(myEnv, 0);
+    return (EXIT_FAILURE);
+}
+
+myEnv-&gt;open(myEnv, envHome, env_flags, 0);
+
+// Do BDB XML work here
+
+
+myEnv-&gt;close(myEnv, 0); </pre>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="dbcreate"></a>XmlManager Instantiation and Destruction</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+                You create an <code class="classname">XmlManager</code> object by
+                calling its constructor. You destroy a <code class="classname">XmlManager</code>
+                object by calling its
+                    <span>destructor, either by using the
+                    <code class="function">delete</code> operator or by allowing the
+                    object to go out of scope (if it was created on the stack).
+                    </span>
+
+                    
+
+                    Note that <code class="classname">XmlManager</code> is closed
+                    and all of its resources released when the last open handle
+                    to the object is 
+                        <span>destroyed.</span>
+                        
+            </p>
+          <p>
+                To construct an <code class="classname">XmlManager</code> object, you
+                may or may not provide the constructor with an 
+                open 
+                     <code class="classname">DB_ENV</code>
+                     
+                object. If you do instantiate <code class="classname">XmlManager</code>
+                with an opened environment handle, then <code class="classname">XmlManager</code>
+                will close and destroy that 
+                     <code class="classname">DB_ENV</code>
+                     
+                object for you if you
+                <span>
+                    specify <code class="literal">DBXML_ADOPT_DBENV</code> for the
+                    <code class="classname">XmlManager</code> constructor.
+                </span>
+                
+            </p>
+          <p>
+                If you provide an
+                     <code class="classname">DB_ENV</code>
+                     
+                object to the constructor, then you can use that object to use
+                whatever subsystems that you application may require (see 
+                <a class="xref" href="dbandcontainer.html#envflags" title="Environment Open Flags">
+                        <span>Environment Open Flags</span>
+                        
+                    </a> for some common
+                subsystems).
+            </p>
+          <p>
+                If you do not provide an environment object, 
+                then <code class="classname">XmlManager</code>
+                will implicitly create an environment for you. In this case, the
+                environment will not be
+                configured to use any subsystems and it is only
+                capable of being shared by multiple threads from within
+                the same process. Also, in this case you can optionally identify the 
+                on-disk location where you want your containers to reside using
+                one of the following mechanisms:
+            </p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p>
+                        Specify the path to the on-disk location in the
+                        container's name.
+                    </p>
+              </li>
+              <li>
+                <p>
+                        Specify the environment's data location using the
+                        <code class="literal">DB_HOME</code> environment variable.
+                    </p>
+              </li>
+            </ul>
+          </div>
+          <p>
+                In either case, you can pass the <code class="classname">XmlManager</code>
+                constructor a 
+                    <span>flag argument</span>
+                    
+                that controls that object's behavior
+                with regard to the underlying containers (the 
+                    <span>flag</span> 
+                     
+                is NOT passed directly to the underlying environment or
+                databases). 
+                    <span>Valid values are:</span>
+                    
+            </p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p>
+                        <code class="literal">DBXML_ALLOW_AUTO_OPEN</code>
+                        
+                    </p>
+                <p>
+                        <span>When specified,</span>
+                        
+                        XQuery queries that reference created but unopened
+                        containers will automatically cause the container to be
+                        opened for the duration of the query.
+                    </p>
+              </li>
+              <li>
+                <p>
+                        <code class="literal">DBXML_ADOPT_DBENV</code>
+                        
+                    </p>
+                <p>
+                        <span>When specified,</span>
+                        
+                        <code class="classname">XmlManager</code> will close and
+                        destroy the 
+                            <code class="classname">DB_ENV</code>
+                            
+                        object that it was instantiated with when the
+                        <code class="classname">XmlManager</code> is closed.
+                    </p>
+              </li>
+              <li>
+                <p>
+                        <code class="literal">DBXML_ALLOW_EXTERNAL_ACCESS</code>
+                        
+                    </p>
+                <p>
+                        <span>When specified,</span>
+                        
+                        XQuery queries executed from inside BDB XML can access 
+                        external sources (URLs, files, and so forth).
+                    </p>
+              </li>
+            </ul>
+          </div>
+          <p>
+                For example, to instantiate an <code class="classname">XmlManager</code>
+                with a default environment:
+            </p>
+          <a id="cxx_manager1"></a>
+          <pre class="programlisting">#include "DbXml.hpp"
+...
+
+using namespace DbXml;
+int main(void)
+{
+    XmlManager myManager;   // The manager and underlying
+                            // environment are closed when 
+                            // this goes out of scope.
+
+    return(0);
+} </pre>
+          <p>
+    And to instantiate an <code class="classname">XmlManager</code> using an explicit
+    environment object:
+</p>
+          <a id="cxx_manager2"></a>
+          <pre class="programlisting">#include "DbXml.hpp"
+...
+
+using namespace DbXml;
+int main(void)
+{
+    u_int32_t env_flags = DB_CREATE     |  // If the environment does not
+                                           // exist, create it.
+                          DB_INIT_LOCK  |  // Initialize locking
+                          DB_INIT_LOG   |  // Initialize logging
+                          DB_INIT_MPOOL |  // Initialize the cache
+                          DB_INIT_TXN;     // Initialize transactions
+
+    char *envHome = "/export1/testEnv";
+    DB_ENV *myEnv = NULL;
+    int dberr;
+
+    XmlManager *myManager = NULL;
+                                                                                                                                  
+    dberr = db_env_create(&amp;myEnv, 0);
+    if (dberr) {
+        std::cout &lt;&lt; "Unable to create environment: " &lt;&lt;
+                  db_strerror(dberr) &lt;&lt; std::endl;
+    if (myEnv)
+        myEnv-&gt;close(myEnv, 0);
+    return (EXIT_FAILURE);
+
+    myEnv-&gt;open(myEnv, envHome, env_flags, 0);
+    myManager = 
+        new XmlManager(myEnv, 
+                       DBXML_ADOPT_DBENV); // The manager and
+                                           // environment is closed
+                                           // when this object is
+                                           // destroyed.
+
+    try {
+        if (myManager != NULL) {
+            delete myManager;
+        }
+    } catch(XmlException &amp;xe) {
+        std::cerr &lt;&lt; "Error closing XmlManager: "
+                  &lt;&lt; xe.what() &lt;&lt; std::endl;
+    }
+} </pre>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="exceptions.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="containers.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 2. Exception Handling and Debugging </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Managing Containers</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

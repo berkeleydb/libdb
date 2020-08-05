@@ -1,0 +1,819 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Transaction Example</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML Transaction Processing" />
+    <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
+    <link rel="prev" href="wrapup.html" title="Chapter 6. Summary and Examples" />
+    <link rel="next" href="inmem_dbxml_java_txnexample.html" title="In-Memory Transaction Example" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Transaction Example</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="wrapup.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 6. Summary and Examples</th>
+          <td width="20%" align="right"> <a accesskey="n" href="inmem_dbxml_java_txnexample.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="txnexample_xml_java"></a>Transaction Example</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_xml_java.html#xmljavaclassoverview">Class Overview</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_xml_java.html#TxnGuideXmlJava">TxnGuide.java</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_xml_java.html#InfoKeeperXmlJava">InfoKeeper.java</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_xml_java.html#XMLWriterXmlJava">XMLWriter.java</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        The following code provides a fully functional example of a
+        multi-threaded transactional BDB XML application.
+        The example creates multiple threads, each of which creates a set
+        number of XML documents that it then writes to the container. Each
+        thread creates and writes 10 documents under a single transaction
+        before committing and writing another 10 documents. This activity
+        is repeated 50 times.
+    </p>
+      <p>
+        From the command line, you can tell the program to vary:
+    </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                The number of threads that it should use.
+            </p>
+          </li>
+          <li>
+            <p>
+                The number of nodes each XML document will contain.
+            </p>
+          </li>
+          <li>
+            <p>
+                Whether the container used by the program is of type
+                Wholedoc or node storage.
+            </p>
+          </li>
+          <li>
+            <p>
+                Whether read committed (degree 2) isolation should be used
+                for the container writes.
+            </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+        As we will see in <a class="xref" href="runprogram_xml.html" title="Runtime Analysis">Runtime Analysis</a>
+        each of these variables plays a role in the number of deadlocks the
+        program encounters during its run time.
+    </p>
+      <p>
+        Of course, each writer thread performs deadlock detection as
+        described in this manual. In addition, normal recovery is performed
+        when the environment is opened.
+    </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xmljavaclassoverview"></a>Class Overview</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            This example program uses three classes:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    <code class="classname">TxnGuide.java</code>
+                </p>
+              <p>
+                    This is our main program. It opens and closes our
+                    environment, manager, and container and it spawns our
+                    worker threads for us.
+                </p>
+              <p>
+                    This class is described in
+                    <a class="xref" href="txnexample_xml_java.html#TxnGuideXmlJava" title="TxnGuide.java">TxnGuide.java</a>.
+                </p>
+            </li>
+            <li>
+              <p>
+                    <code class="classname">InfoKeeper.java</code>
+                </p>
+              <p>
+                    This is a utility class that we use to pass information
+                    to, and retrieve information from, our worker threads.
+                </p>
+              <p>
+                    This class is described in
+                    <a class="xref" href="txnexample_xml_java.html#InfoKeeperXmlJava" title="InfoKeeper.java">InfoKeeper.java</a>.
+                </p>
+            </li>
+            <li>
+              <p>
+                    <code class="classname">XMLWriter.java</code>
+                </p>
+              <p>
+                    This is our thread implementation. It performs all of
+                    our container writes for us. This class is where all of
+                    our transaction commit/abort code resides. We also
+                    perform deadlock handling in this class. 
+                </p>
+              <p>
+                    This class is described in
+                    <a class="xref" href="txnexample_xml_java.html#XMLWriterXmlJava" title="XMLWriter.java">XMLWriter.java</a>.
+                </p>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="TxnGuideXmlJava"></a>TxnGuide.java</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            This is our "main" class. We will use this class to open our
+            environment, manager and container, and to spawn our worker
+            threads.
+        </p>
+        <p>
+            To begin, we provide the normal <code class="literal">package</code> statement and the
+            necessary <code class="literal">import</code> statements.
+        </p>
+        <pre class="programlisting">// File TxnGuide.java
+
+package dbxml.txn;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlContainerConfig;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlManagerConfig;
+
+import com.sleepycat.db.DatabaseException;
+import com.sleepycat.db.Environment;
+import com.sleepycat.db.EnvironmentConfig;
+import com.sleepycat.db.LockDetectMode;
+
+import java.io.File;
+import java.io.FileNotFoundException;  </pre>
+        <p>
+        Next we declare our class and we define the private data members
+        that our class needs. 
+    </p>
+        <pre class="programlisting">public class TxnGuide {
+
+    private static String myEnvPath = "./";
+    private static String containerName = "txn.dbxml";
+
+    // DBXML handles
+    private static Environment myEnv = null;
+    private static XmlManager mgr = null;
+    private static XmlContainer container = null;
+
+    private static InfoKeeper ik = null; </pre>
+        <p>
+        Now we implement our <code class="methodname">usage()</code>
+        method. The information presented here is a duplicate of what we
+        have already described about this application in the preceding text. 
+        In addition, we also describe the exact command line switches that
+        this application supports.
+    </p>
+        <pre class="programlisting">   private static void usage() {
+        String msg =  "\nThis program writes XML documents to a DB XML";
+               msg += "container. The documents are written using any\n";
+               msg += "number of threads that will perform writes\n";
+               msg += "using 50 transactions. Each transaction writes \n";
+               msg += "10 documents. You can choose to perform the ";
+               msg += "writes using default isolation, or using \n";
+               msg += "READ COMMITTED isolation. If READ COMMITTED ";
+               msg += "is used, the application will see fewer";
+               msg += "deadlocks.\n\n";
+
+               msg += "Note that you can vary the size of the documents ";
+               msg += "written to the container by defining the number\n";
+               msg += "of nodes in the documents. Up to a point, and";
+               msg += "depending on your system's performance,\n";
+               msg += "increasing the number of nodes will increase\n";
+               msg += "the number of deadlocks that your application\n";
+               msg += "will see.\n\n";
+
+               msg += "Command line options are: \n";
+               msg += " -h &lt;database_home_directory&gt;\n";
+               msg += " [-t &lt;number of threads&gt;]\n";
+               msg += " [-n &lt;number of nodes per document&gt;]\n";
+               msg += " [-w]       (create a Wholedoc container)\n";
+               msg += " [-2]       (use READ COMMITTED isolation)\n";
+
+        System.out.println(msg);
+        System.exit(-1);
+    }  </pre>
+        <p>
+        Now for our <code class="methodname">main()</code> method. To begin, we
+        instantiate an <code class="classname">ParseArgs</code> object (see
+        <a class="xref" href="txnexample_xml_java.html#InfoKeeperXmlJava" title="InfoKeeper.java">InfoKeeper.java</a> 
+        for information on
+        this object), and then we parse our command line arguments. As a
+        part of parsing those arguments, we will fill our
+        <code class="classname">InfoKeeper</code> object with relevant information
+        obtained from the command line. Once our argument list is parsed,
+        we open our environment, manager and container.
+    </p>
+        <p>
+        We parse our argument list and open our environment using methods
+        private to this class. We describe these methods in a moment.
+    </p>
+        <pre class="programlisting">    public static void main(String args[]) {
+        try {
+            ik = new InfoKeeper(5,       // Num Threads
+                                1,       // Num Nodes
+                                true,    // Node storage container?
+                                false);  // Use ReadCommitted Isolation?
+            // Parse the arguments list
+            parseArgs(args);
+            // Open the environment and databases
+            openEnv();  </pre>
+        <p>
+        After that, we need to spawn and join our worker threads. The
+        <code class="classname">XMLWriter</code> class that we use here is
+        described in
+        <a class="xref" href="txnexample_xml_java.html#XMLWriterXmlJava" title="XMLWriter.java">XMLWriter.java</a>.
+    </p>
+        <pre class="programlisting">            // Start the threads
+            XMLWriter[] threadArray;
+            threadArray = new XMLWriter[ik.getNumThreads()];
+            for (int i = 0; i &lt; ik.getNumThreads(); i++) {
+                threadArray[i] = new XMLWriter(mgr, container, ik);
+                threadArray[i].start();
+            }
+
+            for (int i = 0; i &lt; ik.getNumThreads(); i++) {
+                threadArray[i].join();
+            }  </pre>
+        <p>
+        Once the threads have all completed, we print some statistics
+        gathered during the program run.
+    </p>
+        <pre class="programlisting">            // Report the run's results
+            System.out.println("\n\n\n");
+            System.out.println("Number of threads:\t\t"
+                + ik.getNumThreads());
+            System.out.println("Number of doc nodes:\t\t"
+                + ik.getNumNodes());
+            System.out.println("Using node storage:\t\t"
+                + ik.getIsNodeStorage());
+            System.out.println("Using read committed:\t\t"
+                + ik.getReadCommitted());
+            System.out.println("\nNumber deadlocks seen:\t\t"
+                + ik.getNumDeadlocks());  </pre>
+        <p>
+        Finally, we catch and manage all our exceptions. Notice that we
+        call another private member, <code class="classname">closeEnv()</code>,
+        in order to close our container and manager. We
+        describe this method next.
+    </p>
+        <pre class="programlisting">        } catch (XmlException xe) {
+            System.err.println("TxnGuide: " + xe.toString());
+            xe.printStackTrace();
+        } catch (DatabaseException de) {
+            System.err.println("TxnGuide: " + de.toString());
+            de.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("TxnGuide: " + e.toString());
+            e.printStackTrace();
+        } finally {
+            closeEnv();
+        }
+        System.out.println("All done.");
+    }  </pre>
+        <p>
+        Having completed our <code class="methodname">main()</code> method, we now
+        implement our private <code class="methodname">closeEnv()</code>
+        method. The only thing to notice here is that we close the
+        container and manager, but not the environment. As we will see in
+        the next method, we allow our manager to adopt the environment.
+        This means that when the manager is closed, then so is the
+        environment.
+    </p>
+        <pre class="programlisting">    private static void closeEnv() {
+        if (container != null) {
+            try {
+                container.close();
+            } catch (XmlException xe) {
+                System.err.println("closeEnv: container: " +
+                    xe.toString());
+                xe.printStackTrace();
+            }
+         }
+
+        if (mgr != null) {
+            try {
+                mgr.close();
+            } catch (XmlException xe) {
+                System.err.println("closeEnv: mgr: " +
+                    xe.toString());
+                xe.printStackTrace();
+            }
+        }
+    }  </pre>
+        <p>
+        Now we can implement our <code class="methodname">openEnv()</code>
+        method. As always, we begin by setting up our 
+        <code class="classname">EnvironmentConfig</code> object. Here, we configure
+        the environment for transactional processing. We also allow the
+        environment to be created if it does not already exist and we cause
+        normal recovery to be run when the environment is opened.
+    </p>
+        <pre class="programlisting">    private static void openEnv() throws DatabaseException {
+        System.out.println("opening env");
+
+        // Set up the environment.
+        EnvironmentConfig myEnvConfig = new EnvironmentConfig();
+        myEnvConfig.setAllowCreate(true);
+        myEnvConfig.setInitializeCache(true);
+        myEnvConfig.setInitializeLocking(true);
+        myEnvConfig.setInitializeLogging(true);
+        myEnvConfig.setRunRecovery(true);
+        myEnvConfig.setTransactional(true);
+        // EnvironmentConfig.setThreaded(true) is the default behavior 
+        // in Java, so we do not have to do anything to cause the
+        // environment handle to be free-threaded.   </pre>
+        <p>
+            We want to perform deadlock detection, so we configure that
+            next. Here, we choose to resolve deadlocks by picking the
+            thread with the smallest number of write locks. The thread with
+            the smallest number of write locks is the one that has
+            performed the least amount of work. By choosing this thread for
+            the abort/retry cycle, we minimize the amount of rework our
+            application must perform due to a deadlock.
+        </p>
+        <pre class="programlisting">        myEnvConfig.setLockDetectMode(LockDetectMode.MINWRITE);  </pre>
+        <p>
+        Now we simply open the environment.
+    </p>
+        <pre class="programlisting">        try {
+            // Open the environment
+            myEnv = new Environment(new File(myEnvPath),    // Env home
+                                    myEnvConfig);
+
+        } catch (FileNotFoundException fnfe) {
+            System.err.println("openEnv: " + fnfe.toString());
+            System.exit(-1);
+        }  </pre>
+        <p>
+            Now we open the manager. Notice that when we
+            configure the manager, we cause it to adopt the environment. As
+            we stated above, this causes the manager to close our
+            environment when it closes. We also remove our container if it
+            happens to already exist; this program only ever begins with 
+            new, empty containers as a result.
+        </p>
+        <pre class="programlisting">        try {
+            XmlManagerConfig managerConfig = new XmlManagerConfig();
+            // Close the environment when the manager closes
+            managerConfig.setAdoptEnvironment(true);
+            mgr = new XmlManager(myEnv, managerConfig);
+
+            // If the container already exists, delete it. We don't want
+            // naming conflicts if this program is run multiple times.
+            if (mgr.existsContainer(containerName) != 0) {
+                    mgr.removeContainer(containerName);
+            }  </pre>
+        <p>
+                Finally, we open our container. Notice how we define the
+                container's node storage type based on the information
+                recorded in our <code class="classname">InfoKeeper</code>
+                object. This information will be set based on data
+                collected from the command line when we parse our argument
+                list.
+            </p>
+        <pre class="programlisting">            // Open the container
+            XmlContainerConfig containerConf = new XmlContainerConfig();
+            containerConf.setTransactional(true);
+            containerConf.setAllowCreate(true);
+            // Declare the container type; that is, whether it is a 
+            // node-storage or a whole doc container. If -w is specified
+            // at the command line, the container is set to wholedoc,
+            // otherwise node-storage is used.
+            containerConf.setNodeContainer(ik.getIsNodeStorage());
+            container = mgr.openContainer(containerName, containerConf);
+        } catch (XmlException xe) {
+            System.err.println("TxnGuide: " + xe.toString());
+            xe.printStackTrace();
+        }
+    }  </pre>
+        <p>
+        As a final bit of work, we implement our <code class="methodname">parseArgs()</code>
+        method. Notice that we save most of the information collected here
+        to our <code class="classname">InfoKeeper</code> object for later usage and
+        reporting.
+    </p>
+        <pre class="programlisting">    private static void parseArgs(String args[]) {
+        for(int i = 0; i &lt; args.length; ++i) {
+            if (args[i].startsWith("-")) {
+                switch(args[i].charAt(1)) {
+                    case 'h':
+                        myEnvPath = new String(args[++i]);
+                        break;
+                    case 't':
+                        ik.setNumThreads(Integer.parseInt(args[++i]));
+                        break;
+                    case 'n':
+                        ik.setNumNodes(Integer.parseInt(args[++i]));
+                        break;
+                    case 'w':
+                        ik.setIsNodeStorage(false);
+                        break;
+                    case '2':
+                        ik.setReadCommit(true);
+                        break;
+                    default:
+                        usage();
+                }
+            }
+        }
+    }
+}  </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="InfoKeeperXmlJava"></a>InfoKeeper.java</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            <code class="classname">InfoKeeper</code> is a simple utility class used to maintain information of
+            interest to the various threads in our example program. The information that it contains is either needed
+            by the various threads of control in order to know how to run, or is useful for reporting purposes at the
+            end of the program run, or both.
+        </p>
+        <p>
+            <code class="classname">InfoKeeper</code> is a trivial class that we present here only for
+            the purpose of completeness.
+        </p>
+        <pre class="programlisting">// File InfoKeeper.java
+package dbxml.txn;
+
+public class InfoKeeper
+{
+    private static int numThreads;           // Number of threads to use
+
+    private static int numNodes;             // Number of nodes per
+                                             // document to generate.
+
+    private static boolean doNodeStorage;    // Use node storage?
+
+    private static boolean doReadCommitted;  // Use read committed 
+                                             // isolation?
+
+    private static int deadlockCounter;      // Number of deadlocks seen
+                                             // in this program run.
+
+    InfoKeeper(int nThreads, int nNodes, boolean nStorage, 
+               boolean rCommit)
+    {
+        numThreads = nThreads;
+        numNodes = nNodes;
+        doNodeStorage = nStorage;
+        doReadCommitted = rCommit;
+        deadlockCounter = 0;
+    }
+
+    public synchronized void setNumThreads(int n) {
+        numThreads = n;
+    }
+
+    public synchronized void setNumNodes(int n) {
+        numNodes = n;
+    }
+
+    public synchronized void setIsNodeStorage(boolean n) {
+        doNodeStorage = n;
+    }
+
+    public synchronized void setReadCommit(boolean n) {
+        doReadCommitted = n;
+    }
+
+    public synchronized void incrementDeadlockCounter() {
+        deadlockCounter++;
+    }
+
+    public synchronized int getNumThreads() {
+        return numThreads;
+    }
+
+    public synchronized int getNumNodes() {
+        return numNodes;
+    }
+
+    public synchronized boolean getIsNodeStorage() {
+        return doNodeStorage;
+    }
+
+    public synchronized boolean getReadCommitted() {
+        return doReadCommitted;
+    }
+
+    public synchronized int getNumDeadlocks() {
+        return deadlockCounter;
+    }
+} </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="XMLWriterXmlJava"></a>XMLWriter.java</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            <code class="classname">XMLWriter</code> is our thread implementation.
+            It is used to create a series of XML documents and then write
+            them to the container under the protection of a transaction.
+            The documents this class generates will vary in size depending
+            on the number of nodes specified at the command line. Beyond
+            that, however, each thread always performs 50 transactions and
+            a total of 10 documents are written to the container for each
+            transaction.
+        </p>
+        <p>
+            Each program run can also be varied somewhat in terms of the
+            isolation level used by the transactions. Normally default
+            isolation is used, but the user can relax this at the command
+            line to use read committed isolation instead. Doing so can have
+            positive implications for the program's throughput. See <a class="xref" href="runprogram_xml.html" title="Runtime Analysis">Runtime Analysis</a> 
+            for more information.
+        </p>
+        <p>
+            To begin, we import our necessary classes. Note that
+            <code class="classname">java.util.Random</code> is used to generate
+            random data to place into our XML documents.
+        </p>
+        <pre class="programlisting">// File XmlWriter.java
+package dbxml.txn;
+
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+import com.sleepycat.dbxml.XmlTransaction;
+import com.sleepycat.dbxml.XmlUpdateContext;
+
+import com.sleepycat.db.TransactionConfig;
+
+import java.util.Random; </pre>
+        <p>
+    Then we declare our class and we initialize several private data
+    members necessary to our class' operation. Notice the
+    <code class="literal">MAX_RETRY</code> variable. This is used for our deadlock
+    retry loop; our threads will never retry a transaction that deadlocks
+    more than <code class="literal">MAX_RETRY</code> times.
+</p>
+        <pre class="programlisting">public class XMLWriter extends Thread
+{
+    private Random generator = new Random();
+    private boolean passTxn = false;
+
+    private XmlManager myMgr = null;
+    private XmlContainer myContainer = null;
+    private InfoKeeper ik = null;
+
+    private static final int MAX_RETRY = 20; </pre>
+        <p>
+    Next we implement our class constructor. We set our BDB XML handles
+    here. We also get our <code class="classname">InfoKeeper</code>
+    object here, which is used to determine some important aspects of how
+    our thread is supposed to behave.
+</p>
+        <pre class="programlisting">    // Constructor. Get our DBXML handles from here
+    XMLWriter(XmlManager mgr, XmlContainer container, InfoKeeper info)
+        throws XmlException {
+        myMgr = mgr;
+        myContainer = container;
+        ik = info;
+    } </pre>
+        <p>
+    Next we implement our <code class="methodname">run()</code> method. Every
+    <code class="classname">java.lang.Thread</code> class must implement
+    this method. This method is where our class will perform actual work,
+    so this is where we perform our transactional writes. This is also
+    where we will perform all our deadlock handling.
+</p>
+        <p>
+    This method begins by defining a few variables of interest to us.
+    Notice that this is where we discover how many nodes we should generate
+    per XML document and whether read committed isolation should be used by
+    our transactions.
+</p>
+        <pre class="programlisting">    public void run () {
+        Random generator = new Random();
+        XmlTransaction txn = null;
+        int numNodes = ik.getNumNodes();
+        boolean useRC = ik.getReadCommitted(); </pre>
+        <p>
+    Then we begin our main transaction loop. As we do so, we initialize our
+    <code class="literal">retry</code> variable to <code class="literal">true</code> and our
+    <code class="literal">retry_count</code> variable to <code class="literal">0</code>. So
+    long as <code class="literal">retry_count</code> does not exceed
+    <code class="literal">MAX_RETRY</code>, we will retry deadlocked transactions.
+</p>
+        <pre class="programlisting">        // Perform 50 transactions
+        for (int i=0; i&lt;50; i++) {
+           boolean retry = true;
+           int retry_count = 0; </pre>
+        <p>
+    Now we enter our retry loop, and immediately the <code class="literal">try</code>
+    block that we use to perform deadlock handling and transaction aborts
+    (if required). At the top of the loop, we obtain an update context and
+    a <code class="classname">TransactionConfig</code> object. We use the
+    <code class="classname">TransactionConfig</code> object to identify the
+    whether we should use read committed isolation. Of course, this is
+    driven ultimately by information passed to the program from the command
+    line.
+</p>
+        <pre class="programlisting">           // while loop is used for deadlock retries
+           while (retry) {
+                // try block used for deadlock detection and
+                // general exception handling
+                try {
+                    XmlUpdateContext context = myMgr.createUpdateContext();
+                    // Configure whether the transaction will use Read 
+                    // Committed isolation. If -2 is specified on the 
+                    // command line, then Read Committed is used.
+                    TransactionConfig tc = new TransactionConfig();
+                    tc.setReadCommitted(useRC); </pre>
+        <p>
+    Now we (finally!) create our documents and write them to the container.
+    Each document is written under the protection of a transaction. Each
+    transaction is committed once 10 documents have been created and
+    written.
+</p>
+        <pre class="programlisting">                    // Get a transaction
+                    txn = myMgr.createTransaction(null, tc);
+
+                    // Write 10 records to the container
+                    // for each transaction
+                    for (int j = 0; j &lt; 10; j++) {
+                        // Get a document ID
+                        String docID = getName() + i + j;
+
+                        // Build the document
+                        String theDoc = "&lt;testDoc&gt;\n";
+                        for (int k = 0; k &lt; numNodes; k++) {
+                            theDoc += "&lt;payload&gt;" +
+                                generator.nextDouble() + "&lt;/payload&gt;\n";
+                        }
+                        theDoc += "&lt;/testDoc&gt;";
+
+                        // Put the document
+                        myContainer.putDocument(txn,
+                                          docID,
+                                          theDoc,
+                                          context);
+
+                    } // end inner for loop
+
+                    // Commit
+                    txn.commit();
+                    txn = null;
+                    retry = false; </pre>
+        <p>
+    To wrap things up, we have to perform error handling. First we look at
+    <code class="classname">XmlException</code> objects. In particular, we need to
+    look for deadlocks by examining the object to see if it encapsulates a
+    <code class="classname">com.sleepycat.db.DeadlockException</code>. If it does,
+    we will abort (this occurs in the <code class="literal">finally</code> clause,  
+    and then retry if our retry count is low enough.
+</p>
+        <pre class="programlisting">                } catch (XmlException xe) {
+                    retry = false;
+
+                    // First, look for a deadlock and handle it
+                    // if that is the cause of the exception.
+                    if (xe.getDatabaseException() instanceof
+                            com.sleepycat.db.DeadlockException) {
+
+                        System.out.println(getName() +
+                            " got deadlock exception!");
+                        ik.incrementDeadlockCounter();
+
+                        // retry if necessary
+                        if (retry_count &lt; MAX_RETRY) {
+                            System.err.println(getName() +
+                                " : Retrying operation.");
+                            retry = true;
+                            retry_count++;
+                        } else {
+                            System.err.println(getName() +
+                                " : out of retries. Giving up.");
+                        }
+                    } else {
+                            System.err.println("Error on txn commit: " +
+                                xe.toString());
+                    } </pre>
+        <p>
+    For general all-purpose exceptions, we simply refrain from retrying the
+    operation.
+</p>
+        <pre class="programlisting">                } catch (Exception e) {
+                    System.err.println(getName() +
+                        " got general exception : " + e.toString());
+                        retry = false; </pre>
+        <p>
+    Finally, we always abort the transaction if its handle is non-null. The
+    thread will then retry the transaction if the value of the
+    <code class="literal">retry</code> allows it.
+</p>
+        <pre class="programlisting">                } finally {
+                    if (txn != null) {
+                        try {
+                            txn.abort();
+                        } catch (Exception e) {
+                            System.err.println("Error aborting txn: " +
+                                e.toString());
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+            } // end retry loop
+        } // end for 50 transactions loop
+    } // end of the run method
+} // end of class </pre>
+        <p>
+    This completes our transactional example. If you would like to
+    experiment with this code, you can find the example in the following
+    location in your BDB XML distribution:
+</p>
+        <pre class="programlisting"><span class="emphasis"><em>BDBXML_INSTALL</em></span>/dbxml/examples/java/txn</pre>
+        <p>
+    In addition, please see <a class="xref" href="runprogram_xml.html" title="Runtime Analysis">Runtime Analysis</a>
+    for an analysis on the performance characteristic illustrated by this
+    program.
+</p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="wrapup.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="wrapup.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="inmem_dbxml_java_txnexample.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 6. Summary and Examples </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> In-Memory Transaction Example</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

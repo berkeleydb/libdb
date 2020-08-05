@@ -1,0 +1,64 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlManager::getDefaultSequenceIncrement</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlManager::getDefaultSequenceIncrement</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlManager::setDefaultSequenceIncrement(u_int32_t increment)
+<p>
+u_int32_t XmlManager::getDefaultSequenceIncrement()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlManager::getDefaultSequenceIncrement</b>
+<p>Sets the integer increment to be used when pre-allocating document ids for new
+documents created by <a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a>.
+</p>
+<p>Every document added to an XmlContainer is assigned an internal unique
+ID, and BDB XML performs an internal database operation to obtain these
+IDs. In order to increase database concurrency and improve performance
+of ID allocation, BDB XML pre-allocates a sequence of these numbers. The
+size of this sequence is determined by the value specified here.  The
+default ID sequence size is 5.</p>
+<p>Be aware that when a container is closed, any unused IDs in the current
+sequence are lost. Under some extreme cases, this can result in a
+container to which documents can no longer be added.  For example,
+setting this value to a very large number (such as, say, 1 million) and
+then repeatedly opening and closing the container while adding a few
+documents will eventually cause the container to run out of IDs.  Once
+out of IDs, the container will never again be able to accept new
+documents.  The maximum number of IDs that a container has available to
+it is currently 4 billion.</p>
+<p>
+You should almost always leave this value alone. However, if you are
+loading a large number of documents to a container all at once, you may
+find a small performance benefit to setting the sequence number to a
+larger value.  If you do this, be aware that this value is persistent
+across container opens, so you should take care to reset the value to
+its default once you are done loading the documents.</p>
+<b>Parameters</b> <br>
+ <b>increment</b><ul compact><li>The increment to use for pre-allocated IDs.
+</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!--DO NOT EDIT: automatically built by build script.-->
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: Berkeley DB XML: C++ Handle Methods (version 2.5.16)</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<p align=center><b>Berkeley DB XML: C++ Handle Methods (version 2.5.16)</b></p>
+<table border=1 align=center>
+<tr><th>C++ Handle Methods</th><th>Description</th></tr>
+<!--DbXml::setLogLevel--><tr><td><a href="../../api_reference/CXX/DbXml_setLogLevel.html">DbXml::dbxml_version</a></td><td>Get the release number.</td></tr>
+<!--DbXml::setLogLevel--><tr><td><a href="../../api_reference/CXX/DbXml_setLogLevel.html">DbXml::setLogCategory</a></td><td>Set the logging category.</td></tr>
+<!--DbXml::setLogLevel--><tr><td><a href="../../api_reference/CXX/DbXml_setLogLevel.html">DbXml::setLogLevel</a></td><td>Set the logging level.</td></tr>
+<!--XmlCompression::compress--><tr><td><a href="../../api_reference/CXX/XmlCompression_compress.html">XmlCompression::compress</a></td><td>Compresses data before it is added to a container.</td></tr>
+<!--XmlCompression::decompression--><tr><td><a href="../../api_reference/CXX/XmlCompression_decompress.html">XmlCompression::decompress</a></td><td>Decompresses data when it is retrieved from a container.</td></tr>
+<!--XmlCompression::--><tr><td><a href="../../api_reference/CXX/XmlCompression.html">XmlCompression</a></td><td>Used to implement customized compression.</td></tr>
+<!--XmlContainer::addAlias--><tr><td><a href="../../api_reference/CXX/XmlContainer_addAlias.html">XmlContainer::addAlias</a></td><td>Adds a alias for the container name.</td></tr>
+<!--XmlContainer::addDefaultIndex--><tr><td><a href="../../api_reference/CXX/XmlContainer_addDefaultIndex.html">XmlContainer::addDefaultIndex</a></td><td>Add a default index to the container.</td></tr>
+<!--XmlContainer::addIndex--><tr><td><a href="../../api_reference/CXX/XmlContainer_addIndex.html">XmlContainer::addIndex</a></td><td>Adds an index specification.</td></tr>
+<!--XmlContainerConfig::--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig.html">XmlContainerConfig</a></td><td>Used to configure a container.</td></tr>
+<!--XmlContainerConfig::setAllowCreate--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setAllowCreate.html">XmlContainerConfig::setAllowCreate</a></td><td>Sets whether to create the container if it does not exist.</td></tr>
+<!--XmlContainerConfig::setAllowValidation--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setAllowValidation.html">XmlContainerConfig::setAllowValidation</a></td><td>Sets whether XML is validated.</td></tr>
+<!--XmlContainerConfig::setChecksum--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setChecksum.html">XmlContainerConfig::setChecksum</a></td><td>Sets whether to use checksum verification.</td></tr>
+<!--XmlContainerConfig::setCompressionName--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setCompressionName.html">XmlContainerConfig::setCompressionName</a></td><td>Sets the compression to be used.</td></tr>
+<!--XmlContainerConfig::setContainerType--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setContainerType.html">XmlContainerConfig::setContainerType</a></td><td>Sets the container type.</td></tr>
+<!--XmlContainerConfig::setEncrypted--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setEncrypted.html">XmlContainerConfig::setEncrypted</a></td><td>Sets whether to use encryption.</td></tr>
+<!--XmlContainerConfig::setExclusiveCreate--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setExclusiveCreate.html">XmlContainerConfig::setExclusiveCreate</a></td><td>Sets whether to throw an exception if the container exists.</td></tr>
+<!--XmlContainerConfig::setIndexNodes--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setIndexNodes.html">XmlContainerConfig::setIndexNodes</a></td><td>Sets whether to index nodes or documents.</td></tr>
+<!--XmlContainerConfig::setMode--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setMode.html">XmlContainerConfig::setMode</a></td><td>Sets the mode of the container files.</td></tr>
+<!--XmlContainerConfig::setMultiversion--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setMultiversion.html">XmlContainerConfig::setMultiversion</a></td><td>Enable multiversion concurrency control.</td></tr>
+<!--XmlContainerConfig::setNoMMap--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setNoMMap.html">XmlContainerConfig::setNoMMap</a></td><td>Sets whether to map containers into process memory.</td></tr>
+<!--XmlContainerConfig::setPageSize--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setPageSize.html">XmlContainerConfig::setPageSize</a></td><td>Sets the page size used by the container.</td></tr>
+<!--XmlContainerConfig::setReadOnly--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setReadOnly.html">XmlContainerConfig::setReadOnly</a></td><td>Sets whether the container is read only.</td></tr>
+<!--XmlContainerConfig::setReadUncommitted--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setReadUncommitted.html">XmlContainerConfig::setReadUncommitted</a></td><td>Enable dirty reads.</td></tr>
+<!--XmlContainerConfig::setSequenceIncrement--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setSequenceIncrement.html">XmlContainerConfig::setSequenceIncrement</a></td><td>Set the sequence number generation cache size.</td></tr>
+<!--XmlContainerConfig::setStatistics--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setStatistics.html">XmlContainerConfig::setStatistics</a></td><td>Sets whether to store structural statistics.</td></tr>
+<!--XmlContainerConfig::setThreaded--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setThreaded.html">XmlContainerConfig::setThreaded</a></td><td>Sets whether to return the container handle as free-threaded.</td></tr>
+<!--XmlContainerConfig::setTransactional--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setTransactional.html">XmlContainerConfig::setTransactional</a></td><td>Sets whether transactions are used.</td></tr>
+<!--XmlContainerConfig::setTransactionNotDurable--><tr><td><a href="../../api_reference/CXX/XmlContainerConfig_setTransactionNotDurable.html">XmlContainerConfig::setTransactionNotDurable</a></td><td>Sets whether operations are not durable.</td></tr>
+<!--XmlContainer::deleteDefaultIndex--><tr><td><a href="../../api_reference/CXX/XmlContainer_deleteDefaultIndex.html">XmlContainer::deleteDefaultIndex</a></td><td>Delete the container's default index.</td></tr>
+<!--XmlContainer::deleteDocument--><tr><td><a href="../../api_reference/CXX/XmlContainer_deleteDocument.html">XmlContainer::deleteDocument</a></td><td>Delete a document from the container.</td></tr>
+<!--XmlContainer::deleteIndex--><tr><td><a href="../../api_reference/CXX/XmlContainer_deleteIndex.html">XmlContainer::deleteIndex</a></td><td>Delete the specified index.</td></tr>
+<!--XmlContainer::getAllDocuments--><tr><td><a href="../../api_reference/CXX/XmlContainer_getAllDocuments.html">XmlContainer::getAllDocuments</a></td><td>Get all documents in the container.</td></tr>
+<!--XmlContainer::getAutoIndexing--><tr><td><a href="../../api_reference/CXX/XmlContainer_getAutoIndexing.html">XmlContainer::getAutoIndexing</a></td><td>Get the state of automatic indexing.</td></tr>
+<!--XmlContainer::getContainerConfig--><tr><td><a href="../../api_reference/CXX/XmlContainer_getContainerConfig.html">XmlContainer::getContainerConfig</a></td><td>Get the container's settings.</td></tr>
+<!--XmlContainer::getContainerType--><tr><td><a href="../../api_reference/CXX/XmlContainer_getContainerType.html">XmlContainer::getContainerType</a></td><td>Get the container's type.</td></tr>
+<!--XmlContainer::getDocument--><tr><td><a href="../../api_reference/CXX/XmlContainer_getDocument.html">XmlContainer::getDocument</a></td><td>Get the specified document.</td></tr>
+<!--XmlContainer::getFlags--><tr><td><a href="../../api_reference/CXX/XmlContainer_getFlags.html">XmlContainer::getFlags</a></td><td>Get the flags used to open the container.</td></tr>
+<!--XmlContainer::getIndexNodes--><tr><td><a href="../../api_reference/CXX/XmlContainer_getIndexNodes.html">XmlContainer::getIndexNodes</a></td><td>Return true if indexing nodes.</td></tr>
+<!--XmlContainer::getIndexSpecification--><tr><td><a href="../../api_reference/CXX/XmlContainer_getIndexSpecification.html">XmlContainer::getIndexSpecification</a></td><td>Get the index specification.</td></tr>
+<!--XmlContainer::getManager--><tr><td><a href="../../api_reference/CXX/XmlContainer_getManager.html">XmlContainer::getManager</a></td><td>Get the <a href="../../api_reference/CXX/XmlManager.html">XmlManager</a> object for this container.</td></tr>
+<!--XmlContainer::getName--><tr><td><a href="../../api_reference/CXX/XmlContainer_getName.html">XmlContainer::getName</a></td><td>Get the container's name.</td></tr>
+<!--XmlContainer::getNode--><tr><td><a href="../../api_reference/CXX/XmlContainer_getNode.html">XmlContainer::getNode</a></td><td>Get the specified node.</td></tr>
+<!--XmlContainer::getNumDocuments--><tr><td><a href="../../api_reference/CXX/XmlContainer_getNumDocuments.html">XmlContainer::getNumDocuments</a></td><td>Get the number of documents in the container.</td></tr>
+<!--XmlContainer::getPageSize--><tr><td><a href="../../api_reference/CXX/XmlContainer_getPageSize.html">XmlContainer::getPageSize</a></td><td>Return database page size.</td></tr>
+<!--XmlContainer::lookupIndex--><tr><td><a href="../../api_reference/CXX/XmlContainer_lookupIndex.html">XmlContainer::lookupIndex</a></td><td>Return all the documents matching a specified index.</td></tr>
+<!--XmlContainer::lookupStatistics--><tr><td><a href="../../api_reference/CXX/XmlContainer_lookupStatistics.html">XmlContainer::lookupStatistics</a></td><td>Return an <a href="../../api_reference/CXX/XmlStatistics.html">XmlStatistics</a> object for a specified index.</td></tr>
+<!--XmlContainer::--><tr><td><a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a></td><td>An XmlContainer.</td></tr>
+<!--XmlContainer::putDocumentAsEventWriter--><tr><td><a href="../../api_reference/CXX/XmlContainer_putDocumentAsEventWriter.html">XmlContainer::putDocumentAsEventWriter</a></td><td>Add a document to the container using <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>.</td></tr>
+<!--XmlContainer::putDocument--><tr><td><a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a></td><td>Add a document to the container.</td></tr>
+<!--XmlContainer::removeAlias--><tr><td><a href="../../api_reference/CXX/XmlContainer_removeAlias.html">XmlContainer::removeAlias</a></td><td>Remove a named alias for the container.</td></tr>
+<!--XmlContainer::replaceDefaultIndex--><tr><td><a href="../../api_reference/CXX/XmlContainer_replaceDefaultIndex.html">XmlContainer::replaceDefaultIndex</a></td><td>Replace the container's default index.</td></tr>
+<!--XmlContainer::replaceIndex--><tr><td><a href="../../api_reference/CXX/XmlContainer_replaceIndex.html">XmlContainer::replaceIndex</a></td><td>Replace an index of a specified type.</td></tr>
+<!--XmlContainer::setAutoIndexing--><tr><td><a href="../../api_reference/CXX/XmlContainer_setAutoIndexing.html">XmlContainer::setAutoIndexing</a></td><td>Set the state of automatic indexing.</td></tr>
+<!--XmlContainer::setIndexSpecification--><tr><td><a href="../../api_reference/CXX/XmlContainer_setIndexSpecification.html">XmlContainer::setIndexSpecification</a></td><td>Set the index specification.</td></tr>
+<!--XmlContainer::sync--><tr><td><a href="../../api_reference/CXX/XmlContainer_sync.html">XmlContainer::sync</a></td><td>Flush container database state to disk.</td></tr>
+<!--XmlContainer::updateDocument--><tr><td><a href="../../api_reference/CXX/XmlContainer_updateDocument.html">XmlContainer::updateDocument</a></td><td>Update an existing <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a></td></tr>
+<!--XmlData::adoptBuffer--><tr><td><a href="../../api_reference/CXX/XmlData.html">XmlData::adoptBuffer</a></td><td>Take ownership of the buffer.</td></tr>
+<!--XmlData::get_data--><tr><td><a href="../../api_reference/CXX/XmlData.html">XmlData::get_data</a></td><td>Get a pointer to the data.</td></tr>
+<!--XmlData::getReservedSize--><tr><td><a href="../../api_reference/CXX/XmlData.html">XmlData::getReservedSize</a></td><td>Return the amount of reserved space in bytes.</td></tr>
+<!--XmlData::get_size--><tr><td><a href="../../api_reference/CXX/XmlData.html">XmlData::get_size</a></td><td>Get size of the data in bytes.</td></tr>
+<!--XmlData::--><tr><td><a href="../../api_reference/CXX/XmlData.html">XmlData</a></td><td>XmlData instance</td></tr>
+<!--XmlData::reserve--><tr><td><a href="../../api_reference/CXX/XmlData.html">XmlData::reserve</a></td><td>Reserve space (will resize if necessary).</td></tr>
+<!--XmlData::set_size--><tr><td><a href="../../api_reference/CXX/XmlData.html">XmlData::set_size</a></td><td>Set the size of the data in bytes.</td></tr>
+<!--XmlDebugListener::end--><tr><td><a href="../../api_reference/CXX/XmlDebugListener.html">XmlDebugListener::end</a></td><td>TBD.</td></tr>
+<!--XmlDebugListener::enter--><tr><td><a href="../../api_reference/CXX/XmlDebugListener.html">XmlDebugListener::enter</a></td><td>TBD.</td></tr>
+<!--XmlDebugListener::error--><tr><td><a href="../../api_reference/CXX/XmlDebugListener.html">XmlDebugListener::error</a></td><td>TBD.</td></tr>
+<!--XmlDebugListener::exit--><tr><td><a href="../../api_reference/CXX/XmlDebugListener.html">XmlDebugListener::exit</a></td><td>TBD.</td></tr>
+<!--XmlDebugListener::--><tr><td><a href="../../api_reference/CXX/XmlDebugListener.html">XmlDebugListener</a></td><td>An XmlDebugListener</td></tr>
+<!--XmlDebugListener::start--><tr><td><a href="../../api_reference/CXX/XmlDebugListener.html">XmlDebugListener::start</a></td><td>TBD.</td></tr>
+<!--XmlDocument::fetchAllData--><tr><td><a href="../../api_reference/CXX/XmlDocument_fetchAllData.html">XmlDocument::fetchAllData</a></td><td>Retrieve all document content and metadata.</td></tr>
+<!--XmlDocument::getContentAsEventReader--><tr><td><a href="../../api_reference/CXX/XmlDocument_getContentAsEventReader.html">XmlDocument::getContentAsEventReader</a></td><td>Retrieve content as an <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a>.</td></tr>
+<!--XmlDocument::getContentAsEventWriter--><tr><td><a href="../../api_reference/CXX/XmlDocument_getContentAsEventWriter.html">XmlDocument::getContentAsEventWriter</a></td><td>Retrieve content into an <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>.</td></tr>
+<!--XmlDocument::getContentAsXmlInputStream--><tr><td><a href="../../api_reference/CXX/XmlDocument_getContentAsXmlInputStream.html">XmlDocument::getContentAsXmlInputStream</a></td><td>Retrieve content as an input stream.</td></tr>
+<!--XmlDocument::getContent!--><tr><td><a href="../../api_reference/CXX/XmlDocument_getContent.html">XmlDocument::getContent</a></td><td>Retrieve content.</td></tr>
+<!--XmlDocument::getMetaDataIterator--><tr><td><a href="../../api_reference/CXX/XmlDocument_getMetaDataIterator.html">XmlDocument::getMetaDataIterator</a></td><td>Get an <a href="../../api_reference/CXX/XmlMetaDataIterator.html">XmlMetaDataIterator</a>.</td></tr>
+<!--XmlDocument::getMetaData!--><tr><td><a href="../../api_reference/CXX/XmlDocument_getMetaData.html">XmlDocument::getMetaData</a></td><td>Retrieve a single metadata value.</td></tr>
+<!--XmlDocument::getName--><tr><td><a href="../../api_reference/CXX/XmlDocument_getName.html">XmlDocument::getName</a></td><td>Get the document's name.</td></tr>
+<!--XmlDocument::--><tr><td><a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a></td><td>An XmlDocument.</td></tr>
+<!--XmlDocument::removeMetaData--><tr><td><a href="../../api_reference/CXX/XmlDocument_removeMetaData.html">XmlDocument::removeMetaData</a></td><td>Removes a single metadata value.</td></tr>
+<!--XmlDocument::setContentAsEventReader--><tr><td><a href="../../api_reference/CXX/XmlDocument_setContentAsEventReader.html">XmlDocument::setContentAsEventReader</a></td><td>Set the document's content from an <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a>.</td></tr>
+<!--XmlDocument::setContentAsXmlInputStream--><tr><td><a href="../../api_reference/CXX/XmlDocument_setContentAsXmlInputStream.html">XmlDocument::setContentAsXmlInputStream</a></td><td>Set the document's content from an input stream.</td></tr>
+<!--XmlDocument::setContent--><tr><td><a href="../../api_reference/CXX/XmlDocument_setContent.html">XmlDocument::setContent</a></td><td>Set the document's content.</td></tr>
+<!--XmlDocument::setMetaData--><tr><td><a href="../../api_reference/CXX/XmlDocument_setMetaData.html">XmlDocument::setMetaData</a></td><td>Set a metadata value for the document.</td></tr>
+<!--XmlDocument::setName--><tr><td><a href="../../api_reference/CXX/XmlDocument_setName.html">XmlDocument::setName</a></td><td>Set the document's name.</td></tr>
+<!--XmlEventReader::close--><tr><td><a href="../../api_reference/CXX/XmlEventReader_close.html">XmlEventReader::close</a></td><td>Release resources for reader.</td></tr>
+<!--XmlEventReader::getAttributeCount--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getAttributeCount.html">XmlEventReader::getAttributeCount</a></td><td>Return the number of attributes for an element event.</td></tr>
+<!--XmlEventReader::getAttributeLocalName--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getAttributeLocalName.html">XmlEventReader::getAttributeLocalName</a></td><td>Get attribute's local name.</td></tr>
+<!--XmlEventReader::getAttributeNamespaceURI--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getAttributeNamespaceURI.html">XmlEventReader::getAttributeNamespaceURI</a></td><td>Get attribute's namespace URI.</td></tr>
+<!--XmlEventReader::getAttributePrefix--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getAttributePrefix.html">XmlEventReader::getAttributePrefix</a></td><td>Get attribute's namespace prefix.</td></tr>
+<!--XmlEventReader::getAttributeValue--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getAttributeValue.html">XmlEventReader::getAttributeValue</a></td><td>Get attribute's value.</td></tr>
+<!--XmlEventReader::getEncoding--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getEncoding.html">XmlEventReader::encodingSet</a></td><td>Check if the encoding is explicitly set.</td></tr>
+<!--XmlEventReader::getEncoding--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getEncoding.html">XmlEventReader::getEncoding</a></td><td>Return the encoding of the document.</td></tr>
+<!--XmlEventReader::getEncoding--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getEncoding.html">XmlEventReader::getSystemId</a></td><td>Return the System ID for for the document.</td></tr>
+<!--XmlEventReader::getEncoding--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getEncoding.html">XmlEventReader::getVersion</a></td><td>Return the XML version string for the document.</td></tr>
+<!--XmlEventReader::getEncoding--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getEncoding.html">XmlEventReader::isStandalone</a></td><td>Check if document is standalone XML.</td></tr>
+<!--XmlEventReader::getEncoding--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getEncoding.html">XmlEventReader::standaloneSet</a></td><td>Check if the standalone attribute is set.</td></tr>
+<!--XmlEventReader::getEventType--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getEventType.html">XmlEventReader::getEventType</a></td><td>Return the type of the current event.</td></tr>
+<!--XmlEventReader::getLocalName--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getLocalName.html">XmlEventReader::getLocalName</a></td><td>Return the name of the current element event.</td></tr>
+<!--XmlEventReader::getNamespaceURI--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getNamespaceURI.html">XmlEventReader::getNamespaceURI</a></td><td>Return the namespace URI of the current element event.</td></tr>
+<!--XmlEventReader::getPrefix--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getPrefix.html">XmlEventReader::getPrefix</a></td><td>Return the namespace prefix for the current element event.</td></tr>
+<!--XmlEventReader::getValue--><tr><td><a href="../../api_reference/CXX/XmlEventReader_getValue.html">XmlEventReader::getValue</a></td><td>Return the value of the current event.</td></tr>
+<!--XmlEventReader::hasEmptyElementInfo--><tr><td><a href="../../api_reference/CXX/XmlEventReader_hasEmptyElementInfo.html">XmlEventReader::hasEmptyElementInfo</a></td><td>Check if object will return empty element state.</td></tr>
+<!--XmlEventReader::hasEntityEscapeInfo--><tr><td><a href="../../api_reference/CXX/XmlEventReader_hasEntityEscapeInfo.html">XmlEventReader::hasEntityEscapeInfo</a></td><td>Check if object has information about entities.</td></tr>
+<!--XmlEventReader::hasNext--><tr><td><a href="../../api_reference/CXX/XmlEventReader_hasNext.html">XmlEventReader::hasNext</a></td><td>Check if there are more events.</td></tr>
+<!--XmlEventReader::isAttributeSpecified--><tr><td><a href="../../api_reference/CXX/XmlEventReader_isAttributeSpecified.html">XmlEventReader::isAttributeSpecified</a></td><td>Check if an attribute is specified.</td></tr>
+<!--XmlEventReader::isEmptyElement--><tr><td><a href="../../api_reference/CXX/XmlEventReader_isEmptyElement.html">XmlEventReader::isEmptyElement</a></td><td>Check current element is empty.</td></tr>
+<!--XmlEventReader::isWhiteSpace--><tr><td><a href="../../api_reference/CXX/XmlEventReader_isWhiteSpace.html">XmlEventReader::isWhiteSpace</a></td><td>Check if current text value is white space.</td></tr>
+<!--XmlEventReader::--><tr><td><a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a></td><td>Read XML events.</td></tr>
+<!--XmlEventReader::needsEntityEscape--><tr><td><a href="../../api_reference/CXX/XmlEventReader_needsEntityEscape.html">XmlEventReader::needsEntityEscape</a></td><td>Check if text or attribute value needs escaping.</td></tr>
+<!--XmlEventReader::next--><tr><td><a href="../../api_reference/CXX/XmlEventReader_next.html">XmlEventReader::next</a></td><td>Move to the next event.</td></tr>
+<!--XmlEventReader::nextTag--><tr><td><a href="../../api_reference/CXX/XmlEventReader_nextTag.html">XmlEventReader::nextTag</a></td><td>Move to the next StartElement or EndElement event.</td></tr>
+<!--XmlEventReader::setExpandEntities--><tr><td><a href="../../api_reference/CXX/XmlEventReader_setExpandEntities.html">XmlEventReader::getExpandEntities</a></td><td>Get whether to expand entities.</td></tr>
+<!--XmlEventReader::setExpandEntities--><tr><td><a href="../../api_reference/CXX/XmlEventReader_setExpandEntities.html">XmlEventReader::setExpandEntities</a></td><td>Set whether to expand entities.</td></tr>
+<!--XmlEventReader::setReportEntityInfo--><tr><td><a href="../../api_reference/CXX/XmlEventReader_setReportEntityInfo.html">XmlEventReader::getReportEntityInfo</a></td><td>Get whether to report entity information.</td></tr>
+<!--XmlEventReader::setReportEntityInfo--><tr><td><a href="../../api_reference/CXX/XmlEventReader_setReportEntityInfo.html">XmlEventReader::setReportEntityInfo</a></td><td>Set whether to report entity information.</td></tr>
+<!--XmlEventReaderToWriter::--><tr><td><a href="../../api_reference/CXX/XmlEventReaderToWriter.html">XmlEventReaderToWriter</a></td><td>Convert XmlEventReader to XmlEventWriter</td></tr>
+<!--XmlEventReaderToWriter::start--><tr><td><a href="../../api_reference/CXX/XmlEventReaderToWriter_start.html">XmlEventReaderToWriter::start</a></td><td>Begin processing events.</td></tr>
+<!--XmlEventWriter::close--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_close.html">XmlEventWriter::close</a></td><td>Release resources for the writer.</td></tr>
+<!--XmlEventWriter::--><tr><td><a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a></td><td>Write XML events.</td></tr>
+<!--XmlEventWriter::writeAttribute--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeAttribute.html">XmlEventWriter::writeAttribute</a></td><td>Write an attribute.</td></tr>
+<!--XmlEventWriter::writeDTD--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeDTD.html">XmlEventWriter::writeDTD</a></td><td>Write a DTD or reference.</td></tr>
+<!--XmlEventWriter::writeEndDocument--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeEndDocument.html">XmlEventWriter::writeEndDocument</a></td><td>Write an EndDocument event.</td></tr>
+<!--XmlEventWriter::writeEndElement--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeEndElement.html">XmlEventWriter::writeEndElement</a></td><td>Write an EndElement event.</td></tr>
+<!--XmlEventWriter::writeEndEntity--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeEndEntity.html">XmlEventWriter::writeEndEntity</a></td><td>Write an EndEntity event.</td></tr>
+<!--XmlEventWriter::writeProcessingInstruction--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeProcessingInstruction.html">XmlEventWriter::writeProcessingInstruction</a></td><td>Write a ProcessingInstruction.</td></tr>
+<!--XmlEventWriter::writeStartDocument--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeStartDocument.html">XmlEventWriter::writeStartDocument</a></td><td>Write a StartDocument event.</td></tr>
+<!--XmlEventWriter::writeStartElement--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeStartElement.html">XmlEventWriter::writeStartElement</a></td><td>Write a StartElement event.</td></tr>
+<!--XmlEventWriter::writeStartEntity--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeStartEntity.html">XmlEventWriter::writeStartEntity</a></td><td>Write a StartEntityReference event.</td></tr>
+<!--XmlEventWriter::writeText--><tr><td><a href="../../api_reference/CXX/XmlEventWriter_writeText.html">XmlEventWriter::writeText</a></td><td>Write a Text event.</td></tr>
+<!--XmlException::getDbErrno--><tr><td><a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a></td><td>Get DB error number.</td></tr>
+<!--XmlException::getExceptionCode--><tr><td><a href="../../api_reference/CXX/XmlException_getExceptionCode.html">XmlException::getExceptionCode</a></td><td>Get ExceptionCode.</td></tr>
+<!--XmlException::getQueryColumn--><tr><td><a href="../../api_reference/CXX/XmlException_getQueryColumn.html">XmlException::getQueryColumn</a></td><td>Get column for query error.</td></tr>
+<!--XmlException::getQueryFile--><tr><td><a href="../../api_reference/CXX/XmlException_getQueryFile.html">XmlException::getQueryFile</a></td><td>Get file for query error.</td></tr>
+<!--XmlException::getQueryLine--><tr><td><a href="../../api_reference/CXX/XmlException_getQueryLine.html">XmlException::getQueryLine</a></td><td>Get line for query error.</td></tr>
+<!--XmlException::--><tr><td><a href="../../api_reference/CXX/XmlException.html">XmlException</a></td><td>BDB XML exceptions.</td></tr>
+<!--XmlException::what--><tr><td><a href="../../api_reference/CXX/XmlException_what.html">XmlException::what</a></td><td>Get error string.</td></tr>
+<!--XmlIndexLookup::execute--><tr><td><a href="../../api_reference/CXX/XmlIndexLookup_execute.html">XmlIndexLookup::execute</a></td><td>Execute the index lookup operation.</td></tr>
+<!--XmlIndexLookup::--><tr><td><a href="../../api_reference/CXX/XmlIndexLookup.html">XmlIndexLookup</a></td><td>An XmlIndexLookup.</td></tr>
+<!--XmlIndexLookup::setContainer--><tr><td><a href="../../api_reference/CXX/XmlIndexLookup_setContainer.html">XmlIndexLookup::setContainer</a></td><td>Set the target container for the lookup.</td></tr>
+<!--XmlIndexLookup::setHighBound--><tr><td><a href="../../api_reference/CXX/XmlIndexLookup_setHighBound.html">XmlIndexLookup::setHighBound</a></td><td>Set the high bound for a range lookup.</td></tr>
+<!--XmlIndexLookup::setIndex--><tr><td><a href="../../api_reference/CXX/XmlIndexLookup_setIndex.html">XmlIndexLookup::setIndex</a></td><td>Set the index to be used for the lookup.</td></tr>
+<!--XmlIndexLookup::setLowBound--><tr><td><a href="../../api_reference/CXX/XmlIndexLookup_setLowBound.html">XmlIndexLookup::setLowBound</a></td><td>Set the lower bound for the lookup.</td></tr>
+<!--XmlIndexLookup::setNode--><tr><td><a href="../../api_reference/CXX/XmlIndexLookup_setNode.html">XmlIndexLookup::setNode</a></td><td>Set the target node name for the lookup.</td></tr>
+<!--XmlIndexLookup::setParent--><tr><td><a href="../../api_reference/CXX/XmlIndexLookup_setParent.html">XmlIndexLookup::setParent</a></td><td>Set the parent node for edge index lookups.</td></tr>
+<!--XmlIndexSpecification::addDefaultIndex--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_addDefaultIndex.html">XmlIndexSpecification::addDefaultIndex</a></td><td>Add a default index.</td></tr>
+<!--XmlIndexSpecification::addIndex--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a></td><td>Add an index</td></tr>
+<!--XmlIndexSpecification::deleteDefaultIndex--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_deleteDefaultIndex.html">XmlIndexSpecification::deleteDefaultIndex</a></td><td>Delete the index from the default specification.</td></tr>
+<!--XmlIndexSpecification::deleteIndex--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_deleteIndex.html">XmlIndexSpecification::deleteIndex</a></td><td>Delete an index.</td></tr>
+<!--XmlIndexSpecification::find--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_find.html">XmlIndexSpecification::find</a></td><td>Find the index for a specific node.</td></tr>
+<!--XmlIndexSpecification::getDefaultIndex--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_getDefaultIndex.html">XmlIndexSpecification::getDefaultIndex</a></td><td>Get the default index.</td></tr>
+<!--XmlIndexSpecification::getValueType--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_getValueType.html">XmlIndexSpecification::getValueType</a></td><td>Get the XmlValue::type from an index string.</td></tr>
+<!--XmlIndexSpecification::--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification.html">XmlIndexSpecification</a></td><td>An XmlIndexSpecification.</td></tr>
+<!--XmlIndexSpecification::next--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_next.html">XmlIndexSpecification::next</a></td><td>Get the next index in the index specification.</td></tr>
+<!--XmlIndexSpecification::replaceDefaultIndex--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_replaceDefaultIndex.html">XmlIndexSpecification::replaceDefaultIndex</a></td><td>Replace the default index.</td></tr>
+<!--XmlIndexSpecification::replaceIndex--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_replaceIndex.html">XmlIndexSpecification::replaceIndex</a></td><td>Replace the index for a node.</td></tr>
+<!--XmlIndexSpecification::reset--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_reset.html">XmlIndexSpecification::reset</a></td><td>Reset the index iterator.</td></tr>
+<!--XmlIndexSpecification::setAutoIndexing--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_setAutoIndexing.html">XmlIndexSpecification::getAutoIndexing</a></td><td>Get the current auto-indexing state.</td></tr>
+<!--XmlIndexSpecification::setAutoIndexing--><tr><td><a href="../../api_reference/CXX/XmlIndexSpecification_setAutoIndexing.html">XmlIndexSpecification::setAutoIndexing</a></td><td>Set the current auto-indexing state.</td></tr>
+<!--XmlInputStream::curPos--><tr><td><a href="../../api_reference/CXX/XmlInputStream_curPos.html">XmlInputStream::curPos</a></td><td>Return the current position in the stream.</td></tr>
+<!--XmlInputStream::--><tr><td><a href="../../api_reference/CXX/XmlInputStream.html">XmlInputStream</a></td><td>An XmlInputStream</td></tr>
+<!--XmlInputStream::readBytes--><tr><td><a href="../../api_reference/CXX/XmlInputStream_readBytes.html">XmlInputStream::readBytes</a></td><td>Read bytes from the stream.</td></tr>
+<!--XmlManager::compactContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_compactContainer.html">XmlManager::compactContainer</a></td><td>Compact the databases comprising the container.</td></tr>
+<!--XmlManager::createContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_createContainer.html">XmlManager::createContainer</a></td><td>Create an <a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a></td></tr>
+<!--XmlManager::createDocument--><tr><td><a href="../../api_reference/CXX/XmlManager_createDocument.html">XmlManager::createDocument</a></td><td>Instantiate an <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> object.</td></tr>
+<!--XmlManager::createIndexLookup--><tr><td><a href="../../api_reference/CXX/XmlManager_createIndexLookup.html">XmlManager::createIndexLookup</a></td><td>Instantiate an <a href="../../api_reference/CXX/XmlIndexLookup.html">XmlIndexLookup</a> object.</td></tr>
+<!--XmlManager::createLocalFileInputStream--><tr><td><a href="../../api_reference/CXX/XmlManager_createLocalFileInputStream.html">XmlManager::createLocalFileInputStream</a></td><td>Create an input stream to a file on disk.</td></tr>
+<!--XmlManager::createMemBufInputStream--><tr><td><a href="../../api_reference/CXX/XmlManager_createMemBufInputStream.html">XmlManager::createMemBufInputStream</a></td><td>Create an input stream to a memory buffer.</td></tr>
+<!--XmlManager::createQueryContext--><tr><td><a href="../../api_reference/CXX/XmlManager_createQueryContext.html">XmlManager::createQueryContext</a></td><td>Instantiate an <a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a> object.</td></tr>
+<!--XmlManager::createResults--><tr><td><a href="../../api_reference/CXX/XmlManager_createResults.html">XmlManager::createResults</a></td><td>Instantiate an empty <a href="../../api_reference/CXX/XmlResults.html">XmlResults</a> object.</td></tr>
+<!--XmlManager::createStdInInputStream--><tr><td><a href="../../api_reference/CXX/XmlManager_createStdInInputStream.html">XmlManager::createStdInInputStream</a></td><td>Create an input stream to the console.</td></tr>
+<!--XmlManager::createTransaction--><tr><td><a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a></td><td>Instantiate an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> object.</td></tr>
+<!--XmlManager::createUpdateContext--><tr><td><a href="../../api_reference/CXX/XmlManager_createUpdateContext.html">XmlManager::createUpdateContext</a></td><td>Instantiate an <a href="../../api_reference/CXX/XmlUpdateContext.html">XmlUpdateContext</a> object.</td></tr>
+<!--XmlManager::createURLInputStream--><tr><td><a href="../../api_reference/CXX/XmlManager_createURLInputStream.html">XmlManager::createURLInputStream</a></td><td>Create an input stream to the specified URL.</td></tr>
+<!--XmlManager::dumpContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_dumpContainer.html">XmlManager::dumpContainer</a></td><td>Dump the container.</td></tr>
+<!--XmlManager::existsContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_existsContainer.html">XmlManager::existsContainer</a></td><td>Determine if container exists.</td></tr>
+<!--XmlManager::getDB_ENV--><tr><td><a href="../../api_reference/CXX/XmlManager_getDB_ENV.html">XmlManager::getDB_ENV</a></td><td>Get the database environment.</td></tr>
+<!--XmlManager::getDefaultContainerConfig--><tr><td><a href="../../api_reference/CXX/XmlManager_setDefaultContainerConfig.html">XmlManager::getDefaultContainerConfig</a></td><td>Get a copy of the default XmlContainerConfig.</td></tr>
+<!--XmlManager::getFlags--><tr><td><a href="../../api_reference/CXX/XmlManager_getFlags.html">XmlManager::getFlags</a></td><td>Get the flags used to open the manager.</td></tr>
+<!--XmlManager::getHome--><tr><td><a href="../../api_reference/CXX/XmlManager_getHome.html">XmlManager::getHome</a></td><td>Get the environment home directory.</td></tr>
+<!--XmlManager::getImplicitTimezone--><tr><td><a href="../../api_reference/CXX/XmlManager_getImplicitTimezone.html">XmlManager::getImplicitTimezone</a></td><td>Get the implicit timezone used for queries.</td></tr>
+<!--XmlManager::loadContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_loadContainer.html">XmlManager::loadContainer</a></td><td>Load the container.</td></tr>
+<!--XmlManager::--><tr><td><a href="../../api_reference/CXX/XmlManager.html">XmlManager</a></td><td>An XmlManager.</td></tr>
+<!--XmlManager::openContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_openContainer.html">XmlManager::openContainer</a></td><td>Open an already existing <a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a>.</td></tr>
+<!--XmlManager::prepare--><tr><td><a href="../../api_reference/CXX/XmlManager_prepare.html">XmlManager::prepare</a></td><td>Get an <a href="../../api_reference/CXX/XmlQueryExpression.html">XmlQueryExpression</a> object.</td></tr>
+<!--XmlManager::query--><tr><td><a href="../../api_reference/CXX/XmlManager_query.html">XmlManager::query</a></td><td>Execute a query.</td></tr>
+<!--XmlManager::registerCompression--><tr><td><a href="../../api_reference/CXX/XmlManager_registerCompression.html">XmlManager::registerCompression</a></td><td>The <a href="../../api_reference/CXX/XmlCompression.html">XmlCompression</a> that implements user defined compression.</td></tr>
+<!--XmlManager::registerResolver--><tr><td><a href="../../api_reference/CXX/XmlManager_registerResolver.html">XmlManager::registerResolver</a></td><td>The <a href="../../api_reference/CXX/XmlResolver.html">XmlResolver</a> that implements file resolution policy.</td></tr>
+<!--XmlManager::reindexContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_reindexContainer.html">XmlManager::reindexContainer</a></td><td>Reindex the container.</td></tr>
+<!--XmlManager::removeContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_removeContainer.html">XmlManager::removeContainer</a></td><td>Delete the container.</td></tr>
+<!--XmlManager::renameContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_renameContainer.html">XmlManager::renameContainer</a></td><td>Rename the container.</td></tr>
+<!--XmlManager::setDefaultContainerConfig--><tr><td><a href="../../api_reference/CXX/XmlManager_setDefaultContainerConfig.html">XmlManager::setDefaultContainerConfig</a></td><td>Set the default XmlContainerConfig.</td></tr>
+<!--XmlManager::setDefaultContainerFlags--><tr><td><a href="../../api_reference/CXX/XmlManager_setDefaultContainerFlags.html">XmlManager::setDefaultContainerFlags</a></td><td>Set the default flags.</td></tr>
+<!--XmlManager::setDefaultContainerType--><tr><td><a href="../../api_reference/CXX/XmlManager_setDefaultContainerType.html">XmlManager::setDefaultContainerType</a></td><td>Set the default container type.</td></tr>
+<!--XmlManager::setDefaultPageSize--><tr><td><a href="../../api_reference/CXX/XmlManager_setDefaultPageSize.html">XmlManager::setDefaultPageSize</a></td><td>Set the underlying database page size.</td></tr>
+<!--XmlManager::setDefaultSequenceIncrement--><tr><td><a href="../../api_reference/CXX/XmlManager_setDefaultSequenceIncrement.html">XmlManager::setDefaultSequenceIncrement</a></td><td>Set the sequence number generation cache size.</td></tr>
+<!--XmlManager::setImplicitTimezone--><tr><td><a href="../../api_reference/CXX/XmlManager_setImplicitTimezone.html">XmlManager::setImplicitTimezone</a></td><td>Set the implicit timezone used for queries.</td></tr>
+<!--XmlManager::truncateContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_truncateContainer.html">XmlManager::truncateContainer</a></td><td>Truncate the container.</td></tr>
+<!--XmlManager::upgradeContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_upgradeContainer.html">XmlManager::upgradeContainer</a></td><td>Upgrade the container.</td></tr>
+<!--XmlManager::verifyContainer--><tr><td><a href="../../api_reference/CXX/XmlManager_verifyContainer.html">XmlManager::verifyContainer</a></td><td>Verify the container.</td></tr>
+<!--XmlMetaDataIterator::--><tr><td><a href="../../api_reference/CXX/XmlMetaDataIterator.html">XmlMetaDataIterator</a></td><td>A metadata iterator.</td></tr>
+<!--XmlMetaDataIterator::next--><tr><td><a href="../../api_reference/CXX/XmlMetaDataIterator_next.html">XmlMetaDataIterator::next</a></td><td>Retrieve the next metadata item.</td></tr>
+<!--XmlMetaDataIterator::reset--><tr><td><a href="../../api_reference/CXX/XmlMetaDataIterator_reset.html">XmlMetaDataIterator::reset</a></td><td>Retrieve the first metadata item.</td></tr>
+<!--XmlQueryContext::clearNamespaces--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_clearNamespaces.html">XmlQueryContext::clearNamespaces</a></td><td>Remove all namespaces.</td></tr>
+<!--XmlQueryContext::getReturnType--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setReturnType.html">XmlQueryContext::getReturnType</a></td><td>Get the return type.</td></tr>
+<!--XmlQueryContext::interruptQuery--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_interruptQuery.html">XmlQueryContext::interruptQuery</a></td><td>Interrupt a running query.</td></tr>
+<!--XmlQueryContext::--><tr><td><a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a></td><td>An XQuery query context</td></tr>
+<!--XmlQueryContext::removeNamespace--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_removeNamespace.html">XmlQueryContext::removeNamespace</a></td><td>Remove the specified namespace.</td></tr>
+<!--XmlQueryContext::setBaseURI--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setBaseURI.html">XmlQueryContext::getBaseURI</a></td><td>Gets the Base URI.</td></tr>
+<!--XmlQueryContext::setBaseURI--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setBaseURI.html">XmlQueryContext::setBaseURI</a></td><td>Sets the Base URI.</td></tr>
+<!--XmlQueryContext::setDebugListener--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setDebugListener.html">XmlQueryContext::getDebugListener</a></td><td>Gets the XmlDebugListener.</td></tr>
+<!--XmlQueryContext::setDebugListener--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setDebugListener.html">XmlQueryContext::setDebugListener</a></td><td>Sets the XmlDebugListener.</td></tr>
+<!--XmlQueryContext::setDefaultCollection--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setDefaultCollection.html">XmlQueryContext::setDefaultCollection</a></td><td>Set default collection for fn:collection().</td></tr>
+<!--XmlQueryContext::setEvaluationType--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setEvaluationType.html">XmlQueryContext::getEvaluationType</a></td><td>Get the evaluation type.</td></tr>
+<!--XmlQueryContext::setEvaluationType--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setEvaluationType.html">XmlQueryContext::setEvaluationType</a></td><td>Set the evaluation type.</td></tr>
+<!--XmlQueryContext::setNamespace--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setNamespace.html">XmlQueryContext::getNamespace</a></td><td>Retrieve a namespace URI.</td></tr>
+<!--XmlQueryContext::setNamespace--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setNamespace.html">XmlQueryContext::setNamespace</a></td><td>Add a namespace.</td></tr>
+<!--XmlQueryContext::setQueryTimeoutSeconds--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setQueryTimeoutSeconds.html">XmlQueryContext::getQueryTimeoutSeconds</a></td><td>Get query timeout value.</td></tr>
+<!--XmlQueryContext::setQueryTimeoutSeconds--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setQueryTimeoutSeconds.html">XmlQueryContext::setQueryTimeoutSeconds</a></td><td>Set query timeout value.</td></tr>
+<!--XmlQueryContext::setReturnType--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setReturnType.html">XmlQueryContext::setReturnType</a></td><td>Set the return type.</td></tr>
+<!--XmlQueryContext::setVariableValue--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setVariableValue.html">XmlQueryContext::getVariableValue</a></td><td>Return the variable's value.</td></tr>
+<!--XmlQueryContext::setVariableValue--><tr><td><a href="../../api_reference/CXX/XmlQueryContext_setVariableValue.html">XmlQueryContext::setVariableValue</a></td><td>Set an external XQuery variable.</td></tr>
+<!--XmlQueryExpression::execute--><tr><td><a href="../../api_reference/CXX/XmlQueryExpression_execute.html">XmlQueryExpression::execute</a></td><td>Evaluate the query.</td></tr>
+<!--XmlQueryExpression::getQuery--><tr><td><a href="../../api_reference/CXX/XmlQueryExpression_getQuery.html">XmlQueryExpression::getQuery</a></td><td>Return the query as a string.</td></tr>
+<!--XmlQueryExpression::getQueryPlan--><tr><td><a href="../../api_reference/CXX/XmlQueryExpression_getQueryPlan.html">XmlQueryExpression::getQueryPlan</a></td><td>Return the query plan as a string.</td></tr>
+<!--XmlQueryExpression::isUpdateExpression--><tr><td><a href="../../api_reference/CXX/XmlQueryExpression_isUpdateExpression.html">XmlQueryExpression::isUpdateExpression</a></td><td>Returns true if the query is an updating expression.</td></tr>
+<!--XmlQueryExpression::--><tr><td><a href="../../api_reference/CXX/XmlQueryExpression.html">XmlQueryExpression</a></td><td>An XmlQueryExpression.</td></tr>
+<!--XmlResolver::--><tr><td><a href="../../api_reference/CXX/XmlResolver.html">XmlResolver</a></td><td>Base class for file resolution policy.</td></tr>
+<!--XmlResolver::resolveCollection--><tr><td><a href="../../api_reference/CXX/XmlResolver_resolveCollection.html">XmlResolver::resolveCollection</a></td><td>Resolve URI to an <a href="../../api_reference/CXX/XmlResults.html">XmlResults</a>.</td></tr>
+<!--XmlResolver::resolveDocument--><tr><td><a href="../../api_reference/CXX/XmlResolver_resolveDocument.html">XmlResolver::resolveDocument</a></td><td>Resolve URI to an <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a>.</td></tr>
+<!--XmlResolver::resolveEntity--><tr><td><a href="../../api_reference/CXX/XmlResolver_resolveEntity.html">XmlResolver::resolveEntity</a></td><td>Resolve an entity to an <a href="../../api_reference/CXX/XmlInputStream.html">XmlInputStream</a>.</td></tr>
+<!--XmlResolver::resolveExternalFunction--><tr><td><a href="../../api_reference/CXX/XmlResolver_resolveExternalFunction.html">XmlResolver::resolveExternalFunction</a></td><td>Resolve URI and name to an <a href="../../api_reference/CXX/XmlExternalFunction.html">XmlExternalFunction</a>.</td></tr>
+<!--XmlResolver::resolveModuleLocation--><tr><td><a href="../../api_reference/CXX/XmlResolver_resolveModuleLocation.html">XmlResolver::resolveModuleLocation</a></td><td>Resolve an XQuery module namespace to locations.</td></tr>
+<!--XmlResolver::resolveModule--><tr><td><a href="../../api_reference/CXX/XmlResolver_resolveModule.html">XmlResolver::resolveModule</a></td><td>Resolve an XQuery module reference.</td></tr>
+<!--XmlResolver::resolveSchema--><tr><td><a href="../../api_reference/CXX/XmlResolver_resolveSchema.html">XmlResolver::resolveSchema</a></td><td>Resolve schema to an <a href="../../api_reference/CXX/XmlInputStream.html">XmlInputStream</a>.</td></tr>
+<!--XmlResults::add--><tr><td><a href="../../api_reference/CXX/XmlResults_add.html">XmlResults::add</a></td><td>Adds an <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> to the end of the result set.</td></tr>
+<!--XmlResults::asEventWriter--><tr><td><a href="../../api_reference/CXX/XmlResults_asEventWriter.html">XmlResults::asEventWriter</a></td><td>Returns an <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a> for the result set.</td></tr>
+<!--XmlResults::concatResults--><tr><td><a href="../../api_reference/CXX/XmlResults_concatResults.html">XmlResults::concatResults</a></td><td>Concatenates one result set into another creating a transient copy.</td></tr>
+<!--XmlResults::copyResults--><tr><td><a href="../../api_reference/CXX/XmlResults_copyResults.html">XmlResults::copyResults</a></td><td>Creates a transient copy of the result set.</td></tr>
+<!--XmlResults::getEvaluationType--><tr><td><a href="../../api_reference/CXX/XmlResults_getEvaluationType.html">XmlResults::getEvaluationType</a></td><td>Returns the evaluation type of the result set.</td></tr>
+<!--XmlResults::hasNext--><tr><td><a href="../../api_reference/CXX/XmlResults_hasNext.html">XmlResults::hasNext</a></td><td>Is there another value in the results set.</td></tr>
+<!--XmlResults::hasPrevious--><tr><td><a href="../../api_reference/CXX/XmlResults_hasPrevious.html">XmlResults::hasPrevious</a></td><td>Is there a previous value in the results set.</td></tr>
+<!--XmlResults::--><tr><td><a href="../../api_reference/CXX/XmlResults.html">XmlResults</a></td><td>Query results.</td></tr>
+<!--XmlResults::next--><tr><td><a href="../../api_reference/CXX/XmlResults_next.html">XmlResults::next</a></td><td>Retrieve the next element in the results set.</td></tr>
+<!--XmlResults::peek--><tr><td><a href="../../api_reference/CXX/XmlResults_peek.html">XmlResults::peek</a></td><td>Retrieve current value with no iterator movement.</td></tr>
+<!--XmlResults::previous--><tr><td><a href="../../api_reference/CXX/XmlResults_previous.html">XmlResults::previous</a></td><td>Retrieve the previous element in the result set.</td></tr>
+<!--XmlResults::reset--><tr><td><a href="../../api_reference/CXX/XmlResults_reset.html">XmlResults::reset</a></td><td>The iterator is placed at the beginning of the result set.</td></tr>
+<!--XmlResults::size--><tr><td><a href="../../api_reference/CXX/XmlResults_size.html">XmlResults::size</a></td><td>Returns the number of elements in the result set.</td></tr>
+<!--XmlStackFrame::getPreviousStackFrame--><tr><td><a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame::getPreviousStackFrame</a></td><td>Return the previous stack frame object.</td></tr>
+<!--XmlStackFrame::getQueryColumn--><tr><td><a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame::getQueryColumn</a></td><td>Return the current column in the query.</td></tr>
+<!--XmlStackFrame::getQueryFile--><tr><td><a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame::getQueryFile</a></td><td>Return the query's file name.</td></tr>
+<!--XmlStackFrame::getQueryLine--><tr><td><a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame::getQueryLine</a></td><td>Return the current line in the query.</td></tr>
+<!--XmlStackFrame::getQueryPlan--><tr><td><a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame::getQueryPlan</a></td><td>Return the current state of the query plan.</td></tr>
+<!--XmlStackFrame::--><tr><td><a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame</a></td><td>An XmlStackFrame</td></tr>
+<!--XmlStackFrame::query--><tr><td><a href="../../api_reference/CXX/XmlStackFrame.html">XmlStackFrame::query</a></td><td>Execute a query from the current point of execution.</td></tr>
+<!--XmlStatistics::getNumberOfIndexedKeys--><tr><td><a href="../../api_reference/CXX/XmlStatistics_getNumberOfIndexedKeys.html">XmlStatistics::getNumberOfIndexedKeys</a></td><td>The total number of index keys.</td></tr>
+<!--XmlStatistics::getNumberOfUniqueKeys--><tr><td><a href="../../api_reference/CXX/XmlStatistics_getNumberOfUniqueKeys.html">XmlStatistics::getNumberOfUniqueKeys</a></td><td>The number of unique index keys.</td></tr>
+<!--XmlStatistics::--><tr><td><a href="../../api_reference/CXX/XmlStatistics.html">XmlStatistics</a></td><td>Encapsulates index statistics.</td></tr>
+<!--XmlTransaction::abort--><tr><td><a href="../../api_reference/CXX/XmlTransaction_abort.html">XmlTransaction::abort</a></td><td>Abort a transaction.</td></tr>
+<!--XmlTransaction::commit--><tr><td><a href="../../api_reference/CXX/XmlTransaction_commit.html">XmlTransaction::commit</a></td><td>Commit a transaction.</td></tr>
+<!--XmlTransaction::createChild--><tr><td><a href="../../api_reference/CXX/XmlTransaction_createChild.html">XmlTransaction::createChild</a></td><td>Create a child transaction.</td></tr>
+<!--XmlTransaction::getDB_TXN--><tr><td><a href="../../api_reference/CXX/XmlTransaction_getDB_TXN.html">XmlTransaction::getDB_TXN</a></td><td>Get the underlying <a href="../../api_reference/C/txn.html">DB_TXN</a> object.</td></tr>
+<!--XmlTransaction::--><tr><td><a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a></td><td>Transaction object.</td></tr>
+<!--XmlUpdateContext::--><tr><td><a href="../../api_reference/CXX/XmlUpdateContext.html">XmlUpdateContext</a></td><td>An XmlUpdateContext</td></tr>
+<!--XmlValue::asBoolean--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asBoolean</a></td><td>Return value as a boolean.</td></tr>
+<!--XmlValue::asDocument--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asDocument</a></td><td>Return value as <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a>.</td></tr>
+<!--XmlValue::asEventReader--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asEventReader</a></td><td>Return value as <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a>.</td></tr>
+<!--XmlValue::asNumber--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asNumber</a></td><td>Return value as a double.</td></tr>
+<!--XmlValue::asString--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::asString</a></td><td>Return value as a string.</td></tr>
+<!--XmlValue::equals--><tr><td><a href="../../api_reference/CXX/XmlValue.html">XmlValue::equals</a></td><td>Compare two <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> objects.</td></tr>
+<!--XmlValue::getAttributes--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getAttributes</a></td><td>Get the node's attributes.</td></tr>
+<!--XmlValue::getFirstChild--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getFirstChild</a></td><td>Get the node's first child.</td></tr>
+<!--XmlValue::getLastChild--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getLastChild</a></td><td>Get the node's last child.</td></tr>
+<!--XmlValue::getLocalName--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getLocalName</a></td><td>Get the node's local name.</td></tr>
+<!--XmlValue::getNamespaceURI--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNamespaceURI</a></td><td>Get the node's namespace URI.</td></tr>
+<!--XmlValue::getNextSibling--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNextSibling</a></td><td>Get the node's next sibling node.</td></tr>
+<!--XmlValue::getNodeHandle--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeHandle</a></td><td>Return a string node handle for the value.</td></tr>
+<!--XmlValue::getNodeName--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeName</a></td><td>Get the name of the node value.</td></tr>
+<!--XmlValue::getNodeType--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeType</a></td><td>Get the node type of the node.</td></tr>
+<!--XmlValue::getNodeValue--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getNodeValue</a></td><td>Get the value of the node.</td></tr>
+<!--XmlValue::getOwnerElement--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getOwnerElement</a></td><td>Get the node's owner element.</td></tr>
+<!--XmlValue::getParentNode--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getParentNode</a></td><td>Get the node's parent node.</td></tr>
+<!--XmlValue::getPrefix--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getPrefix</a></td><td>Get the node's namespace prefix.</td></tr>
+<!--XmlValue::getPreviousSibling--><tr><td><a href="../../api_reference/CXX/XmlValue_node.html">XmlValue::getPreviousSibling</a></td><td>Get the node's previous sibling node.</td></tr>
+<!--XmlValue::getType--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::getType</a></td><td>Get the type enumeration of the value.</td></tr>
+<!--XmlValue::getTypeName--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::getTypeName</a></td><td>Get the name of the type.</td></tr>
+<!--XmlValue::getTypeURI--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::getTypeURI</a></td><td>Get the URI for the type.</td></tr>
+<!--XmlValue::isBinary--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isBinary</a></td><td>Check if value is binary.</td></tr>
+<!--XmlValue::isBoolean--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isBoolean</a></td><td>Check if value is a boolean.</td></tr>
+<!--XmlValue::isNode--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isNode</a></td><td>Check if value is node.</td></tr>
+<!--XmlValue::isNull--><tr><td><a href="../../api_reference/CXX/XmlValue.html">XmlValue::isNull</a></td><td>Check if the value is initialized.</td></tr>
+<!--XmlValue::isNumber--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isNumber</a></td><td>Check if value is a number .</td></tr>
+<!--XmlValue::isString--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isString</a></td><td>Check if value is a string .</td></tr>
+<!--XmlValue::isType--><tr><td><a href="../../api_reference/CXX/XmlValue_type.html">XmlValue::isType</a></td><td>Check type of value.</td></tr>
+<!--XmlValue::--><tr><td><a href="../../api_reference/CXX/XmlValue.html">XmlValue</a></td><td>A single result value.</td></tr>
+<!--XmlValue::operator==--><tr><td><a href="../../api_reference/CXX/XmlValue.html">XmlValue::operator==</a></td><td>Compare two <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> objects.</td></tr>
+</table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlManager::loadContainer</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlManager::loadContainer</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlManager::loadContainer(const std::string name, std::istream *in,
+    unsigned long *lineno, XmlUpdateContext &context)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlManager::loadContainer</b>
+<p>Loads data from the specified stream into the container. The container's
+existing contents are discarded and replaced with the documents from the
+stream.</p>
+<p>The specified input stream should contain data as created by
+<a href="../../api_reference/CXX/XmlManager_dumpContainer.html">XmlManager::dumpContainer</a>.</p>
+<p>The container must be closed; the system throws an exception if the
+container is open.</p>
+<p>The container must be have been opened at least once; the system throws
+an exception if the underlying files have not yet been created.</p>
+<b>Parameters</b> <br>
+ <b>name</b><ul compact><li>The name of the container to load.</ul>
+ <b>in</b><ul compact><li>The input stream from which the container is to be loaded.</ul>
+ <b>lineno</b><ul compact><li>The application uses lineno to specify the starting line number in the
+stream that is to be read.  The system uses the same parameter to return
+the line number of the last line read from the stream.</ul>
+ <b>context</b><ul compact><li>The <a href="../../api_reference/CXX/XmlUpdateContext.html">XmlUpdateContext</a> object to use for the load.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlManager::loadContainer method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>CONTAINER_OPEN</b><ul compact><li>The container is open.</ul>
+<br>
+<br>
+<b>DATABASE_ERROR</b><ul compact><li>An error occurred in an underlying Berkeley DB database. The
+<a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a> method will return the error code for the error.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML Reference Guide: dbxml:lookup()</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<a name="2"><!--meow--></a>
+<table width="100%"><tr valign=top>
+<td><b><dl><dt>Berkeley DB XML Reference Guide:<dd>Berkeley DB XML XQuery Extensions</dl></b></td>
+<td align=right><a href="../xquery/doc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/metadata.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p align=center><b>dbxml:lookup()</b></p>
+<p><b>dbxml:lookup-index($containerName as xs:string, $elementName as xs:string) as element()*</b>
+<p>
+<b>dbxml:lookup-index($containerName as xs:string, $elementName as xs:string, $parentName as xs:string) as element()*</b>
+<p>
+<b>dbxml:lookup-attribute-index($containerName as xs:string, $attributeName as xs:string) as attribute()*</b>
+<p>
+<b>dbxml:lookup-attribute-index($containerName as xs:string, $attributeName as xs:string, $parentName as xs:string) as attribute()*</b>
+<p>
+<b>dbxml:lookup-metadata-index($containerName as xs:string, $metadataName as xs:string) as document-node()*</b>
+</p>
+<hr size=1 noshade>
+<b>Description: </b>
+<p>
+The dbxml:lookup-* extension functions allow access to functions
+provided by the <a href="../../api_reference/CXX/XmlIndexLookup.html">XmlIndexLookup</a> class in the API.  They can be
+used when very specific index lookups are required by a query, or the
+query plan is not sufficiently optimized for a given query.</p>
+<hr size=1 noshade>
+<b>Description: dbxml:lookup-index()</b>
+<p>The dbxml:lookup-index() extension function will lookup and return all
+elements with the name $elementName (and optionally parent $parentName)
+from the indices of the container named by $containerName.  If
+appropriate indices do not exist, the empty sequence is returned.  An
+error is raised if the specified container cannot be opened.  This
+function can be used to perform presence index lookups directly from a
+query.  Value, range, and substring index lookups can be used by adding
+predicates to the function call.</p>
+<hr size=1 noshade>
+<b>Description: dbxml:lookup-attribute-index()</b>
+<p>
+The dbxml:lookup-attribute-index() extension function will return all
+attributes with the name $attribute (and optionally the parent,
+$parentName) from the indices of the container named by $containerName.
+If appropriate indices do not exist, the empty sequence is returned.  An
+error is raised if the specified container cannot be opened.  This
+function can be used to perform presence index lookups for attributes
+directly from a query.  Value, range, and substring index lookups can
+be used by adding predicates to the function call.</p>
+<hr size=1 noshade>
+<b>Description: dbxml:lookup-metadata-index()</b>
+<p>
+The dbxml:lookup-metadata-index() extension function will lookup and
+return the document nodes for documents that contain the metadata
+$metadataName from the indices of the container named by $containerName.
+If appropriate indices do not exist, the empty sequence is returned.  An
+error is raised if the specified container cannot be opened.  This
+function can be used to perform presence index lookups for metadata
+directly from a query.  Value, range, and substring index lookups can
+be used by adding predicates to the function call.</p>
+<b>Parameters</b> <br>
+ <b>$containerName</b><ul compact><li>The name of the container in which the index lookup should occur.  This
+can be a container alias.</ul>
+ <b>$elementName</b><ul compact><li>The name of the element for the index lookup.  This is cast to xs:QName,
+resolving prefixes, if any, using the in scope namespace prefixes.</ul>
+ <b>$parentName</b><ul compact><li>The name of the parent element for the index lookup.  This is cast to
+xs:QName, resolving prefixes, if any, using the in scope namespace
+prefixes.</ul>
+ <b>$attributeName</b><ul compact><li>The attribute to look up.  This is cast to xs:QName, resolving prefixes,
+if any, using the in scope namespace prefixes.</ul>
+ <b>$metadataName</b><ul compact><li>The metadata item to look up.  This is cast to xs:QName, resolving
+prefixes, if any, using the in scope namespace prefixes.</ul>
+<br>
+<table width="100%"><tr><td><br></td><td align=right><a href="../xquery/doc.html"><img src="../../images/prev.gif" alt="Prev"></a><a href="../toc.html"><img src="../../images/ref.gif" alt="Ref"></a><a href="../xquery/metadata.html"><img src="../../images/next.gif" alt="Next"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

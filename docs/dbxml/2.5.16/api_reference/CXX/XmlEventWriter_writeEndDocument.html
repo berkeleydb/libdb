@@ -1,0 +1,46 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlEventWriter::writeEndDocument</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlEventWriter::writeEndDocument</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual void XmlEventWriter::writeEndDocument()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlEventWriter::writeEndDocument</b>
+<p>Write an EndDocument event to the <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>.  This indicates
+that the document is complete.  The only valid call after
+this is made is <a href="../../api_reference/CXX/XmlEventWriter_close.html">XmlEventWriter::close</a>.</p>
+<br><b>Errors</b>
+<p>The XmlEventWriter::writeEndDocument method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>EVENT_ERROR</b><ul compact><li>An error occurred during processing of an <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>
+object.  Most likely the error is attempting to write a type or value
+that is not valid in the current state of the object.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

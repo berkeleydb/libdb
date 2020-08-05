@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Appendix A. Updating Documents with XmlModify</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.62.4" />
+    <link rel="home" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="previous" href="mvcc.html" title="A Note on Snapshot Isolation" />
+    <link rel="next" href="stepmethods.html" title="Modification Methods" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Appendix A. Updating Documents with XmlModify</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="mvcc.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="stepmethods.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="appendix" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="updatewithxmodify"></a>Appendix A. Updating Documents with XmlModify</h2>
+          </div>
+        </div>
+        <div></div>
+      </div>
+      <p>
+                The best way to update or modify a document from within
+                BDB XML is to use XQuery Update statements. See
+                <a href="modifydocument.html">Modifying XML Documents</a>
+                for an introduction to that topic.
+        </p>
+      <p>
+                However, in the past BDB XML offered the XmlModify API for
+                modifying existing documents. Though deprecated, this API
+                is still available in the library. This appendix provides
+                an introduction to it.
+        </p>
+      <p>
+            Essentially, you can use <tt class="classname">XmlModify</tt> methods to
+            identify a series of modification steps to be taken against a
+            document. These steps allow you to add, delete, rename, and 
+            replace document nodes. You can also manipulate 
+            comments and processing instructions.
+        </p>
+      <p>
+            Once you have finished identifying the modification steps that you
+            want to perform, you use 
+                <tt class="methodname">XmlModify::execute()</tt>
+                
+            to apply the modifications to either a single document (by passing
+            it an <tt class="classname">XmlValue</tt> object), or a set of documents
+            (by passing it an <tt class="classname">XmlResults</tt> object).
+        </p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="modifyargs"></a>Modification Parameters</h2>
+            </div>
+          </div>
+          <div></div>
+        </div>
+        <p>
+                There are a common set of parameters to the
+                <tt class="classname">XmlModify</tt> modification methods that are
+                worth examining before proceeding. These arguments have roughly
+                the same meaning, regardless of the modification action being
+                requested. They appear on the modification methods in the
+                following order:
+            </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                        <tt class="literal">XmlQueryExpression selectionExpr</tt>
+                    </p>
+              <p>
+                        This parameter contains an XQuery expression that
+                        selects the portion of the document to be modified. 
+                        For example, if you want to rename a node, then this
+                        expression would select the node that you want to
+                        rename.
+                    </p>
+            </li>
+            <li>
+              <p>
+                        <tt class="literal">XmlObject type</tt>
+                    </p>
+              <p>
+                        This parameter identifies the type of information you
+                        are inserting into the document. That is, you use this
+                        parameter to indicate whether you are inserting an
+                        element node, an attribute node, text node, a processing
+                        instruction, or a comment. See the 
+                        <span>API Reference documentation</span>
+                        
+                        for information on how to specify these types.
+                    </p>
+            </li>
+            <li>
+              <p>
+                        <tt class="literal"><span>std::string</span> name</tt>
+                    </p>
+              <p>
+                        Identifies the name of the information you are
+                        inserting. For example, if you are inserting an element
+                        or attribute node, then this provides the name of that node.
+                        The value of this parameter is ignored if you are
+                        inserting a text or comment node.
+                    </p>
+            </li>
+            <li>
+              <p>
+                        <tt class="literal"><span>std::string</span> content</tt>
+                    </p>
+              <p>
+                        Identifies the content that you are inserting. If you
+                        are inserting an element node, then this must contain
+                        either a text node, or a valid child content for the
+                        node. For attribute nodes, this contains the value to
+                        which the parameter is equal. For processing
+                        instructions, this contains all of the information that
+                        appears in the processing instruction other than the
+                        processing instruction's name.
+                    </p>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="mvcc.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="index.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="stepmethods.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">A Note on Snapshot Isolation </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Modification Methods</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

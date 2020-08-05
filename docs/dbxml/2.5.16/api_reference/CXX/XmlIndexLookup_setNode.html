@@ -1,0 +1,44 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlIndexLookup::setNode</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlIndexLookup::setNode</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlIndexLookup::setNode(const std::string &uri, const std::string &name)
+<p>
+const std::string &XmlIndexLookup::getNodeURI() const
+<p>
+const std::string &XmlIndexLookup::getNodeName() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlIndexLookup::setNode</b>
+<p>Sets the name of the node to be used along with the indexing strategy
+for the index lookup operation.</p>
+<b>Parameters</b> <br>
+ <b>uri</b><ul compact><li>The namespace of the node to be used. The default namespace is
+selected by passing an empty string for the namespace.</ul>
+ <b>name</b><ul compact><li>The name of the element or attribute node to be used.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

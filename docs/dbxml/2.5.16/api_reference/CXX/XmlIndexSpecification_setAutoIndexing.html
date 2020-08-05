@@ -1,0 +1,62 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlIndexSpecification::setAutoIndexing</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlIndexSpecification::setAutoIndexing</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlIndexSpecification::setAutoIndexing(bool value)
+<p>
+bool XmlIndexSpecification::getAutoIndexing() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlIndexSpecification::setAutoIndexing</b>
+<p>Sets the auto-indexing state which will affect the container
+when set using <a href="../../api_reference/CXX/XmlContainer_setIndexSpecification.html">XmlContainer::setIndexSpecification</a>.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>A boolean value indicating whether auto-indexing behavior
+should be enabled or disabled.</ul>
+<br>
+<p>If the value on the container is true (the default for newly-created
+containers) then indexes are added automatically for leaf elements and
+attributes.  The indexes added are "node-equality-string"
+and "node-equality-double" for elements and attributes.
+If auto-indexing is not desired it should be disabled using this
+interface upon container creation.  Auto-indexing is recognized by
+insertion of new documents as well as updates of existing documents,
+including modification via XQuery Update.
+The auto-indexing state is persistent and will
+remain stable across container close/re-open operations.
+Indexes added via auto-indexing are normal indexes and can be removed using
+the normal mechanisms.</p> 
+<p>A significant implication of auto-indexing is that any operation that may add an index 
+(e.g. <a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a>) can have the side effect of reindexing
+the entire container.  For this reason auto-indexing is not recommended for 
+containers of heterogenous documents and that it be disabled once a representative set
+of documents has been inserted.
+</p>
+<hr size=1 noshade>
+<b>Description: bool XmlIndexSpecification::getAutoIndexing() const</b>
+<p>Returns the current value of the auto-indexing state.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

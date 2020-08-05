@@ -1,0 +1,56 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainerConfig::setIndexNodes</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainerConfig::setIndexNodes</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlContainerConfig::setIndexNodes(XmlContainerConfig::ConfigState state)
+<p>
+XmlContainerConfig::ConfigState XmlContainerConfig::getIndexNodes() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainerConfig::setIndexNodes</b>
+<p>Sets whether the index targets reference nodes or documents.  The default setting is UseDefault.  This value is ignored unless the container is being created or reindexed.</p>
+<p>If set to On it causes the indexer to create index targets that reference nodes 
+rather than documents. This allows index lookups during query processing
+to more efficiently find target nodes and avoid walking the document tree.
+It can apply to both container types, and is the default for containers
+of type XmlContainer::NodeContainer.</p>
+<p>If set to Off it causes the indexer to create index targets that reference documents rather than
+nodes. This can be more desirable for simple queries that only need to 
+return documents and do relatively little navigation during querying.
+It can apply to both container types, and is the default for containers
+of type XmlContainer::WholedocContainer.</p>
+<p>If set to UseDefault, then the container type will decide whether nodes or documents are referenced.</p>
+<b>Parameters</b> <br>
+ <b>state</b><ul compact><li>Whether the index references nodes or documents.</ul>
+The container property must have one of the following values:
+<br>
+<b><a name="XmlContainerConfig::On">XmlContainerConfig::On</a></b><ul compact><li>The container property is turned on.</ul>
+<b><a name="XmlContainerConfig::Off">XmlContainerConfig::Off</a></b><ul compact><li>The container property is turned off.</ul>
+<b><a name="XmlContainerConfig::UseDefaults">XmlContainerConfig::UseDefaults</a></b><ul compact><li>The container property is set to whatever the default is for the given container type.</ul>
+<br>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

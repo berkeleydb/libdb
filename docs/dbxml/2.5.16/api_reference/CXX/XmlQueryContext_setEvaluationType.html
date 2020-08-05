@@ -1,0 +1,57 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlQueryContext::setEvaluationType</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlQueryContext::setEvaluationType</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlQueryContext::setEvaluationType(EvaluationType type);
+<p>
+EvaluationType XmlQueryContext::getEvaluationType();
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlQueryContext::setEvaluationType</b>
+<p>Allows the application to set the query evaluation type to "eager" or
+"lazy".  Eager evaluation means that the whole query is executed and its
+resultant values derived and stored in-memory before evaluation of the
+query is completed.  Lazy evaluation means that minimal processing is
+performed before the query is completed, and the remaining processing
+is deferred until the result set is enumerated. As each call to
+<a href="../../api_reference/CXX/XmlResults_next.html">XmlResults::next</a> is called the next resultant value is
+determined.</p>
+<b>Parameters</b> <br>
+ <b>type</b><ul compact><li>The evaluation type must be specified as either:
+<br>
+<b>XmlQueryContext::Eager</b><ul compact><li>The query is executed and its resultant values are derived and stored
+in-memory before evaluation of the query is completed.</ul>
+<b>XmlQueryContext::Lazy</b><ul compact><li>Minimal processing is performed before evaluation of the query is
+completed, and the remaining processing is deferred until the result set
+is enumerated.</ul>
+<br></ul>
+<br>
+<hr size=1 noshade>
+<b>Description: <a href="../../api_reference/CXX/XmlQueryContext_setEvaluationType.html">XmlQueryContext::getEvaluationType</a></b>
+<p>Discover the evaluation type defined for this <a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a>.</p>
+<p>Returns the evaluation type defined for this <a href="../../api_reference/CXX/XmlQueryContext.html">XmlQueryContext</a>.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

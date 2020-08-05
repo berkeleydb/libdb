@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Working with External Functions</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 5. Using XQuery with BDB XML" />
+    <link rel="prev" href="dbxmlqueries.html" title="Retrieving BDB XML Documents using XQuery" />
+    <link rel="next" href="examineresults.html" title="Examining Query Results" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Working with External Functions</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="dbxmlqueries.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 5. Using XQuery with BDB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="examineresults.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="externalfunc"></a>Working with External Functions</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="externalfunc.html#xmlexternalfunction">Implementing XmlExternalFunction</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="externalfunc.html#xmlresolver">Implementing XmlResolver</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="externalfunc.html#callingxfunc">Calling External Functions from XQuery</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        BDB XML allows you to define your own functions that you can access
+        from your XQueries. To do this, you must provide an implementation
+        of <code class="classname">XmlExternalFunction</code>, and you must
+        implement a <code class="classname">XmlResolver</code> class that resolves 
+        which external function to call.
+    </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xmlexternalfunction"></a>Implementing XmlExternalFunction</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            <code class="classname">XmlExternalFunction</code> implementations only
+            require you to implement the <code class="methodname">execute()</code>
+            method with your function code. You must also implement a 
+            <code class="methodname">close()</code> method that cleans up after
+            whatever activities your <code class="methodname">execute()</code> method
+            calls.
+        </p>
+        <p>
+            The <code class="methodname">execute()</code> method offers three
+            parameters:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    <code class="classname">XmlTransaction</code>
+                </p>
+              <p>
+                    This is the transaction in use, if any,  at the
+                    time the external function was called. 
+                </p>
+            </li>
+            <li>
+              <p>
+                    <code class="classname">XmlManager</code>
+                </p>
+              <p>
+                    The <code class="classname">XmlManager</code> instance in use
+                    at the time the function was called.
+                </p>
+            </li>
+            <li>
+              <p>
+                    <code class="classname">XmlArguments</code>
+                </p>
+              <p>
+                    An array of <code class="classname">XmlResults</code> objects
+                    which hold the argument values needed by this function.
+                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            For example, suppose you wanted to write an external function
+            that takes two numbers and returns the first number to the
+            power of the second number. It would look like this:
+        </p>
+        <pre class="programlisting">package misc;
+
+import java.io.*;
+import java.lang.Math.*;
+
+import com.sleepycat.dbxml.*;
+
+/* External function pow() implementation */
+class MyExternalFunctionPow extends XmlExternalFunction {
+
+    public XmlResults execute(XmlTransaction txn,
+                              XmlManager mgr,
+                              XmlArguments args)
+        throws XmlException {
+
+        // Retrieve argument as XmlValue
+        XmlResults argResult1 = args.getArgument(0);
+        XmlResults argResult2 = args.getArgument(1);
+
+        XmlValue arg1 = argResult1.next();
+        XmlValue arg2 = argResult2.next();
+
+        // Call pow()
+        double result = Math.pow(arg1.asNumber(), arg2.asNumber());
+
+        // Create an XmlResults for return
+        XmlResults results = mgr.createResults();
+        XmlValue va = new XmlValue(result);
+        results.add(va);
+
+        return results;
+    }
+
+    // The base class's close routine will call delete() by default.
+    // In order to reuse the object it's necessary to override that with
+    // a no-op version of close().
+    public void close() {
+    }
+} </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xmlresolver"></a>Implementing XmlResolver</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            The <code class="classname">XmlResolver</code> class is used to
+            provide a handle to the appropriate external function, when a given XQuery
+            statement requires an external function. For this reason, your
+            <code class="classname">XmlResolver</code> implementation must have
+            knowledge of every external function you have implemented.
+        </p>
+        <p>
+            The resolver is responsible for instantiating an instance of
+            the required external function. It is also responsible for
+            destroying that instance, either once the query has been
+            process or when the resolver instance itself is being destroyed.
+            Which is the correct option for your application is an
+            implementation detail that is up to you.
+        </p>
+        <p>
+            It is possible for your code to have multiple instances of an
+            <code class="classname">XmlResolver</code> class, each instance of
+            which can potentially be responsible for different collections
+            of external functions. For this reason, you uniquely identify
+            each resolver class with a URI.
+        </p>
+        <p>
+            In order to call a specific
+            external function, your XQueries must provide a URI as identification,
+            as well as a function name. You can decide which external
+            function to return based on the URI, the function name, and/or
+            the number of arguments provided in the XQuery. Which of these
+            are necessary for you to match the correct external function is
+            driven by how many external functions you have implemented, how
+            many resolver classes you have implemented, and how many
+            variations on functions with the same name you have
+            implemented. In theory, a very simple implementation could
+            return an external function instance based only on the function
+            name. Other implementation may need to match based on all
+            possible criteria.
+        </p>
+        <p>
+            For the absolute most correct and safest implementation, you
+            should match on all three criteria: URI, function name, and
+            number of arguments. 
+        </p>
+        <p>
+            For example, suppose you had two external functions:
+            <code class="function">SmallFunction</code> and
+            <code class="function">BigFunction</code>.
+            <code class="function">SmallFunction</code> is a small function that
+            requires few resources to instantiate and is called
+            infrequently. <code class="function">BigFunction</code> is a larger
+            function that opens containers, obtains lots of memory and from
+            a performance perspective is something that is best
+            instantiated once and then not destroyed until program
+            shutdown. Further, <code class="function">SmallFunction</code> takes two
+            arguments while <code class="function">BigFunction</code> takes five.
+        </p>
+        <p>
+            And <code class="classname">XmlResolver</code> implementation for this
+            example would be as follows:
+        </p>
+        <pre class="programlisting">
+class MyFunResolver extends XmlResolver
+{
+    private String uri_ = "my://my.fun.resolver";
+    XmlExternalFunction bigFunc = null;
+
+    /*
+     * Returns a new instance of either SmallFunction or
+     * BigFunction if the URI, function name, and number of
+     * arguments match.
+     */
+    public XmlExternalFunction resolveExternalFunction(XmlTransaction txn,
+                                                       XmlManager mgr,
+                                                       String uri,
+                                                       String name,
+                                                       int numberOfArgs)
+        throws XmlException {
+
+        XmlExternalFunction fun = null;
+        if (uri.equals(uri_) &amp;&amp; name.equals("bfunc") &amp;&amp; (numberOfArgs == 2)) {
+            // bfunc is reusable.
+            if(bigFunc == null)
+                bigFunc = new BigFunction();
+            return bigFunc;
+        } else if (uri.equals(uri_) &amp;&amp; name.equals("sfunc") &amp;&amp; 
+                (numberOfArgs == 1)) {
+
+            fun = new SmallFunction();
+
+        }
+
+        return fun;
+    }
+
+    public String getUri(){
+        return uri_;
+    }
+
+    public void close(){
+        if(bigFunc != null)
+            bigFunc.delete();
+    }
+}; </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="callingxfunc"></a>Calling External Functions from XQuery</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            In order to use your external functions, you must register the
+            resolver that manages them. You do this with the
+            
+            <code class="methodname">XmlManager.registerResolver()</code>
+            method. You then set a URI prefix for the URI that you use to
+            identify your resolver. For example:
+        </p>
+        <pre class="programlisting">        try {
+        // Create an XmlManager
+        XmlManager mgr = new XmlManager();
+
+        // Create an function resolver
+        MyFunResolver resolver = new MyFunResolver();
+
+        // Register the function resolver to XmlManager
+        mgr.registerResolver(resolver);
+
+        XmlQueryContext context = mgr.createQueryContext();
+
+        // Set the prefix URI
+        context.setNamespace("myxfunc", resolver.getUri()); </pre>
+        <p>
+        To use the external function, declare them in the preamble of your
+        query, and then use them as you would any XQuery function (for a
+        complete explanation of examining query results, see the next
+        section). For example:
+    </p>
+        <pre class="programlisting">
+declare function myxfunc:sfunc($a as xs:double, $b as xs:double) \
+    as xs:double external;
+myxfunc:sfunc(2,3);
+    </pre>
+        <p>
+        You run this query as if you were running any other query.
+    </p>
+        <pre class="programlisting">        String query1 = "declare function " +
+            "myxfunc:sfunc($a as xs:double, $b as xs:double) as " +
+            "xs:double external;\n" +
+            "myxfunc:sfunc(2,3)";
+
+        XmlResults results = mgr.query(query, context);
+
+        // The first query returns the result of sfunc(2,3)
+        while (results.hasNext()) {
+                XmlValue va = results.next();
+                String out = "2^3 = " + va.asNumber();
+                System.out.println(out);
+        }
+
+        // If the resolver reuses ExternalFunction objects, it is 
+        // responsible for eventually calling delete()
+        resolver.close();
+
+        } catch (XmlException xe) {
+            String out = "XmlException: " + xe.getMessage() + "\n";
+            System.out.println(out);
+        } </pre>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="dbxmlqueries.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="examineresults.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Retrieving BDB XML Documents using XQuery </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Examining Query Results</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

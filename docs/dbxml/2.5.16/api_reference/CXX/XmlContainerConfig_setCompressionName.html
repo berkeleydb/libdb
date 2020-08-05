@@ -1,0 +1,50 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainerConfig::setCompressionName</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainerConfig::setCompressionName</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlContainerConfig::setCompressionName(const char *name)
+<p>
+const char *XmlContainerConfig::getCompressionName() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainerConfig::setCompressionName</b>
+<p>Sets the name of the compression object to be used by the container.  Compression is 
+only used by whole document storage containers.  If a compression name is set
+and a container is created or opened the name must match one that has been
+registered with the XmlManager using <a href="../../api_reference/CXX/XmlManager_registerCompression.html">XmlManager::registerCompression</a>.  
+The default name is the name of the default compression algorithm.  If compression
+is disabled this setting is ignored.  The compression name can only be set at 
+creation time, afterwards the container must always be open with the same 
+compression name and registered object.</p>
+<b>Parameters</b> <br>
+ <b>name</b><ul compact><li>The name of the registered compression object to be used by the container.  
+Built-in values are XmlContainerConfig::NO_COMPRESSION, which skips compression 
+and XmlContainerConfig::DEFAULT_COMPRESSION which uses the built in compression 
+algorithm.  Built-in types are pre-registered with the XmlManager if 
+compression was enabled during the product build.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

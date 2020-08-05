@@ -1,0 +1,57 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlIndexLookup::setLowBound</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlIndexLookup::setLowBound</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlIndexLookup::setLowBound(
+     const XmlValue &value,
+     XmlIndexLookup::Operation op)
+<p>
+XmlIndexLookup::Operation XmlIndexLookup::getLowBoundOperation() const
+<p>
+const XmlValue &XmlIndexLookup::getLowBoundValue() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlIndexLookup::setLowBound</b>
+<p>Sets the operation and value to be used for the index lookup operation.
+If the operation is a simple inequality lookup, the lower bound is used
+as the single value and operation for the lookup.  If the operation is a range
+lookup, in which an upper bound is specified, the lower bound is used
+as the lower boundary value and operation for the lookup.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>The value to be used for the lower bound.  An empty value is
+specified using an uninitialized <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> object.</ul>
+ <b>op</b><ul compact><li>Selects the operation to be performed.  Must be one of:
+<br>
+<b>XmlIndexLookup::NONE</b><ul compact><li>None</ul>
+<b>XmlIndexLookup::EQ</b><ul compact><li>Equal</ul>
+<b>XmlIndexLookup::LT</b><ul compact><li>Less than</ul>
+<b>XmlIndexLookup::LTE</b><ul compact><li>Less than or equal</ul>
+<b>XmlIndexLookup::GT</b><ul compact><li>Greater than</ul>
+<b>XmlIndexLookup::GTE</b><ul compact><li>Greater than or equal</ul>
+<br></ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

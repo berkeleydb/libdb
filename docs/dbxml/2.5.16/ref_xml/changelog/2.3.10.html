@@ -1,0 +1,586 @@
+<html>
+
+<head>
+<title>The Berkeley DB XML Package: BDB XML 2.3.10 Change Log</title>
+<meta name="description"
+content="Berkeley DB XML: A database programmatic toolkit.">
+<meta name="keywords"
+content="embedded,database,native,programmatic,toolkit,XML,XQuery">
+</head>
+
+<body bgcolor="white">
+<h2 align="center">Berkeley DB XML 2.3.10 Change Log</h2>
+
+<p>
+Changes since Release 2.3.8 are described here.  The change log
+of release 2.3.8 is also included, detailing the changes
+from 2.2.13.
+<p>
+Release 2.3.10 is a patch release for 2.3.8.  For detailed information
+about the 2.3 release itself, see the <a href="#hist238">2.3.8 Change Log</a>.
+<p>
+It recommended that all users move to this release. Also see the
+documentation included in your download package or on our
+<a href="http://www.oracle.com/technology/documentation/berkeley-db/xml/index.html">website</a>.
+
+<hr>
+<h3 align="center"><u>2.3 Release Overview</u></h3>
+The major focus areas for release 2.3 include:
+<ul>
+<li>Conformance to W3C Recommendations -- XQuery 1.0 and
+XPath 2.0.
+<li>Improved application integration by way of adding additional
+interfaces for input and output of XML content, allowing
+application-driven parsing and both push and pull content access 
+without serialization of XML.
+<li>Performance and scalability improvements.
+<li>General bug fixes and improvements.
+</ul>
+
+<h3 align="center"><u>Changes in BDB XML 2.3.10</u></h3>
+
+This section describes changes in BDB XML 2.3.10 relative
+to release 2.3.8.
+
+<h4>Upgrade Requirements</h4>
+
+Upgrade is required for containers created using release 2.2.13.
+See the <a href="#hist238">2.3.8 Change Log</a>.  Containers creating
+using 2.3.8 do not require upgrade.
+
+<h4>General Functionality Changes</h4>
+<ol>
+<li>Fixed Windows-mostly problem where dynamic_cast (RTTI)
+was being used by SWIG-generated code, and RTTI was not enabled in the
+build.  The fix was to use static casting, as it's safe in these cases, rather
+than enabling costly RTTI.  The symptom was a mysterious failure 
+(exception thrown from the C++ runtime library) in Java when 
+instantiating a class that extends either XmlInputStream or XmlResolver 
+[#15280].
+<li>Fixed a problem where some code that should have been conditionalized
+based on the Berkeley DB version was not.  The result is failed compilation of
+CompactCommand.cpp [#15283].
+<li>Fixed a bug where namespaces and global variables defined in the XmlQueryContext were not carried forward to the context of a module [#15277].
+<li>Fixed a bug in XmlModify where an assertion failure (debug mode)
+was triggered when removing element nodes in a certain sequence [#15291].
+<li>Fixed python build problems in 2.3 which caused the setup.py script to be
+a no-op on Unix, and even when fixed, there was a compilation problem, again Unix-specific [#15295].
+<li>Fix metadata indexing so that a default index on metadata will work [#15300].
+<li>Fixed dbxml shell to not reset the base uri in its default context.
+This interfered with arguments to fn:collection() [#15299].
+<li>Fixed a race condition in initializing function signatures. This only manifested when queries were parsed in parallel [#15298].
+<li>Fixed an optimisation bug that meant that using an XQuery module would sometimes cause an assert to be triggered [#15290].
+<li>Fixed a bug where namespaces and global variables defined in the XmlQueryContext were not carried forward to the context of a module [#15277].
+<li>Enhanced error handling in the case of opening missing or partially constructed containers [#15322].
+<li>Fixed a bug in XmlModify where some incorrect logic could lead
+to an incorrect query, assertion failure or SEGV.  This bug would only occur
+after an XmlModify step was performed.  It never occurs on the first 
+modification step [#15321].
+<li>Added code to detect, and throw an exception for document/container
+mismatches, where a document obtained from one container is used for an 
+update or delete operation on another container [#15320].
+<li>Fixed a bug that caused incorrect query plans to be generated for predicates that used the "or" operator in conjunction with indices [#15328].
+<li>FIxed a problem where writing an attribute with an empty value 
+resulted in a null pointer reference (SEGV).  This could happen via 
+XmlEventWriter, which was used by the 2.3 upgrade code [#15335].
+<li>Fixed an XmlModify problem in 2.3.8 where inserting a new element 
+with content would result in an exception thrown indicating that an 
+operation was attempted on an invalid context [#15333].
+<li>Added -fno-strict-aliasing flag to Java library build if using gcc to avoid
+over-optimization of some constructs that SWIG uses for casting pointers to/from jlong.  The symptom was an exception thrown indicating that there is a null or empty value [#15307].
+<li>Fixed a bug that resulted in the starts-with() function always using a substring index, without considering using a prefix operation on equality index [#15337].
+<li>Fixed an optimisation problem that caused document-uri() to fail 
+under certain conditions [#15336].
+<li>Fixed the Java example modifyDocument.java to close cleanly.
+<li>Fixed a bug in the adding of Processing Instructions to a container.
+</ol>
+
+<h3 align="center">
+<a name="hist238">
+<u>Changes in BDB XML 2.3.8</u></a></h3>
+
+This section describes changes in BDB XML 2.3.8 relative
+to release 2.2.13.
+
+<h4>Upgrade Requirements:</h4>
+
+<ol>
+<li>Changed database format to provide better node storage performance
+and scalability.  Users must read documentation on container upgrade before
+performing an upgrade, or there is risk of data loss.
+</ol>
+
+<h4>New Features:</h4>
+<ol>
+<li>Conformance to Final Recommendations of XQuery 1.0 and XPath 2.0, dated January 23, 2007.</li>
+<li>Use of the XQilla library replaces the use of XQuery and Pathan libraries.</li>
+<li>Additional classes and related interfaces to allow direct pull and push
+access to XML content :
+<ul>
+  <li><a href="../../api_cxx/XmlEventReader_list.html">XmlEventReader</a> -- 
+    a class implementing a pull interface that enables input and output of 
+    XML content via pull events, rather than serialized XML.</li>
+  <li><a href="../../api_cxx/XmlEventWriter_list.html">XmlEventWriter</a> -- 
+    a class implementing a push interface that enables input and output of 
+    XML content via push events, rather than serialized XML.</li>
+  <li><a href="../../api_cxx/XmlEventReaderToWriter_list.html">XmlEventReaderToWriter</a> -- 
+    a class that associates an XmlEventReader with an XmlEventWriter, pushing
+    events read from the XmlEventReader to the XmlEventWriter.</li>
+</ul>
+</li>
+</ol>
+
+<h4>API Changes:</h4>
+Unless otherwise noted, the API additions apply to all language bindings,
+and all bindings use the same method name.
+<ol>
+<li>
+Added new interface classes to enable input and output of XML content
+via push and pull event interfaces, XmlEventReader, XmlEventWriter,
+and XmlEventReaderToWriter [#11037].
+</li>
+<li>
+XmlManager:
+<ul>
+<li>getFlags() -- return the flags field used to create the manager [#14403].</li>
+<li>truncateContainer() and compactContainer() [#14163].</li>
+<li>
+XmlManager::get/setImplicitTimezone() -- set/get the implicit
+timezone for queries where it is not explicit.  It is necessary to set this before
+doing anything with indices related to data or time types.
+</li>
+</ul>
+</li>
+
+<li>
+XmlContainer:
+<ul>
+<li>
+XmlValue getNode() -- enables loading of a previously-dumped
+opaque (string) handle pointing directly to a node within
+a document in the container, dumped by XmlValue::getNodeHandle().
+</li>
+<li>
+getFlags()  -- return the flags field used to create/open the container [#14403].
+</li>
+<li>
+Added XmlContainer::putDocument() method that takes
+an XmlEventReader object as content.
+</li>
+<li>
+Added XmlContainer::putDocumentAsEventWriter() method that 
+allows the application to write content via an XmlEventWriter.
+</li>
+</ul>
+</li>
+
+<li>
+XmlResults:
+<ul>
+<li>
+getEvaluationType() -- returns whether the XmlResults
+object is XmlQueryContext::Eager or XmlQueryContext::Lazy.
+</li>
+</ul>
+</li>
+
+<li>
+XmlModify:
+<ul>
+<li>
+Changed XmlModify to allow a variant that does not require an
+initial context of XmlValue or XmlResult.  If there is only a single step, and
+the XmlValue object passed to XmlModify::execute() is empty (not
+initialized to any value), the query in that step will serve as the context for
+the modification [#14774].
+</li>
+<li>
+Added variants of the XmlModify steps that allow specification of
+content as XmlResults object.  This change also enables new
+content to comprise a sequence of elements, rather than be a single
+element [#14533].
+</li>
+</ul>
+</li>
+
+<li>
+XmlQueryContext::
+<ul>
+<li>
+Added XmlQueryContext::interruptQuery() to allow application 
+interruption of in-process queries.
+</li>
+<li>
+Added XmlQueryContext::set/getQueryTimeoutSeconds() to set timeouts on
+queries.
+</li>
+</ul>
+</li>
+
+<li>
+XmlDocument:
+<ul>
+<li>
+setContentAsEventReader(XmlEventReader &reader) -- provide XML content as XmlEventReader.
+</li>
+<li>
+getContentAsEventReader() -- return XML content as XmlEventReader.
+</li>
+<li>
+getContentAsEventWriter(XmlEventWriter &writer) --
+causes the system to write the content as events to
+the provided XmlEventWriter object.
+</li>
+<li>
+Added XmlDocument::equals method to non-C++ APIs [#15212].
+</li>
+</ul>
+</li>
+
+<li>
+XmlException:
+<ul>
+<li>
+Added XmlException::getQueryFile, XmlException::getQueryLine() and
+XmlExceptions::getQueryColumn() to provide location information 
+for XQuery errors, improving error reporting and making debugging queries 
+easier.  The reporting of this information is language binding-dependent,
+and may vary among the support APIs [#13465].
+</li>
+<li>
+Added XmlException::ExceptionCode values:
+<ul>
+<li>XmlException::EVENT_ERROR -- error in XmlEvent* classes.</li>
+<li>XmlException::OPERATION_TIMEOUT -- query operation timed out.</li>
+<li>XmlException::OPERATION_INTERRUPTED -- query operation was interrupted.</li>
+</ul>
+</li>
+</ul>
+</li>
+
+
+<li>
+XmlValue:
+<ul>
+<li>
+XmlValue::getTypeURI() and XmlValue::getTypeName() to return the specific 
+type of the XmlValue returned [#14291].
+</li>
+<li>
+XmlEventReader &asEventReader() -- returns node content as XmlEventReader.
+</li>
+<li>
+std::string getNodeHandle() -- returns a string handle that represents
+a direct pointer to the node, and can be resolved later using
+XmlContainer::getNode().
+</li>
+</ul>
+</li>
+
+<li>
+virtual XmlInputStream *XmlResolver::resolveModuleLocation() method -- allows resolution of
+as XQuery module namespace to a list of locations when there is no location URI.
+</li>
+<li>
+virtual XmlInputStream *XmlResolver::resolveModule() method -- allows resolution of
+XQuery modules referenced in a query.
+</li>
+<li>
+Added DBXML_WELL_FORMED_ONLY flag to use to force the
+use of the well-formed scanner for documents.  This scanner will make no
+attempt to retrieve schema or DTDs, even if referenced.  The Java
+equivalent for this is XmlDocumentConfig.setWellFormedOnly() [#14055].
+</li>
+
+</ol>
+
+<h4>Changes That May Require Application Modification:</h4>
+<ol>
+<li>
+Changed database format to provide better node storage performance
+and scalability [#13771].
+</li>
+<li>
+Fixed a bug in the choice of index used for comparisons. Users with decimal indices may find that they need to change them to double indices before they will work correctly [#15093].
+</li>
+<li>
+Changed the default base URI to be "dbxml:/" (from "dbxml:"), so that is
+compliant with RFC 2396 (URI specification). Containers that have been
+opened using an absolute unix path may now have to use aliases to
+reference them.  See the URI rule changes below [#13881].
+</li>
+<li>
+Changed how BDB XML URIs are resolved against a base URI to be conformant
+with the URI specification.  This affects naming of containers in
+the arguments to fn:collection() and fn:doc().  Here are the current
+rules.  Notes: by default, there is a base URI of "dbxml:/",
+and "container_alias" is either a relative path to a container, or
+an alias for that container, set using XmlContainer::addAlias().
+<pre>
+New style dbxml URIs
+ dbxml:/container_alias/document
+ dbxml://xxx/container_alias/document (NB xxx is the URL authority, and is ignored)
+ dbxml:///container_alias/document
+ dbxml:////absolute/path/to/container/document
+ dbxml:/C:/windows/container/document
+With base URI
+ dbxml:/ + container_alias/document = dbxml:/container_alias/document
+ dbxml:/container_alias + container_alias2/document2 = dbxml:/container_alias2/document2
+ dbxml:/container_alias/document + /container_alias2/document2 = dbxml:/container_alias2/document2
+ dbxml:///container_alias/document + /container_alias2/document2 = dbxml:///container_alias2/document2
+ dbxml://xxx/container_alias/document + /container_alias2/document2 = dbxml://xxx/container_alias2/document2
+ dbxml:/container_alias/document + document2 = dbxml:/container_alias/document2
+Backwards compatibility mappings
+ dbxml:container_alias/document -&gt; dbxml:/container_alias/document
+</pre>
+[#14234].
+</li>
+<li>
+Replaced the Pathan and XQuery libraries with a single library
+called XQilla, which implements both XPath 2.0 and XQuery 1.0.
+This simplifies the build and removes redundant code [#13880].
+</li>
+</ol>
+
+<h4>General Functionality Changes:</h4>
+<ol>
+<li>
+Added several new XQuery extension functions that expose access to
+BDB XML functionality, as well as documentation for BDB XML
+XQuery extensions.  New extensions are:
+<ul>
+<li>dbxml:lookup-index()</li>
+<li>dbxml:lookup-attribute-index()</li>
+<li>dbxml:lookup-metadata-index()</li>
+<li>dbxml:handle-to-node()</li>
+<li>dbxml:node-to-handle()</li>
+</ul>
+</li>
+<li>
+Fixed a bug where the default namespace for an element in no
+namespace was not redeclared, even though the element was in the middle of
+a document that already had a default namespace declared. [#13872]</li>
+<li>
+Fixed a bug where a variable without a
+prefix was using the default namespace from the statically known
+namespaces [#13868]</li>
+<li>
+Fixed bug where an attempt to open a transactional container that
+fails due to a version mismatch would result in errors from 
+Berkeley DB regarding
+"Locker not found" and eventually an environment PANIC, requiring recovery.
+The same issue could arise if the open were to fail for other reasons as well [#13962].
+</li>
+<li>
+Fixed a bug where using XmlContainer::updateDocument() on a document
+returned from a query that used lazy evaluation could result in an 
+assertion failure [#13933].
+</li>
+<li>
+Fixed a bug where index entries were incorrectly deleted when 
+updating a document either via XmlModify or updateDocument.  
+The problem only occurred for containers without  
+node indices and when there were multiple, identical index entries being
+added/deleted during the update [#14173].
+</li>
+<li>
+Fixed a problem where the Java XmlInputStreamWrap class, which implements
+java.io.InputStream did not honor the InputStream contract to return -1 at EOF.
+Instead it returned 0 [#14216].
+</li>
+<li>
+Fixed a number of places where database errors, such as DB_ERR_DEADLOCK,
+were getting lost and not properly passed to the caller [#14311][#14212]
+[#14743][#15087].
+</li>
+<li>
+Fixed a bug where errors from dbxml_dump were masked, silently resulting
+in partial dump files if the container had any corruption [#14388].
+</li>
+<li>
+Changed dbxml_load so that it will not attempt to load into an existing 
+container, as doing so may corrupt the container [#14381].
+</li>
+<li>
+Fixed various problems in example code [#14392].
+</li>
+<li>
+Fixed double-delete crash that could occur when using XmlModify
+to remove and add attributes on the same node, when the node originally has
+more than one attribute [#14503].
+</li>
+<li>
+Fixed a problem where leading whitespace in content passed to 
+XmlModify steps could result in exceptions or bad updates [#14629].
+</li>
+<li>
+Fix a situation where memory could leak if an application
+were to use another library that includes the Xerces-C library in conjunction
+with BDB XML [#14451].
+</li>
+<li>
+Fixed bug where node storage containers could mangle DOCYTPE
+declarations using PUBLIC [#14725].
+</li>
+<li>
+Fixed a bug in date/time comparisons [#14949].
+</li>
+<li>
+Changed index syntax names to match the documentation, as well as be
+case-insensitive.  The old (incorrect) names (for example, year vs gYear)
+still work [#14961].
+</li>
+<li>
+Modified index storage to be more efficient for non-string types, and
+fixed bugs in the ordering of index entries with certain types (for
+example, boolean).  Also removed index types of QName and NOTATION,
+because namespace bindings are not available during indexing, and
+removed index type of anyURI, because all comparisons on anyURI values
+are done after casting to the string type.  Upgrade will automatically
+replace these types with an equivalent string index [#14371].
+</li>
+<li>
+Changed document ids to be 64-bit (were 32) [#15069].
+</li>
+<li>
+Fixed a bug in fn:lowercase() and fn:uppercase() where they did not handle 
+Unicode characters well [#14382].
+</li>
+<li>
+Used support in Berkeley DB 4.5 to fully support CDS in BDB XML (deadlock-free,
+single-writer, multiple-reader concurrency, not transactional). [#14568].
+</li>
+<li>
+Fixed XmlResults::next/previous iteration to be consistent with
+the semantics of the underlying object.  The previous() call would not move
+the cursor if it was positioned on the last value in the result set [#15145].
+</li>
+<li>
+Modified node allocation algorithm for node ids used in partial
+modifications to better utilize the node id space [#15154].
+<li>
+Fixed a problem where non-content (empty) documents
+could not be deleted [#15159].
+</li>
+<li>
+Fixed a problem where node equality check (XmlValue::equals) would fail
+incorrectly when comparing across XmlDocument objects.
+Added XmlDocument::equals method to non-C++ APIs [#15212].
+</li>
+<li>
+Fixed a problem where adding indices to an encrypted container would not
+encrypt the new index databases [#15253].
+</li>
+<li>
+Added code to attempt to identify mismatched versions of Berkeley DB and BDB XML,
+especially in non-C++ APIs such as Java, Python, and PHP.
+</li>
+</ol>
+
+<h4>Utility Changes:</h4>
+
+<ol>
+<li>
+Modified dbxml shell to use NULL as the default path for the DbEnv so
+that the DB_HOME environment variable will be used [#15139].
+</li>
+<li>
+Added commands to dbxml shell:
+<ul>
+<li>setIgnore -- causes it to ignore errors
+while not in interactive mode, allowing scripts to continue running.  It has no
+effect on interactive sessions [#15150].</li>
+<li>sync -- flushes the cache to the physical databases.</li>
+<li>setQueryTimeout -- sets a query timeout in seconds for queries run in 
+the shell.</li>
+<li>echo -- allows echoing of a string to stdout.</li>
+<li>improved handling of ^C, which will now interrupt an in-progress query</li>
+</ul>
+</li>
+</ol>
+
+<h4>Java-specific Functionality Changes:</h4>
+<ol>
+<li>
+Fixed a Java-specific problem where using 
+XmlDocument.setContentAsXmlInputStream()
+could lead to a double-delete of the underlying native memory for the 
+XmlInputStream during finalization [#15126].
+</li>
+<li>
+Fixed Java GettingStarted examples to use XmlContainer.delete() rather
+than XmlContainer.close(), and call delete() methods on all objects
+that need it to release container resources [#14668].
+</li>
+<li>
+XmlContainer.close() is now mapped to XmlContainer.delete(), so it is no longer
+possible to aggressively close the underlying databases without releasing
+container references by explicitly deleting BDB XML objects.
+</li>
+</ol>
+
+<h4>Python-specific Functionality Changes:</h4>
+<ol>
+<li>
+Added an XmlException class and exception hierarchy.
+It is described in the file, dbxml/src/python/README.exceptions [#13959].
+</li>
+<li>
+Modified code generation to enable threads and correctly handle
+acquisition and release of the Python Global Interpreter Lock (GIL).
+If threads are not desired, it is possible to compile without them by
+modifying the source of src/python/dbxml_python_wrap.cpp to disable 
+SWIG_PYTHON_THREADS.  This can be done by defining SWIG_PYTHON_NO_THREADS
+[#14077].
+</li>
+</ol>
+
+<h4>PHP-specific Functionality Changes:</h4>
+<ol>
+<li>
+Fixed PHP XmlManager-&gt;createContainer() and openContainer() methods to
+use flags arguments passed in [#14617].
+</li>
+<li>
+Brought PHP interface up to date with respect to the current API, adding
+missing interfaces [#13889].
+</li>
+<li>
+Added XmlException to PHP interface when compiled under PHP5, which
+supports exceptions.  This allows PHP5 scripts to catch XmlException [#15245].
+</li>
+</ol>
+
+<h4>Tcl-specific Functionality Changes:</h4>
+None.
+
+<h4>Configuration, Documentation, Portability and Build Changes:</h4>
+
+<ol>
+<li>
+Bundled version 4.5.20 of Berkeley DB, which includes Multi-Version
+Concurrency Control (MVCC), allowing snapshot semantics for read-write
+concurrency.  This will be quite useful for concurrent BDB XML 
+applications (read/write concurrency).
+</li>
+<li>
+XQuery and Pathan libraries have been replaced with a single library,
+XQilla.  This library is not currently available from any other location.
+</li>
+<li>Added dependencies to example Windows project files [#13863].  This
+showed up as a problem in parallel builds using Visual Studio .NET 2005.</li>
+<li>
+Modified Unix configuration and build to allow the
+BDB XML library (libdbxml*) to built in a directory other than
+dbxml/build_unix. The buildall.sh script uses the default 
+build locations [#14772].
+</li>
+<li>
+Consolidated all projects into the single, BDBXML_all.{dsw,sln} files 
+for Windows build, and included all Berkeley DB utilities [#14098].
+</li>
+</ol>
+
+</body>
+</html>
+

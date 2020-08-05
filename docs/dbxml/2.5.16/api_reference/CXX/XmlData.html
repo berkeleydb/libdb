@@ -1,0 +1,112 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlData</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlData</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+class DbXml::XmlData {
+public:
+	XmlData::XmlData()
+	XmlData::XmlData(const Dbt &dbt)
+	XmlData::XmlData(void *data, size_t size)
+	XmlData::XmlData(const XmlData &o)
+	XmlData &operator = (const XmlData &o)
+	virtual XmlData::~XmlData()
+	...
+<p>
+	void set(const void *data, size_t size);
+	void append(const void *data, size_t size);
+<p>
+	void * get_data() const;
+<p>
+	size_t get_size() const;
+	void set_size(size_t size);
+<p>
+	size_t reserve(size_t size);
+	void getReservedSize() const;
+<p>
+	void adoptBuffer(XmlData &src);
+};
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlData</b>
+<p>The XmlData class encapsulates a buffer for storing and retrieving binary 
+data (uninterpreted bytes).  The default and copy constructors for XmlData manage
+their own memory and the application need not be aware of it.
+The constructors, XmlData(const Dbt &dbt) and XmlData(void *data, size_t size),
+create "wrapper" objects for the memory passed in and in those instances it is
+up to the application to own and manage the memory.
+If a wrapper object is assigned data that is larger than its memory
+buffer an exception will be thrown.</p>
+<hr size=1 noshade>
+<b>Description: void *XmlData::get_data()</b>
+<p>Returns the data buffer.</p>
+<hr size=1 noshade>
+<b>Description: void XmlData::set(void *data, size_t size)</b>
+<p>Copies size bytes from data to the start of the underlying buffer, which will expand to 
+fit the data if it is not a wrapper, otherwise an exception will be thrown.  This 
+method will change the size of the data.</p>
+<b>Parameters</b> <br>
+ <b>data</b><ul compact><li>The data to be copied into the underlying buffer.</ul>
+ <b>size</b><ul compact><li>The number of bytes to copy.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: void XmlData::append(void *data, size_t size)</b>
+<p>Copies size bytes from data to the end of the existing data in the underlying 
+buffer, which will expand to fit the data if it is not a wrapper, otherwise 
+an exception will be thrown.  This method will change the size of the data.</p>
+<b>Parameters</b> <br>
+ <b>data</b><ul compact><li>A pointer to the data to be copied.</ul>
+ <b>size</b><ul compact><li>The number of bytes to copy.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: size_t XmlData::get_size()</b>
+<p>Returns the size of the real data in the buffer.</p>
+<hr size=1 noshade>
+<b>Description: void XmlData::set_size(size_t size)</b>
+<p>Sets the size of the data held in the buffer.  An exception will be thrown
+if the size is larger than the buffer.</p>
+<b>Parameters</b> <br>
+ <b>size</b><ul compact><li>Specifies the size of the data in the buffer.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: void XmlData::reserve(size_t size)</b>
+<p>Ensures that the underlying buffer has at least size bytes, starting at offset 0.
+Existing data is not affected.
+If buffer expansion is needed and the object is a wrapper an exception is thrown.</p>
+<b>Parameters</b> <br>
+ <b>size</b><ul compact><li>The number of bytes to reserve.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: size_t XmlData::getReservedSize()</b>
+<p>Returns the size of the underlying buffer.  This is at least
+the size of the actual data stored.</p>
+<hr size=1 noshade>
+<b>Description: void XmlData::adoptBuffer(XmlData &src)</b>
+<p>Takes ownership of the buffer in src, leaving src with an empty buffer.</p>
+<b>Parameters</b> <br>
+ <b>src</b><ul compact><li>The XmlData object from which to take the buffer.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

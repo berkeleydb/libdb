@@ -1,0 +1,77 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::putDocumentAsEventWriter</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::putDocumentAsEventWriter</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlEventWriter &XmlContainer::putDocumentAsEventWriter(XmlDocument &document,
+    XmlUpdateContext &context, u_int32_t flags = 0)
+<p>
+XmlEventWriter &XmlContainer::putDocumentAsEventWriter(XmlTransaction &txn,
+  XmlDocument &document, XmlUpdateContext &context, u_int32_t flags = 0)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::putDocumentAsEventWriter</b>
+<p>Begins insertion of an <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> into the container through use
+of an <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a> object. Methods must be called on the
+returned <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a> to create content for the document, which
+is completed by calling <a href="../../api_reference/CXX/XmlEventWriter_close.html">XmlEventWriter::close</a>.  If <a href="../../api_reference/CXX/XmlEventWriter_close.html">XmlEventWriter::close</a> is never called, the document insertion will not be complete, and
+the container may be left in an inconsistent state.</p>
+<p>The name used for the document must be unique in the container
+or an exception is thrown. The flag, <a name="DBXML_GEN_NAME">DBXML_GEN_NAME</a>, can be
+used to generate a name.  To change a document that already exists in
+the container, use <a href="../../api_reference/CXX/XmlContainer_updateDocument.html">XmlContainer::updateDocument</a>.</p>
+<hr size=1 noshade>
+<b>Description: XmlEventWriter &XmlContainer::putDocumentAsEventWriter(XmlTransaction &txn, XmlDocument &document, XmlUpdateContext &context, u_int32_t flags = 0)</b>
+<p>Begins insertion of an <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> into the container.
+The name provided for the XmlDocument must be unique to the container
+or an exception is thrown. To set the name, use <a href="../../api_reference/CXX/XmlDocument_setName.html">XmlDocument::setName</a>.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>document</b><ul compact><li>The <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> to be inserted into the XmlContainer.</ul>
+ <b>context</b><ul compact><li>The update context to use for the document insertion.</ul>
+ <b>flags</b><ul compact><li>The <b>flags</b> parameter must be set to 0 or
+the following value:
+<br>
+<b><a name="DBXML_GEN_NAME">DBXML_GEN_NAME</a></b><ul compact><li>Generate a unique name.  If no name is set for this <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a>,
+a system-defined unique name is generated.  If a name is specified, a
+unique string is appended to that name to ensure uniqueness.</ul>
+<br></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::putDocumentAsEventWriter method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>DATABASE_ERROR</b><ul compact><li>An error occurred in an underlying Berkeley DB database. The
+<a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a> method will return the error code for the error.</ul>
+<br>
+<br>
+<b>UNIQUE_ERROR</b><ul compact><li>Uniqueness constraint violation for key</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

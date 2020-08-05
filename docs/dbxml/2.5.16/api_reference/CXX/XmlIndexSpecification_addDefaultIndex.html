@@ -1,0 +1,160 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlIndexSpecification::addDefaultIndex</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlIndexSpecification::addDefaultIndex</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlIndexSpecification::addDefaultIndex(const std::string &index)
+<p>
+void XmlIndexSpecification::addDefaultIndex(Type type, XmlValue::Type syntax)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlIndexSpecification::addDefaultIndex</b>
+<p>Adds an indexing strategy to the default index specification. That is,
+the index provided on this method is applied to all nodes in a
+container, except for those for which an explicit index is already
+declared. For more information on specifying indexing strategies, see
+<a href="../../api_reference/CXX/XmlIndexSpecification_addIndex.html">XmlIndexSpecification::addIndex</a>.</p>
+<hr size=1 noshade>
+<b>Description: void XmlIndexSpecification::addDefaultIndex(const std::string &index)</b>
+<p>Adds one or more indexing strategies to the default index.</p>
+<b>Parameters</b> <br>
+ <b>index</b><ul compact><li>A comma-separated list of strings that represent the indexing strategy.
+The strings must contain the following information in the following order:
+<blockquote><pre><b>unique</b>-{path type}-{node type}-{key type}-{syntax}</pre></blockquote>
+<p>where:</p>
+<p><b>unique</b> indicates that the indexed value is unique in the
+container. If this keyword does not appear on the index string, then the
+indexed value is not required to be unique in the container.</p>
+<p>{path type} is either <b>node</b> or <b>edge</b>.</p>
+<p>{node type} is one of <b>element</b>, <b>attribute</b>, or
+<b>metadata</b>. If <b>metadata</b> is specified, then {path type}
+must be <b>node</b>.</p>
+<p>{key type} is one of <b>presence</b>, <b>equality</b>, or
+<b>substring</b>.</p>
+<p>{syntax} identifies the type of information being indexed. It must be one of the
+following values:</p>
+<p><ul type=disc>
+<li>none
+<li>base64Binary
+<li>boolean
+<li>date
+<li>dateTime
+<li>decimal
+<li>double
+<li>duration
+<li>float
+<li>gDay
+<li>gMonth
+<li>gMonthDay
+<li>gYear
+<li>gYearMonth
+<li>hexBinary
+<li>string
+<li>time
+</ul>
+<p>Note that if {key type} is <b>presence</b>, then {syntax} must be
+<b>none</b> or simply not specified.</p>
+<p>For example, examples index strings are:</p>
+<blockquote><pre><b>unique-node-element-presence</b></pre></blockquote>
+<blockquote><pre><b>node-element-equality-string</b></pre></blockquote>
+<blockquote><pre><b>edge-element-presence-none</b></pre></blockquote>
+<blockquote><pre><b>node-element-equality-float</b></pre></blockquote></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlIndexSpecification::addDefaultIndex method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>UNKNOWN_INDEX</b><ul compact><li>Unknown index specification</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: void XmlIndexSpecification::addDefaultIndex(Type type, XmlValue::Type syntax)</b>
+<p>Adds a single indexing strategy to the default index.</p>
+<b>Parameters</b> <br>
+ <b>type</b><ul compact><li>A series of XmlIndexSpecification::Type values bitwise <b>OR</b>'d
+together to form the index strategy.
+<p>To indicate whether the indexed value must be unique container-wide, use
+one of the following, or leave the value out entirely:</p>
+<p><ul type=disc>
+<li>XmlIndexSpecification::UNIQUE_OFF
+<li>XmlIndexSpecification::UNIQUE_ON
+</ul>
+<p>To identify the path type, use one of the following:</p>
+<p><ul type=disc>
+<li>XmlIndexSpecification::PATH_NODE
+<li>XmlIndexSpecification::PATH_EDGE
+</ul>
+<p>To identify the node type, use one of the following:</p>
+<p><ul type=disc>
+<li>XmlIndexSpecification::NODE_ELEMENT
+<li>XmlIndexSpecification::NODE_ATTRIBUTE
+<li>XmlIndexSpecification::NODE_METADATA
+</ul>
+<p>Note that if XmlIndexSpecification::NODE_METADATA is used, then
+XmlIndexSpecification::PATH_NODE must also be used as well.</p>
+<p>To identify the key type, use one of the following:</p>
+<p><ul type=disc>
+<li>XmlIndexSpecification::KEY_PRESENCE
+<li>XmlIndexSpecification::KEY_EQUALITY
+<li>XmlIndexSpecification::KEY_SUBSTRING
+</ul>
+<p>For example:</p>
+<blockquote><pre>XmlIndexSpecification::PATH_NODE | XmlIndexSpecification::NODE_ELEMENT | XmlIndexSpecification::KEY_SUBSTRING</pre></blockquote></ul>
+ <b>syntax</b><ul compact><li><p>Identifies the type of information being indexed. The value must be one
+of the XmlValue enumerated types:</p>
+<p><ul type=disc>
+<li>XmlValue::NONE
+<li>XmlValue::BASE_64_BINARY
+<li>XmlValue::BOOLEAN
+<li>XmlValue::DATE
+<li>XmlValue::DATE_TIME
+<li>XmlValue::DECIMAL
+<li>XmlValue::DOUBLE
+<li>XmlValue::DURATION
+<li>XmlValue::FLOAT
+<li>XmlValue::G_DAY
+<li>XmlValue::G_MONTH
+<li>XmlValue::G_MONTH_DAY
+<li>XmlValue::G_YEAR
+<li>XmlValue::G_YEAR_MONTH
+<li>XmlValue::HEX_BINARY
+<li>XmlValue::STRING
+<li>XmlValue::TIME
+</ul>
+<p>Note that if XmlIndexSpecification::KEY_PRESENCE is specified for
+<b>type</b>, then this parameter must be
+<b>XmlValue::NONE</b>.</p></ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlIndexSpecification::addDefaultIndex method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>UNKNOWN_INDEX</b><ul compact><li>Unknown index specification</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

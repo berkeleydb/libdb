@@ -1,0 +1,50 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlStatistics</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlStatistics</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+XmlStatistics::XmlStatistics()
+XmlStatistics::XmlStatistics(const XmlStatistics&)
+XmlStatistics &operator = (const XmlStatistics &)
+virtual XmlStatistics::~XmlStatistics()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlStatistics</b>
+<p>The XmlStatistics class encapsulates statistical information
+about the number of keys in existence for a given index. Statistics are
+available for the total number of keys currently in use by the index,
+as well as the total number of unique keys in use by the index. Use
+<a href="../../api_reference/CXX/XmlStatistics_getNumberOfIndexedKeys.html">XmlStatistics::getNumberOfIndexedKeys</a> and
+<a href="../../api_reference/CXX/XmlStatistics_getNumberOfUniqueKeys.html">XmlStatistics::getNumberOfUniqueKeys</a>, respectively, to retrieve
+these values.</p>
+<p>Be aware that the number the number of keys maintained for an index is
+a function of the number and size of documents stored in the container,
+and of the type of index being examined.</p>
+<p>XmlStatistics objects are instantiated by
+<a href="../../api_reference/CXX/XmlContainer_lookupStatistics.html">XmlContainer::lookupStatistics</a>.</p>
+This object is free threaded, and can be safely shared among threads in
+an application.
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>The Berkeley DB XML API</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+    <link rel="prev" href="schema.html" title="Schema Constraints" />
+    <link rel="next" href="wrapup.html" title="Chapter 3. Wrapping Up" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">The Berkeley DB XML API</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="schema.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 2. XQuery and Berkeley DB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="wrapup.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="programming"></a>The Berkeley DB XML API</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            The Berkeley DB XML command line shell is a tool and not an end-user 
+            application, it has been useful in exploring the features of this system. 
+            Applications will be built using the programming language APIs. 
+            In this final example, we implement our first example, the phonebook 
+            example, in C++. 
+        </p>
+      <pre class="programlisting">#include &lt;string&gt;
+#include &lt;fstream&gt;
+#include "dbxml/DbXml.hpp"
+
+using namespace std;
+using namespace DbXml;
+
+int
+main(int argc, char **argv)
+{
+    try {
+        XmlManager mgr;
+        
+        // Create the phonebook container
+        XmlContainer cont = mgr.createContainer("phone.dbxml");
+        
+        // Add the phonebook entries to the container
+        XmlUpdateContext uc = mgr.createUpdateContext();
+        cont.putDocument("phone1", "&lt;phonebook&gt;&lt;name&gt;&lt;first&gt;Tom&lt;/first&gt;
+&lt;last&gt;Jones&lt;/last&gt;&lt;/name&gt;&lt;phone type=\"home\"&gt;420-203-2032&lt;/phone&gt;
+&lt;/phonebook&gt;", uc);
+        cont.putDocument("phone2", "&lt;phonebook&gt;&lt;name&gt;&lt;first&gt;Lisa&lt;/first&gt;
+&lt;last&gt;Smith&lt;/last&gt;&lt;/name&gt;&lt;phone type=\"home\"&gt;420-992-4801&lt;/phone&gt;
+&lt;phone type=\"cell\"&gt;390-812-4292&lt;/phone&gt;&lt;/phonebook&gt;", 
+uc);
+
+        // Run an XQuery against the phonebook container
+        XmlQueryContext qc = mgr.createQueryContext();        
+        XmlResults res = 
+        mgr.query("collection('phone.dbxml')/phonebook[name/first = 'Lisa']/
+phone[@type = 'home']/string()", qc);
+
+        // Print out the result of the query
+        XmlValue value;
+        while (res.next(value))
+            cout &lt;&lt; "Value: " &lt;&lt; value.asString() &lt;&lt; endl;
+    } catch (XmlException &amp;e) {
+        std::cout &lt;&lt; "Exception: " &lt;&lt; e.what() &lt;&lt; std::endl;
+    }
+    return 0;
+}</pre>
+      <p>
+            While this example is in C++, the BDB XML API is similar across
+            all supported languages. This makes it easy to transfer knowledge 
+            about the API between languages and can enable useful scenarios 
+            such as prototyping the application in Python and then implementing 
+            the final version in Java or C++. Because of the similarity across 
+            languages porting, the BDB XML code is relatively simple. 
+        </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="schema.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="wrapup.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Schema Constraints </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Chapter 3. Wrapping Up</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

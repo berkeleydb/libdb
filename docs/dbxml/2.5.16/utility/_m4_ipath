@@ -1,0 +1,4 @@
+__APIREL__/utility/dbxml_dump.html__OCT__2 utility to @dump XML containers as text files
+__APIREL__/utility/dbxml_load.html__OCT__2 utility to @load text files into XML containers
+__APIREL__/utility/dbxmlsh.html__OCT__2 @interactive shell for manipulating XML containers and documents
+__APIREL__/utility/load_container.html__OCT__2 @load XML documents into XML containers

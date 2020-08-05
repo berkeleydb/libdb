@@ -1,0 +1,711 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Transaction Example</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML Transaction Processing" />
+    <link rel="up" href="wrapup.html" title="Chapter 6. Summary and Examples" />
+    <link rel="prev" href="wrapup.html" title="Chapter 6. Summary and Examples" />
+    <link rel="next" href="inmem_dbxml_txnexample.html" title="In-Memory Transaction Example" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Transaction Example</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="wrapup.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 6. Summary and Examples</th>
+          <td width="20%" align="right"> <a accesskey="n" href="inmem_dbxml_txnexample.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="txnexample_xml_cxx"></a>Transaction Example</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="txnexample_xml_cxx.html#writerthread_xmlcxx">The writerThread Function</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        The following code provides a fully functional example of a
+        multi-threaded transactional BDB XML application. For improved
+        portability across platforms, this examples uses pthreads to
+        provide threading support.
+    </p>
+      <p>
+        The example creates multiple threads, each of which creates a set
+        number of XML documents that it then writes to the container. Each
+        thread creates and writes 10 documents under a single transaction
+        before committing and writing another 10 documents. This activity
+        is repeated 50 times.
+    </p>
+      <p>
+        From the command line, you can tell the program to vary:
+    </p>
+      <div class="itemizedlist">
+        <ul type="disc">
+          <li>
+            <p>
+                The number of threads that it should use.
+            </p>
+          </li>
+          <li>
+            <p>
+                The number of nodes each XML document will contain.
+            </p>
+          </li>
+          <li>
+            <p>
+                Whether the container used by the program is of type
+                Wholedoc or node storage.
+            </p>
+          </li>
+          <li>
+            <p>
+                Whether read committed (degree 2) isolation should be used
+                for the container writes.
+            </p>
+          </li>
+        </ul>
+      </div>
+      <p>
+        As we will see in <a class="xref" href="runprogram_xml.html" title="Runtime Analysis">Runtime Analysis</a>
+        each of these variables plays a role in the number of deadlocks the
+        program encounters during its run time.
+    </p>
+      <p>
+        Of course, each writer thread performs deadlock detection as
+        described in this manual. In addition, normal recovery is performed
+        when the environment is opened.
+    </p>
+      <p>
+        We start with our normal <code class="literal">include</code> directives and other house keeping necessities:
+    </p>
+      <pre class="programlisting">// File TxnGuide.cpp
+
+// We assume an ANSI-compatible compiler
+#include "dbxml/DbXml.hpp"
+#include &lt;cstdlib&gt;
+#include &lt;iostream&gt;
+#include &lt;pthread.h&gt;
+#include &lt;sstream&gt;
+
+#ifdef _WIN32
+extern int getopt(int, char * const *, const char *);
+#define PATHD '\\'
+#else
+#include &lt;unistd.h&gt;
+#define PATHD '/'
+#endif
+
+using namespace DbXml;  </pre>
+      <p>
+    Next, we declare a few global variables.
+    <code class="literal">global_thread_num</code> is used to assist in creating a
+    portable thread ID for each thread in use by the program.
+    <code class="literal">global_num_deadlocks</code> is a variable that we use to
+    count the total number of deadlocks the program encounters during its
+    runtime. Finally, we declare a couple of pthread mutex variables that
+    we will use to lock these variables when they are in use.
+</p>
+      <pre class="programlisting">// File TxnGuide.cpp
+
+// Printing of pthread_t is implementation-specific, so we
+// create our own thread IDs for reporting purposes.
+int global_thread_num;
+int global_num_deadlocks;
+pthread_mutex_t thread_num_lock, thread_num_deadlocks;  </pre>
+      <p>
+    Next we perform a couple of forward function declarations.
+    <code class="function">usage()</code> provides our application's help text and
+    <code class="function">writerThread</code> is the function that will run for
+    each thread.
+</p>
+      <p>
+    We also declare a structure that we use to contain variables of
+    local interest to our writer threads. We will pass this structure to each of
+    our <code class="function">writerThread</code> functions called by
+    <code class="function">pthread_create()</code>.
+</p>
+      <pre class="programlisting">// Forward declarations
+int usage(void);
+void *writerThread(void *);
+
+struct ThreadVars {
+    XmlContainer container;
+    bool useReadCommitted;
+    int numNodes;
+};  </pre>
+      <p>
+    Next we implement our <code class="function">usage()</code>, which 
+    describes how to use our application.
+</p>
+      <pre class="programlisting">// Usage function
+int
+usage()
+{
+    std::cerr &lt;&lt; "\nThis program writes XML documents to a DB XML"
+              &lt;&lt; "container. The documents are written using any number\n"
+              &lt;&lt; "of threads that will perform writes "
+              &lt;&lt; "using 50 transactions. Each transaction writes \n"
+              &lt;&lt; "10 documents. You can choose to perform the "
+              &lt;&lt; "writes using default isolation, or using \n"
+              &lt;&lt; "READ COMMITTED isolation. If READ COMMITTED "
+              &lt;&lt; "is used, the application will see fewer deadlocks."
+              &lt;&lt; std::endl;
+     std::cerr &lt;&lt; "\nNote that you can vary the size of the documents "
+               &lt;&lt; "written to the container by defining the number of \n"
+               &lt;&lt; "nodes in the documents. Up to a point, and depending "
+               &lt;&lt; "on your system's performance, increasing the number \n"
+               &lt;&lt; "of nodes will increase the number of deadlocks that "
+               &lt;&lt; "your application will see." &lt;&lt; std::endl;
+    std::cerr &lt;&lt; "Command line options are: " &lt;&lt; std::endl;
+    std::cerr &lt;&lt; " -h &lt;database_home_directory&gt;" &lt;&lt; std::endl;
+    std::cerr &lt;&lt; " [-t &lt;number of threads&gt;]" &lt;&lt; std::endl;
+    std::cerr &lt;&lt; " [-n &lt;number of nodes per document&gt;]" &lt;&lt; std::endl;
+    std::cerr &lt;&lt; " [-w]       (create a Wholedoc container)"   &lt;&lt; std::endl;
+    std::cerr &lt;&lt; " [-2]       (use READ COMMITTED isolation)" &lt;&lt; std::endl;
+    return (EXIT_FAILURE);
+}  </pre>
+      <p>
+    Now we implement our <code class="function">main()</code> function. We start by
+    declaring and initializing the local variables needed by the function.
+    Notice that by default we will not use read committed isolation, we
+    will use 5 threads, and our default container type is a node container.
+</p>
+      <pre class="programlisting">int
+main(int argc, char *argv[])
+{
+
+    DB_ENV *envp = NULL;
+    XmlManager *mgrp = NULL;
+    std::string containerName("txn.dbxml");
+
+    ThreadVars threadInfo;
+    threadInfo.useReadCommitted = false;
+
+    // Initialize globals
+    global_thread_num = 0;
+    global_num_deadlocks = 0;
+
+    int ch, i, dberr;
+    int numThreads = 5;
+    u_int32_t envFlags;
+    XmlContainer::ContainerType containerType =
+        XmlContainer::NodeContainer;
+    char *dbHomeDir;
+
+    // Application name
+    const char *progName = "TxnGuide";  </pre>
+      <p>
+    Now we parse the command line options. See the
+    <code class="function">usage()</code> function above for a description of what
+    each of these options does.
+</p>
+      <pre class="programlisting">    // Parse the command line arguments
+#ifdef _WIN32
+    dbHomeDir = ".\\";
+#else
+    dbHomeDir = "./";
+#endif
+    while ((ch = getopt(argc, argv, "h:n:t:w2")) != EOF)
+        switch (ch) {
+        case 'h':
+            dbHomeDir = optarg;
+            break;
+        case 'n':
+            threadInfo.numNodes = atoi(optarg);
+            break;
+        case 't':
+            numThreads = atoi(optarg);
+            break;
+        case '2':
+            threadInfo.useReadCommitted = true;
+            break;
+        case 'w':
+            containerType = XmlContainer::WholedocContainer;
+            break;
+        case '?':
+        default:
+            return (usage());
+        }  </pre>
+      <p>
+    As a final bit of plumbing, we enforce the minimum values passed to the
+    application and issue informative text indicating how the program will
+    run:
+</p>
+      <pre class="programlisting">    // Find out how many nodes we'll write to the container
+    threadInfo.numNodes = threadInfo.numNodes &lt; 1 ? 1 :
+                          threadInfo.numNodes;
+
+    // Find out how many threads
+    numThreads = numThreads &lt; 1 ? 1 : numThreads;
+
+    std::cout &lt;&lt; "Number nodes per document:       "
+              &lt;&lt; threadInfo.numNodes &lt;&lt; std::endl;
+    std::cout &lt;&lt; "Number of writer threads:        " &lt;&lt; numThreads
+              &lt;&lt; std::endl;
+
+    std::string msg = threadInfo.useReadCommitted ?
+                        "Read Committed " :
+                        "Default";
+    std::cout &lt;&lt; "Isolation level:                 " &lt;&lt; msg
+              &lt;&lt; std::endl;
+
+    msg = containerType == XmlContainer::WholedocContainer ?
+                           "Wholedoc storage" : "Node storage";
+    std::cout &lt;&lt; "Container type:                  " &lt;&lt; msg &lt;&lt; "\n\n"
+              &lt;&lt; std::endl;  </pre>
+      <p>
+    Now that we know what it is that the program is supposed to do, we can
+    start to do it. We begin by opening our environment, manager and
+    container so that they support transactional processing.
+</p>
+      <p>
+    Notice here that if our container already exists, we delete and then
+    recreate it. This allows us to avoid document ID conflict. This also
+    allows us to change the container type from run to run of the program
+    since the container type can only be set at container creation time.
+</p>
+      <p>
+    Finally, notice that we set up deadlock detection here, and 
+    we choose
+    to resolve deadlocks by picking the thread with the smallest number of
+    write locks. The thread with the smallest number of write locks is the
+    one that has performed the least amount of work. By choosing this
+    thread for the abort/retry cycle, we minimize the amount of rework our
+    application must perform due to a deadlock.
+</p>
+      <pre class="programlisting">    // Env open flags
+    envFlags =
+      DB_CREATE     |  // Create the environment if it does not exist
+      DB_RECOVER    |  // Run normal recovery.
+      DB_INIT_LOCK  |  // Initialize the locking subsystem
+      DB_INIT_LOG   |  // Initialize the logging subsystem
+      DB_INIT_TXN   |  // Initialize the transactional subsystem.
+      DB_INIT_MPOOL |  // Initialize the memory pool (in-memory cache)
+      DB_THREAD;       // Cause the environment to be free-threaded
+
+    dberr = db_env_create(&amp;envp, 0);
+    if (dberr) {
+        std::cout &lt;&lt; "Unable to create environment: " &lt;&lt;
+            db_strerror(dberr) &lt;&lt; std::endl;
+        if (envp)
+            envp-&gt;close(envp, 0);
+        return (EXIT_FAILURE);
+    }
+
+    // Indicate that we want to internally perform deadlock 
+    // detection.  Also indicate that the transaction with 
+    // the fewest number of write locks will receive the 
+    // deadlock notification in the event of a deadlock.
+    envp-&gt;set_lk_detect(envp, DB_LOCK_MINWRITE);
+
+    envp-&gt;open(envp, dbHomeDir, env_flags, 0);
+
+    myManager = new XmlManager(envp, 0);
+    // Create and open a DB XML manager.
+    mgrp = new XmlManager(envp,
+                          DBXML_ADOPT_DBENV); // Close the env when 
+                                              // the manager closes.
+    try {
+        // If we had utility threads (for running checkpoints or 
+        // deadlock detection, for example) we would spawn those
+        // here. However, for a simple example such as this,
+        // that is not required.
+
+        // If the container already exists, delete it. We don't want
+        // naming conflicts if this program is run multiple times.
+        if (mgrp-&gt;existsContainer(containerName) != 0)
+            mgrp-&gt;removeContainer(containerName);
+
+        XmlContainerConfig cconfig;
+        cconfig.setTransactional(true);  // Container is transactional.
+        cconfig.setThreaded(true);
+        cconfig.setAllowCreate(true);    // Create the container if it
+                                         // does not exist.
+        cconfig.setContainerType(containerType);
+
+        // Open the container
+        threadInfo.container =
+            mgrp-&gt;openContainer(&lt;userinput&gt;""&lt;/userinput&gt;,
+                cconfig); &lt;/programlisting&gt;
+        // Open the container
+        threadInfo.container =
+            mgrp-&gt;openContainer(containerName,
+                cconfig);  </pre>
+      <p>
+    Next we initialize our mutexes and we start and join our writer
+    threads. This is all standard pthread usage, so we present it here
+    without much comment.
+</p>
+      <pre class="programlisting">        // Initialize a pthread mutex. Used to help provide thread ids.
+        (void)pthread_mutex_init(&amp;thread_num_lock, NULL);
+        // Initialize a pthread mutex. Used to count the number of
+        // deadlocks encountered by the various threads in this example.
+        (void)pthread_mutex_init(&amp;thread_num_deadlocks, NULL);
+
+        // Start the writer threads.
+        pthread_t writerThreads[numThreads];
+        for (i = 0; i &lt; numThreads; i++)
+            (void)pthread_create(
+                &amp;writerThreads[i], NULL,
+                writerThread, (void *)&amp;threadInfo);
+
+        // Join the writers
+        for (i = 0; i &lt; numThreads; i++)
+            (void)pthread_join(writerThreads[i], NULL);  </pre>
+      <p>
+    Of course we need to catch and handle any exceptions thrown during our
+    application's runtime.
+</p>
+      <pre class="programlisting">    } catch(XmlException &amp;xe) {
+        std::cerr &lt;&lt; "Error opening XmlContainer: "
+                  &lt;&lt; xe.what() &lt;&lt; std::endl;
+        return (EXIT_FAILURE);
+    } catch(std::exception &amp;ee) {
+        std::cerr &lt;&lt; "Unknown error: "
+                  &lt;&lt; ee.what() &lt;&lt; std::endl;
+        return (EXIT_FAILURE);
+    }  </pre>
+      <p>
+    Once all our writer threads complete, we need to clean up a little.
+    Remember that containers automatically close when they go out of scope.
+    Also, our manager adopted the environment, so when the manager closes,
+    it will close the environment for us. And, of course, the manager also
+    closes when the last handle to it either goes out of scope or is
+    deleted.
+</p>
+      <p>
+    Consequently, to close our application all we need to do is delete the
+    <code class="classname">XmlManager</code> object.
+</p>
+      <pre class="programlisting">    try {
+        // Close our manager if it was opened.
+        if (mgrp != NULL)
+            delete mgrp;
+
+        // We don't have to close our container or
+        // environment handles. The container closes
+        // when it goes out of scope. The environment
+        // is closed when the manager is deleted, because
+        // we specified DBXML_ADOPT_DBENV on the manager
+        // open.
+
+    } catch(XmlException &amp;xe) {
+        std::cerr &lt;&lt; progName &lt;&lt; "Error closing manager and environment."
+                  &lt;&lt; std::endl;
+        std::cerr &lt;&lt; xe.what() &lt;&lt; std::endl;
+        return (EXIT_FAILURE);
+    } catch(std::exception &amp;ee) {
+        std::cerr &lt;&lt; progName &lt;&lt; "Error closing manager and environment."
+                  &lt;&lt; std::endl;
+        std::cerr &lt;&lt; ee.what() &lt;&lt; std::endl;
+        return (EXIT_FAILURE);
+    }  </pre>
+      <p>
+        As a final bit of clean up, we issue a count of the deadlocks seen
+        during this program runtime and then return from the
+        <code class="function">main()</code> function.
+    </p>
+      <pre class="programlisting">    // Final status message and return.
+
+    std::cout &lt;&lt; "I'm all done." &lt;&lt; std::endl;
+    std::cout &lt;&lt; "I saw " &lt;&lt; global_num_deadlocks
+              &lt;&lt; " deadlocks in this program run."
+              &lt;&lt; std::endl;
+    return (EXIT_SUCCESS);
+}  </pre>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="writerthread_xmlcxx"></a>The writerThread Function</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            To perform actual work, our application spawns a number of
+            threads, each of which runs the
+            <code class="function">writerThread()</code> function. This function:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    Runs 50 transactions.
+                </p>
+            </li>
+            <li>
+              <p>
+                    Within each transaction, it creates and writes 10 XML
+                    documents to the container.
+                </p>
+            </li>
+            <li>
+              <p>
+                    The size of each document is determined by information
+                    provided on the command line.
+                </p>
+            </li>
+            <li>
+              <p>
+                    Documents can be written using read committed
+                    isolation, depending on information provided on the
+                    command line.
+                </p>
+            </li>
+            <li>
+              <p>
+                    In the event of a deadlock, the function will abort the
+                    transaction and then retry. Note that the function will
+                    only retry a given transaction 30 times before giving
+                    up and moving on to the next transaction.
+                </p>
+            </li>
+            <li>
+              <p>
+                    Upon completing its workload, the function increments
+                    the global deadlock counter with the number of
+                    deadlocks that it saw before exiting.
+                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            To begin, the function sets up the local variables that it
+            needs in order to perform its work. Notice that we create the
+            <code class="classname">XmlUpdateContext</code> object at the top of
+            this function; there is no need for us to continually recreate
+            that object as the function iterates over its workload.
+        </p>
+        <pre class="programlisting">// A function that performs a series of writes to a
+// Berkeley DBXML container. 
+
+// The mechanism of transactional commit/abort and
+// deadlock detection is illustrated here.
+void *
+writerThread(void *args)
+{
+    int j, thread_num;
+    int max_retries = 30;   // Max retry on a deadlock
+    int num_deadlocks = 0;
+
+    ThreadVars *threadInfo = (ThreadVars *)args;
+    XmlContainer container = threadInfo-&gt;container;
+    XmlManager myManager = container.getManager();
+    XmlTransaction txn;
+    XmlUpdateContext context = myManager.createUpdateContext();  </pre>
+        <p>
+    Next we determine our thread ID. Some pthread packages allow us to use
+    a <code class="function">pthread_t</code> variable, as returned by
+    <code class="function">pthread_self()</code>, for this purpose because for those
+    packages a <code class="function">pthread_t</code> is really just an integer
+    type. However, this is not universally true
+    – in some implementations <code class="function">pthread_t</code> is a structure, for example
+    – so we use a simple global counter for this purpose instead.
+</p>
+        <pre class="programlisting">    // Get the thread number
+    (void)pthread_mutex_lock(&amp;thread_num_lock);
+    global_thread_num++;
+    thread_num = global_thread_num;
+    (void)pthread_mutex_unlock(&amp;thread_num_lock);  </pre>
+        <p>
+    Having done that, we also initialize our random number generator. We
+    use this to create random data for our XML documents so that they are
+    not all identical.
+</p>
+        <pre class="programlisting">    // Initialize the random number generator 
+    srand((u_int)pthread_self());  </pre>
+        <p>
+    Now we get to the main workload loop in our application. Here we begin
+    the <code class="literal">for</code> loop that will perform the 50 transactions,
+    and we begin the retry <code class="literal">while</code> loop.
+</p>
+        <pre class="programlisting">    // Perform 50 transactions
+    for (int i=0; i&lt;50; i++) {
+        bool retry = true;
+        int retry_count = 0;
+        // while loop is used for deadlock retries
+        while (retry) {
+            // try block used for deadlock detection and
+            // general exception handling
+            try {  </pre>
+        <p>
+    Now that we are inside our <code class="literal">try</code> block, we can create
+    our transaction. Notice that we set on a transaction by transaction
+    basis whether read committed isolation is used. Lowering the isolation
+    level for the transaction for this workload will result in fewer lock
+    contentions and therefore fewer deadlocks. See
+    <a class="xref" href="runprogram_xml.html" title="Runtime Analysis">Runtime Analysis</a>
+    for more information.
+</p>
+        <pre class="programlisting">                // Set this transaction to use READ COMMITTED isolation
+                // if it is indicated by the command line switches.
+                u_int32_t txnFlags =
+                    threadInfo-&gt;useReadCommitted ? DB_READ_COMMITTED : 0;
+                txn = myManager.createTransaction(txnFlags);  </pre>
+        <p>
+    Now we create and write the 10 documents for this transaction. Remember
+    that the size of the document is determined by information provided on
+    the command line. Again, the size of the document has a lot to do with
+    the amount of lock contention the application will see.
+</p>
+        <p>
+    Beyond that, this portion of the application is simply basic BDB XML library usage.
+</p>
+        <pre class="programlisting">                // Perform the container writes for this transaction.
+                for (j = 0; j &lt; 10; j++) {
+
+                    // Get a document ID
+                    std::ostringstream docID;
+                    docID &lt;&lt; thread_num &lt;&lt; i &lt;&lt; j;
+
+                    // Build the document
+                    std::ostringstream theDoc;
+                    theDoc &lt;&lt; "&lt;testDoc&gt;\n";
+                    for (int i = 0; i &lt; threadInfo-&gt;numNodes; i++) {
+                        int payload = rand() + i;
+                        theDoc &lt;&lt; "&lt;payload&gt;" &lt;&lt; payload 
+                               &lt;&lt; "&lt;/payload&gt;\n";
+                    }
+                    theDoc &lt;&lt; "&lt;/testDoc&gt;";
+
+                    // Put the document
+                    container.putDocument(txn,
+                                          docID.str(),
+                                          theDoc.str(),
+                                          context,
+                                          0);
+                }  </pre>
+        <p>
+    Now that we are all done writing to the container, we can commit the
+    transaction. If all has gone well, we are done with this particular
+    transaction and we can iterate to the next transaction without retrying the current one.
+</p>
+        <pre class="programlisting">                // commit
+                txn.commit(0);
+                retry = false;  </pre>
+        <p>
+    However, if an exception has been thrown, we must decide what to do
+    about it. Our first concern, and the most likely cause of an exception
+    given our workload, is that we have encountered a deadlock. So we begin
+    by catching <code class="classname">XmlException</code> and testing to see if
+    we have a deadlock situation.
+</p>
+        <p>
+    If we do see a deadlock, we immediately abort the transaction which
+    releases our locks, thereby allowing the other deadlock thread to make
+    forward progress. We then must decide if we can retry the transaction;
+    this is gated by the number of retry attempts we have made so far.
+</p>
+        <p>
+    If we have caught an <code class="classname">XmlException</code> and it is
+    <span class="emphasis"><em>not</em></span> a deadlock situation, then we simply abort and
+    give up on the current transaction. The function will then loop to the
+    next transaction where, hopefully, we will not encounter any further
+    unexpected exceptions.
+</p>
+        <pre class="programlisting">            } catch (XmlException &amp;xxe) {
+                if (xxe.getDbErrno() == DB_LOCK_DEADLOCK) {
+                    // First thing that we MUST do is abort the transaction.
+                    txn.abort();
+
+                    // Now we decide if we want to retry the operation.
+                    // If we have retried less than max_retries,
+                    // increment the retry count and goto retry.
+                    if (retry_count &lt; max_retries) {
+                    //    std::cout &lt;&lt; "############### Writer " &lt;&lt; thread_num 
+                    //          &lt;&lt; ": Got DB_LOCK_DEADLOCK. "
+                    //          &lt;&lt; "Retrying write operation."
+                    //          &lt;&lt; std::endl;
+                        retry_count++;
+                        retry = true;
+                    } else {
+                        // Otherwise, just give up.
+                        std::cerr &lt;&lt; "Writer " &lt;&lt; thread_num
+                              &lt;&lt; ": Got DB_LOCK_DEADLOCK and I'm out of "
+                              &lt;&lt; "retries. Giving up." &lt;&lt; std::endl;
+                        retry = false;
+                    }
+                    num_deadlocks++;
+                 } else {
+                    std::cerr &lt;&lt; "Caught an XmlException : "
+                             &lt;&lt; xxe.what() &lt;&lt; std::endl;
+                    txn.abort();
+                    retry = false;
+                 }  </pre>
+        <p>
+    We also catch <code class="literal">std::exception</code> just for
+    the sake of completeness. As is the case with a general
+    <code class="classname">XmlException</code> event, here we abort 
+    and do not attempt to retry the current transaction.
+</p>
+        <pre class="programlisting">           } catch (std::exception &amp;ee) {
+                std::cerr &lt;&lt; "Unknown exception: " &lt;&lt; ee.what() 
+                          &lt;&lt; std::endl;
+                txn.abort();
+                retry = false;
+          }
+        }
+    }  </pre>
+        <p>
+    Finally, we increment our global deadlock counter before exiting the
+    function. This is used for reporting purposes when the application
+    itself exits.
+</p>
+        <pre class="programlisting">    (void)pthread_mutex_lock(&amp;thread_num_deadlocks);
+    global_num_deadlocks += num_deadlocks;
+    (void)pthread_mutex_unlock(&amp;thread_num_deadlocks);
+    return (0);
+}  </pre>
+        <p>
+    This completes our transactional example. If you would like to
+    experiment with this code, you can find the example in the following
+    location in your BDB XML distribution:
+</p>
+        <pre class="programlisting"><span class="emphasis"><em>BDBXML_INSTALL</em></span>/dbxml/examples/cxx/txn</pre>
+        <p>
+    In addition, please see <a class="xref" href="runprogram_xml.html" title="Runtime Analysis">Runtime Analysis</a>
+    for an analysis on the performance characteristic illustrated by this
+    program.
+</p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="wrapup.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="wrapup.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="inmem_dbxml_txnexample.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 6. Summary and Examples </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> In-Memory Transaction Example</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

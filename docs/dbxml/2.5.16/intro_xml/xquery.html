@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 2. XQuery and Berkeley DB XML</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="prev" href="gettinghelp.html" title="Getting Help" />
+    <link rel="next" href="structurequeries.html" title="Queries Involving Document Structure" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 2. XQuery and Berkeley DB XML</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="gettinghelp.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="structurequeries.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="xquery"></a>Chapter 2. XQuery and Berkeley DB XML</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="xquery.html#addingdata">Adding Data</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="structurequeries.html">Queries Involving Document Structure</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="valuequeries.html">Value Queries</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="introducingindexes.html">Introducing Indices</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="reshapingresults.html">Reshaping the Result</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="sortingresults.html">Sorting the Result</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="morethanonecontainer.html">Working with Data from Multiple Containers</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="specificdocument.html">Working with Data from a Specific Document</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="metadata.html">Using Metadata</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="modifyingdocuments.html">Modifying Documents</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="schema.html">Schema Constraints</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="programming.html">The Berkeley DB XML API</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        This section steps through some of the XQuery functionality provided by 
+        BDB XML and then introduces a few of the facilities BDB XML provides that 
+        make working with XML highly efficient. Those unfamiliar with XQuery should 
+        first review one of the many excellent XQuery tutorials listed at the end of
+        this document before proceeding. 
+    </p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="addingdata"></a>Adding Data</h2>
+            </div>
+          </div>
+        </div>
+        <p>
+            In this example, the container will manage a few thousand documents 
+            modeling an imaginary parts database.  Begin by using the 
+            following command to create a container called <code class="literal">parts.dbxml</code>: 
+        </p>
+        <pre class="programlisting">dbxml&gt; createContainer parts.dbxml
+
+Creating node storage container with nodes indexed</pre>
+        <p>
+            A successful response indicates that the container was created on 
+            disk, opened, and made the default container within the current 
+            context of the shell. 
+        </p>
+        <p>
+            Before we continue, we need to turn off a default behavior of
+            BDB XML. We do this here so that we can make some points later
+            about XQuery performance. We'll explain this later, but for now, 
+            simply enter the command:
+        </p>
+        <pre class="programlisting">dbxml&gt; setAutoIndexing off
+
+Set auto-indexing state to off, was on</pre>
+        <p>
+            Next populate the container with 100000 XML documents 
+            that have the following basic structure: 
+        </p>
+        <pre class="programlisting">&lt;part number="999"&gt;
+    &lt;description&gt;Description of 999&lt;/description&gt;
+    &lt;category&gt;9&lt;/category&gt;
+&lt;/part&gt;</pre>
+        <p>            
+            Some of the documents will provide additional complexity to the database 
+            and have the following structure: 
+        </p>
+        <pre class="programlisting">&lt;part number="990"&gt;
+   &lt;description&gt;Description of 990&lt;/description&gt;
+   &lt;category&gt;0&lt;/category&gt;
+   &lt;parent-part&gt;0&lt;/parent-part&gt;
+&lt;/part&gt;</pre>
+        <p>
+            Use the following <code class="literal">putDocument</code> command to insert the sample data into 
+            the new parts container. 
+        </p>
+        <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+          <h3 class="title">Note</h3>
+          <p>
+                        Depending on the speed of your machine, you may
+                        want to reduce the total number of documents you
+                        add to your container for performance reasons. We
+                        use a moderately sized document set here so that we
+                        are better able to observe timing results later in
+                        this chapter. If you are using slow hardware, you
+                        should be able to observe the same results using a
+                        smaller document set size.
+                </p>
+        </div>
+        <pre class="programlisting">dbxml&gt; putDocument "" '
+for $i in (0 to 99999) 
+return 
+  &lt;part number="{$i}"&gt;
+    &lt;description&gt;Description of {$i}&lt;/description&gt;
+    &lt;category&gt;{$i mod 10}&lt;/category&gt;
+    {
+      if (($i mod 10) = 0) 
+      then &lt;parent-part&gt;{$i mod 3}&lt;/parent-part&gt; 
+      else ""
+    }
+  &lt;/part&gt;' q</pre>
+        <p>
+            As the query executes, one line will be printed for each document 
+            inserted into the database. 
+        </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="gettinghelp.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="structurequeries.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Getting Help </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Queries Involving Document Structure</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,71 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: dbxml_load_container</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>dbxml_load_container</b>
+</td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>dbxml_load_container [<b>-c container</b>] [<b>-h home</b>]
+    [<b>-s node|wholedoc</b>] [<b>-f file_list</b>]
+    [<b>-p file_list_path</b>] [<b>--v</b>] [<b>--V</b>]
+    [<b>--P password</b>] file1.xml file2.xml ...</pre></b>
+<b>Description</b>
+<a name="2"><!--meow--></a>
+<p>The dbxml_load_container utility loads XML documents
+into the specified container. XML files can either be specified as
+arguments, or they can be specified in a file
+using the <b>-f</b> option.</p>
+<p>This utility will attempt to join an environment if one is active.
+It is recommended, however, that this tool be used offline.  If the
+joined environment is transactional, this utility will also be
+transactional, with a separate transaction for each document added.</p>
+<p>The options are as follows:</p>
+<br>
+<b>-c</b><ul compact><li>Specify the name of the container into which your want to load the
+identified documents. If the container does not currently exist, it is
+created for you.  This is a required parameter.</ul>
+<b>-f</b><ul compact><li>Specify a file that contains a list of XML files to load into the
+container.</ul>
+<b>-h</b><ul compact><li>Specify a home directory for the database environment; by
+default, the current working directory is used.</ul>
+<b>-P</b><ul compact><li>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.</ul>
+<b>-p</b><ul compact><li>Specify a path prefix to prepend to every filename contained in the
+file list specified by the <b>-f</b> option.</ul>
+<b>-s</b><ul compact><li>Specify the container type. Valid value are:
+<p><ul type=disc>
+<li><b>node</b>
+<p>Use node-level storage. XML documents are broken into their individual
+nodes, and the nodes are stored as individual records in the underlying
+database. This is the default.</p>
+<li><b>wholedoc</b>
+<p>Use whole-document storage. Entire XML documents are stored as
+individual records in the underlying database.</p>
+</ul>
+<p>Note that if the container already exists, this option is ignored.</p></ul>
+<b>-V</b><ul compact><li>Write the library version number to the standard output, and exit.</ul>
+<b>-v</b><ul compact><li>Generate verbose output.</ul>
+<br>
+<br><b>Environment Variables</b>
+<br>
+<b>DB_HOME</b><ul compact><li>If the <b>-h</b> option is not specified and the environment variable
+DB_HOME is set, it is used as the path of the database home, as described
+in UNREF==dbenv_open.</ul>
+<br>
+<p>The dbxml_load_container utility exits 0 on success, and &gt;0 if an error occurs.</p>
+</tt>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<html>
+<head>
+<title>The Berkeley DB XML Package: DB XML 1.2.1 Change Log</title>
+<meta name="description" content="Berkeley DB XML: An XML database programmatic toolkit.">
+<meta name="keywords" content="XML,embedded,database,programmatic,toolkit,transaction,transactions">
+</head>
+
+<body bgcolor="white">
+<h1 align="center">Berkeley DB XML 1.2.1 Change Log</h1>
+
+<h3>Release 1.2.1 is a bug fix release for 1.2.0.</h3>
+
+<h3>Upgrade Requirements:</h3>
+
+None.
+
+<h3>New Features:</h3>
+<ol>
+
+<li>Added PHP API with limited support, documentation and testing. For
+more information please see the src/php4/README in your download package.
+
+</ol>
+<h3>General Functionality Changes:</h3>
+<ol>
+
+<li>Fix a bug in the query processor where queries that combined an
+equality and a presence lookup, in that order, would not optimize away
+the presence lookup. [#9437]
+
+<li>Fix a bug where substring queries for values with more than five
+characters caused an assertion failure. [9504]
+
+<li>Fix a bug where a substring search for 3-character string did not
+normalize the string. [#9573]
+
+</ol>
+<h3>API Changes:</h3>
+
+None.			
+
+<h3>Java-specific API Changes:</h3>
+
+None.			
+
+<h3>Python-specific API Changes:</h3>
+<ol>
+
+<li>Fix a bug where Python failed to find a function overload.  This
+occurred in all overloaded XmlContainer methods that take a DbTxn * as
+their first argument, notable XmlContainer::deleteDocument() and
+XmlContainer::queryWithXPath().  This problem would only occur in
+release 1.2.0 [#9443]
+
+</ol>
+<h3>Tcl-specific API Changes:</h3>
+
+None.	
+
+<h3>Utility Changes:</h3>
+
+None.
+
+<h3>Configuration, Documentation, Portability and Build Changes:</h3>
+<ol>
+
+<li>Fix a bug where the use of std::compare was not supported by gcc
+2.9x. [#9526]
+
+</ol>
+
+</body>
+</html>

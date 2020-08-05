@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Schema Constraints</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Introduction to Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 2. XQuery and Berkeley DB XML" />
+    <link rel="prev" href="modifyingdocuments.html" title="Modifying Documents" />
+    <link rel="next" href="programming.html" title="The Berkeley DB XML API" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Schema Constraints</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="modifyingdocuments.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 2. XQuery and Berkeley DB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="programming.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="schema"></a>Schema Constraints</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            XML documents can optionally be validated against a schema to enforce 
+            document similarity. Most databases support schema constraints, but 
+            BDB XML has the unique ability to store collections of data with schemas 
+            that vary from document to document if desired.   This is an added level 
+            of functionality not commonly found in XML databases.
+        </p>
+      <p>
+            Recall our phonebook example. The documents for that example had the following structure: 
+        </p>
+      <pre class="programlisting">&lt;phonebook&gt;
+    &lt;name&gt;
+        &lt;first&gt;Tom&lt;/first&gt;
+        &lt;last&gt;Jones&lt;/last&gt;
+    &lt;/name&gt;   
+    &lt;phone type="home"&gt;420-203-2032&lt;/phone&gt;
+&lt;/phonebook&gt;</pre>
+      <p>
+            Three things are required to validate this document within BDB XML. 
+            First, a schema is required. Because the subject of XML schemas are well 
+            beyond the scope of this document, we simply provide one for you here. 
+            There are many excellent books and tutorial web sites on the subject, and 
+            we suggest you review some of that material if you are not familiar with
+            XML schemas. 
+        </p>
+      <pre class="programlisting">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"&gt;
+    &lt;xs:element name="phonebook"&gt;
+      &lt;xs:complexType&gt;
+        &lt;xs:sequence&gt;
+            &lt;xs:element name="name" minOccurs="1" maxOccurs="1"&gt;
+              &lt;xs:complexType&gt;
+                &lt;xs:sequence&gt;
+                    &lt;xs:element name="first" type="xs:string"/&gt;
+                    &lt;xs:element name="last" type="xs:string"/&gt;            
+                &lt;/xs:sequence&gt;
+              &lt;/xs:complexType&gt;
+            &lt;/xs:element&gt;
+            &lt;xs:element name="phone" minOccurs="0" maxOccurs="unbounded"&gt;
+              &lt;xs:complexType&gt;
+                &lt;xs:simpleContent&gt;
+                  &lt;xs:extension base="xs:string"&gt;
+                    &lt;xs:attribute name="type" type="xs:string"/&gt;
+                  &lt;/xs:extension&gt;
+                &lt;/xs:simpleContent&gt;
+              &lt;/xs:complexType&gt;
+            &lt;/xs:element&gt;
+        &lt;/xs:sequence&gt;        
+      &lt;/xs:complexType&gt;
+    &lt;/xs:element&gt;
+&lt;/xs:schema&gt;</pre>
+      <p>
+            Suppose this schema is available from a web-server at:
+        </p>
+      <pre class="programlisting">http://www.oracle.com/fakeschema.xsd</pre>
+      <p>
+            Second, we need to create a container with validation enabled.
+        </p>
+      <pre class="programlisting">dbxml&gt; createContainer validate.dbxml d validate
+Creating document storage container, with validation</pre>
+      <p>
+            Third, we need to attach the schema to a document and insert it
+            into the container.
+        </p>
+      <pre class="programlisting">dbxml&gt; putDocument phone1 '
+&lt;phonebook xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation=
+        "http://www.oracle.com/fakeschema.xsd"&gt;
+    &lt;name&gt;
+        &lt;first&gt;Tom&lt;/first&gt;
+        &lt;last&gt;Jones&lt;/last&gt;
+    &lt;/name&gt;   
+    &lt;phone type="home"&gt;420-203-2032&lt;/phone&gt;
+&lt;/phonebook&gt;' s
+
+Document added, name = phone1</pre>
+      <p>
+            That document was successfully added because it conforms to the 
+            schema. Now, try to add an invalid document. 
+        </p>
+      <pre class="programlisting">dbxml&gt; putDocument phone2 '
+&lt;phonebook xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation=
+        "http://www.oracle.com/fakeschema.xsd"&gt;
+    &lt;name&gt;
+        &lt;first&gt;Tom&lt;/first&gt;
+        &lt;last&gt;Jones&lt;/last&gt;
+    &lt;/name&gt; 
+    &lt;phone type="home"&gt;420-203-2032&lt;/phone&gt;
+    &lt;cell-phone&gt;430-201-2033&lt;/cell-phone&gt;
+&lt;/phonebook&gt;' s
+
+stdin:67: putDocument failed, Error: XML Indexer:  Parse error in document at 
+line, 10, char 17. Parser message: Unknown element 'cell-phone']]&gt;</pre>
+      <p>
+            Since the schema doesn't define the <code class="literal">cell-phone</code>
+            element and we have schema validation enabled, BDB XML won't allow the 
+            document to be added to the container. 
+        </p>
+      <p>
+            XML schemas provide a powerful tool for constraining the structure and 
+            content of XML documents. 
+        </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="modifyingdocuments.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="programming.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Modifying Documents </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> The Berkeley DB XML API</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

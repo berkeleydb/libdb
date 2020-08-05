@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Working with External Functions</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="xquery.html" title="Chapter 5. Using XQuery with BDB XML" />
+    <link rel="prev" href="dbxmlqueries.html" title="Retrieving BDB XML Documents using XQuery" />
+    <link rel="next" href="examineresults.html" title="Examining Query Results" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Working with External Functions</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="dbxmlqueries.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 5. Using XQuery with BDB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="examineresults.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="externalfunc"></a>Working with External Functions</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="externalfunc.html#xmlexternalfunction">Implementing XmlExternalFunction</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="externalfunc.html#xmlresolver">Implementing XmlResolver</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="externalfunc.html#callingxfunc">Calling External Functions from XQuery</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        BDB XML allows you to define your own functions that you can access
+        from your XQueries. To do this, you must provide an implementation
+        of <code class="classname">XmlExternalFunction</code>, and you must
+        implement a <code class="classname">XmlResolver</code> class that resolves 
+        which external function to call.
+    </p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xmlexternalfunction"></a>Implementing XmlExternalFunction</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            <code class="classname">XmlExternalFunction</code> implementations only
+            require you to implement the <code class="methodname">execute()</code>
+            method with your function code. You must also implement a 
+            <code class="methodname">close()</code> method that cleans up after
+            whatever activities your <code class="methodname">execute()</code> method
+            calls.
+        </p>
+        <p>
+            The <code class="methodname">execute()</code> method offers three
+            parameters:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    <code class="classname">XmlTransaction</code>
+                </p>
+              <p>
+                    This is the transaction in use, if any,  at the
+                    time the external function was called. 
+                </p>
+            </li>
+            <li>
+              <p>
+                    <code class="classname">XmlManager</code>
+                </p>
+              <p>
+                    The <code class="classname">XmlManager</code> instance in use
+                    at the time the function was called.
+                </p>
+            </li>
+            <li>
+              <p>
+                    <code class="classname">XmlArguments</code>
+                </p>
+              <p>
+                    An array of <code class="classname">XmlResults</code> objects
+                    which hold the argument values needed by this function.
+                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            For example, suppose you wanted to write an external function
+            that takes two numbers and returns the first number to the
+            power of the second number. It would look like this:
+        </p>
+        <pre class="programlisting">class MyExternalFunctionPow : public XmlExternalFunction
+{
+public:
+    XmlResults execute(XmlTransaction &amp;txn, XmlManager &amp;mgr, 
+        const XmlArguments &amp;args) const;
+    void close();
+
+};
+
+/* External function pow() implementation */
+XmlResults MyExternalFunctionPow::execute(XmlTransaction &amp;txn, 
+    XmlManager &amp;mgr, const XmlArguments &amp;args) const
+{
+    XmlResults argResult1 = args.getArgument(0);
+    XmlResults argResult2 = args.getArgument(1);
+
+    XmlValue arg1;
+    XmlValue arg2;
+
+    // Retrieve argument as XmlValue 
+    argResult1.next(arg1);
+    argResult2.next(arg2);
+
+    // Call pow() from C++ 
+    double result = pow(arg1.asNumber(),arg2.asNumber());
+
+    // Create an XmlResults for return
+    XmlResults results = mgr.createResults();
+    XmlValue va(result);
+    results.add(va);
+
+    return results;
+}
+
+/* 
+ * In this example implementation, the resolver will return a new 
+ * instance of this function every time this function is called
+ * so this function is required to clean up after itself.
+ * 
+ * You could alternatively write the resolver such that it deletes
+ * all function instances when the resolver is destroyed. If you 
+ * did that, the implementation of this method is not required.
+ */
+void MyExternalFunctionPow::close()
+{
+    delete this;
+}  </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="xmlresolver"></a>Implementing XmlResolver</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            The <code class="classname">XmlResolver</code> class is used to
+            provide a handle to the appropriate external function, when a given XQuery
+            statement requires an external function. For this reason, your
+            <code class="classname">XmlResolver</code> implementation must have
+            knowledge of every external function you have implemented.
+        </p>
+        <p>
+            The resolver is responsible for instantiating an instance of
+            the required external function. It is also responsible for
+            destroying that instance, either once the query has been
+            process or when the resolver instance itself is being destroyed.
+            Which is the correct option for your application is an
+            implementation detail that is up to you.
+        </p>
+        <p>
+            It is possible for your code to have multiple instances of an
+            <code class="classname">XmlResolver</code> class, each instance of
+            which can potentially be responsible for different collections
+            of external functions. For this reason, you uniquely identify
+            each resolver class with a URI.
+        </p>
+        <p>
+            In order to call a specific
+            external function, your XQueries must provide a URI as identification,
+            as well as a function name. You can decide which external
+            function to return based on the URI, the function name, and/or
+            the number of arguments provided in the XQuery. Which of these
+            are necessary for you to match the correct external function is
+            driven by how many external functions you have implemented, how
+            many resolver classes you have implemented, and how many
+            variations on functions with the same name you have
+            implemented. In theory, a very simple implementation could
+            return an external function instance based only on the function
+            name. Other implementation may need to match based on all
+            possible criteria.
+        </p>
+        <p>
+            For the absolute most correct and safest implementation, you
+            should match on all three criteria: URI, function name, and
+            number of arguments. 
+        </p>
+        <p>
+            For example, suppose you had two external functions:
+            <code class="function">SmallFunction</code> and
+            <code class="function">BigFunction</code>.
+            <code class="function">SmallFunction</code> is a small function that
+            requires few resources to instantiate and is called
+            infrequently. <code class="function">BigFunction</code> is a larger
+            function that opens containers, obtains lots of memory and from
+            a performance perspective is something that is best
+            instantiated once and then not destroyed until program
+            shutdown. Further, <code class="function">SmallFunction</code> takes two
+            arguments while <code class="function">BigFunction</code> takes five.
+        </p>
+        <p>
+            And <code class="classname">XmlResolver</code> implementation for this
+            example would be as follows:
+        </p>
+        <pre class="programlisting">// Class declaration
+class MyFunResolver : public XmlResolver
+{
+public:
+    MyFunResolver();
+    XmlExternalFunction *resolveExternalFunction(XmlTransaction *txn, 
+        XmlManager &amp;mgr, const std::string &amp;uri, const std::string &amp;name,
+        size_t numberOfArgs) const; 
+    string getUri(){ return uri_; }
+private:
+    const string uri_;
+    XmlExternalFunction *bigFun_;
+}; 
+
+// Class constructor. The only required thing is to initialize the private
+// data member, uri_. We also instantiate a BigFunction instance in the 
+// constructor, just because in our imaginary example we know we will
+// always need an instance of this reusable function.
+MyFunResolver::MyFunResolver() :
+        uri_("my://my.fun.resolver"), 
+        bigFun_(0)
+    {
+        bigFun_ = new BigFunction();
+    }
+
+// Class destroyer
+MyFunResolver::~MyFunResolver() {
+    bigFun_-&gt;close();
+    delete bigFun_;
+}
+
+// Resolver implementation. Here, we match based on the URI, the name 
+// of the function, and the number of arguments. However, for a simple 
+// example such as this, we could potentially match on just the function
+// name.
+XmlExternalFunction* 
+    MyFunResolver::resolveExternalFunction(XmlTransaction *txn, 
+        XmlManager &amp;mgr, const std::string &amp;uri, 
+        const std::string &amp;name, size_t numberOfArgs) const
+{
+    XmlExternalFunction *fun = 0;
+
+    if (uri == uri_ &amp;&amp; name == "sfunc" &amp;&amp; numberOfArgs == 2 ) {
+        fun = new SmallFunction();
+    } else if (uri == uri_ &amp;&amp; name == "bfunc" &amp;&amp; numberOfArgs == 5) {
+        return bigFun_;
+    }
+
+    return fun;
+} </pre>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="callingxfunc"></a>Calling External Functions from XQuery</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+            In order to use your external functions, you must register the
+            resolver that manages them. You do this with the
+            <code class="methodname">XmlManager::registerResolver()</code>
+            
+            method. You then set a URI prefix for the URI that you use to
+            identify your resolver. For example:
+        </p>
+        <pre class="programlisting">    try {
+
+        // Create an XmlManager
+        XmlManager mgr;
+
+        // Create an function resolver
+        MyFunResolver resolver;
+
+        // Register the function resolver to XmlManager
+        mgr.registerResolver(resolver);
+
+        XmlQueryContext context = mgr.createQueryContext();
+
+        // Set the prefix URI
+        context.setNamespace("myxfunc", resolver.getUri()); </pre>
+        <p>
+        To use the external function, declare them in the preamble of your
+        query, and then use them as you would any XQuery function (for a
+        complete explanation of examining query results, see the next
+        section). For example:
+    </p>
+        <pre class="programlisting">
+declare function myxfunc:sfunc($a as xs:double, $b as xs:double) \
+    as xs:double external;
+myxfunc:sfunc(2,3);
+    </pre>
+        <p>
+        You run this query as if you were running any other query.
+    </p>
+        <pre class="programlisting">        string query = "declare function ";
+        query += "myxfunc:sfunc($a as xs:double, $b as xs:double) ";
+        query += "as xs:double external;\nmy:pow(2,3)";
+
+        // The first query returns the result of pow(2,3)
+        XmlResults results = mgr.query(query, context);
+
+        XmlValue va;
+        while (results.next(va)) {
+            cout &lt;&lt; "The result of sfunc(2,3) is : " 
+                 &lt;&lt; va.asNumber() &lt;&lt; endl;
+        }
+    } catch (XmlException &amp;xe) {
+        cout &lt;&lt; "XmlException: " &lt;&lt; xe.what() &lt;&lt; endl;
+    }
+    return 0; </pre>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="dbxmlqueries.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="xquery.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="examineresults.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Retrieving BDB XML Documents using XQuery </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Examining Query Results</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

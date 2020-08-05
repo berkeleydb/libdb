@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Adding Documents</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="adddocument.html" title="Chapter 4. Adding XML Documents to Containers" />
+    <link rel="prev" href="adddocument.html" title="Chapter 4. Adding XML Documents to Containers" />
+    <link rel="next" href="eventwriter.html" title="Constructing Documents using Event Writers" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Adding Documents</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="adddocument.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 4. Adding XML Documents to Containers</th>
+          <td width="20%" align="right"> <a accesskey="n" href="eventwriter.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="puttingdocuments"></a>Adding Documents</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+            To add a document to a container, you use
+            
+            <span><code class="methodname">XmlContainer.putDocument()</code>.</span>
+            When you use this method, you must:
+        </p>
+      <div class="orderedlist">
+        <ol type="1">
+          <li>
+            <p>
+                    Somehow obtain the document that you want to put into
+                    the container. To do this, you can create an input stream 
+                    to the content or load the XML document into a string object. 
+                    Alternatively, you can load the document into 
+                    an <code class="classname">XmlDocument</code> object
+                    and then provide the
+                    <code class="classname">XmlDocument</code> object to
+                        
+                        <span><code class="methodname">XmlContainer.putDocument()</code>.</span>
+                    When you do this, you can provide the document to the
+                    <code class="classname">XmlDocument</code> object using an
+                    input stream or string, or you can construct the
+                    document using an event writer.
+                </p>
+          </li>
+          <li>
+            <p>
+                    Provide a name for the document. This name must be unique or
+                    BDB XML will throw 
+                    
+                    <span><code class="literal">XmlException.UNIQUE_ERROR</code>.</span>
+                </p>
+            <p>
+                    If you are using an <code class="classname">XmlDocument</code>
+                    object to add the document, use 
+                    
+                    <code class="methodname">XmlDocument.setName()</code>
+                    to set the document's name. Otherwise, you can set the name
+                    directly on the call to 
+                        
+                        <span><code class="methodname">XmlContainer.putDocument()</code>.</span>
+                </p>
+            <p>
+                    Note that if you do not want to explicitly set a name for
+                    the document, you can 
+                    
+                    
+                    
+                    <span>
+                    set <code class="methodname">XmlDocumentConfig.setGenerateName()</code>
+                    to <code class="literal">true</code> and then pass that object to
+                    <code class="methodname">XmlContainer.putDocument()</code>.
+                    </span>
+                    
+                    This causes BDB XML to generate a unique name for you. The
+                    name that it generates is a concatenation of a unique
+                    value, an underscore, and the value that you provide for the document's
+                    name, if any. For example:
+                </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <pre class="programlisting">myDocName_a</pre>
+              </blockquote>
+            </div>
+            <p>
+                    where <code class="literal">myDocName</code> is the name that you set
+                    for the document and <code class="literal">a</code> is the unique value generated
+                    by BDB XML.
+                </p>
+            <p>
+                    If you do not set a name for the document, but you do
+                    specify that a unique name is to be generated, then
+                    <code class="literal">dbxml</code> is used as the name's prefix.
+                </p>
+            <div class="blockquote">
+              <blockquote class="blockquote">
+                <pre class="programlisting">dbxml_b</pre>
+              </blockquote>
+            </div>
+            <p>
+                    If you do not set a name for the document and if you do not
+                    use 
+                    
+                    <span>
+                        <code class="methodname">XmlDocumentConfig.setGenerateName(true)</code>,
+                    </span>
+                        
+                    then BDB XML throws
+                    
+                    <span><code class="literal">XmlException.UNIQUE_ERROR</code>.</span>
+                </p>
+          </li>
+        </ol>
+      </div>
+      <p>
+            Note that the content that you supply to
+                
+                <span><code class="methodname">XmlContainer.putDocument()</code></span>
+            is read and validated. By default, this includes any schema or
+            DTDs that the document might reference. Since this can cause
+            you some performance issues, you can cause BDB XML to only
+            examine the document body itself by 
+
+        
+
+        <span>
+                set <code class="methodname">XmlDocumentConfig.setWellFormedOnly()</code>o 
+                to <code class="literal">true</code> and then pass that object to 
+                <code class="methodname">XmlContainer.putDocument()</code>.
+        </span>
+
+            However, using this
+            
+            <span>option</span>
+            cause parsing errors if the document references
+            information that might have come from a schema or DTD.
+        
+        
+    </p>
+      <p>
+        Further, note that while your documents
+            are stored in the container with their shared text entities (if any) as-is, 
+            the underlying XML parser does attempt to expand them for indexing purposes. 
+            Therefore, you must make sure that any entities contained in your documents are
+            resolvable at load time.
+        </p>
+      <p>
+            For example, to add a document that is held in a string:
+        </p>
+      <a id="java_adddoc1"></a>
+      <pre class="programlisting">package dbxml.gettingStarted;
+                                                                                                                                     
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlManager;
+
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+// The document
+String docString = "&lt;a_node&gt;&lt;b_node&gt;Some text&lt;/b_node&gt;&lt;/a_node&gt;";
+
+// The document's name.
+String docName = "testDoc1";
+
+try {
+    myManager = new XmlManager();
+    // Assumes the container currently exists.
+
+    myContainer = 
+        myManager.openContainer("container.bdbxml");
+
+    // Do the actual put
+    myContainer.putDocument(docName,     // The document's name
+                            docString,   // The actual document, 
+                                         // in a string.
+                            null);       // XmlDocumentConfig object
+
+} catch (XmlException e) {
+    // Error handling goes here. You may want to check
+    // for XmlException.UNIQUE_ERROR, which is raised
+    // if a document with that name already exists in
+    // the container. If this exception is thrown, 
+    // try the put again with a different name.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    }
+} </pre>
+      <p>
+    To load the document from an input stream, the code is identical except that
+    you use the appropriate method on <code class="classname">XmlManager</code> to
+    obtain the stream. For example, to load an XmlDocument directly from a file
+    on disk:
+</p>
+      <a id="java_adddoc2"></a>
+      <pre class="programlisting">package dbxml.gettingStarted;
+                                                                                                                                     
+import com.sleepycat.dbxml.XmlContainer;
+import com.sleepycat.dbxml.XmlException;
+import com.sleepycat.dbxml.XmlInputStream;
+import com.sleepycat.dbxml.XmlManager;
+
+...
+
+XmlManager myManager = null;
+XmlContainer myContainer = null;
+
+// The document
+String docString = "/export/testdoc1.xml";
+
+// The document's name.
+String docName = "testDoc1";
+
+try {
+    myManager = new XmlManager();
+    // Assumes the container currently exists.
+
+    myContainer = 
+        myManager.openContainer("container.bdbxml");
+
+    // Get the input stream.
+    XmlInputStream theStream = 
+        myManager.createLocalFileInputStream(fileName);
+
+    // Do the actual put
+    myContainer.putDocument(docName,     // The document's name
+                            theStream,   // The actual document.
+                            null);       // XmlDocumentConfig object
+} catch (XmlException e) {
+    // Error handling goes here. You may want to check
+    // for XmlException.UNIQUE_ERROR, which is raised
+    // if a document with that name already exists in
+    // the container. If this exception is thrown, 
+    // try the put again with a different name.
+} finally {
+    try {
+        if (myContainer != null) {
+            myContainer.close();
+        }
+
+        if (myManager != null) {
+            myManager.close();
+        }
+    } catch (XmlException ce) {
+        // Exception handling goes here
+    }
+} </pre>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="adddocument.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="adddocument.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="eventwriter.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 4. Adding XML Documents to Containers </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Constructing Documents using Event Writers</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

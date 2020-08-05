@@ -1,0 +1,546 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 7. Using BDB XML Indices</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="prev" href="compression.html" title="Compressing XML Documents" />
+    <link rel="next" href="syntaxtype.html" title="Syntax Types" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 7. Using BDB XML Indices</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="compression.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="syntaxtype.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="indices"></a>Chapter 7. Using BDB XML Indices</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="indices.html#indextype">Index Types</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="indices.html#uniquetype">Uniqueness</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="indices.html#pathtype">Path Types</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="indices.html#nodetype">Node Types</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="indices.html#keytype">Key Types</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="syntaxtype.html">Syntax Types</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="indexdeclarations.html">Specifying Index Strategies</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="nodeindex.html">Specifying Index Nodes</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="indexerProcessing.html">Indexer Processing Notes</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="autoindex.html">Automatic Indexes</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="managingindices.html">Managing BDB XML Indices</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="managingindices.html#addindex">Adding Indices</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="managingindices.html#deleteindex">Deleting Indices</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="managingindices.html#replaceindex">Replacing Indices</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="managingindices.html#iterateindex">Examining Container Indices</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="managingindices.html#defaultindex">Working with Default Indices</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="managingindices.html#lookupindex">Looking Up Indexed Documents</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+          <dt>
+            <span class="sect1">
+              <a href="verifyqueryplan.html">Verifying Indices using Query Plans</a>
+            </span>
+          </dt>
+          <dd>
+            <dl>
+              <dt>
+                <span class="sect2">
+                  <a href="verifyqueryplan.html#queryplan">Query Plans</a>
+                </span>
+              </dt>
+              <dt>
+                <span class="sect2">
+                  <a href="verifyqueryplan.html#dbxmlsh-indx">Using the dbxml Shell to Examine Query Plans</a>
+                </span>
+              </dt>
+            </dl>
+          </dd>
+        </dl>
+      </div>
+      <p>
+        BDB XML provides a robust and flexible indexing mechanism that can
+        greatly improve the performance of your BDB XML queries. Designing your
+        indexing strategy is one of the most important aspects of designing a
+        BDB XML-based application. 
+	</p>
+      <p>
+        To make the most effective usage of BDB XML indices, design your indices
+        for your most frequently occurring XQuery queries. Be aware that BDB XML
+        indices can be updated or deleted in-place so if you find that your
+        application's queries have changed over time, then you can modify your
+        indices to meet your application's shifting requirements.
+	</p>
+      <div class="note" style="margin-left: 0.5in; margin-right: 0.5in;">
+        <h3 class="title">Note</h3>
+        <p>
+            The time it takes to re-index a container is proportional to the
+            container's size.  Re-indexing a container can be an extremely
+            expensive and time-consuming operation. If you have large containers
+            in use in a production setting, you should not expect container
+            re-indexing to be a routine operation.
+		</p>
+      </div>
+      <p>
+        You can define indices for both document content and for metadata. You
+        can also define default indices that are used for portions of your
+        documents for which no other index is defined.
+    </p>
+      <p>
+        When you declare an index, you must identify its type and its
+        syntax. You do this by providing the API with a string that
+        identifies the type and syntax for the index.  See 
+        <a class="xref" href="syntaxtype.html" title="Syntax Types">Syntax Types</a> for information
+        on specifying the index syntax.
+    </p>
+      <p>
+        Finally, by default BDB XML does automatically index your
+        containers, regardless of whether you added indexes yourself. You
+        can turn this feature off if it is in your way. See
+        <a class="xref" href="autoindex.html" title="Automatic Indexes">Automatic Indexes</a>
+        for more information.
+    </p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="indextype"></a>Index Types</h2>
+            </div>
+          </div>
+        </div>
+        <div class="toc">
+          <dl>
+            <dt>
+              <span class="sect2">
+                <a href="indices.html#uniquetype">Uniqueness</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="indices.html#pathtype">Path Types</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="indices.html#nodetype">Node Types</a>
+              </span>
+            </dt>
+            <dt>
+              <span class="sect2">
+                <a href="indices.html#keytype">Key Types</a>
+              </span>
+            </dt>
+          </dl>
+        </div>
+        <p>
+	    The index type is defined by the following four types of information:
+	</p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                <a class="xref" href="indices.html#uniquetype" title="Uniqueness">Uniqueness</a>
+            </p>
+            </li>
+            <li>
+              <p>
+				    <a class="xref" href="indices.html#pathtype" title="Path Types">Path Types</a>
+			    </p>
+            </li>
+            <li>
+              <p>
+				    <a class="xref" href="indices.html#nodetype" title="Node Types">Node Types</a>
+			    </p>
+            </li>
+            <li>
+              <p>
+				    <a class="xref" href="indices.html#keytype" title="Key Types">Key Types</a>
+			    </p>
+            </li>
+          </ul>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="uniquetype"></a>Uniqueness</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+            Uniqueness indicates whether the indexed value must be unique within
+            the container. For example, you can index an attribute
+            and declare that index to be unique. This means the value indexed
+            for the attribute must be unique within the container.
+        </p>
+          <p>
+            By default, indexed values are not unique; you must explicitly
+            declare uniqueness for your indexing strategy in order for it to be
+            enforced.
+        </p>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="pathtype"></a>Path Types</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+        If you think of an XML document as a tree of nodes, then there are two
+        types of path elements in the tree. One type is just a node, such as an
+        element or attribute within the document.  The other type is any
+        location in a path where two nodes meet. The path type, then, identifies
+        the path element type that you want indexed.  Path type
+        <code class="literal">node</code> indicates that you want to index a single node
+        in the path.  Path type <code class="literal">edge</code> indicates that you want
+        to index the portion of the path where two nodes meet.
+	</p>
+          <p>
+        Of the two of these, the BDB XML query processor prefers
+        <code class="literal">edge</code>-type indices because they are more specific than
+        an <code class="literal">node</code>-type index.  This means that the query
+        processor will use a <code class="literal">edge</code>-type index over a
+        <code class="literal">node</code>-type if both indices provide similar
+        information.
+	</p>
+          <p>
+		Consider the following document:
+	</p>
+          <pre class="programlisting">&lt;vendor type="wholesale"&gt;
+    &lt;name&gt;TriCounty Produce&lt;/name&gt;
+    &lt;address&gt;309 S. Main Street&lt;/address&gt;
+    &lt;city&gt;Middle Town&lt;/city&gt;
+    &lt;state&gt;MN&lt;/state&gt;
+    &lt;zipcode&gt;55432&lt;/zipcode&gt;
+    &lt;phonenumber&gt;763 555 5761&lt;/phonenumber&gt;
+    &lt;salesrep&gt;
+        &lt;name&gt;Mort Dufresne&lt;/name&gt;
+        &lt;phonenumber&gt;763 555 5765&lt;/phonenumber&gt;     
+    &lt;/salesrep&gt;
+&lt;/vendor&gt;</pre>
+          <p>
+			Suppose you want to declare an index for the <code class="literal">name</code> 
+			node in the preceding document. In that case: 
+	</p>
+          <div class="informaltable">
+            <table border="1" width="90%">
+              <colgroup>
+                <col align="center" />
+                <col align="left" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th align="center">Path Type</th>
+                  <th align="center">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td align="center">
+                    <code class="literal">node</code>
+                  </td>
+                  <td align="left">
+					<p>
+							There are two locations in the document where the <code class="literal">name</code>
+							node appears. The first of these has a value of "TriCounty Produce," while the 
+							second has a value of "Mort Dufresne." The result is that the
+							<code class="literal">name</code> node will require two index entries, each with a
+							different value. Queries based on a <code class="literal">name</code> node
+							may have to examine both index entries in order to satisfy the query.
+					</p>
+				</td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <code class="literal">edge</code>
+                  </td>
+                  <td align="left">
+					<p>
+						There are two edge nodes in the document that involve the
+						<code class="literal">name</code> node:
+					</p>
+					<div class="blockquote"><blockquote class="blockquote"><p>
+							<code class="literal">/vendor/name</code>
+						</p></blockquote></div>
+					<p>
+							and
+					</p>
+					<div class="blockquote"><blockquote class="blockquote"><p>
+							<code class="literal">salesrep/name</code>
+						</p></blockquote></div>
+					<p>
+						Indices that use this path type are more specific because queries that cross
+						these edge boundaries only have to examine one index entry for the document
+						instead of two.
+					</p>
+				</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+		Given this, use:
+	</p>
+          <div class="itemizedlist">
+            <ul type="disc">
+              <li>
+                <p>
+				<code class="literal">node</code> path types to improve queries where there can be no overlap
+				in the node name. That is, if the query is based on an element or attribute that
+				appears on only one context within the document, then use <code class="literal">node</code>
+				path types.
+			</p>
+                <p>
+					In the preceding sample document, you would want to use node-type indices with the 
+					<code class="literal">address</code>, <code class="literal">city</code>, <code class="literal">state</code>,
+					<code class="literal">zipcode</code>, and <code class="literal">salesrep</code> elements because 
+					they appear in only one context within the document.
+			</p>
+              </li>
+              <li>
+                <p>
+				<code class="literal">edge</code> path types to improve query performance when a node name is
+				used in multiple contexts within the document. In the preceding document, use edge
+				path types for the <code class="literal">name</code> and <code class="literal">phonenumber</code>
+				elements because they appear in multiple (2) contexts within the document.
+			</p>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="nodetype"></a>Node Types</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+			BDB XML can index three types of nodes: <code class="literal">element</code>, 
+			<code class="literal">attribute</code>, or <code class="literal">metadata</code>. 
+            Metadata nodes are, of course, indices set for a document's metadata
+            content.
+    </p>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="eleattrnodes"></a>Element and Attribute Nodes</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+            Element and attribute nodes are only found in document content.
+            In the following document:
+	</p>
+            <div class="informalexample">
+              <pre class="programlisting">&lt;vendor type="wholesale"&gt;
+    &lt;name&gt;TriCounty Produce&lt;/name&gt;     
+&lt;/vendor&gt; </pre>
+            </div>
+            <p>
+		<code class="literal">vendor</code> and <code class="literal">name</code> are element nodes, while
+		<code class="literal">type</code> is an attribute node.
+	</p>
+            <p>
+		Use the element node type to improve queries that test the value of
+		an element node. Use the attribute node type to improve any query that examines an attribute
+		or attribute value.
+	</p>
+          </div>
+          <div class="sect3" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h4 class="title"><a id="metadatanodes"></a>Metadata Nodes</h4>
+                </div>
+              </div>
+            </div>
+            <p>
+            Metadata nodes are found only in a document's metadata content. This
+            indices improve the performance of querying for documents based on
+            metadata information. If you are declaring a metadata node, you 
+            cannot use a path type of <code class="literal">edge</code>.
+        </p>
+          </div>
+        </div>
+        <div class="sect2" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h3 class="title"><a id="keytype"></a>Key Types</h3>
+              </div>
+            </div>
+          </div>
+          <p>
+			The Key type identifies what sort of test the index supports. You can use one of three
+			key types:
+	</p>
+          <div class="informaltable">
+            <table border="1" width="90%">
+              <colgroup>
+                <col align="center" />
+                <col align="left" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th align="center">Key Type</th>
+                  <th align="center">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td align="center">
+                    <code class="literal">equality</code>
+                  </td>
+                  <td align="left">
+					<p>
+						Improves the performances of tests that look for nodes with a specific value.
+					</p>
+				</td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <code class="literal">presence</code>
+                  </td>
+                  <td align="left">
+					<p>
+						Improves the performance of tests that look for the existence of an node, regardless
+						of its value.
+					</p>
+				</td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <code class="literal">substring</code>
+                  </td>
+                  <td align="left">
+					<p>
+						Improves the performance of tests that look for a node whose value contains a given
+						substring. This key type is best used when your queries
+                        use the XQuery <code class="literal">contains()</code> substring function.
+					</p>
+				</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="compression.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="syntaxtype.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Compressing XML Documents </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Syntax Types</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,75 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: dbxml_dump</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>dbxml_dump</b>
+</td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>dbxml_dump [<b>-NRrV</b>] [<b>-f output</b>] [<b>-h home</b>] [<b>-P password</b>] xml_container</pre></b>
+<b>Description</b>
+<a name="2"><!--meow--></a>
+<p>The dbxml_dump utility reads the XML container in file
+<b>file</b> and writes it to the standard output using a portable
+flat-text format understood by the <a href="../utility/dbxml_load.html">dbxml_load</a> utility.  The
+argument <b>xml_container</b> must be a file produced using the Berkeley DB XML library
+functions.</p>
+<p>The options are as follows:</p>
+<br>
+<b>-f</b><ul compact><li>Write to the specified <b>file</b> instead of to the standard
+output.</ul>
+<b>-h</b><ul compact><li>Specify a home directory for the database environment; by
+default, the current working directory is used.</ul>
+<b>-N</b><ul compact><li>Do not acquire shared region mutexes while running.  Other problems,
+such as potentially fatal errors in Berkeley DB, will be ignored as well.
+This option is intended only for debugging errors, and should not be
+used under any other circumstances.</ul>
+<b>-P</b><ul compact><li>Specify an environment password.  Although Berkeley DB utilities overwrite
+password strings as soon as possible, be aware there may be a window of
+vulnerability on systems where unprivileged users can see command-line
+arguments or where utilities are not able to overwrite the memory
+containing the command-line arguments.</ul>
+<b>-R</b><ul compact><li>Aggressively salvage data from a possibly corrupt file.  The
+<b>-R</b> flag differs from the <b>-r</b> option in that it will
+return all possible data from the file at the risk of also returning
+already deleted or otherwise nonsensical items.  Data dumped in this
+fashion will almost certainly have to be edited by hand or other means
+before the data is ready for reload into another XML container</ul>
+<b>-r</b><ul compact><li>Salvage data from a possibly corrupt file.  When used on a uncorrupted
+XML container, this option should return equivalent data to a normal
+dump, but most likely in a different order.</ul>
+<b>-V</b><ul compact><li>Write the library version number to the standard output, and exit.</ul>
+<br>
+<p>The dbxml_dump utility may be used with a Berkeley DB environment (as described for the
+<b>-h</b> option, the environment variable <b>DB_HOME</b>, or
+because the utility was run in a directory containing a Berkeley DB
+environment).  In order to avoid environment corruption when using a
+Berkeley DB environment, dbxml_dump should always be given the chance to
+detach from the environment and exit gracefully.  To cause dbxml_dump
+to release all environment resources and exit cleanly, send it an
+interrupt signal (SIGINT).</p>
+<p>Even when using a Berkeley DB database environment, the dbxml_dump
+utility does not use any kind of database locking if it is invoked
+with the <b>-R</b> or <b>-r</b> arguments.   If used with one of
+these arguments, the dbxml_dump utility may only be safely run
+on XML containers that are not being modified by any other process;
+otherwise, the output may be corrupt.</p>
+<p>The dbxml_dump utility exits 0 on success, and &gt;0 if an error occurs.</p>
+<br><b>Environment Variables</b>
+<br>
+<b>DB_HOME</b><ul compact><li>If the <b>-h</b> option is not specified and the environment variable
+DB_HOME is set, it is used as the path of the database home, as described
+in UNREF==dbenv_open.</ul>
+<br>
+</tt>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

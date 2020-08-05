@@ -1,0 +1,57 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlEventReader::setExpandEntities</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlEventReader::setExpandEntities</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual void XmlEventReader::setExpandEntities(bool value)
+<p>
+virtual bool XmlEventReader::getExpandEntities() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlEventReader::setExpandEntities</b>
+<p>By default, entities are expanded when XML is parsed, and those
+entities are reported as their expanded events.  If the
+<a href="../../api_reference/CXX/XmlEventReader_setReportEntityInfo.html">XmlEventReader::getReportEntityInfo</a> method returns true, it
+is possible to suppress the expanded events, receiving just the
+StartEntityReference and EndEntityReference events associated with
+the original entity reference.
+This can be useful for serialization of XML that includes such
+expanded entities.  It allows
+the entity references to be restored during serialization.  Most
+of the internal implementations of <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> have this
+Capability.  By default, expanded events are reported.</p>
+<hr size=1 noshade>
+<b>Description: XmlEventReader::setExpandEntities(bool value)</b>
+<p>Sets whether the <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> should include events
+associated with expanded entities.</p>
+<hr size=1 noshade>
+<b>Description: XmlEventReader::getExpandEntities() const</b>
+<p>Gets whether the <a href="../../api_reference/CXX/XmlEventReader.html">XmlEventReader</a> will include events
+associated with expanded entities.  Default is true.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>Use false to suppress events.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

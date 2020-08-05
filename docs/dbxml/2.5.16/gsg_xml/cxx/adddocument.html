@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 4. Adding XML Documents to Containers</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="prev" href="containers.html" title="Managing Containers" />
+    <link rel="next" href="puttingdocuments.html" title="Adding Documents" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 4. Adding XML Documents to Containers</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="containers.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="puttingdocuments.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="adddocument"></a>Chapter 4. Adding XML Documents to Containers</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="adddocument.html#adddoc_container">Input Streams and Strings</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="puttingdocuments.html">Adding Documents</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="eventwriter.html">Constructing Documents using Event Writers</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect1">
+              <a href="setting_metadata.html">Setting Metadata</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        To manage XML documents in BDB XML, you must load them into a container.
+        Typically you will do this by using the <code class="classname">XmlContainer</code>
+        handle directly. You can also load a document into an
+        <code class="classname">XmlDocument</code> instance, and then load that instance
+        into the container using the <code class="classname">XmlContainer</code>
+        handle. This book will mostly use the first, most direct,  method.
+    </p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="adddoc_container"></a>Input Streams and Strings</h2>
+            </div>
+          </div>
+        </div>
+        <p>
+            When you add a document to a container, you must identify the
+            location where the document resides. You can do this by using:
+        </p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+                    A string object that holds the entire document.
+                </p>
+            </li>
+            <li>
+              <p>
+                    An input stream that is created from a filename.
+                    Use
+                        <code class="methodname">XmlManager::createLocalFileInputStream()</code>
+                        
+                    to create the input stream.
+                </p>
+            </li>
+            <li>
+              <p>
+                    An input stream created from a URL. In this case, the URL
+                    can be any valid URL. However, if the URL requires network
+                    activity in order to access the identified content (such as
+                    is required if you, for example, supply an HTTP URL), then
+                    the input stream is valid only if you have compiled Xerces
+                    with socket support.
+                </p>
+              <p>
+                    Use
+                        <code class="methodname">XmlManager::createURLInputStream()</code>
+                        
+                    to create the input stream.
+                </p>
+            </li>
+            <li>
+              <p>
+                    An input stream that refers to a memory buffer.
+                </p>
+              <p>
+                    Use
+                        <code class="methodname">XmlManager::createMemBufInputStream()</code>
+                        
+                    to create the input stream.
+                </p>
+            </li>
+            <li>
+              <p>
+                    An input stream that refers to standard input (the console
+                    under Windows systems).
+                </p>
+              <p>
+                    Use
+                        <code class="methodname">XmlManager::createStdInInputStream()</code>
+                        
+                    to create the input stream.
+                </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+            Note that BDB XML does not validate an input stream until
+            you actually attempt to put the document to your container. This
+            means that you can create an input stream to an invalid location or
+            to invalid content, and BDB XML will not throw an exception until 
+            you actually attempt to load data from that location.
+        </p>
+        <p>
+            We provide an example of creating input streams in the following
+            section.
+        </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="containers.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="puttingdocuments.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Managing Containers </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Adding Documents</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

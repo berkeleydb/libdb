@@ -1,0 +1,53 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlEventWriter::writeStartDocument</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlEventWriter::writeStartDocument</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual void XmlEventWriter::writeStartDocument(const unsigned char *version,
+	     				     const unsigned char *encoding,
+	     				     const unsigned char *standalone)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlEventWriter::writeStartDocument</b>
+<p>Write a StartDocument element event to the <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>.  This
+must be the first event written.</p>
+<b>Parameters</b> <br>
+ <b>version</b><ul compact><li>The XML version string, or NULL.</ul>
+ <b>encoding</b><ul compact><li>The encoding for the document, or NULL.  Content must be written
+as UTF-8; however, the encoding may be used on output, if possible.</ul>
+ <b>standalone</b><ul compact><li>The standalone string, or NULL.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlEventWriter::writeStartDocument method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>EVENT_ERROR</b><ul compact><li>An error occurred during processing of an <a href="../../api_reference/CXX/XmlEventWriter.html">XmlEventWriter</a>
+object.  Most likely the error is attempting to write a type or value
+that is not valid in the current state of the object.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

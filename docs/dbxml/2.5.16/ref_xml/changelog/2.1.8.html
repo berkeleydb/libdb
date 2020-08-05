@@ -1,0 +1,198 @@
+<html>
+<head>		
+<title>The Berkeley DB XML Package: DB XML 2.1.8 Change Log</title>		
+<meta name="description" content="Berkeley DB XML: An XML database programmatic toolkit.">		
+<meta name="keywords" content="XML,embedded,database,programmatic,toolkit,transaction,transactions">	
+</head>
+
+<body bgcolor="white">		
+<h1 align="center">Berkeley DB XML 2.1.7 & 2.1.8 Change Log</h1>
+
+<h3>Upgrade Requirements:</h3>		
+<ol>
+<li>The database format has changed in order to fix a platform
+portability problem. To upgrade your DB XML containers to 2.1.8, please
+follow the steps identified in the 2.1 DB XML Reference Guide, in the
+<a
+href="http://www.oracle.com/technology/documentation/berkeley-db/xml/ref_xml/upgrade.2.1/intro.html">
+Upgrading to DB XML 2.1</a> section.
+<li>DB XML 2.0 applications will need to be recompiled and relinked
+using the DB XML 2.1 libraries.
+<li>DB XML 2.1.8 is a patch release for DB XML 2.1.7.	
+
+</ol>		
+<h3>New Features:</h3>		
+<ol>
+
+<li>Add the Perl API. 
+<li>Add Windows binaries and installer.
+<li>A number of enhancements to the dbxml command line shell utility,
+including renaming it from "dbxml_shell" to "dbxml"
+<li>Add an "Introducing Berkeley DB XML" document to help newcomers
+quickly get started using the product.
+
+</ol>		
+<h3>API Changes:</h3>		
+<ol>
+
+<li>Add XmlContainer::{add,remove}Alias() to allow applications to
+create aliases for containers for use in XQuery expressions. [#11715]
+<li>Add XmlContainer::getAllDocuments() method to return all documents
+in a container.
+<li>Add XmlContainer::getNumDocuments() method to return the number of
+documents in a container.
+<li>Implement a functioning XmlManager::upgradeContainer() interface to
+upgrade containers from 2.0.9 to 2.1.8.
+<li>Change the default Base URI to "dbxml:" (it was "dbxml:/"). [#11715]
+<li>Change resolution of "dbxml:" URIs to treat a leading slash
+("dbxml:/path" or "dbxml:C:/") as an absolute path. Previously, all
+paths were treated as relative inside an XQuery expression. [#11715]
+
+</ol>
+<h3>General Functionality Changes:</h3>	
+<ol>		
+
+<li>Fix a performance problem with Pathan StringPool objects when
+returning large data sets. [#12532]
+<li>Fix a bug where an entity in an attribute value was not being
+expanded during document serialization if a child node had been added
+to that element via direct DOM manipulation or XmlModify.  [#12489]
+<li>Fix a bug where a DOM assertion failure would occur when asking for
+a specific item from a DOM nodelist. [#12481]
+<li>Change all C++ objects so that they now have default constructors
+to make it easier  to use them as class members.  If these uninitialized
+default objects are used an exception will be thrown.
+<li>Fix a bug where removal of metadata in a document retrieved using
+the DBXML_LAZY_DOCS flag would fail. [#12369]
+<li>Fix a bug where a virtual collection created by
+XmlResolver::resolveCollection would block or potentially crash after
+return. [#12154]
+<li>Fix a bug that caused containers to be non-portable across machine
+architectures (big vs little endian).  Part of this fix causes index
+databases to be created on demand, resulting in significantly smaller
+initial container size. [#12196]
+<li>Fix a bug where default settings could result in creating a
+container that stored whole documents, rather than the intended default
+of node storage. [#12193]
+<li>Fix a bug where entities were not being escaped in attribute values
+returned in serialized query results from whole document storage.
+[#12193]
+<li>Fix bugs in the DOMDocument::getEncoding() and
+DOMDocument::getActualEncoding() methods. [#11956]
+<li>Fix bug where it was possible to remove the implicit document name
+index and remove the name metadata item from XmlDocument objects.
+[#11948]
+<li>Fix a bug where substring indices on 3-character values would not
+not properly lower-case the values for storage. This resulted in failed
+queries where they should have succeeded. [#11945]
+<li>Fix a memory leak in NsEventGenerator where removal of certain node
+storage documents leaked an 8k buffer. [#11857]
+<li>Fix a bug where XmlContainer::updateDocument could not be called on
+a node storage document obtained from a query using
+XmlQueryContext::EvaluationType of Lazy. This is now legal. [#11838]
+<li>Fix a bug in the query planner that could result in NULL query plan
+objects and cause the BDB XML application to crash. [#11831]
+<li>Fix a bug where serialization of constructed DOM in queries was not
+properly tracking and expanding entities. [#11817]
+<li>Change whole document storage to only validate documents on initial
+input, and not for querying or removal. This only affects containers for
+whole document storage that have validation enabled. [#11809]
+<li>Change Pathan to not use Windows HeapAlloc, etc. for its
+MemoryManager implementation.  It can cause memory shortages in certain
+queries. [#11806]
+<li>Fix a bug where empty elements in node storage documents could
+result in using the wrong namespace prefixes for subsequent elements.
+[#11762]
+<li>Fix a bug where XmlResults::previous would crash on an empty result
+set. Fixed several related XmlResults iterator issues. [#11756]
+<li>Fix a bug where BDB XML didn't allow a query to operate directly
+against XmlInputStream in an XmlDocument. [#11755]
+<li>Fix a bug where BDB XML could crash on queries that asked for text
+of attribute notes (for example, /foo/@attr/text()). [#11717]
+<li>Fix a bug where the isSpecified() state was not being tracked
+properly for attributes. This would appear when using the DOM or when
+serializing elements with unspecified attributes. [#11686]
+<li>Fix a bug in the database version checking so that it runs before
+any other operations and correctly reports database version mismatch
+errors on BDB XML 1.x version containers. [#11619]
+
+</ol>
+<h3>Utility Changes:</h3>		
+<ol>
+
+<li>Change the name of the dbxml_shell utility to be simply dbxml.
+[#12226]
+<li>Change dbxml shell command names to be more obvious. Enhance dbxml
+shell help and usage messages. Compatibility with 2.0.9 command names
+is maintained where possible. [#11610]
+<li>Change the argument flags to the utility commands so that they are
+consistent. Some utility command flags will have been modified from
+2.0.9.
+
+</ol>		
+<h3>Java-specific Functionality Changes:</h3>		
+<ol>		
+
+<li>Fix XmlContainer.putDocument() methods to return String names of new
+documents. [#12006]
+<li>Java interfaces are defined to only throw XmlException.  Implement
+XmlException.getDatabaseException() as documented. [#12377]
+
+</ol>		
+<h3>Python-specific Functionality Changes:</h3>		
+<ol>			
+
+<li>Fix a bug where the default container type was not NodeContainer.
+[#11625]
+<li>Fix a bug where underlying XmlContainer objects created by
+XmlManager.createContainer() were not getting deleted correctly.
+[#11627]
+
+</ol>
+<h3>Perl-specific Functionality Changes:</h3>		
+<ol>		
+
+<li>Fix a problem where a crash could occur if an object created by an
+XmlManager outlived the XmlManager itself (no SR #).
+
+</ol>		
+<h3>Tcl-specific Functionality Changes:</h3>		
+<ol>		
+
+<li>Fix a bug where the default container type was not NodeContainer.
+[#11625]
+<li>Fix a bug where underlying XmlContainer objects created by
+XmlManager.createContainer() were not getting deleted correctly.
+[#11627]
+
+</ol>		
+<h3>Configuration, Documentation, Portability and Build Changes:</h3>		
+<ol>	
+
+<li>Fix a bug that caused gcc 4.0 builds to fail, where NsXercesDom
+functions used an incorrect virtual function table because of object
+confusion. [#12527]
+<li>Fix a bug in the simpleAdd.cpp example where it was not setting
+DBXML_GEN_NAME on putDocument calls. [#11796]
+<li>Add configuration and build support for native compilers on HP-UX
+(aCC) and AIX (xlC_r). [#11777]
+<li>Add build support for the Cygwin platform on Windows.
+<li>Add configuration support for the Fedora Core 3 platform. [#11650]
+<li>Add configuration support so that on Unix platforms the configure
+script will use its parameters to create setup.py for the Python build.
+[#11541]
+<li>Add the Perl API. 
+<li>The destination for Windows build artifacts, including libraries,
+executables, JAR files, and header files has been changed.  They are now
+placed in the directories, "bin," "lib," "include," and "jar" off of the
+top-level installation directory.
+<li>Add Windows binaries and installer.
+<li>Add a number of enhancements to the dbxml command line shell
+utility.
+<li>Add an "Introducing Berkeley DB XML" document to help newcomers
+quickly get started using the product.
+
+</ol>		
+
+</body>
+</html>

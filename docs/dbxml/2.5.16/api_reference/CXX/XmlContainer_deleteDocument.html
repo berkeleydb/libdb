@@ -1,0 +1,88 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainer::deleteDocument</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainer::deleteDocument</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlContainer::deleteDocument(const std::string name, XmlUpdateContext &context)
+<p>
+void XmlContainer::deleteDocument(XmlDocument &document, XmlUpdateContext &context)
+<p>
+void XmlContainer::deleteDocument(XmlTransaction &txn, const std::string name,
+    XmlUpdateContext &context)
+<p>
+void XmlContainer::deleteDocument(XmlTransaction &txn,
+   XmlDocument &document, XmlUpdateContext &context)
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainer::deleteDocument</b>
+<p>The XmlContainer::deleteDocument method removes the specified
+<a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> from the <a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a>.</p>
+<hr size=1 noshade>
+<b>Description: void XmlContainer::deleteDocument(XmlTransaction &txn, const std::string name, XmlUpdateContext &context)</b>
+<p>Delete the document with the given name.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>name</b><ul compact><li>The name of the <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> to be deleted from the container.</ul>
+ <b>context</b><ul compact><li>The <a href="../../api_reference/CXX/XmlUpdateContext.html">XmlUpdateContext</a> object to use for this deletion.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::deleteDocument method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>DATABASE_ERROR</b><ul compact><li>An error occurred in an underlying Berkeley DB database. The
+<a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a> method will return the error code for the error.</ul>
+<br>
+<br>
+<b>DOCUMENT_NOT_FOUND</b><ul compact><li>The specified document is not in the XmlContainer.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: void XmlContainer::deleteDocument(XmlTransaction &txn, XmlDocument &document, XmlUpdateContext &context)</b>
+<p>Removes the specified <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> from the <a href="../../api_reference/CXX/XmlContainer.html">XmlContainer</a>.</p>
+<b>Parameters</b> <br>
+ <b>txn</b><ul compact><li>If the operation is to be transaction-protected, the <b>txn</b>
+parameter is an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> handle returned from
+<a href="../../api_reference/CXX/XmlManager_createTransaction.html">XmlManager::createTransaction</a>.</ul>
+ <b>document</b><ul compact><li>The <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> to be deleted from the container.  The name to
+be deleted is extracted from this parameter.</ul>
+ <b>context</b><ul compact><li>The <a href="../../api_reference/CXX/XmlUpdateContext.html">XmlUpdateContext</a> object to use for this deletion.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlContainer::deleteDocument method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>DATABASE_ERROR</b><ul compact><li>An error occurred in an underlying Berkeley DB database. The
+<a href="../../api_reference/CXX/XmlException_getDbErrno.html">XmlException::getDbErrno</a> method will return the error code for the error.</ul>
+<br>
+<br>
+<b>DOCUMENT_NOT_FOUND</b><ul compact><li>The specified document is not in the XmlContainer.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

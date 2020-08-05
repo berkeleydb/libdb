@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Getting and Using BDB XML</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB XML" />
+    <link rel="prev" href="introduction.html" title="Chapter 1. Introduction to Berkeley DB XML" />
+    <link rel="next" href="exceptions.html" title="Chapter 2. Exception Handling and Debugging" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Getting and Using BDB XML</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="introduction.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 1. Introduction to Berkeley DB XML</th>
+          <td width="20%" align="right"> <a accesskey="n" href="exceptions.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="gettingit"></a>Getting and Using BDB XML</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <dl>
+          <dt>
+            <span class="sect2">
+              <a href="gettingit.html#support">Documentation and Support</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="gettingit.html#dependencies">Library Dependencies</a>
+            </span>
+          </dt>
+          <dt>
+            <span class="sect2">
+              <a href="gettingit.html#building">Building and Running BDB XML Applications</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+
+                BDB XML exists as a 
+                    
+                    
+                    <span>Java jar
+                    file that you use in the same way as you would any set of Java
+                    APIs.</span> 
+                    
+                You can download the BDB XML distribution from
+                the <a class="ulink" href="http://www.oracle.com/technology/software/products/berkeley-db/xml/index.html" target="_top">BDB XML product
+                page</a>.
+
+    	</p>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="support"></a>Documentation and Support</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                BDB XML is officially described in the <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/xml/index.html" target="_top">product
+                documentation</a>.  For additional help and for late-breaking news on
+        language and platform support, it is best to use the 
+        <a class="ulink" href="http://forums.oracle.com/forums/forum.jspa?forumID=274" target="_top">BDB XML forums</a>.
+        	</p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="dependencies"></a>Library Dependencies</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                BDB XML depends on several external libraries.  The result is
+                that build instructions for BDB XML may change from release to
+                release as its dependencies mature. For this reason it is best
+                to check with the installation instructions included with your
+                version of Berkeley DB XML for your library's specific build
+                requirements.  These instructions are available from: 
+			</p>
+        <div class="blockquote">
+          <blockquote class="blockquote">
+            <p>
+					<code class="filename"><span class="emphasis"><em>DBXML_HOME</em></span>/docs/index.html</code>
+				</p>
+          </blockquote>
+        </div>
+        <p>
+				where <code class="literal"><span class="emphasis"><em>DBXML_HOME</em></span></code> is the location where you unpacked the
+				distribution.
+            </p>
+        <p>
+				That said, BDB XML currently relies on the following libraries:
+			</p>
+        <div class="itemizedlist">
+          <ul type="disc">
+            <li>
+              <p>
+							<a class="ulink" href="http://www.oracle.com/technology/software/products/berkeley-db/db/index.html" target="_top">Berkeley DB</a>. Berkeley DB
+							provides the underlying database support for
+                            BDB XML. BDB XML supports Berkeley DB version
+                            4.3 or later.
+						</p>
+            </li>
+            <li>
+              <p>
+							<a class="ulink" href="http://xml.apache.org/xerces-c/index.html" target="_top">Xerces</a>.
+							Xerces provides the DOM and SAX support that BDB XML employs for XML data parsing.
+                            Xerces 2.7 or later is required for BDB XML.
+						</p>
+            </li>
+            <li>
+              <p>
+                            <a class="ulink" href="http://xqilla.sourceforge.net/HomePage" target="_top">XQilla</a>. 
+                            BDB XML's XQuery support is provided by this library.
+						</p>
+            </li>
+            <li>
+              <p>
+                            <a class="ulink" href="http://www.zlib.net/" target="_top">ZLIB</a>. This library is
+                            used to support compression in BDB XML. Note
+                            that this library is optional in that you can turn off zlib support 
+                            when you compile BDB XML.
+                        </p>
+            </li>
+          </ul>
+        </div>
+        <p>
+                Note that the BDB XML package comes with all of the libraries
+                that are required to build and use BDB XML.
+            </p>
+      </div>
+      <div class="sect2" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h3 class="title"><a id="building"></a>Building and Running BDB XML Applications</h3>
+            </div>
+          </div>
+        </div>
+        <p>
+                For information on how to build and run a BDB XML application
+                for your particular platform/compiler, see the build
+                instructions that are available through the
+                <code class="literal">docs</code> directory in your BDB XML distribution.
+                Alternatively, you can find up-to-date build instructions here:
+            </p>
+        <p>
+                    <a class="ulink" href="http://www.oracle.com/technology/documentation/berkeley-db/xml/index.html" target="_top">http://www.oracle.com/technology/documentation/berkeley-db/xml/index.html</a>
+            </p>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="introduction.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="introduction.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="exceptions.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Chapter 1. Introduction to Berkeley DB XML </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Chapter 2. Exception Handling and Debugging</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

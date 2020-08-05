@@ -1,0 +1,56 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlContainerConfig::setTransactional</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlContainerConfig::setTransactional</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+void XmlContainerConfig::setTransactional(bool value)
+<p>
+bool XmlContainerConfig::getTransactional() const
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlContainerConfig::setTransactional</b>
+<p>If set to true it causes the container to use transactions. 
+Even if the environment has been configured for transactions, 
+this property must be used in order to
+create or open a transactional container.  In other words, a
+transactional environment can support both transactional and non-transactional
+containers.  If the environment has
+not also been configured for transactions then use of this property when
+opening a container will result in an exception.  </p>
+<p>If this property is set an <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> object can and should
+be passed to any method that supports it.  
+If a container is transactional and an explicit <a href="../../api_reference/CXX/XmlTransaction.html">XmlTransaction</a> object
+is not passed to a modifying method (e.g. <a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a>
+a transaction is automatically created, used and committed on behalf of
+the application.  While this is handy it is highly recommended that applications
+manage their own transactions in order to better handle deadlock and other
+exceptions that may occur.
+The default value for this property is false and it affects containers 
+being created and containers that already exist.</p>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>Set to true to enable transactions.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

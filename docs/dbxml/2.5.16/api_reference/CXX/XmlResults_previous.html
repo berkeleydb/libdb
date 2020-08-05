@@ -1,0 +1,59 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlResults::previous</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlResults::previous</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+bool XmlResults::previous(XmlValue &value);
+bool XmlResults::previous(XmlDocument &document);
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlResults::previous</b>
+<p>Retrieves the previous value in the result set.  When the first value
+in the results set has been reached, the XmlResults::previous method
+returns false.  In an eager results set the iterator logically 
+points "between" adjacent entries which means that alternating calls to 
+previous() and next() will return the same value.</p>
+<hr size=1 noshade>
+<b>Description: XmlResults.previous(XmlValue)</b>
+<b>Parameters</b> <br>
+ <b>value</b><ul compact><li>The <a href="../../api_reference/CXX/XmlValue.html">XmlValue</a> into which the previous value in the result set is
+to be placed.</ul>
+<br>
+<hr size=1 noshade>
+<b>Description: XmlResults.next(XmlDocument)</b>
+<b>Parameters</b> <br>
+ <b>document</b><ul compact><li>The <a href="../../api_reference/CXX/XmlDocument.html">XmlDocument</a> into which the previous document in the result
+set is to be placed.</ul>
+<br>
+<br><b>Errors</b>
+<p>The XmlResults::previous method
+may fail and throw
+<a href="../../api_reference/CXX/XmlException.html">XmlException</a>,
+encapsulating one of the following non-zero errors:</p>
+<br>
+<b>LAZY_EVALUATION</b><ul compact><li>The method can only be called on eagerly evaluated result sets.</ul>
+<br>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>

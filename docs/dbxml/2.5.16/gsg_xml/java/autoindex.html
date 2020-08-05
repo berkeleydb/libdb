@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Automatic Indexes</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="indices.html" title="Chapter 7. Using BDB XML Indices" />
+    <link rel="prev" href="indexerProcessing.html" title="Indexer Processing Notes" />
+    <link rel="next" href="managingindices.html" title="Managing BDB XML Indices" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Automatic Indexes</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="indexerProcessing.html">Prev</a> </td>
+          <th width="60%" align="center">Chapter 7. Using BDB XML Indices</th>
+          <td width="20%" align="right"> <a accesskey="n" href="managingindices.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="sect1" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title" style="clear: both"><a id="autoindex"></a>Automatic Indexes</h2>
+          </div>
+        </div>
+      </div>
+      <p>
+        By default, BDB XML will automatically maintain the following
+        indexes for your containers:
+    </p>
+      <pre class="programlisting">        node-element-string-equality
+        node-attribute-string-equality
+        node-element-double-equality
+        node-attribute-double-equality </pre>
+      <p>
+        These automatic indexes will index all leaf nodes and all
+        attributes. Maintaining them does represent a bit of a performance
+        hit for your containers since BDB XML must determine if a document
+        node is a leaf node, and then index it if it is. If a new leaf node
+        is discovered when a document is added to your container (that is,
+        BDB XML has never seen it before), then BDB XML will create the
+        appropriate index for every document in your container.
+    </p>
+      <p>
+        For this reason, autoindexing is best used for containers that do
+        not contain a mix of document types, and for containers that are
+        not extremely large in size. If your containers do contain a wide
+        variety of document types (and so new leaf nodes will be discovered
+        frequently when adding documents), or your containers are simply
+        extremely large, you should probably turn this feature off.
+    </p>
+      <p>
+        You turn automatic indexing off by specifying
+        <code class="literal">false</code> to the
+        
+        <code class="methodname">XmlIndexSpecification.setAutoIndexing()</code>
+        method. Turn automatic indexing back on by specifying
+        <code class="literal">true</code> to the same method.
+    </p>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="indexerProcessing.html">Prev</a> </td>
+          <td width="20%" align="center">
+            <a accesskey="u" href="indices.html">Up</a>
+          </td>
+          <td width="40%" align="right"> <a accesskey="n" href="managingindices.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Indexer Processing Notes </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Managing BDB XML Indices</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

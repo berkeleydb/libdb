@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Chapter 2. Exception Handling and Debugging</title>
+    <link rel="stylesheet" href="gettingStarted.css" type="text/css" />
+    <meta name="generator" content="DocBook XSL Stylesheets V1.73.2" />
+    <link rel="start" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="up" href="index.html" title="Getting Started with Berkeley DB XML" />
+    <link rel="prev" href="gettingit.html" title="Getting and Using BDB XML" />
+    <link rel="next" href="dbandcontainer.html" title="Chapter 3. XmlManager and Containers" />
+  </head>
+  <body>
+    <div class="navheader">
+      <table width="100%" summary="Navigation header">
+        <tr>
+          <th colspan="3" align="center">Chapter 2. Exception Handling and Debugging</th>
+        </tr>
+        <tr>
+          <td width="20%" align="left"><a accesskey="p" href="gettingit.html">Prev</a> </td>
+          <th width="60%" align="center"> </th>
+          <td width="20%" align="right"> <a accesskey="n" href="dbandcontainer.html">Next</a></td>
+        </tr>
+      </table>
+      <hr />
+    </div>
+    <div class="chapter" lang="en" xml:lang="en">
+      <div class="titlepage">
+        <div>
+          <div>
+            <h2 class="title"><a id="exceptions"></a>Chapter 2. Exception Handling and Debugging</h2>
+          </div>
+        </div>
+      </div>
+      <div class="toc">
+        <p>
+          <b>Table of Contents</b>
+        </p>
+        <dl>
+          <dt>
+            <span class="sect1">
+              <a href="exceptions.html#debugging">Debugging BDB XML Applications</a>
+            </span>
+          </dt>
+        </dl>
+      </div>
+      <p>
+        Before continuing, it is helpful to look at exception handling and
+        debugging tools in the BDB XML API.
+    </p>
+      <p>
+        All BDB XML operations can throw an exception, and so they 
+        <span>should</span> 
+         
+        be within a <code class="literal">try</code> 
+            <span>block.</span>
+            
+	</p>
+      <p>
+        BDB XML methods throw <code class="literal">XmlException</code> objects. 
+        BDB XML always re-throws all underlying
+        Berkeley DB exceptions as <code class="literal">XmlException</code>, so every
+        exception that can be thrown by BDB XML is an
+        <code class="literal">XmlException</code> instance.
+	</p>
+      <p>
+        <code class="literal">XmlException</code> is derived from
+        <code class="literal">std::exception</code>, so you are only required to catch
+        <code class="literal">std::exception</code> in order to provide proper exception
+        handling for your BDB XML applications. Of course, you can choose to
+        catch both types of exceptions if you want to differentiate between the
+        two in your error handling or messaging code.
+	</p>
+      <p>
+            Note that if you are using core Berkeley DB operations with your
+            BDB XML application then you should catch either
+            <code class="literal">DbException</code> or <code class="literal">std::exception</code> with this code.
+	</p>
+      <p>
+			The following example illustrates BDB XML exception handling.
+	</p>
+      <pre class="programlisting">#include "DbXml.hpp"
+
+using namespace DbXml;
+int main(void)
+{
+    // Open an XmlManager and an XmlContainer.
+    XmlManager myManager;
+    try {
+        XmlContainer myContainer = 
+            myManager.openContainer("container.dbxml");
+    } catch (XmlException &amp;xe) {
+        // Error handling goes here
+    } catch (std::exception &amp;e) {
+        // Error handling goes here
+    }
+} </pre>
+      <p>
+        Note that, you can obtain more information on the cause of the
+        <code class="classname">XmlException</code> by examining the underlying
+        error code. Do this using the 
+        <code class="methodname">XmlException::getExceptionCode()</code>
+        
+        method. See the 
+        <span><em class="citetitle">Berkeley DB XML C++ API</em> reference </span>
+        
+
+        for details on the exception codes available through this class.
+</p>
+      <div class="sect1" lang="en" xml:lang="en">
+        <div class="titlepage">
+          <div>
+            <div>
+              <h2 class="title" style="clear: both"><a id="debugging"></a>Debugging BDB XML Applications</h2>
+            </div>
+          </div>
+        </div>
+        <p>
+
+            In some cases, the exceptions thrown by your BDB XML application may
+            not contain enough information to allow you to debug the source of
+            an error. For this reason, it is always a good idea to create a
+            custom error handler.
+        </p>
+        <p>
+            Once you have implemented your error handler, you make it known
+            to you BDB XML application using 
+            <span><code class="methodname">DB_ENV-&gt;set_errcall()</code></span>
+            
+        </p>
+        <p>
+            For example:
+        </p>
+        <pre class="programlisting">#include "DbXml.hpp"
+
+using namespace DbXml;
+
+void
+errcall_fun(const DB_ENV *dbenv,
+              const char *errpfx,
+              const char *msg) {
+   std::cerr &lt;&lt; errpfx &lt;&lt; " : " &lt;&lt; msg &lt;&lt; std::endl; 
+}
+
+int main(void)
+{
+    // Open an XmlManager
+    DB_ENV *myEnv;
+    XmlManager myManager;
+
+    myEnv = myManager.getDB_ENV();
+    myEnv-&gt;set_errcall(myEnv, errcall_fun);
+} </pre>
+        <p>
+			Once you have set up your error handler, you can control the amount of information that
+			BDB XML reports to that handler using <code class="literal">setLogLevel()</code> and
+			<code class="literal">setLogCategory()</code>.
+	</p>
+        <p>
+			<code class="literal">setLogLevel()</code> allows you to indicate the level of logging that you
+			want to see (debug, info, warning, error, or all of these).
+	</p>
+        <p>
+			<code class="literal">setLogCategory()</code> allows you to indicate the portions of DB XML's
+			subsystems for which you want logging messages issued (indexer, query processor,
+			optimizer, dictionary, container, or all of these).
+	</p>
+        <pre class="programlisting">#include "DbXml.hpp"
+
+using namespace DbXml;
+int main(void)
+{
+    ...
+    // Skipped environment and manager open
+    ...
+    try {
+        XmlContainer myContainer = db.openContainer("container.dbxml");
+        DbXml::setLogLevel(DbXml::LEVEL_ALL, true);
+        DbXml::setLogCategory(DbXml::CATEGORY_ALL, true); 
+    } catch (XmlException &amp;xe) {
+        // Error handling goes here
+    } catch (std::exception &amp;e) {
+        // Error handling goes here
+    }
+} </pre>
+      </div>
+    </div>
+    <div class="navfooter">
+      <hr />
+      <table width="100%" summary="Navigation footer">
+        <tr>
+          <td width="40%" align="left"><a accesskey="p" href="gettingit.html">Prev</a> </td>
+          <td width="20%" align="center"> </td>
+          <td width="40%" align="right"> <a accesskey="n" href="dbandcontainer.html">Next</a></td>
+        </tr>
+        <tr>
+          <td width="40%" align="left" valign="top">Getting and Using BDB XML </td>
+          <td width="20%" align="center">
+            <a accesskey="h" href="index.html">Home</a>
+          </td>
+          <td width="40%" align="right" valign="top"> Chapter 3. XmlManager and Containers</td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

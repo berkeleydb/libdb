@@ -1,0 +1,50 @@
+<!--Copyright (c) 1997-2009 Oracle.  All rights reserved.-->
+<!--See the file LICENSE for redistribution information.-->
+<html>
+<head>
+<title>Berkeley DB XML: XmlInputStream</title>
+<meta name="description" content="Berkeley DB: An embedded database programmatic toolkit.">
+<meta name="keywords" content="embedded,database,programmatic,toolkit,btree,hash,hashing,transaction,transactions,locking,logging,access method,access methods,Java,C,C++">
+</head>
+<body bgcolor=white>
+<table width="100%"><tr valign=top>
+<td>
+<b>XmlInputStream</b>
+</td>
+<td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a>
+<a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a></td>
+</tr></table>
+<hr size=1 noshade>
+<tt>
+<b><pre>
+#include &lt;DbXml.hpp&gt;
+<p>
+virtual XmlInputStream::~XmlInputStream()
+</pre></b>
+<hr size=1 noshade>
+<b>Description: XmlInputStream</b>
+<p>Used to read and write XML data. You can obtain an instance of this object using
+one of
+<a href="../../api_reference/CXX/XmlManager_createLocalFileInputStream.html">XmlManager::createLocalFileInputStream</a>,
+<a href="../../api_reference/CXX/XmlManager_createMemBufInputStream.html">XmlManager::createMemBufInputStream</a>,
+<a href="../../api_reference/CXX/XmlManager_createStdInInputStream.html">XmlManager::createStdInInputStream</a>,
+<a href="../../api_reference/CXX/XmlManager_createURLInputStream.html">XmlManager::createURLInputStream</a>,
+or <a href="../../api_reference/CXX/XmlDocument_getContentAsXmlInputStream.html">XmlDocument::getContentAsXmlInputStream</a>.
+You use instances of this class with <a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a> and
+<a href="../../api_reference/CXX/XmlDocument_setContentAsXmlInputStream.html">XmlDocument::setContentAsXmlInputStream</a>.
+</p>
+<p>You can manually retrieve the contents of the input stream using
+<a href="../../api_reference/CXX/XmlInputStream_readBytes.html">XmlInputStream::readBytes</a> and <a href="../../api_reference/CXX/XmlInputStream_curPos.html">XmlInputStream::curPos</a>.</p>
+<p>XmlInputStream is a pure virtual interface.  In C++, you can subclass
+XmlInputStream, and pass an instance of your class to any of the methods
+that take it as a parameter, such as <a href="../../api_reference/CXX/XmlContainer_putDocument.html">XmlContainer::putDocument</a>.
+This is especially useful for streaming XML from an application directly
+into Berkeley DB XML without first converting it to a string.</p>
+</tt>
+<table width="100%"><tr><td><br></td><td align=right>
+<a href="../../api_reference/CXX/api_xml.html"><img src="../../images/api.gif" alt="API"></a><a href="../../ref_xml/toc.html"><img src="../../images/ref.gif" alt="Ref"></a>
+</td></tr></table>
+<p><font size=1>Copyright (c) 1996-2009 Oracle.  All rights reserved.</font>
+</body>
+</html>
