@@ -551,6 +551,8 @@ again:		memset(bitmap, 0, count * sizeof(u_int32_t) * nentries);
 
 		CLEAR_MAP(tmpmap, nentries);
 		SH_TAILQ_FOREACH(lp, &op->holders, links, __db_lock) {
+			if (lp->mode == DB_LOCK_SIREAD)
+				continue;
 			lockerp = (DB_LOCKER *)R_ADDR(&lt->reginfo, lp->holder);
 
 			if (lockerp->dd_id == DD_INVALID_ID) {
@@ -799,7 +801,7 @@ __dd_find(dbenv, bmp, idmap, nlockers, nalloc, deadp)
 				 * deadlocks that we already have.
 				 */
 				if (__os_realloc(dbenv,
-				    ndeadalloc * sizeof(u_int32_t),
+				    ndeadalloc * sizeof(u_int32_t *),
 				    &retp) != 0) {
 					retp[ndead] = NULL;
 					*deadp = retp;

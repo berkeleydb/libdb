@@ -98,7 +98,7 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 	if ((ret = __db_fchk(dbenv,
 	    "txn_begin", flags,
 	    DB_READ_COMMITTED | DB_READ_UNCOMMITTED |
-	    DB_TXN_NOSYNC | DB_TXN_SNAPSHOT | DB_TXN_SYNC |
+	    DB_TXN_NOSYNC | DB_TXN_SNAPSHOT | DB_TXN_SNAPSHOT_SAFE | DB_TXN_SYNC |
 	    DB_TXN_WAIT | DB_TXN_WRITE_NOSYNC | DB_TXN_NOWAIT)) != 0)
 		return (ret);
 	if ((ret = __db_fcchk(dbenv, "txn_begin", flags,
@@ -113,6 +113,8 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 		    "Child transaction snapshot setting must match parent");
 		return (EINVAL);
 	}
+	if (LF_ISSET(DB_TXN_SNAPSHOT_SAFE))
+		LF_SET(DB_TXN_SNAPSHOT);
 
 	ENV_ENTER(dbenv, ip);
 
@@ -198,6 +200,8 @@ __txn_begin(dbenv, parent, txnpp, flags)
 	if (LF_ISSET(DB_TXN_SNAPSHOT) || F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT) ||
 	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT)))
 		F_SET(txn, TXN_SNAPSHOT);
+	if (LF_ISSET(DB_TXN_SNAPSHOT_SAFE))
+		F_SET(txn, TXN_SNAPSHOT_SAFE | TXN_SNAPSHOT);
 
 	if ((ret = __txn_begin_int(txn)) != 0)
 		goto err;
@@ -411,6 +415,9 @@ __txn_begin_int(txn)
 	    __lock_getlocker(dbenv->lk_handle, id, 1, &txn->locker)) != 0)
 		goto err;
 
+	/* Safe SI: link the locker to the transaction. */
+	txn->locker->td_off = R_OFFSET(&mgr->reginfo, td);
+
 	ZERO_LSN(td->last_lsn);
 	ZERO_LSN(td->begin_lsn);
 	SH_TAILQ_INIT(&td->kids);
@@ -552,7 +559,10 @@ __txn_commit(txn, flags)
 	DBT list_dbt;
 	DB_ENV *dbenv;
 	DB_LOCKREQ request;
+	DB_LOG *dblp;
+	DB_LSN current_lsn;
 	DB_TXN *kid;
+	LOG *lp;
 	REGENV *renv;
 	REGINFO *infop;
 	TXN_DETAIL *td;
@@ -570,6 +580,12 @@ __txn_commit(txn, flags)
 	 */
 	if (F_ISSET(txn, TXN_DEADLOCK)) {
 		ret = __db_txn_deadlock_err(dbenv, txn);
+		goto err;
+	}
+
+	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE) &&
+	    F_ISSET(td, TXN_DTL_RCONF) && F_ISSET(td, TXN_DTL_WCONF)) {
+		ret = DB_SNAPSHOT_UNSAFE;
 		goto err;
 	}
 
@@ -653,6 +669,25 @@ __txn_commit(txn, flags)
 				}
 				ret = __lock_vec(dbenv,
 				    txn->locker, 0, &request, 1, NULL);
+
+				/*
+				 * We want the commit LSN, but the current log
+				 * LSN will do -- this transaction cannot write
+				 * any more log records apart from the commit
+				 * record.
+				 */
+				dblp = dbenv->lg_handle;
+				lp = (LOG *)dblp->reginfo.primary;
+				LOG_SYSTEM_LOCK(dbenv);
+				current_lsn = lp->lsn;
+				LOG_SYSTEM_UNLOCK(dbenv);
+
+				/* XXX: throw away SIREAD locks for read-only txns? */
+				if (ret == 0 &&
+				    F_ISSET(txn, TXN_SNAPSHOT_SAFE) &&
+				    !IS_ZERO_LSN(td->read_lsn) &&
+				    !IS_ZERO_LSN(td->last_lsn))
+					ret = __lock_sicommit(dbenv, txn->locker);
 			}
 
 			if (ret == 0 && !IS_ZERO_LSN(td->last_lsn)) {
@@ -970,6 +1005,9 @@ __txn_prepare(txn, gid)
 		return (ret);
 	if (F_ISSET(txn, TXN_DEADLOCK))
 		return (__db_txn_deadlock_err(dbenv, txn));
+	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE) &&
+	    F_ISSET(td, TXN_DTL_RCONF) && F_ISSET(td, TXN_DTL_WCONF))
+		return (DB_SNAPSHOT_UNSAFE);
 
 	ENV_ENTER(dbenv, ip);
 
@@ -1276,10 +1314,11 @@ __txn_end(txn, is_commit)
 {
 	DB_ENV *dbenv;
 	DB_LOCKREQ request;
+	DB_LSN tlsn;
 	DB_TXNLOGREC *lr;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
-	TXN_DETAIL *ptd, *td;
+	TXN_DETAIL *otd, *ptd, *td;
 	db_mutex_t mvcc_mtx;
 	int do_closefiles, ret;
 
@@ -1352,6 +1391,14 @@ __txn_end(txn, is_commit)
 		ptd = txn->parent->td;
 		SH_TAILQ_REMOVE(&ptd->kids, td, klinks, __txn_detail);
 	} else if ((mvcc_mtx = td->mvcc_mtx) != MUTEX_INVALID) {
+		/* Update the region's old LSN. */
+		MUTEX_LOCK(dbenv, region->mtx_oldlsn);
+		MAX_LSN(region->old_lsn);
+		SH_TAILQ_FOREACH(otd, &region->active_txn, links, __txn_detail)
+			if (LOG_COMPARE(&otd->read_lsn, &region->old_lsn) < 0)
+				region->old_lsn = otd->read_lsn;
+		MUTEX_UNLOCK(dbenv, region->mtx_oldlsn);
+
 		MUTEX_LOCK(dbenv, mvcc_mtx);
 		if (td->mvcc_ref != 0) {
 			SH_TAILQ_INSERT_HEAD(&region->mvcc_txn,

@@ -40,7 +40,7 @@ __memp_alloc(dbmp, infop, mfp, len, offsetp, retp)
 	size_t freed_space;
 	u_int32_t buckets, buffers, high_priority, priority;
 	u_int32_t put_counter, total_buckets;
-	int aggressive, alloc_freeze, giveup, got_oldest, ret;
+	int aggressive, alloc_freeze, giveup, ret;
 	u_int8_t *endp;
 	void *p;
 
@@ -50,7 +50,7 @@ __memp_alloc(dbmp, infop, mfp, len, offsetp, retp)
 	hp_end = &dbht[c_mp->htab_buckets];
 
 	buckets = buffers = put_counter = total_buckets = 0;
-	aggressive = alloc_freeze = giveup = got_oldest = 0;
+	aggressive = alloc_freeze = giveup = 0;
 	hp_tmp = NULL;
 
 	STAT(c_mp->stat.st_alloc++);
@@ -316,13 +316,9 @@ this_hb:	if ((bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh)) == NULL)
 				bhp = oldest_bhp;
 			else if (BH_OBSOLETE(oldest_bhp, hp->old_reader, vlsn))
 				bhp = oldest_bhp;
-			else if (!got_oldest &&
-			    __txn_oldest_reader(dbenv, &hp->old_reader) == 0) {
-				got_oldest = 1;
-				if (BH_OBSOLETE(
-				    oldest_bhp, hp->old_reader, vlsn))
-					bhp = oldest_bhp;
-			}
+			else if (__txn_oldest_reader(dbenv, &hp->old_reader) == 0 &&
+			    BH_OBSOLETE(oldest_bhp, hp->old_reader, vlsn))
+				bhp = oldest_bhp;
 		}
 
 		if (bhp->ref != 0 || (bhp != oldest_bhp &&
@@ -351,12 +347,15 @@ this_hb:	if ((bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh)) == NULL)
 		 * oldest reader in the system.
 		 */
 		if (ret == 0 && bh_mfp->multiversion) {
-			if (!got_oldest && !SH_CHAIN_HASPREV(bhp, vc) &&
-			    !BH_OBSOLETE(bhp, hp->old_reader, vlsn)) {
+			if (!SH_CHAIN_HASPREV(bhp, vc) &&
+			    !BH_OBSOLETE(bhp, hp->old_reader, vlsn))
 				(void)__txn_oldest_reader(dbenv,
 				    &hp->old_reader);
-				got_oldest = 1;
-			}
+			/*
+			 * If a buffer is in the middle of a multiversion chain
+			 * or it could be requested by an active transaction,
+			 * we may need to freeze it.
+			 */
 			if (SH_CHAIN_HASPREV(bhp, vc) ||
 			    !BH_OBSOLETE(bhp, hp->old_reader, vlsn)) {
 				/*
@@ -366,6 +365,7 @@ this_hb:	if ((bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh)) == NULL)
 				if (!aggressive ||
 				    F_ISSET(bhp, BH_FROZEN) || bhp->ref != 0)
 					goto next_hb;
+				fprintf(stderr, "Freezing, aggressive = %d, old_reader = {%u/%u}\n", aggressive, hp->old_reader.file, hp->old_reader.offset);
 				ret = __memp_bh_freeze(dbmp,
 				    infop, hp, bhp, &alloc_freeze);
 			}

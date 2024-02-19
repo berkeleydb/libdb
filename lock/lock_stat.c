@@ -493,6 +493,8 @@ __lock_dump_object(lt, mbp, op)
 
 	SH_TAILQ_FOREACH(lp, &op->holders, links, __db_lock)
 		__lock_printlock(lt, mbp, lp, 1);
+	SH_TAILQ_FOREACH(lp, &op->sireaders, links, __db_lock)
+		__lock_printlock(lt, mbp, lp, 1);
 	SH_TAILQ_FOREACH(lp, &op->waiters, links, __db_lock)
 		__lock_printlock(lt, mbp, lp, 1);
 }
@@ -565,6 +567,9 @@ __lock_printlock(lt, mbp, lp, ispgno)
 		break;
 	case DB_LOCK_WAIT:
 		mode = "WAIT";
+		break;
+	case DB_LOCK_SIREAD:
+		mode = "SI_READ";
 		break;
 	default:
 		mode = "UNKNOWN";

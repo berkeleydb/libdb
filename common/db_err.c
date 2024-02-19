@@ -294,6 +294,12 @@ db_strerror(error)
 	case DB_SECONDARY_BAD:
 		return
 	    ("DB_SECONDARY_BAD: Secondary index inconsistent with primary");
+	case DB_SNAPSHOT_CONFLICT:
+		return
+	    ("DB_SNAPSHOT_CONFLICT: attempt to update an old version");
+	case DB_SNAPSHOT_UNSAFE:
+		return
+	    ("DB_SNAPSHOT_UNSAFE: potential snapshot isolation anomaly found");
 	case DB_VERIFY_BAD:
 		return ("DB_VERIFY_BAD: Database verification failed");
 	case DB_VERSION_MISMATCH:

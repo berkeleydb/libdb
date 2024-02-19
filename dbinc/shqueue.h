@@ -213,8 +213,9 @@ struct {								\
 		SH_LIST_NEXTP(elm, field, type)->field.sle_prev =	\
 			(elm)->field.sle_prev - (elm)->field.sle_next;	\
 		*__SH_LIST_PREV_OFF(elm, field) += (elm)->field.sle_next;\
-	} else								\
+	} else if ((elm)->field.sle_prev != -1)				\
 		*__SH_LIST_PREV_OFF(elm, field) = -1;			\
+	(elm)->field.sle_next = (elm)->field.sle_prev = -1;		\
 } while (0)
 
 #define	SH_LIST_REMOVE_HEAD(head, field, type) do {			\

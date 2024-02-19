@@ -76,6 +76,7 @@ int __txn_env_refresh __P((DB_ENV *));
 u_int32_t __txn_region_mutex_count __P((DB_ENV *));
 int __txn_id_set __P((DB_ENV *, u_int32_t, u_int32_t));
 int __txn_oldest_reader __P((DB_ENV *, DB_LSN *));
+int __txn_update_oldlsn __P((DB_ENV *, DB_LSN *));
 int __txn_add_buffer __P((DB_ENV *, TXN_DETAIL *));
 int __txn_remove_buffer __P((DB_ENV *, TXN_DETAIL *, db_mutex_t));
 int __txn_stat_pp __P((DB_ENV *, DB_TXN_STAT **, u_int32_t));

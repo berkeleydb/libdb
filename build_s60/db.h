@@ -42,7 +42,7 @@ extern "C" {
 #define	DB_VERSION_MAJOR	4
 #define	DB_VERSION_MINOR	6
 #define	DB_VERSION_PATCH	21
-#define	DB_VERSION_STRING	"Berkeley DB 4.6.21: (September 27, 2007)"
+#define	DB_VERSION_STRING	"Berkeley DB 4.6.21: (February 19, 2024)"
 
 /*
  * !!!
@@ -185,6 +185,20 @@ struct __db_dbt {
 };
 
 /*
+ * A DB_LSN has two parts, a fileid which identifies a specific file, and an
+ * offset within that file.  The fileid is an unsigned 4-byte quantity that
+ * uniquely identifies a file within the log directory -- currently a simple
+ * counter inside the log.  The offset is also an unsigned 4-byte value.  The
+ * log manager guarantees the offset is never more than 4 bytes by switching
+ * to a new log file before the maximum length imposed by an unsigned 4-byte
+ * offset is reached.
+ */
+struct __db_lsn {
+	u_int32_t	file;		/* File ID. */
+	u_int32_t	offset;		/* File offset. */
+};
+
+/*
  * Common flags --
  *	Interfaces which use any of these common flags should never have
  *	interface specific flags in this range.
@@ -294,6 +308,7 @@ struct __db_dbt {
  *	   Shared flags up to 0x0002000 */
 #define	DB_TXN_SYNC	      0x0004000	/* Always sync log on commit. */
 #define	DB_TXN_WAIT	      0x0008000	/* Always wait for locks in this TXN. */
+#define	DB_TXN_SNAPSHOT_SAFE  0x0010000	/* Serializable SI. */
 
 /*
  * Flags private to DB_ENV->txn_checkpoint.
@@ -468,8 +483,9 @@ struct __db_mutex_stat {
 #define	DB_LOCK_NOWAIT		0x002	/* Don't wait on unavailable lock. */
 #define	DB_LOCK_RECORD		0x004	/* Internal: record lock. */
 #define	DB_LOCK_SET_TIMEOUT	0x008	/* Internal: set lock timeout. */
-#define	DB_LOCK_SWITCH		0x010	/* Internal: switch existing lock. */
-#define	DB_LOCK_UPGRADE		0x020	/* Internal: upgrade existing lock. */
+#define	DB_LOCK_SNAPSHOT_SAFE	0x010	/* Internal: safe SI write. */
+#define	DB_LOCK_SWITCH		0x020	/* Internal: switch existing lock. */
+#define	DB_LOCK_UPGRADE		0x040	/* Internal: upgrade existing lock. */
 
 /* Flag values for DbEnv.set_timeout. */
 #define	DB_SET_LOCK_TIMEOUT	1	/* Set lock timeout */
@@ -493,7 +509,8 @@ typedef enum {
 	DB_LOCK_IREAD=5,		/* Intent to share/read. */
 	DB_LOCK_IWR=6,			/* Intent to read and write. */
 	DB_LOCK_READ_UNCOMMITTED=7,	/* Degree 1 isolation. */
-	DB_LOCK_WWRITE=8		/* Was Written. */
+	DB_LOCK_WWRITE=8,		/* Was Written. */
+	DB_LOCK_SIREAD=9		/* Snapshot read. */
 } db_lockmode_t;
 
 /*
@@ -525,7 +542,7 @@ typedef enum  {
 					 * promoted; waiting for the owner
 					 * to run and upgrade it to held. */
 	DB_LSTAT_WAITING=6		/* Lock is on the wait queue. */
-}db_status_t;
+} db_status_t;
 
 /* Lock statistics structure. */
 struct __db_lock_stat {
@@ -633,20 +650,6 @@ struct __db_lockreq {
 #define	DB_LOG_NOCOPY		0x008	/* Don't copy data */
 #define	DB_LOG_NOT_DURABLE	0x010	/* Do not log; keep in memory */
 #define	DB_LOG_WRNOSYNC		0x020	/* Write, don't sync log_put */
-
-/*
- * A DB_LSN has two parts, a fileid which identifies a specific file, and an
- * offset within that file.  The fileid is an unsigned 4-byte quantity that
- * uniquely identifies a file within the log directory -- currently a simple
- * counter inside the log.  The offset is also an unsigned 4-byte value.  The
- * log manager guarantees the offset is never more than 4 bytes by switching
- * to a new log file before the maximum length imposed by an unsigned 4-byte
- * offset is reached.
- */
-struct __db_lsn {
-	u_int32_t	file;		/* File ID. */
-	u_int32_t	offset;		/* File offset. */
-};
 
 /*
  * Application-specified log record types start at DB_user_BEGIN, and must not
@@ -1041,8 +1044,9 @@ struct __db_txn {
 #define	TXN_READ_UNCOMMITTED	0x0400	/* Txn has degree 1 isolation. */
 #define	TXN_RESTORED		0x0800	/* Txn has been restored. */
 #define	TXN_SNAPSHOT		0x1000	/* Snapshot Isolation. */
-#define	TXN_SYNC		0x2000	/* Write and sync on prepare/commit. */
-#define	TXN_WRITE_NOSYNC	0x4000	/* Write only on prepare/commit. */
+#define	TXN_SNAPSHOT_SAFE	0x2000	/* Serializable SI. */
+#define	TXN_SYNC		0x4000	/* Write and sync on prepare/commit. */
+#define	TXN_WRITE_NOSYNC	0x8000	/* Write only on prepare/commit. */
 	u_int32_t	flags;
 };
 
@@ -1459,6 +1463,8 @@ typedef enum {
 #define	DB_SECONDARY_BAD	(-30974)/* Secondary index corrupt. */
 #define	DB_VERIFY_BAD		(-30973)/* Verify failed; bad format. */
 #define	DB_VERSION_MISMATCH	(-30972)/* Environment version mismatch. */
+#define	DB_SNAPSHOT_CONFLICT	(-30971)/* Conflicting SI updates detected. */
+#define	DB_SNAPSHOT_UNSAFE	(-30970)/* Potential SI anomaly detected. */
 
 /* DB (private) error return codes. */
 #define	DB_ALREADY_ABORTED	(-30899)

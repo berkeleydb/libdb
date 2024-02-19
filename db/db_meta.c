@@ -47,6 +47,7 @@
 #include "dbinc/db_page.h"
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
+#include "dbinc/txn.h"
 #include "dbinc/db_am.h"
 
 static void __db_init_meta __P((DB *, void *, db_pgno_t, u_int32_t));
@@ -715,8 +716,7 @@ __db_free_truncate(dbp, txn, flags, c_data, listp, nelemp, last_pgnop)
 	if ((ret = __db_lget(dbc,
 	    LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 		goto err;
-	if ((ret = __memp_fget(mpf, &pgno, dbc->txn,
-	    DB_MPOOL_DIRTY, &meta)) != 0)
+	if ((ret = __memp_fget(mpf, &pgno, dbc->txn, 0, &meta)) != 0)
 		goto err;
 
 	if (last_pgnop != NULL)
@@ -748,6 +748,9 @@ __db_free_truncate(dbp, txn, flags, c_data, listp, nelemp, last_pgnop)
 		lp++;
 	} while (pgno != PGNO_INVALID);
 	nelems = (u_int32_t)(lp - list);
+
+	if ((ret = __memp_dirty(mpf, &meta, dbc->txn, dbc->priority, 0)) != 0)
+		goto err;
 
 	/* Log the current state of the free list */
 	if (DBC_LOGGING(dbc)) {
@@ -936,7 +939,8 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	DB *dbp;
 	DB_ENV *dbenv;
 	DB_LOCKREQ couple[3], *reqp;
-	DB_TXN *txn;
+	DB_TXN *parent, *txn;
+	TXN_DETAIL *td;
 	int has_timeout, i, ret;
 
 	dbp = dbc->dbp;
@@ -948,13 +952,26 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	 * calling __db_lget to acquire the lock.
 	 */
 	if (CDB_LOCKING(dbenv) || !LOCKING_ON(dbenv) ||
-	    (MULTIVERSION(dbp) && mode == DB_LOCK_READ &&
-	    dbc->txn != NULL && F_ISSET(dbc->txn, TXN_SNAPSHOT)) ||
 	    F_ISSET(dbc, DBC_DONTLOCK) || (F_ISSET(dbc, DBC_RECOVER) &&
 	    (action != LCK_ROLLBACK || IS_REP_CLIENT(dbenv))) ||
 	    (action != LCK_ALWAYS && F_ISSET(dbc, DBC_OPD))) {
 		LOCK_INIT(*lockp);
 		return (0);
+	}
+
+	if (MULTIVERSION(dbp) && txn != NULL && F_ISSET(txn, TXN_SNAPSHOT)) {
+		if (mode == DB_LOCK_READ && !F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
+			LOCK_INIT(*lockp);
+			return (0);
+		} else {
+			for (parent = txn; parent->parent != NULL;)
+				parent = parent->parent;
+			td = parent->td;
+
+			lkflags |= DB_LOCK_SNAPSHOT_SAFE;
+			if (mode == DB_LOCK_READ)
+				mode = DB_LOCK_SIREAD;
+		}
 	}
 
 	dbc->lock.pgno = pgno;
@@ -1042,7 +1059,8 @@ couple:		couple[i].op = has_timeout? DB_LOCK_GET_TIMEOUT : DB_LOCK_GET;
 		break;
 	}
 
-	if (txn != NULL && ret == DB_LOCK_DEADLOCK)
+	if (txn != NULL &&
+	    (ret == DB_LOCK_DEADLOCK || ret == DB_SNAPSHOT_UNSAFE))
 		F_SET(txn, TXN_DEADLOCK);
 	return ((ret == DB_LOCK_NOTGRANTED &&
 	     !F_ISSET(dbenv, DB_ENV_TIME_NOTGRANTED)) ? DB_LOCK_DEADLOCK : ret);

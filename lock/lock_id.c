@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
+#include "dbinc/txn.h"
 
 /*
  * __lock_id_pp --
@@ -188,6 +189,14 @@ __lock_id_free(dbenv, sh_locker)
 	region = lt->reginfo.primary;
 	ret = 0;
 
+	if (sh_locker->nlocks != 0 && !F_ISSET(sh_locker, DB_LOCKER_FREED)) {
+		/* safe SI: mark freed. */
+		ret = __txn_add_buffer(dbenv, LOCKER_TD(dbenv, sh_locker));
+		DB_ASSERT(dbenv, ret == 0);
+		F_SET(sh_locker, DB_LOCKER_FREED);
+		return (0);
+	}
+	
 	if (sh_locker->nlocks != 0) {
 		__db_errx(dbenv, "Locker still has locks");
 		ret = EINVAL;
@@ -447,7 +456,17 @@ __lock_freelocker(lt, region, sh_locker)
 	DB_LOCKER *sh_locker;
 
 {
+	DB_ENV *dbenv;
 	u_int32_t indx;
+
+	dbenv = lt->dbenv;
+
+	if (F_ISSET(sh_locker, DB_LOCKER_FREED)) {
+		/* The transaction no longer owns this locker, decrement it's reference count. */
+		int ret = __txn_remove_buffer(dbenv, LOCKER_TD(dbenv, sh_locker), MUTEX_INVALID);
+		DB_ASSERT(dbenv, ret == 0);
+	}
+
 	LOCKER_HASH(lt, region, sh_locker->id, indx);
 	SH_TAILQ_REMOVE(&lt->locker_tab[indx], sh_locker, links, __db_locker);
 	SH_TAILQ_INSERT_HEAD(

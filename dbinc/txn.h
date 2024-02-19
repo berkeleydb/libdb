@@ -69,8 +69,10 @@ typedef struct __txn_detail {
 	u_int32_t status;		/* status of the transaction */
 
 #define	TXN_DTL_COLLECTED	0x1	/* collected during txn_recover */
-#define	TXN_DTL_RESTORED	0x2	/* prepared txn restored */
-#define	TXN_DTL_INMEMORY	0x4	/* uses in memory logs */
+#define	TXN_DTL_INMEMORY	0x2	/* uses in memory logs */
+#define	TXN_DTL_RESTORED	0x4	/* prepared txn restored */
+#define	TXN_DTL_WCONF		0x8	/* MVCC: write end of a conflict */
+#define	TXN_DTL_RCONF		0x10	/* MVCC: read end of a conflict */
 	u_int32_t flags;
 
 	/* TXN_XA_{ABORTED, DEADLOCKED, ENDED, PREPARED, STARTED, SUSPENDED} */
@@ -133,6 +135,9 @@ struct __db_txnregion {
 	db_mutex_t	mtx_ckp;	/* Single thread checkpoints. */
 	DB_LSN		last_ckp;	/* lsn of the last checkpoint */
 	time_t		time_ckp;	/* time of last checkpoint */
+
+	db_mutex_t	mtx_oldlsn;	/* Protect the oldest active LSN */
+	DB_LSN		old_lsn;	/* LSN of the oldest transaction. */
 
 	DB_TXN_STAT	stat;		/* Statistics for txns. */
 

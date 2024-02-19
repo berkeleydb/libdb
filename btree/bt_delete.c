@@ -525,7 +525,8 @@ __bam_relink(dbc, pagep, new_pgno)
 			goto err;
 		if ((ret = __memp_fget(mpf, &pagep->next_pgno, dbc->txn,
 		    DB_MPOOL_DIRTY, &np)) != 0) {
-			ret = __db_pgerr(dbp, pagep->next_pgno, ret);
+			if (ret != DB_SNAPSHOT_CONFLICT)
+				ret = __db_pgerr(dbp, pagep->next_pgno, ret);
 			goto err;
 		}
 		nlsnp = &np->lsn;
@@ -536,7 +537,8 @@ __bam_relink(dbc, pagep, new_pgno)
 			goto err;
 		if ((ret = __memp_fget(mpf, &pagep->prev_pgno,
 		    dbc->txn, DB_MPOOL_DIRTY, &pp)) != 0) {
-			ret = __db_pgerr(dbp, pagep->prev_pgno, ret);
+			if (ret != DB_SNAPSHOT_CONFLICT)
+				ret = __db_pgerr(dbp, pagep->prev_pgno, ret);
 			goto err;
 		}
 		plsnp = &pp->lsn;

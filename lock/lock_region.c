@@ -19,18 +19,19 @@ static size_t
  * The conflict arrays are set up such that the row is the lock you are
  * holding and the column is the lock that is desired.
  */
-#define	DB_LOCK_RIW_N	9
+#define	DB_LOCK_RIW_N	10
 static const u_int8_t db_riw_conflicts[] = {
-/*         N   R   W   WT  IW  IR  RIW DR  WW */
-/*   N */  0,  0,  0,  0,  0,  0,  0,  0,  0,
-/*   R */  0,  0,  1,  0,  1,  0,  1,  0,  1,
-/*   W */  0,  1,  1,  1,  1,  1,  1,  1,  1,
-/*  WT */  0,  0,  0,  0,  0,  0,  0,  0,  0,
-/*  IW */  0,  1,  1,  0,  0,  0,  0,  1,  1,
-/*  IR */  0,  0,  1,  0,  0,  0,  0,  0,  1,
-/* RIW */  0,  1,  1,  0,  0,  0,  0,  1,  1,
-/*  DR */  0,  0,  1,  0,  1,  0,  1,  0,  0,
-/*  WW */  0,  1,  1,  0,  1,  1,  1,  0,  1
+/*         N   R   W   WT  IW  IR  RIW DR  WW  SI */
+/*   N */  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+/*   R */  0,  0,  1,  0,  1,  0,  1,  0,  1,  0,
+/*   W */  0,  1,  1,  1,  1,  1,  1,  1,  1,  0,
+/*  WT */  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+/*  IW */  0,  1,  1,  0,  0,  0,  0,  1,  1,  0,
+/*  IR */  0,  0,  1,  0,  0,  0,  0,  0,  1,  0,
+/* RIW */  0,  1,  1,  0,  0,  0,  0,  1,  1,  0,
+/*  DR */  0,  0,  1,  0,  1,  0,  1,  0,  0,  0,
+/*  WW */  0,  1,  1,  0,  1,  1,  1,  0,  1,  0,
+/*  SI */  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 };
 
 /*

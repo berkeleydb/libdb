@@ -105,7 +105,7 @@ __memp_fget(dbmfp, pgnoaddr, txn, flags, addrp)
 	void *addrp;
 {
 	enum { FIRST_FOUND, FIRST_MISS, SECOND_FOUND, SECOND_MISS } state;
-	BH *alloc_bhp, *bhp, *frozen_bhp, *oldest_bhp;
+	BH *alloc_bhp, *bhp, *frozen_bhp, *next_bhp, *oldest_bhp;
 	DB_ENV *dbenv;
 	DB_LSN *read_lsnp, vlsn;
 	DB_MPOOL *dbmp;
@@ -113,7 +113,7 @@ __memp_fget(dbmfp, pgnoaddr, txn, flags, addrp)
 	MPOOL *c_mp;
 	MPOOLFILE *mfp;
 	REGINFO *infop, *t_infop;
-	TXN_DETAIL *td;
+	TXN_DETAIL *newer_td, *td;
 	roff_t mf_offset;
 	u_int32_t st_hsearch;
 	int b_incr, b_locked, dirty, edit, extending, first;
@@ -165,10 +165,12 @@ __memp_fget(dbmfp, pgnoaddr, txn, flags, addrp)
 		td = (TXN_DETAIL *)txn->td;
 		if (F_ISSET(txn, TXN_SNAPSHOT)) {
 			read_lsnp = &td->read_lsn;
-			if (IS_MAX_LSN(*read_lsnp) &&
-			    (ret = __log_current_lsn(dbenv, read_lsnp,
-			    NULL, NULL)) != 0)
-				return (ret);
+			if (IS_MAX_LSN(*read_lsnp)) {
+				if ((ret = __log_current_lsn(dbenv, read_lsnp,
+				    NULL, NULL)) != 0)
+					return (ret);
+				(void)__txn_update_oldlsn(dbenv, read_lsnp);
+			}
 		}
 		if ((dirty || LF_ISSET(DB_MPOOL_CREATE | DB_MPOOL_NEW)) &&
 		    td->mvcc_mtx == MUTEX_INVALID && (ret =
@@ -247,8 +249,16 @@ retry:	/*
 		if (mvcc && !edit && read_lsnp != NULL) {
 			while (bhp != NULL &&
 			    !BH_OWNED_BY(dbenv, bhp, txn) &&
-			    !BH_VISIBLE(dbenv, bhp, read_lsnp, vlsn))
+			    !BH_VISIBLE(dbenv, bhp, read_lsnp, vlsn)) {
 				bhp = SH_CHAIN_PREV(bhp, vc, __bh);
+			}
+
+			DB_ASSERT(dbenv, bhp != NULL);
+
+			/* Use more recent, aborted changes, if any. */
+			while (SH_CHAIN_HASNEXT(bhp, vc) &&
+			    BH_OWNER(dbenv, SH_CHAIN_NEXTP(bhp, vc, __bh))->status == TXN_ABORTED)
+				bhp = SH_CHAIN_NEXTP(bhp, vc, __bh);
 
 			DB_ASSERT(dbenv, bhp != NULL);
 		}
@@ -275,6 +285,9 @@ retry:	/*
 		}
 		++bhp->ref;
 		b_incr = 1;
+#ifdef HAVE_STATISTICS
+		++mfp->stat.st_cache_hit;
+#endif
 
 		/*
 		 * BH_LOCKED --
@@ -344,25 +357,50 @@ thawed:			need_free = (--frozen_bhp->ref == 0);
 			goto retry;
 		}
 
-		/*
-		 * If the buffer we wanted was frozen or thawed while we
-		 * waited, we need to start again.
-		 */
-		if (SH_CHAIN_HASNEXT(bhp, vc) &&
-		    SH_CHAIN_NEXTP(bhp, vc, __bh)->td_off == bhp->td_off) {
-			--bhp->ref;
-			b_incr = 0;
-			MUTEX_UNLOCK(dbenv, hp->mtx_hash);
-			bhp = frozen_bhp = NULL;
-			goto retry;
-		} else if (dirty && SH_CHAIN_HASNEXT(bhp, vc)) {
-			ret = DB_LOCK_DEADLOCK;
-			goto err;
+recheck:	if (SH_CHAIN_HASNEXT(bhp, vc)) {
+			next_bhp = SH_CHAIN_NEXTP(bhp, vc, __bh);
+			/*
+			 * If the buffer we wanted was frozen or thawed while
+			 * we waited, we need to start again.
+			 */
+			if (next_bhp->td_off == bhp->td_off ||
+			    BH_OWNER(dbenv, next_bhp)->status == TXN_ABORTED) {
+				--bhp->ref;
+				b_incr = 0;
+				MUTEX_UNLOCK(dbenv, hp->mtx_hash);
+				bhp = frozen_bhp = NULL;
+				goto retry;
+			} else if (dirty) {
+				ret = DB_SNAPSHOT_CONFLICT;
+				goto err;
+			} else if (F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
+				/*
+				 * There is a newer version, so we have a
+				 * read-write conflict.
+				 */
+				for (; next_bhp != NULL;
+				    next_bhp = SH_CHAIN_NEXT(next_bhp, vc, __bh)) {
+					newer_td = BH_OWNER(dbenv, next_bhp);
+					if (newer_td->status == TXN_ABORTED)
+						continue;
+
+					if (newer_td->status == TXN_COMMITTED &&
+					    F_ISSET(newer_td, TXN_DTL_RCONF)) {
+						ret = DB_SNAPSHOT_UNSAFE;
+						goto err;
+					}
+#if 1 /* optimization */
+					if (F_ISSET(td, TXN_DTL_WCONF)) {
+						ret = DB_SNAPSHOT_UNSAFE;
+						goto err;
+					}
+#endif
+					F_SET(newer_td, TXN_DTL_WCONF);
+					F_SET(td, TXN_DTL_RCONF);
+				}
+			}
 		}
 
-#ifdef HAVE_STATISTICS
-		++mfp->stat.st_cache_hit;
-#endif
 		break;
 	}
 
@@ -653,7 +691,7 @@ alloc:		/*
 		if (bhp != NULL) {
 			MUTEX_LOCK(dbenv, hp->mtx_hash);
 			b_locked = 1;
-			break;
+			goto recheck;
 		}
 		DB_ASSERT(dbenv, frozen_bhp == NULL);
 		goto retry;
@@ -858,6 +896,10 @@ alloc:		/*
 
 	/* Copy-on-write. */
 	if (makecopy && state != SECOND_MISS) {
+		if (SH_CHAIN_HASNEXT(bhp, vc)) {
+			ret = DB_SNAPSHOT_CONFLICT;
+			goto err;
+		}
 		DB_ASSERT(dbenv, !SH_CHAIN_HASNEXT(bhp, vc));
 		DB_ASSERT(dbenv, bhp != NULL);
 		DB_ASSERT(dbenv, alloc_bhp != NULL);
@@ -943,20 +985,19 @@ alloc:		/*
 #ifdef DIAGNOSTIC
 	__memp_check_order(dbenv, hp);
 
-	{
-	BH *next_bhp = SH_CHAIN_NEXT(bhp, vc, __bh);
+	next_bhp = SH_CHAIN_NEXT(bhp, vc, __bh);
 
 	DB_ASSERT(dbenv, !mfp->multiversion ||
 	    !F_ISSET(bhp, BH_DIRTY) || next_bhp == NULL);
 
 	DB_ASSERT(dbenv, !mvcc || edit || read_lsnp == NULL ||
 	    bhp->td_off == INVALID_ROFF || BH_OWNED_BY(dbenv, bhp, txn) ||
-	    (BH_VISIBLE(dbenv, bhp, read_lsnp, vlsn) &&
+	    ((BH_VISIBLE(dbenv, bhp, read_lsnp, vlsn) ||
+	    BH_OWNER(dbenv, bhp)->status == TXN_ABORTED) &&
 	    (next_bhp == NULL || F_ISSET(next_bhp, BH_FROZEN) ||
 	    (next_bhp->td_off != INVALID_ROFF &&
 	    (BH_OWNER(dbenv, next_bhp)->status != TXN_COMMITTED ||
 	    !BH_VISIBLE(dbenv, next_bhp, read_lsnp, vlsn))))));
-	}
 #endif
 
 	MUTEX_UNLOCK(dbenv, hp->mtx_hash);

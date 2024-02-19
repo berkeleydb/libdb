@@ -124,6 +124,7 @@ typedef struct __db_lockobj {
 	SH_TAILQ_ENTRY dd_links;	/* Links for dd list. */
 	SH_TAILQ_HEAD(__waitl) waiters;	/* List of waiting locks. */
 	SH_TAILQ_HEAD(__holdl) holders;	/* List of held locks. */
+	SH_TAILQ_HEAD(__sil) sireaders;	/* List of sireaders. */
 					/* Declare room in the object to hold
 					 * typical DB lock structures so that
 					 * we do not have to allocate them from
@@ -139,6 +140,7 @@ struct __db_locker {
 
 	pid_t pid;			/* Process owning locker ID */
 	db_threadid_t tid;		/* Thread owning locker ID */
+	roff_t td_off;			/* TXN_DETAIL of locker. */
 
 	u_int32_t dd_id;		/* Deadlock detector id. */
 
@@ -162,8 +164,9 @@ struct __db_locker {
 
 #define	DB_LOCKER_DELETED	0x0001
 #define	DB_LOCKER_DIRTY		0x0002
-#define	DB_LOCKER_INABORT	0x0004
-#define	DB_LOCKER_TIMEOUT	0x0008
+#define	DB_LOCKER_FREED		0x0004
+#define	DB_LOCKER_INABORT	0x0008
+#define	DB_LOCKER_TIMEOUT	0x0010
 	u_int32_t flags;
 };
 
@@ -211,6 +214,22 @@ struct __db_lock {
 	u_int32_t	indx;		/* Hash index of this object. */
 	db_status_t	status;		/* Status of this lock. */
 };
+
+/* Safe SI helpers. */
+#define	LOCKER_TD(dbenv, lockerp)						\
+    ((TXN_DETAIL *)R_ADDR(&(dbenv)->tx_handle->reginfo, (lockerp)->td_off))
+
+#define	LOCK_HOLDER(dbenv, lp)						\
+    ((DB_LOCKER *)R_ADDR(&(dbenv)->lk_handle->reginfo, (lp)->holder))
+
+#define	LOCK_OWNER(dbenv, lp)						\
+    LOCKER_TD(dbenv, LOCK_HOLDER(dbenv, lp))
+
+#define	LOCK_READLSN(dbenv, lp)						\
+    LOCK_OWNER(dbenv, lp)->read_lsn
+
+#define	LOCK_COMMITLSN(dbenv, lp)					\
+    LOCK_OWNER(dbenv, lp)->visible_lsn
 
 /*
  * Flag values for __lock_put_internal:

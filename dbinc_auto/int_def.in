@@ -896,6 +896,7 @@
 #define	__db_SHA1Update __db_SHA1Update@DB_VERSION_UNIQUE_NAME@
 #define	__db_SHA1Final __db_SHA1Final@DB_VERSION_UNIQUE_NAME@
 #define	__lock_vec_pp __lock_vec_pp@DB_VERSION_UNIQUE_NAME@
+#define	__lock_sicommit __lock_sicommit@DB_VERSION_UNIQUE_NAME@
 #define	__lock_vec __lock_vec@DB_VERSION_UNIQUE_NAME@
 #define	__lock_get_pp __lock_get_pp@DB_VERSION_UNIQUE_NAME@
 #define	__lock_get __lock_get@DB_VERSION_UNIQUE_NAME@
@@ -1856,6 +1857,7 @@
 #define	__txn_region_mutex_count __txn_region_mutex_count@DB_VERSION_UNIQUE_NAME@
 #define	__txn_id_set __txn_id_set@DB_VERSION_UNIQUE_NAME@
 #define	__txn_oldest_reader __txn_oldest_reader@DB_VERSION_UNIQUE_NAME@
+#define	__txn_update_oldlsn __txn_update_oldlsn@DB_VERSION_UNIQUE_NAME@
 #define	__txn_add_buffer __txn_add_buffer@DB_VERSION_UNIQUE_NAME@
 #define	__txn_remove_buffer __txn_remove_buffer@DB_VERSION_UNIQUE_NAME@
 #define	__txn_stat_pp __txn_stat_pp@DB_VERSION_UNIQUE_NAME@

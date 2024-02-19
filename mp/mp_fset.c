@@ -67,7 +67,7 @@ __memp_dirty(dbmfp, addrp, txn, priority, flags)
 	    (!BH_OWNED_BY(dbenv, bhp, ancestor) || SH_CHAIN_HASNEXT(bhp, vc))) {
 slow:		if ((ret = __memp_fget(dbmfp,
 		    &pgno, txn, flags, addrp)) != 0) {
-			if (ret != DB_LOCK_DEADLOCK)
+			if (ret != DB_SNAPSHOT_CONFLICT && ret != DB_SNAPSHOT_UNSAFE)
 				__db_errx(dbenv,
 				    "%s: error getting a page for writing",
 				    __memp_fn(dbmfp));

@@ -131,6 +131,11 @@ __txn_init(dbenv, mgr)
 	region->last_ckp = last_ckp;
 	region->time_ckp = time(NULL);
 
+	MAX_LSN(region->old_lsn);
+	if ((ret = __mutex_alloc(
+	    dbenv, MTX_TXN_REGION, 0, &region->mtx_oldlsn)) != 0)
+		return (ret);
+
 	memset(&region->stat, 0, sizeof(region->stat));
 #ifdef HAVE_STATISTICS
 	region->stat.st_maxtxns = region->maxtxns;
@@ -369,7 +374,6 @@ __txn_oldest_reader(dbenv, lsnp)
 	DB_ENV *dbenv;
 	DB_LSN *lsnp;
 {
-	DB_LSN old_lsn;
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	TXN_DETAIL *td;
@@ -379,19 +383,38 @@ __txn_oldest_reader(dbenv, lsnp)
 		return (0);
 	region = mgr->reginfo.primary;
 
-	if ((ret = __log_current_lsn(dbenv, &old_lsn, NULL, NULL)) != 0)
-		return (ret);
+	MUTEX_LOCK(dbenv, region->mtx_oldlsn);
+	*lsnp = region->old_lsn;
+	MUTEX_UNLOCK(dbenv, region->mtx_oldlsn);
 
-	TXN_SYSTEM_LOCK(dbenv);
-	SH_TAILQ_FOREACH(td, &region->active_txn, links, __txn_detail)
-		if (LOG_COMPARE(&td->read_lsn, &old_lsn) < 0)
-			old_lsn = td->read_lsn;
-	TXN_SYSTEM_UNLOCK(dbenv);
-
-	DB_ASSERT(dbenv, LOG_COMPARE(&old_lsn, lsnp) >= 0);
-	*lsnp = old_lsn;
+	if (IS_MAX_LSN(*lsnp))
+		return (__log_current_lsn(dbenv, lsnp, NULL, NULL));
 
 	return (0);
+}
+
+/*
+ * PUBLIC: int __txn_update_oldlsn __P((DB_ENV *, DB_LSN *));
+ */
+int
+__txn_update_oldlsn(dbenv, lsnp)
+	DB_ENV *dbenv;
+	DB_LSN *lsnp;
+{
+	DB_TXNMGR *mgr;
+	DB_TXNREGION *region;
+	TXN_DETAIL *td;
+
+	if ((mgr = dbenv->tx_handle) == NULL)
+		return (0);
+	region = mgr->reginfo.primary;
+
+	MUTEX_LOCK(dbenv, region->mtx_oldlsn);
+	if (LOG_COMPARE(lsnp, &region->old_lsn) < 0) {
+		DB_ASSERT(dbenv, IS_MAX_LSN(region->old_lsn));
+		region->old_lsn = *lsnp;
+	}
+	MUTEX_UNLOCK(dbenv, region->mtx_oldlsn);
 }
 
 /*

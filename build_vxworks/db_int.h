@@ -644,10 +644,7 @@ typedef struct __dbpginfo {
 #define	IS_NOT_LOGGED_LSN(LSN) \
 	((LSN).file == 0 && (LSN).offset == 1)
 
-/*
- * LOG_COMPARE -- compare two LSNs.
- */
-
+/* LOG_COMPARE -- compare two LSNs. */
 #define	LOG_COMPARE(lsn0, lsn1)						\
     ((lsn0)->file != (lsn1)->file ?					\
     ((lsn0)->file < (lsn1)->file ? -1 : 1) :				\
