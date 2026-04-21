@@ -282,7 +282,7 @@ DTRACE_OBJS= @ADDITIONAL_OBJS@ @REPLACEMENT_OBJS@ @CRYPTO_OBJS@ \
 	mp_fmethod@o@ mp_fopen@o@ mp_fput@o@ mp_fset@o@ mp_method@o@ \
 	mp_mvcc@o@ mp_region@o@ mp_register@o@ mp_resize@o@ mp_stat@o@ \
 	mp_sync@o@ mp_trickle@o@ openflags@o@ os_abort@o@ os_abs@o@ \
-	os_alloc@o@ os_clock@o@ os_cpu@o@ os_ctime@o@ os_config@o@ \
+	os_alloc@o@ os_atomic@o@ os_clock@o@ os_cpu@o@ os_ctime@o@ os_config@o@ \
 	os_dir@o@ os_errno@o@ os_fid@o@ os_flock@o@ os_fsync@o@ \
 	os_getenv@o@ os_handle@o@ os_map@o@ os_method@o@ os_mkdir@o@ \
 	os_open@o@ os_path@o@ os_pid@o@ os_rename@o@ os_root@o@ \
@@ -840,6 +840,27 @@ all: @BUILD_TARGET@
 
 install: all @INSTALL_TARGET@
 
+test: cutest
+	./cutest
+
+##################################################
+# compile_commands.json generation for LSP support.
+# Requires bear (https://github.com/rizsotto/Bear).
+# Enable with: ../dist/configure --enable-compile-commands
+##################################################
+BEAR=	@BEAR@
+
+compile-commands:
+	@if test -z "$(BEAR)"; then \
+		echo "Error: bear not found. Reconfigure with --enable-compile-commands." >&2; \
+		exit 1; \
+	fi
+	$(BEAR) -o compile_commands.json -- $(MAKE) library_build
+	@echo "Generated compile_commands.json"
+
+compile-commands-build:
+	$(BEAR) -o compile_commands.json -- $(MAKE) library_build
+
 ##################################################
 # Library and standard utilities build.
 ##################################################
@@ -1201,6 +1222,7 @@ mostly-clean clean:
 	$(RM) -r RUN_LOG RUNQUEUE TESTDIR TESTDIR.A TEST.LIST
 	$(RM) -r logtrack_seen.db test_micro test_mutex .libs
 	$(RM) -r $(LIB_INSTALL_FILE_LIST)
+	$(RM) compile_commands.json
 	@subdir_cmd@
 
 REALCLEAN_LIST=\
@@ -2218,6 +2240,8 @@ os_abort@o@: $(srcdir)/os/os_abort.c
 os_addrinfo@o@: $(srcdir)/os/os_addrinfo.c
 	$(CC) $(CFLAGS) $?
 os_alloc@o@: $(srcdir)/os/os_alloc.c
+	 $(CC) $(CFLAGS) $?
+os_atomic@o@: $(srcdir)/os/os_atomic.c
 	 $(CC) $(CFLAGS) $?
 os_clock@o@: $(srcdir)/@OSDIR@/os_clock.c
 	 $(CC) $(CFLAGS) $?

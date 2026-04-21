@@ -2107,21 +2107,6 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			result = _ReturnSetup(interp, ret, DB_RETOK_STD(ret),
 			    "set_h_hash");
 			break;
-		case TCL_DB_HEAP_REGIONSIZE:
-			if (i >= objc) {
-				Tcl_WrongNumArgs(interp, 2, objv,
-				    "-heap_regionsize npages");
-				result = TCL_ERROR;
-				break;
-			}
-			result = _GetUInt32(interp, objv[i++], &uintarg);
-			if (result == TCL_OK) {
-				_debug_check();
-				ret = (*dbp)->set_heap_regionsize(*dbp, uintarg);
-				result = _ReturnSetup(interp, ret,
-				    DB_RETOK_STD(ret), "set_heap_regionsize");
-			}
-			break;
 		case TCL_DB_LORDER:
 			if (i >= objc) {
 				Tcl_WrongNumArgs(interp, 2, objv,
@@ -2221,6 +2206,21 @@ bdb_DbOpen(interp, objc, objv, ip, dbp)
 			open_flags |= DB_THREAD;
 			break;
 #endif
+		case TCL_DB_HEAP_REGIONSIZE:
+			if (i >= objc) {
+				Tcl_WrongNumArgs(interp, 2, objv,
+				    "-heap_regionsize npages");
+				result = TCL_ERROR;
+				break;
+			}
+			result = _GetUInt32(interp, objv[i++], &uintarg);
+			if (result == TCL_OK) {
+				_debug_check();
+				ret = (*dbp)->set_heap_regionsize(*dbp, uintarg);
+				result = _ReturnSetup(interp, ret,
+				    DB_RETOK_STD(ret), "set_heap_regionsize");
+			}
+			break;
 		case TCL_DB_AUTO_COMMIT:
 			open_flags |= DB_AUTO_COMMIT;
 			break;
@@ -4994,7 +4994,7 @@ tcl_db_malloc(size)
 
 	Tcl_SetObjLength(obj, (int)(size + sizeof(Tcl_Obj *)));
 	buf = Tcl_GetString(obj);
-	memcpy(buf, &obj, sizeof(&obj));
+	memcpy(buf, &obj, sizeof(obj));
 
 	buf = (Tcl_Obj **)buf + 1;
 	return (buf);
@@ -5014,7 +5014,7 @@ tcl_db_realloc(ptr, size)
 	Tcl_SetObjLength(obj, (int)(size + sizeof(Tcl_Obj *)));
 
 	ptr = Tcl_GetString(obj);
-	memcpy(ptr, &obj, sizeof(&obj));
+	memcpy(ptr, &obj, sizeof(obj));
 
 	ptr = (Tcl_Obj **)ptr + 1;
 	return (ptr);

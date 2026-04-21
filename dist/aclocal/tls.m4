@@ -8,31 +8,29 @@ AC_DEFUN([AX_TLS], [
   AC_SUBST(TLS_decl)
   AC_SUBST(TLS_defn)
   ac_cv_tls=none
-  AC_LANG_SAVE
-  AC_LANG_CPLUSPLUS
+  AC_LANG_PUSH([C++])
   ax_tls_keywords="__thread __declspec(thread) __declspec(__thread)"
   for ax_tls_decl_keyword in $ax_tls_keywords ""; do
       for ax_tls_defn_keyword in $ax_tls_keywords ""; do
           test -z "$ax_tls_decl_keyword" &&
               test -z "$ax_tls_defn_keyword" && continue
-          AC_TRY_COMPILE([template <typename T>class TLSClass {
-              public: static ] $ax_tls_decl_keyword [ T *tlsvar;
+          AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[template <typename T>class TLSClass {
+              public: static ]] $ax_tls_decl_keyword [[ T *tlsvar;
               };
               class TLSClass2 {
-              public: static ] $ax_tls_decl_keyword [int tlsvar;
+              public: static ]] $ax_tls_decl_keyword [[int tlsvar;
               };
-              template<typename T> ] $ax_tls_defn_keyword [ T* TLSClass<T>::tlsvar = NULL;]
-              $ax_tls_defn_keyword [int TLSClass2::tlsvar = 1; 
-              static $ax_tls_decl_keyword int x = 0;],
-              [TLSClass<int>::tlsvar = NULL; TLSClass2::tlsvar = 1;],
+              template<typename T> ]] $ax_tls_defn_keyword [[ T* TLSClass<T>::tlsvar = NULL;]]
+              $ax_tls_defn_keyword [[int TLSClass2::tlsvar = 1;
+              static ]] $ax_tls_decl_keyword [[ int x = 0;]],
+              [[TLSClass<int>::tlsvar = NULL; TLSClass2::tlsvar = 1;]])],
               [ac_cv_tls=modifier ; break])
       done
       test "$ac_cv_tls" = none || break
   done
-  AC_LANG_RESTORE
+  AC_LANG_POP([C++])
   if test "$ac_cv_tls" = "none" ; then
-      AC_TRY_COMPILE(
-        [#include <stdlib.h>
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <stdlib.h>
          #include <pthread.h>
 
          static pthread_once_t once_control_ = PTHREAD_ONCE_INIT;
@@ -46,7 +44,7 @@ AC_DEFUN([AX_TLS], [
          }
          static void set_tls(void *p) {
               pthread_setspecific(&key, p);
-         }], [],
+         }]], [[]])],
          [ac_cv_tls=pthread])
   fi
 

@@ -23,8 +23,18 @@
 /PUBLIC:/ {
 	sub(/^.*PUBLIC:[	 ][	 ]*/, "")
 	if ($0 ~ /^#if|^#ifdef|^#ifndef|^#else|^#endif/) {
-		print $0 >> i_pfile
-		print $0 >> i_dfile
+		# Accumulate continuation lines (ending with \) into
+		# a single preprocessor directive.
+		ppline = $0
+		while (ppline ~ /\\$/) {
+			sub(/\\$/, "", ppline)
+			if (getline <= 0)
+				break
+			sub(/^.*PUBLIC:[	 ][	 ]*/, "")
+			ppline = ppline $0
+		}
+		print ppline >> i_pfile
+		print ppline >> i_dfile
 		next
 	}
 	pline = sprintf("%s %s", pline, $0)
@@ -44,8 +54,16 @@
 /EXTERN:/ {
 	sub(/^.*EXTERN:[	 ][	 ]*/, "")
 	if ($0 ~ /^#if|^#ifdef|^#ifndef|^#else|^#endif/) {
-		print $0 >> e_pfile
-		print $0 >> e_dfile
+		ppline = $0
+		while (ppline ~ /\\$/) {
+			sub(/\\$/, "", ppline)
+			if (getline <= 0)
+				break
+			sub(/^.*EXTERN:[	 ][	 ]*/, "")
+			ppline = ppline $0
+		}
+		print ppline >> e_pfile
+		print ppline >> e_dfile
 		next
 	}
 	eline = sprintf("%s %s", eline, $0)

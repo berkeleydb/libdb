@@ -142,7 +142,7 @@ static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
 		ret = pthread_rwlock_tryrdlock(&mutexp->u.rwlock);
 	else
 		return (EINVAL);
-	if (ret == EBUSY)
+	if (ret == EBUSY || ret == EDEADLK)
 		ret = DB_LOCK_NOTGRANTED;
 #ifdef HAVE_STATISTICS
 	if (ret == 0)

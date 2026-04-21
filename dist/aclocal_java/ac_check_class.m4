@@ -75,9 +75,9 @@ EOF
                 if uudecode$EXEEXT Test.uue; then
                         :
                 else
-                        echo "configure: __oline__: uudecode had trouble decoding base 64 file 'Test.uue'" >&AC_FD_CC
-                        echo "configure: failed file was:" >&AC_FD_CC
-                        cat Test.uue >&AC_FD_CC
+                        echo "configure: __oline__: uudecode had trouble decoding base 64 file 'Test.uue'" >&AS_MESSAGE_LOG_FD
+                        echo "configure: failed file was:" >&AS_MESSAGE_LOG_FD
+                        cat Test.uue >&AS_MESSAGE_LOG_FD
                         ac_cv_prog_uudecode_base64=no
                 fi
         rm -f Test.uue

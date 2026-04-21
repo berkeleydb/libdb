@@ -19,17 +19,14 @@ esac
 #	run the program if possible, because we don't trust the #define's
 #	existence to mean the clock really exists.
 AC_CACHE_CHECK([for clock_gettime monotonic clock], db_cv_clock_monotonic, [
-AC_TRY_RUN([
-#include <sys/time.h>
-main() {
+AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <sys/time.h>]], [[
 	struct timespec t;
 	return (clock_gettime(CLOCK_MONOTONIC, &t) != 0);
-}], db_cv_clock_monotonic=yes, db_cv_clock_monotonic=no,
-AC_TRY_LINK([
-#include <sys/time.h>], [
+]])], [db_cv_clock_monotonic=yes], [db_cv_clock_monotonic=no],
+[AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sys/time.h>]], [[
 struct timespec t;
 clock_gettime(CLOCK_MONOTONIC, &t);
-], db_cv_clock_monotonic=yes, db_cv_clock_monotonic=no))
+]])], [db_cv_clock_monotonic=yes], [db_cv_clock_monotonic=no])])
 ])
 if test "$db_cv_clock_monotonic" = "yes"; then
 	AC_DEFINE(HAVE_CLOCK_MONOTONIC)
@@ -46,10 +43,10 @@ fi
 AC_CHECK_FUNCS(ctime_r)
 if test "$ac_cv_func_ctime_r" = "yes"; then
 AC_CACHE_CHECK([for 2 or 3 argument version of ctime_r], db_cv_ctime_r_3arg, [
-AC_TRY_LINK([
-#include <time.h>], [
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <time.h>]], [[
 	ctime_r(NULL, NULL, 100);
-],  [db_cv_ctime_r_3arg="3-argument"], [db_cv_ctime_r_3arg="2-argument"])])
+]])],  [db_cv_ctime_r_3arg="3-argument"], [db_cv_ctime_r_3arg="2-argument"])])
 fi
 if test "$db_cv_ctime_r_3arg" = "3-argument"; then
 	AC_DEFINE(HAVE_CTIME_R_3ARG)

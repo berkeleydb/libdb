@@ -241,7 +241,7 @@ __mutex_region_init(env, mtxmgr)
 	 */
 	mutex = MUTEX_INVALID;
 	if ((ret =
-	    __mutex_alloc(env, MTX_MUTEX_TEST, 0, &mutex) != 0) ||
+	    __mutex_alloc(env, MTX_MUTEX_TEST, 0, &mutex)) != 0 ||
 	    (ret = __mutex_lock(env, mutex)) != 0 ||
 	    (ret = __mutex_unlock(env, mutex)) != 0 ||
 	    (ret = __mutex_trylock(env, mutex)) != 0 ||
@@ -254,7 +254,7 @@ __mutex_region_init(env, mtxmgr)
 #ifdef HAVE_SHARED_LATCHES
 	if ((ret =
 	    __mutex_alloc(env,
-		MTX_MUTEX_TEST, DB_MUTEX_SHARED, &mutex) != 0) ||
+		MTX_MUTEX_TEST, DB_MUTEX_SHARED, &mutex)) != 0 ||
 	    (ret = __mutex_lock(env, mutex)) != 0 ||
 	    (ret = __mutex_tryrdlock(env, mutex)) != DB_LOCK_NOTGRANTED ||
 	    (ret = __mutex_unlock(env, mutex)) != 0 ||

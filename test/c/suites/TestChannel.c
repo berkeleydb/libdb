@@ -1334,8 +1334,8 @@ static int get_avail_ports(ports, count)
 		i = incr;
 
 		while (i-- > 0) {
-			if (ret = __repmgr_getaddr(NULL, "localhost", curport,
-			    AI_PASSIVE, &orig_ai) != 0)
+			if ((ret = __repmgr_getaddr(NULL, "localhost", curport,
+			    AI_PASSIVE, &orig_ai)) != 0)
 				goto end;
 
 			for (ai = orig_ai; ai != NULL; ai = ai->ai_next) {

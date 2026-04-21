@@ -42,8 +42,10 @@ AC_DEFUN(AM_SEQUENCE_CONFIGURE, [
 	# and format them.  If we're cross-compiling, all we get is a link
 	# test, which won't test for the appropriate printf format strings.
 	if test "$db_cv_build_sequence" = "yes"; then
-		AC_TRY_RUN([
-		main() {
+		AC_RUN_IFELSE([AC_LANG_PROGRAM([
+#include <stdio.h>
+#include <string.h>
+		], [
 			$db_cv_seq_type l;
 			unsigned $db_cv_seq_type u;
 			char buf@<:@100@:>@;
@@ -58,8 +60,11 @@ AC_DEFUN(AM_SEQUENCE_CONFIGURE, [
 			if (strcmp(buf, "18446744073709551615"))
 				return (1);
 			return (0);
-		}],, [db_cv_build_sequence="no"],
-		AC_TRY_LINK(,[
+		])],, [db_cv_build_sequence="no"],
+		AC_LINK_IFELSE([AC_LANG_PROGRAM([
+#include <stdio.h>
+#include <string.h>
+		], [
 			$db_cv_seq_type l;
 			unsigned $db_cv_seq_type u;
 			char buf@<:@100@:>@;
@@ -74,7 +79,7 @@ AC_DEFUN(AM_SEQUENCE_CONFIGURE, [
 			if (strcmp(buf, "18446744073709551615"))
 				return (1);
 			return (0);
-		],, [db_cv_build_sequence="no"]))
+		])],, [db_cv_build_sequence="no"]))
 	fi
 	if test "$db_cv_build_sequence" = "yes"; then
 		AC_SUBST(db_seq_decl)

@@ -22,10 +22,10 @@
  * PUBLIC: int bdb_HCommand __P((Tcl_Interp *, int, Tcl_Obj * CONST*));
  */
 int
-bdb_HCommand(interp, objc, objv)
-	Tcl_Interp *interp;		/* Interpreter */
-	int objc;			/* How many arguments? */
-	Tcl_Obj *CONST objv[];		/* The argument objects */
+bdb_HCommand(
+	Tcl_Interp *interp,		/* Interpreter */
+	int objc,			/* How many arguments? */
+	Tcl_Obj *CONST objv[])		/* The argument objects */
 {
 	static const char *hcmds[] = {
 		"hcreate",
@@ -145,11 +145,11 @@ bdb_HCommand(interp, objc, objv)
  * PUBLIC: #endif
  */
 int
-bdb_NdbmOpen(interp, objc, objv, dbpp)
-	Tcl_Interp *interp;		/* Interpreter */
-	int objc;			/* How many arguments? */
-	Tcl_Obj *CONST objv[];		/* The argument objects */
-	DBM **dbpp;			/* Dbm pointer */
+bdb_NdbmOpen(
+	Tcl_Interp *interp,		/* Interpreter */
+	int objc,			/* How many arguments? */
+	Tcl_Obj *CONST objv[],		/* The argument objects */
+	DBM **dbpp)			/* DBM handle */
 {
 	static const char *ndbopen[] = {
 		"-create",
@@ -286,12 +286,12 @@ error:
  * PUBLIC: #endif
  */
 int
-bdb_DbmCommand(interp, objc, objv, flag, dbm)
-	Tcl_Interp *interp;		/* Interpreter */
-	int objc;			/* How many arguments? */
-	Tcl_Obj *CONST objv[];		/* The argument objects */
-	int flag;			/* Which db interface */
-	DBM *dbm;			/* DBM pointer */
+bdb_DbmCommand(
+	Tcl_Interp *interp,		/* Interpreter */
+	int objc,			/* How many arguments? */
+	Tcl_Obj *CONST objv[],		/* The argument objects */
+	int flag,			/* Which db interface */
+	DBM *dbm)			/* DBM pointer */
 {
 	static const char *dbmcmds[] = {
 		"dbmclose",
@@ -575,11 +575,11 @@ out:	if (dtmp != NULL && freedata)
  * PUBLIC: int ndbm_Cmd __P((ClientData, Tcl_Interp *, int, Tcl_Obj * CONST*));
  */
 int
-ndbm_Cmd(clientData, interp, objc, objv)
-	ClientData clientData;		/* DB handle */
-	Tcl_Interp *interp;		/* Interpreter */
-	int objc;			/* How many arguments? */
-	Tcl_Obj *CONST objv[];		/* The argument objects */
+ndbm_Cmd(
+	ClientData clientData,		/* Client information */
+	Tcl_Interp *interp,		/* Interpreter */
+	int objc,			/* How many arguments? */
+	Tcl_Obj *CONST objv[])		/* The argument objects */
 {
 	static const char *ndbcmds[] = {
 		"clearerr",

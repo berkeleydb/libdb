@@ -406,6 +406,8 @@ bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_abort.o  : $(BDB_ROOT)/sr
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)dcc $(DEBUGFLAGS_C-Compiler) $(CC_ARCH_SPEC) -W:c:,-Xclib-optim-off -Xansi -Xlocal-data-area-static-only -Xforce-declarations  -Xmake-dependency=0xd $(ADDED_CFLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
 bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_alloc.o  : $(BDB_ROOT)/src/os/os_alloc.c
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)dcc $(DEBUGFLAGS_C-Compiler) $(CC_ARCH_SPEC) -W:c:,-Xclib-optim-off -Xansi -Xlocal-data-area-static-only -Xforce-declarations  -Xmake-dependency=0xd $(ADDED_CFLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
+bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_atomic.o  : $(BDB_ROOT)/src/os/os_atomic.c
+	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)dcc $(DEBUGFLAGS_C-Compiler) $(CC_ARCH_SPEC) -W:c:,-Xclib-optim-off -Xansi -Xlocal-data-area-static-only -Xforce-declarations  -Xmake-dependency=0xd $(ADDED_CFLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
 bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_clock.o  : $(BDB_ROOT)/src/os/os_clock.c
 	$(TRACE_FLAG)if [ ! -d "`dirname "$@"`" ]; then mkdir -p "`dirname "$@"`"; fi;echo "building $@"; $(TOOL_PATH)dcc $(DEBUGFLAGS_C-Compiler) $(CC_ARCH_SPEC) -W:c:,-Xclib-optim-off -Xansi -Xlocal-data-area-static-only -Xforce-declarations  -Xmake-dependency=0xd $(ADDED_CFLAGS) $(IDE_INCLUDES) $(ADDED_INCLUDES) -DCPU=$(CPU) -DTOOL_FAMILY=$(TOOL_FAMILY) -DTOOL=$(TOOL) -D_WRS_KERNEL   $(DEFINES) -o "$@" -c "$<"
 bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_cpu.o  : $(BDB_ROOT)/src/os/os_cpu.c
@@ -639,6 +641,7 @@ OBJECTS_bdbvxw = \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/mutex/mut_tas.o \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_abort.o \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_alloc.o \
+	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_atomic.o \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_clock.o \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_cpu.o \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_ctime.o \
@@ -839,6 +842,7 @@ DEP_FILES := \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/mutex/mut_tas.d \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_abort.d \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_alloc.d \
+	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_atomic.d \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_clock.d \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_cpu.d \
 	bdbvxw/$(MODE_DIR)/Objects/$(BDB_OBJECT_DIR)/src/os/os_ctime.d \

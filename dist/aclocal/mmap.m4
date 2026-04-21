@@ -12,7 +12,7 @@ if test "$mmap_ok" = "yes" ; then
 
     db_cv_mmap_extend="no"
 
-    AC_TRY_RUN([
+    AC_RUN_IFELSE([AC_LANG_PROGRAM([[
     /*
      *	Most mmap() implemenations allow you to map in a region which is much
      *	larger than the underlying file. Only the second less than the actual
@@ -40,7 +40,7 @@ if test "$mmap_ok" = "yes" ; then
     #define TEST_MMAP_EXTENDSIZE	(16 * 1024 * 1024)
     #ifndef MAP_FAILED
     #define MAP_FAILED (-1)
-    #endif
+    #endif]], [[
 
     int catch_sig(sig)
 	    int sig;
@@ -97,7 +97,7 @@ if test "$mmap_ok" = "yes" ; then
 	    close(fd);
 	    (void) unlink(underlying);
 	    return (0);
-    }], [db_cv_mmap_extend="yes"],[db_cv_mmap_extend="no"],[db_cv_mmap_extend="no"])
+    }]])], [db_cv_mmap_extend="yes"],[db_cv_mmap_extend="no"],[db_cv_mmap_extend="no"])
 
 
     if test "$db_cv_mmap_extend" = yes; then

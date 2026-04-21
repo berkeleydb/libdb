@@ -33,7 +33,7 @@ int open_db(DB_ENV **, DB **, char *, char *, u_int32_t, int);
 int run_test(CuTest *, u_int32_t, int, int, int, int, int);
 int store_db(DB *, int, int, int, int);
 
-const char *progname = "TestDbTuner";
+static const char *progname = "TestDbTuner";
 int total_cases, success_cases;
 
 int TestDbTuner(CuTest *ct) {
