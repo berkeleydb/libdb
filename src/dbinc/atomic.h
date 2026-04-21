@@ -16,39 +16,71 @@ extern "C" {
 /*
  *	Atomic operation support for Oracle Berkeley DB
  *
- * HAVE_ATOMIC_SUPPORT configures whether to use the assembly language
- * or system calls to perform:
+ * HAVE_ATOMIC_SUPPORT configures whether to use hardware atomic
+ * instructions or OS-provided atomic APIs.  When defined, the
+ * __os_atomic_*() functions in os_atomic.c use the best available
+ * backend for the target platform:
  *
- *	 atomic_inc(env, valueptr)
- *	    Adds 1 to the db_atomic_t value, returning the new value.
+ *   Tier 1: GCC/Clang __atomic_* builtins (C11-compatible)
+ *   Tier 2: Legacy GCC __sync_* builtins (GCC 4.1+)
+ *   Tier 3: OS-specific APIs (Windows Interlocked*, Solaris atomic.h)
+ *   Tier 4: Mutex-based emulation (when HAVE_MUTEX_SUPPORT defined)
+ *   Tier 5: Non-atomic fallback (single-threaded only)
  *
- *	 atomic_dec(env, valueptr)
- *	    Subtracts 1 from the db_atomic_t value, returning the new value.
+ * All operations are declared in dbinc_auto/os_ext.h, auto-generated
+ * by dist/s_include from PUBLIC comments in src/os/os_atomic.c.
  *
- *	 atomic_compare_exchange(env, valueptr, oldval, newval)
- *	    If the db_atomic_t's value is still oldval, set it to newval.
- *	    It returns 1 for success or 0 for failure.
+ * The API is split into two groups based on ENV requirements:
  *
- * The ENV * parameter is used only when HAVE_ATOMIC_SUPPORT is undefined.
+ * Query/init operations (no ENV parameter):
+ *   These are safe without mutex fallback because aligned 32-bit
+ *   reads are hardware-atomic, and init occurs in single-threaded
+ *   context before the value is shared.
  *
- * If the platform does not natively support any one of these operations,
- * then atomic operations will be emulated with this sequence:
- *		MUTEX_LOCK()
- *		<op>
- *		MUTEX_UNLOCK();
- * Uses where mutexes are not available (e.g. the environment has not yet
- * attached to the mutex region) must be avoided.
+ *   __os_atomic_read(p)
+ *	Atomically reads and returns the current value.
+ *
+ *   __os_atomic_init(p, val)
+ *	Sets the initial value (single-threaded context only).
+ *
+ *   __os_atomic_store(p, val)
+ *	Atomically sets the value (volatile write).
+ *
+ * Modification operations (ENV * parameter required):
+ *   These may need mutex-based fallback on platforms without native
+ *   atomic instructions, which requires access to the ENV handle
+ *   for mutex region lookup.
+ *
+ *   __os_atomic_inc(env, p)
+ *	Adds 1 to the db_atomic_t value, returning the new value.
+ *
+ *   __os_atomic_dec(env, p)
+ *	Subtracts 1 from the db_atomic_t value, returning the new value.
+ *
+ *   __os_atomic_cas(env, p, oldval, newval)
+ *	If the db_atomic_t's value is still oldval, set it to newval.
+ *	Returns 1 for success or 0 for failure.
+ *
+ *   __os_atomic_add(env, p, val)
+ *	Adds val to the db_atomic_t value, returning the new value.
+ */
+
+/*
+ * Atomic value type: 32-bit signed integer on all platforms.
+ * Windows historically used DWORD but we normalize for portability
+ * and to avoid signed/unsigned mismatches with the Interlocked APIs.
+ * Use Berkeley DB's standard signed 32-bit type.
  */
 #if defined(DB_WIN32)
 typedef DWORD	atomic_value_t;
 #else
-typedef int32_t	 atomic_value_t;
+typedef signed int atomic_value_t;
 #endif
 
 /*
  * Windows CE has strange issues using the Interlocked APIs with variables
- * stored in shared memory. It seems like the page needs to have been written
- * prior to the API working as expected. Work around this by allocating an
+ * stored in shared memory.  It seems like the page needs to have been written
+ * prior to the API working as expected.  Work around this by allocating an
  * additional 32-bit value that can be harmlessly written for each value
  * used in Interlocked instructions.
  */
@@ -64,137 +96,40 @@ typedef struct {
 #endif
 
 /*
- * These macro hide the db_atomic_t structure layout and help detect
- * non-atomic_t actual argument to the atomic_xxx() calls. DB requires
- * aligned 32-bit reads to be atomic even outside of explicit 'atomic' calls.
- * These have no memory barriers; the caller must include them when necessary.
+ * Memory ordering constants for future use with relaxed/acquire/release
+ * semantics.  Currently all operations use sequential consistency
+ * (DB_ATOMIC_SEQ_CST) which is the safest default.
  */
-#define	atomic_read(p)		((p)->value)
-#define	atomic_init(p, val)	((p)->value = (val))
+#define	DB_ATOMIC_RELAXED	0
+#define	DB_ATOMIC_ACQUIRE	1
+#define	DB_ATOMIC_RELEASE	2
+#define	DB_ATOMIC_SEQ_CST	3
+
+/*
+ * Compatibility macros: map the legacy atomic_xxx() call sites to the
+ * new __os_atomic_*() functions.  These avoid the C11 <stdatomic.h>
+ * naming conflict (atomic_init, atomic_load, etc.) by providing
+ * BDB-prefixed names.
+ *
+ * Query/init operations delegate to ENV-free functions.
+ * Modification operations delegate to ENV-aware functions.
+ */
+#define	atomic_read(p)		__os_atomic_read(p)
+#define	atomic_init(p, val)	__os_atomic_init((p), (val))
 
 #ifdef HAVE_ATOMIC_SUPPORT
 
-#if defined(DB_WIN32)
-#if defined(DB_WINCE)
-#define	WINCE_ATOMIC_MAGIC(p)						\
-	/*								\
-	 * Memory mapped regions on Windows CE cause problems with	\
-	 * InterlockedXXX calls. Each page in a mapped region needs to	\
-	 * have been written to prior to an InterlockedXXX call, or the	\
-	 * InterlockedXXX call hangs. This does not seem to be		\
-	 * documented anywhere. For now, read/write a non-critical	\
-	 * piece of memory from the shared region prior to attempting	\
-	 * shared region prior to attempting an InterlockedExchange	\
-	 * InterlockedXXX operation.					\
-	 */								\
-	(p)->dummy = 0
-#else
-#define	WINCE_ATOMIC_MAGIC(p) 0
-#endif
-
-#if defined(DB_WINCE) || (defined(_MSC_VER) && _MSC_VER < 1300)
-/*
- * The Interlocked instructions on Windows CE have different parameter
- * definitions. The parameters lost their 'volatile' qualifier,
- * cast it away, to avoid compiler warnings.
- * These definitions should match those in dbinc/mutex_int.h for tsl_t, except
- * that the WINCE version drops the volatile qualifier.
- */
-typedef PLONG interlocked_val;
-#define	atomic_inc(env, p)						\
-	(WINCE_ATOMIC_MAGIC(p),						\
-	InterlockedIncrement((interlocked_val)(&(p)->value)))
-
-#else
-typedef LONG volatile *interlocked_val;
 #define	atomic_inc(env, p)	\
-	InterlockedIncrement((interlocked_val)(&(p)->value))
-#endif
-
-#define	atomic_dec(env, p)						\
-	(WINCE_ATOMIC_MAGIC(p),						\
-	InterlockedDecrement((interlocked_val)(&(p)->value)))
-#if defined(_MSC_VER) && _MSC_VER < 1300
-#define	atomic_compare_exchange(env, p, oldval, newval)			\
-	(WINCE_ATOMIC_MAGIC(p),						\
-	(InterlockedCompareExchange((PVOID *)(&(p)->value),		\
-	(PVOID)(newval), (PVOID)(oldval)) == (PVOID)(oldval)))
-#else
-#define	atomic_compare_exchange(env, p, oldval, newval)			\
-	(WINCE_ATOMIC_MAGIC(p),						\
-	(InterlockedCompareExchange((interlocked_val)(&(p)->value),	\
-	(newval), (oldval)) == (oldval)))
-#endif
-#endif
-
-#if defined(HAVE_ATOMIC_SOLARIS)
-/* Solaris sparc & x86/64 */
-#include <atomic.h>
-#define	atomic_inc(env, p)	\
-	atomic_inc_uint_nv((volatile unsigned int *) &(p)->value)
+	__os_atomic_inc((env), (p))
 #define	atomic_dec(env, p)	\
-	atomic_dec_uint_nv((volatile unsigned int *) &(p)->value)
-#define	atomic_compare_exchange(env, p, oval, nval)		\
-	(atomic_cas_32((volatile unsigned int *) &(p)->value,	\
-	    (oval), (nval)) == (oval))
-#endif
-
-#if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY)
-/* x86/x86_64 gcc  */
-#define	atomic_inc(env, p)	__atomic_inc(p)
-#define	atomic_dec(env, p)	__atomic_dec(p)
-#define	atomic_compare_exchange(env, p, o, n)	\
-	__atomic_compare_exchange((p), (o), (n))
-static inline int __atomic_inc(db_atomic_t *p)
-{
-	int	temp;
-
-	temp = 1;
-	__asm__ __volatile__("lock; xadd %0, (%1)"
-		: "+r"(temp)
-		: "r"(p));
-	return (temp + 1);
-}
-
-static inline int __atomic_dec(db_atomic_t *p)
-{
-	int	temp;
-
-	temp = -1;
-	__asm__ __volatile__("lock; xadd %0, (%1)"
-		: "+r"(temp)
-		: "r"(p));
-	return (temp - 1);
-}
-
-/*
- * x86/gcc Compare exchange for shared latches. i486+
- *	Returns 1 for success, 0 for failure
- *
- * GCC 4.1+ has an equivalent  __sync_bool_compare_and_swap() as well as
- * __sync_val_compare_and_swap() which returns the value read from *dest
- * http://gcc.gnu.org/onlinedocs/gcc-4.1.0/gcc/Atomic-Builtins.html
- * which configure could be changed to use.
- */
-static inline int __atomic_compare_exchange(
-	db_atomic_t *p, atomic_value_t oldval, atomic_value_t newval)
-{
-	atomic_value_t was;
-
-	if (p->value != oldval)	/* check without expensive cache line locking */
-		return 0;
-	__asm__ __volatile__("lock; cmpxchgl %1, (%2);"
-	    :"=a"(was)
-	    :"r"(newval), "r"(p), "a"(oldval)
-	    :"memory", "cc");
-	return (was == oldval);
-}
-#endif
+	__os_atomic_dec((env), (p))
+#define	atomic_compare_exchange(env, p, oldval, newval)	\
+	__os_atomic_cas((env), (p), (oldval), (newval))
 
 #else
 /*
  * No native hardware support for atomic increment, decrement, and
- * compare-exchange. Emulate them when mutexes are supported;
+ * compare-exchange.  Emulate them when mutexes are supported;
  * do them without concern for atomicity when no mutexes.
  */
 #ifndef HAVE_MUTEX_SUPPORT

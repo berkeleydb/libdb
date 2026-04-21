@@ -30,13 +30,13 @@ AC_DEFUN([AM_SOCKLEN_T],[
 	 db_cv_socklen_t_equiv=
 	 for arg2 in "struct sockaddr" void; do
 	   for t in int size_t "unsigned int" "long int" "unsigned long int"; do
-	     AC_TRY_COMPILE([$db_includes
+	     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[$db_includes
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
-		int getpeername (int, $arg2 *, $t *);],
-	       [$t len;
-		getpeername (0, 0, &len);],
+		int getpeername (int, $arg2 *, $t *);]],
+	       [[$t len;
+		getpeername (0, 0, &len);]])],
 	       [db_cv_socklen_t_equiv="$t"])
 	     test "$db_cv_socklen_t_equiv" != "" && break
 	   done

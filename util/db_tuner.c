@@ -1109,10 +1109,7 @@ sum_opd_page_data_entries(dbp, h)
 
 /* The space used by one item in a page. */
 static int
-item_space(dbp, h, indx)
-	DB *dbp;
-	PAGE *h;
-	db_indx_t indx;
+item_space(DB *dbp, PAGE *h, db_indx_t indx)
 {
 	return (B_TYPE(GET_BKEYDATA(dbp, h, indx)->type) == B_KEYDATA ?
 	    BKEYDATA_PSIZE(GET_BKEYDATA(dbp, h, indx)->len) :
@@ -1121,10 +1118,7 @@ item_space(dbp, h, indx)
 
 /* The actual length of a item. */
 static int
-item_size(dbp, h, indx)
-	DB *dbp;
-	PAGE *h;
-	db_indx_t indx;
+item_size(DB *dbp, PAGE *h, db_indx_t indx)
 {
 	return (B_TYPE(GET_BKEYDATA(dbp, h, indx)->type) == B_KEYDATA ?
 	    GET_BKEYDATA(dbp, h, indx)->len : GET_BOVERFLOW(dbp, h,

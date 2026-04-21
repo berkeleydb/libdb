@@ -1,0 +1,9 @@
+Configure and build here, for example on macOS:
+
+../dist/configure --prefix=$(pwd)/install --enable-tcl --with-tcl=/opt/homebrew/opt/tcl-tk@8/lib --enable-test --enable-sequences --disable-dbm --disable-java --disable-sql --disable-static --disable-cxx --enable-compile-commands
+
+then
+
+make && make test
+
+

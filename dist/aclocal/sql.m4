@@ -18,7 +18,7 @@ case `pwd` in
 	cd `cygpath -d "$PWD"`
 	AC_MSG_WARN([Changing current directory to $PWD to hide whitespace from libtool])
     else
-	AC_MSG_WARN([Current bugs in libtool may prevent building the SQL API in \"$PWD\"; please use another working directory])
+	AC_MSG_WARN([Current bugs in libtool may prevent building the SQL API in "$PWD"; please use another working directory])
     fi
     ;;
 esac

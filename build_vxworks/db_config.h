@@ -60,6 +60,18 @@
    operations. */
 /* #undef HAVE_ATOMIC_X86_GCC_ASSEMBLY */
 
+/* Define to 1 to use GCC __atomic_* builtins for atomic operations. */
+/* #undef HAVE_ATOMIC_BUILTINS */
+
+/* Define to 1 to use GCC __sync_* builtins for atomic operations. */
+/* #undef HAVE_SYNC_BUILTINS */
+
+/* Define to 1 for ARM64/AArch64 atomic operation support. */
+/* #undef HAVE_ATOMIC_AARCH64 */
+
+/* Define to 1 if 64-bit atomic operations are supported. */
+/* #undef HAVE_ATOMIC_64BIT */
+
 /* Define to 1 if you have the `backtrace' function. */
 /* #undef HAVE_BACKTRACE */
 

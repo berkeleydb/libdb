@@ -2,10 +2,9 @@
 
 # POSIX pthreads tests: inter-process safe and intra-process only.
 AC_DEFUN(AM_PTHREADS_SHARED, [
-AC_TRY_RUN([
+AC_RUN_IFELSE([AC_LANG_PROGRAM([[
 #include <stdlib.h>
-#include <pthread.h>
-main() {
+#include <pthread.h>]], [[
 	pthread_cond_t cond;
 	pthread_mutex_t mutex;
 	pthread_condattr_t condattr;
@@ -23,10 +22,10 @@ main() {
 	pthread_cond_destroy(&cond) ||
 	pthread_condattr_destroy(&condattr) ||
 	pthread_mutexattr_destroy(&mutexattr));
-}], [db_cv_mutex="$1"],,
-AC_TRY_LINK([
+]])], [db_cv_mutex="$1"],,
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdlib.h>
-#include <pthread.h>],[
+#include <pthread.h>]], [[
 	pthread_cond_t cond;
 	pthread_mutex_t mutex;
 	pthread_condattr_t condattr;
@@ -44,12 +43,11 @@ AC_TRY_LINK([
 	pthread_cond_destroy(&cond) ||
 	pthread_condattr_destroy(&condattr) ||
 	pthread_mutexattr_destroy(&mutexattr));
-], [db_cv_mutex="$1"]))])
+]])], [db_cv_mutex="$1"]))])
 AC_DEFUN(AM_PTHREADS_PRIVATE, [
-AC_TRY_RUN([
+AC_RUN_IFELSE([AC_LANG_PROGRAM([[
 #include <stdlib.h>
-#include <pthread.h>
-main() {
+#include <pthread.h>]], [[
 	pthread_cond_t cond;
 	pthread_mutex_t mutex;
 	pthread_condattr_t condattr;
@@ -65,10 +63,10 @@ main() {
 	pthread_cond_destroy(&cond) ||
 	pthread_condattr_destroy(&condattr) ||
 	pthread_mutexattr_destroy(&mutexattr));
-}], [db_cv_mutex="$1"],,
-AC_TRY_LINK([
+]])], [db_cv_mutex="$1"],,
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdlib.h>
-#include <pthread.h>],[
+#include <pthread.h>]], [[
 	pthread_cond_t cond;
 	pthread_mutex_t mutex;
 	pthread_condattr_t condattr;
@@ -84,48 +82,46 @@ AC_TRY_LINK([
 	pthread_cond_destroy(&cond) ||
 	pthread_condattr_destroy(&condattr) ||
 	pthread_mutexattr_destroy(&mutexattr));
-], [db_cv_mutex="$1"]))])
+]])], [db_cv_mutex="$1"]))])
 AC_DEFUN(AM_PTHREADS_CONDVAR_DUPINITCHK, [
-AC_TRY_RUN([
+AC_RUN_IFELSE([AC_LANG_PROGRAM([[
 #include <stdlib.h>
-#include <pthread.h>
-main() {
+#include <pthread.h>]], [[
 	pthread_cond_t cond;
 	pthread_condattr_t condattr;
 	exit(pthread_condattr_init(&condattr) ||
 	pthread_cond_init(&cond, &condattr) ||
 	pthread_cond_init(&cond, &condattr));
-}], [db_cv_pthread_condinit_dupgood="yes"], 
+]])], [db_cv_pthread_condinit_dupgood="yes"],
 [db_cv_pthread_condinit_dupgood="no"],
-AC_TRY_LINK([
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdlib.h>
-#include <pthread.h>], [
+#include <pthread.h>]], [[
 	pthread_cond_t cond;
 	pthread_condattr_t condattr;
 	exit(pthread_condattr_init(&condattr) ||
 	pthread_cond_init(&cond, &condattr));
-], [db_cv_pthread_condinit_dupgood="yes"], 
+]])], [db_cv_pthread_condinit_dupgood="yes"],
 [db_cv_pthread_condinit_dupgood="no"]))])
 AC_DEFUN(AM_PTHREADS_RWLOCKVAR_DUPINITCHK, [
-AC_TRY_RUN([
+AC_RUN_IFELSE([AC_LANG_PROGRAM([[
 #include <stdlib.h>
-#include <pthread.h>
-main() {
+#include <pthread.h>]], [[
 	pthread_rwlock_t rwlock;
 	pthread_rwlockattr_t rwlockattr;
 	exit(pthread_rwlockattr_init(&rwlockattr) ||
 	pthread_rwlock_init(&rwlock, &rwlockattr) ||
 	pthread_rwlock_init(&rwlock, &rwlockattr));
-}], [db_cv_pthread_rwlockinit_dupgood="yes"], 
+]])], [db_cv_pthread_rwlockinit_dupgood="yes"],
 [db_cv_pthread_rwlockinit_dupgood="no"],
-AC_TRY_LINK([
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdlib.h>
-#include <pthread.h>], [
+#include <pthread.h>]], [[
 	pthread_rwlock_t rwlock;
 	pthread_rwlockattr_t rwlockattr;
 	exit(pthread_rwlockattr_init(&rwlockattr) ||
 	pthread_rwlock_init(&rwlock, &rwlockattr));
-], [db_cv_pthread_rwlockinit_dupgood="yes"], 
+]])], [db_cv_pthread_rwlockinit_dupgood="yes"],
 [db_cv_pthread_rwlockinit_dupgood="no"]))])
 
 # Figure out mutexes for this compiler/architecture.
@@ -153,6 +149,56 @@ fi
 # User-specified Win32 mutexes (MinGW build)
 if test "$db_cv_mingw" = yes; then
 	db_cv_mutex=win32/gcc
+fi
+
+# Enable pthread mutexes for modern macOS (macOS 10.9+ including Apple Silicon)
+# The old exclusion was for macOS 10.7 Lion which had broken pthread_setpshared calls
+if test "$db_cv_mutex" = no; then
+	case "$host_os" in
+	darwin*)
+		AC_MSG_CHECKING([for pthread mutex support on Darwin])
+		# First try with -lpthread
+		LIBS="$LIBS -lpthread"
+		AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <stdlib.h>
+#include <pthread.h>]], [[
+		pthread_mutex_t mutex;
+		pthread_mutexattr_t mutexattr;
+		exit (
+		pthread_mutexattr_init(&mutexattr) ||
+		pthread_mutex_init(&mutex, &mutexattr) ||
+		pthread_mutex_lock(&mutex) ||
+		pthread_mutex_unlock(&mutex) ||
+		pthread_mutex_destroy(&mutex) ||
+		pthread_mutexattr_destroy(&mutexattr));
+		]])], [
+			db_cv_mutex=POSIX/pthreads/library
+			AC_MSG_RESULT([yes, with -lpthread])
+		], [
+			LIBS="$orig_libs"
+			# Try without -lpthread (pthreads may be built-in)
+			AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <stdlib.h>
+#include <pthread.h>]], [[
+			pthread_mutex_t mutex;
+			pthread_mutexattr_t mutexattr;
+			exit (
+			pthread_mutexattr_init(&mutexattr) ||
+			pthread_mutex_init(&mutex, &mutexattr) ||
+			pthread_mutex_lock(&mutex) ||
+			pthread_mutex_unlock(&mutex) ||
+			pthread_mutex_destroy(&mutex) ||
+			pthread_mutexattr_destroy(&mutexattr));
+			]])], [
+				db_cv_mutex=POSIX/pthreads
+				AC_MSG_RESULT([yes, built-in])
+			], [
+				AC_MSG_RESULT(no)
+			])
+		])
+		LIBS="$orig_libs"
+		;;
+	esac
 fi
 
 if test "$db_cv_mutex" = no; then
@@ -190,6 +236,29 @@ if test "$db_cv_mutex" = no; then
 		# from *_setpshared(PTHREAD_PROCESS_SHARED), but 10.7 returns
 		# success. Since we can't trust those calls anymore we now
 		# avoid these probes for multiprocess pthreads.
+		# However, modern macOS (especially ARM64/Apple Silicon) should
+		# work fine with pthreads, so enable pthread detection for ARM64.
+		AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
+#if defined(__aarch64__) || defined(_M_ARM64)
+		exit(0);
+#else
+		FAIL TO COMPILE/LINK
+#endif
+		]])], [
+		# ARM64/Apple Silicon - enable pthread detection
+		if test "$db_cv_mutex" = no -o "$db_cv_mutex" = posix_only; then
+			LIBS="$LIBS -lpthread"
+			AM_PTHREADS_SHARED(POSIX/pthreads/library)
+			AM_PTHREADS_CONDVAR_DUPINITCHK
+			AM_PTHREADS_RWLOCKVAR_DUPINITCHK
+			LIBS="$orig_libs"
+		fi
+		if test "$db_cv_mutex" = no -o "$db_cv_mutex" = posix_only; then
+			AM_PTHREADS_SHARED(POSIX/pthreads)
+			AM_PTHREADS_CONDVAR_DUPINITCHK
+			AM_PTHREADS_RWLOCKVAR_DUPINITCHK
+		fi
+		])
 		;;
 	    *)
 		if test "$db_cv_mutex" = no -o "$db_cv_mutex" = posix_only; then
@@ -226,8 +295,8 @@ if test "$db_cv_mutex" = no; then
 
 	# LWP threads: _lwp_XXX
 	if test "$db_cv_mutex" = no; then
-	AC_TRY_LINK([
-	#include <synch.h>],[
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+	#include <synch.h>]], [[
 		static lwp_mutex_t mi = SHAREDMUTEX;
 		static lwp_cond_t ci = SHAREDCV;
 		lwp_mutex_t mutex = mi;
@@ -235,15 +304,15 @@ if test "$db_cv_mutex" = no; then
 		exit (
 		_lwp_mutex_lock(&mutex) ||
 		_lwp_mutex_unlock(&mutex));
-	], [db_cv_mutex=Solaris/lwp])
+	]])], [db_cv_mutex=Solaris/lwp])
 	fi
 
 	# UI threads: thr_XXX
 	if test "$db_cv_mutex" = no -o "$db_cv_mutex" = ui_only; then
 	LIBS="$LIBS -lthread"
-	AC_TRY_LINK([
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 	#include <thread.h>
-	#include <synch.h>],[
+	#include <synch.h>]], [[
 		mutex_t mutex;
 		cond_t cond;
 		int type = USYNC_PROCESS;
@@ -252,13 +321,13 @@ if test "$db_cv_mutex" = no; then
 		cond_init(&cond, type, NULL) ||
 		mutex_lock(&mutex) ||
 		mutex_unlock(&mutex));
-	], [db_cv_mutex=UI/threads/library])
+	]])], [db_cv_mutex=UI/threads/library])
 	LIBS="$orig_libs"
 	fi
 	if test "$db_cv_mutex" = no -o "$db_cv_mutex" = ui_only; then
-	AC_TRY_LINK([
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 	#include <thread.h>
-	#include <synch.h>],[
+	#include <synch.h>]], [[
 		mutex_t mutex;
 		cond_t cond;
 		int type = USYNC_PROCESS;
@@ -267,7 +336,7 @@ if test "$db_cv_mutex" = no; then
 		cond_init(&cond, type, NULL) ||
 		mutex_lock(&mutex) ||
 		mutex_unlock(&mutex));
-	], [db_cv_mutex=UI/threads])
+	]])], [db_cv_mutex=UI/threads])
 	fi
 	if test "$db_cv_mutex" = ui_only; then
 		AC_MSG_ERROR([unable to find UI mutex interfaces])
@@ -280,45 +349,45 @@ if test "$db_cv_mutex" = no; then
 	# anyway.
 	#
 	# x86/gcc: FreeBSD, NetBSD, BSD/OS, Linux
-	AC_TRY_COMPILE(,[
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 	#if (defined(i386) || defined(__i386__)) && defined(__GNUC__)
 		exit(0);
 	#else
 		FAIL TO COMPILE/LINK
 	#endif
-	], [db_cv_mutex="$db_cv_mutex/x86/gcc-assembly"])
+	]])], [db_cv_mutex="$db_cv_mutex/x86/gcc-assembly"])
 
 	# x86_64/gcc: FreeBSD, NetBSD, BSD/OS, Linux
-	AC_TRY_COMPILE(,[
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 	#if (defined(x86_64) || defined(__x86_64__)) && defined(__GNUC__)
 		exit(0);
 	#else
 		FAIL TO COMPILE/LINK
 	#endif
-	], [db_cv_mutex="$db_cv_mutex/x86_64/gcc-assembly"])
+	]])], [db_cv_mutex="$db_cv_mutex/x86_64/gcc-assembly"])
 
 	# Solaris is one of the systems where we can configure hybrid mutexes.
 	# However, we require the membar_enter function for that, and only newer
 	# Solaris releases have it.  Check to see if we can configure hybrids.
-	AC_TRY_LINK([
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 	#include <sys/atomic.h>
-	#include <sys/machlock.h>],[
+	#include <sys/machlock.h>]], [[
 		typedef lock_t tsl_t;
 		lock_t x;
 		_lock_try(&x);
 		_lock_clear(&x);
 		membar_enter();
-	], [db_cv_mutex="$db_cv_mutex/Solaris/_lock_try/membar"])
+	]])], [db_cv_mutex="$db_cv_mutex/Solaris/_lock_try/membar"])
 
 	# Sparc/gcc: SunOS, Solaris, ultrasparc assembler support
-	AC_TRY_COMPILE(,[
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 	#if defined(__sparc__) && defined(__GNUC__)
 		asm volatile ("membar #StoreStore|#StoreLoad|#LoadStore");
 		exit(0);
 	#else
 		FAIL TO COMPILE/LINK
 	#endif
-	], [db_cv_mutex="$db_cv_mutex/Sparc/gcc-assembly"])
+	]])], [db_cv_mutex="$db_cv_mutex/Sparc/gcc-assembly"])
 
 	# We're done testing for any hybrid mutex implementations.  If we did
 	# not find a pthreads-style mutex, but did find a test-and-set mutex,
@@ -335,21 +404,21 @@ fi
 # or sema_wait(3T) function calls.  This is because of problems in those
 # interfaces in some releases of the Solaris C library.
 if test "$db_cv_mutex" = no; then
-AC_TRY_LINK([
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/atomic.h>
-#include <sys/machlock.h>],[
+#include <sys/machlock.h>]], [[
 	typedef lock_t tsl_t;
 	lock_t x;
 	_lock_try(&x);
 	_lock_clear(&x);
-], [db_cv_mutex=Solaris/_lock_try])
+]])], [db_cv_mutex=Solaris/_lock_try])
 fi
 
 # msemaphore: HPPA only
 # Try HPPA before general msem test, it needs special alignment.
 if test "$db_cv_mutex" = no; then
-AC_TRY_LINK([
-#include <sys/mman.h>],[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/mman.h>]], [[
 #if defined(__hppa)
 	typedef msemaphore tsl_t;
 	msemaphore x;
@@ -360,58 +429,58 @@ AC_TRY_LINK([
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=HP/msem_init])
+]])], [db_cv_mutex=HP/msem_init])
 fi
 
 # msemaphore: AIX, OSF/1
 if test "$db_cv_mutex" = no; then
-AC_TRY_LINK([
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
-#include <sys/mman.h>],[
+#include <sys/mman.h>]], [[
 	typedef msemaphore tsl_t;
 	msemaphore x;
 	msem_init(&x, 0);
 	msem_lock(&x, 0);
 	msem_unlock(&x, 0);
 	exit(0);
-], [db_cv_mutex=UNIX/msem_init])
+]])], [db_cv_mutex=UNIX/msem_init])
 fi
 
 # ReliantUNIX
 if test "$db_cv_mutex" = no; then
 LIBS="$LIBS -lmproc"
-AC_TRY_LINK([
-#include <ulocks.h>],[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <ulocks.h>]], [[
 	typedef spinlock_t tsl_t;
 	spinlock_t x;
 	initspin(&x, 1);
 	cspinlock(&x);
 	spinunlock(&x);
-], [db_cv_mutex=ReliantUNIX/initspin])
+]])], [db_cv_mutex=ReliantUNIX/initspin])
 LIBS="$orig_libs"
 fi
 
 # SCO: UnixWare has threads in libthread, but OpenServer doesn't.
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__USLC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=SCO/x86/cc-assembly])
+]])], [db_cv_mutex=SCO/x86/cc-assembly])
 fi
 
 # abilock_t: SGI
 if test "$db_cv_mutex" = no; then
-AC_TRY_LINK([
-#include <abi_mutex.h>],[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <abi_mutex.h>]], [[
 	typedef abilock_t tsl_t;
 	abilock_t x;
 	init_lock(&x);
 	acquire_lock(&x);
 	release_lock(&x);
-], [db_cv_mutex=SGI/init_lock])
+]])], [db_cv_mutex=SGI/init_lock])
 fi
 
 # sema_t: Solaris
@@ -419,171 +488,193 @@ fi
 # turn this test on, unless we find some other platform that uses the old
 # POSIX.1 interfaces.
 if test "$db_cv_mutex" = DOESNT_WORK; then
-AC_TRY_LINK([
-#include <synch.h>],[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <synch.h>]], [[
 	typedef sema_t tsl_t;
 	sema_t x;
 	sema_init(&x, 1, USYNC_PROCESS, NULL);
 	sema_wait(&x);
 	sema_post(&x);
-], [db_cv_mutex=UNIX/sema_init])
+]])], [db_cv_mutex=UNIX/sema_init])
 fi
 
 # _check_lock/_clear_lock: AIX
 if test "$db_cv_mutex" = no; then
-AC_TRY_LINK([
-#include <sys/atomic_op.h>],[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/atomic_op.h>]], [[
 	int x;
 	_check_lock(&x,0,1);
 	_clear_lock(&x,0);
-], [db_cv_mutex=AIX/_check_lock])
+]])], [db_cv_mutex=AIX/_check_lock])
 fi
 
 # _spin_lock_try/_spin_unlock: Apple/Darwin
 if test "$db_cv_mutex" = no; then
-AC_TRY_LINK(,[
+AC_LINK_IFELSE([AC_LANG_PROGRAM(, [[
 	int x;
 	_spin_lock_try(&x);
 	_spin_unlock(&x);
-], [db_cv_mutex=Darwin/_spin_lock_try])
+]])], [db_cv_mutex=Darwin/_spin_lock_try])
 fi
 
 # Tru64/cc
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__alpha) && defined(__DECC)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=Tru64/cc-assembly])
+]])], [db_cv_mutex=Tru64/cc-assembly])
 fi
 
 # Alpha/gcc
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__alpha) && defined(__GNUC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=ALPHA/gcc-assembly])
+]])], [db_cv_mutex=ALPHA/gcc-assembly])
 fi
 
 # ARM/gcc: Linux
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__arm__) && defined(__GNUC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=ARM/gcc-assembly])
+]])], [db_cv_mutex=ARM/gcc-assembly])
 fi
 
 # MIPS/gcc: Linux
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if (defined(__mips) || defined(__mips__)) && defined(__GNUC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=MIPS/gcc-assembly])
+]])], [db_cv_mutex=MIPS/gcc-assembly])
 fi
 
 # PaRisc/gcc: HP/UX
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if (defined(__hppa) || defined(__hppa__)) && defined(__GNUC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=HPPA/gcc-assembly])
+]])], [db_cv_mutex=HPPA/gcc-assembly])
 fi
 
 # PPC/gcc:
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if (defined(__powerpc__) || defined(__ppc__)) && defined(__GNUC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=PPC/gcc-assembly])
+]])], [db_cv_mutex=PPC/gcc-assembly])
 fi
 
 # 68K/gcc: SunOS
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if (defined(mc68020) || defined(sun3)) && defined(__GNUC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=68K/gcc-assembly])
+]])], [db_cv_mutex=68K/gcc-assembly])
 fi
 
 # S390/cc: IBM OS/390 Unix
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__MVS__) && defined(__IBMC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=S390/cc-assembly])
+]])], [db_cv_mutex=S390/cc-assembly])
 fi
 
 # S390/gcc: Linux
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__s390__) && defined(__GNUC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=S390/gcc-assembly])
+]])], [db_cv_mutex=S390/gcc-assembly])
 fi
 
 # ia64/gcc: Linux
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__ia64) && defined(__GNUC__)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=ia64/gcc-assembly])
+]])], [db_cv_mutex=ia64/gcc-assembly])
 fi
 
 # uts/cc: UTS
 if test "$db_cv_mutex" = no; then
-AC_TRY_COMPILE(,[
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(_UTS)
 	exit(0);
 #else
 	FAIL TO COMPILE/LINK
 #endif
-], [db_cv_mutex=UTS/cc-assembly])
+]])], [db_cv_mutex=UTS/cc-assembly])
+fi
+
+# ARM64/AArch64/gcc: Modern ARM 64-bit (Apple Silicon, Linux ARM64, etc.)
+if test "$db_cv_mutex" = no; then
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
+#if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__)
+	exit(0);
+#else
+	FAIL TO COMPILE/LINK
+#endif
+]])], [db_cv_mutex=ARM64/gcc-assembly])
+fi
+
+# ARM32/gcc: ARM 32-bit systems
+if test "$db_cv_mutex" = no; then
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
+#if defined(__arm__) && !defined(__aarch64__) && defined(__GNUC__)
+	exit(0);
+#else
+	FAIL TO COMPILE/LINK
+#endif
+]])], [db_cv_mutex=ARM32/gcc-assembly])
 fi
 
 # UNIX fcntl system call mutexes.
 # Note that fcntl mutexes are no longer supported as of 4.8.  This code has been
-# left in place in case there is some system that we are not aware of that 
+# left in place in case there is some system that we are not aware of that
 # only uses fcntl mutexes.  In that case, contact Oracle for support.
 if test "$db_cv_mutex" = no; then
 	db_cv_mutex=UNIX/fcntl
-AC_TRY_LINK([
-#include <fcntl.h>],[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <fcntl.h>]], [[
 	struct flock l;
 	l.l_whence = SEEK_SET;
 	l.l_start = 10;
 	l.l_len = 1;
 	l.l_type = F_WRLCK;
 	fcntl(0, F_SETLK, &l);
-], [db_cv_mutex=UNIX/fcntl])
+]])], [db_cv_mutex=UNIX/fcntl])
 fi
 ])
 
@@ -664,6 +755,14 @@ ALPHA/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_ALPHA_GCC_ASSEMBLY)
 			AH_TEMPLATE(HAVE_MUTEX_ALPHA_GCC_ASSEMBLY,
 			    [Define to 1 to use the GCC compiler and Alpha assembly language mutexes.]);;
+ARM64/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
+			AC_DEFINE(HAVE_MUTEX_ARM64_GCC_ASSEMBLY)
+			AH_TEMPLATE(HAVE_MUTEX_ARM64_GCC_ASSEMBLY,
+			    [Define to 1 to use the GCC compiler and ARM64/AArch64 assembly language mutexes.]);;
+ARM32/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
+			AC_DEFINE(HAVE_MUTEX_ARM32_GCC_ASSEMBLY)
+			AH_TEMPLATE(HAVE_MUTEX_ARM32_GCC_ASSEMBLY,
+			    [Define to 1 to use the GCC compiler and ARM32 assembly language mutexes.]);;
 ARM/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_ARM_GCC_ASSEMBLY)
 			AH_TEMPLATE(HAVE_MUTEX_ARM_GCC_ASSEMBLY,
@@ -742,6 +841,14 @@ UTS/cc-assembly)	ADDITIONAL_OBJS="uts4.cc${o} $ADDITIONAL_OBJS"
 			AH_TEMPLATE(HAVE_MUTEX_UTS_CC_ASSEMBLY,
 			    [Define to 1 to use the UTS compiler and assembly language mutexes.]);;
 *x86/gcc-assembly)	hybrid="$hybrid/tas"
+			;;
+*arm64/gcc-assembly)
+			AC_DEFINE(HAVE_ATOMIC_SUPPORT)
+			AC_DEFINE(HAVE_ATOMIC_ARM64_ASSEMBLY)
+			;;
+*arm32/gcc-assembly)
+			AC_DEFINE(HAVE_ATOMIC_SUPPORT)
+			AC_DEFINE(HAVE_ATOMIC_ARM32_ASSEMBLY)
 			ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_X86_GCC_ASSEMBLY)
 			AH_TEMPLATE(HAVE_MUTEX_X86_GCC_ASSEMBLY,
@@ -829,14 +936,14 @@ case "$db_cv_mutex" in
 UI/threads*)
 	thread_h_decl="#include <thread.h>"
 	db_threadid_t_decl="typedef thread_t db_threadid_t;"
-	AC_HAVE_LIBRARY(thread, LIBSO_LIBS="$LIBSO_LIBS -lthread");;
+	AC_CHECK_LIB(thread, thr_create, [LIBSO_LIBS="$LIBSO_LIBS -lthread"]);;
 *)
 	AC_CHECK_HEADER(pthread.h, [ac_cv_header_pthread_h=yes])
 	if test "$ac_cv_header_pthread_h" = "yes" ; then
 		thread_h_decl="#include <pthread.h>"
 		db_threadid_t_decl="typedef pthread_t db_threadid_t;"
 	fi
-	AC_HAVE_LIBRARY(pthread, LIBSO_LIBS="$LIBSO_LIBS -lpthread");;
+	AC_CHECK_LIB(pthread, pthread_create, [LIBSO_LIBS="$LIBSO_LIBS -lpthread"]);;
 esac
 
 # We need to know if the thread ID type will fit into an integral type and we
@@ -849,13 +956,13 @@ if test "$db_threadid_t_decl" = notset; then
 	db_threadid_t_decl="typedef uintmax_t db_threadid_t;"
 	AC_DEFINE(HAVE_SIMPLE_THREAD_TYPE)
 else
-	AC_TRY_COMPILE(
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 	#include <sys/types.h>
-	$thread_h_decl, [
+	$thread_h_decl]], [[
 	$db_threadid_t_decl
 	db_threadid_t a;
 	a = 0;
-	], AC_DEFINE(HAVE_SIMPLE_THREAD_TYPE))
+	]])], AC_DEFINE(HAVE_SIMPLE_THREAD_TYPE))
 fi
 
 # There are 3 classes of mutexes:
@@ -885,15 +992,30 @@ esac])
 
 AC_DEFUN(AM_DEFINE_ATOMIC, [
 # Probe for native atomic operations
+#	GCC __atomic_* builtins (GCC 4.7+, preferred)
+#	GCC __sync_* builtins (GCC 4.1+, legacy)
 #	gcc/x86{,_64} inline asm
+#	gcc/aarch64 (ARM64) support
 #	solaris atomic_* library calls
 
 AH_TEMPLATE(HAVE_ATOMIC_SUPPORT,
     [Define to 1 to use native atomic operations.])
 AH_TEMPLATE(HAVE_ATOMIC_X86_GCC_ASSEMBLY,
     [Define to 1 to use GCC and x86 or x86_64 assemlby language atomic operations.])
+AH_TEMPLATE(HAVE_ATOMIC_ARM64_ASSEMBLY,
+    [Define to 1 to use GCC and ARM64/AArch64 assembly language atomic operations.])
+AH_TEMPLATE(HAVE_ATOMIC_ARM32_ASSEMBLY,
+    [Define to 1 to use GCC and ARM32 assembly language atomic operations.])
 AH_TEMPLATE(HAVE_ATOMIC_SOLARIS,
     [Define to 1 to use Solaris library routes for atomic operations.])
+AH_TEMPLATE(HAVE_ATOMIC_BUILTINS,
+    [Define to 1 to use GCC __atomic_* builtins for atomic operations.])
+AH_TEMPLATE(HAVE_SYNC_BUILTINS,
+    [Define to 1 to use GCC __sync_* builtins for atomic operations.])
+AH_TEMPLATE(HAVE_ATOMIC_AARCH64,
+    [Define to 1 for ARM64/AArch64 atomic operation support.])
+AH_TEMPLATE(HAVE_ATOMIC_64BIT,
+    [Define to 1 if 64-bit atomic operations are supported.])
 
 AC_CACHE_CHECK([for atomic operations], db_cv_atomic, [
 db_cv_atomic=no
@@ -908,7 +1030,7 @@ if test "$db_cv_mingw" = yes; then
 fi
 
 if test "$db_cv_atomic" = no; then
-	AC_TRY_COMPILE(,[
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 	#if ((defined(i386) || defined(__i386__)) && defined(__GNUC__))
 		exit(0);
 	#elif ((defined(x86_64) || defined(__x86_64__)) && defined(__GNUC__))
@@ -916,17 +1038,17 @@ if test "$db_cv_atomic" = no; then
 	#else
 		FAIL TO COMPILE/LINK
 	#endif
-	], [db_cv_atomic="x86/gcc-assembly"])
+	]])], [db_cv_atomic="x86/gcc-assembly"])
 fi
 
 if test "$db_cv_atomic" = no; then
-AC_TRY_LINK([
-#include <sys/atomic.h>],[
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/atomic.h>]], [[
 	volatile unsigned val = 1;
 	exit (atomic_inc_uint_nv(&val) != 2 ||
 	      atomic_dec_uint_nv(&val) != 1 ||
 	      atomic_cas_32(&val, 1, 3) != 3);
-], [db_cv_atomic="solaris/atomic"])
+]])], [db_cv_atomic="solaris/atomic"])
 fi
 ])
 
@@ -944,4 +1066,46 @@ case "$db_cv_atomic" in
 		AC_DEFINE(HAVE_ATOMIC_SUPPORT)
 		;;
 esac
+
+# Check for ARM64/AArch64 architecture.
+AC_CACHE_CHECK([for AArch64 architecture], db_cv_aarch64, [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
+#if defined(__aarch64__) || defined(_M_ARM64)
+	exit(0);
+#else
+	FAIL TO COMPILE/LINK
+#endif
+]])], [db_cv_aarch64=yes], [db_cv_aarch64=no])
+])
+if test "$db_cv_aarch64" = yes; then
+	AC_DEFINE(HAVE_ATOMIC_AARCH64)
+fi
+
+# Check for 64-bit atomic operation support.
+AC_CACHE_CHECK([for 64-bit atomic operations], db_cv_atomic_64bit, [
+db_cv_atomic_64bit=no
+case "$db_cv_atomic" in
+	x86/gcc-assembly)
+		AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <stdint.h>]], [[
+	int64_t val = 1;
+	asm volatile("lock; xaddq %0, %1"
+		: "+r" (val), "+m" (val)
+		:: "memory", "cc");
+]])], [db_cv_atomic_64bit=yes])
+		;;
+	gcc/__sync)
+		AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <stdint.h>]], [[
+	int64_t val = 1;
+	__sync_add_and_fetch(&val, 1);
+	__sync_sub_and_fetch(&val, 1);
+	__sync_bool_compare_and_swap(&val, 1, 2);
+]])], [db_cv_atomic_64bit=yes])
+		;;
+esac
+])
+if test "$db_cv_atomic_64bit" = yes; then
+	AC_DEFINE(HAVE_ATOMIC_64BIT)
+fi
 ])

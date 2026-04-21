@@ -3,11 +3,11 @@
 AC_DEFUN(AC_CXX_STDHEADERS, [
 AC_SUBST(cxx_have_stdheaders)
 AC_MSG_CHECKING(whether C++ supports the ISO C++ standard includes)
-AC_LANG_SAVE
-AC_LANG_CPLUSPLUS
-AC_TRY_COMPILE([#include <iostream>],[std::ostream *o; return 0;],
-	db_cv_cxx_have_stdheaders=yes, db_cv_cxx_have_stdheaders=no)
-AC_LANG_RESTORE
+AC_LANG_PUSH([C++])
+AC_LANG([C++])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <iostream>]], [[std::ostream *o; return 0;]])],
+	[db_cv_cxx_have_stdheaders=yes], [db_cv_cxx_have_stdheaders=no])
+AC_LANG_POP([C++])
 AC_MSG_RESULT($db_cv_cxx_have_stdheaders)
 if test "$db_cv_cxx_have_stdheaders" = yes; then
 	cxx_have_stdheaders="#define	HAVE_CXX_STDHEADERS 1"
@@ -26,8 +26,8 @@ AC_LANG_POP(C++)
 
 AC_DEFUN(AC_CXX_SUPPORTS_TEMPLATES, [
 AC_MSG_CHECKING(whether the C++ compiler supports templates for STL)
-AC_LANG_SAVE
-AC_LANG_CPLUSPLUS
+AC_LANG_PUSH([C++])
+AC_LANG([C++])
 AC_TRY_COMPILE([#include <iostream>
 #include <string>
 #include <vector>
@@ -300,5 +300,5 @@ using namespace dbstl_configure_test;], [
 	dobj.foo();
 	dobj.exit2();
 ], AC_MSG_RESULT(yes), AC_MSG_ERROR(no))
-AC_LANG_RESTORE
+AC_LANG_POP([C++])
 ])

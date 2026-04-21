@@ -34,6 +34,7 @@ AC_SUBST(ADDITIONAL_INCS)
 AC_SUBST(ADDITIONAL_LANG)
 AC_SUBST(ADDITIONAL_OBJS)
 AC_SUBST(ADDITIONAL_PROGS)
+AC_SUBST(BEAR)
 AC_SUBST(BUILD_TARGET)
 AC_SUBST(CFLAGS)
 AC_SUBST(CONFIGURATION_ARGS)
@@ -118,6 +119,15 @@ AC_SUBST(DB_VERSION_UNIQUE_NAME)
 # Process all options before using them.
 AM_OPTIONS_SET
 
+# Detect bear for compile_commands.json generation.
+if test "$db_cv_compile_commands" = "yes"; then
+	AC_CHECK_PROG(BEAR, bear, bear)
+	if test -z "$BEAR"; then
+		AC_MSG_ERROR(
+		    [--enable-compile-commands requires bear to be installed])
+	fi
+fi
+
 # Set some #defines based on configuration options.
 if test "$db_cv_diagnostic" = "yes"; then
 	AC_DEFINE(DIAGNOSTIC)
@@ -156,6 +166,11 @@ AC_PROG_INSTALL
 
 BUILD_TARGET="library_build"
 INSTALL_TARGET="library_install"
+
+# When --enable-compile-commands, wrap the build with bear.
+if test "$db_cv_compile_commands" = "yes"; then
+	BUILD_TARGET="compile-commands-build"
+fi
 
 # Respect the environment LIBS settings
 LIBSO_LIBS="$LIBS"
@@ -251,6 +266,11 @@ if test "$GCC" = "yes"; then
 	else
 		CFLAGS=`echo "$CFLAGS" | sed 's/-O /-O3 /g'`
 	fi
+
+	# Suppress K&R function declaration warnings for legacy codebase
+	# Berkeley DB has many K&R style function declarations that would
+	# require extensive refactoring to modernize to ANSI C prototypes
+	CFLAGS="$CFLAGS -Wno-deprecated-non-prototype"
 else
 	case "$host_os" in
 	hpux11.0*)	;;
@@ -278,7 +298,7 @@ fi
 # We use alignment attributes in db.h - figure out if the compiler supports
 # them.
 AC_CACHE_CHECK([for GCC aligned attribute], db_cv_aligned_attribute, [
-AC_TRY_COMPILE(, __attribute__ ((aligned (8))) int i;,
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[__attribute__ ((aligned (8))) int i;]])],
     [db_cv_aligned_attribute=yes], [db_cv_aligned_attribute=no])])
 if test "$db_cv_aligned_attribute" = "yes"; then
 	DB_STRUCT_ALIGN8="__attribute__ ((aligned (8)))"
@@ -353,7 +373,7 @@ export CC CCC
 CCC=$CXX
 
 # Libtool configuration.
-AC_PROG_LIBTOOL
+LT_INIT
 
 SOFLAGS="-rpath \$(libdir)"
 
@@ -500,7 +520,7 @@ if test "$db_cv_sql" = "yes"; then
 
 	# Link against libdl, if found. It is only needed for the load
 	# extension, but shouldn't hurt.
-	AC_HAVE_LIBRARY(dl, SQL_LIBS="$SQL_LIBS -ldl")
+	AC_CHECK_LIB(dl, dlopen, [SQL_LIBS="$SQL_LIBS -ldl"])
 
 	# Link against libedit or readline for command-line editing.
 	if test x"$with_readline" != xno; then
@@ -621,14 +641,14 @@ fi
 
 # Checks for include files, structures, C types.
 AC_HEADER_STAT
-AC_HEADER_TIME
+AC_CHECK_HEADERS([sys/time.h time.h])
 AC_HEADER_DIRENT
 AC_CHECK_HEADERS(execinfo.h sys/select.h sys/socket.h sys/time.h)
 AC_CHECK_MEMBERS([struct stat.st_blksize])
 AM_TYPES
 
 AC_CACHE_CHECK([for ANSI C exit success/failure values], db_cv_exit_defines, [
-AC_TRY_COMPILE([#include <stdlib.h>], return (EXIT_SUCCESS);,
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <stdlib.h>]], [[return (EXIT_SUCCESS);]])],
     [db_cv_exit_defines=yes], [db_cv_exit_defines=no])])
 if test "$db_cv_exit_defines" = "yes"; then
 	AC_DEFINE(HAVE_EXIT_SUCCESS)
@@ -637,7 +657,7 @@ if test "$db_cv_exit_defines" = "yes"; then
 fi
 
 AC_CACHE_CHECK([for getopt optreset variable], db_cv_optreset, [
-AC_TRY_LINK([#include <unistd.h>], extern int optreset; optreset = 1;,
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <unistd.h>]], [[extern int optreset; optreset = 1;]])],
     [db_cv_optreset=yes], [db_cv_optreset=no])])
 if test "$db_cv_optreset" = "yes"; then
 	AC_DEFINE(HAVE_GETOPT_OPTRESET)
@@ -680,9 +700,9 @@ LIBSO_LIBS="$LIBS"
 # !!!
 # We could be more exact about whether these libraries are needed, but don't
 # bother -- if they exist, we load them, it's only the test programs anyway.
-AC_HAVE_LIBRARY(m, TEST_LIBS="$TEST_LIBS -lm")
-AC_HAVE_LIBRARY(nsl, TEST_LIBS="$TEST_LIBS -lnsl")
-AC_HAVE_LIBRARY(socket, TEST_LIBS="$TEST_LIBS -lsocket")
+AC_CHECK_LIB(m, sin, [TEST_LIBS="$TEST_LIBS -lm"])
+AC_CHECK_LIB(nsl, gethostbyname, [TEST_LIBS="$TEST_LIBS -lnsl"])
+AC_CHECK_LIB(socket, socket, [TEST_LIBS="$TEST_LIBS -lsocket"])
 
 # Checks for system functions for which we have replacements.
 #
@@ -731,11 +751,11 @@ esac
 # Check for getaddrinfo; do the test explicitly instead of using AC_CHECK_FUNCS
 # because <netdb.h> isn't a standard include file.
 AC_CACHE_CHECK([for getaddrinfo], db_cv_getaddrinfo, [
-AC_TRY_LINK([
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
-#include <netdb.h>], [
+#include <netdb.h>]], [[
 	getaddrinfo(0, 0, 0, 0);
-], [db_cv_getaddrinfo=yes], [db_cv_getaddrinfo=no])])
+]])], [db_cv_getaddrinfo=yes], [db_cv_getaddrinfo=no])])
 if test "$db_cv_getaddrinfo" = "yes"; then
 	AC_DEFINE(HAVE_GETADDRINFO)
 	AH_TEMPLATE(HAVE_GETADDRINFO,
@@ -745,11 +765,11 @@ fi
 # Check for the fcntl F_SETFD flag to deny child process access to file
 # descriptors.
 AC_CACHE_CHECK([for fcntl/F_SETFD], db_cv_fcntl_f_setfd, [
-AC_TRY_LINK([
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
-#include <fcntl.h>], [
+#include <fcntl.h>]], [[
 	fcntl(1, F_SETFD, 1);
-], [db_cv_fcntl_f_setfd=yes], [db_cv_fcntl_f_setfd=no])])
+]])], [db_cv_fcntl_f_setfd=yes], [db_cv_fcntl_f_setfd=no])])
 if test "$db_cv_fcntl_f_setfd" = "yes"; then
 	AC_DEFINE(HAVE_FCNTL_F_SETFD)
 	AH_TEMPLATE(HAVE_FCNTL_F_SETFD,
@@ -766,11 +786,11 @@ esac
 # will fail.  Default to not using the O_DIRECT flag.
 if test "$db_cv_o_direct" = "yes"; then
 	AC_CACHE_CHECK([for open/O_DIRECT], db_cv_open_o_direct, [
-	AC_TRY_LINK([
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 	#include <sys/types.h>
-	#include <fcntl.h>], [
+	#include <fcntl.h>]], [[
 		open("a", O_RDONLY | O_DIRECT, 0);
-	], [db_cv_open_o_direct=yes], [db_cv_open_o_direct=no])])
+	]])], [db_cv_open_o_direct=yes], [db_cv_open_o_direct=no])])
 	if test \
 	    "$db_cv_o_direct" = "yes" -a "$db_cv_open_o_direct" = "yes"; then
 		AC_DEFINE(HAVE_O_DIRECT)
@@ -821,13 +841,13 @@ sunos*)
 
 	# Check for shmctl to lock down shared memory segments.
 	AC_CACHE_CHECK([for shmctl], db_cv_shmctl_shm_lock, [
-	AC_TRY_LINK([
+	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <stdio.h>], [
+#include <stdio.h>]], [[
 		shmctl(0, SHM_LOCK, NULL);
-	], [db_cv_shmctl_shm_lock=yes], [db_cv_shmctl_shm_lock=no])])
+	]])], [db_cv_shmctl_shm_lock=yes], [db_cv_shmctl_shm_lock=no])])
 	if test "$db_cv_shmctl_shm_lock" = "yes"; then
 		AC_DEFINE(HAVE_SHMCTL_SHM_LOCK)
 		AH_TEMPLATE(HAVE_SHMCTL_SHM_LOCK,
@@ -949,9 +969,9 @@ if test "$db_cv_build_replication" = "yes"; then
 		# it causes RPC to fail on AIX 4.3.3.
 		case "$host_os" in
 		solaris*)
-			AC_HAVE_LIBRARY(nsl, LIBSO_LIBS="$LIBSO_LIBS -lnsl")
-			AC_HAVE_LIBRARY(socket,
-			    LIBSO_LIBS="$LIBSO_LIBS -lsocket");;
+			AC_CHECK_LIB(nsl, gethostbyname, [LIBSO_LIBS="$LIBSO_LIBS -lnsl"])
+			AC_CHECK_LIB(socket, socket,
+			    [LIBSO_LIBS="$LIBSO_LIBS -lsocket"]);;
 		esac
 		ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(REPMGR_OBJS)"
 	else
@@ -1019,6 +1039,12 @@ fi
 # If building for QNX, we need additional OS files.
 if test "$qnx_build" = "yes"; then
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS os_qnx_fsync${o} os_qnx_open${o}"
+fi
+
+# Tcl's test support (tcl_compat.c) requires the DBM/hsearch API for
+# ENTRY, ACTION, hcreate/hsearch/hdestroy symbols.
+if test "$db_cv_tcl" = "yes" -a "$db_cv_dbm" = "no"; then
+	db_cv_dbm="yes"
 fi
 
 # The DBM API can be disabled.
