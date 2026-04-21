@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -14,7 +14,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.\n";
+    "Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 typedef struct {			/* XXX: Globals. */
@@ -681,7 +681,7 @@ db_init(dbenv, home, cache, is_private)
 	    DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN;
 	if ((ret = dbenv->open(dbenv, home, flags, 0)) == 0)
 		return (0);
-	if (ret == DB_VERSION_MISMATCH)
+	if (ret == DB_VERSION_MISMATCH || ret == DB_REP_LOCKOUT)
 		goto err;
 
 	/*

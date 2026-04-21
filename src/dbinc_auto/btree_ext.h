@@ -8,7 +8,7 @@ extern "C" {
 
 int __bam_compact_int __P((DBC *, DBT *, DBT *, u_int32_t, int *, DB_COMPACT *, int *));
 int __bam_compact_opd __P((DBC *, db_pgno_t, PAGE **, u_int32_t, DB_COMPACT *, int *));
-int __bam_truncate_ipages __P((DB *, DB_THREAD_INFO *, DB_TXN *, DB_COMPACT *));
+int __bam_truncate_ipages __P((DB *, DB_THREAD_INFO *, DB_TXN *, DB_COMPACT *, int *));
 int __bam_cmp __P((DBC *, const DBT *, PAGE *, u_int32_t, int (*)(DB *, const DBT *, const DBT *), int *));
 int __bam_defcmp __P((DB *, const DBT *, const DBT *));
 size_t __bam_defpfx __P((DB *, const DBT *, const DBT *));

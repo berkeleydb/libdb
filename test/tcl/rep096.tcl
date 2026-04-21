@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2010, 2013 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 #
@@ -21,6 +21,12 @@ proc rep096 { method { niter 100 } { tnum "096" } args } {
 	# All access methods are allowed.
 	if { $checking_valid_methods } {
 		return "ALL"
+	}
+
+	# Skip for FreeBSD, test fix not backported to 5.3.
+	if { $is_freebsd_test == 1 } {
+		puts "Skipping Rep$tnum on FreeBSD platform."
+		return
 	}
 
 	# QNX does not support fork() in a multi-threaded environment.

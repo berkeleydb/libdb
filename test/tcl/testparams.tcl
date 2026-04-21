@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2000, 2013 Oracle and/or its affiliates.  All rights reserved.
 #
 # $Id$
 
@@ -50,7 +50,7 @@ set test_names(rep)	[list rep001 rep002 rep003 rep005 rep006 rep007 \
     rep068 rep069 rep070 rep071 rep072 rep073 rep074 rep075 rep076 rep077 \
     rep078 rep079 rep080 rep081 rep082 rep083 rep084 rep085 rep086 rep087 \
     rep088 rep089 rep090 rep091 rep092 rep093 rep094 rep095 rep096 rep097 \
-    rep098 rep099 rep100 rep101 rep102]
+    rep098 rep099 rep100 rep101 rep102 rep109]
 set test_names(skip_for_env_private) [list rep002 rep003 rep004 rep005 \
     rep014 rep016 rep017 rep018 rep020 rep022 rep026 rep028 rep031 \
     rep033 rep035 rep036 rep038 rep039 rep040 rep041 rep042 rep043 rep044 \
@@ -273,6 +273,7 @@ set parms(rep099) {200 "099"}
 set parms(rep100) {10 "100"}
 set parms(rep101) {100 "101"}
 set parms(rep102) {100 "102"}
+set parms(rep109) {"109"}
 set parms(repmgr007) {100 "007"}
 set parms(repmgr009) {10 "009"}
 set parms(repmgr010) {100 "010"}

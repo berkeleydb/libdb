@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -158,8 +158,6 @@ nomem:			__db_errx(env, DB_STR("2034",
 	if (mtxregion->stat.st_mutex_inuse > mtxregion->stat.st_mutex_inuse_max)
 		mtxregion->stat.st_mutex_inuse_max =
 		    mtxregion->stat.st_mutex_inuse;
-	if (locksys)
-		MUTEX_SYSTEM_UNLOCK(env);
 
 	/* Initialize the mutex. */
 	memset(mutexp, 0, sizeof(*mutexp));
@@ -182,7 +180,9 @@ nomem:			__db_errx(env, DB_STR("2034",
 #endif
 
 	if ((ret = __mutex_init(env, *indxp, flags)) != 0)
-		(void)__mutex_free_int(env, locksys, indxp);
+		(void)__mutex_free_int(env, 0, indxp);
+	if (locksys)
+		MUTEX_SYSTEM_UNLOCK(env);
 
 	return (ret);
 }

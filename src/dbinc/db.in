@@ -1,7 +1,7 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  *
@@ -2179,7 +2179,7 @@ struct __db_compact {
 	u_int32_t	compact_deadlock;	/* Number of deadlocks. */
 	db_pgno_t	compact_pages_truncated; /* Pages truncated to OS. */
 	/* Internal. */
-	db_pgno_t	compact_truncate;	/* Page number for truncation */
+	db_pgno_t	compact_truncate;	/* Exchange pages above here. */
 };
 
 /* Hash statistics structure. */

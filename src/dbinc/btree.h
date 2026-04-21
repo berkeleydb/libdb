@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -539,7 +539,7 @@ typedef enum {
  * Flags for __bam_pinsert.
  */
 #define	BPI_SPACEONLY	0x01		/* Only check for space to update. */
-#define	BPI_NORECNUM	0x02		/* Not update the recnum on the left. */
+#define	BPI_NORECNUM	0x02		/* Don't update the left's recnum. */
 #define	BPI_NOLOGGING	0x04		/* Don't log the update. */
 #define	BPI_REPLACE	0x08		/* Replace the record. */
 

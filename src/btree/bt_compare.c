@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -123,9 +123,10 @@ __bam_cmp(dbc, dbt, h, indx, func, cmpp)
 		}
 
 		bi = GET_BINTERNAL(dbp, h, indx);
-		if (B_TYPE(bi->type) == B_OVERFLOW)
+		if (B_TYPE(bi->type) == B_OVERFLOW) {
+			DB_ASSERT(dbp->env, bi->len == BOVERFLOW_SIZE);
 			bo = (BOVERFLOW *)(bi->data);
-		else {
+		} else {
 			pg_dbt.app_data = NULL;
 			pg_dbt.data = bi->data;
 			pg_dbt.size = bi->len;

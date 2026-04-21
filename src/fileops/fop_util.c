@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2001, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2001, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -423,8 +423,7 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 						ret = EINVAL;
 					goto err;
 				}
-				if ((ret = __os_closehandle(env, fhp)) != 0)
-					goto err;
+				CLOSE_HANDLE(dbp, fhp);
 				goto retry;
 			}
 			/* Get the file id for the handle lock. */
@@ -464,11 +463,8 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 			 * any application level FCNTL semantics.
 			 */
 			DB_ASSERT(env, !LF_ISSET(DB_FCNTL_LOCKING));
-			if (!F_ISSET(dbp, DB_AM_INMEM)) {
-				if ((ret = __os_closehandle(env, fhp)) != 0)
-					goto err;
-				fhp = NULL;
-			}
+			if (!F_ISSET(dbp, DB_AM_INMEM))
+				CLOSE_HANDLE(dbp, fhp);
 			if ((ret = __fop_lock_handle(env,
 			    dbp, locker, lockmode, &elock, 0)) != 0) {
 				if (F_ISSET(dbp, DB_AM_INMEM))
@@ -524,9 +520,8 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 			if (create_ok) {
 				if (F_ISSET(dbp, DB_AM_INMEM)) {
 					RESET_MPF(dbp, DB_MPOOL_DISCARD);
-				} else if ((ret =
-				    __os_closehandle(env, fhp)) != 0)
-					goto err;
+				} else 
+					CLOSE_HANDLE(dbp, fhp);
 				LF_SET(DB_CREATE);
 				goto create;
 			} else {

@@ -72,7 +72,7 @@ src/clib/strcasecmp.c						vx vxsmall
 src/clib/strdup.c						vx vxsmall
 src/clib/strsep.c						vx vxsmall
 src/common/clock.c						android vx vxsmall 
-src/common/crypto_stub.c					android vxsmall 
+src/common/crypto_stub.c					vxsmall 
 src/common/db_byteorder.c					android vx vxsmall 
 src/common/db_compint.c						android vx vxsmall 
 src/common/db_err.c						android vx vxsmall 

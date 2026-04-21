@@ -1,4 +1,4 @@
-# Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2011, 2013 Oracle and/or its affiliates.  All rights reserved.
 
 # Detect mmap capability: If the file underlying an mmap is extended,
 # does the addressable memory grow too?

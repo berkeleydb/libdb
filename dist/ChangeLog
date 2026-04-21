@@ -1,5 +1,69 @@
 = Berkeley DB 5.3 Changelog =
 
+== Changes between 11.2.5.3.21 and 11.2.5.3.28 ==
+
+Fixed tcl library linking for AIX 7. [#17109]
+
+Fixed a bug that could cause a trap if a lock timeout occurred while opening
+a database. [#21098]
+
+Fixed missing encryption support for the Android JDBC driver. [#21129]
+
+Fixed an incorrect message being displayed when the -l option
+was specified to the db_hotbackup utility. [#21313]
+
+Fixed a bug that DB_ENV->log_get_config did not work correctly before
+DB_ENV->open. [#21359]
+
+Fixed a bug that could cause a SQL build failure when FTS3 is enabled. 
+[#21382]
+
+Fixed a bug that prevented in-memory SQL database from being created 
+properly.    They can now be created without the use of the
+SQLITE_OPEN_CREATE flag.  [#21456]
+
+Fixed a memory leak in SQL online backup. [#21460]
+
+Added additional examples for C++ [#21477]
+
+Fixed a bug that could make odbc fail to build with sqlite source 
+code. [#21490]
+
+Fixed bugs in compaction of large keys in the upper levels of btrees. [#21569]
+
+The db utilities (db_xxxx) no longer operate on replication clients that 
+are being automatically initialized.   The DB_REP_LOCKOUT error is now 
+returned.   [#21593]
+
+Using DB_TXN_SNAPSHOT on an HA client will now result in an error. [#21601]
+
+Fixed a bug that prevented a sub-database from being created under the
+directory identified in DB->set_create_dir. [#21603]
+
+Fixed a race condition on a cursor when using a multi-threaded application
+with the SQL API. [#21714]
+
+Fixed a race condition in the failchk code when cleaning up mutexes. [#21796]
+
+Fixed a resource leak in the db->verify() function for btrees. The bug would
+slow down verification and possibly cause it to run out of memory. [#21917]
+
+Removed a potential hang when compacting databases with many 
+duplicates. [#21975]
+
+Fixed a bug that caused a crash when reentering dbsql and specifying
+replication=on for a SQL database where replication was already enabled.
+[#22116]
+
+Fixed an incorrect recursive call dealing with joins. [#22398]
+
+Fix build failures in ado.net [#22405]
+
+Fixed a bug that could cause a JDBC build failure on recent 
+versions of Visual Studio. [#22497] 
+
+Correct build problems when building dbstl with gcc-4.7.3 [#22615]
+
 == Changes between 11.2.5.3.15 and 11.2.5.3.21 ==
 
 Fixed incompatibility problems of Java DPL with JDK7, so DPL will now
@@ -14,11 +78,11 @@ region creation has been undone.  [#20939]
 Redundant whitespaces are now ignored in DB_CONFIG lines pertaining to
 directories, e.g. set_data_dir. [#20158]
 
-Fixed a bug that caused DB_ENV->backup to stop early if DB_BACKUP_FILES was 
-not set and a non-DB file was in the data directory. [#21076]
-
 Fixed a rare race condition that could cause a crash if two processes opened 
 the same database at the same time. [#21041]
+
+Fixed a bug that caused DB_ENV->backup to stop early if DB_BACKUP_FILES was 
+not set and a non-DB file was in the data directory. [#21076]
 
 Fixed missing cross compiling capability for the JDBC driver. [#21101] 
 
@@ -236,6 +300,10 @@ checkpoints could cause Log Sequence errors on client systems. [#20421]
 Fixed a bug where multiple Replication Manager processes would sometimes 
 not all conform to replication-group-aware log archiving. [#20342]
 
+Fixed a bug where a Replication Manager master could stop functioning
+after accepting an obsolete group membership site list from another site.
+[#21804]
+
 == Locking Subsystem Changes ==
 
 Fixed a bug that could cause an early lock timeout if a previous error 
@@ -278,6 +346,8 @@ Fixed a bug with DB_ENV->mutex_stat_print() in which the information on
 some mutexes would not be displayed, if any mutex had been freed and not 
 yet reallocated. [#20533]
 
+Fix a race condition between DB_ENV->failchk() and the allocation of a mutex. [#21796]
+
 == Transaction Subsystem Changes ==
 
 Fixed a bug where a malloc failure could result in a segfault
@@ -292,11 +362,12 @@ off page sorted duplicate trees. [#20284]
 Fixed a bug that could cause recovery to fail if DB->compact moved the meta 
 data page of a HASH subdatabase.  [#20708] 
 
-Fixed two problems with db_hotbackup's handling of transaction logs. A hotbackup
-would always try to open the logs in the environment home, even if a log
-directory had been specified. The second fix corrected an error path, in which
-the memory was freed by the wrong function, possibly causing a guard byte error.
-[#21313]
+Fixed three problems with db_hotbackup's backup of transaction logs. A hot
+backup did not use any configured log directory, but would try to open the
+logs in the environment home.  The second fix corrected an error path, in
+which the memory was freed by the wrong function, possibly causing a guard
+byte error. The third fix fixed the issue that a wrong message would be 
+displayed when only "-l" was specified. [#21313]
 
 == Configuration, Documentation, Sample Apps, Portability and Build Changes ==
 
@@ -316,3 +387,10 @@ not support the heap access method. [#21016]
 If a txn that is attempting to remove a region page from a heap database is
 aborted and another txn is trying to update that same page then it can 
 cause the original txn to abort.   This is timing dependant. [#20939]
+
+Utilities can operate on a replication client which is being automatically
+initialized and may therefore be in an inconsistent state.  This can cause
+the utility to fail or to return invalid results.  You can use replication
+statistics to check the site's role (st_status) and master generation
+(st_gen) before and after a utility runs; if neither has changed, the
+utility's results are valid.  [#21593]

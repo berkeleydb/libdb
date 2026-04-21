@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -772,7 +772,30 @@ __ram_root(dbc, rootp, lp, rp)
 
 /*
  * __bam_pinsert --
- *	Insert a new key into a parent page, completing the split.
+ *
+ *	Construct a internal index item and place it in the parent page. It is
+ *	primarily used by __bam_page() to add a new page into the tree. The sole
+ *	other use is by __bam_pupdate() after a reverse split or compact has
+ *	removed pages underneath it, in order to replace the parent's key/nrecs
+ *	to match the new subtree.
+ *
+ * Parameters:
+ *	parent	- the page from the cursor stack to be modifed. The next entry
+ *		  in the stack (i.e., the next lower level in the tree) contains
+ *		  the key of the new item. The indx field must have been set
+ *		  when searching down the tree, to point to the new/replaced
+ *		  parent item.
+ *	split	- the indx in the cursor stack of the 'source' of the new item.
+ *	lchild	- the left child page is used *only* when attempting to use
+ *		  prefix key compression on a leaf (data) page.
+ *	rchild	- right child page. The source of the pgno of the new item.
+ *	flags	- BPI_REPLACE | BPI_NORENCUM
+ *		  BPI_NOLOGGING
+ *		  
+ *	The pgno of the item always comes from rchild, which often is the same
+ *	as parent[1].page. The key for DB_BTREE comes from the next lower page
+ *	in the stack under parent, not from either lchild or rchild parameter --
+ *	though often rchild is a copy of parent[1].page.
  *
  * PUBLIC: int __bam_pinsert
  * PUBLIC:     __P((DBC *, EPG *, u_int32_t, PAGE *, PAGE *, int));
@@ -867,12 +890,26 @@ __bam_pinsert(dbc, parent, split, lchild, rchild, flags)
 			size = BINTERNAL_SIZE(child_bi->len);
 			break;
 		case B_OVERFLOW:
-			/* Reuse the overflow key. */
+			/* Copy the overflow key. */
 			child_bo = (BOVERFLOW *)child_bi->data;
 			memset(&bo, 0, sizeof(bo));
 			bo.type = B_OVERFLOW;
 			bo.tlen = child_bo->tlen;
-			bo.pgno = child_bo->pgno;
+			if (LF_ISSET(BPI_REPLACE)) {
+				/*
+				 * Replace (compact or reverse split) needs to
+				 * copy in case the data item gets removed.
+				 */
+				memset(&hdr, 0, sizeof(hdr));
+				if ((ret = __db_goff(dbc, &hdr, child_bo->tlen,
+				     child_bo->pgno, &hdr.data, &hdr.size)) == 0)
+					ret = __db_poff(dbc, &hdr, &bo.pgno);
+				if (hdr.data != NULL)
+					__os_free(dbp->env, hdr.data);
+				if (ret != 0)
+					return (ret);
+			} else
+				bo.pgno = child_bo->pgno;
 			bi.len = BOVERFLOW_SIZE;
 			B_TSET(bi.type, B_OVERFLOW);
 			bi.pgno = rchild->pgno;
@@ -982,7 +1019,6 @@ noprefix:		if (P_FREESPACE(dbp, ppage) + oldsize < nbytes)
 			DB_SET_DBT(hdr, &bi, SSZA(BINTERNAL, data));
 			DB_SET_DBT(data, &bo, BOVERFLOW_SIZE);
 			size = BINTERNAL_SIZE(BOVERFLOW_SIZE);
-
 			break;
 		case B_DUPLICATE:
 		default:
@@ -1269,7 +1305,7 @@ __bam_copy(dbp, pp, cp, nxt, stop)
 	PAGE *pp, *cp;
 	u_int32_t nxt, stop;
 {
-	BINTERNAL internal;
+	BINTERNAL *bi, internal;
 	db_indx_t *cinp, nbytes, off, *pinp;
 
 	cinp = P_INP(dbp, cp);
@@ -1316,17 +1352,18 @@ __bam_copy(dbp, pp, cp, nxt, stop)
 			return (__db_pgfmt(dbp->env, pp->pgno));
 		}
 		cinp[off] = HOFFSET(cp) -= nbytes;
+		/* Minimize the first key on an IBTREE page; it isn't valid. */
+		bi = GET_BINTERNAL(dbp, pp, nxt);
 		if (off == 0 && nxt != 0 && TYPE(pp) == P_IBTREE) {
 			internal.len = 0;
 			UMRW_SET(internal.unused);
 			internal.type = B_KEYDATA;
-			internal.pgno = GET_BINTERNAL(dbp, pp, nxt)->pgno;
-			internal.nrecs = GET_BINTERNAL(dbp, pp, nxt)->nrecs;
+			internal.pgno = bi->pgno;
+			internal.nrecs = bi->nrecs;
 			memcpy(P_ENTRY(dbp, cp, off), &internal, nbytes);
 		}
 		else
-			memcpy(P_ENTRY(dbp, cp, off),
-			     P_ENTRY(dbp, pp, nxt), nbytes);
+			memcpy(P_ENTRY(dbp, cp, off), bi, nbytes);
 	}
 	return (0);
 }

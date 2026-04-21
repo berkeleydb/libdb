@@ -178,7 +178,7 @@ optimize_flag="-O"
 extra_cflags=""
 
 case "$host_os" in
-aix4.3.*|aix[[56]]*)
+aix4.3.*|aix[[5-9]]*)
 	case "$host_os" in
 	aix4.3.*)
 		CPPFLAGS="$CPPFLAGS -D_LINUX_SOURCE_COMPAT";;
@@ -567,7 +567,7 @@ if test "$db_cv_sql" = "yes"; then
 	fi
 
 	if test "$db_cv_build_cryptography" = "yes"; then
-		SQL_FLAGS="$SQL_FLAGS -DSQLITE_HAS_CODEC=1"
+		SQL_FLAGS="$SQL_FLAGS"
 	fi
 fi
 

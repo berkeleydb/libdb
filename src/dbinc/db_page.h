@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -549,9 +549,9 @@ typedef struct _qpage {
  *	The amount of overflow data stored on each page is stored in the
  *	hf_offset field.
  *
- *	The implementation reference counts overflow items as it's possible
- *	for them to be promoted onto btree internal pages.  The reference
- *	count is stored in the entries field.
+ *	Before 4.3 the implementation reference counted overflow items as it
+ *	once was possible for them to be promoted onto btree internal pages.
+ *	The reference count is stored in the entries field. 
  */
 #define	OV_LEN(p)	(((PAGE *)p)->hf_offset)
 #define	OV_REF(p)	(((PAGE *)p)->entries)

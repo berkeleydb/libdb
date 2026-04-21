@@ -85,7 +85,7 @@
 #define	__db_init_print __db_init_print@DB_VERSION_UNIQUE_NAME@
 #define	__db_dbbackup_pp __db_dbbackup_pp@DB_VERSION_UNIQUE_NAME@
 #define	__db_dbbackup __db_dbbackup@DB_VERSION_UNIQUE_NAME@
-#define	__db_backup __db_backup@DB_VERSION_UNIQUE_NAME@
+#define	__db_backup_pp __db_backup_pp@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_close __dbc_close@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_destroy __dbc_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_cmp __dbc_cmp@DB_VERSION_UNIQUE_NAME@

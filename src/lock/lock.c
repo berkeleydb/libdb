@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -200,12 +200,18 @@ __lock_vec(env, sh_locker, flags, list, nlist, elistp)
 				if (writes == 1 ||
 				    lp->mode == DB_LOCK_READ ||
 				    lp->mode == DB_LOCK_READ_UNCOMMITTED) {
-					SH_LIST_REMOVE(lp,
-					    locker_links, __db_lock);
+					/*
+					 * It is safe to look at lp before
+					 * locking because any threads sharing
+					 * this locker must not be in the API
+					 * at the same time.
+					 */
 					sh_obj = SH_OFF_TO_PTR(lp,
 					    lp->obj, DB_LOCKOBJ);
 					ndx = sh_obj->indx;
 					OBJECT_LOCK_NDX(lt, region, ndx);
+					SH_LIST_REMOVE(lp,
+					    locker_links, __db_lock);
 					/*
 					 * We are not letting lock_put_internal
 					 * unlink the lock, so we'll have to
@@ -1683,11 +1689,15 @@ __lock_inherit_locks(lt, sh_locker, flags)
 	for (lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock);
 	    lp != NULL;
 	    lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock)) {
-		SH_LIST_REMOVE(lp, locker_links, __db_lock);
-
-		/* See if the parent already has a lock. */
+		/*
+		 * See if the parent already has a lock. It is safe to look at
+		 * lp before locking it because any threads sharing this locker
+		 * must not be in the API with the same time.
+		 */
 		obj = SH_OFF_TO_PTR(lp, lp->obj, DB_LOCKOBJ);
 		OBJECT_LOCK_NDX(lt, region, obj->indx);
+		SH_LIST_REMOVE(lp, locker_links, __db_lock);
+
 		SH_TAILQ_FOREACH(hlp, &obj->holders, links, __db_lock)
 			if (hlp->holder == poff && lp->mode == hlp->mode)
 				break;

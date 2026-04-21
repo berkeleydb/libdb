@@ -1456,7 +1456,7 @@ examples_c: ex_access ex_apprec ex_btrec ex_bulk ex_env ex_heap ex_lock \
 	ex_rep_mgr ex_sequence ex_stream ex_thread ex_tpcb \
 	example_database_load example_database_read txn_guide txn_guide_inmemory
 
-examples_cxx: TxnGuide TxnGuideInMemory excxx_access \
+examples_cxx: TxnGuide TxnGuideInMemory excxx_access excxx_btrec excxx_env \
 	excxx_example_database_load excxx_example_database_read \
 	excxx_lock excxx_mpool excxx_repquote excxx_repquote_gsg_repmgr \
 	excxx_repquote_gsg_simple excxx_sequence excxx_tpcb

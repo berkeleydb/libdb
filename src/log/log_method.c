@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -406,10 +406,14 @@ __log_get_config(dbenv, which, onp)
 	if (FLD_ISSET(which, ~OK_FLAGS))
 		return (__db_ferr(env, "DB_ENV->log_get_config", 0));
 	dblp = env->lg_handle;
-	ENV_REQUIRES_CONFIG(env, dblp, "DB_ENV->log_get_config", DB_INIT_LOG);
+	ENV_NOT_CONFIGURED(env, dblp, "DB_ENV->log_get_config", DB_INIT_LOG);
 
-	__env_fetch_flags(LogMap, sizeof(LogMap), &dblp->flags, &flags);
-	__log_get_flags(dbenv, &flags);
+	if (LOGGING_ON(env)) {
+		__env_fetch_flags(LogMap, sizeof(LogMap), &dblp->flags, &flags);
+		__log_get_flags(dbenv, &flags);
+	} else
+		flags = dbenv->lg_flags;
+
 	if (LF_ISSET(which))
 		*onp = 1;
 	else

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -15,7 +15,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.\n";
+    "Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 enum which_open { OPEN_ORIGINAL, OPEN_HOT_BACKUP };
@@ -469,7 +469,7 @@ env_init(dbenvp, home, log_dirp, data_dirp, passwd, which, verbose)
 		 * fails, we create a private environment and try again.
 		 */
 		if ((ret = dbenv->open(dbenv, home, DB_USE_ENVIRON, 0)) != 0 &&
-		    (ret == DB_VERSION_MISMATCH ||
+		    (ret == DB_VERSION_MISMATCH || ret == DB_REP_LOCKOUT ||
 		    (ret = dbenv->open(dbenv, home, DB_CREATE |
 		    DB_INIT_LOG | DB_INIT_TXN | DB_PRIVATE | DB_USE_ENVIRON,
 		    0)) != 0)) {
@@ -486,9 +486,19 @@ env_init(dbenvp, home, log_dirp, data_dirp, passwd, which, verbose)
 				    "%s\n"), progname);
 				return (usage());
 			} else {
-				fprintf(stderr, "%s: %s", DB_STR("5058",
+				/* 
+				 * Do we have -l and an existing DB_CONFIG? 
+				 * That is a usage problem, but for backward
+				 * compatibility, keep going if log_dir happens
+				 * to be the same as the DB_CONFIG path.
+				 */
+				(void)snprintf(buf, sizeof(buf), "%s%c%s", 
+				    home, PATH_SEPARATOR[0], "DB_CONFIG");
+				if (__os_exists(dbenv->env, buf, NULL) == 0)
+					fprintf(stderr, 
+					    "%s: %s", DB_STR("5058",
 			    "use of -l with DB_CONFIG file is deprecated\n"),
-				    progname);
+					    progname);
 			}
 		}
 		if (data_dirp != NULL && *data_dirp == NULL)

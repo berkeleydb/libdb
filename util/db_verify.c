@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -12,7 +12,7 @@
 
 #ifndef lint
 static const char copyright[] =
-    "Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.\n";
+    "Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.\n";
 #endif
 
 int main __P((int, char *[]));
@@ -147,7 +147,7 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 	private = 0;
 	if ((ret =
 	    dbenv->open(dbenv, home, DB_INIT_MPOOL | DB_USE_ENVIRON, 0)) != 0) {
-		if (ret != DB_VERSION_MISMATCH) {
+		if (ret != DB_VERSION_MISMATCH && ret != DB_REP_LOCKOUT) {
 			if ((ret =
 			    dbenv->set_cachesize(dbenv, 0, cache, 1)) != 0) {
 				dbenv->err(dbenv, ret, "set_cachesize");

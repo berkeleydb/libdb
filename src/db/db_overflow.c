@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -547,6 +547,7 @@ __db_moff(dbc, dbt, pgno, tlen, cmpfunc, cmpp)
 		    __memp_fget(mpf, &pgno, ip, dbc->txn, 0, &pagep)) != 0)
 			return (ret);
 
+		DB_ASSERT(dbc->env, TYPE(pagep) == P_OVERFLOW);
 		cmp_bytes = OV_LEN(pagep) < key_left ? OV_LEN(pagep) : key_left;
 		tlen -= cmp_bytes;
 		key_left -= cmp_bytes;
@@ -657,6 +658,7 @@ err1:		if (dbt_buf != NULL)
 		if ((ret =
 		    __memp_fget(mpf, &dbt_pgno, ip, txn, 0, &dbt_pagep)) != 0)
 			return (ret);
+		DB_ASSERT(dbc->env, TYPE(dbt_pagep) == P_OVERFLOW);
 		if ((ret =
 		    __memp_fget(mpf, &match_pgno,
 			ip, txn, 0, &match_pagep)) != 0) {
@@ -664,6 +666,7 @@ err1:		if (dbt_buf != NULL)
 			    mpf, ip, dbt_pagep, DB_PRIORITY_UNCHANGED);
 			return (ret);
 		}
+		DB_ASSERT(dbc->env, TYPE(match_pagep) == P_OVERFLOW);
 		cmp_bytes = page_space < max_data ? page_space : max_data;
 		for (p1 = (u_int8_t *)dbt_pagep + P_OVERHEAD(dbp),
 		    p2 = (u_int8_t *)match_pagep + P_OVERHEAD(dbp);

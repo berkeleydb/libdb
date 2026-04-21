@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2011, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2011, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -26,6 +26,8 @@ static int backup_dir_clean
     __P((DB_ENV *, const char *, const char *, int *, u_int32_t));
 static int backup_data_copy
     __P((DB_ENV *, const char *, const char *, const char *, int));
+static int __db_backup
+    __P((DB_ENV *, const char *, DB_THREAD_INFO *, int, u_int32_t));
 
 /*
  * __db_dbbackup_pp --
@@ -47,9 +49,8 @@ __db_dbbackup_pp(dbenv, dbfile, target, flags)
 	    "DB_ENV->dbbackup", flags, DB_EXCL)) != 0)
 		return (ret);
 	ENV_ENTER(dbenv->env, ip);
-
-	ret = __db_dbbackup(dbenv, ip, dbfile, target, flags);
-
+	REPLICATION_WRAP(dbenv->env,
+	    (__db_dbbackup(dbenv, ip, dbfile, target, flags)), 0, ret);
 	ENV_LEAVE(dbenv->env, ip);
 	return (ret);
 }
@@ -662,21 +663,20 @@ err:	if (logd != dbenv->db_log_dir && logd != env->db_home)
  * __db_backup --
  *	Backup databases in the enviornment.
  *
- * PUBLIC: int __db_backup __P((DB_ENV *, const char *, u_int32_t));
+ * PUBLIC: int __db_backup_pp __P((DB_ENV *, const char *, u_int32_t));
  */
 int
-__db_backup(dbenv, target, flags)
+__db_backup_pp(dbenv, target, flags)
 	DB_ENV *dbenv;
 	const char *target;
 	u_int32_t flags;
 {
 	DB_THREAD_INFO *ip;
 	ENV *env;
-	int copy_min, remove_max, ret;
-	char **dir;
+	int remove_max, ret;
 
 	env = dbenv->env;
-	remove_max = copy_min = 0;
+	remove_max = 0;
 
 #undef	OKFLAGS
 #define	OKFLAGS								\
@@ -714,6 +714,30 @@ __db_backup(dbenv, target, flags)
 	}
 
 	ENV_ENTER(env, ip);
+	REPLICATION_WRAP(env,
+	    (__db_backup(dbenv, target, ip, remove_max, flags)), 0, ret);
+	ENV_LEAVE(env, ip);
+	return (ret);
+}
+
+/*
+ * __db_backup --
+ *	Backup databases in the enviornment.
+ */
+static int
+__db_backup(dbenv, target, ip, remove_max, flags)
+	DB_ENV *dbenv;
+	const char *target;
+	DB_THREAD_INFO *ip;
+	int remove_max;
+	u_int32_t flags;
+{
+	ENV *env;
+	int copy_min, ret;
+	char **dir;
+
+	env = dbenv->env;
+	copy_min = 0;
 
 	/*
 	 * If the UPDATE option was not specified, copy all database
@@ -770,6 +794,5 @@ __db_backup(dbenv, target, flags)
 
 err:	F_CLR(dbenv, DB_ENV_HOTBACKUP);
 	(void)__env_set_backup(env, 0);
-end:	ENV_LEAVE(env, ip);
-	return (ret);
+end:	return (ret);
 }

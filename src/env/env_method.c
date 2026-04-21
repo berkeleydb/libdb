@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1999, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1999, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id: env_method.c,v dabaaeb7d839 2010/08/03 17:28:53 mike $
  */
@@ -159,7 +159,7 @@ __db_env_init(dbenv)
 	 */
 	/* DB_ENV PUBLIC HANDLE LIST BEGIN */
 	dbenv->add_data_dir = __env_add_data_dir;
-	dbenv->backup = __db_backup;
+	dbenv->backup = __db_backup_pp;
 	dbenv->dbbackup = __db_dbbackup_pp;
 	dbenv->cdsgroup_begin = __cdsgroup_begin_pp;
 	dbenv->close = __env_close_pp;

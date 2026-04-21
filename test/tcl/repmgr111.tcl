@@ -1,6 +1,6 @@
 # See the file LICENSE for redistribution information.
 #
-# Copyright (c) 2010, 2012 Oracle and/or its affiliates.  All rights reserved.
+# Copyright (c) 2010, 2013 Oracle and/or its affiliates.  All rights reserved.
 #
 # TEST repmgr111
 # TEST Multi-process repmgr with env open before set local site.

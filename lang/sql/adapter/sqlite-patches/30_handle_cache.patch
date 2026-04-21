@@ -1,0 +1,48 @@
+--- src/btree.h
++++ src/btree.h
+@@ -94,6 +94,14 @@ int sqlite3BtreeCopyFile(Btree *, Btree 
+ 
+ int sqlite3BtreeIncrVacuum(Btree *);
+ 
++/*
++ * BEGIN Berkeley DB specific btree APIs.
++ */
++int sqlite3BtreeHandleCacheUpdate(Btree *p, int schema_changed);
++/*
++ * END Berkeley DB specific btree APIs.
++ */
++
+ /* The flags parameter to sqlite3BtreeCreateTable can be the bitwise OR
+ ** of the flags shown below.
+ **
+--- src/vdbe.c
++++ src/vdbe.c
+@@ -2929,11 +2929,13 @@ case OP_SetCookie: {       /* in3 */
+ case OP_VerifyCookie: {
+   int iMeta;
+   int iGen;
++  int iSchemaChanged;
+   Btree *pBt;
+ 
+   assert( pOp->p1>=0 && pOp->p1<db->nDb );
+   assert( (p->btreeMask & (((yDbMask)1)<<pOp->p1))!=0 );
+   assert( sqlite3SchemaMutexHeld(db, pOp->p1, 0) );
++  iSchemaChanged = 0;
+   pBt = db->aDb[pOp->p1].pBt;
+   if( pBt ){
+     sqlite3BtreeGetMeta(pBt, BTREE_SCHEMA_VERSION, (u32 *)&iMeta);
+@@ -2962,12 +2964,14 @@ case OP_VerifyCookie: {
+     ** a v-table method.
+     */
+     if( db->aDb[pOp->p1].pSchema->schema_cookie!=iMeta ){
++      iSchemaChanged = 1;
+       sqlite3ResetInternalSchema(db, pOp->p1);
+     }
+ 
+     p->expired = 1;
+     rc = SQLITE_SCHEMA;
+   }
++  sqlite3BtreeHandleCacheUpdate(pBt, iSchemaChanged);
+   break;
+ }
+ 

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -288,6 +288,7 @@ __db_cursor_pp(dbp, txn, dbcp, flags)
 	int rep_blocked, ret;
 
 	env = dbp->env;
+	(*dbcp) = NULL;
 
 	DB_ILLEGAL_BEFORE_OPEN(dbp, "DB->cursor");
 
@@ -331,7 +332,8 @@ __db_cursor_pp(dbp, txn, dbcp, flags)
 	 * If a family transaction was passed in, the transaction handle in
 	 * the cursor may not match.
 	 */
-	txn = (*dbcp)->txn;
+	if ((*dbcp) != NULL)
+	    txn = (*dbcp)->txn;
 	if (txn != NULL && ret == 0)
 		TAILQ_INSERT_HEAD(&(txn->my_cursors), *dbcp, txn_cursors);
 

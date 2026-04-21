@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -241,7 +241,7 @@ __bam_dpages(dbc, use_top, flags)
 	 * single item deleted, and the rest of the pages are to be removed.
 	 *
 	 * Recno always has a stack to the root and __bam_merge operations
-	 * may have unneeded items in the sack.  We find the lowest page
+	 * may have unneeded items in the stack.  We find the lowest page
 	 * in the stack that has more than one record in it and start there.
 	 */
 	ret = 0;
@@ -493,7 +493,9 @@ stop:			done = 1;
 
 /*
  * __bam_pupdate --
- *	Update parent key pointers up the tree.
+ *	Update parent key pointers up the tree after putting a new key
+ *	at the start of a leaf page. 
+ *
  *
  * PUBLIC: int __bam_pupdate __P((DBC *, PAGE *));
  */

@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2005, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2005, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -671,10 +671,17 @@ __repmgr_become_master(env)
 	if ((ret = __repmgr_repstart(env, DB_REP_MASTER)) != 0)
 		return (ret);
 
+	/*
+	 * Make sure member_version_gen is current so that this master
+	 * can reject obsolete member lists from other sites. 
+	 */
+	db_rep->member_version_gen = db_rep->region->gen;
+
+	/* If there is already a gmdb, we are finished. */
 	if (db_rep->have_gmdb)
 		return (0);
 
-	db_rep->member_version_gen = db_rep->region->gen;
+	/* There isn't a gmdb.  Create one from the in-memory site list. */
 	ENV_ENTER(env, ip);
 	if ((ret = __repmgr_hold_master_role(env, NULL)) != 0)
 		goto leave;

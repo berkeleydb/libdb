@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2009, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2009, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -54,6 +54,11 @@ class db_set;
 
 template <Typename kdt, Typename value_type_sub = ElementRef<kdt> >
 class db_multiset;
+
+#if NO_MEMBER_FUNCTION_PARTIAL_SPECIALIZATION
+template <Typename kdt, Typename datadt, Typename value_type_sub>
+void assign_second0(pair<kdt, value_type_sub>& v, const datadt& d) ;
+#endif
 
 /** \ingroup dbstl_iterators
 @{
@@ -695,12 +700,6 @@ assign_second0(value_type &v, const _DB_STL_set_value<kdt>&
 #endif // DOXYGEN_CANNOT_SEE_THIS
 //@} // db_map_iterators
 //@} // dbstl_iterators
-
-
-#if NO_MEMBER_FUNCTION_PARTIAL_SPECIALIZATION
-template <Typename kdt, Typename datadt, Typename value_type_sub>
-void assign_second0(pair<kdt, value_type_sub>& v, const datadt& d) ;
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -2676,7 +2675,7 @@ public:
 	    BulkRetrievalOption::BulkRetrieval)))
 	{
 		this->init_members(x);
-		verify_db_handles(x);
+		this->verify_db_handles(x);
 		this->set_db_handle_int(this->clone_db_config(
 		    x.get_db_handle()), x.get_db_env_handle());
 		assert(this->get_db_handle() != NULL);
@@ -2707,7 +2706,7 @@ public:
 	{
 		ASSIGNMENT_PREDCOND(x)
 		db_container::operator =(x);
-		verify_db_handles(x);
+		this->verify_db_handles(x);
 		assert(this->get_db_handle() != NULL);
 		this->begin_txn();
 		try {
@@ -2734,8 +2733,8 @@ public:
 		InputIterator ii;
 		iterator witr;
 
-		init_itr(witr);
-		open_itr(witr);
+		this->init_itr(witr);
+		this->open_itr(witr);
 
 		for (ii = first; ii != last; ++ii)
 			witr.pcsr_->insert(ii->first, ii->second, 
@@ -2789,7 +2788,7 @@ public:
 		Db *swapdb = NULL;
 		std::string dbfname(64, '\0');
 
-		verify_db_handles(mp);
+		this->verify_db_handles(mp);
 		this->begin_txn();
 		try {
 			swapdb = this->clone_db_config(this->get_db_handle(), 
@@ -3205,7 +3204,7 @@ public:
 		string name1, name2;
 		u_int32_t oflags;
 
-		verify_db_handles(m2);
+		this->verify_db_handles(m2);
 		pdb = this->get_db_handle();
 		penv = pdb->get_env();
 		try {

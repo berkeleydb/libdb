@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1990, 1993, 1994, 1995, 1996
@@ -91,6 +91,9 @@ __db_master_open(subdbp, ip, txn, name, flags, mode, dbpp)
 	/* Open up a handle on the main database. */
 	if ((ret = __db_create_internal(&dbp, subdbp->env, 0)) != 0)
 		return (ret);
+
+	/* Set the creation directory. */
+	dbp->dirname = subdbp->dirname;
 
 	/*
 	 * It's always a btree.

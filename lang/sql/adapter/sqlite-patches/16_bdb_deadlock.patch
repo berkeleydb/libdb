@@ -1,0 +1,74 @@
+--- src/vdbe.c
++++ src/vdbe.c
+@@ -1112,7 +1112,10 @@ case OP_ResultRow: {
+   ** The statement transaction is never a top-level transaction.  Hence
+   ** the RELEASE call below can never fail.
+   */
+-  assert( p->iStatement==0 || db->flags&SQLITE_CountRows );
++  /* assert( p->iStatement==0 || db->flags&SQLITE_CountRows );
++   * This assert does not hold true when  read/write incrblobs are used with
++   * Berkeley DB because p->iStatement is set to true in order to create a
++   * statement transaction that is donated to the incrblob cursor. BDB */
+   rc = sqlite3VdbeCloseStatement(p, SAVEPOINT_RELEASE);
+   if( NEVER(rc!=SQLITE_OK) ){
+     break;
+@@ -2786,9 +2781,12 @@ case OP_Transaction: {
+       goto abort_due_to_error;
+     }
+ 
+-    if( pOp->p2 && p->usesStmtJournal 
++    /*if( pOp->p2 && p->usesStmtJournal 
+      && (db->autoCommit==0 || db->activeVdbeCnt>1) 
+-    ){
++    ){*/
++    /* In Berkeley DB create a statement transaction for every update 
++     * statement.  BDB */
++    if ( pOp->p2 && (db->autoCommit==0 || db->activeVdbeCnt>1)) {
+       assert( sqlite3BtreeIsInTrans(pBt) );
+       if( p->iStatement==0 ){
+         assert( db->nStatement>=0 && db->nSavepoint>=0 );
+@@ -5907,6 +5913,14 @@ vdbe_error_halt:
+   testcase( sqlite3GlobalConfig.xLog!=0 );
+   sqlite3_log(rc, "statement aborts at %d: [%s] %s", 
+                    pc, p->zSql, p->zErrMsg);
++  /* Force a rollback if a locked or busy error happens. BDBSQL*/
++  if ( p->rc == SQLITE_LOCKED || p->rc == SQLITE_BUSY ) {
++	p->errorAction = OE_Abort;
++	if (p->readOnly) {
++	  db->nStatement++;
++	  p->iStatement = db->nStatement + db->nSavepoint;
++	}
++  }
+   sqlite3VdbeHalt(p);
+   if( rc==SQLITE_IOERR_NOMEM ) db->mallocFailed = 1;
+   rc = SQLITE_ERROR;
+--- src/vdbeblob.c
++++ src/vdbeblob.c
+@@ -155,6 +155,7 @@ int sqlite3_blob_open(
+   Table *pTab;
+   Parse *pParse = 0;
+   Incrblob *pBlob = 0;
++  int iDb;
+ 
+   flags = !!flags;                /* flags = (flags ? 1 : 0); */
+   *ppBlob = 0;
+@@ -254,7 +255,7 @@ int sqlite3_blob_open(
+     assert( pBlob->pStmt || db->mallocFailed );
+     if( pBlob->pStmt ){
+       Vdbe *v = (Vdbe *)pBlob->pStmt;
+-      int iDb = sqlite3SchemaToIndex(db, pTab->pSchema);
++      iDb = sqlite3SchemaToIndex(db, pTab->pSchema);
+ 
+       sqlite3VdbeAddOpList(v, sizeof(openBlob)/sizeof(VdbeOpList), openBlob);
+ 
+@@ -298,6 +299,10 @@ int sqlite3_blob_open(
+       if( !db->mallocFailed ){
+         sqlite3VdbeMakeReady(v, 1, 1, 1, 0, 0, 0);
+       }
++      /* This will prevent the statement transaction from being committed,
++       * which would invalidate the incrblob cursor. BDB */
++      if( flags )
++        v->iStatement = db->nSavepoint + 1;
+     }
+    
+     pBlob->flags = flags;

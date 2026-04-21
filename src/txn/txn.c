@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  */
 /*
  * Copyright (c) 1995, 1996
@@ -227,8 +227,14 @@ __txn_begin(env, ip, parent, txnpp, flags)
 	if (LF_ISSET(DB_TXN_FAMILY))
 		F_SET(txn, TXN_FAMILY | TXN_INFAMILY | TXN_READONLY);
 	if (LF_ISSET(DB_TXN_SNAPSHOT) || F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT) ||
-	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT)))
-		F_SET(txn, TXN_SNAPSHOT);
+	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT))) {
+		if (IS_REP_CLIENT(env)) {
+			__db_errx(env, DB_STR("4572",
+		"DB_TXN_SNAPSHOT may not be used on a replication client"));
+			return (EINVAL);
+		} else
+			F_SET(txn, TXN_SNAPSHOT);
+	}
 	if (LF_ISSET(DB_IGNORE_LEASE))
 		F_SET(txn, TXN_IGNORE_LEASE);
 

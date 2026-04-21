@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 1996, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 1996, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -638,7 +638,6 @@ __log_valid(dblp, number, set_persist, fhpp, flags, statusp, versionp)
 	recsize = sizeof(LOGP);
 	if (CRYPTO_ON(env)) {
 		hdrsize = HDR_CRYPTO_SZ;
-		recsize = sizeof(LOGP);
 		recsize += db_cipher->adj_size(recsize);
 		is_hmac = 1;
 	}
@@ -700,7 +699,7 @@ __log_valid(dblp, number, set_persist, fhpp, flags, statusp, versionp)
 		 * we can only detect that by having an unreasonable
 		 * data length for our persistent data.
 		 */
-		if ((hdr->len - hdrsize) != sizeof(LOGP)) {
+		if ((hdr->len - hdrsize) != recsize) {
 			__db_errx(env, "log record size mismatch");
 			goto err;
 		}

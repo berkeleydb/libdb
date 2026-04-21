@@ -1,7 +1,7 @@
 /*-
  * See the file LICENSE for redistribution information.
  *
- * Copyright (c) 2000, 2012 Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2000, 2013 Oracle and/or its affiliates.  All rights reserved.
  *
  * $Id$
  */
@@ -2382,12 +2382,14 @@ __dbc_cleanup(dbc, dbc_n, failed)
 	 * cursors.
 	 */
 	if (!failed && ret == 0) {
+		MUTEX_LOCK(dbp->env, dbp->mutex);
 		if (opd != NULL)
 			opd->internal->pdbc = dbc;
 		if (internal->opd != NULL)
 			internal->opd->internal->pdbc = dbc_n;
 		dbc->internal = dbc_n->internal;
 		dbc_n->internal = internal;
+		MUTEX_UNLOCK(dbp->env, dbp->mutex);
 	}
 
 	/*
