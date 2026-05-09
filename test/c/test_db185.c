@@ -181,8 +181,167 @@ ops(dbp, type)
 	if (dbp->sync(dbp, 0))			/* Test DB->sync. */
 		err("DB->sync");
 
+	test_db_boundary_conditions(dbp, type);
+	test_db_cursor(dbp, type);
+	test_db_statistics(dbp, type);
+
 	if (dbp->close(dbp))			/* Test DB->close. */
 		err("DB->close");
+}
+
+static void test_db_boundary_conditions(DB *dbp, int type) {
+    DBT key, data;
+    char small_key[1] = "";
+    char large_key[1024 * 1024];
+    int ret;
+
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    key.data = small_key;
+    key.size = 0;
+    data.data = "empty_key_value";
+    data.size = 15;
+    if ((ret = dbp->put(dbp, &key, &data, 0)) != 0) {
+        fprintf(stderr, "Empty key test failed: %s\n", strerror(errno));
+        return;
+    }
+
+    memset(large_key, 'x', sizeof(large_key));
+    key.data = large_key;
+    key.size = sizeof(large_key);
+    data.data = "large_data";
+    data.size = 10;
+    if ((ret = dbp->put(dbp, &key, &data, 0)) != 0) {
+        fprintf(stderr, "Large key test failed: %s\n", strerror(errno));
+        return;
+    }
+
+    key.data = "nonexistent_key_12345";
+    key.size = 20;
+    if ((ret = dbp->get(dbp, &key, &data, 0)) == 0) {
+        fprintf(stderr, "Nonexistent key test failed\n");
+        return;
+    }
+
+    printf("\t\tBoundary conditions test passed\n");
+}
+
+static void test_db_cursor(DB *dbp, int type) {
+    DBC *cursor;
+    DBT key, data;
+    int ret;
+
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
+        fprintf(stderr, "Cursor open failed: %s\n", strerror(errno));
+        return;
+    }
+
+    int count = 0;
+    while ((ret = cursor->c_get(cursor, &key, &data, DB_NEXT)) == 0) {
+        count++;
+    }
+    if (ret != DB_NOTFOUND) {
+        fprintf(stderr, "Cursor iteration failed: %s\n", strerror(errno));
+        cursor->c_close(cursor);
+        return;
+    }
+    printf("\t\tCursor traversed %d records\n", count);
+
+    if (type != DB_RECNO) {
+        sprintf((char *)key.data, "abc_%d_efg", 50);
+        key.size = strlen((char *)key.data);
+        if ((ret = cursor->c_get(cursor, &key, &data, DB_SET)) != 0) {
+            fprintf(stderr, "Cursor DB_SET failed: %s\n", strerror(errno));
+            cursor->c_close(cursor);
+            return;
+        }
+        printf("\t\tCursor DB_SET test passed\n");
+    }
+
+    if (type != DB_RECNO) {
+        key.data = "cursor_insert_key";
+        key.size = 17;
+        data.data = "cursor_insert_data";
+        data.size = 19;
+        if ((ret = cursor->c_put(cursor, &key, &data, DB_KEYFIRST)) != 0) {
+            fprintf(stderr, "Cursor c_put failed: %s\n", strerror(errno));
+            cursor->c_close(cursor);
+            return;
+        }
+        printf("\t\tCursor c_put test passed\n");
+    }
+
+    if ((ret = cursor->c_close(cursor)) != 0) {
+        fprintf(stderr, "Cursor close failed: %s\n", strerror(errno));
+        return;
+    }
+
+    printf("\t\tCursor operations test passed\n");
+}
+
+static void test_db_statistics(DB *dbp, int type) {
+    DB_BTREE_STAT *bt_stat;
+    DB_HASH_STAT *hash_stat;
+    DB_RECNO_STAT *rec_stat;
+    void *statp;
+    int ret;
+
+    if ((ret = dbp->stat(dbp, NULL, &statp, 0)) != 0) {
+        fprintf(stderr, "DB->stat failed: %s\n", strerror(errno));
+        return;
+    }
+
+    switch (type) {
+        case DB_BTREE:
+            bt_stat = (DB_BTREE_STAT *)statp;
+            printf("\t\tBtree stat: pages=%lu, entries=%lu\n",
+                (u_long)bt_stat->bt_npage, (u_long)bt_stat->bt_nrecs);
+            break;
+        case DB_HASH:
+            hash_stat = (DB_HASH_STAT *)statp;
+            printf("\t\tHash stat: buckets=%lu, entries=%lu\n",
+                (u_long)hash_stat->hash_nbucket, (u_long)hash_stat->hash_nrecs);
+            break;
+        case DB_RECNO:
+            rec_stat = (DB_RECNO_STAT *)statp;
+            printf("\t\tRecno stat: pages=%lu, entries=%lu\n",
+                (u_long)rec_stat->r_npage, (u_long)rec_stat->r_nrecs);
+            break;
+    }
+
+    switch (type) {
+        case DB_BTREE:
+            bt_stat = (DB_BTREE_STAT *)statp;
+            if (bt_stat->bt_nrecs != 99) {  /* 99 entries inserted */
+                fprintf(stderr, "Btree stat validation failed\n");
+                __os_free(NULL, statp);
+                return;
+            }
+            break;
+        case DB_HASH:
+            hash_stat = (DB_HASH_STAT *)statp;
+            if (hash_stat->hash_nrecs != 99) {
+                fprintf(stderr, "Hash stat validation failed\n");
+                __os_free(NULL, statp);
+                return;
+            }
+            break;
+        case DB_RECNO:
+            rec_stat = (DB_RECNO_STAT *)statp;
+            if (rec_stat->r_nrecs != 99) {
+                fprintf(stderr, "Recno stat validation failed\n");
+                __os_free(NULL, statp);
+                return;
+            }
+            break;
+    }
+
+    __os_free(NULL, statp);
+    printf("\t\tStatistics test passed\n");
 }
 
 void
