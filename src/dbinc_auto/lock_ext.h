@@ -71,6 +71,7 @@ int __lock_inherit_timeout __P((ENV *, DB_LOCKER *, DB_LOCKER *));
 u_int32_t __lock_ohash __P((const DBT *));
 u_int32_t __lock_lhash __P((DB_LOCKOBJ *));
 int __lock_nomem __P((ENV *, const char *));
+int __lock_sicleanup __P((ENV *));
 
 #if defined(__cplusplus)
 }
