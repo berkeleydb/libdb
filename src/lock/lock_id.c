@@ -370,6 +370,7 @@ __lock_getlocker_int(lt, locker, create, retp)
 		    env->dbenv, &sh_locker->pid, &sh_locker->tid);
 		sh_locker->mtx_locker = mutex;
 		sh_locker->dd_id = 0;
+		sh_locker->td_off = INVALID_ROFF;	/* SSI: set by txn layer. */
 		sh_locker->master_locker = INVALID_ROFF;
 		sh_locker->parent_locker = INVALID_ROFF;
 		SH_LIST_INIT(&sh_locker->child_locker);

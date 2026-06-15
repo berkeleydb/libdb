@@ -1552,6 +1552,7 @@ retry:	SH_TAILQ_FOREACH(sh_obj, &lt->obj_tab[ndx], links, __db_lockobj) {
 		sh_obj->indx = ndx;
 		SH_TAILQ_INIT(&sh_obj->waiters);
 		SH_TAILQ_INIT(&sh_obj->holders);
+		SH_TAILQ_INIT(&sh_obj->sireaders);	/* SSI snapshot readers. */
 		sh_obj->lockobj.size = obj->size;
 		sh_obj->lockobj.off =
 		    (roff_t)SH_PTR_TO_OFF(&sh_obj->lockobj, p);
