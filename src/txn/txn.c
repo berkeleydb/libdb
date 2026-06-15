@@ -108,6 +108,7 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 	    DB_IGNORE_LEASE |DB_READ_COMMITTED | DB_READ_UNCOMMITTED |
 	    DB_TXN_FAMILY | DB_TXN_NOSYNC | DB_TXN_SNAPSHOT | DB_TXN_SYNC |
 	    DB_TXN_WAIT | DB_TXN_WRITE_NOSYNC | DB_TXN_NOWAIT |
+	    DB_TXN_SNAPSHOT_SAFE |
 	    DB_TXN_BULK)) != 0)
 		return (ret);
 	if ((ret = __db_fcchk(env, "txn_begin", flags,
@@ -226,7 +227,8 @@ __txn_begin(env, ip, parent, txnpp, flags)
 		F_SET(txn, TXN_READ_UNCOMMITTED);
 	if (LF_ISSET(DB_TXN_FAMILY))
 		F_SET(txn, TXN_FAMILY | TXN_INFAMILY | TXN_READONLY);
-	if (LF_ISSET(DB_TXN_SNAPSHOT) || F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT) ||
+	if (LF_ISSET(DB_TXN_SNAPSHOT | DB_TXN_SNAPSHOT_SAFE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT) ||
 	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT))) {
 		if (IS_REP_CLIENT(env)) {
 			__db_errx(env, DB_STR("4572",
@@ -235,6 +237,10 @@ __txn_begin(env, ip, parent, txnpp, flags)
 		} else
 			F_SET(txn, TXN_SNAPSHOT);
 	}
+	/* SSI is snapshot isolation plus serializable conflict detection. */
+	if (LF_ISSET(DB_TXN_SNAPSHOT_SAFE) ||
+	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT_SAFE)))
+		F_SET(txn, TXN_SNAPSHOT_SAFE);
 	if (LF_ISSET(DB_IGNORE_LEASE))
 		F_SET(txn, TXN_IGNORE_LEASE);
 
@@ -450,6 +456,10 @@ __txn_begin_int(txn)
 	if (LOCKING_ON(env) && (ret =
 		__lock_getlocker(env->lk_handle, id, 1, &txn->locker)) != 0)
 			goto err;
+
+	/* SSI: link the locker to its transaction detail. */
+	if (txn->locker != NULL)
+		txn->locker->td_off = R_OFFSET(&mgr->reginfo, td);
 
 	txn->abort = __txn_abort_pp;
 	txn->commit = __txn_commit_pp;
