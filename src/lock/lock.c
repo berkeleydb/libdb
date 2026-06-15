@@ -609,13 +609,13 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	db_timeout_t timeout;
 	DB_LOCK *lock;
 {
-	struct __db_lock *newl, *lp;
+	struct __db_lock *newl, *lp, *sireadlp, *next_lock;
 	ENV *env;
 	DB_LOCKOBJ *sh_obj;
 	DB_LOCKREGION *region;
 	DB_THREAD_INFO *ip;
 	u_int32_t ndx, part_id;
-	int did_abort, ihold, grant_dirty, no_dd, ret, safe_si, t_ret;
+	int did_abort, ihold, grant_dirty, no_dd, ret, rwconf, safe_si, t_ret;
 	roff_t holder, sh_off;
 
 	/*
@@ -725,6 +725,7 @@ again:	if (obj == NULL) {
 	 */
 	ihold = 0;
 	grant_dirty = 0;
+	rwconf = 0;
 	holder = 0;
 
 	/*
@@ -789,6 +790,79 @@ again:	if (obj == NULL) {
 			grant_dirty = 1;
 			holder = lp->holder;
 		}
+	}
+
+	/*
+	 * SSI: when a snapshot-safe writer (or reader) acquires a lock and the
+	 * object has snapshot readers, record rw-antidependencies.  A reader
+	 * R that read a version now being written by W creates an edge
+	 * R --rw--> W.  A transaction that is both the read end and the write
+	 * end of such edges (a "pivot") may produce a serializability anomaly
+	 * and is aborted with DB_SNAPSHOT_UNSAFE.
+	 */
+	if (safe_si && lp == NULL &&
+	    (lock_mode == DB_LOCK_WRITE || lock_mode == DB_LOCK_SIREAD)) {
+		for (sireadlp = SH_TAILQ_FIRST(&sh_obj->sireaders, __db_lock);
+		    sireadlp != NULL; sireadlp = next_lock) {
+			next_lock = SH_TAILQ_NEXT(sireadlp, links, __db_lock);
+			if (lock_mode == DB_LOCK_WRITE &&
+			    sh_off == sireadlp->holder) {
+				/*
+				 * Upgrading our own SIREAD to WRITE: drop the
+				 * SIREAD marker to avoid self-conflicts.
+				 */
+				SH_TAILQ_REMOVE(&sh_obj->sireaders,
+				    sireadlp, links, __db_lock);
+				if ((ret = __lock_freelock(lt, sireadlp,
+				    LOCK_HOLDER(env, sireadlp),
+				    DB_LOCK_UNLINK | DB_LOCK_FREE)) != 0)
+					goto err;
+			} else if (lock_mode == DB_LOCK_WRITE &&
+			    sh_off != sireadlp->holder &&
+			    (LOCK_OWNER(env, sireadlp)->status == TXN_RUNNING ||
+			    LOG_COMPARE(&LOCK_COMMITLSN(env, sireadlp),
+			    &LOCKER_TD(env, sh_locker)->read_lsn) > 0)) {
+				if (F_ISSET(LOCK_OWNER(env, sireadlp),
+				    TXN_DTL_WCONF) &&
+				    LOCK_OWNER(env, sireadlp)->status ==
+				    TXN_COMMITTED) {
+					ret = DB_SNAPSHOT_UNSAFE;
+					goto err;
+				}
+				rwconf = 1;
+				/*
+				 * Set the incoming-conflict flag on our txn,
+				 * unless the reader will itself abort.
+				 */
+				if (LOCK_OWNER(env, sireadlp)->status ==
+				    TXN_COMMITTED ||
+				    !F_ISSET(LOCK_OWNER(env, sireadlp),
+				    TXN_DTL_WCONF)) {
+					if (F_ISSET(LOCKER_TD(env, sh_locker),
+					    TXN_DTL_RCONF)) {
+						ret = DB_SNAPSHOT_UNSAFE;
+						goto err;
+					}
+					F_SET(LOCKER_TD(env, sh_locker),
+					    TXN_DTL_WCONF);
+				}
+				F_SET(LOCK_OWNER(env, sireadlp), TXN_DTL_RCONF);
+			} else if (lock_mode == DB_LOCK_SIREAD &&
+			    sh_off == sireadlp->holder) {
+				/* Already hold a SIREAD marker here. */
+				sireadlp->refcount++;
+				lock->off = R_OFFSET(&lt->reginfo, sireadlp);
+				lock->gen = sireadlp->gen;
+				lock->mode = sireadlp->mode;
+				goto done;
+			}
+		}
+		/*
+		 * Note: obsolete SIREAD markers are reclaimed by
+		 * __lock_sicleanup (run without a partition mutex held), not
+		 * here -- computing the oldest reader needs the txn system
+		 * lock, which must not be taken under a partition mutex.
+		 */
 	}
 
 #ifdef DIAGNOSTIC
