@@ -93,6 +93,9 @@ typedef struct __txn_detail {
 	db_mutex_t	mvcc_mtx;	/* Version mutex. */
 	u_int32_t	mvcc_ref;	/* Number of buffers created by this
 					   transaction still in cache.  */
+	u_int32_t	si_ref;		/* SSI: outstanding SIREAD markers that
+					   reference this detail (keeps it alive
+					   past commit, parallels mvcc_ref). */
 
 	u_int32_t	priority;	/* Deadlock resolution priority. */
 

@@ -1043,9 +1043,10 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 	switch (action) {
 	case GRANT:
 		newl->status = DB_LSTAT_HELD;
-		if (safe_si && lock_mode == DB_LOCK_SIREAD)
+		if (safe_si && lock_mode == DB_LOCK_SIREAD) {
 			SH_TAILQ_INSERT_TAIL(&sh_obj->sireaders, newl, links);
-		else
+			LOCKER_TD(env, sh_locker)->si_ref++;
+		} else
 			SH_TAILQ_INSERT_TAIL(&sh_obj->holders, newl, links);
 		break;
 	case UPGRADE:
