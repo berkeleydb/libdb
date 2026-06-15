@@ -519,7 +519,7 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	DB_LOCKREGION *region;
 	DB_THREAD_INFO *ip;
 	u_int32_t ndx, part_id;
-	int did_abort, ihold, grant_dirty, no_dd, ret, t_ret;
+	int did_abort, ihold, grant_dirty, no_dd, ret, safe_si, t_ret;
 	roff_t holder, sh_off;
 
 	/*
@@ -551,6 +551,10 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	no_dd = ret = 0;
 	newl = NULL;
 	sh_obj = NULL;
+
+	/* SSI: snapshot-safe bookkeeping is strictly opt-in. */
+	safe_si = LF_ISSET(DB_LOCK_SNAPSHOT_SAFE) ? 1 : 0;
+	LF_CLR(DB_LOCK_SNAPSHOT_SAFE);
 
 	/* Check that the lock mode is valid.  */
 	if (lock_mode >= (db_lockmode_t)region->nmodes) {
@@ -666,6 +670,15 @@ again:	if (obj == NULL) {
 				lock->off = R_OFFSET(&lt->reginfo, lp);
 				lock->gen = lp->gen;
 				lock->mode = lp->mode;
+				goto done;
+			} else if (safe_si && lp->mode == DB_LOCK_WRITE &&
+			    lock_mode == DB_LOCK_SIREAD) {
+				/*
+				 * SSI: this locker already holds WRITE on the
+				 * object, so a snapshot-read marker is
+				 * redundant -- grant trivially.
+				 */
+				LOCK_INIT(*lock);
 				goto done;
 			} else {
 				ihold = 1;

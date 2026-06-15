@@ -269,6 +269,7 @@ struct __db_lock { /* SHARED */
  * we pass some of those around.
  */
 #define	DB_LOCK_DOALL		0x010000
+#define	DB_LOCK_SNAPSHOT_SAFE	0x020000	/* SSI: snapshot-safe acquire. */
 #define	DB_LOCK_FREE		0x040000
 #define	DB_LOCK_NOPROMOTE	0x080000
 #define	DB_LOCK_UNLINK		0x100000
