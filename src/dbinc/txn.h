@@ -107,6 +107,8 @@ typedef struct __txn_detail {
 #define	TXN_DTL_INMEMORY	0x04	/* uses in memory logs */
 #define	TXN_DTL_SNAPSHOT	0x08	/* On the list of snapshot txns. */
 #define	TXN_DTL_NOWAIT		0x10	/* Don't block on locks. */
+#define	TXN_DTL_WCONF		0x20	/* SSI: write end of an rw-conflict. */
+#define	TXN_DTL_RCONF		0x40	/* SSI: read end of an rw-conflict. */
 	u_int32_t flags;
 
 	SH_TAILQ_ENTRY	links;		/* active/free/snapshot list */
@@ -168,6 +170,9 @@ struct __db_txnregion { /* SHARED */
 	db_mutex_t	mtx_ckp;	/* Single thread checkpoints. */
 	DB_LSN		last_ckp;	/* lsn of the last checkpoint */
 	time_t		time_ckp;	/* time of last checkpoint */
+
+	db_mutex_t	mtx_oldlsn;	/* SSI: protect the oldest active LSN. */
+	DB_LSN		old_lsn;	/* SSI: LSN of the oldest active txn. */
 
 	DB_TXN_STAT_INT	stat;		/* Statistics for txns. */
 
