@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
+#include "dbinc/txn.h"
 
 static int __lock_allocobj __P((DB_LOCKTAB *, u_int32_t));
 static int __lock_alloclock __P((DB_LOCKTAB *, u_int32_t));
@@ -30,6 +31,7 @@ static int __lock_remove_waiter __P((DB_LOCKTAB *,
 static int __lock_trade __P((ENV *, DB_LOCK *, DB_LOCKER *));
 static int __lock_vec_api __P((ENV *,
 		u_int32_t, u_int32_t,  DB_LOCKREQ *, int, DB_LOCKREQ **));
+static int __lock_siclean_obj __P((ENV *, DB_LOCKOBJ *, DB_LSN *));
 
 static const char __db_lock_invalid[] = "%s: Lock is no longer valid";
 static const char __db_locker_invalid[] = "Locker is not valid";
@@ -87,6 +89,100 @@ __lock_vec_api(env, lid, flags, list, nlist, elistp)
 	    __lock_getlocker(env->lk_handle, lid, 0, &sh_locker)) == 0)
 		ret = __lock_vec(env, sh_locker, flags, list, nlist, elistp);
 	return (ret);
+}
+
+/*
+ * __lock_siclean_obj --
+ *	Garbage-collect SSI snapshot-read (SIREAD) locks on one object whose
+ *	owning transactions have committed and whose snapshots are no longer
+ *	visible to any active reader (old_lsnp == oldest active read LSN).
+ *	The caller must hold the object's partition mutex.
+ */
+static int
+__lock_siclean_obj(env, obj, old_lsnp)
+	ENV *env;
+	DB_LOCKOBJ *obj;
+	DB_LSN *old_lsnp;
+{
+	DB_LOCKTAB *lt;
+	DB_LOCKER *sh_locker;
+	struct __db_lock *lp, *next_lock;
+	int ret;
+
+	lt = env->lk_handle;
+	ret = 0;
+
+	for (lp = SH_TAILQ_FIRST(&obj->sireaders, __db_lock);
+	    lp != NULL; lp = next_lock) {
+		next_lock = SH_TAILQ_NEXT(lp, links, __db_lock);
+
+		/* Keep readers whose transaction is still running. */
+		if (LOCK_OWNER(env, lp)->status == TXN_RUNNING)
+			continue;
+
+		/*
+		 * Keep the marker while its snapshot is still within the
+		 * window of the oldest active reader.
+		 */
+		if (!(IS_MAX_LSN(LOCK_COMMITLSN(env, lp)) &&
+		    LOG_COMPARE(&LOCK_READLSN(env, lp), old_lsnp) > 0) &&
+		    LOG_COMPARE(&LOCK_COMMITLSN(env, lp), old_lsnp) > 0)
+			continue;
+
+		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
+		sh_locker = LOCK_HOLDER(env, lp);
+		if ((ret = __lock_freelock(lt, lp, sh_locker,
+		    DB_LOCK_UNLINK | DB_LOCK_FREE)) != 0)
+			break;
+	}
+
+	return (ret);
+}
+
+/*
+ * __lock_sicleanup --
+ *	Sweep all objects and garbage-collect SIREAD locks that are no longer
+ *	needed for serializable-snapshot conflict detection.  The oldest active
+ *	read LSN is computed once up front (before any partition mutex is held,
+ *	since __txn_oldest_reader takes the txn system lock).
+ *
+ * PUBLIC: int __lock_sicleanup __P((ENV *));
+ */
+int
+__lock_sicleanup(env)
+	ENV *env;
+{
+	DB_LOCKTAB *lt;
+	DB_LOCKREGION *region;
+	DB_LOCKOBJ *obj, *next_obj;
+	DB_LSN old_lsn;
+	u_int32_t i;
+	int ret;
+
+	if (!LOCKING_ON(env))
+		return (0);
+
+	lt = env->lk_handle;
+	region = lt->reginfo.primary;
+
+	if ((ret = __txn_oldest_reader(env, &old_lsn)) != 0)
+		return (ret);
+
+	for (i = 0; i < region->object_t_size; i++) {
+		OBJECT_LOCK_NDX(lt, region, i);
+		for (obj = SH_TAILQ_FIRST(&lt->obj_tab[i], __db_lockobj);
+		    obj != NULL; obj = next_obj) {
+			next_obj = SH_TAILQ_NEXT(obj, links, __db_lockobj);
+			if ((ret =
+			    __lock_siclean_obj(env, obj, &old_lsn)) != 0) {
+				OBJECT_UNLOCK(lt, region, i);
+				return (ret);
+			}
+		}
+		OBJECT_UNLOCK(lt, region, i);
+	}
+
+	return (0);
 }
 
 /*
