@@ -171,12 +171,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: microsoft/setup-msbuild@v2
-      - name: Upgrade + build solution
+      - name: Build Berkeley DB library
         shell: cmd
         working-directory: build_windows
-        run: |
-          devenv Berkeley_DB.sln /upgrade || ver>nul
-          msbuild Berkeley_DB.sln /m /p:Configuration=Release /p:Platform=x64 /t:db_static
+        # Use the VS2010 (.vcxproj) solution -- the legacy Berkeley_DB.sln uses
+        # VS2008 .vcproj files MSBuild can no longer load (MSB4025). Build only
+        # the `db` library project and retarget to the runner's toolset/SDK.
+        run: msbuild Berkeley_DB_vs2010.sln /m /t:db /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0
 
   # ----------------------------------------------------------------------------
   # Meson/Ninja build of the core library (parallel build system).
