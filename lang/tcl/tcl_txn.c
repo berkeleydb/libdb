@@ -149,6 +149,7 @@ tcl_Txn(interp, objc, objv, dbenv, envip)
 		"-nowait",
 		"-parent",
 		"-snapshot",
+		"-snapshot_safe",
 		"-sync",
 		"-wrnosync",
 		NULL
@@ -167,6 +168,7 @@ tcl_Txn(interp, objc, objv, dbenv, envip)
 		TXNNOWAIT,
 		TXNPARENT,
 		TXNSNAPSHOT,
+		TXNSNAPSHOTSAFE,
 		TXNSYNC,
 		TXNWRNOSYNC
 	};
@@ -261,6 +263,9 @@ get_timeout:		if (i >= objc) {
 			break;
 		case TXNSNAPSHOT:
 			flag |= DB_TXN_SNAPSHOT;
+			break;
+		case TXNSNAPSHOTSAFE:
+			flag |= DB_TXN_SNAPSHOT_SAFE;
 			break;
 		case TXNSYNC:
 			flag |= DB_TXN_SYNC;
