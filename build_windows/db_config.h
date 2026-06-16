@@ -52,18 +52,6 @@
    operations. */
 /* #undef HAVE_ATOMIC_X86_GCC_ASSEMBLY */
 
-/* Define to 1 to use GCC __atomic_* builtins for atomic operations. */
-/* #undef HAVE_ATOMIC_BUILTINS */
-
-/* Define to 1 to use GCC __sync_* builtins for atomic operations. */
-/* #undef HAVE_SYNC_BUILTINS */
-
-/* Define to 1 for ARM64/AArch64 atomic operation support. */
-/* #undef HAVE_ATOMIC_AARCH64 */
-
-/* Define to 1 if 64-bit atomic operations are supported. */
-/* #undef HAVE_ATOMIC_64BIT */
-
 /* Define to 1 if you have the `backtrace' function. */
 /* Define to 1 if you have the `backtrace' function. */
 /* #undef HAVE_BACKTRACE */
@@ -598,16 +586,16 @@
 #define PACKAGE_NAME "Berkeley DB"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Berkeley DB 5.3.28"
+#define PACKAGE_STRING "Berkeley DB 5.3.29"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "db-5.3.28"
+#define PACKAGE_TARNAME "db-5.3.29"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL "http://www.oracle.com/technology/software/products/berkeley-db/index.html"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.3.28"
+#define PACKAGE_VERSION "5.3.29"
 
 /* The size of a `char', as computed by sizeof. */
 /* #undef SIZEOF_CHAR */
