@@ -17,6 +17,11 @@ project('libdb', 'c',
 
 cc = meson.get_compiler('c')
 
+# Berkeley DB's public db.h uses BSD type names (u_int, u_char, u_long,
+# u_int8_t ...). glibc only exposes those under _DEFAULT_SOURCE/_BSD_SOURCE;
+# macOS/*BSD provide them unconditionally, so this is a harmless no-op there.
+add_project_arguments('-D_DEFAULT_SOURCE', '-D_BSD_SOURCE', language: 'c')
+
 # ---------------------------------------------------------------------------
 # Platform configuration -> db_config.h (mirrors what dist/configure detects).
 # ---------------------------------------------------------------------------
