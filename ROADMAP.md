@@ -109,7 +109,12 @@ modern concurrent structures that **partition and scale in a mostly
 uncoordinated manner** — concurrent tries (**Ctrie**), **hash array mapped tries
 (HAMT)**, split-ordered / lock-free hash tables, and Cuckoo/Hopscotch variants —
 to reduce coordination on the hash directory and per-bucket latching under high
-core counts.
+core counts. This review feeds two consumers: the in-place HASH access method,
+and the **in-memory key directory of the `LSM-HASH`/Bitcask config (#14)** —
+`gburd/libxtc`'s `rexis` Bitcask uses a plain hash directory today, which a
+Ctrie/HAMT would make concurrently updatable without a global directory latch.
+See [`docs/design/lsm.md`](docs/design/lsm.md) for how the HASH directory and
+the log-structured core relate.
 
 ## Durability model and HA
 
@@ -121,7 +126,14 @@ itself, with a background **cleaner** reclaiming obsolete log segments instead
 of updating pages in place. This trades in-place writes for sequential log
 writes (great on flash and for write amplification). A **`LSM-HASH`** variant
 along these lines resembles Riak's **Bitcask** (append-only log + in-memory key
-directory) and is a natural fit for write-heavy, point-lookup workloads.
+directory; cf. `gburd/libxtc` `rexis`) and is a natural fit for write-heavy,
+point-lookup workloads. Per [`docs/design/lsm.md`](docs/design/lsm.md), this
+shares **one log-structured core** with the adaptive LSM (#9): a JE/`noxu`
+**cleaner** and an LSM **compactor** are the same mechanism viewed from
+different access methods (B-tree-in-log uses the cleaner; Hash uses Bitcask
+merge). Reuse `noxu`'s VLSN/cleaner learnings, and align the cleaner's
+reclaim-scheduling with the adaptive controller (#9) so log GC and compaction
+share one workload-driven policy.
 
 ### 15. Scalable replication / HA: quorum systems + Fast Paxos
 Rework replication toward flexible, analyzable consensus. Use **quorum systems**
