@@ -1,0 +1,27 @@
+# Normalize line endings; let Git detect text vs binary by default.
+* text=auto
+
+# Keep shell scripts and the configure machinery LF even on Windows checkouts.
+*.sh        text eol=lf
+dist/configure text eol=lf
+*.m4        text eol=lf
+
+# Windows project files stay CRLF.
+*.sln       text eol=crlf
+*.vcproj    text eol=crlf
+*.vcxproj   text eol=crlf
+*.dsp       text eol=crlf
+*.dsw       text eol=crlf
+
+# Treat known binary assets as binary.
+*.png binary
+*.jpg binary
+*.gif binary
+*.gz  binary
+*.zip binary
+
+# Mark generated artifacts so GitHub linguist excludes them from language stats
+# and collapses them in diffs.
+src/dbinc_auto/**   linguist-generated=true
+build_*/db.h        linguist-generated=true
+docs/**             linguist-documentation=true

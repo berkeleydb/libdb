@@ -1,0 +1,41 @@
+# LiteLLM proxy config — bridges Open Code Review (OpenAI protocol) to AWS Bedrock.
+#
+# This proxy is NOT a hosted service. The ocr-review.yml workflow installs it
+# (`pip install 'litellm[proxy]'`) and runs it as a background process bound to
+# 127.0.0.1:4000 for the duration of a single GitHub Actions job, then it exits.
+#
+# Auth to Bedrock: LiteLLM uses boto3's default credential chain, which reads
+# the temporary AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_SESSION_TOKEN
+# minted by the workflow's OIDC "Configure AWS credentials" step; region from
+# AWS_REGION.
+
+model_list:
+  - model_name: ocr-bedrock
+    litellm_params:
+      # Set the repo variable OCR_BEDROCK_MODEL to an Opus inference-profile id
+      # your account has access to, e.g.:
+      #   bedrock/converse/us.anthropic.claude-opus-4-8
+      # The 'converse/' prefix uses Bedrock's Converse API, which is the most
+      # reliable path for Claude tool-use (what OCR relies on).
+      model: os.environ/OCR_BEDROCK_MODEL
+      aws_region_name: os.environ/AWS_REGION
+
+      # "High effort" review. Claude Opus 4.8 on Bedrock uses *adaptive* thinking
+      # controlled by output_config.effort. Set it DIRECTLY here — NOT via
+      # reasoning_effort, which LiteLLM still maps to the legacy
+      # thinking.type.enabled that Opus 4.8 rejects. LiteLLM forwards
+      # output_config into additionalModelRequestFields for Anthropic models; if
+      # the build doesn't recognize the effort param it is dropped with a warning
+      # (no error) and the model reviews at its default effort.
+      # Valid: low|medium|high|max|xhigh (auto-clamped to the model ceiling).
+      output_config:
+        effort: xhigh
+      max_tokens: 32000
+
+litellm_settings:
+  drop_params: true     # silently drop params a model doesn't support
+  modify_params: true   # auto-fix minor request incompatibilities
+  request_timeout: 600
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
