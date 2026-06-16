@@ -1,0 +1,373 @@
+# Open Code Review (OCR) — AI PR review backed by AWS Bedrock via a LiteLLM proxy.
+#
+# Flow:
+#   PR opened/updated (incl. DRAFTS) ─┐
+#   /open-code-review PR comment    ─┼─► start LiteLLM (127.0.0.1:4000 → Bedrock)
+#   manual workflow_dispatch        ─┘    └► ocr review --format json
+#                                              └► post inline PR review comments
+#
+# Required (repo settings — all repo *variables*, no secrets; auth is via GitHub OIDC):
+#   vars.AWS_ROLE_ARN       - IAM role to assume via OIDC (granting bedrock:InvokeModel*)
+#   vars.AWS_REGION         - e.g. us-east-1
+#   vars.OCR_BEDROCK_MODEL  - LiteLLM model string for the Opus inference profile, e.g.
+#       bedrock/converse/us.anthropic.claude-opus-4-8
+#
+# No static AWS keys are stored. GITHUB_TOKEN (auto) posts the review comments.
+
+name: OCR AI Review
+
+on:
+  pull_request:
+    # Note: no draft filter — drafts are reviewed too.
+    types: [opened, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
+
+# One review per PR; cancel superseded runs to save Bedrock spend.
+concurrency:
+  group: ocr-review-${{ github.event.pull_request.number || github.event.issue.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write        # required to mint the GitHub OIDC token for AWS role assumption
+  contents: read
+  pull-requests: write
+
+jobs:
+  ocr-review:
+    runs-on: ubuntu-latest
+    # PR events always; comment events only when the comment is on a PR and
+    # starts with the trigger keyword; manual dispatch always.
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+        (startsWith(github.event.comment.body, '/open-code-review') ||
+         startsWith(github.event.comment.body, '@open-code-review')))
+
+    env:
+      # LiteLLM listens on localhost only; this key never leaves the runner.
+      LITELLM_MASTER_KEY: sk-ocr-ci-local
+      OCR_BEDROCK_MODEL: ${{ vars.OCR_BEDROCK_MODEL }}
+      # Region is a static var (safe at job level). AWS credentials are NOT set
+      # here — they're minted by the OIDC "Configure AWS credentials" step below
+      # and exported to the environment for the LiteLLM/boto3 Bedrock calls.
+      AWS_REGION: ${{ vars.AWS_REGION }}
+
+    steps:
+      - name: Resolve PR context
+        id: pr
+        uses: actions/github-script@v9
+        with:
+          script: |
+            let prNumber;
+            if (context.eventName === 'pull_request') {
+              prNumber = context.payload.pull_request.number;
+            } else if (context.eventName === 'issue_comment') {
+              prNumber = context.issue.number;
+            } else {
+              prNumber = parseInt('${{ github.event.inputs.pr_number }}', 10);
+            }
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+            const { data: repo } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            core.setOutput('number', String(prNumber));
+            core.setOutput('base_ref', pr.base.ref);
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('default_branch', repo.default_branch);
+            core.setOutput('cross_repo', String(pr.head.repo.full_name !== pr.base.repo.full_name));
+
+      # NOTE: do NOT checkout the PR head. OCR reads the diff and file contents
+      # straight from git refs (git diff <merge-base> <to>, git show <to>:path,
+      # git grep <ref>), so the working tree is irrelevant — but our OCR config
+      # lives on the default branch, not on the PR branch. We check out the repo
+      # (default ref), fetch the base/head objects, and materialize the config
+      # from origin/<default_branch>.
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Prepare git refs and OCR config
+        env:
+          BASE_REF: ${{ steps.pr.outputs.base_ref }}
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          DEFAULT_BRANCH: ${{ steps.pr.outputs.default_branch }}
+        run: |
+          git fetch --no-tags origin "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}" || true
+          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" || true
+          git fetch --no-tags origin "+refs/heads/${HEAD_REF}:refs/remotes/origin/${HEAD_REF}" || true
+          git fetch --no-tags origin "${HEAD_SHA}" || true
+
+          # OCR config lives on the default branch; materialize it independently
+          # of whatever ref is checked out.
+          mkdir -p "$RUNNER_TEMP/ocr"
+          git show "origin/${DEFAULT_BRANCH}:.github/ocr/litellm.yaml" > "$RUNNER_TEMP/ocr/litellm.yaml"
+          git show "origin/${DEFAULT_BRANCH}:.github/ocr/rule.json"   > "$RUNNER_TEMP/ocr/rule.json"
+          echo "Config materialized:"; ls -l "$RUNNER_TEMP/ocr"
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install LiteLLM proxy + Open Code Review
+        run: |
+          python -m pip install --upgrade pip
+          # Pin LiteLLM to a main commit that supports Claude Opus 4.8 adaptive
+          # thinking (maps reasoning_effort -> output_config.effort, incl. xhigh).
+          # Not in any tagged release yet (PyPI latest 1.87.1 lacks the Opus
+          # normalizer). Bump this SHA once a release ships the feature.
+          pip install "litellm[proxy] @ git+https://github.com/BerriAI/litellm.git@5be0797d24a2f26eb2123e13788f90055a59d91d"
+          npm install -g @alibaba-group/open-code-review
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: ocr-review-${{ github.run_id }}
+
+      - name: Start LiteLLM proxy (Bedrock bridge)
+        run: |
+          if [ -z "$OCR_BEDROCK_MODEL" ]; then
+            echo "::error::vars.OCR_BEDROCK_MODEL is not set (e.g. bedrock/converse/us.anthropic.claude-opus-4-1-20250805-v1:0)"
+            exit 1
+          fi
+          nohup litellm --config "$RUNNER_TEMP/ocr/litellm.yaml" --host 127.0.0.1 --port 4000 \
+            > /tmp/litellm.log 2>&1 &
+          echo "Waiting for LiteLLM to become ready..."
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:4000/health/readiness >/dev/null; then
+              echo "LiteLLM ready."; exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::LiteLLM did not become ready in time"; cat /tmp/litellm.log; exit 1
+
+      - name: Configure OCR
+        run: |
+          ocr config set llm.url http://127.0.0.1:4000/v1/chat/completions
+          ocr config set llm.auth_token "$LITELLM_MASTER_KEY"
+          ocr config set llm.model ocr-bedrock
+          ocr config set llm.use_anthropic false
+          ocr config set language English
+
+      - name: Run OCR review
+        run: |
+          ocr review \
+            --from "origin/${{ steps.pr.outputs.base_ref }}" \
+            --to "${{ steps.pr.outputs.head_sha }}" \
+            --rule "$RUNNER_TEMP/ocr/rule.json" \
+            --concurrency 3 \
+            --timeout 20 \
+            --format json \
+            > /tmp/ocr-result.json 2>/tmp/ocr-stderr.log || true
+          echo "----- OCR stdout -----"; cat /tmp/ocr-result.json || true
+          echo "----- OCR stderr -----"; cat /tmp/ocr-stderr.log || true
+          echo "----- LiteLLM log (tail) -----"; tail -n 50 /tmp/litellm.log || true
+
+      - name: Post review to PR
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const prNumber = parseInt('${{ steps.pr.outputs.number }}', 10);
+            const commitSha = '${{ steps.pr.outputs.head_sha }}';
+
+            let result;
+            try {
+              result = JSON.parse(fs.readFileSync('/tmp/ocr-result.json', 'utf8'));
+            } catch (e) {
+              const stderr = (() => { try { return fs.readFileSync('/tmp/ocr-stderr.log','utf8').trim(); } catch { return ''; } })();
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber,
+                body: `⚠️ **OCR** could not produce a review.\n\n\`\`\`\n${(stderr || e.message).slice(0, 8000)}\n\`\`\``,
+              });
+              return;
+            }
+
+            const comments = result.comments || [];
+            const warnings = result.warnings || [];
+
+            const formatComment = (c) => {
+              let body = c.content || '';
+              if (c.suggestion_code && c.existing_code) {
+                body += '\n\n```suggestion\n' + c.suggestion_code + (c.suggestion_code.endsWith('\n') ? '' : '\n') + '```';
+              }
+              return body;
+            };
+            const formatMarkdown = (c) => {
+              let md = `### 📄 \`${c.path}\``;
+              if (c.start_line && c.end_line) md += ` (L${c.start_line}-L${c.end_line})`;
+              md += '\n\n' + (c.content || '');
+              if (c.suggestion_code && c.existing_code) {
+                md += '\n\n<details><summary>💡 Suggested change</summary>\n\n';
+                md += '**Before:**\n```\n' + c.existing_code + '\n```\n\n**After:**\n```\n' + c.suggestion_code + '\n```\n\n</details>';
+              }
+              return md;
+            };
+
+            if (comments.length === 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber,
+                body: `✅ **OCR**: ${result.message || 'No issues found.'}`,
+              });
+              return;
+            }
+
+            const inline = [];
+            const noLine = [];
+            for (const c of comments) {
+              const body = formatComment(c);
+              const hasLine = (c.start_line >= 1) || (c.end_line >= 1);
+              if (!hasLine) { noLine.push(c); continue; }
+              const rc = { path: c.path, body, side: 'RIGHT' };
+              if (c.start_line >= 1 && c.end_line >= 1 && c.start_line !== c.end_line) {
+                rc.start_line = c.start_line; rc.line = c.end_line; rc.start_side = 'RIGHT';
+              } else {
+                rc.line = c.end_line >= 1 ? c.end_line : c.start_line;
+              }
+              inline.push(rc);
+            }
+
+            let summary = `🔍 **OCR** found **${comments.length}** issue(s).`;
+            summary += `\n- ${inline.length} inline, ${noLine.length} in summary`;
+            if (warnings.length) summary += `\n- ⚠️ ${warnings.length} warning(s) during review`;
+            for (const c of noLine) summary += '\n\n---\n\n' + formatMarkdown(c);
+
+            try {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber,
+                commit_id: commitSha, body: summary, event: 'COMMENT', comments: inline,
+              });
+            } catch (e) {
+              // Fallback: a couple of comments may have bad positions; post them individually.
+              let ok = 0; const failed = [];
+              for (const rc of inline) {
+                try {
+                  await github.rest.pulls.createReview({
+                    owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber,
+                    commit_id: commitSha, body: '', event: 'COMMENT', comments: [rc],
+                  });
+                  ok++;
+                } catch (inner) { failed.push(`\`${rc.path}\`: ${inner.message}`); }
+              }
+              let body = summary + `\n\n---\n📊 Posted ${ok}/${inline.length} inline comment(s).`;
+              if (failed.length) body += '\n\n<details><summary>Failed</summary>\n\n' + failed.join('\n') + '\n</details>';
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber, body,
+              });
+            }
+
+  # Companion job: OCR can't call MCP, so this separate agent ties the PR's
+  # changes to PostgreSQL git + pgsql-hackers history via the Agora MCP server
+  # (pg.ddx.io) and posts a single, upserted "history & discussion" comment.
+  pg-history:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+        (startsWith(github.event.comment.body, '/open-code-review') ||
+         startsWith(github.event.comment.body, '@open-code-review') ||
+         startsWith(github.event.comment.body, '/pg-history')))
+    steps:
+      - name: Resolve PR context
+        id: pr
+        uses: actions/github-script@v9
+        with:
+          script: |
+            let prNumber;
+            if (context.eventName === 'pull_request') prNumber = context.payload.pull_request.number;
+            else if (context.eventName === 'issue_comment') prNumber = context.issue.number;
+            else prNumber = parseInt('${{ github.event.inputs.pr_number }}', 10);
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber });
+            core.setOutput('number', String(prNumber));
+            core.setOutput('base_ref', pr.base.ref);
+            core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('title', pr.title || '');
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Make base/head refs available
+        env:
+          BASE_REF: ${{ steps.pr.outputs.base_ref }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" || true
+          git fetch --no-tags origin "${HEAD_SHA}" || true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: pg-history-${{ github.run_id }}
+
+      - name: Install deps
+        run: pip install boto3
+
+      - name: Run pg-history (Agora MCP)
+        env:
+          PG_HISTORY_MODEL: ${{ vars.OCR_BEDROCK_MODEL }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          BASE_REF: ${{ steps.pr.outputs.base_ref }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          GH_PR_TITLE: ${{ steps.pr.outputs.title }}
+          PG_HISTORY_OUT: ${{ runner.temp }}/pg-history.md
+        run: |
+          python .github/ocr/pg-history.py || true
+          echo "----- output -----"; cat "${{ runner.temp }}/pg-history.md" 2>/dev/null || echo "(no output)"
+
+      - name: Upsert PR comment
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const path = process.env.RUNNER_TEMP + '/pg-history.md';
+            let body = '';
+            try { body = fs.readFileSync(path, 'utf8').trim(); } catch (e) {}
+            if (!body) { console.log('pg-history: empty output, nothing to post'); return; }
+            const prNumber = parseInt('${{ steps.pr.outputs.number }}', 10);
+            const marker = '<!-- pg-history -->';
+            body = marker + '\n' + body;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber, per_page: 100 });
+            const mine = comments.find(c => c.user.type === 'Bot' && c.body && c.body.includes(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber, body });
+            }

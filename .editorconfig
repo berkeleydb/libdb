@@ -1,0 +1,34 @@
+# EditorConfig — https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Berkeley DB C/C++ uses hard tabs (historically displayed at width 8).
+[*.{c,h,cpp,cxx,hpp,i,in}]
+indent_style = tab
+tab_width = 8
+
+# TCL test suite uses hard tabs.
+[*.tcl]
+indent_style = tab
+tab_width = 8
+
+[{Makefile,Makefile.in,GNUmakefile,*.mk}]
+indent_style = tab
+
+[*.{yml,yaml,json}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = false   # preserve Markdown hard line breaks
+
+[*.{sh,py}]
+indent_style = space
+indent_size = 4
