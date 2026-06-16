@@ -87,11 +87,57 @@ become a single global serialization point:
 **Next target: #2 (+#7).** Prototype a contention-free pin for resident pages
 and re-run this sweep to confirm the 8-thread ceiling lifts.
 
+## Isolation experiments (which shared structure is the cap?)
+
+Two workloads were added to separate the candidate causes. Numbers below are an
+in-cache random-read sweep on a 12-core Apple Silicon laptop (noisier and fewer
+cores than `meh`, but the *pattern* matches the 24-core `perf` profile and is
+enough to rank the causes). ops/sec:
+
+| threads | `rrand` (locked, shared db) | `sepdb` (own db/thread) | `snap` (MVCC, no page locks) |
+|--------:|----------------------------:|------------------------:|-----------------------------:|
+| 1       | ~560k                       | ~627k                   | 463k                         |
+| 2       | ~600k                       | ~693k                   | 572k                         |
+| 4       | ~480k                       | ~638k                   | 631k                         |
+| 8       | ~340k                       | ~502k                   | 459k                         |
+| 12      | ~340k                       | ~417k                   | 389k                         |
+
+- **`sepdb`** gives every thread its own database file, so there is no shared
+  root/internal page. It is **30–50% faster than `rrand`** at 4–12 threads,
+  which confirms the **shared hot page is a real bottleneck**. It still declines,
+  so it is not the *only* one — the threads still share one env (mpool region,
+  locker table); the `lockers%` signal is the per-operation locker allocation.
+- **`snap`** reads in a per-thread `DB_TXN_SNAPSHOT` transaction: MVCC reads take
+  **no page read locks** and reuse a single locker, removing the entire
+  lock-manager per-op cost. It scales to **4 threads (1.36×)** where `rrand` is
+  already flat — but it **plateaus at 8–12 threads at the same level as
+  `rrand`**. The only per-op work `snap` still does that `rrand` also does is
+  `__memp_fget`/`__memp_fput` (pin/unpin every page on the root→leaf path).
+
+**Conclusion / ranking (measured, not assumed):**
+
+1. **#2 buffer-header page pin is the dominant cap.** Even with *all* locking
+   removed (`snap`), throughput still ceilings at 8–12 threads, because every
+   read pins the shared root/internal pages through `__memp_fget` (per-page
+   mutex + atomic refcount). This is the change that can lift the ceiling.
+2. **#4 lock manager is a secondary cost** in the 2–8 thread range: page read
+   locks + per-op locker allocation (`lockers%` 25–62%). Snapshot/lock-free
+   reads relieve it but do not remove the #2 ceiling.
+3. **#3 write path** remains fsync-bound and independent (group commit).
+
+This is why the prototype order is **#2 first** (contention-free pin for
+resident pages), then #4 (cache/reuse lockers, or default read-mostly access to
+the lock-free path), then #3 (group commit).
+
 ## Reproduce
 
 ```sh
 # on a build host:
 cc -O2 -pthread lab/bench/scale_bench.c -Ibuild_unix -Lbuild_unix/.libs -ldb-5.3 -o scale_bench
 LD_LIBRARY_PATH=build_unix/.libs ./scale_bench rrand 200000 3 1 2 4 8 12 16 24
-#   workloads: rrand | rhot | wrand
+#   workloads: rrand | rhot | wrand | sepdb | snap
+#     rrand  shared db, locked reads (baseline)
+#     sepdb  one db file per thread (isolates shared-page contention)
+#     snap   per-thread MVCC snapshot txn (isolates lock-manager cost)
 ```
+
