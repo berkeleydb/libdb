@@ -186,6 +186,67 @@ __lock_sicleanup(env)
 }
 
 /*
+ * __lock_sicommit --
+ *	Handle a transaction's SIREAD markers at txn end.  On commit the markers
+ *	persist on their objects' sireaders lists (detached from the locker so
+ *	normal lock release leaves them in place); the locker is flagged
+ *	DB_LOCKER_FREED so it survives until GC reclaims the last marker.  On
+ *	abort the markers are released immediately (an aborted reader leaves no
+ *	footprint).
+ *
+ * PUBLIC: int __lock_sicommit __P((ENV *, DB_LOCKER *, int));
+ */
+int
+__lock_sicommit(env, sh_locker, is_commit)
+	ENV *env;
+	DB_LOCKER *sh_locker;
+	int is_commit;
+{
+	DB_LOCKTAB *lt;
+	DB_LOCKREGION *region;
+	DB_LOCKOBJ *obj;
+	struct __db_lock *lp, *next_lock;
+	int detached, ret;
+
+	if (!LOCKING_ON(env) || sh_locker == NULL)
+		return (0);
+
+	lt = env->lk_handle;
+	region = lt->reginfo.primary;
+	detached = ret = 0;
+
+	LOCK_SYSTEM_LOCK(lt, region);
+	for (lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock);
+	    lp != NULL; lp = next_lock) {
+		next_lock = SH_LIST_NEXT(lp, locker_links, __db_lock);
+		if (lp->mode != DB_LOCK_SIREAD)
+			continue;
+		/* Detach from the locker so normal release leaves it alone. */
+		SH_LIST_REMOVE(lp, locker_links, __db_lock);
+		if (is_commit) {
+			detached++;
+			continue;
+		}
+		/* Abort: drop the marker entirely. */
+		obj = (DB_LOCKOBJ *)SH_OFF_TO_PTR(lp, lp->obj, DB_LOCKOBJ);
+		OBJECT_LOCK_NDX(lt, region, obj->indx);
+		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
+		if (sh_locker->td_off != INVALID_ROFF)
+			LOCKER_TD(env, sh_locker)->si_ref--;
+		sh_locker->nlocks--;
+		ret = __lock_freelock(lt, lp, sh_locker, DB_LOCK_FREE);
+		OBJECT_UNLOCK(lt, region, obj->indx);
+		if (ret != 0)
+			break;
+	}
+	if (is_commit && detached > 0)
+		F_SET(sh_locker, DB_LOCKER_FREED);
+	LOCK_SYSTEM_UNLOCK(lt, region);
+
+	return (ret);
+}
+
+/*
  * __lock_vec --
  *	ENV->lock_vec.
  *
@@ -651,6 +712,8 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	/* SSI: snapshot-safe bookkeeping is strictly opt-in. */
 	safe_si = LF_ISSET(DB_LOCK_SNAPSHOT_SAFE) ? 1 : 0;
 	LF_CLR(DB_LOCK_SNAPSHOT_SAFE);
+	if (safe_si)
+		DB_ASSERT(env, sh_locker->td_off != INVALID_ROFF);
 
 	/* Check that the lock mode is valid.  */
 	if (lock_mode >= (db_lockmode_t)region->nmodes) {

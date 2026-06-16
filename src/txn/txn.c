@@ -451,6 +451,7 @@ __txn_begin_int(txn)
 
 	txn->txnid = id;
 	txn->td  = td;
+	td->si_ref = 0;		/* SSI: no SIREAD markers reference it yet. */
 
 	/* Allocate a locker for this txn. */
 	if (LOCKING_ON(env) && (ret =
@@ -686,6 +687,18 @@ __txn_commit(txn, flags)
 	 */
 	if (F_ISSET(txn, TXN_DEADLOCK)) {
 		ret = __db_txn_deadlock_err(env, txn);
+		goto err;
+	}
+
+	/*
+	 * SSI: a snapshot-safe transaction that became the pivot of a dangerous
+	 * structure (both the read end and the write end of rw-conflicts, i.e.
+	 * has both TXN_DTL_RCONF and TXN_DTL_WCONF) cannot commit -- doing so
+	 * could produce a non-serializable schedule.
+	 */
+	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE) &&
+	    F_ISSET(td, TXN_DTL_WCONF) && F_ISSET(td, TXN_DTL_RCONF)) {
+		ret = DB_SNAPSHOT_CONFLICT;
 		goto err;
 	}
 
@@ -1659,6 +1672,13 @@ __txn_end(txn, is_commit)
 		    (ret = __lock_getlocker(env->lk_handle,
 		    txn->txnid, 1, &txn->locker)) != 0)
 			return (__env_panic(env, ret));
+		/*
+		 * SSI: handle this txn's SIREAD markers before normal lock
+		 * release -- persist them on commit, drop them on abort.
+		 */
+		if (F_ISSET(txn, TXN_SNAPSHOT_SAFE) && (ret =
+		    __lock_sicommit(env, txn->locker, is_commit)) != 0)
+			return (__env_panic(env, ret));
 		request.op = txn->parent == NULL ||
 		    is_commit == 0 ? DB_LOCK_PUT_ALL : DB_LOCK_INHERIT;
 		request.obj = NULL;
@@ -1718,7 +1738,7 @@ __txn_end(txn, is_commit)
 				return (__env_panic(env, ret));
 	}
 
-	if (td != NULL)
+	if (td != NULL && td->si_ref == 0)
 		__env_alloc_free(&mgr->reginfo, td);
 
 #ifdef HAVE_STATISTICS

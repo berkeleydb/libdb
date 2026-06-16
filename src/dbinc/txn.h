@@ -174,9 +174,6 @@ struct __db_txnregion { /* SHARED */
 	DB_LSN		last_ckp;	/* lsn of the last checkpoint */
 	time_t		time_ckp;	/* time of last checkpoint */
 
-	db_mutex_t	mtx_oldlsn;	/* SSI: protect the oldest active LSN. */
-	DB_LSN		old_lsn;	/* SSI: LSN of the oldest active txn. */
-
 	DB_TXN_STAT_INT	stat;		/* Statistics for txns. */
 
 	u_int32_t n_bulk_txn;		/* Num. bulk txns in progress. */
