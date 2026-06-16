@@ -2310,6 +2310,18 @@ ssi001
 	isolation both commit, producing a write-skew anomaly.  Under SSI
 	exactly one must be aborted with DB_SNAPSHOT_CONFLICT/UNSAFE.
 
+	x and y live in separate databases so the two writes never contend
+	on the same page -- the only contention we want to exercise is the
+	read/write antidependency tracked by SSI, not page locks.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ssi002
+	Serializable Snapshot Isolation: no false-positive aborts.
+
+	Two snapshot-safe transactions that touch disjoint data, and a
+	read-only snapshot-safe transaction, must all commit.  SSI must only
+	abort genuine dangerous structures, never independent transactions.
+
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test001
 	Small keys/data
