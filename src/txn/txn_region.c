@@ -495,7 +495,8 @@ __txn_remove_buffer(env, td, hash_mtx)
 	 * reference and td is on the list of committed snapshot transactions
 	 * with active pages.
 	 */
-	need_free = (--td->mvcc_ref == 0) && F_ISSET(td, TXN_DTL_SNAPSHOT);
+	need_free = (--td->mvcc_ref == 0) && F_ISSET(td, TXN_DTL_SNAPSHOT) &&
+	    td->si_ref == 0;
 	MUTEX_UNLOCK(env, td->mvcc_mtx);
 
 	if (need_free) {

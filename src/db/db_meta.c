@@ -1162,14 +1162,30 @@ __db_lget(dbc, action, pgno, mode, lkflags, lockp)
 	 * calling __db_lget to acquire the lock.
 	 */
 	if (CDB_LOCKING(env) || !LOCKING_ON(env) ||
-	    (MULTIVERSION(dbp) && mode == DB_LOCK_READ &&
-	    dbc->txn != NULL && F_ISSET(dbc->txn, TXN_SNAPSHOT)) ||
 	    F_ISSET(dbc, DBC_DONTLOCK) || (F_ISSET(dbc, DBC_RECOVER) &&
 	    (action != LCK_ROLLBACK || IS_REP_CLIENT(env))) ||
 	    (action != LCK_ALWAYS && F_ISSET(dbc, DBC_OPD))) {
 		LOCK_INIT(*lockp);
 		return (0);
 	}
+
+	/*
+	 * SSI: under multiversion (snapshot) isolation a plain snapshot read
+	 * takes no lock (unchanged behavior).  A snapshot-safe (SSI) read
+	 * instead acquires a SIREAD marker, and SSI writes are flagged so the
+	 * lock manager can track read/write antidependencies.
+	 */
+	if (MULTIVERSION(dbp) && mode == DB_LOCK_READ &&
+	    txn != NULL && F_ISSET(txn, TXN_SNAPSHOT)) {
+		if (!F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
+			LOCK_INIT(*lockp);
+			return (0);
+		}
+		lkflags |= DB_LOCK_SNAPSHOT_SAFE;
+		mode = DB_LOCK_SIREAD;
+	} else if (MULTIVERSION(dbp) && txn != NULL &&
+	    F_ISSET(txn, TXN_SNAPSHOT_SAFE))
+		lkflags |= DB_LOCK_SNAPSHOT_SAFE;
 
 	/*
 	 * If the transaction enclosing this cursor has DB_LOCK_NOWAIT set,

@@ -370,6 +370,7 @@ __lock_getlocker_int(lt, locker, create, retp)
 		    env->dbenv, &sh_locker->pid, &sh_locker->tid);
 		sh_locker->mtx_locker = mutex;
 		sh_locker->dd_id = 0;
+		sh_locker->td_off = INVALID_ROFF;	/* SSI: set by txn layer. */
 		sh_locker->master_locker = INVALID_ROFF;
 		sh_locker->parent_locker = INVALID_ROFF;
 		SH_LIST_INIT(&sh_locker->child_locker);
@@ -488,6 +489,15 @@ __lock_freelocker_int(lt, region, sh_locker, reallyfree)
 		    "Freeing locker with locks"));
 		return (EINVAL);
 	}
+
+	/*
+	 * SSI: a committed snapshot-safe reader is kept alive (DB_LOCKER_FREED)
+	 * while its persisted SIREAD markers still reference it; defer the real
+	 * free to __lock_sicleanup, which reclaims the markers and then the
+	 * locker once the oldest reader has advanced past its snapshot.
+	 */
+	if (F_ISSET(sh_locker, DB_LOCKER_FREED) && sh_locker->nlocks != 0)
+		return (0);
 
 	/* If this is part of a family, we must fix up its links. */
 	if (sh_locker->master_locker != INVALID_ROFF) {
