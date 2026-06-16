@@ -175,3 +175,54 @@ jobs:
         run: |
           devenv Berkeley_DB.sln /upgrade || ver>nul
           msbuild Berkeley_DB.sln /m /p:Configuration=Release /p:Platform=x64 /t:db_static
+
+  # ----------------------------------------------------------------------------
+  # Meson/Ninja build of the core library (parallel build system).
+  # ----------------------------------------------------------------------------
+  meson:
+    name: meson/ninja ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Meson + Ninja
+        run: python -m pip install --upgrade meson ninja
+      - name: Configure (Ninja backend)
+        run: meson setup build-meson
+      - name: Build
+        run: ninja -C build-meson
+      - name: Smoke test (link + db_version)
+        run: |
+          cat > /tmp/smoke.c <<'EOF'
+          #include <stdio.h>
+          #include "db.h"
+          int main(void){int a,b,c;char *s=db_version(&a,&b,&c);
+            printf("libdb %s (%d.%d.%d)\n",s,a,b,c);return 0;}
+          EOF
+          cc /tmp/smoke.c -Ibuild-meson -Lbuild-meson -ldb -o /tmp/smoke
+          if [ "$RUNNER_OS" = "macOS" ]; then export DYLD_LIBRARY_PATH=build-meson; else export LD_LIBRARY_PATH=build-meson; fi
+          /tmp/smoke
+
+  # ----------------------------------------------------------------------------
+  # Nix flake: build the default package via `nix build`.
+  # ----------------------------------------------------------------------------
+  nix-flake:
+    name: nix flake build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix (flakes enabled)
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Build the flake's default package
+        run: nix build .#libdb-meson --print-build-logs
+      - name: Show result
+        run: ls -l result/lib
