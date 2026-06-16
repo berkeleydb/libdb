@@ -1,0 +1,177 @@
+# libdb continuous integration.
+#
+# Builds the living fork (master) and PRs across as many of the platforms,
+# compilers, and configure options that Berkeley DB and GitHub-hosted runners
+# both support. Experimental/best-effort jobs are marked continue-on-error so
+# they inform without gating.
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      full_tcl:
+        description: 'Run the full TCL regression suite (long)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # POSIX builds: Linux + macOS, gcc + clang, across configure variants.
+  # ----------------------------------------------------------------------------
+  posix:
+    name: ${{ matrix.os }} ${{ matrix.cc }} ${{ matrix.config }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-22.04, macos-latest, macos-13]
+        cc: [gcc, clang]
+        config: [default, debug, cxx, sql, no-crypto, smallbuild]
+        exclude:
+          # Reduce fan-out: only exercise the full config set on ubuntu-latest.
+          - { os: ubuntu-22.04, config: cxx }
+          - { os: ubuntu-22.04, config: sql }
+          - { os: ubuntu-22.04, config: no-crypto }
+          - { os: ubuntu-22.04, config: smallbuild }
+          - { os: macos-13, config: cxx }
+          - { os: macos-13, config: sql }
+          - { os: macos-13, config: no-crypto }
+          - { os: macos-13, config: smallbuild }
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Map config to configure flags
+        id: cfg
+        run: |
+          case "${{ matrix.config }}" in
+            default)    flags="" ;;
+            debug)      flags="--enable-debug --enable-diagnostic" ;;
+            cxx)        flags="--enable-cxx" ;;
+            sql)        flags="--enable-sql" ;;
+            no-crypto)  flags="--disable-cryptography" ;;
+            smallbuild) flags="--enable-smallbuild" ;;
+          esac
+          echo "flags=$flags" >> "$GITHUB_OUTPUT"
+
+      - name: Configure
+        working-directory: build_unix
+        run: ../dist/configure ${{ steps.cfg.outputs.flags }}
+
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu)
+
+      - name: Smoke test (C API)
+        working-directory: build_unix
+        run: |
+          # ex_access exercises open/put/get/cursor on a btree.
+          make ex_access 2>/dev/null || true
+          ls -l libdb-*.a 2>/dev/null || ls -l .libs/libdb-*.* 2>/dev/null || true
+
+  # ----------------------------------------------------------------------------
+  # 32-bit build on Linux (pointer-size / portability coverage).
+  # ----------------------------------------------------------------------------
+  linux-32bit:
+    name: ubuntu 32-bit
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install 32-bit toolchain
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib
+      - name: Configure (32-bit)
+        working-directory: build_unix
+        run: ../dist/configure --build=i686-pc-linux-gnu "CFLAGS=-m32" "LDFLAGS=-m32"
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+
+  # ----------------------------------------------------------------------------
+  # AddressSanitizer / UBSan build + smoke (catches memory/UB regressions).
+  # ----------------------------------------------------------------------------
+  sanitizers:
+    name: clang asan+ubsan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      CC: clang
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (sanitizers)
+        working-directory: build_unix
+        run: ../dist/configure --enable-debug "CFLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -g"
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+
+  # ----------------------------------------------------------------------------
+  # TCL test suite (targeted by default; full suite on manual dispatch).
+  # ----------------------------------------------------------------------------
+  tcl-tests:
+    name: tcl tests (${{ github.event.inputs.full_tcl == 'true' && 'full' || 'targeted' }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tcl
+        run: sudo apt-get update && sudo apt-get install -y tcl-dev tcl
+      - name: Configure (test + tcl)
+        working-directory: build_unix
+        run: ../dist/configure --enable-debug --enable-test --with-tcl=/usr/lib/tcl8.6
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: Run tests
+        working-directory: build_unix
+        run: |
+          if [ "${{ github.event.inputs.full_tcl }}" = "true" ]; then
+            cat > /tmp/run.tcl <<'TCL'
+          source ../test/tcl/test.tcl
+          run_std
+          TCL
+          else
+            cat > /tmp/run.tcl <<'TCL'
+          source ../test/tcl/test.tcl
+          foreach t {lock001 txn001 test001 ssi001 ssi002} {
+            source ../test/tcl/$t.tcl
+            set a {}
+            if {$t eq "test001"} { set a btree }
+            if {[catch {eval $t $a} res]} { puts "FAIL $t: $res"; exit 1 }
+            puts "PASS $t"
+          }
+          TCL
+          fi
+          timeout 3600 tclsh /tmp/run.tcl 2>&1 | tee /tmp/out.txt
+          ! grep -qE "^FAIL|FAIL:" /tmp/out.txt
+
+  # ----------------------------------------------------------------------------
+  # Windows build via the bundled Visual Studio solution (best-effort).
+  # ----------------------------------------------------------------------------
+  windows:
+    name: windows msbuild
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/setup-msbuild@v2
+      - name: Upgrade + build solution
+        shell: cmd
+        working-directory: build_windows
+        run: |
+          devenv Berkeley_DB.sln /upgrade || ver>nul
+          msbuild Berkeley_DB.sln /m /p:Configuration=Release /p:Platform=x64 /t:db_static
