@@ -42,6 +42,8 @@ permissions:
 jobs:
   ocr-review:
     runs-on: ubuntu-latest
+    # Advisory reviewer: never block a PR (e.g. if AWS OIDC isn't yet authorized).
+    continue-on-error: true
     # PR events always; comment events only when the comment is on a PR and
     # starts with the trigger keyword; manual dispatch always.
     if: |
