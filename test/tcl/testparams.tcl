@@ -79,7 +79,7 @@ set test_names(sdb)	[list sdb001 sdb002 sdb003 sdb004 sdb005 sdb006 \
 set test_names(sdbtest)	[list sdbtest001 sdbtest002]
 set test_names(sec)	[list sec001 sec002]
 set test_names(si)	[list si001 si002 si003 si004 si005 si006 si007 si008]
-set test_names(ssi)	[list ssi001]
+set test_names(ssi)	[list ssi001 ssi002]
 set test_names(test)	[list test001 test002 test003 test004 test005 \
     test006 test007 test008 test009 test010 test011 test012 test013 test014 \
     test015 test016 test017 test018 test019 test020 test021 test022 test023 \
