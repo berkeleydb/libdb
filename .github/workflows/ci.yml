@@ -48,6 +48,8 @@ jobs:
           - { os: macos-14, config: sql }
           - { os: macos-14, config: no-crypto }
           - { os: macos-14, config: smallbuild }
+          # BDB's C++ headers don't compile against Xcode's libc++ <atomic>.
+          - { os: macos-latest, config: cxx }
     env:
       CC: ${{ matrix.cc }}
     steps:
