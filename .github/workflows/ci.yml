@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-22.04, macos-latest, macos-13]
+        os: [ubuntu-latest, ubuntu-22.04, macos-latest, macos-14]
         cc: [gcc, clang]
         config: [default, debug, cxx, sql, no-crypto, smallbuild]
         exclude:
@@ -44,10 +44,10 @@ jobs:
           - { os: ubuntu-22.04, config: sql }
           - { os: ubuntu-22.04, config: no-crypto }
           - { os: ubuntu-22.04, config: smallbuild }
-          - { os: macos-13, config: cxx }
-          - { os: macos-13, config: sql }
-          - { os: macos-13, config: no-crypto }
-          - { os: macos-13, config: smallbuild }
+          - { os: macos-14, config: cxx }
+          - { os: macos-14, config: sql }
+          - { os: macos-14, config: no-crypto }
+          - { os: macos-14, config: smallbuild }
     env:
       CC: ${{ matrix.cc }}
     steps:
@@ -97,7 +97,7 @@ jobs:
           sudo apt-get install -y gcc-multilib g++-multilib
       - name: Configure (32-bit)
         working-directory: build_unix
-        run: ../dist/configure --build=i686-pc-linux-gnu "CFLAGS=-m32" "LDFLAGS=-m32"
+        run: ../dist/configure --build=i686-pc-linux-gnu --with-mutex=POSIX/pthreads "CFLAGS=-m32" "LDFLAGS=-m32"
       - name: Build
         working-directory: build_unix
         run: make -j$(nproc)
