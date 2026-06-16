@@ -72,17 +72,21 @@ Queue, Recno scans and point lookups) **and the write path** (async page flush,
 log writes, checkpoint I/O), so the engine keeps the device queue full instead
 of stalling a worker per I/O.
 
-### 9. Adaptive LSM access method (HanoiDB-inspired, segment-adaptive)
+### 9. Adaptive LSM access method (HanoiDB-inspired, two-axis adaptive)
 Add a log-structured merge-tree access method alongside B-tree/Hash/Queue/Recno
-for write-heavy workloads. Design it after the **HanoiDB-inspired adaptive LSM
-in `gburd/aether` (`src/lsm`)**, and incorporate **segment-level adaptive
-compaction** as in *"Amethyst: Adaptive Compaction for LSM Trees via
-Segment-Level Policy Selection"* (Shankar & Rose): each SSTable segment carries a
-compaction identity + lightweight read/write counters, and a finite-state
-controller rewrites segments between **leveled** and **tiered** layouts (with
-cooldowns to prevent oscillation) so the tree tracks the better policy as the
-workload shifts between read- and write-heavy phases. *Parity target:
-WiredTiger LSM / RocksDB, without their static-policy penalty.*
+for write-heavy workloads. Design synthesized in
+[`docs/design/lsm.md`](docs/design/lsm.md) from three implementations plus a
+paper: HanoiDB Towers-of-Hanoi levels + SuRF/Bloom filters and **structure-level
+adaptation** (SingleIndex - Hybrid - MultiLevel) from `gburd/aether`'s
+`src/lsm`, combined with **segment-level adaptive compaction** (per-segment
+leveled - tiered selection via a finite-state controller with cooldowns) from
+*"Amethyst: Adaptive Compaction for LSM Trees via Segment-Level Policy
+Selection"* (Shankar & Rose). These are two **orthogonal adaptation axes**
+driven by one shared rolling-counter + cooldown controller (the same primitive
+as the SSI marker GC): the structure axis decides *how much* LSM to run by
+workload rate; the policy axis decides *how* to compact each segment by its
+read/write hotness. *Parity target: WiredTiger LSM / RocksDB, without their
+static-policy penalty.*
 
 ### 10. Pluggable compression
 Block/page compression (lz4/zstd) and key prefix compression, usable by all
