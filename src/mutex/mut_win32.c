@@ -18,6 +18,15 @@
 #include "dbinc/mutex_int.h"
 
 /*
+ * The shared-latch path casts the address of an atomic sharecount to the
+ * pointer type the Interlocked* intrinsics expect (LONG volatile *).  The
+ * cast type `interlocked_val` was referenced but never defined upstream.
+ */
+#ifndef interlocked_val
+#define	interlocked_val		long volatile *
+#endif
+
+/*
  * Common code to get an event handle.  This is executed whenever a mutex
  * blocks, or when unlocking a mutex that a thread is waiting on.  We can't
  * keep these handles around, since the mutex structure is in shared memory,
@@ -513,14 +522,13 @@ __db_win32_mutex_unlock(env, mutex)
 		if (F_ISSET(mutexp, DB_MUTEX_LOCKED)) {
 			F_CLR(mutexp, DB_MUTEX_LOCKED);
 			if ((ret = InterlockedExchange(
-			    (interlocked_val)(&atomic_read(
-			    &mutexp->sharecount)), 0)) !=
+			    (interlocked_val)(&mutexp->sharecount.value), 0)) !=
 			    MUTEX_SHARE_ISEXCLUSIVE) {
 				ret = DB_RUNRECOVERY;
 				goto err;
 			}
 		} else if (InterlockedDecrement(
-		    (interlocked_val)(&atomic_read(&mutexp->sharecount))) > 0)
+		    (interlocked_val)(&mutexp->sharecount.value)) > 0)
 			return (0);
 	} else
 #endif
