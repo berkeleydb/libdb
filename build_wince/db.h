@@ -61,9 +61,9 @@ extern "C" {
 #define	DB_VERSION_RELEASE	2
 #define	DB_VERSION_MAJOR	5
 #define	DB_VERSION_MINOR	3
-#define	DB_VERSION_PATCH	28
-#define	DB_VERSION_STRING	"Berkeley DB 5.3.28: (September  9, 2013)"
-#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.3.28: (September  9, 2013)"
+#define	DB_VERSION_PATCH	29
+#define	DB_VERSION_STRING	"Berkeley DB 5.3.29: (September  9, 2013)"
+#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.3.29: (September  9, 2013)"
 
 /*
  * !!!
@@ -347,7 +347,8 @@ typedef enum {
 	DB_LOCK_IREAD=5,		/* Intent to share/read. */
 	DB_LOCK_IWR=6,			/* Intent to read and write. */
 	DB_LOCK_READ_UNCOMMITTED=7,	/* Degree 1 isolation. */
-	DB_LOCK_WWRITE=8		/* Was Written. */
+	DB_LOCK_WWRITE=8,		/* Was Written. */
+	DB_LOCK_SIREAD=9		/* Snapshot isolation read (SSI). */
 } db_lockmode_t;
 
 /*
@@ -988,6 +989,7 @@ struct __db_txn {
 #define	TXN_SYNC		0x10000	/* Write and sync on prepare/commit. */
 #define	TXN_WRITE_NOSYNC	0x20000	/* Write only on prepare/commit. */
 #define TXN_BULK		0x40000 /* Enable bulk loading optimization. */
+#define	TXN_SNAPSHOT_SAFE	0x80000	/* Serializable snapshot isolation (SSI). */
 	u_int32_t	flags;
 };
 
@@ -1429,6 +1431,8 @@ typedef enum {
 #define	DB_TIMEOUT		(-30971)/* Timed out on read consistency. */
 #define	DB_VERIFY_BAD		(-30970)/* Verify failed; bad format. */
 #define	DB_VERSION_MISMATCH	(-30969)/* Environment version mismatch. */
+#define	DB_SNAPSHOT_CONFLICT	(-30968)/* SSI: conflicting snapshot update. */
+#define	DB_SNAPSHOT_UNSAFE	(-30967)/* SSI: potential snapshot anomaly. */
 
 /* DB (private) error return codes. */
 #define	DB_ALREADY_ABORTED	(-30899)
@@ -3039,8 +3043,9 @@ typedef struct entry {
 #define	DB_TXN_NOT_DURABLE			0x00000004
 #define	DB_TXN_NOWAIT				0x00000002
 #define	DB_TXN_SNAPSHOT				0x00000004
+#define	DB_TXN_SNAPSHOT_SAFE			0x00000080
 #define	DB_TXN_SYNC				0x00000008
-#define	DB_TXN_WAIT				0x00000080
+#define	DB_TXN_WAIT				0x00000100
 #define	DB_TXN_WRITE_NOSYNC			0x00000020
 #define	DB_UNREF				0x00020000
 #define	DB_UPGRADE				0x00000001
