@@ -5,3 +5,6 @@ test/tcl/tclIndex
 # Meson/Ninja out-of-tree build dirs
 build-meson/
 build/
+
+# nix build output symlink
+/result
