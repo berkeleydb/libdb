@@ -108,6 +108,7 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 	    DB_IGNORE_LEASE |DB_READ_COMMITTED | DB_READ_UNCOMMITTED |
 	    DB_TXN_FAMILY | DB_TXN_NOSYNC | DB_TXN_SNAPSHOT | DB_TXN_SYNC |
 	    DB_TXN_WAIT | DB_TXN_WRITE_NOSYNC | DB_TXN_NOWAIT |
+	    DB_TXN_SNAPSHOT_SAFE |
 	    DB_TXN_BULK)) != 0)
 		return (ret);
 	if ((ret = __db_fcchk(env, "txn_begin", flags,
@@ -226,7 +227,8 @@ __txn_begin(env, ip, parent, txnpp, flags)
 		F_SET(txn, TXN_READ_UNCOMMITTED);
 	if (LF_ISSET(DB_TXN_FAMILY))
 		F_SET(txn, TXN_FAMILY | TXN_INFAMILY | TXN_READONLY);
-	if (LF_ISSET(DB_TXN_SNAPSHOT) || F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT) ||
+	if (LF_ISSET(DB_TXN_SNAPSHOT | DB_TXN_SNAPSHOT_SAFE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT) ||
 	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT))) {
 		if (IS_REP_CLIENT(env)) {
 			__db_errx(env, DB_STR("4572",
@@ -235,6 +237,10 @@ __txn_begin(env, ip, parent, txnpp, flags)
 		} else
 			F_SET(txn, TXN_SNAPSHOT);
 	}
+	/* SSI is snapshot isolation plus serializable conflict detection. */
+	if (LF_ISSET(DB_TXN_SNAPSHOT_SAFE) ||
+	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT_SAFE)))
+		F_SET(txn, TXN_SNAPSHOT_SAFE);
 	if (LF_ISSET(DB_IGNORE_LEASE))
 		F_SET(txn, TXN_IGNORE_LEASE);
 
@@ -445,11 +451,16 @@ __txn_begin_int(txn)
 
 	txn->txnid = id;
 	txn->td  = td;
+	td->si_ref = 0;		/* SSI: no SIREAD markers reference it yet. */
 
 	/* Allocate a locker for this txn. */
 	if (LOCKING_ON(env) && (ret =
 		__lock_getlocker(env->lk_handle, id, 1, &txn->locker)) != 0)
 			goto err;
+
+	/* SSI: link the locker to its transaction detail. */
+	if (txn->locker != NULL)
+		txn->locker->td_off = R_OFFSET(&mgr->reginfo, td);
 
 	txn->abort = __txn_abort_pp;
 	txn->commit = __txn_commit_pp;
@@ -676,6 +687,18 @@ __txn_commit(txn, flags)
 	 */
 	if (F_ISSET(txn, TXN_DEADLOCK)) {
 		ret = __db_txn_deadlock_err(env, txn);
+		goto err;
+	}
+
+	/*
+	 * SSI: a snapshot-safe transaction that became the pivot of a dangerous
+	 * structure (both the read end and the write end of rw-conflicts, i.e.
+	 * has both TXN_DTL_RCONF and TXN_DTL_WCONF) cannot commit -- doing so
+	 * could produce a non-serializable schedule.
+	 */
+	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE) &&
+	    F_ISSET(td, TXN_DTL_WCONF) && F_ISSET(td, TXN_DTL_RCONF)) {
+		ret = DB_SNAPSHOT_CONFLICT;
 		goto err;
 	}
 
@@ -1649,6 +1672,13 @@ __txn_end(txn, is_commit)
 		    (ret = __lock_getlocker(env->lk_handle,
 		    txn->txnid, 1, &txn->locker)) != 0)
 			return (__env_panic(env, ret));
+		/*
+		 * SSI: handle this txn's SIREAD markers before normal lock
+		 * release -- persist them on commit, drop them on abort.
+		 */
+		if (F_ISSET(txn, TXN_SNAPSHOT_SAFE) && (ret =
+		    __lock_sicommit(env, txn->locker, is_commit)) != 0)
+			return (__env_panic(env, ret));
 		request.op = txn->parent == NULL ||
 		    is_commit == 0 ? DB_LOCK_PUT_ALL : DB_LOCK_INHERIT;
 		request.obj = NULL;
@@ -1708,7 +1738,7 @@ __txn_end(txn, is_commit)
 				return (__env_panic(env, ret));
 	}
 
-	if (td != NULL)
+	if (td != NULL && td->si_ref == 0)
 		__env_alloc_free(&mgr->reginfo, td);
 
 #ifdef HAVE_STATISTICS

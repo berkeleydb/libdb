@@ -119,6 +119,7 @@ typedef struct __db_lockobj { /* SHARED */
 	SH_TAILQ_ENTRY dd_links;	/* Links for dd list. */
 	SH_TAILQ_HEAD(__waitl) waiters;	/* List of waiting locks. */
 	SH_TAILQ_HEAD(__holdl) holders;	/* List of held locks. */
+	SH_TAILQ_HEAD(__sil) sireaders;	/* List of SSI snapshot readers. */
 					/* Declare room in the object to hold
 					 * typical DB lock structures so that
 					 * we do not have to allocate them from
@@ -135,6 +136,8 @@ struct __db_locker { /* SHARED */
 	pid_t pid;			/* Process owning locker ID */
 	db_threadid_t tid;		/* Thread owning locker ID */
 	db_mutex_t mtx_locker;		/* Mutex to block on. */
+
+	roff_t	td_off;			/* SSI: TXN_DETAIL offset of locker. */
 
 	u_int32_t dd_id;		/* Deadlock detector id. */
 
@@ -163,6 +166,7 @@ struct __db_locker { /* SHARED */
 #define	DB_LOCKER_TIMEOUT	0x0004	/* Has timeout set. */
 #define	DB_LOCKER_FAMILY_LOCKER 0x0008	/* Part of a family of lockers. */
 #define	DB_LOCKER_HANDLE_LOCKER 0x0010	/* Not associated with a thread. */
+#define	DB_LOCKER_FREED		0x0020	/* SSI: freed, kept for SIREAD locks. */
 	u_int32_t flags;
 };
 
@@ -236,6 +240,25 @@ struct __db_lock { /* SHARED */
 };
 
 /*
+ * Serializable Snapshot Isolation (SSI) helpers.
+ *
+ * A locker is linked to its transaction detail via td_off so the lock layer
+ * can read MVCC snapshot LSNs (read_lsn / visible_lsn) when reasoning about
+ * rw-antidependencies recorded by SIREAD locks.
+ */
+#define	LOCKER_TD(env, lockerp)						\
+    ((TXN_DETAIL *)R_ADDR(&(env)->tx_handle->reginfo, (lockerp)->td_off))
+
+#define	LOCK_HOLDER(env, lp)						\
+    ((DB_LOCKER *)R_ADDR(&(env)->lk_handle->reginfo, (lp)->holder))
+
+#define	LOCK_OWNER(env, lp)		LOCKER_TD(env, LOCK_HOLDER(env, lp))
+
+#define	LOCK_READLSN(env, lp)		(LOCK_OWNER(env, lp)->read_lsn)
+
+#define	LOCK_COMMITLSN(env, lp)		(LOCK_OWNER(env, lp)->visible_lsn)
+
+/*
  * Flag values for __lock_put_internal:
  * DB_LOCK_DOALL:     Unlock all references in this lock (instead of only 1).
  * DB_LOCK_FREE:      Free the lock (used in checklocker).
@@ -246,6 +269,7 @@ struct __db_lock { /* SHARED */
  * we pass some of those around.
  */
 #define	DB_LOCK_DOALL		0x010000
+#define	DB_LOCK_SNAPSHOT_SAFE	0x020000	/* SSI: snapshot-safe acquire. */
 #define	DB_LOCK_FREE		0x040000
 #define	DB_LOCK_NOPROMOTE	0x080000
 #define	DB_LOCK_UNLINK		0x100000
