@@ -8,3 +8,6 @@ build/
 
 # nix build output symlink
 /result
+
+# prototype build artifact
+lab/lsm/test_adaptive
