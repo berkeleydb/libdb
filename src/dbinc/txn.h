@@ -93,6 +93,9 @@ typedef struct __txn_detail {
 	db_mutex_t	mvcc_mtx;	/* Version mutex. */
 	u_int32_t	mvcc_ref;	/* Number of buffers created by this
 					   transaction still in cache.  */
+	u_int32_t	si_ref;		/* SSI: outstanding SIREAD markers that
+					   reference this detail (keeps it alive
+					   past commit, parallels mvcc_ref). */
 
 	u_int32_t	priority;	/* Deadlock resolution priority. */
 
@@ -107,6 +110,8 @@ typedef struct __txn_detail {
 #define	TXN_DTL_INMEMORY	0x04	/* uses in memory logs */
 #define	TXN_DTL_SNAPSHOT	0x08	/* On the list of snapshot txns. */
 #define	TXN_DTL_NOWAIT		0x10	/* Don't block on locks. */
+#define	TXN_DTL_WCONF		0x20	/* SSI: write end of an rw-conflict. */
+#define	TXN_DTL_RCONF		0x40	/* SSI: read end of an rw-conflict. */
 	u_int32_t flags;
 
 	SH_TAILQ_ENTRY	links;		/* active/free/snapshot list */

@@ -40,6 +40,7 @@
 #include "db_config.h"
 
 #include "db_int.h"
+#include "dbinc/lock.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
@@ -136,6 +137,14 @@ __txn_checkpoint(env, kbytes, minutes, flags)
 	 * No mutex is needed as envid is read-only once it is set.
 	 */
 	id = renv->envid;
+
+	/*
+	 * SSI: a checkpoint is a convenient, infrequent point at which to
+	 * reclaim SIREAD markers left by committed snapshot-safe readers whose
+	 * snapshots are no longer visible to any active reader.  Best effort.
+	 */
+	if (LOCKING_ON(env))
+		(void)__lock_sicleanup(env);
 
 	MUTEX_LOCK(env, region->mtx_ckp);
 	/*

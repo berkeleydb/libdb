@@ -275,6 +275,7 @@ DbEnv.txn_begin
 	DB_TXN_FAMILY			# Cursors and child txns are
 					# independent but lock-compatible
 	DB_TXN_SNAPSHOT			# Snapshot isolation
+	DB_TXN_SNAPSHOT_SAFE		# Serializable snapshot isolation (SSI)
 	DB_TXN_SYNC			# Always sync log on commit
 	DB_TXN_WAIT			# Always wait for locks in this txn
 	DB_TXN_WRITE_NOSYNC		# Write the log but don't sync

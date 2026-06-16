@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
+#include "dbinc/txn.h"
 
 static int __lock_allocobj __P((DB_LOCKTAB *, u_int32_t));
 static int __lock_alloclock __P((DB_LOCKTAB *, u_int32_t));
@@ -30,6 +31,7 @@ static int __lock_remove_waiter __P((DB_LOCKTAB *,
 static int __lock_trade __P((ENV *, DB_LOCK *, DB_LOCKER *));
 static int __lock_vec_api __P((ENV *,
 		u_int32_t, u_int32_t,  DB_LOCKREQ *, int, DB_LOCKREQ **));
+static int __lock_siclean_obj __P((ENV *, DB_LOCKOBJ *, DB_LSN *));
 
 static const char __db_lock_invalid[] = "%s: Lock is no longer valid";
 static const char __db_locker_invalid[] = "Locker is not valid";
@@ -86,6 +88,172 @@ __lock_vec_api(env, lid, flags, list, nlist, elistp)
 	if ((ret =
 	    __lock_getlocker(env->lk_handle, lid, 0, &sh_locker)) == 0)
 		ret = __lock_vec(env, sh_locker, flags, list, nlist, elistp);
+	return (ret);
+}
+
+/*
+ * __lock_siclean_obj --
+ *	Garbage-collect SSI snapshot-read (SIREAD) locks on one object whose
+ *	owning transactions have committed and whose snapshots are no longer
+ *	visible to any active reader (old_lsnp == oldest active read LSN).
+ *	The caller must hold the object's partition mutex.
+ */
+static int
+__lock_siclean_obj(env, obj, old_lsnp)
+	ENV *env;
+	DB_LOCKOBJ *obj;
+	DB_LSN *old_lsnp;
+{
+	DB_LOCKTAB *lt;
+	DB_LOCKER *sh_locker;
+	struct __db_lock *lp, *next_lock;
+	int ret;
+
+	lt = env->lk_handle;
+	ret = 0;
+
+	for (lp = SH_TAILQ_FIRST(&obj->sireaders, __db_lock);
+	    lp != NULL; lp = next_lock) {
+		next_lock = SH_TAILQ_NEXT(lp, links, __db_lock);
+
+		/* Keep readers whose transaction is still running. */
+		if (LOCK_OWNER(env, lp)->status == TXN_RUNNING)
+			continue;
+
+		/*
+		 * Keep the marker while its snapshot is still within the
+		 * window of the oldest active reader.
+		 */
+		if (!(IS_MAX_LSN(LOCK_COMMITLSN(env, lp)) &&
+		    LOG_COMPARE(&LOCK_READLSN(env, lp), old_lsnp) > 0) &&
+		    LOG_COMPARE(&LOCK_COMMITLSN(env, lp), old_lsnp) > 0)
+			continue;
+
+		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
+		sh_locker = LOCK_HOLDER(env, lp);
+		/*
+		 * Committed readers' markers were already detached from the
+		 * locker's heldby list by __lock_sicommit, so free WITHOUT
+		 * DB_LOCK_UNLINK and account for the marker by hand.  The owner
+		 * detail and the (DB_LOCKER_FREED) locker are reclaimed by
+		 * __lock_sicleanup once their last marker is gone.
+		 */
+		if (sh_locker->td_off != INVALID_ROFF)
+			LOCKER_TD(env, sh_locker)->si_ref--;
+		if (sh_locker->nlocks > 0)
+			sh_locker->nlocks--;
+		if ((ret = __lock_freelock(lt, lp, sh_locker,
+		    DB_LOCK_FREE)) != 0)
+			break;
+	}
+
+	return (ret);
+}
+
+/*
+ * __lock_sicleanup --
+ *	Sweep all objects and garbage-collect SIREAD locks that are no longer
+ *	needed for serializable-snapshot conflict detection.  The oldest active
+ *	read LSN is computed once up front (before any partition mutex is held,
+ *	since __txn_oldest_reader takes the txn system lock).
+ *
+ * PUBLIC: int __lock_sicleanup __P((ENV *));
+ */
+int
+__lock_sicleanup(env)
+	ENV *env;
+{
+	DB_LOCKTAB *lt;
+	DB_LOCKREGION *region;
+	DB_LOCKOBJ *obj, *next_obj;
+	DB_LSN old_lsn;
+	u_int32_t i;
+	int ret;
+
+	if (!LOCKING_ON(env))
+		return (0);
+
+	lt = env->lk_handle;
+	region = lt->reginfo.primary;
+
+	if ((ret = __txn_oldest_reader(env, &old_lsn)) != 0)
+		return (ret);
+
+	for (i = 0; i < region->object_t_size; i++) {
+		OBJECT_LOCK_NDX(lt, region, i);
+		for (obj = SH_TAILQ_FIRST(&lt->obj_tab[i], __db_lockobj);
+		    obj != NULL; obj = next_obj) {
+			next_obj = SH_TAILQ_NEXT(obj, links, __db_lockobj);
+			if ((ret =
+			    __lock_siclean_obj(env, obj, &old_lsn)) != 0) {
+				OBJECT_UNLOCK(lt, region, i);
+				return (ret);
+			}
+		}
+		OBJECT_UNLOCK(lt, region, i);
+	}
+
+	return (0);
+}
+
+/*
+ * __lock_sicommit --
+ *	Handle a transaction's SIREAD markers at txn end.  On commit the markers
+ *	persist on their objects' sireaders lists (detached from the locker so
+ *	normal lock release leaves them in place); the locker is flagged
+ *	DB_LOCKER_FREED so it survives until GC reclaims the last marker.  On
+ *	abort the markers are released immediately (an aborted reader leaves no
+ *	footprint).
+ *
+ * PUBLIC: int __lock_sicommit __P((ENV *, DB_LOCKER *, int));
+ */
+int
+__lock_sicommit(env, sh_locker, is_commit)
+	ENV *env;
+	DB_LOCKER *sh_locker;
+	int is_commit;
+{
+	DB_LOCKTAB *lt;
+	DB_LOCKREGION *region;
+	DB_LOCKOBJ *obj;
+	struct __db_lock *lp, *next_lock;
+	int detached, ret;
+
+	if (!LOCKING_ON(env) || sh_locker == NULL)
+		return (0);
+
+	lt = env->lk_handle;
+	region = lt->reginfo.primary;
+	detached = ret = 0;
+
+	LOCK_SYSTEM_LOCK(lt, region);
+	for (lp = SH_LIST_FIRST(&sh_locker->heldby, __db_lock);
+	    lp != NULL; lp = next_lock) {
+		next_lock = SH_LIST_NEXT(lp, locker_links, __db_lock);
+		if (lp->mode != DB_LOCK_SIREAD)
+			continue;
+		/* Detach from the locker so normal release leaves it alone. */
+		SH_LIST_REMOVE(lp, locker_links, __db_lock);
+		if (is_commit) {
+			detached++;
+			continue;
+		}
+		/* Abort: drop the marker entirely. */
+		obj = (DB_LOCKOBJ *)SH_OFF_TO_PTR(lp, lp->obj, DB_LOCKOBJ);
+		OBJECT_LOCK_NDX(lt, region, obj->indx);
+		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
+		if (sh_locker->td_off != INVALID_ROFF)
+			LOCKER_TD(env, sh_locker)->si_ref--;
+		sh_locker->nlocks--;
+		ret = __lock_freelock(lt, lp, sh_locker, DB_LOCK_FREE);
+		OBJECT_UNLOCK(lt, region, obj->indx);
+		if (ret != 0)
+			break;
+	}
+	if (is_commit && detached > 0)
+		F_SET(sh_locker, DB_LOCKER_FREED);
+	LOCK_SYSTEM_UNLOCK(lt, region);
+
 	return (ret);
 }
 
@@ -513,13 +681,13 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	db_timeout_t timeout;
 	DB_LOCK *lock;
 {
-	struct __db_lock *newl, *lp;
+	struct __db_lock *newl, *lp, *sireadlp, *next_lock;
 	ENV *env;
 	DB_LOCKOBJ *sh_obj;
 	DB_LOCKREGION *region;
 	DB_THREAD_INFO *ip;
 	u_int32_t ndx, part_id;
-	int did_abort, ihold, grant_dirty, no_dd, ret, t_ret;
+	int did_abort, ihold, grant_dirty, no_dd, ret, rwconf, safe_si, t_ret;
 	roff_t holder, sh_off;
 
 	/*
@@ -551,6 +719,12 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	no_dd = ret = 0;
 	newl = NULL;
 	sh_obj = NULL;
+
+	/* SSI: snapshot-safe bookkeeping is strictly opt-in. */
+	safe_si = LF_ISSET(DB_LOCK_SNAPSHOT_SAFE) ? 1 : 0;
+	LF_CLR(DB_LOCK_SNAPSHOT_SAFE);
+	if (safe_si)
+		DB_ASSERT(env, sh_locker->td_off != INVALID_ROFF);
 
 	/* Check that the lock mode is valid.  */
 	if (lock_mode >= (db_lockmode_t)region->nmodes) {
@@ -625,6 +799,7 @@ again:	if (obj == NULL) {
 	 */
 	ihold = 0;
 	grant_dirty = 0;
+	rwconf = 0;
 	holder = 0;
 
 	/*
@@ -667,6 +842,15 @@ again:	if (obj == NULL) {
 				lock->gen = lp->gen;
 				lock->mode = lp->mode;
 				goto done;
+			} else if (safe_si && lp->mode == DB_LOCK_WRITE &&
+			    lock_mode == DB_LOCK_SIREAD) {
+				/*
+				 * SSI: this locker already holds WRITE on the
+				 * object, so a snapshot-read marker is
+				 * redundant -- grant trivially.
+				 */
+				LOCK_INIT(*lock);
+				goto done;
 			} else {
 				ihold = 1;
 			}
@@ -680,6 +864,79 @@ again:	if (obj == NULL) {
 			grant_dirty = 1;
 			holder = lp->holder;
 		}
+	}
+
+	/*
+	 * SSI: when a snapshot-safe writer (or reader) acquires a lock and the
+	 * object has snapshot readers, record rw-antidependencies.  A reader
+	 * R that read a version now being written by W creates an edge
+	 * R --rw--> W.  A transaction that is both the read end and the write
+	 * end of such edges (a "pivot") may produce a serializability anomaly
+	 * and is aborted with DB_SNAPSHOT_UNSAFE.
+	 */
+	if (safe_si && lp == NULL &&
+	    (lock_mode == DB_LOCK_WRITE || lock_mode == DB_LOCK_SIREAD)) {
+		for (sireadlp = SH_TAILQ_FIRST(&sh_obj->sireaders, __db_lock);
+		    sireadlp != NULL; sireadlp = next_lock) {
+			next_lock = SH_TAILQ_NEXT(sireadlp, links, __db_lock);
+			if (lock_mode == DB_LOCK_WRITE &&
+			    sh_off == sireadlp->holder) {
+				/*
+				 * Upgrading our own SIREAD to WRITE: drop the
+				 * SIREAD marker to avoid self-conflicts.
+				 */
+				SH_TAILQ_REMOVE(&sh_obj->sireaders,
+				    sireadlp, links, __db_lock);
+				if ((ret = __lock_freelock(lt, sireadlp,
+				    LOCK_HOLDER(env, sireadlp),
+				    DB_LOCK_UNLINK | DB_LOCK_FREE)) != 0)
+					goto err;
+			} else if (lock_mode == DB_LOCK_WRITE &&
+			    sh_off != sireadlp->holder &&
+			    (LOCK_OWNER(env, sireadlp)->status == TXN_RUNNING ||
+			    LOG_COMPARE(&LOCK_COMMITLSN(env, sireadlp),
+			    &LOCKER_TD(env, sh_locker)->read_lsn) > 0)) {
+				if (F_ISSET(LOCK_OWNER(env, sireadlp),
+				    TXN_DTL_WCONF) &&
+				    LOCK_OWNER(env, sireadlp)->status ==
+				    TXN_COMMITTED) {
+					ret = DB_SNAPSHOT_UNSAFE;
+					goto err;
+				}
+				rwconf = 1;
+				/*
+				 * Set the incoming-conflict flag on our txn,
+				 * unless the reader will itself abort.
+				 */
+				if (LOCK_OWNER(env, sireadlp)->status ==
+				    TXN_COMMITTED ||
+				    !F_ISSET(LOCK_OWNER(env, sireadlp),
+				    TXN_DTL_WCONF)) {
+					if (F_ISSET(LOCKER_TD(env, sh_locker),
+					    TXN_DTL_RCONF)) {
+						ret = DB_SNAPSHOT_UNSAFE;
+						goto err;
+					}
+					F_SET(LOCKER_TD(env, sh_locker),
+					    TXN_DTL_WCONF);
+				}
+				F_SET(LOCK_OWNER(env, sireadlp), TXN_DTL_RCONF);
+			} else if (lock_mode == DB_LOCK_SIREAD &&
+			    sh_off == sireadlp->holder) {
+				/* Already hold a SIREAD marker here. */
+				sireadlp->refcount++;
+				lock->off = R_OFFSET(&lt->reginfo, sireadlp);
+				lock->gen = sireadlp->gen;
+				lock->mode = sireadlp->mode;
+				goto done;
+			}
+		}
+		/*
+		 * Note: obsolete SIREAD markers are reclaimed by
+		 * __lock_sicleanup (run without a partition mutex held), not
+		 * here -- computing the oldest reader needs the txn system
+		 * lock, which must not be taken under a partition mutex.
+		 */
 	}
 
 #ifdef DIAGNOSTIC
@@ -860,7 +1117,11 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 	switch (action) {
 	case GRANT:
 		newl->status = DB_LSTAT_HELD;
-		SH_TAILQ_INSERT_TAIL(&sh_obj->holders, newl, links);
+		if (safe_si && lock_mode == DB_LOCK_SIREAD) {
+			SH_TAILQ_INSERT_TAIL(&sh_obj->sireaders, newl, links);
+			LOCKER_TD(env, sh_locker)->si_ref++;
+		} else
+			SH_TAILQ_INSERT_TAIL(&sh_obj->holders, newl, links);
 		break;
 	case UPGRADE:
 		DB_ASSERT(env, lock_mode == DB_LOCK_WAIT);
@@ -1552,6 +1813,7 @@ retry:	SH_TAILQ_FOREACH(sh_obj, &lt->obj_tab[ndx], links, __db_lockobj) {
 		sh_obj->indx = ndx;
 		SH_TAILQ_INIT(&sh_obj->waiters);
 		SH_TAILQ_INIT(&sh_obj->holders);
+		SH_TAILQ_INIT(&sh_obj->sireaders);	/* SSI snapshot readers. */
 		sh_obj->lockobj.size = obj->size;
 		sh_obj->lockobj.off =
 		    (roff_t)SH_PTR_TO_OFF(&sh_obj->lockobj, p);
