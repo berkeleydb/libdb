@@ -131,8 +131,19 @@ __lock_siclean_obj(env, obj, old_lsnp)
 
 		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
 		sh_locker = LOCK_HOLDER(env, lp);
+		/*
+		 * Committed readers' markers were already detached from the
+		 * locker's heldby list by __lock_sicommit, so free WITHOUT
+		 * DB_LOCK_UNLINK and account for the marker by hand.  The owner
+		 * detail and the (DB_LOCKER_FREED) locker are reclaimed by
+		 * __lock_sicleanup once their last marker is gone.
+		 */
+		if (sh_locker->td_off != INVALID_ROFF)
+			LOCKER_TD(env, sh_locker)->si_ref--;
+		if (sh_locker->nlocks > 0)
+			sh_locker->nlocks--;
 		if ((ret = __lock_freelock(lt, lp, sh_locker,
-		    DB_LOCK_UNLINK | DB_LOCK_FREE)) != 0)
+		    DB_LOCK_FREE)) != 0)
 			break;
 	}
 
