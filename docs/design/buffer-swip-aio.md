@@ -248,3 +248,63 @@ and the `futex`/atomic self-time collapse.
   existing `DB_OSO_DIRECT` path.
 - Interaction of trickle/group-commit (#3 in the roadmap) — the async writer and
   the WAL group-commit should share the log-flush coordination.
+
+## 11. Reference implementations (sqlxtc, noxu) and refinements
+
+Two sibling projects implement LeanStore/Umbra-style cooling buffer managers;
+studying them validates this design and sharpens three points.
+
+**sqlxtc `bufmgr.c`** (libxtc `examples/06_sqlxtc`): frame states
+`FREE/HOT/COOL/LOADED/WRITING`; the eviction state lives in the parent **swip**
+and transitions are owned by whoever wins a CAS (loser retries) — exactly the
+tagged-swip model here. Its `evict_one` clock sweep is the key:
+
+- **Probationary admission + COOL-first eviction.** New pages are admitted
+  `COOL`. The sweep reclaims an already-`COOL` frame and **only cools a `HOT`
+  frame when a full sweep finds no `COOL` victim** (`force_cool`). Because a
+  scan keeps supplying `COOL` pages, *the hot set is never cooled to make room
+  for a scan* — robust scan resistance for a scan of any length. A `COOL` page
+  carries a CLOCK `ref` bit (set on access, cleared by the sweep) so a
+  re-touched cool page survives one sweep and is promoted back to `HOT`.
+- **Single-word pin/evict gate.** `pin >= 0` ⇒ a fixer may `CAS pin→pin+1`;
+  the evictor reserves an unpinned frame with `CAS 0→-1` (`-1` = EVICTING).
+  Acquiring a pin and reserving for eviction race on **one** atomic word, with
+  no separate "pin++ then re-check" window.
+- **prefer-clean foreground + background trickle.** Foreground eviction
+  reclaims a clean victim and leaves dirty `COOL` pages for the trickler; it
+  flushes a dirty page inline only as a last-resort progress guarantee.
+
+**noxu `noxu-evictor`** (Berkeley-DB-JE lineage): a per-operation **`CacheMode`**
+(`Default/Unchanged/EvictLn/EvictBin/KeepHot/MakeEvictable`) drives **two
+independent tracking sets** — `primary` and `scan_resistant` — and the evictor
+drains *scan → primary → dirty* with per-phase quotas. Pluggable LRU/Clock/ARC/
+CAR/LIRS; it notes LRU pollutes on scans while ARC/CAR/LIRS resist inherently.
+
+### What this changes here
+
+1. **Scan resistance is probationary admission + COOL-first, not a single
+   counter.** Stage 0's frequency-climb CLOCK ages *every* buffer the hand
+   passes, so a long scan still decays the hot set (measured: only ~19% fewer
+   hot-set page-ins than LRU). The fix is to **admit new/scan-read pages cool
+   and never cool a HOT buffer while a COOL victim exists** — then a scan of any
+   length leaves the hot set untouched. This is implementable in BDB's existing
+   bucket-scan evictor *without* the full swip (call it **Stage 0.5**): split
+   the warmth range into COOL/HOT bands, admit reads at the top of COOL, promote
+   to HOT only on re-reference, and only decrement HOT-band warmth when a full
+   sweep finds no COOL victim (BDB's existing `aggressive` escalation is the
+   hook). Robust scan resistance, no optimistic-descent risk.
+2. **Adopt the single-word pin/evict reservation** on `bhp->ref`
+   (`-1` = EVICTING) to replace `__memp_alloc`'s TRYLOCK-`mtx_buf`-then-recheck-
+   `ref==1` dance, removing that race window.
+3. **prefer-clean eviction + trickle** is the Stage 2 writeback design; confirm
+   foreground eviction never blocks on a device write while a clean COOL victim
+   exists.
+
+### BDB constraints (why we adopt principles, not code)
+
+Both references are greenfield, single-address-space. BDB's mpool is
+multi-process (swips must be `roff_t`, resolved via `R_ADDR`), pages are
+persisted disk images (the swip lives in an in-memory shadow vector, never in
+the page), and the on-disk format + public API are fixed. So we take the
+*mechanisms* — probationary COOL admission, COOL-first eviction, swip-encoded
+state, single-word pin/evict, prefer-clean+trickle — within those constraints.
