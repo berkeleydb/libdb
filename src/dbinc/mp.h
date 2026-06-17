@@ -579,6 +579,17 @@ struct __bh { /* SHARED */
 #define	BH_THAWED	0x100		/* Page was thawed. */
 	u_int16_t	flags;
 
+	/*
+	 * Stage 1: "wired" buffers are exempt from eviction (set for B-tree
+	 * internal/root pages so the optimistic descent can read them without
+	 * risk of the frame being reclaimed under it).  A dedicated byte, not a
+	 * flags bit: it is set with a plain monotonic store while the caller
+	 * holds only a shared buffer latch, so it must not share the non-atomic
+	 * RMW of the flags word (which __memp_pgwrite clears BH_DIRTY in under a
+	 * shared latch).  Reset to 0 wherever a buffer header is (re)initialized.
+	 */
+	u_int8_t	wired;
+
 	u_int32_t	priority;	/* Priority. */
 	SH_TAILQ_ENTRY	hq;		/* MPOOL hash bucket queue. */
 
