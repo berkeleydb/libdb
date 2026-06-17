@@ -536,11 +536,31 @@ struct __mpoolfile { /* SHARED */
  * BH --
  *	Buffer header.
  */
+/*
+ * Multi-core read-scaling prototype (#2/#7): isolate the write-hot buffer
+ * header fields (the pin reference count and the LRU priority, both written on
+ * every __memp_fget/__memp_fput) onto their own cache line, away from the
+ * read-mostly identity/traversal fields (pgno/mf_offset/flags/hq) that every
+ * concurrent hash-chain walk of a hot (e.g. btree root) buffer reads.  Without
+ * this, each pin's atomic_inc(&ref) / LRU bump invalidates the line all readers
+ * need just to traverse and match the page, serializing readers through cache
+ * coherence.  Comment out to A/B against the original packed layout.
+ *
+ * MEASURED (12-core Apple Silicon, controlled A/B, medians): no effect
+ * (+/-0.6%).  The read-path cost is TRUE sharing of the atomic counters
+ * (bhp->ref and the shared-latch share-counts), not false sharing, so padding
+ * does not help.  Left OFF by default; flip the #define to re-A/B on the
+ * 24-core Linux box where the futex-dominated ceiling was characterized.
+ */
+/* #define MPOOL_HOTFIELDS_ISOLATED 1 */
+#ifdef MPOOL_HOTFIELDS_ISOLATED
+#define	MPOOL_CACHELINE	64
+#endif
+
 struct __bh { /* SHARED */
 	db_mutex_t	mtx_buf;	/* Shared/Exclusive mutex */
-	db_atomic_t	ref;		/* Reference count. */
-#define	BH_REFCOUNT(bhp)	atomic_read(&(bhp)->ref)
 
+#define	BH_REFCOUNT(bhp)	atomic_read(&(bhp)->ref)
 #define	BH_CALLPGIN	0x001		/* Convert the page before use. */
 #define	BH_DIRTY	0x002		/* Page is modified. */
 #define	BH_DIRTY_CREATE	0x004		/* Page is modified. */
@@ -550,6 +570,28 @@ struct __bh { /* SHARED */
 #define	BH_FROZEN	0x040		/* Frozen buffer: allocate & re-read. */
 #define	BH_TRASH	0x080		/* Page is garbage. */
 #define	BH_THAWED	0x100		/* Page was thawed. */
+
+#ifdef MPOOL_HOTFIELDS_ISOLATED
+	/* Read-mostly identity / traversal fields (read by every chain walk). */
+	u_int16_t	flags;
+	SH_TAILQ_ENTRY	hq;		/* MPOOL hash bucket queue. */
+	db_pgno_t	pgno;		/* Underlying MPOOLFILE page number. */
+	roff_t		mf_offset;	/* Associated MPOOLFILE offset. */
+	u_int32_t	bucket;		/* Hash bucket containing header. */
+	int		region;		/* Region containing header. */
+	roff_t		td_off;		/* MVCC: creating TXN_DETAIL offset. */
+	SH_CHAIN_ENTRY	vc;		/* MVCC: version chain. */
+#ifdef DIAG_MVCC
+	u_int16_t	align_off;	/* Alignment offset for diagnostics.*/
+#endif
+
+	/* Write-hot fields, isolated on their own cache line. */
+	u_int8_t	__hot_pad1[MPOOL_CACHELINE];
+	db_atomic_t	ref;		/* Reference count. */
+	u_int32_t	priority;	/* Priority. */
+	u_int8_t	__hot_pad2[MPOOL_CACHELINE];
+#else
+	db_atomic_t	ref;		/* Reference count. */
 	u_int16_t	flags;
 
 	u_int32_t	priority;	/* Priority. */
@@ -564,6 +606,7 @@ struct __bh { /* SHARED */
 	SH_CHAIN_ENTRY	vc;		/* MVCC: version chain. */
 #ifdef DIAG_MVCC
 	u_int16_t	align_off;	/* Alignment offset for diagnostics.*/
+#endif
 #endif
 
 	/*

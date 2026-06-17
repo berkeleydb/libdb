@@ -141,3 +141,61 @@ LD_LIBRARY_PATH=build_unix/.libs ./scale_bench rrand 200000 3 1 2 4 8 12 16 24
 #     snap   per-thread MVCC snapshot txn (isolates lock-manager cost)
 ```
 
+
+## Prototype 1: cache-line isolation of the write-hot BH fields (#7)
+
+The buffer header (`struct __bh`) packs the write-hot fields — the pin
+reference count (`ref`, atomic RMW on every `__memp_fget`/`__memp_fput`) and the
+LRU `priority` (rewritten on every `__memp_fput`) — into the **same cache line**
+as the read-mostly identity/traversal fields (`pgno`, `mf_offset`, `flags`,
+`hq`) that every concurrent hash-chain walk of a hot buffer reads
+(`mp_fget.c`: `if (bhp->pgno != *pgnoaddr || bhp->mf_offset != mf_offset)`).
+The hypothesis: each pin invalidates the line all readers need just to traverse
+and match the page, so isolating the write-hot fields onto their own cache line
+should cut coherence traffic.
+
+Implemented behind `MPOOL_HOTFIELDS_ISOLATED` (`src/dbinc/mp.h`) so it is a
+one-line A/B. Built both layouts, ran a **controlled interleaved A/B** (packed
+vs isolated `libdb`, same bench binary, 7 samples per point, medians) on the
+12-core box:
+
+| workload | threads | packed (median) | isolated (median) | delta |
+|----------|--------:|----------------:|------------------:|------:|
+| rrand    | 8       | 486,745         | 489,564           | +0.6% |
+| rrand    | 12      | 390,927         | 390,416           | -0.1% |
+| snap     | 8       | 518,422         | 514,260           | -0.8% |
+| snap     | 12      | 408,213         | 409,415           | +0.3% |
+
+**Result: no effect (±0.6%, within noise).** Field false-sharing is *not* the
+cap. The read-path cost is **true sharing**: every reader performs an atomic
+read-modify-write on the *same* shared words — `bhp->ref` and the shared-latch
+share-counts (`mtx_hash`, `mtx_buf`) — for the hot (root/internal) page.
+Relocating those words to private cache lines cannot help, because the
+contention is on the words themselves, not on neighbours that happen to share
+their line.
+
+The prototype is therefore left **off by default** (it only adds per-buffer
+memory). Kept guarded so it can be re-A/B'd on the 24-core Linux box, where the
+ceiling was originally characterized as futex-dominated and the cache hierarchy
+differs from the laptop.
+
+### Refined direction for #2/#7
+
+To lift the ceiling the per-read **shared-counter RMW must be removed**, not
+relocated:
+
+1. **Optimistic / versioned buffer access** for resident, clean pages: read
+   under a version (seqlock) check instead of incrementing a shared latch
+   share-count, validating afterward and retrying on the latched path if a
+   writer raced. Requires safe memory reclamation (epoch/RCU) for the buffer
+   headers, which BDB does not have today — a buffer freed back to the region
+   during a lock-free chain walk can be reused under a reader. **Adding deferred
+   reclamation is the prerequisite work.**
+2. **Scalable pin count**: replace the single `bhp->ref` atomic with a
+   sharded/per-core counter (pin bumps a private shard; eviction sums shards),
+   removing the ref cache-line ping-pong. Costs memory per buffer and
+   complicates the `ref == 0` eviction check.
+
+Both are larger than a layout tweak; this prototype's value is the measurement
+that **rules out the cheap fix** and justifies the reclamation/scalable-counter
+work.
