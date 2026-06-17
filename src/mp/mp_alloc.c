@@ -45,7 +45,7 @@ __memp_alloc(dbmp, infop, mfp, len, offsetp, retp)
 	MPOOL *c_mp;
 	MPOOLFILE *bh_mfp;
 	size_t freed_space;
-	u_int32_t buckets, bucket_priority, buffers, cache_reduction;
+	u_int32_t buckets, bucket_priority, buffers;
 	u_int32_t dirty_eviction, high_priority, priority, versions;
 	u_int32_t priority_saved, put_counter, lru_generation, total_buckets;
 	int aggressive, alloc_freeze, b_lock, giveup;
@@ -149,12 +149,12 @@ found:		if (offsetp != NULL)
 
 search:
 	/*
-	 * Anything newer than 1/10th of the buffer pool is ignored during the
-	 * first MPOOL_SEARCH_ALLOC_LIMIT buckets worth of allocation.
+	 * CLOCK replacement: consider buffers of any warmth.  The hash-bucket
+	 * scan below ages (decrements) each unreferenced singleton it passes and
+	 * frees one whose warmth has reached 0 (second chance); when aggressive,
+	 * it frees the coldest buffer it can find regardless of warmth.
 	 */
-	cache_reduction = c_mp->pages / 10;
-	high_priority = aggressive ? MPOOL_LRU_MAX :
-	    c_mp->lru_priority - cache_reduction;
+	high_priority = MPOOL_CLOCK_MAX + 1;
 	lru_generation = c_mp->lru_generation;
 
 	ret = 0;
@@ -228,7 +228,7 @@ search:
 			 * this to MPOOL_LRU_MAX, we'll still select a victim
 			 * even if all buffers have the highest normal priority.
 			 */
-			high_priority = MPOOL_LRU_MAX;
+			high_priority = MPOOL_CLOCK_MAX + 1;
 			PERFMON4(env, mpool, alloc_wrap,
 			    len, infop->id, aggressive, c_mp->put_counter);
 			switch (aggressive) {
@@ -270,7 +270,7 @@ search:
 		if (aggressive == 0 && buckets >= MPOOL_ALLOC_SEARCH_LIMIT) {
 			aggressive = 1;
 			/* Once aggressive, we consider all buffers. */
-			high_priority = MPOOL_LRU_MAX;
+			high_priority = MPOOL_CLOCK_MAX + 1;
 		}
 
 		/* Unlock the region and lock the hash bucket. */
@@ -318,11 +318,27 @@ retry_search:	bhp = NULL;
 #endif
 
 			if (SH_CHAIN_SINGLETON(current_bhp, vc)) {
+				u_int32_t warmth;
+
 				if (BH_REFCOUNT(current_bhp) != 0)
 					continue;
 				buffers++;
-				if (bucket_priority > current_bhp->priority) {
-					bucket_priority = current_bhp->priority;
+				warmth = current_bhp->priority;
+				/*
+				 * Second chance: a warm buffer is aged (warmth
+				 * decremented) and skipped; only a buffer whose
+				 * warmth has reached 0 is a victim -- unless we
+				 * are aggressive, in which case the coldest
+				 * buffer we can find will do.  The warmth store
+				 * races benignly with concurrent puts/scans, the
+				 * same tolerance the old LRU priority had.
+				 */
+				if (warmth != 0 && !aggressive) {
+					current_bhp->priority = warmth - 1;
+					continue;
+				}
+				if (bucket_priority > warmth) {
+					bucket_priority = warmth;
 					if (bhp != NULL)
 						atomic_dec(env, &bhp->ref);
 					bhp = current_bhp;
@@ -525,7 +541,7 @@ this_buffer:	/*
 					    __memp_fns(dbmp, bh_mfp),
 					    bhp->pgno, ret);
 				}
-				bhp->priority = MPOOL_LRU_REDZONE;
+				bhp->priority = MPOOL_CLOCK_MAX;
 
 				goto next_hb;
 			}

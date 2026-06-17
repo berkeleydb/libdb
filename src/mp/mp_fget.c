@@ -789,7 +789,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 		 *
 		 * Append the buffer to the tail of the bucket list.
 		 */
-		bhp->priority = MPOOL_LRU_REDZONE;
+		bhp->priority = MPOOL_CLOCK_MAX;
 		bhp->pgno = *pgnoaddr;
 		bhp->mf_offset = mf_offset;
 		bhp->bucket = bucket;
@@ -1013,7 +1013,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 		h_locked = 0;
 		DB_ASSERT(env, b_incr && BH_REFCOUNT(bhp) > 0);
 		if (atomic_dec(env, &bhp->ref) == 0) {
-			bhp->priority = c_mp->lru_priority;
+			bhp->priority = MPOOL_CLOCK_DEFAULT;
 			MVCC_MPROTECT(bhp->buf, mfp->pagesize, 0);
 		}
 		F_CLR(bhp, BH_EXCLUSIVE);

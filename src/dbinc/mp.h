@@ -389,6 +389,29 @@ struct __db_mpool_fstat_int { /* SHARED */
 #define	MPOOL_PRI_VERY_HIGH	1	/* Add number of buffers in pool. */
 
 /*
+ * CLOCK / second-chance buffer "warmth" (scalability Stage 0).
+ *
+ * bhp->priority is reused as a small saturating warmth counter in the range
+ * [0, MPOOL_CLOCK_MAX].  A buffer access refills the warmth toward a level
+ * chosen from the access priority hint -- done read-first, so an already-warm
+ * (hot) buffer is not written at all, keeping the read path free of shared
+ * stores.  The eviction hand (__memp_alloc) decrements warmth as it sweeps and
+ * evicts a buffer once its warmth reaches 0 (second chance).
+ *
+ * This replaces the previous timestamp LRU, which wrote bhp->priority and
+ * advanced a shared c_mp->lru_priority counter on every __memp_fput, and swept
+ * the whole cache in __memp_reset_lru on wraparound.  It is also scan-resistant:
+ * bulk-scanned pages refill to a low warmth and age out before the hot set.
+ */
+#define	MPOOL_CLOCK_MAX		4	/* Sticky-hot ceiling. */
+#define	MPOOL_CLOCK_VERY_LOW	0
+#define	MPOOL_CLOCK_LOW		1
+#define	MPOOL_CLOCK_DEFAULT	2
+#define	MPOOL_CLOCK_HIGH	3
+#define	MPOOL_CLOCK_VERY_HIGH	MPOOL_CLOCK_MAX
+#define	MPOOL_CLOCK_DIRTY_BOOST	1	/* Dirty pages get +1 warmth. */
+
+/*
  * MPOOLFILE --
  *	Shared DB_MPOOLFILE information.
  */

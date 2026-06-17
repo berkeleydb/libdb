@@ -565,7 +565,7 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 	 */
 	MUTEX_REQUIRED(env, hp->mtx_hash);
 	if (alloc_bhp != NULL) {
-		alloc_bhp->priority = c_mp->lru_priority;
+		alloc_bhp->priority = MPOOL_CLOCK_DEFAULT;
 
 		SH_CHAIN_INSERT_AFTER(frozen_bhp, alloc_bhp, vc, __bh);
 		if (!SH_CHAIN_HASNEXT(alloc_bhp, vc)) {
