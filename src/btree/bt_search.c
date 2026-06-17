@@ -349,6 +349,13 @@ retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel, flags, &stack)) != 0)
 			adjust = P_INDX;
 		else {
 			/*
+			 * Stage 1: wire internal index pages so they stay
+			 * resident for the optimistic descent.  Bounded: only
+			 * the few internal levels, never the (numerous) leaves.
+			 */
+			if (TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO)
+				(void)__memp_wire(mpf, h);
+			/*
 			 * It is possible to catch an internal page as a change
 			 * is being backed out.  Its leaf pages will be locked
 			 * but we must be sure we get to one.  If the page
