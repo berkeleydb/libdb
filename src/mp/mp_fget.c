@@ -789,7 +789,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 		 *
 		 * Append the buffer to the tail of the bucket list.
 		 */
-		bhp->priority = MPOOL_CLOCK_MAX;
+		bhp->priority = MPOOL_CLOCK_ADMIT;
 		bhp->pgno = *pgnoaddr;
 		bhp->mf_offset = mf_offset;
 		bhp->bucket = bucket;
