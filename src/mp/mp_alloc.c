@@ -47,7 +47,7 @@ __memp_alloc(dbmp, infop, mfp, len, offsetp, retp)
 	size_t freed_space;
 	u_int32_t buckets, bucket_priority, buffers;
 	u_int32_t dirty_eviction, high_priority, priority, versions;
-	u_int32_t priority_saved, put_counter, lru_generation, total_buckets;
+	u_int32_t priority_saved, put_counter, total_buckets;
 	int aggressive, alloc_freeze, b_lock, giveup;
 	int h_locked, need_free, obsolete, ret, write_error;
 	u_int8_t *endp;
@@ -155,7 +155,6 @@ search:
 	 * it frees the coldest buffer it can find regardless of warmth.
 	 */
 	high_priority = MPOOL_CLOCK_MAX + 1;
-	lru_generation = c_mp->lru_generation;
 
 	ret = 0;
 	MAX_LSN(oldest_reader);
@@ -224,9 +223,9 @@ search:
 
 			aggressive++;
 			/*
-			 * Once aggressive, we consider all buffers. By setting
-			 * this to MPOOL_LRU_MAX, we'll still select a victim
-			 * even if all buffers have the highest normal priority.
+			 * Once aggressive, we consider all buffers. Setting the
+			 * ceiling above MPOOL_CLOCK_MAX lets us still select a
+			 * victim even if every buffer is at maximum warmth.
 			 */
 			high_priority = MPOOL_CLOCK_MAX + 1;
 			PERFMON4(env, mpool, alloc_wrap,
@@ -291,7 +290,7 @@ search:
 		 * don't want to free a buffer out of the middle of an MVCC
 		 * chain, since that requires I/O.  So, walk the buffers,
 		 * looking for an obsolete buffer at the end of an MVCC chain.
-		 * Once a buffer becomes obsolete, its LRU priority is
+		 * Once a buffer becomes obsolete, its warmth is
 		 * irrelevant because that version can never be accessed again.
 		 *
 		 * If we don't find any obsolete MVCC buffers, we will get
@@ -311,12 +310,6 @@ retry_search:	bhp = NULL;
 			 * aggressive), and is better than the best candidate
 			 * we have found so far in this bucket.
 			 */
-#ifdef MPOOL_ALLOC_SEARCH_DYN
-			if (aggressive == 0 &&
-			     ++high_priority >= c_mp->lru_priority)
-				aggressive = 1;
-#endif
-
 			if (SH_CHAIN_SINGLETON(current_bhp, vc)) {
 				u_int32_t warmth;
 
@@ -356,11 +349,6 @@ retry_search:	bhp = NULL;
 			    mvcc_bhp != NULL;
 			    oldest_bhp = mvcc_bhp,
 			    mvcc_bhp = SH_CHAIN_PREV(mvcc_bhp, vc, __bh)) {
-#ifdef MPOOL_ALLOC_SEARCH_DYN
-				if (aggressive == 0 &&
-				     ++high_priority >= c_mp->lru_priority)
-					aggressive = 1;
-#endif
 				DB_ASSERT(env, mvcc_bhp !=
 				    SH_CHAIN_PREV(mvcc_bhp, vc, __bh));
 				if ((aggressive < 2 &&
@@ -474,19 +462,9 @@ retry_search:	bhp = NULL;
 		}
 
 		/*
-		 * If another thread has called __memp_reset_lru() while we were
-		 * looking for this buffer, it is possible that we've picked a
-		 * poor choice for a victim. If so toss it and start over.
+		 * Discard any previously remembered hash bucket, we've got
+		 * a winner.
 		 */
-		if (lru_generation != c_mp->lru_generation) {
-			DB_ASSERT(env, BH_REFCOUNT(bhp) > 0);
-			atomic_dec(env, &bhp->ref);
-			MUTEX_UNLOCK(env, hp->mtx_hash);
-			MPOOL_REGION_LOCK(env, infop);
-			hp_saved = NULL;
-			goto search;
-		}
-
 this_buffer:	/*
 		 * Discard any previously remembered hash bucket, we've got
 		 * a winner.
