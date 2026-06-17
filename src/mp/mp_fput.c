@@ -203,42 +203,36 @@ unpin:
 #endif
 
 	/*
-	 * CLOCK warmth refill.  Choose a target warmth from the access priority
-	 * hint and refill read-first: only store when the buffer is colder than
-	 * the target, so a hot (already-warm) buffer's put performs no shared
-	 * store.  The eviction hand ages warmth and frees at 0.  We don't lock
-	 * the warmth; a benign race only mis-warms a buffer briefly.
+	 * CLOCK warmth update.  Warmth encodes access frequency: each access
+	 * climbs the buffer one step toward a cap derived from the access
+	 * priority hint, and the eviction hand decrements warmth as it sweeps.
+	 * A frequently-accessed (hot) buffer climbs to its cap and then stays
+	 * there with no further store (the climb is read-first), so the hot
+	 * read path is free of shared writes; a buffer touched once by a scan
+	 * only reaches warmth 1 and is aged out well before the hot set.  We
+	 * don't lock the warmth; a benign race only mis-warms a buffer briefly.
 	 */
 	if (priority == DB_PRIORITY_VERY_LOW ||
 	    mfp->priority == MPOOL_PRI_VERY_LOW)
-		warmth = MPOOL_CLOCK_VERY_LOW;
-	else {
-		switch (priority) {
-		case DB_PRIORITY_VERY_LOW:
-			warmth = MPOOL_CLOCK_VERY_LOW;
-			break;
-		case DB_PRIORITY_LOW:
-			warmth = MPOOL_CLOCK_LOW;
-			break;
-		case DB_PRIORITY_HIGH:
-			warmth = MPOOL_CLOCK_HIGH;
-			break;
-		case DB_PRIORITY_VERY_HIGH:
-			warmth = MPOOL_CLOCK_VERY_HIGH;
-			break;
-		default:
-		case DB_PRIORITY_UNCHANGED:
-		case DB_PRIORITY_DEFAULT:
-			warmth = (mfp->priority == MPOOL_PRI_LOW) ?
-			    MPOOL_CLOCK_LOW : MPOOL_CLOCK_DEFAULT;
-			break;
-		}
+		bhp->priority = MPOOL_CLOCK_VERY_LOW;
+	else if (priority == DB_PRIORITY_HIGH ||
+	    priority == DB_PRIORITY_VERY_HIGH) {
+		/* Explicit high-priority hint pins the buffer at the ceiling. */
+		if (bhp->priority < MPOOL_CLOCK_MAX)
+			bhp->priority = MPOOL_CLOCK_MAX;
+	} else {
+		u_int32_t cap;
+
+		cap = (priority == DB_PRIORITY_LOW ||
+		    mfp->priority == MPOOL_PRI_LOW) ?
+		    MPOOL_CLOCK_LOW : MPOOL_CLOCK_MAX;
 		if (F_ISSET(bhp, BH_DIRTY) &&
-		    warmth <= MPOOL_CLOCK_MAX - MPOOL_CLOCK_DIRTY_BOOST)
-			warmth += MPOOL_CLOCK_DIRTY_BOOST;
+		    cap <= MPOOL_CLOCK_MAX - MPOOL_CLOCK_DIRTY_BOOST)
+			cap += MPOOL_CLOCK_DIRTY_BOOST;
+		warmth = bhp->priority;
+		if (warmth < cap)
+			bhp->priority = warmth + 1;
 	}
-	if (bhp->priority < warmth)
-		bhp->priority = warmth;
 
 	/*
 	 * __memp_pgwrite only has a shared lock while it clears the
