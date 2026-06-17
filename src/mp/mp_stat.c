@@ -709,15 +709,13 @@ __memp_print_hash(env, dbmp, reginfo, fmap, flags)
 	c_mp = reginfo->primary;
 	DB_MSGBUF_INIT(&mb);
 	STAT_ULONG("Hash table last-checked", c_mp->last_checked);
-	STAT_ULONG("Hash table LRU priority", c_mp->lru_priority);
-	STAT_ULONG("Hash table LRU generation", c_mp->lru_generation);
 	STAT_ULONG("Put counter", c_mp->put_counter);
 
 	/* Display the hash table list of BH's. */
 	__db_msg(env,
 	    "BH hash table (%lu hash slots)", (u_long)c_mp->htab_buckets);
 	__db_msg(env, "bucket #: priority, I/O wait, [mutex]");
-	__db_msg(env, "\tpageno, file, ref, LSN, address, priority, flags");
+	__db_msg(env, "\tpageno, file, ref, LSN, address, warmth, flags");
 
 	for (hp = R_ADDR(reginfo, c_mp->htab),
 	    bucket = 0; bucket < c_mp->htab_buckets; ++hp, ++bucket) {

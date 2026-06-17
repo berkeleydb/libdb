@@ -179,14 +179,12 @@ struct __mpool { /* SHARED */
 	 * The htab and htab_buckets fields are not thread protected as they
 	 * are initialized during mpool creation, and not modified again.
 	 *
-	 * The last_checked, lru_priority, and lru_generation fields are thread
-	 * protected by the region lock.
+	 * The last_checked field (the CLOCK eviction hand) is thread protected
+	 * by the region lock.
 	 */
 	roff_t	  htab;			/* Hash table offset. */
 	u_int32_t htab_buckets;		/* Number of hash table entries. */
 	u_int32_t last_checked;		/* Last bucket checked for free. */
-	u_int32_t lru_priority;		/* Priority counter for buffer LRU. */
-	u_int32_t lru_generation;	/* Allocation race condition detector. */
 	u_int32_t htab_mutexes;		/* Number of hash mutexes per region. */
 
 	 /*
@@ -365,17 +363,6 @@ struct __db_mpool_fstat_int { /* SHARED */
 	uintmax_t st_backup_spins;	/* Number of spins by a backup. */
 #endif
 };
-
-/*
- * The base mpool priority is 1/4th of the name space, or just under 2^30. When
- * the LRU priority counter is about to wrap (within a 128-entry 'red zone'
- * area) we adjust everybody down so that no one is larger than the new LRU
- * priority.
- */
-#define	MPOOL_LRU_MAX		UINT32_MAX
-#define	MPOOL_LRU_REDZONE	(MPOOL_LRU_MAX - 128)
-#define	MPOOL_LRU_BASE		(MPOOL_LRU_MAX / 4)
-#define	MPOOL_LRU_DECREMENT	(MPOOL_LRU_MAX - MPOOL_LRU_BASE)
 
 /*
  * Mpool priorities from low to high.  Defined in terms of fractions of the
