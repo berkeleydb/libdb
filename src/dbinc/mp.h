@@ -399,6 +399,23 @@ struct __db_mpool_fstat_int { /* SHARED */
 #define	MPOOL_CLOCK_DIRTY_BOOST	1	/* Dirty pages get +1 warmth. */
 
 /*
+ * Scan resistance (probationary admission + COOL-first eviction).
+ *
+ * Warmth is split into a COOL band [0, MPOOL_CLOCK_HOT) and a HOT band
+ * [MPOOL_CLOCK_HOT, MPOOL_CLOCK_MAX].  A freshly read/created buffer is
+ * admitted COOL (MPOOL_CLOCK_ADMIT); the access that read it climbs it one
+ * step, so a page touched only once (e.g. by a sequential scan) stays in the
+ * COOL band, while a re-referenced page crosses into the HOT band.
+ *
+ * The eviction hand ages and reclaims COOL-band buffers and leaves HOT-band
+ * buffers untouched, so a scan of any length -- which keeps supplying COOL
+ * victims -- never ages the hot working set.  HOT-band buffers are only cooled
+ * when a full sweep finds no COOL victim (the existing "aggressive" path).
+ */
+#define	MPOOL_CLOCK_HOT		MPOOL_CLOCK_DEFAULT	/* >= this is protected */
+#define	MPOOL_CLOCK_ADMIT	MPOOL_CLOCK_VERY_LOW	/* probationary warmth */
+
+/*
  * MPOOLFILE --
  *	Shared DB_MPOOLFILE information.
  */

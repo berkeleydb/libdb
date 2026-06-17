@@ -318,17 +318,28 @@ retry_search:	bhp = NULL;
 				buffers++;
 				warmth = current_bhp->priority;
 				/*
-				 * Second chance: a warm buffer is aged (warmth
-				 * decremented) and skipped; only a buffer whose
-				 * warmth has reached 0 is a victim -- unless we
-				 * are aggressive, in which case the coldest
-				 * buffer we can find will do.  The warmth store
-				 * races benignly with concurrent puts/scans, the
-				 * same tolerance the old LRU priority had.
+				 * COOL-first, scan-resistant selection.  In the
+				 * normal (non-aggressive) sweep we only touch the
+				 * COOL band: a HOT-band buffer is protected (not
+				 * aged, not selected), a COOL buffer above 0 is
+				 * aged one step (second chance), and a buffer at
+				 * warmth 0 is the victim.  A scan keeps supplying
+				 * warmth-0 COOL pages, so the hot working set is
+				 * never aged out from under it.  When aggressive
+				 * (a full sweep found no COOL victim) we consider
+				 * and age every buffer, cooling the hot band too.
+				 * The warmth store races benignly with concurrent
+				 * puts, the same tolerance the old LRU had.
 				 */
-				if (warmth != 0 && !aggressive) {
-					current_bhp->priority = warmth - 1;
-					continue;
+				if (!aggressive) {
+					if (warmth >= MPOOL_CLOCK_HOT)
+						continue;
+					if (warmth != 0) {
+						warmth--;
+						current_bhp->priority = warmth;
+						if (warmth != 0)
+							continue;
+					}
 				}
 				if (bucket_priority > warmth) {
 					bucket_priority = warmth;
