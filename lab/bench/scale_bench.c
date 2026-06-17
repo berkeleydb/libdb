@@ -26,12 +26,14 @@
 
 static DB_ENV *env;
 static DB *db;
+static DB *g_dbs[256];	/* per-thread DBs for the sepdb workload */
+static int g_maxthreads;
 static volatile int stop;
-static pthread_barrier_t barrier;
+static volatile int go;		/* portable start gate (pthread_barrier is optional in POSIX) */
 static int g_workload;	/* 0=rrand 1=rhot 2=wrand */
 static uint32_t g_nkeys;
 
-enum { W_RRAND = 0, W_RHOT = 1, W_WRAND = 2 };
+enum { W_RRAND = 0, W_RHOT = 1, W_WRAND = 2, W_SEPDB = 3, W_SNAP = 4 };
 
 static double
 now_sec(void)
@@ -50,19 +52,23 @@ fill_key(DBT *k, uint32_t *kb, uint32_t v)
 	k->size = sizeof(*kb);
 }
 
-typedef struct { uint64_t ops; unsigned seed; } targ_t;
+typedef struct { uint64_t ops; unsigned seed; int tid; } targ_t;
 
 static void *
 worker(void *a)
 {
 	targ_t *t = a;
+	DB *mydb = (g_workload == W_SEPDB) ? g_dbs[t->tid] : db;
+	DB_TXN *txn = NULL;
 	DBT key, data;
 	uint32_t kb, vbuf[32];
 	char wbuf[100];
 	int ret;
 
 	memset(wbuf, 'x', sizeof(wbuf));
-	pthread_barrier_wait(&barrier);
+	while (!go) { /* spin until released */ }
+	if (g_workload == W_SNAP)
+		(void)env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT);
 	while (!stop) {
 		uint32_t k = (g_workload == W_RHOT) ? 0 :
 		    (uint32_t)(rand_r(&t->seed) % g_nkeys);
@@ -75,7 +81,7 @@ worker(void *a)
 			memset(&data, 0, sizeof(data));
 			data.data = vbuf; data.ulen = sizeof(vbuf);
 			data.flags = DB_DBT_USERMEM;
-			ret = db->get(db, NULL, &key, &data, 0);
+			ret = mydb->get(mydb, txn, &key, &data, 0);
 			if (ret == DB_BUFFER_SMALL) ret = 0;
 		}
 		if (ret != 0 && ret != DB_NOTFOUND) {
@@ -84,6 +90,8 @@ worker(void *a)
 		}
 		t->ops++;
 	}
+	if (txn != NULL)
+		(void)txn->commit(txn, 0);
 	return (NULL);
 }
 
@@ -105,12 +113,12 @@ run(int nthreads, double secs)
 	(void)env->mutex_stat(env, &mx, DB_STAT_CLEAR); free(mx);
 
 	stop = 0;
-	pthread_barrier_init(&barrier, NULL, (unsigned)nthreads + 1);
+	go = 0;
 	for (i = 0; i < nthreads; i++) {
-		ta[i].ops = 0; ta[i].seed = (unsigned)(i * 2654435761u + 1);
+		ta[i].ops = 0; ta[i].seed = (unsigned)(i * 2654435761u + 1); ta[i].tid = i;
 		pthread_create(&th[i], NULL, worker, &ta[i]);
 	}
-	pthread_barrier_wait(&barrier);
+	go = 1;
 	t0 = now_sec();
 	struct timespec sl = { (time_t)secs, (long)((secs - (long)secs) * 1e9) };
 	nanosleep(&sl, NULL);
@@ -126,7 +134,8 @@ run(int nthreads, double secs)
 	printf("%-6s %3d %12.0f  conflict%%=%4.1f lockpart%%=%4.1f "
 	    "mpoolhash%%=%4.1f objs%%=%4.1f lockers%%=%4.1f  "
 	    "lockreg_w=%llu mpoolreg_w=%llu mtxreg_w=%llu npart=%u\n",
-	    g_workload == W_RRAND ? "rrand" : g_workload == W_RHOT ? "rhot" : "wrand",
+	    g_workload == W_RRAND ? "rrand" : g_workload == W_RHOT ? "rhot" :
+	    g_workload == W_SEPDB ? "sepdb" : g_workload == W_SNAP ? "snap" : "wrand",
 	    nthreads, total / dur,
 	    PCT(lk->st_lock_wait, lk->st_lock_nowait),
 	    PCT(lk->st_part_wait, lk->st_part_nowait),
@@ -154,7 +163,9 @@ main(int argc, char **argv)
 		return (1);
 	}
 	g_workload = strcmp(argv[1], "rhot") == 0 ? W_RHOT :
-	    strcmp(argv[1], "wrand") == 0 ? W_WRAND : W_RRAND;
+	    strcmp(argv[1], "wrand") == 0 ? W_WRAND :
+	    strcmp(argv[1], "sepdb") == 0 ? W_SEPDB :
+	    strcmp(argv[1], "snap") == 0 ? W_SNAP : W_RRAND;
 	g_nkeys = (uint32_t)atoi(argv[2]);
 	double secs = atof(argv[3]);
 
@@ -165,23 +176,52 @@ main(int argc, char **argv)
 	if ((ret = env->open(env, "./SCALEDB",
 	    DB_CREATE | DB_INIT_MPOOL | DB_INIT_LOCK | DB_INIT_TXN | DB_INIT_LOG |
 	    DB_THREAD, 0)) != 0) { env->err(env, ret, "env open"); return 1; }
-	if ((ret = db_create(&db, env, 0)) != 0) { env->err(env, ret, "db_create"); return 1; }
-	if ((ret = db->open(db, NULL, "bench.db", NULL, DB_BTREE,
-	    DB_CREATE | DB_AUTO_COMMIT | DB_THREAD, 0)) != 0) { env->err(env, ret, "db open"); return 1; }
+
+	/* Highest thread count in the sweep -> how many per-thread DBs to make. */
+	for (ai = 4; ai < argc; ai++)
+		if (atoi(argv[ai]) > g_maxthreads) g_maxthreads = atoi(argv[ai]);
 
 	memset(vbuf, 'v', sizeof(vbuf));
-	for (i = 0; i < g_nkeys; i++) {
-		fill_key(&key, &kb, i);
-		memset(&data, 0, sizeof(data)); data.data = vbuf; data.size = sizeof(vbuf);
-		if ((ret = db->put(db, NULL, &key, &data, 0)) != 0) { env->err(env, ret, "load"); return 1; }
+	if (g_workload == W_SEPDB) {
+		int d;
+		char nm[32];
+		for (d = 0; d < g_maxthreads; d++) {
+			if ((ret = db_create(&g_dbs[d], env, 0)) != 0) { env->err(env, ret, "db_create"); return 1; }
+			snprintf(nm, sizeof(nm), "bench_%d.db", d);
+			if ((ret = g_dbs[d]->open(g_dbs[d], NULL, nm, NULL, DB_BTREE,
+			    DB_CREATE | DB_AUTO_COMMIT | DB_THREAD, 0)) != 0) { env->err(env, ret, "db open"); return 1; }
+			for (i = 0; i < g_nkeys; i++) {
+				fill_key(&key, &kb, i);
+				memset(&data, 0, sizeof(data)); data.data = vbuf; data.size = sizeof(vbuf);
+				if ((ret = g_dbs[d]->put(g_dbs[d], NULL, &key, &data, 0)) != 0) { env->err(env, ret, "load"); return 1; }
+			}
+		}
+		printf("# sepdb: %d separate DBs x %u keys; secs=%.1f\n", g_maxthreads, g_nkeys, secs);
+	} else {
+		if ((ret = db_create(&db, env, 0)) != 0) { env->err(env, ret, "db_create"); return 1; }
+		if ((ret = db->open(db, NULL, "bench.db", NULL, DB_BTREE,
+		    DB_CREATE | DB_AUTO_COMMIT | DB_THREAD, 0)) != 0) { env->err(env, ret, "db open"); return 1; }
+		for (i = 0; i < g_nkeys; i++) {
+			fill_key(&key, &kb, i);
+			memset(&data, 0, sizeof(data)); data.data = vbuf; data.size = sizeof(vbuf);
+			if ((ret = db->put(db, NULL, &key, &data, 0)) != 0) { env->err(env, ret, "load"); return 1; }
+		}
+		if (g_workload == W_SNAP) {
+			/* Reopen multiversion for snapshot reads (bulk load above
+			 * used a plain handle to avoid MVCC version retention). */
+			db->close(db, 0); db = NULL;
+			if ((ret = db_create(&db, env, 0)) != 0) { env->err(env, ret, "db_create"); return 1; }
+			if ((ret = db->open(db, NULL, "bench.db", NULL, DB_BTREE,
+			    DB_AUTO_COMMIT | DB_THREAD | DB_MULTIVERSION, 0)) != 0) { env->err(env, ret, "db reopen mv"); return 1; }
+		}
+		printf("# loaded %u keys; workload=%s secs=%.1f\n", g_nkeys, argv[1], secs);
 	}
-	printf("# loaded %u keys; workload=%s secs=%.1f\n", g_nkeys, argv[1], secs);
 	printf("# wkld  thr      ops/sec  contention signals\n");
 
 	for (ai = 4; ai < argc; ai++)
 		run(atoi(argv[ai]), secs);
 
-	db->close(db, 0);
+	if (db) db->close(db, 0);
 	env->close(env, 0);
 	return (0);
 }
