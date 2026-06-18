@@ -36,11 +36,19 @@ __os_aio_create(env, depth, ctxp)
 	ctx->inflight = 0;
 
 	/*
-	 * Probe and install a platform backend; on failure the context
-	 * stays on the synchronous fallback (backend == NULL).
+	 * Probe and install a platform backend in preference order; on
+	 * failure the context stays on the synchronous fallback
+	 * (backend == NULL).  io_uring (Linux) and IOCP (Windows) are
+	 * native file-completion engines; the thread-pool offload is the
+	 * portable async path everywhere else.
 	 */
 #ifdef HAVE_IO_URING
-	(void)__os_aio_uring_init(env, ctx);
+	if (ctx->backend == NULL)
+		(void)__os_aio_uring_init(env, ctx);
+#endif
+#ifdef HAVE_AIO_THREADPOOL
+	if (ctx->backend == NULL)
+		(void)__os_aio_pool_init(env, ctx);
 #endif
 	*ctxp = ctx;
 	return (0);
