@@ -129,6 +129,17 @@ retry:	if (lock_mode == DB_LOCK_WRITE)
 	    TYPE(h) == P_LBTREE || TYPE(h) == P_LRECNO || TYPE(h) == P_LDUP);
 
 	/*
+	 * Wire the one common tree root so it stays resident: it is fetched by
+	 * every operation, so keeping it non-evictable removes the read-in/
+	 * eviction churn on the hottest page and lets the root snapshot refresh
+	 * cheaply.  Only the main tree root (BAM_ROOT_PGNO) is wired -- subtree
+	 * (off-page duplicate) roots and all internal pages stay evictable.
+	 * Unwired when the page is freed (__db_free) or the file closes.
+	 */
+	if (h->pgno == BAM_ROOT_PGNO(dbc))
+		(void)__memp_wire(mpf, h);
+
+	/*
 	 * Decide if we need to dirty and/or lock this page.
 	 * We must not hold the latch while we get the lock.
 	 */
@@ -348,13 +359,6 @@ retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel, flags, &stack)) != 0)
 		if (TYPE(h) == P_LBTREE)
 			adjust = P_INDX;
 		else {
-			/*
-			 * Stage 1: wire internal index pages so they stay
-			 * resident for the optimistic descent.  Bounded: only
-			 * the few internal levels, never the (numerous) leaves.
-			 */
-			if (TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO)
-				(void)__memp_wire(mpf, h);
 			/*
 			 * It is possible to catch an internal page as a change
 			 * is being backed out.  Its leaf pages will be locked
