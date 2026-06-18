@@ -97,6 +97,13 @@ int __os_aio_uring_init __P((ENV *, DB_AIO_CONTEXT *));
  */
 int __os_aio_pool_init __P((ENV *, DB_AIO_CONTEXT *));
 
+/*
+ * PUBLIC: int __os_aio_iocp_init __P((ENV *, DB_AIO_CONTEXT *));
+ *	Install the Windows IOCP native file-AIO backend (HAVE_IOCP builds
+ *	only).  Returns 0 and sets ctx->backend on success.
+ */
+int __os_aio_iocp_init __P((ENV *, DB_AIO_CONTEXT *));
+
 /* Queue depth requested at create time; backends may clamp. */
 #define	DB_AIO_DEFAULT_DEPTH	64
 
