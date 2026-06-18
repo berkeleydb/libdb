@@ -44,7 +44,6 @@ typedef struct {
 	int tid;
 	DB *db;			/* this thread's own handle on the shared file */
 	DB_TXN *rtxn;		/* long-lived read txn (snap), else NULL */
-	char pad[64];
 } targ_t __attribute__((aligned(64)));
 
 static double
