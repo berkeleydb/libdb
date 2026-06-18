@@ -188,3 +188,86 @@ by the lock-manager locker region, which is the next target.  Stage 0/0.5
 (AIO) is I/O-throughput infrastructure (prefetch/async writeback) and does
 not affect this cache-resident read-scaling curve.
 
+## Profiling the >8-core slide (post-snapshot) and a benchmark critique
+
+`perf` on meh (24t), snapshot lib, `rrand` 200k in tmpfs.  The question:
+*why* does aggregate throughput peak at ~8 threads and decline, and is the
+benchmark itself fit to drive past 8 cores?
+
+### Where the time goes (t=24, shared handle)
+
+Flat profile: **40.5%** of all samples are in `lll_lock_wait` (the kernel
+futex) under `__db_pthread_mutex_lock`, split almost evenly:
+
+```
+18.25%  __db_cursor_int  (cursor allocate)   <- __db_get
+18.10%  __dbc_close      (cursor free)        <- __db_get
+```
+
+`DB->get` allocates a transient cursor and frees it **per operation**;
+both link/unlink it into the *one shared handle's* active-cursor queue
+under `dbp->mutex`.  With every thread sharing a single `db` handle, that
+one mutex serializes every `get`.  This is the dominant bottleneck once
+the root snapshot removes the buffer-pool root pin.
+
+### Proof: per-thread handles (`sepdb`) remove it
+
+| threads | rrand (shared handle) | sepdb (per-thread handles) |
+|--------:|----------------------:|---------------------------:|
+|       1 |               223 851 |                    249 302 |
+|       8 |               511 698 |          **749 896** (3.0×) |
+|      16 |               471 626 |                    666 188 |
+|      24 |               454 073 |          **675 996 (+49%)** |
+
+Per-thread handles scale near-linearly to 8 and run **+49% faster at 24
+threads**.  So the negative scaling is largely the shared-handle cursor
+mutex — a real BDB serialization, but one the benchmark triggers by the
+(common) choice of sharing one handle across all threads.
+
+### The next bottleneck underneath (sepdb, t=24)
+
+With the cursor mutex gone, the profile is dominated by
+`__memp_fget`/`__memp_fput` — the **mpool hash-bucket shared latch
+(`__db_pthread_mutex_lock`) + `__atomic_inc/dec` on the page refcount**,
+paid on every page of the descent (root via `__bam_get_root`,
+internal/leaf via `__bam_search`, unpin via `__dbc_cleanup`).  The root
+snapshot removed only the *root* fetch (1 of ~3 per descent); the
+internal and leaf pins remain.
+
+### Is the benchmark fit to drive >8 cores?
+
+- **Metric is sound** (aggregate `total/dur`); the decline is real.
+- **It induces lock-manager traffic**: the env is `DB_INIT_LOCK|DB_INIT_TXN`
+  and every `get(txn=NULL)` takes a page read lock + a transient locker.
+  A read-only probe should *also* measure `DB_READ_UNCOMMITTED` / a
+  non-locking config to separate buffer-pool from lock-manager scaling.
+- **Latent false-sharing**: `targ_t ta[256]` is 16 B (4 per cache line),
+  so adjacent threads' `ops++` share a line — but it does **not** appear
+  in the profile (the BDB mutexes dwarf it), so it is a code smell, not a
+  measured contributor.  Pad it anyway.
+- **Hardware**: meh is **12 physical cores / 24 HT**.  Aggregate peaking
+  at 8 (< 12) means software contention bites *before* the core limit;
+  the 12→24 tail is additionally bounded by hyperthreading and the
+  all-core turbo drop (3.5 GHz single → ~3.0 GHz all-core).  Even a
+  perfect read path would scale ~linearly only to ~12, then flatten.
+
+### Bottleneck ranking (measured), and what it means for the roadmap
+
+1. **Shared-handle cursor alloc/free mutex** (`__db_cursor_int` +
+   `__dbc_close` → `dbp->mutex`) — dominant (40% @ 24t).  **Not blocked**;
+   fix = a per-handle cursor cache / lock-free active-cursor list /
+   per-thread cursor reuse.  Biggest tractable win (+49% measured).
+2. **mpool pin/unpin atomics + hash-bucket latch** (`__memp_fget`/`fput`)
+   — the true read ceiling once #1 is gone; needs optimistic/seqlock
+   buffer access **+ epoch reclamation** (the same prerequisite that
+   blocks Stage 1c).
+3. **Lock-manager read locks** (transient locker + lock object per get;
+   `lockers%`).
+4. **Hardware** (12 cores, HT, all-core turbo, memory bandwidth).
+
+**Implication:** Stage 1c (lock-free *deeper-internal* descent) only
+partially addresses #2 and is blocked on reclamation; Stage 2 #5 (async
+I/O) is **orthogonal** — `rrand` is 100% cache hits with zero I/O, so it
+cannot move this curve.  The correct next scaling fix is **#1, the
+per-`get` cursor allocation mutex**, not 1c or #5.
+
