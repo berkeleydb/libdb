@@ -179,14 +179,12 @@ struct __mpool { /* SHARED */
 	 * The htab and htab_buckets fields are not thread protected as they
 	 * are initialized during mpool creation, and not modified again.
 	 *
-	 * The last_checked, lru_priority, and lru_generation fields are thread
-	 * protected by the region lock.
+	 * The last_checked field (the CLOCK eviction hand) is thread protected
+	 * by the region lock.
 	 */
 	roff_t	  htab;			/* Hash table offset. */
 	u_int32_t htab_buckets;		/* Number of hash table entries. */
 	u_int32_t last_checked;		/* Last bucket checked for free. */
-	u_int32_t lru_priority;		/* Priority counter for buffer LRU. */
-	u_int32_t lru_generation;	/* Allocation race condition detector. */
 	u_int32_t htab_mutexes;		/* Number of hash mutexes per region. */
 
 	 /*
@@ -367,17 +365,6 @@ struct __db_mpool_fstat_int { /* SHARED */
 };
 
 /*
- * The base mpool priority is 1/4th of the name space, or just under 2^30. When
- * the LRU priority counter is about to wrap (within a 128-entry 'red zone'
- * area) we adjust everybody down so that no one is larger than the new LRU
- * priority.
- */
-#define	MPOOL_LRU_MAX		UINT32_MAX
-#define	MPOOL_LRU_REDZONE	(MPOOL_LRU_MAX - 128)
-#define	MPOOL_LRU_BASE		(MPOOL_LRU_MAX / 4)
-#define	MPOOL_LRU_DECREMENT	(MPOOL_LRU_MAX - MPOOL_LRU_BASE)
-
-/*
  * Mpool priorities from low to high.  Defined in terms of fractions of the
  * buffers in the pool.
  */
@@ -387,6 +374,46 @@ struct __db_mpool_fstat_int { /* SHARED */
 #define	MPOOL_PRI_HIGH		10	/* With the dirty buffers. */
 #define	MPOOL_PRI_DIRTY		10	/* Dirty gets a 10% boost. */
 #define	MPOOL_PRI_VERY_HIGH	1	/* Add number of buffers in pool. */
+
+/*
+ * CLOCK / second-chance buffer "warmth" (scalability Stage 0).
+ *
+ * bhp->priority is reused as a small saturating warmth counter in the range
+ * [0, MPOOL_CLOCK_MAX].  A buffer access refills the warmth toward a level
+ * chosen from the access priority hint -- done read-first, so an already-warm
+ * (hot) buffer is not written at all, keeping the read path free of shared
+ * stores.  The eviction hand (__memp_alloc) decrements warmth as it sweeps and
+ * evicts a buffer once its warmth reaches 0 (second chance).
+ *
+ * This replaces the previous timestamp LRU, which wrote bhp->priority and
+ * advanced a shared c_mp->lru_priority counter on every __memp_fput, and swept
+ * the whole cache in __memp_reset_lru on wraparound.  It is also scan-resistant:
+ * bulk-scanned pages refill to a low warmth and age out before the hot set.
+ */
+#define	MPOOL_CLOCK_MAX		4	/* Sticky-hot ceiling. */
+#define	MPOOL_CLOCK_VERY_LOW	0
+#define	MPOOL_CLOCK_LOW		1
+#define	MPOOL_CLOCK_DEFAULT	2
+#define	MPOOL_CLOCK_HIGH	3
+#define	MPOOL_CLOCK_VERY_HIGH	MPOOL_CLOCK_MAX
+#define	MPOOL_CLOCK_DIRTY_BOOST	1	/* Dirty pages get +1 warmth. */
+
+/*
+ * Scan resistance (probationary admission + COOL-first eviction).
+ *
+ * Warmth is split into a COOL band [0, MPOOL_CLOCK_HOT) and a HOT band
+ * [MPOOL_CLOCK_HOT, MPOOL_CLOCK_MAX].  A freshly read/created buffer is
+ * admitted COOL (MPOOL_CLOCK_ADMIT); the access that read it climbs it one
+ * step, so a page touched only once (e.g. by a sequential scan) stays in the
+ * COOL band, while a re-referenced page crosses into the HOT band.
+ *
+ * The eviction hand ages and reclaims COOL-band buffers and leaves HOT-band
+ * buffers untouched, so a scan of any length -- which keeps supplying COOL
+ * victims -- never ages the hot working set.  HOT-band buffers are only cooled
+ * when a full sweep finds no COOL victim (the existing "aggressive" path).
+ */
+#define	MPOOL_CLOCK_HOT		MPOOL_CLOCK_DEFAULT	/* >= this is protected */
+#define	MPOOL_CLOCK_ADMIT	MPOOL_CLOCK_VERY_LOW	/* probationary warmth */
 
 /*
  * MPOOLFILE --

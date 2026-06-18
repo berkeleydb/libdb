@@ -12,7 +12,6 @@
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
 
-static int __memp_reset_lru __P((ENV *, REGINFO *));
 
 /*
  * __memp_fput_pp --
@@ -75,7 +74,8 @@ __memp_fput(dbmfp, ip, pgaddr, priority)
 	REGINFO *infop, *reginfo;
 	roff_t b_ref;
 	int region;
-	int adjust, pfactor, ret, t_ret;
+	int ret;
+	u_int32_t warmth;
 	char buf[DB_THREADID_STRLEN];
 
 	env = dbmfp->env;
@@ -202,54 +202,36 @@ unpin:
 	MUTEX_UNLOCK(env, hp->mtx_hash);
 #endif
 
-	/* Update priority values. */
+	/*
+	 * CLOCK warmth update.  Warmth encodes access frequency: each access
+	 * climbs the buffer one step toward a cap derived from the access
+	 * priority hint, and the eviction hand decrements warmth as it sweeps.
+	 * A frequently-accessed (hot) buffer climbs to its cap and then stays
+	 * there with no further store (the climb is read-first), so the hot
+	 * read path is free of shared writes; a buffer touched once by a scan
+	 * only reaches warmth 1 and is aged out well before the hot set.  We
+	 * don't lock the warmth; a benign race only mis-warms a buffer briefly.
+	 */
 	if (priority == DB_PRIORITY_VERY_LOW ||
 	    mfp->priority == MPOOL_PRI_VERY_LOW)
-		bhp->priority = 0;
-	else {
-		/*
-		 * We don't lock the LRU priority or the pages field, if
-		 * we get garbage (which won't happen on a 32-bit machine), it
-		 * only means a buffer has the wrong priority.
-		 */
-		bhp->priority = c_mp->lru_priority;
+		bhp->priority = MPOOL_CLOCK_VERY_LOW;
+	else if (priority == DB_PRIORITY_HIGH ||
+	    priority == DB_PRIORITY_VERY_HIGH) {
+		/* Explicit high-priority hint pins the buffer at the ceiling. */
+		if (bhp->priority < MPOOL_CLOCK_MAX)
+			bhp->priority = MPOOL_CLOCK_MAX;
+	} else {
+		u_int32_t cap;
 
-		switch (priority) {
-		default:
-		case DB_PRIORITY_UNCHANGED:
-			pfactor = mfp->priority;
-			break;
-		case DB_PRIORITY_VERY_LOW:
-			pfactor = MPOOL_PRI_VERY_LOW;
-			break;
-		case DB_PRIORITY_LOW:
-			pfactor = MPOOL_PRI_LOW;
-			break;
-		case DB_PRIORITY_DEFAULT:
-			pfactor = MPOOL_PRI_DEFAULT;
-			break;
-		case DB_PRIORITY_HIGH:
-			pfactor = MPOOL_PRI_HIGH;
-			break;
-		case DB_PRIORITY_VERY_HIGH:
-			pfactor = MPOOL_PRI_VERY_HIGH;
-			break;
-		}
-
-		adjust = 0;
-		if (pfactor != 0)
-			adjust = (int)c_mp->pages / pfactor;
-
-		if (F_ISSET(bhp, BH_DIRTY))
-			adjust += (int)c_mp->pages / MPOOL_PRI_DIRTY;
-
-		if (adjust > 0) {
-			if (MPOOL_LRU_REDZONE - bhp->priority >=
-			    (u_int32_t)adjust)
-				bhp->priority += adjust;
-		} else if (adjust < 0)
-			if (bhp->priority > (u_int32_t)-adjust)
-				bhp->priority += adjust;
+		cap = (priority == DB_PRIORITY_LOW ||
+		    mfp->priority == MPOOL_PRI_LOW) ?
+		    MPOOL_CLOCK_LOW : MPOOL_CLOCK_MAX;
+		if (F_ISSET(bhp, BH_DIRTY) &&
+		    cap <= MPOOL_CLOCK_MAX - MPOOL_CLOCK_DIRTY_BOOST)
+			cap += MPOOL_CLOCK_DIRTY_BOOST;
+		warmth = bhp->priority;
+		if (warmth < cap)
+			bhp->priority = warmth + 1;
 	}
 
 	/*
@@ -261,78 +243,9 @@ unpin:
 		F_CLR(bhp, BH_EXCLUSIVE);
 	MUTEX_UNLOCK(env, bhp->mtx_buf);
 
-	/*
-	 * On every buffer put we update the cache lru priority and check
-	 * for wraparound. The increment doesn't need to be atomic: occasional
-	 * lost increments are okay; __memp_reset_lru handles race conditions.
-	 */
-	if (++c_mp->lru_priority >= MPOOL_LRU_REDZONE &&
-	    (t_ret = __memp_reset_lru(env, infop)) != 0 && ret == 0)
-		ret = t_ret;
-
 	return (ret);
 }
 
-/*
- * __memp_reset_lru --
- *	Reset the cache LRU priority when it reaches the upper limit.
- */
-static int
-__memp_reset_lru(env, infop)
-	ENV *env;
-	REGINFO *infop;
-{
-	BH *bhp, *tbhp;
-	DB_MPOOL_HASH *hp;
-	MPOOL *c_mp;
-	u_int32_t bucket;
-	int reset;
-
-	/*
-	 * Update the priority so all future allocations will start at the
-	 * bottom. Lock this cache region to ensure that exactly one thread
-	 * will reset this cache's buffers.
-	 */
-	c_mp = infop->primary;
-	MPOOL_REGION_LOCK(env, infop);
-	reset = c_mp->lru_priority >= MPOOL_LRU_DECREMENT;
-	if (reset) {
-		c_mp->lru_priority -= MPOOL_LRU_DECREMENT;
-		c_mp->lru_generation++;
-	}
-	MPOOL_REGION_UNLOCK(env, infop);
-
-	if (!reset)
-		return (0);
-
-	/* Reduce the priority of every buffer in this cache region. */
-	for (hp = R_ADDR(infop, c_mp->htab),
-	    bucket = 0; bucket < c_mp->htab_buckets; ++hp, ++bucket) {
-		/*
-		 * Skip empty buckets.
-		 *
-		 * We can check for empty buckets before locking as we
-		 * only care if the pointer is zero or non-zero.
-		 */
-		if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) == NULL)
-			continue;
-
-		MUTEX_LOCK(env, hp->mtx_hash);
-		SH_TAILQ_FOREACH(bhp, &hp->hash_bucket, hq, __bh) {
-			for (tbhp = bhp; tbhp != NULL;
-			    tbhp = SH_CHAIN_PREV(tbhp, vc, __bh)) {
-				if (tbhp->priority > MPOOL_LRU_DECREMENT)
-					tbhp->priority -= MPOOL_LRU_DECREMENT;
-				else
-					tbhp->priority = 0;
-			}
-		}
-		MUTEX_UNLOCK(env, hp->mtx_hash);
-	}
-
-	COMPQUIET(env, NULL);
-	return (0);
-}
 
 /*
  * __memp_unpin_buffers --
