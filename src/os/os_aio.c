@@ -13,13 +13,6 @@
 #include "db_int.h"
 #include "dbinc/os_aio.h"
 
-struct __db_aio_context {
-	const DB_AIO_BACKEND *backend;	/* Active backend (NULL = synchronous). */
-	void		*priv;		/* Backend-private state. */
-	u_int32_t	 depth;		/* Requested queue depth. */
-	u_int32_t	 inflight;	/* Ops submitted, not yet reaped. */
-};
-
 /*
  * __os_aio_create --
  *	Create an AIO context.  Selects a platform backend if one is available
@@ -43,11 +36,12 @@ __os_aio_create(env, depth, ctxp)
 	ctx->inflight = 0;
 
 	/*
-	 * A platform backend would be probed and installed here, e.g.
-	 *	(void)__os_aio_uring_init(env, ctx);
-	 * leaving ctx->backend NULL (synchronous) on failure.  Kept as the
-	 * synchronous fallback until the io_uring backend lands.
+	 * Probe and install a platform backend; on failure the context
+	 * stays on the synchronous fallback (backend == NULL).
 	 */
+#ifdef HAVE_IO_URING
+	(void)__os_aio_uring_init(env, ctx);
+#endif
 	*ctxp = ctx;
 	return (0);
 }
@@ -126,5 +120,18 @@ __os_aio_available(env)
 	ENV *env;
 {
 	COMPQUIET(env, NULL);
-	return (0);	/* synchronous fallback only, for now */
+	return (0);	/* overridden per-context; see __os_aio_ctx_available */
+}
+
+/*
+ * __os_aio_ctx_available --
+ *	Return 1 if the given context has a real (async) backend.
+ *
+ * PUBLIC: int __os_aio_ctx_available __P((DB_AIO_CONTEXT *));
+ */
+int
+__os_aio_ctx_available(ctx)
+	DB_AIO_CONTEXT *ctx;
+{
+	return (ctx != NULL && ctx->backend != NULL);
 }

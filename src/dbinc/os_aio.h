@@ -57,6 +57,18 @@ typedef struct __db_aio_backend {
 } DB_AIO_BACKEND;
 
 /*
+ * AIO context.  Owned by the process that created it.  A NULL backend
+ * means the synchronous fallback (see os_aio.c); a platform backend
+ * installs its vtable and per-context state via priv.
+ */
+struct __db_aio_context {
+	const DB_AIO_BACKEND *backend;	/* NULL = synchronous fallback. */
+	void		*priv;		/* Backend-private state. */
+	u_int32_t	 depth;		/* Requested queue depth. */
+	u_int32_t	 inflight;	/* Ops submitted, not yet reaped. */
+};
+
+/*
  * PUBLIC: int __os_aio_create __P((ENV *, u_int32_t, DB_AIO_CONTEXT **));
  * PUBLIC: int __os_aio_submit __P((ENV *, DB_AIO_CONTEXT *, DB_AIO_OP *));
  * PUBLIC: int __os_aio_reap __P((ENV *, DB_AIO_CONTEXT *, int, int));
@@ -68,6 +80,15 @@ int __os_aio_submit __P((ENV *, DB_AIO_CONTEXT *, DB_AIO_OP *));
 int __os_aio_reap __P((ENV *, DB_AIO_CONTEXT *, int /*max*/, int /*wait*/));
 int __os_aio_destroy __P((ENV *, DB_AIO_CONTEXT *));
 int __os_aio_available __P((ENV *));	/* 1 if a real async backend is active */
+int __os_aio_ctx_available __P((DB_AIO_CONTEXT *));	/* per-context async? */
+
+/*
+ * PUBLIC: int __os_aio_uring_init __P((ENV *, DB_AIO_CONTEXT *));
+ *	Install the Linux io_uring backend on a context (HAVE_IO_URING
+ *	builds only).  Returns 0 and sets ctx->backend on success, or a
+ *	non-zero error leaving the context on the synchronous fallback.
+ */
+int __os_aio_uring_init __P((ENV *, DB_AIO_CONTEXT *));
 
 /* Queue depth requested at create time; backends may clamp. */
 #define	DB_AIO_DEFAULT_DEPTH	64
