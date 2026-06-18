@@ -46,6 +46,10 @@ __os_aio_create(env, depth, ctxp)
 	if (ctx->backend == NULL)
 		(void)__os_aio_uring_init(env, ctx);
 #endif
+#ifdef HAVE_IOCP
+	if (ctx->backend == NULL)
+		(void)__os_aio_iocp_init(env, ctx);
+#endif
 #ifdef HAVE_AIO_THREADPOOL
 	if (ctx->backend == NULL)
 		(void)__os_aio_pool_init(env, ctx);
