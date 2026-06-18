@@ -141,3 +141,50 @@ LD_LIBRARY_PATH=build_unix/.libs ./scale_bench rrand 200000 3 1 2 4 8 12 16 24
 #     snap   per-thread MVCC snapshot txn (isolates lock-manager cost)
 ```
 
+## Measured result: lock-free root snapshot (Stage 1b)
+
+A/B of `master` vs the root-snapshot build (`perf/swip-stage1-descent`),
+`scale_bench rrand`, 200 000 keys, 3 s, 3-sample medians, on `meh`
+(Xeon E5-2697 v2, 12c/24t, single socket).  Run on tmpfs (`/dev/shm`):
+the read working set is cache-resident, so this measures CPU/lock
+scaling, not disk — and it avoids meh's nvme-over-fabrics `/scratch`,
+which stalls in `submit_bio_wait` on the 536 MB cache-region write (the
+cause of every earlier "stuck" run).
+
+| threads | master ops/s | snapshot ops/s |  Δ     |
+|--------:|-------------:|---------------:|:------:|
+|       1 |      199 176 |        210 942 |  +5.9% |
+|       4 |      410 883 |        529 169 | +28.8% |
+|       8 |      459 698 |        560 587 | +21.9% |
+|      12 |      448 220 |        511 045 | +14.0% |
+|      16 |      428 569 |        491 702 | +14.7% |
+|      24 |      419 952 |        444 471 |  +5.8% |
+
+Correctness: TCL test001 (btree+hash), test003, test011 (dups), test026,
+a 50 000-op logged-env integrity check, and a concurrent stress (24
+readers verifying a hot set while 6 writers churned the tree's structure,
+0 reader mismatches) all pass.
+
+### Conclusion — is multicore scalability addressed?
+
+**Partially. A real, measured win, but not a solution.**
+
+- The snapshot is faster at *every* thread count, biggest in the
+  contended midrange (+22–29% at 4–8 threads).  This confirms the
+  per-operation pin/latch of the contended root page was a genuine
+  bottleneck, and removing it from read descents helps materially.
+- **But both** master and snapshot still **peak at ~8 threads and then
+  negatively scale** to 24 (snapshot 560 k @ 8 → 444 k @ 24).  The
+  snapshot **raises the ceiling (~+22%) without removing it.**
+- At 24 threads the contention signal has moved: `lockpart%≈0.1` (random
+  reads spread across lock partitions fine) but **`lockers%`=51–67%** —
+  the lock manager's **locker region** is now the dominant serialization
+  point (ROADMAP #4), not the buffer pool.
+
+So Stage 1b should land on its merits (correct, measured, monotonic
+improvement), but the multicore read ceiling past ~8 cores is now bounded
+by the lock-manager locker region, which is the next target.  Stage 0/0.5
+(landed) addressed a different axis (scan resistance, ~10.7×).  Stage 2
+(AIO) is I/O-throughput infrastructure (prefetch/async writeback) and does
+not affect this cache-resident read-scaling curve.
+
