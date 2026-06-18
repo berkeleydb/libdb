@@ -271,3 +271,62 @@ I/O) is **orthogonal** — `rrand` is 100% cache hits with zero I/O, so it
 cannot move this curve.  The correct next scaling fix is **#1, the
 per-`get` cursor allocation mutex**, not 1c or #5.
 
+## Scaling with transactional isolation (redesigned probe: `scale_iso`)
+
+`scale_iso` gives each thread its **own handle on the same `bench.db`**
+(removing the shared-handle cursor mutex the supported, app-level way) and
+reads under a chosen isolation level.  meh, 24t, snapshot lib, 200k keys:
+
+| isolation                            |   1t |    8t |   16t |   24t |
+|--------------------------------------|-----:|------:|------:|------:|
+| `none`  (per-op auto page read lock) | 239k | 720k | 675k | **668k** |
+| `rc`    (per-op txn, read-committed) | 129k | 363k | 139k |   119k |
+| `snap`  (long-lived MVCC txn)        | 348k | 460k | 407k |   420k |
+| `uncom` (read-uncommitted)           | 271k | 722k | 673k | **656k** |
+
+Findings:
+
+- **Isolation is not the scaling barrier.**  `none` (which *does* take and
+  release a page read lock per get) scales **identically to `uncom`**
+  (668k vs 656k at 24t, both ~3x to 8t).  You do not need to drop to
+  uncommitted reads to scale — the shared *handle*, not the read lock, was
+  the wall.  With per-thread handles, full-isolation reads hold throughput
+  to 24 threads instead of collapsing.
+- **Per-operation explicit transactions don't scale**: `rc`
+  (txn_begin/commit around every get) collapses past 8t (363k->119k).  The
+  per-op transaction machinery — locker allocation, the transaction
+  region, the commit log record — is a separate serialization point
+  (bottleneck #3).  A *long-lived* per-thread txn (`snap`) avoids it.
+- **Snapshot/MVCC** scales but carries version-lookup overhead (peaks
+  ~460k); useful when read locks must be avoided for isolation reasons.
+
+So BDB *can* scale reads to all cores under real isolation **if the
+application uses a handle per thread**.  The remaining job is to make the
+*shared-handle* path scale too, in BDB.
+
+## Designing the BDB-side cursor-allocation fix (bottleneck #1)
+
+`__db_cursor_int` (alloc) and `__dbc_close` (free) take `dbp->mutex` up to
+three times per `get` to move a transient cursor between the handle's
+single `free_queue` and `active_queue`.  Options:
+
+1. **Shard the cursor queues + their mutex** (N partitions chosen by
+   thread, like BDB already shards lock partitions / mpool regions).
+   Cleanest contention reduction (~Nx), preserves all semantics (cursors
+   stay tracked for handle-close cleanup).  Cost: N extra mutex-region
+   handles per DB handle (budget concern with many open handles), and the
+   ~8 queue-walk sites (refresh/close/secondary/stat/partition/join) must
+   iterate all partitions.  Needs full `run_std` before default-on.
+2. **Registered per-thread cursor cache** (stash transient cursors on
+   `DB_THREAD_INFO`): zero shared-mutex traffic on the hot path, but the
+   cache must be discoverable from `__db_close` to free leftover cursors,
+   which reintroduces central registration.
+3. **Lock-free `free_queue` (Treiber stack)**: removes the free-list
+   acquisitions but leaves the `active_queue` mutex — only ~1 of 3 locks.
+
+Recommended: option 1 (sharded queues) as a separate, fully-`run_std`-
+qualified PR — it is an invasive cursor-subsystem change and must not be
+rushed.  The measured prize is the gap between the shared-handle path
+(454k @ 24t) and the per-thread-handle path (668k @ 24t): **~+47%**, and
+restoring positive scaling across 8-24 threads for the common
+shared-handle usage pattern.
