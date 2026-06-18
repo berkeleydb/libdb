@@ -287,6 +287,12 @@
 #undef HAVE_MUTEX_PPC_GCC_ASSEMBLY
 
 /* Define to 1 to use POSIX 1003.1 pthread_XXX mutexes. */
+/* Define to 1 to use the thread-pool AIO offload backend. */
+#undef HAVE_AIO_THREADPOOL
+
+/* Define to 1 to use the Linux io_uring AIO backend. */
+#undef HAVE_IO_URING
+
 #undef HAVE_MUTEX_PTHREADS
 
 /* Define to 1 to use Reliant UNIX initspin mutexes. */
