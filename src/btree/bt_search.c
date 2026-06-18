@@ -49,6 +49,137 @@
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
 
+static int __bam_rsnap_refresh __P((DBC *));
+static int __bam_rsnap_child __P((DBC *, const DBT *, db_pgno_t *, DB_LSN *));
+
+/*
+ * __bam_rsnap_refresh --
+ *	Refresh this handle's private copy of the B-tree root.  Fetches the
+ *	(wired) root once under its shared latch, takes a consistent copy and
+ *	its LSN, and publishes it.  The previously-current copy is retired to
+ *	a free list (freed at handle close) so a concurrent reader still
+ *	holding it is never freed underneath -- root changes are rare, so few
+ *	copies accumulate.  Serialized by the handle mutex.
+ */
+static int
+__bam_rsnap_refresh(dbc)
+	DBC *dbc;
+{
+	BTREE *t;
+	BAM_RSNAP *snap;
+	DB *dbp;
+	DB_MPOOLFILE *mpf;
+	DB_LSN lsn;
+	ENV *env;
+	PAGE *h;
+	db_pgno_t root_pgno;
+	u_int32_t psize;
+	int ret, t_ret;
+
+	dbp = dbc->dbp;
+	env = dbp->env;
+	mpf = dbp->mpf;
+	t = dbp->bt_internal;
+	root_pgno = t->bt_root;
+	if (root_pgno == PGNO_INVALID)
+		return (0);
+
+	if ((ret = __memp_fget(mpf, &root_pgno,
+	    dbc->thread_info, dbc->txn, 0, &h)) != 0)
+		return (ret);
+	/* Wire the root so the cached buffer address stays valid/resident. */
+	(void)__memp_wire(mpf, h);
+	lsn = LSN(h);
+	psize = dbp->pgsize;
+	snap = NULL;
+	if (TYPE(h) == P_IBTREE && psize != 0 &&
+	    (ret = __os_malloc(env, sizeof(BAM_RSNAP) + psize, &snap)) == 0) {
+		snap->next = NULL;
+		snap->lsn = lsn;
+		snap->size = psize;
+		memcpy(BAM_RSNAP_PAGE(snap), h, psize);
+	}
+
+	MUTEX_LOCK(env, dbp->mutex);
+	t->bt_rootpage = h;		/* cached wired buffer (stays resident) */
+	/* Retire the previously-current copy to the free list. */
+	if (t->bt_rsnap != NULL) {
+		((BAM_RSNAP *)t->bt_rsnap)->next = t->bt_rsnap_free;
+		t->bt_rsnap_free = t->bt_rsnap;
+	}
+	t->bt_rsnap = snap;		/* NULL if the root is a leaf */
+	t->bt_rsnap_lsn = lsn;
+	MUTEX_UNLOCK(env, dbp->mutex);
+
+	if ((t_ret = __memp_fput(mpf,
+	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
+		ret = t_ret;
+	return (ret);
+}
+
+/*
+ * __bam_rsnap_child --
+ *	If this handle holds a current snapshot of the root (its LSN still
+ *	matches the live root), search the snapshot copy for the child that
+ *	the descent for "key" would take, returning that child page number and
+ *	the snapshot LSN.  Returns DB_NOTFOUND if there is no current snapshot
+ *	(the caller falls back to the normal descent and refreshes).
+ */
+static int
+__bam_rsnap_child(dbc, key, childp, snap_lsnp)
+	DBC *dbc;
+	const DBT *key;
+	db_pgno_t *childp;
+	DB_LSN *snap_lsnp;
+{
+	BTREE *t;
+	BAM_RSNAP *snap;
+	DB *dbp;
+	DB_LSN live;
+	PAGE *cp;
+	db_indx_t base, indx, lim;
+	int (*func) __P((DB *, const DBT *, const DBT *));
+	int cmp, ret;
+
+	dbp = dbc->dbp;
+	t = dbp->bt_internal;
+	snap = t->bt_rsnap;
+	if (snap == NULL || t->bt_rootpage == NULL)
+		return (DB_NOTFOUND);
+
+	/* Racy read of the live root LSN; a torn read just forces a refresh. */
+	live = LSN((PAGE *)t->bt_rootpage);
+	if (live.file != snap->lsn.file || live.offset != snap->lsn.offset)
+		return (DB_NOTFOUND);
+
+	cp = BAM_RSNAP_PAGE(snap);
+	if (TYPE(cp) != P_IBTREE)
+		return (DB_NOTFOUND);
+
+	/*
+	 * Mirror the internal-page child selection in __bam_search exactly
+	 * (same binary search, same __bam_cmp, same base->index rule), so the
+	 * child chosen is identical to a normal descent.
+	 */
+	func = t->bt_compare;
+	indx = 0;
+	cmp = 1;
+	DB_BINARY_SEARCH_FOR(base, lim, NUM_ENT(cp), O_INDX) {
+		DB_BINARY_SEARCH_INCR(indx, base, lim, O_INDX);
+		if ((ret = __bam_cmp(dbc, key, cp, indx, func, &cmp)) != 0)
+			return (DB_NOTFOUND);
+		if (cmp == 0)
+			break;
+		if (cmp > 0)
+			DB_BINARY_SEARCH_SHIFT_BASE(indx, base, lim, O_INDX);
+	}
+	if (cmp != 0)
+		indx = base > 0 ? base - O_INDX : base;
+	*childp = GET_BINTERNAL(dbp, cp, indx)->pgno;
+	*snap_lsnp = snap->lsn;
+	return (0);
+}
+
 /*
  * __bam_get_root --
  *	Fetch the root of a tree and see if we want to keep
@@ -286,6 +417,9 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	int (*func) __P((DB *, const DBT *, const DBT *));
 	u_int32_t get_mode, wait;
 	u_int8_t level, saved_level;
+	int from_snap;
+	db_pgno_t snap_child;
+	DB_LSN snap_lsn;
 
 	if (F_ISSET(dbc, DBC_OPD))
 		LOCK_CHECK_OFF(dbc->thread_info);
@@ -316,6 +450,31 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	 */
 
 	start_pgno = saved_pg = root_pgno;
+
+	/*
+	 * Root-snapshot fast path (option B): for a plain read lookup of the
+	 * main tree (not write/stack/parent/next/del/min/max, not OPD, not
+	 * recno/recnum, not multiversion), take the first child from this
+	 * handle's private root copy and begin the descent there, never
+	 * fetching (pinning/latching) the contended live root.  The copy's
+	 * validity is confirmed against the live root LSN here, and re-checked
+	 * after the child is fetched (below) to close the window where a
+	 * concurrent root change could make the child stale.
+	 */
+	from_snap = 0;
+	if (root_pgno == PGNO_INVALID && key != NULL && slevel == LEAFLEVEL &&
+	    LF_ISSET(SR_READ) && !LF_ISSET(SR_WRITE | SR_PARENT | SR_STACK |
+	    SR_NEXT | SR_DEL | SR_START | SR_BOTH | SR_MIN | SR_MAX |
+	    SR_STK_ONLY) && !F_ISSET(dbc, DBC_OPD) &&
+	    dbc->dbtype == DB_BTREE && !F_ISSET(cp, C_RECNUM) &&
+	    atomic_read(&mpf->mfp->multiversion) == 0 &&
+	    LOGGING_ON(env) && !F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+		if (__bam_rsnap_child(dbc, key, &snap_child, &snap_lsn) == 0) {
+			start_pgno = snap_child;
+			from_snap = 1;
+		} else
+			(void)__bam_rsnap_refresh(dbc);
+	}
 	saved_level = MAXBTREELEVEL;
 retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel, flags, &stack)) != 0)
 		goto err;
@@ -349,6 +508,31 @@ retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel, flags, &stack)) != 0)
 		goto done;
 
 	BT_STK_CLR(cp);
+
+	/*
+	 * Root-snapshot re-check: we began the descent at a child taken from
+	 * the root copy.  If the live root LSN no longer matches the snapshot,
+	 * the root changed (e.g. a split added a level, or a merge freed the
+	 * child) while we were fetching the child, so the child may be stale or
+	 * reused.  Release it and restart the descent from the real root.
+	 */
+	if (from_snap) {
+		DB_LSN now;
+
+		now = LSN((PAGE *)t->bt_rootpage);
+		if (now.file != snap_lsn.file || now.offset != snap_lsn.offset) {
+			if ((ret = __memp_fput(mpf,
+			    dbc->thread_info, h, dbc->priority)) != 0)
+				goto err;
+			h = NULL;
+			(void)__LPUT(dbc, lock);
+			LOCK_INIT(lock);
+			from_snap = 0;
+			start_pgno = PGNO_INVALID;
+			(void)__bam_rsnap_refresh(dbc);
+			goto retry;
+		}
+	}
 
 	/* Choose a comparison function. */
 	func = F_ISSET(dbc, DBC_OPD) ?

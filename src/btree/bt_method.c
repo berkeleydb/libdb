@@ -113,6 +113,20 @@ __bam_db_close(dbp)
 	if (t->re_source != NULL)
 		__os_free(dbp->env, t->re_source);
 
+	/* Free root snapshots: the current copy and all retired copies. */
+	{
+		BAM_RSNAP *s, *snext;
+
+		for (s = t->bt_rsnap; s != NULL; s = snext) {
+			snext = s->next;
+			__os_free(dbp->env, s);
+		}
+		for (s = t->bt_rsnap_free; s != NULL; s = snext) {
+			snext = s->next;
+			__os_free(dbp->env, s);
+		}
+	}
+
 	__os_free(dbp->env, t);
 	dbp->bt_internal = NULL;
 
