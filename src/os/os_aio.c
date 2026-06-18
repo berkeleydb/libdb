@@ -83,11 +83,13 @@ __os_aio_reap(env, ctx, max, wait)
 	DB_AIO_CONTEXT *ctx;
 	int max, wait;
 {
+	if (ctx->backend != NULL)
+		return (ctx->backend->reap(env, ctx, max, wait));
+
+	/* Synchronous fallback: nothing is ever outstanding. */
 	COMPQUIET(env, NULL);
 	COMPQUIET(max, 0);
 	COMPQUIET(wait, 0);
-	if (ctx->backend != NULL)
-		return (ctx->backend->reap(env, ctx, max, wait));
 	return (0);
 }
 
