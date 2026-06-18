@@ -175,6 +175,20 @@ fi
 # Respect the environment LIBS settings
 LIBSO_LIBS="$LIBS"
 
+# Asynchronous I/O backends for the buffer pool (os_aio).  The Linux
+# io_uring backend is used when liburing is available; the portable
+# thread-pool offload is used everywhere pthreads exist.  Both are
+# optional -- without either, os_aio falls back to synchronous I/O.
+AC_CHECK_HEADER(liburing.h, [
+	AC_CHECK_LIB(uring, io_uring_queue_init, [
+		AC_DEFINE(HAVE_IO_URING,
+		    1, [Define to 1 to use the Linux io_uring AIO backend.])
+		LIBSO_LIBS="$LIBSO_LIBS -luring"
+		LIBS="$LIBS -luring"])])
+AC_CHECK_HEADER(pthread.h, [
+	AC_DEFINE(HAVE_AIO_THREADPOOL,
+	    1, [Define to 1 to use the thread-pool AIO offload backend.])])
+
 # This is where we handle stuff that autoconf can't handle: compiler,
 # preprocessor and load flags, libraries that the standard tests don't
 # look for.
