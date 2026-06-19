@@ -74,7 +74,7 @@ __bam_rsnap_refresh(dbc)
 	PAGE *h;
 	db_pgno_t root_pgno;
 	u_int32_t psize;
-	int ret, t_ret;
+	int ret, t_ret, wired;
 
 	dbp = dbc->dbp;
 	env = dbp->env;
@@ -87,12 +87,20 @@ __bam_rsnap_refresh(dbc)
 	if ((ret = __memp_fget(mpf, &root_pgno,
 	    dbc->thread_info, dbc->txn, 0, &h)) != 0)
 		return (ret);
-	/* Wire the root so the cached buffer address stays valid/resident. */
-	(void)__memp_wire(mpf, h);
+	/*
+	 * Wire the root so the cached buffer address stays resident: only then
+	 * may we keep a pointer to the frame for later lock-free LSN reads.  If
+	 * wiring did not take (mmap'd page, or the per-region wired cap was
+	 * reached), we must not cache the frame -- it is evictable and the
+	 * pointer could dangle -- so we disarm the fast path for this handle
+	 * (bt_rootpage/bt_rsnap NULL) and fall back to the normal descent.
+	 */
+	wired = 0;
+	(void)__memp_wire(mpf, h, &wired);
 	lsn = LSN(h);
 	psize = dbp->pgsize;
 	snap = NULL;
-	if (TYPE(h) == P_IBTREE && psize != 0 &&
+	if (wired && TYPE(h) == P_IBTREE && psize != 0 &&
 	    (ret = __os_malloc(env, sizeof(BAM_RSNAP) + psize, &snap)) == 0) {
 		snap->next = NULL;
 		snap->lsn = lsn;
@@ -101,13 +109,14 @@ __bam_rsnap_refresh(dbc)
 	}
 
 	MUTEX_LOCK(env, dbp->mutex);
-	t->bt_rootpage = h;		/* cached wired buffer (stays resident) */
+	/* Cache the wired live-root buffer; NULL if it could not be wired. */
+	t->bt_rootpage = wired ? h : NULL;
 	/* Retire the previously-current copy to the free list. */
 	if (t->bt_rsnap != NULL) {
 		((BAM_RSNAP *)t->bt_rsnap)->next = t->bt_rsnap_free;
 		t->bt_rsnap_free = t->bt_rsnap;
 	}
-	t->bt_rsnap = snap;		/* NULL if the root is a leaf */
+	t->bt_rsnap = snap;		/* NULL if not wired or the root is a leaf */
 	t->bt_rsnap_lsn = lsn;
 	MUTEX_UNLOCK(env, dbp->mutex);
 
@@ -268,7 +277,7 @@ retry:	if (lock_mode == DB_LOCK_WRITE)
 	 * Unwired when the page is freed (__db_free) or the file closes.
 	 */
 	if (h->pgno == BAM_ROOT_PGNO(dbc))
-		(void)__memp_wire(mpf, h);
+		(void)__memp_wire(mpf, h, NULL);
 
 	/*
 	 * Decide if we need to dirty and/or lock this page.
