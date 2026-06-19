@@ -31,6 +31,7 @@ int __db_testcopy __P((ENV *, DB *, const char *));
 #endif
 int __db_testdocopy __P((ENV *, const char *));
 int __db_cursor_int __P((DB *, DB_THREAD_INFO *, DB_TXN *, DBTYPE, db_pgno_t, int, DB_LOCKER *, DBC **));
+int __db_cq_active_any __P((DB *));
 int __db_put __P((DB *, DB_THREAD_INFO *, DB_TXN *, DBT *, DBT *, u_int32_t));
 int __db_del __P((DB *, DB_THREAD_INFO *, DB_TXN *, DBT *, u_int32_t));
 int __db_sync __P((DB *));

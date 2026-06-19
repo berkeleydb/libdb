@@ -1419,6 +1419,15 @@ typedef enum {
 #define	DB_TXN_CKP		(-30888)/* Encountered ckp record in log. */
 #define	DB_VERIFY_FATAL		(-30887)/* DB->verify cannot proceed. */
 
+/*
+ * Number of partitions the per-handle cursor free/active queues are sharded
+ * into.  Must be a power of two so the partition index can be a mask of the
+ * thread id.  A threaded (DB_THREAD) handle allocates this many extra
+ * process-only mutexes; non-threaded handles allocate none (the queues are
+ * accessed without locking, as before).
+ */
+#define	DB_CURSOR_NPART		8
+
 /* Database handle. */
 struct __db {
 	/*******************************************************
@@ -1505,20 +1514,33 @@ struct __db {
 	/*
 	 * Cursor queues.
 	 *
+	 * The free and active cursor queues are sharded into DB_CURSOR_NPART
+	 * partitions, each with its own mutex, so concurrent cursor alloc/free
+	 * on a shared (DB_THREAD) handle does not serialize on a single mutex.
+	 * A cursor records its partition (DBC->part) at allocation so it is
+	 * always returned to the same partition, even when closed by a
+	 * different thread than allocated it.  The join queue is not sharded
+	 * (join cursors are rare and not on the hot path); it stays under
+	 * dbp->mutex.
+	 *
 	 * !!!
 	 * Explicit representations of structures from queue.h.
-	 * TAILQ_HEAD(__cq_fq, __dbc) free_queue;
-	 * TAILQ_HEAD(__cq_aq, __dbc) active_queue;
+	 * Per partition:
+	 *   TAILQ_HEAD(__cq_fq, __dbc) free_queue;
+	 *   TAILQ_HEAD(__cq_aq, __dbc) active_queue;
 	 * TAILQ_HEAD(__cq_jq, __dbc) join_queue;
 	 */
-	struct __cq_fq {
-		struct __dbc *tqh_first;
-		struct __dbc **tqh_last;
-	} free_queue;
-	struct __cq_aq {
-		struct __dbc *tqh_first;
-		struct __dbc **tqh_last;
-	} active_queue;
+	struct __cq_part {
+		db_mutex_t mutex;		/* Partition mutex (or INVALID). */
+		struct __cq_fq {
+			struct __dbc *tqh_first;
+			struct __dbc **tqh_last;
+		} free_queue;
+		struct __cq_aq {
+			struct __dbc *tqh_first;
+			struct __dbc **tqh_last;
+		} active_queue;
+	} cq_parts[DB_CURSOR_NPART];
 	struct __cq_jq {
 		struct __dbc *tqh_first;
 		struct __dbc **tqh_last;
@@ -2024,10 +2046,17 @@ struct __dbc {
 	/*
 	 * Active/free cursor queues.
 	 *
+	 * "part" is the index of the DB handle cursor-queue partition this
+	 * cursor belongs to (DB->cq_parts[part]).  It is assigned when the
+	 * cursor is allocated and never changes, so the cursor is returned to
+	 * the same partition when freed -- even if it is closed by a different
+	 * thread than allocated it.
+	 *
 	 * !!!
 	 * Explicit representations of structures from queue.h.
 	 * TAILQ_ENTRY(__dbc) links;
 	 */
+	u_int32_t part;		/* Cursor-queue partition index. */
 	struct {
 		DBC *tqe_next;
 		DBC **tqe_prev;
