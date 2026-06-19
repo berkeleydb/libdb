@@ -91,6 +91,21 @@ int __os_aio_ctx_available __P((DB_AIO_CONTEXT *));	/* per-context async? */
 int __os_aio_uring_init __P((ENV *, DB_AIO_CONTEXT *));
 
 /*
+ * PUBLIC: int __os_aio_posix_init __P((ENV *, DB_AIO_CONTEXT *));
+ *	Install the POSIX.1b aio backend (aio_read/aio_write + aio_suspend) on
+ *	a context (HAVE_AIO_POSIX builds only).  Native async path on
+ *	Solaris/illumos and macOS; portable fallback ahead of the thread pool.
+ */
+int __os_aio_posix_init __P((ENV *, DB_AIO_CONTEXT *));
+
+/*
+ * PUBLIC: int __os_aio_kqueue_init __P((ENV *, DB_AIO_CONTEXT *));
+ *	Install the BSD kqueue + aio backend (EVFILT_AIO completions) on a
+ *	context (HAVE_AIO_KQUEUE builds only; FreeBSD/BSD, not macOS).
+ */
+int __os_aio_kqueue_init __P((ENV *, DB_AIO_CONTEXT *));
+
+/*
  * PUBLIC: int __os_aio_pool_init __P((ENV *, DB_AIO_CONTEXT *));
  *	Install the portable thread-pool offload backend (HAVE_AIO_THREADPOOL
  *	builds only).  Returns 0 and sets ctx->backend on success.
