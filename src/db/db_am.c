@@ -24,6 +24,26 @@ static int __dbc_set_priority __P((DBC *, DB_CACHE_PRIORITY));
 static int __dbc_get_priority __P((DBC *, DB_CACHE_PRIORITY* ));
 
 /*
+ * __db_cq_active_any --
+ *	Return 1 if any cursor-queue partition of this handle has an active
+ *	cursor, else 0.  Used by the (non-hot) paths that must check for
+ *	open cursors across all partitions.
+ *
+ * PUBLIC: int __db_cq_active_any __P((DB *));
+ */
+int
+__db_cq_active_any(dbp)
+	DB *dbp;
+{
+	u_int32_t i;
+
+	for (i = 0; i < DB_CURSOR_NPART; i++)
+		if (TAILQ_FIRST(&dbp->cq_parts[i].active_queue) != NULL)
+			return (1);
+	return (0);
+}
+
+/*
  * __db_cursor_int --
  *	Internal routine to create a cursor.
  *
@@ -45,12 +65,18 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	DBC_INTERNAL *cp;
 	DB_LOCKREQ req;
 	ENV *env;
+	struct __cq_part *cqp;
 	db_threadid_t tid;
+	u_int32_t part;
 	int allocated, envlid, ret;
 	pid_t pid;
 
 	env = dbp->env;
 	allocated = envlid = 0;
+
+	/* Pick this thread's cursor-queue partition. */
+	part = DB_CURSOR_PART_PICK(dbp, ip);
+	cqp = &dbp->cq_parts[part];
 
 	/*
 	 * If dbcp is non-NULL it is assumed to point to an area to initialize
@@ -60,43 +86,44 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	 * right type.  With off page dups we may have different kinds
 	 * of cursors on the queue for a single database.
 	 */
-	MUTEX_LOCK(env, dbp->mutex);
-
 #ifndef HAVE_NO_DB_REFCOUNT
 	/*
 	 * If this DBP is being logged then refcount the log filename
-	 * relative to this transaction. We do this here because we have
-	 * the dbp->mutex which protects the refcount.  We want to avoid
-	 * calling the function if the transaction handle has a shared parent
-	 * locker or we are duplicating a cursor.  This includes the case of
-	 * creating an off page duplicate cursor.
-	 * If we knew this cursor will not be used in an update, we could avoid
-	 * this, but we don't have that information.
+	 * relative to this transaction. We do this here under dbp->mutex,
+	 * which protects the refcount (the cursor queues have their own
+	 * per-partition mutexes).  We want to avoid calling the function if
+	 * the transaction handle has a shared parent locker or we are
+	 * duplicating a cursor.  This includes the case of creating an off
+	 * page duplicate cursor.  If we knew this cursor will not be used in
+	 * an update, we could avoid this, but we don't have that information.
 	 */
 	if (IS_REAL_TXN(txn) &&
 	    !LF_ISSET(DBC_OPD | DBC_DUPLICATE) &&
 	    !F_ISSET(dbp, DB_AM_RECOVER) &&
-	    dbp->log_filename != NULL && !IS_REP_CLIENT(env) &&
-	    (ret = __txn_record_fname(env, txn, dbp->log_filename)) != 0) {
+	    dbp->log_filename != NULL && !IS_REP_CLIENT(env)) {
+		MUTEX_LOCK(env, dbp->mutex);
+		ret = __txn_record_fname(env, txn, dbp->log_filename);
 		MUTEX_UNLOCK(env, dbp->mutex);
-		return (ret);
+		if (ret != 0)
+			return (ret);
 	}
-
 #endif
 
-	TAILQ_FOREACH(dbc, &dbp->free_queue, links)
+	CQ_LOCK(env, cqp);
+	TAILQ_FOREACH(dbc, &cqp->free_queue, links)
 		if (dbtype == dbc->dbtype) {
-			TAILQ_REMOVE(&dbp->free_queue, dbc, links);
+			TAILQ_REMOVE(&cqp->free_queue, dbc, links);
 			F_CLR(dbc, ~DBC_OWN_LID);
 			break;
 		}
-	MUTEX_UNLOCK(env, dbp->mutex);
+	CQ_UNLOCK(env, cqp);
 
 	if (dbc == NULL) {
 		if ((ret = __os_calloc(env, 1, sizeof(DBC), &dbc)) != 0)
 			return (ret);
 		allocated = 1;
 		dbc->flags = 0;
+		dbc->part = part;
 
 		dbc->dbp = dbp;
 		dbc->dbenv = dbp->dbenv;
@@ -408,10 +435,10 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	else
 		ENV_GET_THREAD_INFO(env, dbc->thread_info);
 
-	MUTEX_LOCK(env, dbp->mutex);
-	TAILQ_INSERT_TAIL(&dbp->active_queue, dbc, links);
+	CQ_LOCK(env, cqp);
+	TAILQ_INSERT_TAIL(&cqp->active_queue, dbc, links);
 	F_SET(dbc, DBC_ACTIVE);
-	MUTEX_UNLOCK(env, dbp->mutex);
+	CQ_UNLOCK(env, cqp);
 
 	*dbcp = dbc;
 	return (0);

@@ -78,6 +78,7 @@ __db_associate_pp(dbp, txn, sdbp, callback, flags)
 	DBC *sdbc;
 	DB_THREAD_INFO *ip;
 	ENV *env;
+	u_int32_t cq_i;
 	int handle_check, ret, t_ret, txn_local;
 
 	env = dbp->env;
@@ -101,7 +102,7 @@ __db_associate_pp(dbp, txn, sdbp, callback, flags)
 	 * to make sure that no older cursors are lying around when we make
 	 * the transition.
 	 */
-	if (TAILQ_FIRST(&sdbp->active_queue) != NULL ||
+	if (__db_cq_active_any(sdbp) ||
 	    TAILQ_FIRST(&sdbp->join_queue) != NULL) {
 		__db_errx(env, DB_STR("0572",
     "Databases may not become secondary indices while cursors are open"));
@@ -127,9 +128,11 @@ __db_associate_pp(dbp, txn, sdbp, callback, flags)
 	if ((ret = __db_check_txn(dbp, txn, DB_LOCK_INVALIDID, 0)) != 0)
 		goto err;
 
-	while ((sdbc = TAILQ_FIRST(&sdbp->free_queue)) != NULL)
-		if ((ret = __dbc_destroy(sdbc)) != 0)
-			goto err;
+	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
+		while ((sdbc =
+		    TAILQ_FIRST(&sdbp->cq_parts[cq_i].free_queue)) != NULL)
+			if ((ret = __dbc_destroy(sdbc)) != 0)
+				goto err;
 
 	ret = __db_associate(dbp, ip, txn, sdbp, callback, flags);
 

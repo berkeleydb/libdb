@@ -104,18 +104,29 @@ __dbc_close(dbc)
 	 * access specific cursor close routine, btree depends on having that
 	 * order of operations.
 	 */
-	MUTEX_LOCK(env, dbp->mutex);
-
+	/*
+	 * Remove each cursor from its own partition's active queue under that
+	 * partition's mutex.  dbc and opd may live in different partitions, so
+	 * lock each separately rather than relying on a single handle mutex.
+	 */
 	if (opd != NULL) {
-		DB_ASSERT(env, F_ISSET(opd, DBC_ACTIVE));
-		F_CLR(opd, DBC_ACTIVE);
-		TAILQ_REMOVE(&dbp->active_queue, opd, links);
-	}
-	DB_ASSERT(env, F_ISSET(dbc, DBC_ACTIVE));
-	F_CLR(dbc, DBC_ACTIVE);
-	TAILQ_REMOVE(&dbp->active_queue, dbc, links);
+		struct __cq_part *opd_cqp = DB_CURSOR_PART(opd);
 
-	MUTEX_UNLOCK(env, dbp->mutex);
+		DB_ASSERT(env, F_ISSET(opd, DBC_ACTIVE));
+		CQ_LOCK(env, opd_cqp);
+		F_CLR(opd, DBC_ACTIVE);
+		TAILQ_REMOVE(&opd_cqp->active_queue, opd, links);
+		CQ_UNLOCK(env, opd_cqp);
+	}
+	{
+		struct __cq_part *dbc_cqp = DB_CURSOR_PART(dbc);
+
+		DB_ASSERT(env, F_ISSET(dbc, DBC_ACTIVE));
+		CQ_LOCK(env, dbc_cqp);
+		F_CLR(dbc, DBC_ACTIVE);
+		TAILQ_REMOVE(&dbc_cqp->active_queue, dbc, links);
+		CQ_UNLOCK(env, dbc_cqp);
+	}
 
 	/* Call the access specific cursor close routine. */
 	if ((t_ret =
@@ -153,15 +164,23 @@ __dbc_close(dbc)
 	if ((txn = dbc->txn) != NULL)
 		txn->cursors--;
 
-	/* Move the cursor(s) to the free queue. */
-	MUTEX_LOCK(env, dbp->mutex);
+	/* Move the cursor(s) to their partition free queues. */
 	if (opd != NULL) {
+		struct __cq_part *opd_cqp = DB_CURSOR_PART(opd);
+
 		if (txn != NULL)
 			txn->cursors--;
-		TAILQ_INSERT_TAIL(&dbp->free_queue, opd, links);
+		CQ_LOCK(env, opd_cqp);
+		TAILQ_INSERT_TAIL(&opd_cqp->free_queue, opd, links);
+		CQ_UNLOCK(env, opd_cqp);
 	}
-	TAILQ_INSERT_TAIL(&dbp->free_queue, dbc, links);
-	MUTEX_UNLOCK(env, dbp->mutex);
+	{
+		struct __cq_part *dbc_cqp = DB_CURSOR_PART(dbc);
+
+		CQ_LOCK(env, dbc_cqp);
+		TAILQ_INSERT_TAIL(&dbc_cqp->free_queue, dbc, links);
+		CQ_UNLOCK(env, dbc_cqp);
+	}
 
 	if (txn != NULL && F_ISSET(txn, TXN_PRIVATE) && txn->cursors == 0 &&
 	    (t_ret = __txn_commit(txn, 0)) != 0 && ret == 0)
@@ -187,10 +206,14 @@ __dbc_destroy(dbc)
 	dbp = dbc->dbp;
 	env = dbp->env;
 
-	/* Remove the cursor from the free queue. */
-	MUTEX_LOCK(env, dbp->mutex);
-	TAILQ_REMOVE(&dbp->free_queue, dbc, links);
-	MUTEX_UNLOCK(env, dbp->mutex);
+	/* Remove the cursor from its partition's free queue. */
+	{
+		struct __cq_part *cqp = DB_CURSOR_PART(dbc);
+
+		CQ_LOCK(env, cqp);
+		TAILQ_REMOVE(&cqp->free_queue, dbc, links);
+		CQ_UNLOCK(env, cqp);
+	}
 
 	/* Free up allocated memory. */
 	if (dbc->my_rskey.data != NULL)
