@@ -230,8 +230,15 @@ __db_init(dbp, flags)
 	dbp->alt_close = NULL;
 	LOCK_INIT(dbp->handle_lock);
 
-	TAILQ_INIT(&dbp->free_queue);
-	TAILQ_INIT(&dbp->active_queue);
+	{
+		u_int32_t cqi;
+
+		for (cqi = 0; cqi < DB_CURSOR_NPART; cqi++) {
+			dbp->cq_parts[cqi].mutex = MUTEX_INVALID;
+			TAILQ_INIT(&dbp->cq_parts[cqi].free_queue);
+			TAILQ_INIT(&dbp->cq_parts[cqi].active_queue);
+		}
+	}
 	TAILQ_INIT(&dbp->join_queue);
 	LIST_INIT(&dbp->s_secondaries);
 
