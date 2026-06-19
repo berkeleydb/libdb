@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
+#include "dbinc/os_aio.h"
 #include "dbinc/db_page.h"
 #include "dbinc/hash.h"
 
