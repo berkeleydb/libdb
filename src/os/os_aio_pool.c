@@ -3,21 +3,23 @@
  *
  * Thread-pool offload backend for the os_aio abstraction.
  *
- * The portable async path for every platform that lacks a native file
- * completion engine (i.e. everything but Linux io_uring and Windows
- * IOCP): a small fixed pool of worker threads drains a submission FIFO,
- * performs each op with the normal synchronous __os_io, and posts the
- * result to a completion FIFO that __os_aio_reap drains.  Regular files
- * are not pollable, so this offload is exactly how libxtc (src/ptc/
- * blocking.c + aio.c, ISC) does file AIO off io_uring/IOCP; the pool
- * structure (worker loop, start-on-first-use, shutdown-join) is adapted
- * from it, with a completion queue + condvar replacing libxtc's
- * fiber-park wakeup.
+ * The portable async path for platforms without a native file completion
+ * engine (everything but Linux io_uring and Windows IOCP).  A single,
+ * process-wide pool of worker threads -- created lazily on the first
+ * submitted op, not at context creation -- drains a global submission FIFO,
+ * performs each op with the normal synchronous __os_io, and routes the result
+ * to the submitting context's completion FIFO, which __os_aio_reap drains.
  *
- * Built when configured with HAVE_AIO_THREADPOOL.  POSIX uses pthreads;
- * a Win32 path (CreateThread/CONDITION_VARIABLE) lands behind the same
- * surface.  Otherwise this is an empty translation unit and contexts
- * fall back to the synchronous path in os_aio.c.
+ * Design notes:
+ *   - Lazy + global: a context (one per environment) costs nothing until it
+ *     actually issues an async write, and many environments share one pool
+ *     rather than each spawning its own threads.
+ *   - Fork-safe: a pthread_atfork child handler resets the pool to "unstarted"
+ *     (the worker threads do not survive fork) so a child re-spawns lazily on
+ *     its next submit and never deadlocks on an inherited-locked pool mutex.
+ *   - The pool structure is adapted from libxtc (src/ptc/blocking.c, ISC).
+ *
+ * Built when configured with HAVE_AIO_THREADPOOL; otherwise an empty TU.
  */
 #include "db_config.h"
 
@@ -30,140 +32,146 @@
 
 #define	AIO_POOL_THREADS	4
 
-typedef struct __aio_pool_item {
-	DB_AIO_OP		 op;	/* caller's op, copied. */
-	int			 result;	/* 0 or errno. */
-	struct __aio_pool_item	*next;
-} AIO_POOL_ITEM;
+/* One unit of work on the global pool. */
+typedef struct __aio_work {
+	ENV			*env;
+	DB_AIO_OP		 op;		/* copied from the caller */
+	int			 result;	/* 0 or errno */
+	struct __aio_pool_state	*owner;		/* completion routed here */
+	struct __aio_work	*next;
+} AIO_WORK;
 
+/* Per-context (per-environment) completion state. */
 typedef struct __aio_pool_state {
-	ENV		*env;
-	pthread_mutex_t	 lock;
-	pthread_cond_t	 work_cv;	/* workers wait for submissions. */
-	pthread_cond_t	 done_cv;	/* reap waits for completions. */
-	AIO_POOL_ITEM	*sub_head, *sub_tail;	/* submission FIFO. */
-	AIO_POOL_ITEM	*cmp_head, *cmp_tail;	/* completion FIFO. */
-	pthread_t	 threads[AIO_POOL_THREADS];
-	int		 nthreads;
-	int		 stopping;
+	pthread_cond_t	 done_cv;		/* reap waits here */
+	AIO_WORK	*cmp_head, *cmp_tail;	/* this context's completions */
 } AIO_POOL_STATE;
 
-static int __aio_pool_submit __P((ENV *, DB_AIO_CONTEXT *, DB_AIO_OP *));
-static int __aio_pool_reap __P((ENV *, DB_AIO_CONTEXT *, int, int));
-static int __aio_pool_destroy __P((ENV *, DB_AIO_CONTEXT *));
+/*
+ * Process-wide lazy worker pool.  Shared by every context; reset by the
+ * pthread_atfork child handler.  g_lock protects the submission FIFO and
+ * every context's completion FIFO; each context has its own done_cv.
+ */
+static pthread_mutex_t	g_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t	g_work_cv = PTHREAD_COND_INITIALIZER;
+static AIO_WORK	       *g_sub_head, *g_sub_tail;
+static pthread_t	g_threads[AIO_POOL_THREADS];
+static int		g_nthreads, g_started, g_stopping;
+static pthread_once_t	g_atfork_once = PTHREAD_ONCE_INIT;
 
-static const DB_AIO_BACKEND __aio_pool_backend = {
-	"threadpool",
-	__aio_pool_submit,
-	__aio_pool_reap,
-	NULL,
-	__aio_pool_destroy
-};
-
-/* FIFO helpers (caller holds st->lock). */
-static void
-__aio_q_push(head, tail, it)
-	AIO_POOL_ITEM **head, **tail, *it;
+static AIO_WORK *
+__aio_q_pop(head, tail)
+	AIO_WORK **head, **tail;
 {
-	it->next = NULL;
-	if (*tail != NULL)
-		(*tail)->next = it;
-	else
-		*head = it;
-	*tail = it;
+	AIO_WORK *w;
+
+	if ((w = *head) == NULL)
+		return (NULL);
+	if ((*head = w->next) == NULL)
+		*tail = NULL;
+	w->next = NULL;
+	return (w);
 }
 
-static AIO_POOL_ITEM *
-__aio_q_pop(head, tail)
-	AIO_POOL_ITEM **head, **tail;
+static void
+__aio_q_push(head, tail, w)
+	AIO_WORK **head, **tail, *w;
 {
-	AIO_POOL_ITEM *it;
-
-	if ((it = *head) == NULL)
-		return (NULL);
-	if ((*head = it->next) == NULL)
-		*tail = NULL;
-	it->next = NULL;
-	return (it);
+	w->next = NULL;
+	if (*tail != NULL)
+		(*tail)->next = w;
+	else
+		*head = w;
+	*tail = w;
 }
 
 static void *
 __aio_pool_worker(arg)
 	void *arg;
 {
-	AIO_POOL_STATE *st;
-	AIO_POOL_ITEM *it;
+	AIO_WORK *w;
 	size_t nio;
-	int ret;
 
-	st = arg;
+	COMPQUIET(arg, NULL);
 	for (;;) {
-		(void)pthread_mutex_lock(&st->lock);
-		while (st->sub_head == NULL && !st->stopping)
-			(void)pthread_cond_wait(&st->work_cv, &st->lock);
-		if (st->stopping && st->sub_head == NULL) {
-			(void)pthread_mutex_unlock(&st->lock);
+		(void)pthread_mutex_lock(&g_lock);
+		while (g_sub_head == NULL && !g_stopping)
+			(void)pthread_cond_wait(&g_work_cv, &g_lock);
+		if (g_stopping && g_sub_head == NULL) {
+			(void)pthread_mutex_unlock(&g_lock);
 			return (NULL);
 		}
-		it = __aio_q_pop(&st->sub_head, &st->sub_tail);
-		(void)pthread_mutex_unlock(&st->lock);
+		w = __aio_q_pop(&g_sub_head, &g_sub_tail);
+		(void)pthread_mutex_unlock(&g_lock);
 
-		/* Run the op synchronously on this worker thread. */
 		nio = 0;
-		ret = __os_io(st->env, it->op.op, it->op.fhp, it->op.pgno,
-		    it->op.pagesize, 0, it->op.pagesize,
-		    (u_int8_t *)it->op.buf, &nio);
-		it->result = ret;
+		w->result = __os_io(w->env, w->op.op, w->op.fhp, w->op.pgno,
+		    w->op.pagesize, 0, w->op.pagesize,
+		    (u_int8_t *)w->op.buf, &nio);
 
-		(void)pthread_mutex_lock(&st->lock);
-		__aio_q_push(&st->cmp_head, &st->cmp_tail, it);
-		(void)pthread_cond_signal(&st->done_cv);
-		(void)pthread_mutex_unlock(&st->lock);
+		(void)pthread_mutex_lock(&g_lock);
+		__aio_q_push(&w->owner->cmp_head, &w->owner->cmp_tail, w);
+		(void)pthread_cond_signal(&w->owner->done_cv);
+		(void)pthread_mutex_unlock(&g_lock);
 	}
 }
 
-/*
- * __os_aio_pool_init --
- *	Bring up the worker pool and attach the backend to the context.
- *
- * PUBLIC: int __os_aio_pool_init __P((ENV *, DB_AIO_CONTEXT *));
- */
-int
-__os_aio_pool_init(env, ctx)
-	ENV *env;
-	DB_AIO_CONTEXT *ctx;
+static void
+__aio_atfork_prepare()
 {
-	AIO_POOL_STATE *st;
-	int i, ret;
+	(void)pthread_mutex_lock(&g_lock);
+}
 
-	if ((ret = __os_calloc(env, 1, sizeof(*st), &st)) != 0)
-		return (ret);
-	st->env = env;
-	if (pthread_mutex_init(&st->lock, NULL) != 0)
-		goto err0;
-	if (pthread_cond_init(&st->work_cv, NULL) != 0)
-		goto err1;
-	if (pthread_cond_init(&st->done_cv, NULL) != 0)
-		goto err2;
+static void
+__aio_atfork_parent()
+{
+	(void)pthread_mutex_unlock(&g_lock);
+}
 
+static void
+__aio_atfork_child()
+{
+	/*
+	 * The worker threads did not survive the fork.  Reset the pool to
+	 * unstarted (re-init the lock we held across the fork, drop inherited
+	 * submissions) so the child re-spawns lazily on its next submit and
+	 * never blocks on a pool mutex no live thread will release.
+	 */
+	(void)pthread_mutex_init(&g_lock, NULL);
+	(void)pthread_cond_init(&g_work_cv, NULL);
+	g_sub_head = g_sub_tail = NULL;
+	g_nthreads = 0;
+	g_started = 0;
+	g_stopping = 0;
+}
+
+static void
+__aio_install_atfork()
+{
+	(void)pthread_atfork(__aio_atfork_prepare,
+	    __aio_atfork_parent, __aio_atfork_child);
+}
+
+/* Start the pool on first use.  Caller holds g_lock.  Returns 0 on success. */
+static int
+__aio_pool_start_locked()
+{
+	int i;
+
+	if (g_started)
+		return (0);
+	g_stopping = 0;
+	g_nthreads = 0;
 	for (i = 0; i < AIO_POOL_THREADS; i++) {
-		if (pthread_create(&st->threads[i], NULL,
-		    __aio_pool_worker, st) != 0)
+		if (pthread_create(&g_threads[i], NULL,
+		    __aio_pool_worker, NULL) != 0)
 			break;
-		st->nthreads++;
+		g_nthreads++;
 	}
-	if (st->nthreads == 0)
-		goto err3;
-
-	ctx->priv = st;
-	ctx->backend = &__aio_pool_backend;
+	if (g_nthreads == 0)
+		return (-1);
+	g_started = 1;
 	return (0);
-
-err3:	(void)pthread_cond_destroy(&st->done_cv);
-err2:	(void)pthread_cond_destroy(&st->work_cv);
-err1:	(void)pthread_mutex_destroy(&st->lock);
-err0:	__os_free(env, st);
-	return (ret == 0 ? DB_OPNOTSUP : ret);
 }
 
 static int
@@ -173,29 +181,31 @@ __aio_pool_submit(env, ctx, aio)
 	DB_AIO_OP *aio;
 {
 	AIO_POOL_STATE *st;
-	AIO_POOL_ITEM *it;
+	AIO_WORK *w;
 	int ret;
 
+	(void)pthread_once(&g_atfork_once, __aio_install_atfork);
 	st = ctx->priv;
-	if ((ret = __os_calloc(env, 1, sizeof(*it), &it)) != 0)
+	if ((ret = __os_calloc(env, 1, sizeof(*w), &w)) != 0)
 		return (ret);
-	it->op = *aio;			/* copy: caller's op may be transient. */
-	it->result = 0;
+	w->env = env;
+	w->op = *aio;			/* caller's op may be transient. */
+	w->result = 0;
+	w->owner = st;
 
-	(void)pthread_mutex_lock(&st->lock);
-	__aio_q_push(&st->sub_head, &st->sub_tail, it);
+	(void)pthread_mutex_lock(&g_lock);
+	if (__aio_pool_start_locked() != 0) {
+		(void)pthread_mutex_unlock(&g_lock);
+		__os_free(env, w);
+		return (DB_OPNOTSUP);	/* caller writes synchronously */
+	}
+	__aio_q_push(&g_sub_head, &g_sub_tail, w);
 	ctx->inflight++;
-	(void)pthread_cond_signal(&st->work_cv);
-	(void)pthread_mutex_unlock(&st->lock);
+	(void)pthread_cond_signal(&g_work_cv);
+	(void)pthread_mutex_unlock(&g_lock);
 	return (0);
 }
 
-/*
- * __aio_pool_reap --
- *	Drain completions, invoking each op's callback.  With wait set and
- *	ops outstanding, block until at least one completes.  Callbacks run
- *	without the lock held.
- */
 static int
 __aio_pool_reap(env, ctx, max, wait)
 	ENV *env;
@@ -203,34 +213,34 @@ __aio_pool_reap(env, ctx, max, wait)
 	int max, wait;
 {
 	AIO_POOL_STATE *st;
-	AIO_POOL_ITEM *it;
+	AIO_WORK *w;
 	int got;
 
 	st = ctx->priv;
 	got = 0;
 
-	(void)pthread_mutex_lock(&st->lock);
+	(void)pthread_mutex_lock(&g_lock);
 	if (wait)
 		while (st->cmp_head == NULL && ctx->inflight != 0)
-			(void)pthread_cond_wait(&st->done_cv, &st->lock);
+			(void)pthread_cond_wait(&st->done_cv, &g_lock);
 
 	for (;;) {
 		if (max >= 0 && got >= max)
 			break;
-		if ((it = __aio_q_pop(&st->cmp_head, &st->cmp_tail)) == NULL)
+		if ((w = __aio_q_pop(&st->cmp_head, &st->cmp_tail)) == NULL)
 			break;
 		if (ctx->inflight != 0)
 			ctx->inflight--;
-		(void)pthread_mutex_unlock(&st->lock);
+		(void)pthread_mutex_unlock(&g_lock);
 
-		if (it->op.done != NULL)
-			it->op.done(env, it->op.cookie, it->result);
-		__os_free(env, it);
+		if (w->op.done != NULL)
+			w->op.done(env, w->op.cookie, w->result);
+		__os_free(env, w);
 		got++;
 
-		(void)pthread_mutex_lock(&st->lock);
+		(void)pthread_mutex_lock(&g_lock);
 	}
-	(void)pthread_mutex_unlock(&st->lock);
+	(void)pthread_mutex_unlock(&g_lock);
 	return (got);
 }
 
@@ -240,30 +250,57 @@ __aio_pool_destroy(env, ctx)
 	DB_AIO_CONTEXT *ctx;
 {
 	AIO_POOL_STATE *st;
-	AIO_POOL_ITEM *it;
-	int i;
+	AIO_WORK *w;
 
 	if ((st = ctx->priv) == NULL)
 		return (0);
 
-	(void)pthread_mutex_lock(&st->lock);
-	st->stopping = 1;
-	(void)pthread_cond_broadcast(&st->work_cv);
-	(void)pthread_mutex_unlock(&st->lock);
-	for (i = 0; i < st->nthreads; i++)
-		(void)pthread_join(st->threads[i], NULL);
+	/* Drain any writes still in flight so no worker references st. */
+	while (ctx->inflight != 0)
+		(void)__aio_pool_reap(env, ctx, -1, 1);
 
-	/* Discard any uncollected completions (and pending submissions). */
-	while ((it = __aio_q_pop(&st->cmp_head, &st->cmp_tail)) != NULL)
-		__os_free(env, it);
-	while ((it = __aio_q_pop(&st->sub_head, &st->sub_tail)) != NULL)
-		__os_free(env, it);
+	(void)pthread_mutex_lock(&g_lock);
+	while ((w = __aio_q_pop(&st->cmp_head, &st->cmp_tail)) != NULL)
+		__os_free(env, w);
+	(void)pthread_mutex_unlock(&g_lock);
 
 	(void)pthread_cond_destroy(&st->done_cv);
-	(void)pthread_cond_destroy(&st->work_cv);
-	(void)pthread_mutex_destroy(&st->lock);
 	__os_free(env, st);
 	ctx->priv = NULL;
+	return (0);
+}
+
+static const DB_AIO_BACKEND __aio_pool_backend = {
+	"threadpool",
+	__aio_pool_submit,
+	__aio_pool_reap,
+	NULL,
+	__aio_pool_destroy
+};
+
+/*
+ * __os_aio_pool_init --
+ *	Attach the thread-pool backend to a context.  No worker threads are
+ *	created here; the shared pool starts lazily on the first submit.
+ *
+ * PUBLIC: int __os_aio_pool_init __P((ENV *, DB_AIO_CONTEXT *));
+ */
+int
+__os_aio_pool_init(env, ctx)
+	ENV *env;
+	DB_AIO_CONTEXT *ctx;
+{
+	AIO_POOL_STATE *st;
+	int ret;
+
+	if ((ret = __os_calloc(env, 1, sizeof(*st), &st)) != 0)
+		return (ret);
+	if (pthread_cond_init(&st->done_cv, NULL) != 0) {
+		__os_free(env, st);
+		return (DB_OPNOTSUP);
+	}
+	ctx->priv = st;
+	ctx->backend = &__aio_pool_backend;
 	return (0);
 }
 
