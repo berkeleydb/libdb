@@ -175,16 +175,37 @@ fi
 # Respect the environment LIBS settings
 LIBSO_LIBS="$LIBS"
 
-# Asynchronous I/O backends for the buffer pool (os_aio).  The Linux
-# io_uring backend is used when liburing is available; the portable
-# thread-pool offload is used everywhere pthreads exist.  Both are
-# optional -- without either, os_aio falls back to synchronous I/O.
+# Asynchronous I/O backends for the buffer pool (os_aio), selected at
+# runtime in preference order: io_uring (Linux) > IOCP (Windows) >
+# kqueue+aio (BSD) > POSIX aio (Solaris/illumos, macOS) > thread-pool
+# offload (last-resort fallback).  All are optional -- without any, os_aio
+# falls back to synchronous I/O.
 AC_CHECK_HEADER(liburing.h, [
 	AC_CHECK_LIB(uring, io_uring_queue_init, [
 		AC_DEFINE(HAVE_IO_URING,
 		    1, [Define to 1 to use the Linux io_uring AIO backend.])
 		LIBSO_LIBS="$LIBSO_LIBS -luring"
 		LIBS="$LIBS -luring"])])
+
+# POSIX aio: aio_read/aio_write may live in libc (BSD/macOS) or librt
+# (Solaris/illumos, glibc).  Record the library so os_aio_posix links.
+AC_CHECK_HEADER(aio.h, [
+	AC_SEARCH_LIBS(aio_read, [rt aio], [
+		AC_DEFINE(HAVE_AIO_POSIX,
+		    1, [Define to 1 to use the POSIX aio backend.])])])
+
+# kqueue+aio (BSD, notably FreeBSD): needs EVFILT_AIO and, crucially, the
+# sigev_notify_kqueue member of struct sigevent so a completed aiocb posts a
+# kevent.  macOS has EVFILT_AIO but lacks sigev_notify_kqueue, so it is
+# excluded here and uses the POSIX aio backend instead.
+AC_CHECK_MEMBER([struct sigevent.sigev_notify_kqueue],
+    [AC_CHECK_DECL([EVFILT_AIO], [
+	AC_DEFINE(HAVE_AIO_KQUEUE,
+	    1, [Define to 1 to use the BSD kqueue+aio backend.])],
+	[], [[#include <sys/event.h>]])],
+    [], [[#include <signal.h>
+#include <aio.h>]])
+
 AC_CHECK_HEADER(pthread.h, [
 	AC_DEFINE(HAVE_AIO_THREADPOOL,
 	    1, [Define to 1 to use the thread-pool AIO offload backend.])])
@@ -265,7 +286,50 @@ CXXFLAGS=${CXXFLAGS-"$CFLAGS"}
 # The default compiler is cc (NOT gcc), the default CFLAGS is as specified
 # above, NOT what is set by AC_PROG_CC, as it won't set optimization flags
 # for any compiler other than gcc.
+#
+# Berkeley DB is written in K&R (old-style) C: function definitions name
+# their parameters in a list following the parenthesis, with the prototype
+# supplied separately via the __P() macro.  C23 (gnu23) removed old-style
+# definitions from the language, so a modern Autoconf (>= 2.72) AC_PROG_CC,
+# which probes -std=gnu23 first and adopts it, turns every definition in the
+# tree into a hard error.  Suppress that probe by pre-seeding the C11/C23
+# feature-test cache variables to "no" so AC_PROG_CC adds no -std flag, then
+# pin a K&R-compatible standard (gnu99) ourselves below.
+ac_cv_prog_cc_c23=no
+ac_cv_prog_cc_c11=no
 AC_PROG_CC(cc gcc)
+
+# A modern Autoconf may still splice -std=gnu23 (or -std=c23) directly into
+# $CC despite the cache pre-seeding above.  Strip it so the K&R-incompatible
+# standard cannot win, then pin gnu99 in CFLAGS below.
+CC=`echo "$CC" | sed -e 's/ -std=gnu23//g' -e 's/ -std=c23//g'`
+
+# Pin a K&R-compatible C standard.  gnu99 keeps old-style definitions legal
+# (and retains the GNU extensions the tree relies on) under compilers that
+# would otherwise default to C23.
+case " $CFLAGS " in
+*" -std="*)	;;			# caller already chose a standard
+*)		CFLAGS="$CFLAGS -std=gnu99";;
+esac
+
+# The tree is deliberately K&R.  Even under gnu99, a sufficiently new clang
+# still warns on every old-style definition (-Wdeprecated-non-prototype) and
+# on sub-int K&R parameters whose default-argument promotion differs from the
+# ANSI prototype (-Wknr-promoted-parameter).  Both are inherent to the
+# intentional K&R style, so silence exactly those two warnings where the
+# compiler supports the flag.  Keep all other warnings.
+for db_knr_flag in -Wno-deprecated-non-prototype -Wno-knr-promoted-parameter; do
+	AS_VAR_PUSHDEF([db_knr_cv], [db_cv_cflag$db_knr_flag])
+	AC_CACHE_CHECK([whether $CC accepts $db_knr_flag], [db_knr_cv],
+	    [save_cflags="$CFLAGS"
+	     CFLAGS="$CFLAGS $db_knr_flag -Werror"
+	     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [])],
+		[AS_VAR_SET([db_knr_cv], [yes])],
+		[AS_VAR_SET([db_knr_cv], [no])])
+	     CFLAGS="$save_cflags"])
+	AS_VAR_IF([db_knr_cv], [yes], [CFLAGS="$CFLAGS $db_knr_flag"])
+	AS_VAR_POPDEF([db_knr_cv])
+done
 
 # We know what compiler we're going to use, now.  Set per-compiler flags.
 if test "$GCC" = "yes"; then
@@ -280,11 +344,6 @@ if test "$GCC" = "yes"; then
 	else
 		CFLAGS=`echo "$CFLAGS" | sed 's/-O /-O3 /g'`
 	fi
-
-	# Suppress K&R function declaration warnings for legacy codebase
-	# Berkeley DB has many K&R style function declarations that would
-	# require extensive refactoring to modernize to ANSI C prototypes
-	CFLAGS="$CFLAGS -Wno-deprecated-non-prototype"
 else
 	case "$host_os" in
 	hpux11.0*)	;;
