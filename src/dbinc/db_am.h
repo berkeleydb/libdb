@@ -12,6 +12,32 @@
 extern "C" {
 #endif
 
+/*
+ * Cursor-queue partition selection.
+ *
+ * Choose a partition for a cursor from the allocating thread so that threads
+ * sharing a DB handle spread their cursor alloc/free across the per-handle
+ * partitions instead of serializing on one mutex.  The thread id (pid) is
+ * mixed and masked to [0, DB_CURSOR_NPART).  When there is no thread info
+ * (non-threaded handle or an internal path), partition 0 is used; a
+ * non-threaded handle does no locking anyway.  DB_CURSOR_NPART is a power of
+ * two so the mask is exact.
+ *
+ * DB_CURSOR_PART(dbc)  -- the partition struct a cursor belongs to.
+ * CQ_LOCK/CQ_UNLOCK    -- lock/unlock a partition's mutex (no-op when the
+ *                         handle is not threaded, i.e. the mutex is INVALID,
+ *                         exactly as the old single dbp->mutex behaved).
+ */
+#define	DB_CURSOR_PART_PICK(dbp, ip)					\
+	((u_int32_t)(((ip) == NULL ? 0 :				\
+	    ((uintptr_t)(ip)->dbth_pid * 2654435761U)) >> 16) &		\
+	    (DB_CURSOR_NPART - 1))
+
+#define	DB_CURSOR_PART(dbc)	(&(dbc)->dbp->cq_parts[(dbc)->part])
+
+#define	CQ_LOCK(env, part)	MUTEX_LOCK(env, (part)->mutex)
+#define	CQ_UNLOCK(env, part)	MUTEX_UNLOCK(env, (part)->mutex)
+
 struct __db_foreign_info; \
 			typedef struct __db_foreign_info DB_FOREIGN_INFO;
 

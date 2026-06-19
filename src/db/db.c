@@ -499,6 +499,23 @@ __env_setup(dbp, txn, fname, dname, id, flags)
 		return (ret);
 
 	/*
+	 * For a threaded handle, allocate the per-partition cursor-queue
+	 * mutexes too, so concurrent cursor alloc/free spreads across
+	 * DB_CURSOR_NPART partitions instead of serializing on dbp->mutex.
+	 * Non-threaded handles leave these MUTEX_INVALID (CQ_LOCK is then a
+	 * no-op, matching the old unlocked single-queue behavior).
+	 */
+	if (LF_ISSET(DB_THREAD)) {
+		u_int32_t cqi;
+
+		for (cqi = 0; cqi < DB_CURSOR_NPART; cqi++)
+			if ((ret = __mutex_alloc(env, MTX_DB_HANDLE,
+			    DB_MUTEX_PROCESS_ONLY,
+			    &dbp->cq_parts[cqi].mutex)) != 0)
+				return (ret);
+	}
+
+	/*
 	 * Set up a bookkeeping entry for this database in the log region,
 	 * if such a region exists.  Note that even if we're in recovery
 	 * or a replication client, where we won't log registries, we'll
@@ -803,7 +820,7 @@ __db_refresh(dbp, txn, flags, deferred_closep, reuse)
 	ENV *env;
 	REGENV *renv;
 	REGINFO *infop;
-	u_int32_t save_flags;
+	u_int32_t cq_i, save_flags;
 	int resync, ret, t_ret;
 
 	ret = 0;
@@ -882,24 +899,34 @@ __db_refresh(dbp, txn, flags, deferred_closep, reuse)
 	 * routine.  Note that any failure on a close is considered "really
 	 * bad" and we just break out of the loop and force forward.
 	 */
-	resync = TAILQ_FIRST(&dbp->active_queue) == NULL ? 0 : 1;
-	while ((dbc = TAILQ_FIRST(&dbp->active_queue)) != NULL) {
-		if (dbc->txn != NULL)
-			TAILQ_REMOVE(&(dbc->txn->my_cursors), dbc, txn_cursors);
-
-		if ((t_ret = __dbc_close(dbc)) != 0) {
-			if (ret == 0)
-				ret = t_ret;
+	resync = 0;
+	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
+		if (TAILQ_FIRST(&dbp->cq_parts[cq_i].active_queue) != NULL) {
+			resync = 1;
 			break;
 		}
-	}
+	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
+		while ((dbc =
+		    TAILQ_FIRST(&dbp->cq_parts[cq_i].active_queue)) != NULL) {
+			if (dbc->txn != NULL)
+				TAILQ_REMOVE(
+				    &(dbc->txn->my_cursors), dbc, txn_cursors);
 
-	while ((dbc = TAILQ_FIRST(&dbp->free_queue)) != NULL)
-		if ((t_ret = __dbc_destroy(dbc)) != 0) {
-			if (ret == 0)
-				ret = t_ret;
-			break;
+			if ((t_ret = __dbc_close(dbc)) != 0) {
+				if (ret == 0)
+					ret = t_ret;
+				break;
+			}
 		}
+
+	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
+		while ((dbc =
+		    TAILQ_FIRST(&dbp->cq_parts[cq_i].free_queue)) != NULL)
+			if ((t_ret = __dbc_destroy(dbc)) != 0) {
+				if (ret == 0)
+					ret = t_ret;
+				break;
+			}
 
 	/*
 	 * Close any outstanding join cursors.  Join cursors destroy themselves
@@ -1158,6 +1185,16 @@ never_opened:
 	if ((t_ret = __mutex_free(env, &dbp->mutex)) != 0 && ret == 0)
 		ret = t_ret;
 
+	/* Discard the per-partition cursor-queue mutexes (if allocated). */
+	{
+		u_int32_t cqi;
+
+		for (cqi = 0; cqi < DB_CURSOR_NPART; cqi++)
+			if ((t_ret = __mutex_free(env,
+			    &dbp->cq_parts[cqi].mutex)) != 0 && ret == 0)
+				ret = t_ret;
+	}
+
 	/* Discard any memory allocated for the file and database names. */
 	if (dbp->fname != NULL) {
 		__os_free(dbp->env, dbp->fname);
@@ -1215,6 +1252,7 @@ __db_disassociate(sdbp)
 	DB *sdbp;
 {
 	DBC *dbc;
+	u_int32_t cq_i;
 	int ret, t_ret;
 
 	ret = 0;
@@ -1229,7 +1267,7 @@ __db_disassociate(sdbp)
 	 * the middle of a close, so there's really no turning back.)
 	 */
 	if (sdbp->s_refcnt != 1 ||
-	    TAILQ_FIRST(&sdbp->active_queue) != NULL ||
+	    __db_cq_active_any(sdbp) ||
 	    TAILQ_FIRST(&sdbp->join_queue) != NULL) {
 		__db_errx(sdbp->env, DB_STR("0674",
 "Closing a primary DB while a secondary DB has active cursors is unsafe"));
@@ -1237,9 +1275,11 @@ __db_disassociate(sdbp)
 	}
 	sdbp->s_refcnt = 0;
 
-	while ((dbc = TAILQ_FIRST(&sdbp->free_queue)) != NULL)
-		if ((t_ret = __dbc_destroy(dbc)) != 0 && ret == 0)
-			ret = t_ret;
+	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
+		while ((dbc =
+		    TAILQ_FIRST(&sdbp->cq_parts[cq_i].free_queue)) != NULL)
+			if ((t_ret = __dbc_destroy(dbc)) != 0 && ret == 0)
+				ret = t_ret;
 
 	F_CLR(sdbp, DB_AM_SECONDARY);
 	return (ret);
@@ -1343,18 +1383,26 @@ __db_log_page(dbp, txn, lsn, pgno, page)
 	for (*countp = 0;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
 	    ldbp = TAILQ_NEXT(ldbp, dblistlinks)) {
-loop:		MUTEX_LOCK(env, ldbp->mutex);
-		TAILQ_FOREACH(dbc, &ldbp->active_queue, links)
-			if ((ret = (func)(dbc, my_dbc,
-			    countp, pgno, indx, args)) != 0)
+		u_int32_t cq_i;
+
+		for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++) {
+			struct __cq_part *cqp = &ldbp->cq_parts[cq_i];
+
+loop:			CQ_LOCK(env, cqp);
+			TAILQ_FOREACH(dbc, &cqp->active_queue, links)
+				if ((ret = (func)(dbc, my_dbc,
+				    countp, pgno, indx, args)) != 0)
+					break;
+			/*
+			 * We use the error to communicate that function
+			 * dropped the mutex.
+			 */
+			if (ret == DB_LOCK_NOTGRANTED)
+				goto loop;
+			CQ_UNLOCK(env, cqp);
+			if (ret != 0)
 				break;
-		/*
-		 * We use the error to communicate that function
-		 * dropped the mutex.
-		 */
-		if (ret == DB_LOCK_NOTGRANTED)
-			goto loop;
-		MUTEX_UNLOCK(env, ldbp->mutex);
+		}
 		if (ret != 0)
 			break;
 	}
