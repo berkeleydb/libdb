@@ -301,23 +301,6 @@ err:	return (ret);
 }
 
 /*
- * MEMP_PGW --
- *	State carried across the prep / I/O / finish phases of a page write,
- *	so the write can be issued synchronously (__memp_pgwrite) or
- *	asynchronously (the checkpoint/sync path), sharing one copy of the
- *	WAL-ordering, pgout, and bookkeeping logic.
- */
-typedef struct __memp_pgw {
-	ENV		*env;
-	DB_MPOOLFILE	*dbmfp;
-	DB_MPOOL_HASH	*hp;
-	BH		*bhp;
-	MPOOLFILE	*mfp;
-	void		*buf;		/* page image to write (bhp->buf or copy) */
-	int		 writers_inced;	/* mfp->writers was incremented */
-} MEMP_PGW;
-
-/*
  * __memp_pgwrite_prep --
  *	Everything before the page write: WAL flush, write-ahead verification,
  *	backup coordination, and pgout.  On return *do_iop is set if there is a
@@ -520,6 +503,183 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 			    __memp_fn(dbmfp), (u_long)bhp->pgno);
 	}
 	return (__memp_pgwrite_finish(&c, did_io, ret));
+}
+
+/*
+ * __memp_aio_writeback_done --
+ *	os_aio completion callback for an async checkpoint write.  Records the
+ *	result only; the finish + reference release run in the reaping thread
+ *	(via __memp_aio_drain), so no latches are taken in this callback.
+ */
+static void
+__memp_aio_writeback_done(env, cookie, io_ret)
+	ENV *env;
+	void *cookie;
+	int io_ret;
+{
+	MEMP_AIO_W *w;
+
+	COMPQUIET(env, NULL);
+	w = cookie;
+	w->io_ret = io_ret;
+	w->done = 1;
+}
+
+/*
+ * __memp_aio_writeback_finish --
+ *	Complete one async checkpoint write: run the shared page-write finish,
+ *	then release the held file-handle reference (mirrors __memp_bhwrite's
+ *	tail; opened is always 0 on the async fast path).
+ */
+static int
+__memp_aio_writeback_finish(dbmp, w)
+	DB_MPOOL *dbmp;
+	MEMP_AIO_W *w;
+{
+	DB_MPOOLFILE *dbmfp;
+	ENV *env;
+	MPOOLFILE *mfp;
+	int ret;
+
+	env = dbmp->env;
+	ret = __memp_pgwrite_finish(&w->ctx, 1, w->io_ret);
+
+	dbmfp = w->dbmfp;
+	mfp = dbmfp->mfp;
+	MUTEX_LOCK(env, dbmp->mutex);
+	if (!w->opened && dbmfp->ref == 1) {
+		if (!F_ISSET(dbmfp, MP_FLUSH)) {
+			F_SET(dbmfp, MP_FLUSH);
+			MUTEX_LOCK(env, mfp->mutex);
+			if (!F_ISSET(dbmfp, MP_FOR_FLUSH)) {
+				mfp->neutral_cnt++;
+				F_SET(dbmfp, MP_FOR_FLUSH);
+			}
+			MUTEX_UNLOCK(env, mfp->mutex);
+		}
+	} else
+		--dbmfp->ref;
+	MUTEX_UNLOCK(env, dbmp->mutex);
+	return (ret);
+}
+
+/*
+ * __memp_bhwrite_async --
+ *	Asynchronous variant of __memp_bhwrite for the checkpoint/sync path.
+ *	For the common case -- a durable, already-open file handle -- it
+ *	prepares the write and submits it via os_aio, holding the buffer pin
+ *	(the caller's ref + shared mtx_buf) and a file-handle reference until
+ *	completion; *deferredp is set and the caller must later reap via
+ *	__memp_aio_drain.  Dead/temporary/extent/unopened/read-only files and
+ *	the skip/error cases are handled synchronously here (*deferredp == 0).
+ *
+ * PUBLIC: int __memp_bhwrite_async __P((DB_MPOOL *, DB_MPOOL_HASH *,
+ * PUBLIC:     MPOOLFILE *, BH *, struct __db_aio_context *, MEMP_AIO_W *,
+ * PUBLIC:     int *));
+ */
+int
+__memp_bhwrite_async(dbmp, hp, mfp, bhp, aioc, w, deferredp)
+	DB_MPOOL *dbmp;
+	DB_MPOOL_HASH *hp;
+	MPOOLFILE *mfp;
+	BH *bhp;
+	struct __db_aio_context *aioc;
+	MEMP_AIO_W *w;
+	int *deferredp;
+{
+	DB_AIO_OP op;
+	DB_MPOOLFILE *dbmfp;
+	ENV *env;
+	size_t nw;
+	int do_io, ret;
+
+	env = dbmp->env;
+	*deferredp = 0;
+
+	/* Only an already-open durable handle takes the async fast path. */
+	if (mfp->deadfile)
+		return (__memp_bhwrite(dbmp, hp, mfp, bhp, 1));
+	MUTEX_LOCK(env, dbmp->mutex);
+	TAILQ_FOREACH(dbmfp, &dbmp->dbmfq, q)
+		if (dbmfp->mfp == mfp && !F_ISSET(dbmfp, MP_READONLY)) {
+			++dbmfp->ref;
+			break;
+		}
+	MUTEX_UNLOCK(env, dbmp->mutex);
+	if (dbmfp == NULL || dbmfp->fhp == NULL) {
+		if (dbmfp != NULL) {
+			MUTEX_LOCK(env, dbmp->mutex);
+			--dbmfp->ref;
+			MUTEX_UNLOCK(env, dbmp->mutex);
+		}
+		return (__memp_bhwrite(dbmp, hp, mfp, bhp, 1));
+	}
+
+	/* Prepare the write (WAL flush + pgout) into the slot's context. */
+	ret = __memp_pgwrite_prep(env, dbmfp, hp, bhp, &w->ctx, &do_io);
+	if (ret != 0 || !do_io) {
+		ret = __memp_pgwrite_finish(&w->ctx, 0, ret);
+		MUTEX_LOCK(env, dbmp->mutex);
+		--dbmfp->ref;
+		MUTEX_UNLOCK(env, dbmp->mutex);
+		return (ret);
+	}
+
+	w->bhp = bhp;
+	w->dbmfp = dbmfp;
+	w->opened = 0;
+	w->io_ret = 0;
+	w->done = 0;
+
+	op.op = DB_IO_WRITE;
+	op.fhp = dbmfp->fhp;
+	op.pgno = bhp->pgno;
+	op.pagesize = w->ctx.mfp->pagesize;
+	op.buf = w->ctx.buf;
+	op.cookie = w;
+	op.done = __memp_aio_writeback_done;
+	if ((ret = __os_aio_submit(env, aioc, &op)) != 0) {
+		/* Submit failed: complete the write synchronously. */
+		ret = __os_io(env, DB_IO_WRITE, dbmfp->fhp, bhp->pgno,
+		    op.pagesize, 0, op.pagesize, w->ctx.buf, &nw);
+		ret = __memp_pgwrite_finish(&w->ctx, 1, ret);
+		MUTEX_LOCK(env, dbmp->mutex);
+		--dbmfp->ref;
+		MUTEX_UNLOCK(env, dbmp->mutex);
+		return (ret);
+	}
+	*deferredp = 1;
+	return (0);
+}
+
+/*
+ * __memp_aio_drain --
+ *	Reap all "n" outstanding async checkpoint writes, run each completion
+ *	(BH_DIRTY clear + file-handle release), and release each buffer pin.
+ *	Returns the number of writes completed (n).
+ *
+ * PUBLIC: int __memp_aio_drain __P((ENV *, DB_MPOOL *,
+ * PUBLIC:     struct __db_aio_context *, MEMP_AIO_W *, int));
+ */
+int
+__memp_aio_drain(env, dbmp, aioc, w, n)
+	ENV *env;
+	DB_MPOOL *dbmp;
+	struct __db_aio_context *aioc;
+	MEMP_AIO_W *w;
+	int n;
+{
+	int got, j;
+
+	for (got = 0; got < n; )
+		got += __os_aio_reap(env, aioc, -1, 1);
+	for (j = 0; j < n; j++) {
+		(void)__memp_aio_writeback_finish(dbmp, &w[j]);
+		DB_ASSERT(env, atomic_read(&w[j].bhp->ref) > 0);
+		atomic_dec(env, &w[j].bhp->ref);
+		MUTEX_UNLOCK(env, w[j].bhp->mtx_buf);
+	}
+	return (n);
 }
 
 /*
