@@ -730,5 +730,35 @@ struct __bh_frozen_a {
 }
 #endif
 
+/*
+ * MEMP_PGW --
+ *	Page-write state shared across the prep / I-O / finish phases so a
+ *	write can be issued synchronously or asynchronously from one copy of
+ *	the WAL-ordering, pgout, and bookkeeping logic.
+ * MEMP_AIO_W --
+ *	One asynchronous checkpoint write in flight: the prep state plus the
+ *	pinned buffer and held file-handle reference to release on completion.
+ */
+typedef struct __memp_pgw {
+	ENV		*env;
+	DB_MPOOLFILE	*dbmfp;
+	DB_MPOOL_HASH	*hp;
+	BH		*bhp;
+	MPOOLFILE	*mfp;
+	void		*buf;		/* page image to write (bhp->buf or copy) */
+	int		 writers_inced;	/* mfp->writers was incremented */
+} MEMP_PGW;
+
+typedef struct __memp_aio_w {
+	MEMP_PGW	 ctx;		/* prep state */
+	BH		*bhp;		/* pinned buffer (ref + shared mtx_buf) */
+	DB_MPOOLFILE	*dbmfp;		/* held file-handle reference */
+	int		 opened;	/* dbmfp opened here (close on finish) */
+	volatile int	 io_ret;	/* write result (set by completion) */
+	volatile int	 done;		/* completion observed */
+} MEMP_AIO_W;
+
+#define	MEMP_AIO_WINDOW	16		/* max checkpoint writes in flight */
+
 #include "dbinc_auto/mp_ext.h"
 #endif /* !_DB_MP_H_ */
