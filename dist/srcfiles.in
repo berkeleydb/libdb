@@ -255,6 +255,8 @@ src/os/os_abs.c							android
 src/os/os_addrinfo.c						vx
 src/os/os_aio.c							android vx vxsmall 
 src/os/os_aio_uring.c						android vx vxsmall 
+src/os/os_aio_posix.c						android vx vxsmall 
+src/os/os_aio_kqueue.c						android vx vxsmall 
 src/os/os_aio_pool.c						android vx vxsmall 
 src/os/os_aio_iocp.c						android vx vxsmall 
 src/os/os_alloc.c						android vx vxsmall 

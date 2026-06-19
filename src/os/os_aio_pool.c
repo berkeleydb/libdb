@@ -45,6 +45,8 @@ typedef struct __aio_work {
 typedef struct __aio_pool_state {
 	pthread_cond_t	 done_cv;		/* reap waits here */
 	AIO_WORK	*cmp_head, *cmp_tail;	/* this context's completions */
+	DB_AIO_CONTEXT	*ctx;			/* owning context (inflight) */
+	struct __aio_pool_state *reg_next;	/* live-context registry link */
 } AIO_POOL_STATE;
 
 /*
@@ -58,6 +60,7 @@ static AIO_WORK	       *g_sub_head, *g_sub_tail;
 static pthread_t	g_threads[AIO_POOL_THREADS];
 static int		g_nthreads, g_started, g_stopping;
 static pthread_once_t	g_atfork_once = PTHREAD_ONCE_INIT;
+static AIO_POOL_STATE  *g_ctx_registry;	/* all live contexts (g_lock). */
 
 static AIO_WORK *
 __aio_q_pop(head, tail)
@@ -131,11 +134,25 @@ __aio_atfork_parent()
 static void
 __aio_atfork_child()
 {
+	AIO_POOL_STATE *st;
+
 	/*
 	 * The worker threads did not survive the fork.  Reset the pool to
 	 * unstarted (re-init the lock we held across the fork, drop inherited
 	 * submissions) so the child re-spawns lazily on its next submit and
 	 * never blocks on a pool mutex no live thread will release.
+	 *
+	 * The inherited submission/completion AIO_WORK nodes belonged to the
+	 * parent's in-flight writes; in the child those I/Os will never run
+	 * (no workers) and must NOT be completed here -- running a write
+	 * completion would clear BH_DIRTY and drop a buffer pin for I/O the
+	 * child never performed, corrupting the inherited (copy-on-write)
+	 * buffer state.  We therefore discard them and zero every live
+	 * context's in-flight accounting so a subsequent reap does not block
+	 * forever waiting on completions that can never arrive.  The pinned
+	 * buffers remain pinned in the child's address space, which is the
+	 * conservative, safe outcome (they are simply never written by the
+	 * child); the parent completes its own writes normally.
 	 */
 	(void)pthread_mutex_init(&g_lock, NULL);
 	(void)pthread_cond_init(&g_work_cv, NULL);
@@ -143,6 +160,13 @@ __aio_atfork_child()
 	g_nthreads = 0;
 	g_started = 0;
 	g_stopping = 0;
+
+	for (st = g_ctx_registry; st != NULL; st = st->reg_next) {
+		(void)pthread_cond_init(&st->done_cv, NULL);
+		st->cmp_head = st->cmp_tail = NULL;
+		if (st->ctx != NULL)
+			st->ctx->inflight = 0;
+	}
 }
 
 static void
@@ -194,6 +218,7 @@ __aio_pool_submit(env, ctx, aio)
 	w->owner = st;
 
 	(void)pthread_mutex_lock(&g_lock);
+	st->ctx = ctx;			/* for the atfork-child inflight reset */
 	if (__aio_pool_start_locked() != 0) {
 		(void)pthread_mutex_unlock(&g_lock);
 		__os_free(env, w);
@@ -262,6 +287,17 @@ __aio_pool_destroy(env, ctx)
 	(void)pthread_mutex_lock(&g_lock);
 	while ((w = __aio_q_pop(&st->cmp_head, &st->cmp_tail)) != NULL)
 		__os_free(env, w);
+	/* Unlink from the live-context registry. */
+	if (g_ctx_registry == st)
+		g_ctx_registry = st->reg_next;
+	else {
+		AIO_POOL_STATE *p;
+		for (p = g_ctx_registry; p != NULL; p = p->reg_next)
+			if (p->reg_next == st) {
+				p->reg_next = st->reg_next;
+				break;
+			}
+	}
 	(void)pthread_mutex_unlock(&g_lock);
 
 	(void)pthread_cond_destroy(&st->done_cv);
@@ -299,6 +335,13 @@ __os_aio_pool_init(env, ctx)
 		__os_free(env, st);
 		return (DB_OPNOTSUP);
 	}
+	st->ctx = ctx;
+	/* Register so the atfork-child handler can reset our in-flight state. */
+	(void)pthread_once(&g_atfork_once, __aio_install_atfork);
+	(void)pthread_mutex_lock(&g_lock);
+	st->reg_next = g_ctx_registry;
+	g_ctx_registry = st;
+	(void)pthread_mutex_unlock(&g_lock);
 	ctx->priv = st;
 	ctx->backend = &__aio_pool_backend;
 	return (0);
