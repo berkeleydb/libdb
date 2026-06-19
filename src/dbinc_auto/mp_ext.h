@@ -42,7 +42,7 @@ int __memp_mf_discard __P((DB_MPOOL *, MPOOLFILE *, int));
 int __memp_inmemlist __P((ENV *, char ***, int *));
 int __memp_fput_pp __P((DB_MPOOLFILE *, void *, DB_CACHE_PRIORITY, u_int32_t));
 int __memp_fput __P((DB_MPOOLFILE *, DB_THREAD_INFO *, void *, DB_CACHE_PRIORITY));
-int __memp_wire __P((DB_MPOOLFILE *, void *));
+int __memp_wire __P((DB_MPOOLFILE *, void *, int *));
 int __memp_unwire __P((DB_MPOOLFILE *, void *));
 int __memp_unpin_buffers __P((ENV *, DB_THREAD_INFO *));
 int __memp_dirty __P((DB_MPOOLFILE *, void *, DB_THREAD_INFO *, DB_TXN *, DB_CACHE_PRIORITY, u_int32_t));

@@ -295,23 +295,34 @@ __memp_unpin_buffers(env, ip)
  *	while the caller holds only a shared buffer latch; the byte is reset to
  *	0 wherever a buffer header is (re)initialized.
  *
- * PUBLIC: int __memp_wire __P((DB_MPOOLFILE *, void *));
+ *	If wiredp is non-NULL it is set to 1 iff the frame is wired (and so
+ *	guaranteed resident) on return -- either newly wired here or already
+ *	wired -- and 0 otherwise (an mmap'd page, or the per-region cap was
+ *	reached).  Callers that cache the frame address for later lock-free
+ *	reads MUST only do so when *wiredp is 1; a non-wired frame is evictable
+ *	and its address may dangle.
+ *
+ * PUBLIC: int __memp_wire __P((DB_MPOOLFILE *, void *, int *));
  */
 int
-__memp_wire(dbmfp, pgaddr)
+__memp_wire(dbmfp, pgaddr, wiredp)
 	DB_MPOOLFILE *dbmfp;
 	void *pgaddr;
+	int *wiredp;
 {
 	BH *bhp;
 	DB_MPOOL *dbmp;
 	ENV *env;
 	MPOOL *c_mp;
 
+	if (wiredp != NULL)
+		*wiredp = 0;
+
 	/*
 	 * A memory-mapped (read-only) file hands back a pointer into the mmap
 	 * region, not a buffer frame, so the BH back-computation below would be
 	 * a wild pointer.  Such pages are never in the buffer pool and never
-	 * evicted, so there is nothing to wire.
+	 * evicted, so there is nothing to wire (and nothing that can dangle).
 	 */
 	if (dbmfp->addr != NULL && pgaddr >= dbmfp->addr &&
 	    (u_int8_t *)pgaddr <=
@@ -319,24 +330,31 @@ __memp_wire(dbmfp, pgaddr)
 		return (0);
 
 	bhp = (BH *)((u_int8_t *)pgaddr - SSZA(BH, buf));
-	if (bhp->wired != 0)
+	if (bhp->wired != 0) {
+		if (wiredp != NULL)
+			*wiredp = 1;
 		return (0);
+	}
 
 	/*
 	 * Cap wiring at MPOOL_WIRED_MAX_PCT of the region's buffers so wiring
-	 * can never starve the cache.  Over the cap this is a no-op and the
-	 * descent uses a normal pin.  The count is approximate under races,
-	 * which is fine for a cap.
+	 * can never starve the cache.  Over the cap this is a no-op (the frame
+	 * stays evictable and the descent uses a normal pin).  The count is
+	 * approximate under races, which is fine for a cap.  Compute the limit
+	 * as (pages * PCT) / 100 so it does not round down to zero for caches
+	 * smaller than 100 buffers.
 	 */
 	env = dbmfp->env;
 	dbmp = env->mp_handle;
 	c_mp = dbmp->reginfo[bhp->region].primary;
 	if (atomic_read(&c_mp->wired_pages) >=
-	    c_mp->pages / 100 * MPOOL_WIRED_MAX_PCT)
+	    c_mp->pages * MPOOL_WIRED_MAX_PCT / 100)
 		return (0);
 
 	bhp->wired = 1;
 	(void)atomic_inc(env, &c_mp->wired_pages);
+	if (wiredp != NULL)
+		*wiredp = 1;
 	return (0);
 }
 
