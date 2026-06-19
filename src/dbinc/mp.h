@@ -75,6 +75,13 @@ struct __db_mpool {
 	 */
 	ENV	   *env;		/* Enclosing environment. */
 	REGINFO	   *reginfo;		/* Underlying cache regions. */
+
+	/*
+	 * Per-process asynchronous-I/O context for buffer-pool writeback
+	 * (checkpoint/sync).  NULL if no async backend is available, in which
+	 * case writeback is synchronous.  Owned by this process.
+	 */
+	struct __db_aio_context *aio_ctx;
 };
 
 /*
