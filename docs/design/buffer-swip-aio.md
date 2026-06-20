@@ -216,6 +216,43 @@ The stages are a dependency chain; each is a separate branch/PR, measured on the
 | **2** | `perf/swip-stage2-aio` | `os_aio` interface + 1 backend (io_uring first); async trickle writeback; prefetch hint | TCL green; trickle keeps dirty-eviction stalls down under write load; prefetch improves cold-scan latency; multi-process falls back correctly |
 | **3** | (later, if needed) | general pointer swizzling + epoch reclamation + raw-pointer single-process fast path | only if profiling shows the wired-internals scope leaves gains on the table |
 
+### Status (what shipped vs. deferred)
+
+Stage 1 shipped in a deliberately narrowed form, and two pieces of the original
+design were intentionally **not** built:
+
+- **Stage 0 (cooling)** — shipped (PR #21).
+- **Stage 1 (descent)** — shipped as PR #22, but as *option B: root snapshot
+  only*. Rather than the full **shadow swip vector** (tagged `roff_t` child
+  pointers cached on every internal node, walked lock-free up the whole
+  internal path), it caches a private copy of just the **single root page** per
+  handle and does the LSN-validated lock-free read only for the
+  root→first-child step. The root is the one page every descent touches, so
+  this captured most of the available win cheaply: measured **+12–21%** on
+  cached reads at 4–24 threads.
+- **Stage 1c (deferred)** — extending optimistic descent to *deeper* internal
+  pages (the shadow swip vector). **Not built.** Doing it correctly needs
+  **general epoch reclamation** (a lock-free reader of a non-wired, evictable
+  internal page must not dereference freed memory; wiring only works because
+  the root is a single page you can pin forever — you cannot wire every
+  internal node). That is the "boil the ocean" prerequisite §5 scoped around.
+  Subsequent profiling (a 12-physical-core box) found the next bottleneck is
+  **not** the internal-page pins — it is B-tree key-comparison cache misses,
+  the mpool buffer latch, and the hardware core count — so Stage 1c is parked
+  under the Stage 3 condition above ("only if profiling shows the wired-
+  internals scope leaves gains on the table"). It currently does not.
+- **The 2-bit tagged swip itself** (the unifying hot/cool/cold + residency +
+  in-flight substrate, §2.3) was **not** realized: each shipped stage used its
+  own ad-hoc mechanism (a `wired` byte, a root-page copy) instead of the single
+  tagged word. Revisiting the unified substrate only makes sense alongside
+  Stage 1c/Stage 3.
+
+Net: the cheap, high-value piece (root) shipped and is validated; the expensive
+piece (all internals + epoch reclamation) is correctly deferred, and the
+deferral is now backed by measurement, not assumption. Re-evaluating Stage 1c
+requires a true many-physical-core / multi-socket NUMA box, since the 12-core
+box ceilings around 8–12 threads regardless of software.
+
 ## 8. Correctness invariants (the parts that must not be wrong)
 
 1. Hot pages stay `HOT`, so their swips are read-only on the descent; cooling
