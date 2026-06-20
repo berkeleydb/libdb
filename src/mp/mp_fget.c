@@ -649,6 +649,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 
 		/* Initialize enough so we can call __memp_bhfree. */
 		alloc_bhp->flags = 0;
+		alloc_bhp->wired = 0;
 		atomic_init(&alloc_bhp->ref, 1);
 #ifdef DIAGNOSTIC
 		if ((uintptr_t)alloc_bhp->buf & (sizeof(size_t) - 1)) {
@@ -797,6 +798,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 		bhp->td_off = INVALID_ROFF;
 		SH_CHAIN_INIT(bhp, vc);
 		bhp->flags = 0;
+		bhp->wired = 0;
 
 		/*
 		 * Reference the buffer and lock exclusive.  We either
@@ -1001,6 +1003,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 		alloc_bhp->flags = BH_EXCLUSIVE |
 		    ((flags == DB_MPOOL_FREE) ? BH_FREED :
 		    F_ISSET(bhp, BH_DIRTY | BH_DIRTY_CREATE));
+		alloc_bhp->wired = 0;
 		DB_ASSERT(env, flags != DB_MPOOL_FREE ||
 		    !F_ISSET(bhp, BH_DIRTY));
 		F_CLR(bhp, BH_DIRTY | BH_DIRTY_CREATE);
