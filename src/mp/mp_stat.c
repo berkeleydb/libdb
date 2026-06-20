@@ -709,6 +709,8 @@ __memp_print_hash(env, dbmp, reginfo, fmap, flags)
 	c_mp = reginfo->primary;
 	DB_MSGBUF_INIT(&mb);
 	STAT_ULONG("Hash table last-checked", c_mp->last_checked);
+	STAT_ULONG("Wired buffers (non-evictable)",
+	    atomic_read(&c_mp->wired_pages));
 	STAT_ULONG("Put counter", c_mp->put_counter);
 
 	/* Display the hash table list of BH's. */

@@ -49,6 +49,21 @@ extern "C" {
 
 /* Forward structure declarations. */
 struct __btree;		typedef struct __btree BTREE;
+
+/*
+ * BAM_RSNAP --
+ *	An immutable private copy of the B-tree root page taken at a known
+ *	root LSN, used by the lock-free root-snapshot descent.  The copied
+ *	page image follows the header (size bytes).  Superseded copies are
+ *	chained via "next" and freed when the handle closes.
+ */
+typedef struct __bam_rsnap {
+	struct __bam_rsnap *next;	/* Chain of superseded copies. */
+	DB_LSN		 lsn;		/* Root LSN this copy was taken at. */
+	u_int32_t	 size;		/* Page size (bytes of copy). */
+	/* The copied root page image follows immediately. */
+} BAM_RSNAP;
+#define	BAM_RSNAP_PAGE(s)	((PAGE *)((u_int8_t *)(s) + sizeof(BAM_RSNAP)))
 struct __cursor;	typedef struct __cursor BTREE_CURSOR;
 struct __epg;		typedef struct __epg EPG;
 
@@ -501,6 +516,23 @@ struct __btree {			/* Btree access method. */
 	 */
 	db_pgno_t bt_lpgno;		/* Last insert location. */
 	DB_LSN	  bt_llsn;		/* Last insert LSN. */
+
+	/*
+	 * Root snapshot (option B): a private, immutable copy of the B-tree
+	 * root used to find the descent's first child without fetching
+	 * (pinning/latching) the contended live root.  bt_rootpage caches the
+	 * wired live-root buffer so a reader can read the current root LSN with
+	 * a plain load; bt_rsnap is the current copy (NULL when the root is a
+	 * leaf); bt_rsnap_lsn is the LSN at the last refresh; bt_rsnap_free
+	 * chains superseded copies, freed when the handle closes (root changes
+	 * are rare, so few accumulate -- this avoids a reader/free race without
+	 * epoch reclamation).  Process-local; cross-process correctness comes
+	 * from validating against the shared live-root LSN.
+	 */
+	void	 *bt_rootpage;		/* Cached wired live-root buffer. */
+	void	 *bt_rsnap;		/* Current root copy (BAM_RSNAP *). */
+	DB_LSN	  bt_rsnap_lsn;		/* Root LSN at last snapshot refresh. */
+	void	 *bt_rsnap_free;	/* Superseded copies, freed at close. */
 
 	/*
 	 * !!!
