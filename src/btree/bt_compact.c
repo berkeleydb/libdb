@@ -2635,6 +2635,17 @@ again:	if (F_ISSET(dbp, DB_AM_SUBDB) &&
 				LSN_NOT_LOGGED(LSN(meta));
 			bt->bt_root = meta->root = PGNO(root);
 			bt->revision = dbp->mpf->mfp->revision;
+			/*
+			 * The tree root moved to a new page.  Any cached
+			 * root-snapshot for this handle now points at the old
+			 * (soon-to-be-freed) root frame, so disarm it under the
+			 * handle mutex; the next read descent rebuilds it.
+			 * Clearing bt_rootpage is sufficient: __bam_rsnap_child
+			 * bails when it is NULL, before touching bt_rsnap.
+			 */
+			MUTEX_LOCK(dbp->env, dbp->mutex);
+			bt->bt_rootpage = NULL;
+			MUTEX_UNLOCK(dbp->env, dbp->mutex);
 			if ((ret = __memp_fput(dbp->mpf,
 			    ip, root, dbp->priority)) != 0)
 				goto err;

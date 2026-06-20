@@ -195,6 +195,15 @@ struct __mpool { /* SHARED */
 	u_int32_t pages;		/* Number of pages in the cache. */
 
 	/*
+	 * Count of buffers currently wired (non-evictable; B-tree internal
+	 * pages, Stage 1).  Atomic so __memp_wire/__memp_unwire need no region
+	 * lock.  Capped at MPOOL_WIRED_MAX_PCT of `pages` so wiring can never
+	 * starve the cache; over the cap, wiring is simply skipped (the descent
+	 * falls back to a normal pin).
+	 */
+	db_atomic_t wired_pages;
+
+	/*
 	 * The stat fields are not thread protected, and cannot be trusted.
 	 */
 	DB_MPOOL_STAT stat;		/* Per-cache mpool statistics. */
@@ -416,6 +425,14 @@ struct __db_mpool_fstat_int { /* SHARED */
 #define	MPOOL_CLOCK_ADMIT	MPOOL_CLOCK_VERY_LOW	/* probationary warmth */
 
 /*
+ * Wiring cap (Stage 1): at most this percent of a cache region's buffers may
+ * be wired (held non-evictable for B-tree internal pages), so wiring can never
+ * starve the cache.  Over the cap, __memp_wire is a no-op and the descent uses
+ * a normal pin.
+ */
+#define	MPOOL_WIRED_MAX_PCT	25
+
+/*
  * MPOOLFILE --
  *	Shared DB_MPOOLFILE information.
  */
@@ -578,6 +595,17 @@ struct __bh { /* SHARED */
 #define	BH_TRASH	0x080		/* Page is garbage. */
 #define	BH_THAWED	0x100		/* Page was thawed. */
 	u_int16_t	flags;
+
+	/*
+	 * Stage 1: "wired" buffers are exempt from eviction (set for B-tree
+	 * internal/root pages so the optimistic descent can read them without
+	 * risk of the frame being reclaimed under it).  A dedicated byte, not a
+	 * flags bit: it is set with a plain monotonic store while the caller
+	 * holds only a shared buffer latch, so it must not share the non-atomic
+	 * RMW of the flags word (which __memp_pgwrite clears BH_DIRTY in under a
+	 * shared latch).  Reset to 0 wherever a buffer header is (re)initialized.
+	 */
+	u_int8_t	wired;
 
 	u_int32_t	priority;	/* Priority. */
 	SH_TAILQ_ENTRY	hq;		/* MPOOL hash bucket queue. */
