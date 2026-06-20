@@ -176,6 +176,26 @@ bb_env_open(bb_config *c, DB_ENV **envp)
 	if (c->use_lock || c->use_txn)
 		(void)env->set_lk_detect(env, DB_LOCK_DEFAULT);
 
+	/*
+	 * Size the lock subsystem generously.  The default region holds only
+	 * ~1000 locks/lockers/objects; a batched bulk load or a many-thread
+	 * run needs far more (each held lock and each active transaction
+	 * consumes entries), and exhausting them returns ENOMEM mid-run.
+	 */
+	if (c->use_lock || c->use_txn) {
+		(void)env->set_lk_max_locks(env, 200000);
+		(void)env->set_lk_max_objects(env, 200000);
+		(void)env->set_lk_max_lockers(env, 200000);
+	}
+
+	/*
+	 * Size the in-memory log buffer so a write-heavy run does not stall
+	 * rolling tiny (default) log segments.  Durability is governed
+	 * separately by the -d toggle below.
+	 */
+	if (c->use_log || c->use_txn)
+		(void)env->set_lg_bsize(env, 16 * 1024 * 1024);
+
 	if (c->use_txn) {
 		if (c->durability == BB_NOSYNC)
 			(void)env->set_flags(env, DB_TXN_NOSYNC, 1);
