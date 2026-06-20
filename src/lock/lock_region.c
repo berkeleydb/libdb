@@ -253,8 +253,16 @@ __lock_region_init(env, lt)
 	    env, MTX_LOCK_REGION, 0, &region->mtx_dd)) != 0)
 		return (ret);
 
+	/*
+	 * The locker mutex is a SHARED latch: the hot lock-get path looks up
+	 * an existing locker (a read-only hash walk) and takes it shared, so
+	 * many cores can resolve their locker concurrently; locker create,
+	 * free, the deadlock detector's locker-list walk, failchk, and stat
+	 * take it exclusive.  This removes the per-operation global
+	 * serialization on lock_get/lock_put.
+	 */
 	if ((ret = __mutex_alloc(
-	    env, MTX_LOCK_REGION, 0, &region->mtx_lockers)) != 0)
+	    env, MTX_LOCK_REGION, DB_MUTEX_SHARED, &region->mtx_lockers)) != 0)
 		return (ret);
 
 	/* Allocate room for the locker hash table and initialize it. */
