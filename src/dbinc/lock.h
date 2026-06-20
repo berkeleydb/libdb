@@ -329,6 +329,8 @@ struct __db_lock { /* SHARED */
 	MUTEX_UNLOCK(env, (region)->mtx_dd)
 #define	LOCK_LOCKERS(env, region)					\
 	MUTEX_LOCK(env, (region)->mtx_lockers)
+#define	RDLOCK_LOCKERS(env, region)					\
+	MUTEX_READLOCK(env, (region)->mtx_lockers)
 #define	UNLOCK_LOCKERS(env, region)					\
 	MUTEX_UNLOCK(env, (region)->mtx_lockers)
 
