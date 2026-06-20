@@ -38,6 +38,7 @@ individual protections removed, to measure their cost:
 | `-d sync\|wnosync\|nosync` | commit durability (default `nosync`) |
 | `-m` | MVCC / snapshot isolation (`DB_MULTIVERSION`) |
 | `-C` | Concurrent Data Store (`DB_INIT_CDB`) instead of full txns |
+| `-D N` | deadlock detection: `0` (default) detects on every conflict; `N>0` runs a background detector every `N` ms and leaves the hot path free of detection |
 | `-c` `-t` `-S` `-s` `-i` | cache bytes, threads, scale, seconds, init |
 
 Example:

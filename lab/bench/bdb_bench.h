@@ -59,6 +59,9 @@ typedef struct {
 	int use_log;		/* DB_INIT_LOG */
 	int use_mvcc;		/* DB_MULTIVERSION + DB_TXN_SNAPSHOT readers */
 	int use_cdb;		/* DB_INIT_CDB (concurrent data store) */
+	int dd_periodic;	/* deadlock detect: 0=on every conflict (default),
+				 * else run a background detector every N ms and
+				 * set_lk_detect(NONE) on the hot path */
 	enum bb_durability durability;
 } bb_config;
 
@@ -95,7 +98,7 @@ bb_getopt(int argc, char **argv, bb_config *c)
 	int ch;
 	extern char *optarg;
 
-	while ((ch = getopt(argc, argv, "h:c:t:S:s:imCd:X:R:")) != EOF)
+	while ((ch = getopt(argc, argv, "h:c:t:S:s:imCd:X:R:D:")) != EOF)
 		switch (ch) {
 		case 'h': c->home = optarg; break;
 		case 'c': c->cachebytes = strtoull(optarg, NULL, 10); break;
@@ -106,6 +109,7 @@ bb_getopt(int argc, char **argv, bb_config *c)
 		case 'm': c->use_mvcc = 1; break;
 		case 'C': c->use_cdb = 1; break;
 		case 'R': c->seed = (unsigned)strtoul(optarg, NULL, 10); break;
+		case 'D': c->dd_periodic = atoi(optarg); break;	/* dd interval ms */
 		case 'd':
 			if (strcmp(optarg, "sync") == 0) c->durability = BB_SYNC;
 			else if (strcmp(optarg, "wnosync") == 0)
@@ -173,7 +177,15 @@ bb_env_open(bb_config *c, DB_ENV **envp)
 	 * victim and returns DB_LOCK_DEADLOCK) instead of blocking forever --
 	 * the workloads here intentionally contend on shared rows.
 	 */
-	if (c->use_lock || c->use_txn)
+	/*
+	 * Deadlock detection.  By default BDB can run the detector on every
+	 * lock conflict (set_lk_detect) -- correct, but every blocked acquire
+	 * pays the detector's cost inline.  With -D N we instead leave the hot
+	 * path free of detection and run a background detector every N ms
+	 * (started by bb_start_dd after open); a victim is chosen at the next
+	 * sweep rather than immediately.  This A/B isolates the detector cost.
+	 */
+	if ((c->use_lock || c->use_txn) && c->dd_periodic == 0)
 		(void)env->set_lk_detect(env, DB_LOCK_DEFAULT);
 
 	/*
@@ -305,6 +317,39 @@ bb_print_config(const bb_config *c, const char *name)
 	    c->use_txn, c->use_lock, c->use_log, c->use_mvcc, c->use_cdb,
 	    c->durability == BB_SYNC ? "sync" :
 	    c->durability == BB_WRITE_NOSYNC ? "wnosync" : "nosync");
+}
+
+/* ---- background deadlock detector (for -D N) -------------------- */
+struct bb_dd_arg { DB_ENV *env; int interval_ms; volatile int *stop; };
+
+static void *
+bb_dd_thread(void *a)
+{
+	struct bb_dd_arg *arg = a;
+	int rejected;
+
+	while (!*arg->stop) {
+		usleep((useconds_t)arg->interval_ms * 1000);
+		(void)arg->env->lock_detect(arg->env, 0,
+		    DB_LOCK_YOUNGEST, &rejected);
+	}
+	return NULL;
+}
+
+/*
+ * bb_start_dd / bb_stop_dd -- run a periodic deadlock detector when
+ * c->dd_periodic > 0.  No-ops otherwise.  *stop must outlive the thread.
+ */
+static int
+bb_start_dd(const bb_config *c, DB_ENV *env, pthread_t *tid,
+    struct bb_dd_arg *arg, volatile int *stop)
+{
+	if (c->dd_periodic <= 0)
+		return 0;
+	arg->env = env;
+	arg->interval_ms = c->dd_periodic;
+	arg->stop = stop;
+	return pthread_create(tid, NULL, bb_dd_thread, arg);
 }
 
 #endif /* BDB_BENCH_H */

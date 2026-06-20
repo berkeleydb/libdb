@@ -399,13 +399,20 @@ main(int argc, char **argv)
 	}
 
 	g_stop = 0;
-	t0 = bb_now_ms();
-	for (t = 0; t < nthreads; t++)
-		pthread_create(&tids[t], NULL, worker_main, &workers[t]);
-	usleep((useconds_t)g_cfg.seconds * 1000000);
-	g_stop = 1;
-	for (t = 0; t < nthreads; t++)
-		pthread_join(tids[t], NULL);
+	{
+		pthread_t ddtid; struct bb_dd_arg ddarg; int dd_on;
+		dd_on = (bb_start_dd(&g_cfg, g_env, &ddtid, &ddarg, &g_stop) == 0
+		    && g_cfg.dd_periodic > 0);
+		t0 = bb_now_ms();
+		for (t = 0; t < nthreads; t++)
+			pthread_create(&tids[t], NULL, worker_main, &workers[t]);
+		usleep((useconds_t)g_cfg.seconds * 1000000);
+		g_stop = 1;
+		for (t = 0; t < nthreads; t++)
+			pthread_join(tids[t], NULL);
+		if (dd_on)
+			pthread_join(ddtid, NULL);
+	}
 	elapsed = (bb_now_ms() - t0) / 1000.0;
 
 	memset(total, 0, sizeof(total));
