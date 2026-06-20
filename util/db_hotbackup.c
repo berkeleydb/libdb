@@ -437,7 +437,7 @@ env_init(dbenvp, home, log_dirp, data_dirp, passwd, which, verbose)
 			 * trim the home directory from the data directory
 			 * passed in.
 			 */
-			(void) sprintf(buf, "%s/%s", home, home);
+			(void) snprintf(buf, sizeof(buf), "%s/%s", home, home);
 			homehome = 0;
 			(void)__os_exists(dbenv->env, buf, &homehome);
 				
