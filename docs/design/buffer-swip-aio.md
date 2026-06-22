@@ -214,7 +214,7 @@ The stages are a dependency chain; each is a separate branch/PR, measured on the
 | **0** | `perf/swip-stage0-cooling` | clock/cool replacement; delete per-access `priority` write + global counter + `__memp_reset_lru`; referenced bit in `flags` | TCL regression green; eviction quality not worse on a cache-pressure workload; `wrand`/`rrand` no regression; **scan-resistance** shown (a scan doesn't evict the hot set) |
 | **1** | `perf/swip-stage1-descent` | `BH_WIRED`; shadow swip vector (`roff_t` + 2 bits); LSN-validated optimistic descent of wired internals | TCL regression green; **read ceiling lifts** on `rrand`/`snap` at 8–24 threads vs master; correctness under concurrent split (stress test) |
 | **2** | `perf/swip-stage2-aio` | `os_aio` interface + 1 backend (io_uring first); async trickle writeback; prefetch hint | TCL green; trickle keeps dirty-eviction stalls down under write load; prefetch improves cold-scan latency; multi-process falls back correctly |
-| **3** | (later, if needed) | general pointer swizzling + epoch reclamation + raw-pointer single-process fast path | only if profiling shows the wired-internals scope leaves gains on the table |
+| **3** | (later, if needed) | general pointer swizzling + epoch reclamation + raw-pointer single-process fast path | only if profiling shows the wired-internals scope leaves gains on the table — **measured: it does not** (see Stage 1c in Status below), so not planned |
 
 ### Status (what shipped vs. deferred)
 
@@ -230,28 +230,43 @@ design were intentionally **not** built:
   root→first-child step. The root is the one page every descent touches, so
   this captured most of the available win cheaply: measured **+12–21%** on
   cached reads at 4–24 threads.
-- **Stage 1c (deferred)** — extending optimistic descent to *deeper* internal
-  pages (the shadow swip vector). **Not built.** Doing it correctly needs
-  **general epoch reclamation** (a lock-free reader of a non-wired, evictable
-  internal page must not dereference freed memory; wiring only works because
-  the root is a single page you can pin forever — you cannot wire every
-  internal node). That is the "boil the ocean" prerequisite §5 scoped around.
-  Subsequent profiling (a 12-physical-core box) found the next bottleneck is
-  **not** the internal-page pins — it is B-tree key-comparison cache misses,
-  the mpool buffer latch, and the hardware core count — so Stage 1c is parked
-  under the Stage 3 condition above ("only if profiling shows the wired-
-  internals scope leaves gains on the table"). It currently does not.
+- **Stage 1c (built, measured, dropped)** — extending optimistic descent to
+  *deeper* internal pages. **Built and measured; it is a wash and was not
+  landed.** The original plan above feared Stage 1c required *general epoch
+  reclamation*, but in fact the existing `BH_WIRED` mechanism is sufficient: a
+  wired internal page is non-evictable, so a lock-free reader can hold a raw
+  frame pointer to it and validate with an LSN re-check (`__db_free` clears the
+  wired bit before reuse, and frees are logged so the LSN changes). The
+  implementation (`__memp_fget_wired` + a latch-free `__bam_search_opt`
+  descent, ~350 lines) was correct — it passed the full TCL regression
+  including recovery and multi-process, plus a value-verified concurrent
+  reader/writer stress with a clean `db_verify` under maximal split/merge
+  churn. But the A/B on the 12-physical-core box showed **no throughput change**
+  (master vs Stage 1c both ~500K ops/s at 8t, both declining past 12t), and the
+  cycles profile was unchanged. The reason: on a realistic tree the height is
+  ~3 (root → one internal level → leaves). Stage 1b already removed the root
+  pin; Stage 1c removes the *single* internal-level pin (≈1% of cycles). The
+  dominant read-path cost is the **leaf** `__memp_fget` pin, the **per-key leaf
+  `__db_lget` page read-lock**, and **cursor allocation churn**
+  (`__db_cursor_int`/`__bamc_refresh`) — none of which Stage 1c touches.
+  Internal-page latching is simply a negligible cost on shallow trees. Stage 1c
+  would only matter on very deep trees (very large keys / many levels), which
+  is not the common case, so it is dropped (the branch is kept only as a
+  documented negative result, like the cursor-shard experiment).
 - **The 2-bit tagged swip itself** (the unifying hot/cool/cold + residency +
   in-flight substrate, §2.3) was **not** realized: each shipped stage used its
   own ad-hoc mechanism (a `wired` byte, a root-page copy) instead of the single
-  tagged word. Revisiting the unified substrate only makes sense alongside
-  Stage 1c/Stage 3.
+  tagged word. With Stage 1c dropped, the unified substrate has no remaining
+  consumer and is not planned.
 
-Net: the cheap, high-value piece (root) shipped and is validated; the expensive
-piece (all internals + epoch reclamation) is correctly deferred, and the
-deferral is now backed by measurement, not assumption. Re-evaluating Stage 1c
-requires a true many-physical-core / multi-socket NUMA box, since the 12-core
-box ceilings around 8–12 threads regardless of software.
+Net: the cheap, high-value piece (root snapshot, Stage 1b) shipped and is
+validated (+12–21% on cached reads). Stage 1c (deeper internals) was built and
+measured rather than assumed — and proved to be a wash, so it is dropped. The
+next read-path bottleneck is now identified by measurement: the per-key leaf
+page read-lock (`__db_lget`), the leaf buffer pin, and cursor-object churn —
+not the internal-page descent. Re-evaluating any of this at very high core
+counts still wants a true many-physical-core / multi-socket NUMA box, since the
+12-physical-core box ceilings around 8–12 threads regardless of software.
 
 ## 8. Correctness invariants (the parts that must not be wrong)
 
