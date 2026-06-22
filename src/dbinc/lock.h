@@ -16,6 +16,16 @@ extern "C" {
 #define	DB_LOCK_DEFAULT_N	1000	/* Default # of locks in region. */
 
 /*
+ * Number of striped shared latches guarding the locker hash table.  A power
+ * of two so the stripe index is a mask of the locker id.  Readers (the
+ * lock-get hot path) take one stripe shared; writers take all stripes
+ * exclusive.  Sized to comfortably exceed common core counts so the
+ * per-operation reader-count atomics rarely share a cache line.
+ */
+#define	LOCK_LOCKER_STRIPES	64
+#define	LOCK_LOCKER_STRIPE(id)	((id) & (LOCK_LOCKER_STRIPES - 1))
+
+/*
  * The locker id space is divided between the transaction manager and the lock
  * manager.  Lock IDs start at 1 and go to DB_LOCK_MAXID.  Txn IDs start at
  * DB_LOCK_MAXID + 1 and go up to TXN_MAXIMUM.
@@ -70,7 +80,16 @@ typedef struct __db_lockregion { /* SHARED */
 	u_int32_t	detect;		/* run dd on every conflict */
 	db_timespec	next_timeout;	/* next time to expire a lock */
 	db_mutex_t	mtx_dd;		/* mutex for lock object dd list. */
-	db_mutex_t	mtx_lockers;	/* mutex for locker allocation. */
+	/*
+	 * Striped shared latches over the locker hash table.  The lock-get
+	 * hot path read-locks one stripe (chosen by locker id) so the
+	 * per-operation reader-count atomics spread across LOCK_LOCKER_STRIPES
+	 * cache lines instead of contending on a single rwlock counter.
+	 * Writers (locker create/free and the deadlock-detector, failchk, and
+	 * stat list walks) lock all stripes exclusive.  Stripe 0 doubles as the
+	 * representative mutex for wait-time statistics.
+	 */
+	db_mutex_t	mtx_locker_stripe[LOCK_LOCKER_STRIPES];
 	SH_TAILQ_HEAD(__dobj) dd_objs;	/* objects with waiters */
 					/* free locker header */
         roff_t          locker_mem_off; /* block memory for lockers */
@@ -327,12 +346,40 @@ struct __db_lock { /* SHARED */
 	MUTEX_LOCK(env, (region)->mtx_dd)
 #define	UNLOCK_DD(env, region)						\
 	MUTEX_UNLOCK(env, (region)->mtx_dd)
-#define	LOCK_LOCKERS(env, region)					\
-	MUTEX_LOCK(env, (region)->mtx_lockers)
-#define	RDLOCK_LOCKERS(env, region)					\
-	MUTEX_READLOCK(env, (region)->mtx_lockers)
-#define	UNLOCK_LOCKERS(env, region)					\
-	MUTEX_UNLOCK(env, (region)->mtx_lockers)
+/*
+ * The locker hash table is guarded by a set of striped shared latches
+ * (mtx_locker_stripe[]).  The lock-get hot path only reads a single bucket
+ * chain, so it read-locks the one stripe selected by the locker id; this
+ * spreads the per-operation reader-count atomics across LOCK_LOCKER_STRIPES
+ * cache lines instead of serializing on one rwlock counter.
+ *
+ * Any writer (locker create/free, free-list refill, and the global
+ * locker-list walks in the deadlock detector, failchk, and stat) may touch
+ * an arbitrary bucket chain, and two lockers in different stripes can hash
+ * to the same bucket.  Writers therefore lock ALL stripes exclusive, which
+ * excludes every reader regardless of which bucket it is walking.  Stripe 0
+ * is always acquired first/released last so the ordering is total and
+ * deadlock-free.  On any error the embedded MUTEX_* return propagates, after
+ * unwinding the stripes already taken.
+ *
+ * LOCK_LOCKERS/UNLOCK_LOCKERS keep their original meaning (mutual exclusion
+ * of the whole locker table); RDLOCK_LOCKER/RDUNLOCK_LOCKER are the new
+ * single-stripe shared fast path keyed by locker id.
+ */
+#define	RDLOCK_LOCKER(env, region, id)					\
+	MUTEX_READLOCK(env, (region)->mtx_locker_stripe[LOCK_LOCKER_STRIPE(id)])
+#define	RDUNLOCK_LOCKER(env, region, id)				\
+	MUTEX_UNLOCK(env, (region)->mtx_locker_stripe[LOCK_LOCKER_STRIPE(id)])
+#define	LOCK_LOCKERS(env, region) do {					\
+	u_int32_t __s;							\
+	for (__s = 0; __s < LOCK_LOCKER_STRIPES; __s++)			\
+		MUTEX_LOCK(env, (region)->mtx_locker_stripe[__s]);	\
+} while (0)
+#define	UNLOCK_LOCKERS(env, region) do {				\
+	u_int32_t __s;							\
+	for (__s = LOCK_LOCKER_STRIPES; __s-- > 0; )			\
+		MUTEX_UNLOCK(env, (region)->mtx_locker_stripe[__s]);	\
+} while (0)
 
 /*
  * __lock_locker_hash --
