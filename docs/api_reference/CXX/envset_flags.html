@@ -232,6 +232,33 @@ DbEnv::set_flags(u_int32_t flags, int onoff); </pre>
             </p>
               </li>
               <li>
+                <p><a id="set_flags_DB_MPOOL_AIO"></a>
+                  <code class="literal">DB_MPOOL_AIO</code>
+            </p>
+                <p>
+                 If set, the Berkeley DB memory pool performs buffer-pool
+                 writeback (checkpoint, sync, and trickle) asynchronously,
+                 using a per-process native asynchronous I/O engine
+                 (io_uring, IOCP, POSIX aio, or a portable thread-pool
+                 fallback) when one is available.  When this flag is not set
+                 &mdash; the default &mdash; or when no asynchronous I/O backend
+                 is configured for the platform, writeback is performed
+                 synchronously exactly as in prior releases.  Foreground
+                 buffer eviction is always synchronous.
+            </p>
+                <p>
+                 Asynchronous writeback can reduce stalls under write-heavy or
+                 cache-pressure workloads on storage that benefits from
+                 multiple outstanding I/Os; on a single slow device it may not
+                 help, so it is opt-in.  The asynchronous I/O context is
+                 private to each process.
+            </p>
+                <p>
+                 The DB_MPOOL_AIO flag may be used to configure Berkeley DB at any
+                 time during the life of the application.
+            </p>
+              </li>
+              <li>
                 <p><a id="set_flags_DB_MULTIVERSION"></a>
                   <code class="literal">DB_MULTIVERSION</code>
             </p>
