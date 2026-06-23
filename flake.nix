@@ -28,6 +28,9 @@
             inherit version;
             src = ./.;
             enableParallelBuilding = true;
+            buildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [
+              pkgs.liburing  # io_uring AIO backend
+            ];
             configurePhase = ''
               runHook preConfigure
               cd build_unix
@@ -45,6 +48,8 @@
             pkgs.meson pkgs.ninja pkgs.python3 pkgs.pkg-config
             pkgs.gcc pkgs.clang pkgs.autoconf pkgs.gnumake
             pkgs.tcl   # for the TCL test harness (--enable-test)
+          ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+            pkgs.liburing  # Linux io_uring AIO backend (HAVE_IO_URING)
           ];
           shellHook = ''
             echo "libdb dev shell — Meson: 'meson setup build && ninja -C build'"
