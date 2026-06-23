@@ -213,7 +213,7 @@ DbEnv.set_flags
 	DB_DIRECT_DB			# Don't buffer databases in the OS
 	DB_DSYNC_DB			# Set O_DSYNC on the databases
 	DB_HOTBACKUP_IN_PROGRESS	# Inhibit bulk loading optimization
-	DB_MPOOL_AIO			# Use asynchronous buffer-pool writeback
+	DB_MPOOL_AIO		__PIN=0x00100000	# Use asynchronous buffer-pool writeback
 	DB_MULTIVERSION			# Multiversion concurrency control
 	DB_NOLOCKING			# Set locking/mutex behavior
 	DB_NOMMAP			# Don't mmap the underlying file
@@ -276,7 +276,7 @@ DbEnv.txn_begin
 	DB_TXN_FAMILY			# Cursors and child txns are
 					# independent but lock-compatible
 	DB_TXN_SNAPSHOT			# Snapshot isolation
-	DB_TXN_SNAPSHOT_SAFE		# Serializable snapshot isolation (SSI)
+	DB_TXN_SNAPSHOT_SAFE	__PIN=0x00000800	# Serializable snapshot isolation (SSI)
 	DB_TXN_SYNC			# Always sync log on commit
 	DB_TXN_WAIT			# Always wait for locks in this txn
 	DB_TXN_WRITE_NOSYNC		# Write the log but don't sync

@@ -158,19 +158,19 @@ namespace BerkeleyDB.Internal {
         internal const uint DB_NEXT_DUP = 17;
         internal const uint DB_NEXT_NODUP = 18;
         internal const uint DB_NODUPDATA = 19;
-        internal const uint DB_NOLOCKING = 0x00004000;
+        internal const uint DB_NOLOCKING = 0x00002000;
         internal const uint DB_NOMMAP = 0x00000010;
         internal const uint DB_NOORDERCHK = 0x00000002;
         internal const uint DB_NOOVERWRITE = 20;
-        internal const uint DB_NOPANIC = 0x00008000;
+        internal const uint DB_NOPANIC = 0x00004000;
         internal const int DB_NOSERVER = -30989;
         internal const uint DB_NOSYNC = 0x00000001;
         internal const int DB_NOTFOUND = -30988;
         internal const int DB_OLD_VERSION = -30987;
         internal const uint DB_ORDERCHKONLY = 0x00000004;
-        internal const uint DB_OVERWRITE = 0x00010000;
+        internal const uint DB_OVERWRITE = 0x00008000;
         internal const int DB_PAGE_NOTFOUND = -30986;
-        internal const uint DB_PANIC_ENVIRONMENT = 0x00020000;
+        internal const uint DB_PANIC_ENVIRONMENT = 0x00010000;
         internal const uint DB_POSITION = 22;
         internal const uint DB_PREV = 23;
         internal const uint DB_PREV_DUP = 24;
@@ -190,7 +190,7 @@ namespace BerkeleyDB.Internal {
         internal const uint DB_RECNUM = 0x00000040;
         internal const uint DB_RECOVER = 0x00000002;
         internal const uint DB_RECOVER_FATAL = 0x00020000;
-        internal const uint DB_REGION_INIT = 0x00040000;
+        internal const uint DB_REGION_INIT = 0x00020000;
         internal const uint DB_REGISTER = 0x00040000;
         internal const uint DB_RENUMBER = 0x00000080;
         internal const int DB_REPMGR_ACKS_ALL = 1;
@@ -265,7 +265,7 @@ namespace BerkeleyDB.Internal {
         internal const uint DB_SYSTEM_MEM = 0x00080000;
         internal const uint DB_THREAD = 0x00000020;
         internal const int DB_TIMEOUT = -30971;
-        internal const uint DB_TIME_NOTGRANTED = 0x00080000;
+        internal const uint DB_TIME_NOTGRANTED = 0x00040000;
         internal const uint DB_TRUNCATE = 0x00020000;
         internal const uint DB_TXN_ABORT = 0;
         internal const uint DB_TXN_APPLY = 1;
@@ -279,7 +279,7 @@ namespace BerkeleyDB.Internal {
         internal const uint DB_TXN_SNAPSHOT = 0x00000004;
         internal const uint DB_TXN_SYNC = 0x00000008;
         internal const uint DB_TXN_TOKEN_SIZE = 20;
-        internal const uint DB_TXN_WAIT = 0x00000100;
+        internal const uint DB_TXN_WAIT = 0x00000080;
         internal const uint DB_TXN_WRITE_NOSYNC = 0x00000020;
         internal const uint DB_UNKNOWN = 5;
         internal const uint DB_UPGRADE = 0x00000001;
@@ -318,7 +318,7 @@ namespace BerkeleyDB.Internal {
         internal const string DB_VERSION_STRING = "Berkeley DB 5.3.29: September 9 2013 ";
         internal const string DB_VERSION_FULL_STRING = "Berkeley DB 11g Release 2 library version 11.2.5.3.29: September 9 2013 ";
         internal const uint DB_WRITECURSOR = 0x00000010;
-        internal const uint DB_YIELDCPU = 0x00100000;
+        internal const uint DB_YIELDCPU = 0x00080000;
         internal const uint DB_USERCOPY_GETDATA = 0x00000001;
         internal const uint DB_USERCOPY_SETDATA = 0x00000002;
     }
