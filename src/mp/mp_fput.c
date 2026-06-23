@@ -285,3 +285,109 @@ __memp_unpin_buffers(env, ip)
 	}
 	return (0);
 }
+
+/*
+ * __memp_wire --
+ *	Mark a resident buffer as non-evictable ("wired").  Used for B-tree
+ *	internal/root pages so the Stage 1 optimistic descent can read them
+ *	without the frame being reclaimed under it.  The set is a plain
+ *	monotonic store to a dedicated byte (not the flags word), safe to do
+ *	while the caller holds only a shared buffer latch; the byte is reset to
+ *	0 wherever a buffer header is (re)initialized.
+ *
+ *	If wiredp is non-NULL it is set to 1 iff the frame is wired (and so
+ *	guaranteed resident) on return -- either newly wired here or already
+ *	wired -- and 0 otherwise (an mmap'd page, or the per-region cap was
+ *	reached).  Callers that cache the frame address for later lock-free
+ *	reads MUST only do so when *wiredp is 1; a non-wired frame is evictable
+ *	and its address may dangle.
+ *
+ * PUBLIC: int __memp_wire __P((DB_MPOOLFILE *, void *, int *));
+ */
+int
+__memp_wire(dbmfp, pgaddr, wiredp)
+	DB_MPOOLFILE *dbmfp;
+	void *pgaddr;
+	int *wiredp;
+{
+	BH *bhp;
+	DB_MPOOL *dbmp;
+	ENV *env;
+	MPOOL *c_mp;
+
+	if (wiredp != NULL)
+		*wiredp = 0;
+
+	/*
+	 * A memory-mapped (read-only) file hands back a pointer into the mmap
+	 * region, not a buffer frame, so the BH back-computation below would be
+	 * a wild pointer.  Such pages are never in the buffer pool and never
+	 * evicted, so there is nothing to wire (and nothing that can dangle).
+	 */
+	if (dbmfp->addr != NULL && pgaddr >= dbmfp->addr &&
+	    (u_int8_t *)pgaddr <=
+	    (u_int8_t *)dbmfp->addr + dbmfp->len)
+		return (0);
+
+	bhp = (BH *)((u_int8_t *)pgaddr - SSZA(BH, buf));
+	if (bhp->wired != 0) {
+		if (wiredp != NULL)
+			*wiredp = 1;
+		return (0);
+	}
+
+	/*
+	 * Cap wiring at MPOOL_WIRED_MAX_PCT of the region's buffers so wiring
+	 * can never starve the cache.  Over the cap this is a no-op (the frame
+	 * stays evictable and the descent uses a normal pin).  The count is
+	 * approximate under races, which is fine for a cap.  Compute the limit
+	 * as (pages * PCT) / 100 so it does not round down to zero for caches
+	 * smaller than 100 buffers.
+	 */
+	env = dbmfp->env;
+	dbmp = env->mp_handle;
+	c_mp = dbmp->reginfo[bhp->region].primary;
+	if (atomic_read(&c_mp->wired_pages) >=
+	    c_mp->pages * MPOOL_WIRED_MAX_PCT / 100)
+		return (0);
+
+	bhp->wired = 1;
+	(void)atomic_inc(env, &c_mp->wired_pages);
+	if (wiredp != NULL)
+		*wiredp = 1;
+	return (0);
+}
+
+/*
+ * __memp_unwire --
+ *	Clear the wired mark on a buffer (e.g. when its page is freed) so the
+ *	frame becomes evictable again.  Safe on mmap'd pages (no-op).
+ *
+ * PUBLIC: int __memp_unwire __P((DB_MPOOLFILE *, void *));
+ */
+int
+__memp_unwire(dbmfp, pgaddr)
+	DB_MPOOLFILE *dbmfp;
+	void *pgaddr;
+{
+	BH *bhp;
+	DB_MPOOL *dbmp;
+	ENV *env;
+	MPOOL *c_mp;
+
+	if (dbmfp->addr != NULL && pgaddr >= dbmfp->addr &&
+	    (u_int8_t *)pgaddr <=
+	    (u_int8_t *)dbmfp->addr + dbmfp->len)
+		return (0);
+
+	bhp = (BH *)((u_int8_t *)pgaddr - SSZA(BH, buf));
+	if (bhp->wired == 0)
+		return (0);
+
+	bhp->wired = 0;
+	env = dbmfp->env;
+	dbmp = env->mp_handle;
+	c_mp = dbmp->reginfo[bhp->region].primary;
+	(void)atomic_dec(env, &c_mp->wired_pages);
+	return (0);
+}
