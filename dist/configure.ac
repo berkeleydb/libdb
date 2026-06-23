@@ -175,6 +175,41 @@ fi
 # Respect the environment LIBS settings
 LIBSO_LIBS="$LIBS"
 
+# Asynchronous I/O backends for the buffer pool (os_aio), selected at
+# runtime in preference order: io_uring (Linux) > IOCP (Windows) >
+# kqueue+aio (BSD) > POSIX aio (Solaris/illumos, macOS) > thread-pool
+# offload (last-resort fallback).  All are optional -- without any, os_aio
+# falls back to synchronous I/O.
+AC_CHECK_HEADER(liburing.h, [
+	AC_CHECK_LIB(uring, io_uring_queue_init, [
+		AC_DEFINE(HAVE_IO_URING,
+		    1, [Define to 1 to use the Linux io_uring AIO backend.])
+		LIBSO_LIBS="$LIBSO_LIBS -luring"
+		LIBS="$LIBS -luring"])])
+
+# POSIX aio: aio_read/aio_write may live in libc (BSD/macOS) or librt
+# (Solaris/illumos, glibc).  Record the library so os_aio_posix links.
+AC_CHECK_HEADER(aio.h, [
+	AC_SEARCH_LIBS(aio_read, [rt aio], [
+		AC_DEFINE(HAVE_AIO_POSIX,
+		    1, [Define to 1 to use the POSIX aio backend.])])])
+
+# kqueue+aio (BSD, notably FreeBSD): needs EVFILT_AIO and, crucially, the
+# sigev_notify_kqueue member of struct sigevent so a completed aiocb posts a
+# kevent.  macOS has EVFILT_AIO but lacks sigev_notify_kqueue, so it is
+# excluded here and uses the POSIX aio backend instead.
+AC_CHECK_MEMBER([struct sigevent.sigev_notify_kqueue],
+    [AC_CHECK_DECL([EVFILT_AIO], [
+	AC_DEFINE(HAVE_AIO_KQUEUE,
+	    1, [Define to 1 to use the BSD kqueue+aio backend.])],
+	[], [[#include <sys/event.h>]])],
+    [], [[#include <signal.h>
+#include <aio.h>]])
+
+AC_CHECK_HEADER(pthread.h, [
+	AC_DEFINE(HAVE_AIO_THREADPOOL,
+	    1, [Define to 1 to use the thread-pool AIO offload backend.])])
+
 # This is where we handle stuff that autoconf can't handle: compiler,
 # preprocessor and load flags, libraries that the standard tests don't
 # look for.

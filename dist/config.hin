@@ -30,6 +30,15 @@
 /* Define to 1 if you have the 'abort' function. */
 #undef HAVE_ABORT
 
+/* Define to 1 to use the BSD kqueue+aio backend. */
+#undef HAVE_AIO_KQUEUE
+
+/* Define to 1 to use the POSIX aio backend. */
+#undef HAVE_AIO_POSIX
+
+/* Define to 1 to use the thread-pool AIO offload backend. */
+#undef HAVE_AIO_THREADPOOL
+
 /* Define to 1 if you have the 'atoi' function. */
 #undef HAVE_ATOI
 
@@ -188,6 +197,9 @@
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
+
+/* Define to 1 to use the Linux io_uring AIO backend. */
+#undef HAVE_IO_URING
 
 /* Define to 1 if you have the 'isalpha' function. */
 #undef HAVE_ISALPHA
