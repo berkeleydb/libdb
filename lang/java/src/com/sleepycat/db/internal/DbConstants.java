@@ -129,16 +129,16 @@ public interface DbConstants
     int DB_NEXT_DUP = 17;
     int DB_NEXT_NODUP = 18;
     int DB_NODUPDATA = 19;
-    int DB_NOLOCKING = 0x00004000;
+    int DB_NOLOCKING = 0x00002000;
     int DB_NOMMAP = 0x00000010;
     int DB_NOORDERCHK = 0x00000002;
     int DB_NOOVERWRITE = 20;
-    int DB_NOPANIC = 0x00008000;
+    int DB_NOPANIC = 0x00004000;
     int DB_NOSYNC = 0x00000001;
     int DB_NOTFOUND = -30988;
     int DB_ORDERCHKONLY = 0x00000004;
-    int DB_OVERWRITE = 0x00010000;
-    int DB_PANIC_ENVIRONMENT = 0x00020000;
+    int DB_OVERWRITE = 0x00008000;
+    int DB_PANIC_ENVIRONMENT = 0x00010000;
     int DB_POSITION = 22;
     int DB_PREV = 23;
     int DB_PREV_DUP = 24;
@@ -158,7 +158,7 @@ public interface DbConstants
     int DB_RECNUM = 0x00000040;
     int DB_RECOVER = 0x00000002;
     int DB_RECOVER_FATAL = 0x00020000;
-    int DB_REGION_INIT = 0x00040000;
+    int DB_REGION_INIT = 0x00020000;
     int DB_REGISTER = 0x00040000;
     int DB_RENUMBER = 0x00000080;
     int DB_REPMGR_ACKS_ALL = 1;
@@ -218,7 +218,7 @@ public interface DbConstants
     int DB_SYSTEM_MEM = 0x00080000;
     int DB_THREAD = 0x00000020;
     int DB_TIMEOUT = -30971;
-    int DB_TIME_NOTGRANTED = 0x00080000;
+    int DB_TIME_NOTGRANTED = 0x00040000;
     int DB_TRUNCATE = 0x00020000;
     int DB_TXN_ABORT = 0;
     int DB_TXN_APPLY = 1;
@@ -232,7 +232,7 @@ public interface DbConstants
     int DB_TXN_SNAPSHOT = 0x00000004;
     int DB_TXN_SYNC = 0x00000008;
     int DB_TXN_TOKEN_SIZE = 20;
-    int DB_TXN_WAIT = 0x00000100;
+    int DB_TXN_WAIT = 0x00000080;
     int DB_TXN_WRITE_NOSYNC = 0x00000020;
     int DB_UNKNOWN = 5;
     int DB_UPGRADE = 0x00000001;
@@ -260,7 +260,7 @@ public interface DbConstants
     int DB_VERSION_MINOR = 3;
     int DB_VERSION_PATCH = 29;
     int DB_WRITECURSOR = 0x00000010;
-    int DB_YIELDCPU = 0x00100000;
+    int DB_YIELDCPU = 0x00080000;
 }
 
 // end of DbConstants.java
