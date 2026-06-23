@@ -319,6 +319,7 @@ no_prealloc:
 	}
 	mp->htab_buckets = htab_buckets;
 	mp->htab_mutexes = dbenv->mp_mtxcount;
+	atomic_init(&mp->wired_pages, 0);
 	mp->pagesize = dbenv->mp_pagesize == 0 ?
 		MPOOL_DEFAULT_PAGESIZE : dbenv->mp_pagesize;
 

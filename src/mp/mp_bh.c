@@ -781,6 +781,16 @@ __memp_bhfree(dbmp, infop, mfp, hp, bhp, flags)
 		pagesize = mfp->pagesize;
 #endif
 
+	/*
+	 * If this buffer was wired and is being freed without going through
+	 * __db_free (e.g. file/env close discard), drop it from the region's
+	 * wired count.  The wired byte gates this so it is decremented once.
+	 */
+	if (bhp->wired != 0) {
+		bhp->wired = 0;
+		(void)atomic_dec(env, &((MPOOL *)infop->primary)->wired_pages);
+	}
+
 	DB_ASSERT(env, LF_ISSET(BH_FREE_UNLOCKED) ||
 	    (hp != NULL && MUTEX_IS_OWNED(env, hp->mtx_hash)));
 	DB_ASSERT(env, BH_REFCOUNT(bhp) == 1 &&

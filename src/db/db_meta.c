@@ -312,6 +312,12 @@ __db_free(dbc, h, flags)
 	meta = NULL;
 	prev = NULL;
 	LOCK_INIT(metalock);
+
+	/*
+	 * The page is being freed back to the file; if it was wired
+	 * (a B-tree internal page) clear that so the frame can be reused.
+	 */
+	(void)__memp_unwire(mpf, h);
 #ifdef HAVE_FTRUNCATE
 	lp = NULL;
 	nelem = 0;
