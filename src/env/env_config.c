@@ -179,6 +179,7 @@ static const FN config_set_flags[] = {
 	{ DB_CDB_ALLDB,		"db_cdb_alldb" },
 	{ DB_DIRECT_DB,		"db_direct_db" },
 	{ DB_DSYNC_DB,		"db_dsync_db" },
+	{ DB_MPOOL_AIO,		"db_mpool_aio" },
 	{ DB_MULTIVERSION,	"db_multiversion" },
 	{ DB_NOLOCKING,		"db_nolocking" },
 	{ DB_NOMMAP,		"db_nommap" },
