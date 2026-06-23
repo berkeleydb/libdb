@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
+#include "dbinc/os_aio.h"
 #include "dbinc/db_page.h"
 #include "dbinc/hash.h"
 
@@ -301,11 +302,15 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	u_int32_t ar_cnt, ar_max, i, n_cache, remaining, wrote_total;
 	int32_t wrote_cnt;
 	int dirty, filecnt, maxopenfd, required_write, ret, t_ret;
+	MEMP_AIO_W aiow[MEMP_AIO_WINDOW];	/* async writeback window */
+	int deferred, nflight, use_aio;
 
 	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
 	last_mf_offset = INVALID_ROFF;
 	filecnt = wrote_total = 0;
+	nflight = 0;
+	use_aio = dbmp->aio_ctx != NULL && __os_aio_ctx_available(dbmp->aio_ctx);
 
 	if (wrote_totalp != NULL)
 		*wrote_totalp = 0;
@@ -557,10 +562,18 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		 * If the buffer is dirty, we write it.  We only try to
 		 * write the buffer once.
 		 */
+		deferred = 0;
 		if (F_ISSET(bhp, BH_DIRTY)) {
 			mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
-			if ((t_ret =
-			    __memp_bhwrite(dbmp, hp, mfp, bhp, 1)) == 0) {
+			if (use_aio)
+				t_ret = __memp_bhwrite_async(dbmp, hp, mfp,
+				    bhp, dbmp->aio_ctx, &aiow[nflight],
+				    &deferred);
+			else
+				t_ret = __memp_bhwrite(dbmp, hp, mfp, bhp, 1);
+			if (deferred)
+				++nflight;
+			else if (t_ret == 0) {
 				++wrote_cnt;
 				++wrote_total;
 			} else {
@@ -583,10 +596,22 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		--remaining;
 		bharray[i].track_hp = NULL;
 
-		/* Discard our buffer reference. */
-		DB_ASSERT(env, atomic_read(&bhp->ref) > 0);
-		atomic_dec(env, &bhp->ref);
-		MUTEX_UNLOCK(env, bhp->mtx_buf);
+		/*
+		 * Discard our buffer reference.  For a deferred async write
+		 * the pin (ref + shared mtx_buf) is held until the write
+		 * completes; drain the window when it is full.
+		 */
+		if (!deferred) {
+			DB_ASSERT(env, atomic_read(&bhp->ref) > 0);
+			atomic_dec(env, &bhp->ref);
+			MUTEX_UNLOCK(env, bhp->mtx_buf);
+		} else if (nflight >= MEMP_AIO_WINDOW) {
+			t_ret = __memp_aio_drain(env, dbmp,
+			    dbmp->aio_ctx, aiow, nflight);
+			wrote_cnt += t_ret;
+			wrote_total += t_ret;
+			nflight = 0;
+		}
 
 		/* Check if the call has been interrupted. */
 		if (LF_ISSET(DB_SYNC_INTERRUPT_OK) &&
@@ -594,6 +619,11 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 			STAT(++mp->stat.st_sync_interrupted);
 			if (interruptedp != NULL)
 				*interruptedp = 1;
+			if (nflight > 0) {
+				wrote_total += __memp_aio_drain(env,
+				    dbmp, dbmp->aio_ctx, aiow, nflight);
+				nflight = 0;
+			}
 			goto err;
 		}
 
@@ -612,6 +642,16 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	}
 
 done:	/*
+	 * Drain any async writes still in flight before forcing pages to
+	 * disk: the fsync below must follow all completed writes.
+	 */
+	if (nflight > 0) {
+		wrote_total += __memp_aio_drain(env,
+		    dbmp, dbmp->aio_ctx, aiow, nflight);
+		nflight = 0;
+	}
+
+	/*
 	 * If a write is required, we have to force the pages to disk.  We
 	 * don't do this as we go along because we want to give the OS as
 	 * much time as possible to lazily flush, and because we have to flush

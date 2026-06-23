@@ -10,6 +10,7 @@
 
 #include "db_int.h"
 #include "dbinc/mp.h"
+#include "dbinc/os_aio.h"
 
 static int	__memp_init_config __P((ENV *, MPOOL *));
 static void	__memp_region_size __P((ENV *, roff_t *, u_int32_t *));
@@ -169,6 +170,17 @@ __memp_open(env, create_ok)
 	/* A process joining the region may reset the mpool configuration. */
 	if ((ret = __memp_init_config(env, mp)) != 0)
 		return (ret);
+
+	/*
+	 * Best-effort per-process AIO context for asynchronous buffer-pool
+	 * writeback, enabled only when the application requested it via
+	 * DB_ENV->set_flags(DB_MPOOL_AIO).  Default is synchronous writeback,
+	 * so there is no behavior change unless AIO is explicitly turned on
+	 * (and on platforms with no AIO backend, creation fails and writeback
+	 * stays synchronous regardless).  Failure is non-fatal.
+	 */
+	if (F_ISSET(env->dbenv, DB_ENV_MPOOL_AIO))
+		(void)__os_aio_create(env, 0, &dbmp->aio_ctx);
 
 	return (0);
 
@@ -516,6 +528,12 @@ __memp_env_refresh(env)
 	ret = 0;
 	dbmp = env->mp_handle;
 	mp = dbmp->reginfo[0].primary;
+
+	/* Tear down the per-process async-I/O writeback context, if any. */
+	if (dbmp->aio_ctx != NULL) {
+		(void)__os_aio_destroy(env, dbmp->aio_ctx);
+		dbmp->aio_ctx = NULL;
+	}
 	nreg = mp->nreg;
 	hp = R_ADDR(&dbmp->reginfo[0], mp->htab);
 

@@ -213,6 +213,7 @@ DbEnv.set_flags
 	DB_DIRECT_DB			# Don't buffer databases in the OS
 	DB_DSYNC_DB			# Set O_DSYNC on the databases
 	DB_HOTBACKUP_IN_PROGRESS	# Inhibit bulk loading optimization
+	DB_MPOOL_AIO			# Use asynchronous buffer-pool writeback
 	DB_MULTIVERSION			# Multiversion concurrency control
 	DB_NOLOCKING			# Set locking/mutex behavior
 	DB_NOMMAP			# Don't mmap the underlying file

@@ -281,7 +281,7 @@ DTRACE_OBJS= @ADDITIONAL_OBJS@ @REPLACEMENT_OBJS@ @CRYPTO_OBJS@ \
 	log_stat@o@ mkpath@o@ mp_alloc@o@ mp_backup@o@ mp_bh@o@ mp_fget@o@ \
 	mp_fmethod@o@ mp_fopen@o@ mp_fput@o@ mp_fset@o@ mp_method@o@ \
 	mp_mvcc@o@ mp_region@o@ mp_register@o@ mp_resize@o@ mp_stat@o@ \
-	mp_sync@o@ mp_trickle@o@ openflags@o@ os_abort@o@ os_abs@o@ \
+	mp_sync@o@ mp_trickle@o@ openflags@o@ os_abort@o@ os_abs@o@ os_aio@o@ os_aio_iocp@o@ os_aio_kqueue@o@ os_aio_pool@o@ os_aio_posix@o@ os_aio_uring@o@ \
 	os_alloc@o@ os_atomic@o@ os_clock@o@ os_cpu@o@ os_ctime@o@ os_config@o@ \
 	os_dir@o@ os_errno@o@ os_fid@o@ os_flock@o@ os_fsync@o@ \
 	os_getenv@o@ os_handle@o@ os_map@o@ os_method@o@ os_mkdir@o@ \
@@ -2238,6 +2238,18 @@ os_abs@o@: $(srcdir)/@OSDIR@/os_abs.c
 os_abort@o@: $(srcdir)/os/os_abort.c
 	 $(CC) $(CFLAGS) $?
 os_addrinfo@o@: $(srcdir)/os/os_addrinfo.c
+	$(CC) $(CFLAGS) $?
+os_aio@o@: $(srcdir)/os/os_aio.c
+	$(CC) $(CFLAGS) $?
+os_aio_uring@o@: $(srcdir)/os/os_aio_uring.c
+	$(CC) $(CFLAGS) $?
+os_aio_posix@o@: $(srcdir)/os/os_aio_posix.c
+	$(CC) $(CFLAGS) $?
+os_aio_kqueue@o@: $(srcdir)/os/os_aio_kqueue.c
+	$(CC) $(CFLAGS) $?
+os_aio_pool@o@: $(srcdir)/os/os_aio_pool.c
+	$(CC) $(CFLAGS) $?
+os_aio_iocp@o@: $(srcdir)/os/os_aio_iocp.c
 	$(CC) $(CFLAGS) $?
 os_alloc@o@: $(srcdir)/os/os_alloc.c
 	 $(CC) $(CFLAGS) $?
