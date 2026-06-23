@@ -164,7 +164,7 @@ __lock_stat(env, statp, flags)
 	    &stats->st_region_wait, &stats->st_region_nowait);
 	__mutex_set_wait_info(env, region->mtx_dd,
 	    &stats->st_objs_wait, &stats->st_objs_nowait);
-	__mutex_set_wait_info(env, region->mtx_lockers,
+	__mutex_set_wait_info(env, region->mtx_locker_stripe[0],
 	    &stats->st_lockers_wait, &stats->st_lockers_nowait);
 	stats->st_regsize = lt->reginfo.rp->size;
 	if (LF_ISSET(DB_STAT_CLEAR)) {
@@ -173,7 +173,9 @@ __lock_stat(env, statp, flags)
 		if (!LF_ISSET(DB_STAT_SUBSYSTEM)) {
 			__mutex_clear(env, region->mtx_region);
 			__mutex_clear(env, region->mtx_dd);
-			__mutex_clear(env, region->mtx_lockers);
+			for (i = 0; i < LOCK_LOCKER_STRIPES; i++)
+				__mutex_clear(env,
+				    region->mtx_locker_stripe[i]);
 			for (i = 0; i < region->part_t_size; i++)
 				__mutex_clear(env, lt->part_array[i].mtx_part);
 		}

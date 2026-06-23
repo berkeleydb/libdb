@@ -596,9 +596,9 @@ __lock_get_api(env, locker, flags, obj, lock_mode, lock)
 
 	region = env->lk_handle->reginfo.primary;
 
-	LOCK_LOCKERS(env, region);
+	RDLOCK_LOCKER(env, region, locker);
 	ret = __lock_getlocker_int(env->lk_handle, locker, 0, &sh_locker);
-	UNLOCK_LOCKERS(env, region);
+	RDUNLOCK_LOCKER(env, region, locker);
 	LOCK_SYSTEM_LOCK(env->lk_handle, region);
 	if (ret == 0)
 		ret = __lock_get_internal(env->lk_handle,

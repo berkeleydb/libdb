@@ -313,7 +313,8 @@ retry_search:	bhp = NULL;
 			if (SH_CHAIN_SINGLETON(current_bhp, vc)) {
 				u_int32_t warmth;
 
-				if (BH_REFCOUNT(current_bhp) != 0)
+				if (BH_REFCOUNT(current_bhp) != 0 ||
+				    current_bhp->wired)
 					continue;
 				buffers++;
 				warmth = current_bhp->priority;
