@@ -173,9 +173,14 @@ __memp_open(env, create_ok)
 
 	/*
 	 * Best-effort per-process AIO context for asynchronous buffer-pool
-	 * writeback.  Failure is non-fatal: writeback stays synchronous.
+	 * writeback, enabled only when the application requested it via
+	 * DB_ENV->set_flags(DB_MPOOL_AIO).  Default is synchronous writeback,
+	 * so there is no behavior change unless AIO is explicitly turned on
+	 * (and on platforms with no AIO backend, creation fails and writeback
+	 * stays synchronous regardless).  Failure is non-fatal.
 	 */
-	(void)__os_aio_create(env, 0, &dbmp->aio_ctx);
+	if (F_ISSET(env->dbenv, DB_ENV_MPOOL_AIO))
+		(void)__os_aio_create(env, 0, &dbmp->aio_ctx);
 
 	return (0);
 
