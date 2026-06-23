@@ -27,13 +27,14 @@ typedef struct {
 	API	**api, **api_end;
 
 	u_int	value;			/* Bit value */
+	int	pinned;			/* Value was pinned via __PIN= */
 } FLAG;
 FLAG	**flag_list, **flag_end;
 
 int	verbose;
 char	*progname;
 
-int	add_entry(char *, char *);
+int	add_entry(char *, char *, u_int);
 void	define_print(char *, u_int);
 void	dump_api(void);
 void	dump_flags(void);
@@ -129,16 +130,43 @@ parse()
 		 * with leading whitespace is a flag name.
 		 */
 		if (isspace(buf[0])) {
-			if ((p = strtok(buf, " \t")) == NULL || *p == '#')
+			char *flag, *extra;
+			u_int pin;
+
+			if ((flag = strtok(buf, " \t")) == NULL || *flag == '#')
 				continue;
 
 			/* A flag without an API makes no sense. */
 			if (api == NULL)
 				goto format;
 
+			/*
+			 * An optional "__PIN=<value>" token after a flag name
+			 * forces that flag to a fixed bit and reserves the bit
+			 * from the API's greedy allocation.  This lets new
+			 * flags take high, unused bits without renumbering the
+			 * existing public flag values (preserving the ABI of
+			 * the generated constants).
+			 */
+			pin = 0;
+			if ((extra = strtok(NULL, " \t")) != NULL &&
+			    *extra != '#') {
+				if (strncmp(extra,
+				    "__PIN=", sizeof("__PIN=") - 1) != 0)
+					goto format;
+				pin = (u_int)strtoul(
+				    extra + sizeof("__PIN=") - 1, NULL, 0);
+				if (pin == 0)
+					goto format;
+				if ((extra = strtok(NULL, " \t")) != NULL &&
+				    *extra != '#')
+					goto format;
+			}
+
 			/* Enter the pair into the array. */
-			if (add_entry(api, p))
+			if (add_entry(api, flag, pin))
 				return (1);
+			continue;
 		} else {
 			if ((p = strtok(buf, " \t")) == NULL)
 				continue;
@@ -158,7 +186,7 @@ format:	fprintf(stderr, "%s: format error: line %d\n", progname, lc);
 }
 
 int
-add_entry(char *api_name, char *flag_name)
+add_entry(char *api_name, char *flag_name, u_int pin)
 {
 	FLAG **fpp, *fp;
 	API **app, *ap, **p;
@@ -224,6 +252,12 @@ add_entry(char *api_name, char *flag_name)
 
 	fp = *fpp;
 	++fp->api_cnt;
+
+	/* Record an explicit pinned bit value, if given. */
+	if (pin != 0) {
+		fp->value = pin;
+		fp->pinned = 1;
+	}
 
 	/* Check to see if this API is already listed for this flag. */
 	for (p = fp->api; p != NULL && *p != NULL && p < fp->api_end; ++p)
@@ -314,11 +348,33 @@ generate_flags()
 	    (u_int)(flag_end - flag_list), sizeof(FLAG *), flag_cmp_api_cnt);
 
 	/*
+	 * Reserve every pinned flag's fixed bit in each API that uses it,
+	 * before the greedy pass, so the greedy allocator never hands that
+	 * bit to another flag.  Pinned flags keep their explicit value and
+	 * are skipped below.
+	 */
+	for (fpp = flag_list; *fpp != NULL; ++fpp) {
+		if (!(*fpp)->pinned)
+			continue;
+		for (api = (*fpp)->api; *api != NULL; ++api) {
+			if ((*api)->used_mask & (*fpp)->value) {
+				fprintf(stderr,
+		    "%s: pinned bit %#x for flag %s already in use\n",
+				    progname, (*fpp)->value, (*fpp)->name);
+				return (1);
+			}
+			(*api)->used_mask |= (*fpp)->value;
+		}
+	}
+
+	/*
 	 * Here's the plan: walk the list of flags, allocating bits.  For
 	 * each flag, we walk the list of APIs that use it and find a bit
 	 * none of them are using.  That bit becomes the flag's value.
 	 */
 	for (fpp = flag_list; *fpp != NULL; ++fpp) {
+		if ((*fpp)->pinned)		/* already assigned */
+			continue;
 		mask = 0xffffffff;			/* Set to all 1's */
 		for (api = (*fpp)->api; *api != NULL; ++api)
 			mask &= ~(*api)->used_mask;	/* Clear API's bits */
