@@ -25809,6 +25809,7 @@ esac
 
 
 
+
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for atomic operations" >&5
 printf %s "checking for atomic operations... " >&6; }
 if test ${db_cv_atomic+y}
@@ -25828,6 +25829,35 @@ if test "$db_cv_mingw" = yes; then
 fi
 
 if test "$db_cv_atomic" = no; then
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int
+main (void)
+{
+
+	uint32_t val32 = 1;
+	uint32_t exp32 = 1;
+	intptr_t valp = 1;
+	intptr_t expp = 1;
+	__atomic_add_fetch(&val32, 1, __ATOMIC_SEQ_CST);
+	__atomic_compare_exchange_n(&val32, &exp32, 2, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+	__atomic_compare_exchange_n(&valp, &expp, 2, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  db_cv_atomic="gcc/__atomic"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+fi
+
+if test "$db_cv_atomic" = no; then
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -25836,9 +25866,9 @@ main (void)
 {
 
 	#if ((defined(i386) || defined(__i386__)) && defined(__GNUC__))
-		exit(0);
+		(void)0;
 	#elif ((defined(x86_64) || defined(__x86_64__)) && defined(__GNUC__))
-		exit(0);
+		(void)0;
 	#else
 		FAIL TO COMPILE/LINK
 	#endif
@@ -25886,6 +25916,15 @@ fi
 printf '%s\n' "$db_cv_atomic" >&6; }
 
 case "$db_cv_atomic" in
+	gcc/__atomic)
+		printf '%s\n' "#define HAVE_ATOMIC_SUPPORT 1" >>confdefs.h
+
+		printf '%s\n' "#define HAVE_ATOMIC_BUILTINS 1" >>confdefs.h
+
+		printf '%s\n' "#define HAVE_ATOMIC_GCC_BUILTIN 1" >>confdefs.h
+
+		;;
+
 	x86/gcc-assembly)
 		printf '%s\n' "#define HAVE_ATOMIC_SUPPORT 1" >>confdefs.h
 
@@ -25958,6 +25997,32 @@ else case e in #(
   e)
 db_cv_atomic_64bit=no
 case "$db_cv_atomic" in
+	gcc/__atomic)
+		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+#include <stdint.h>
+int
+main (void)
+{
+
+	int64_t val = 1;
+	int64_t exp = 1;
+	__atomic_add_fetch(&val, 1, __ATOMIC_SEQ_CST);
+	__atomic_sub_fetch(&val, 1, __ATOMIC_SEQ_CST);
+	__atomic_compare_exchange_n(&val, &exp, 2, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  db_cv_atomic_64bit=yes
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+		;;
 	x86/gcc-assembly)
 		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
