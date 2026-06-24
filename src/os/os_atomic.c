@@ -214,6 +214,36 @@ __os_atomic_cas(env, p, oldval, newval)
 }
 
 /*
+ * __os_atomic_cas_ptr --
+ *	Atomic pointer-width compare-and-swap.  If *p equals oldval, set it to
+ *	newval; returns 1 on success, 0 on failure.  Implemented over intptr_t
+ *	integer atomics rather than pointer-typed C11 atomics, which have less
+ *	uniform codegen across compilers; the round-trip through intptr_t is
+ *	value-preserving for object pointers.  Used by the lock-free cursor
+ *	recycle pool (Treiber stack) in db_am.c.
+ *
+ * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: int __os_atomic_cas_ptr
+ * PUBLIC:     __P((ENV *, void *volatile *, void *, void *));
+ * PUBLIC: #endif
+ */
+int
+__os_atomic_cas_ptr(env, p, oldval, newval)
+	ENV *env;
+	void *volatile *p;
+	void *oldval;
+	void *newval;
+{
+	intptr_t expected;
+
+	COMPQUIET(env, NULL);
+	expected = (intptr_t)oldval;
+	return (__atomic_compare_exchange_n(
+	    (volatile intptr_t *)p, &expected, (intptr_t)newval,
+	    0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
+}
+
+/*
  * __os_atomic_add --
  *	Atomically add a value, return the new value.
  *
@@ -450,6 +480,29 @@ __os_atomic_cas(env, p, oldval, newval)
 {
 	COMPQUIET(env, NULL);
 	return (__sync_bool_compare_and_swap(&p->value, oldval, newval));
+}
+
+/*
+ * __os_atomic_cas_ptr --
+ *	Atomic pointer-width compare-and-swap.  Returns 1 on success, 0 on
+ *	failure.  See the GCC-builtin tier for the intptr_t rationale.
+ *
+ * PUBLIC: #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && \
+ * PUBLIC:     defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: int __os_atomic_cas_ptr
+ * PUBLIC:     __P((ENV *, void *volatile *, void *, void *));
+ * PUBLIC: #endif
+ */
+int
+__os_atomic_cas_ptr(env, p, oldval, newval)
+	ENV *env;
+	void *volatile *p;
+	void *oldval;
+	void *newval;
+{
+	COMPQUIET(env, NULL);
+	return (__sync_bool_compare_and_swap(
+	    (volatile intptr_t *)p, (intptr_t)oldval, (intptr_t)newval));
 }
 
 /*
@@ -2505,3 +2558,69 @@ __os_atomic_thread_fence()
 }
 
 #endif /* !HAVE_ATOMIC_SUPPORT && !HAVE_MUTEX_SUPPORT */
+
+
+/*
+ * __os_atomic_cas_ptr -- generic fallback.
+ *
+ *	The GCC __atomic and legacy __sync tiers above define their own native
+ *	__os_atomic_cas_ptr.  For every other tier (x86/ARM inline assembly,
+ *	Solaris, Windows, mutex-emulated, and single-threaded) we synthesize a
+ *	pointer-width CAS from the sized CAS that tier already implements --
+ *	the 64-bit __os_atomic_cas_64 when pointers are 64 bits wide, otherwise
+ *	the 32-bit __os_atomic_cas.  This avoids hand-porting a pointer CAS into
+ *	each of those tiers while still using each platform's native primitive.
+ *
+ * PUBLIC: #if !(defined(HAVE_ATOMIC_GCC_BUILTIN) && \
+ * PUBLIC:     defined(HAVE_ATOMIC_SUPPORT)) && \
+ * PUBLIC:     !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && \
+ * PUBLIC:     defined(HAVE_ATOMIC_SUPPORT))
+ * PUBLIC: int __os_atomic_cas_ptr
+ * PUBLIC:     __P((ENV *, void *volatile *, void *, void *));
+ * PUBLIC: #endif
+ */
+#if !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) &&  \
+    !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
+int
+__os_atomic_cas_ptr(env, p, oldval, newval)
+	ENV *env;
+	void *volatile *p;
+	void *oldval;
+	void *newval;
+{
+#if defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_64BIT_TYPES) &&		\
+    SIZEOF_CHAR_P == 8
+	/* Native 64-bit CAS (x86/ARM asm, Solaris, Windows tiers). */
+	return (__os_atomic_cas_64(env, (volatile int64_t *)(void *)p,
+	    (int64_t)(intptr_t)oldval, (int64_t)(intptr_t)newval));
+#elif defined(HAVE_ATOMIC_SUPPORT) && SIZEOF_CHAR_P == 4
+	/*
+	 * 32-bit pointers via the native 32-bit CAS.  db_atomic_t's only
+	 * member `value` is at offset 0, so the head word aliases it safely.
+	 */
+	return (__os_atomic_cas(env, (db_atomic_t *)(void *)p,
+	    (atomic_value_t)(intptr_t)oldval, (atomic_value_t)(intptr_t)newval));
+#elif defined(HAVE_MUTEX_SUPPORT)
+	/* Mutex-emulated CAS: hash the address to an atomic-pool mutex. */
+	db_mutex_t mtx;
+	int ret;
+
+	mtx = __os_atomic_get_mutex(env, (db_atomic_t *)(void *)p);
+	MUTEX_LOCK(env, mtx);
+	if (*p == oldval) {
+		*p = newval;
+		ret = 1;
+	} else
+		ret = 0;
+	MUTEX_UNLOCK(env, mtx);
+	return (ret);
+#else
+	/* No atomics and no mutex emulation: single-threaded only. */
+	COMPQUIET(env, NULL);
+	if (*p != oldval)
+		return (0);
+	*p = newval;
+	return (1);
+#endif
+}
+#endif /* fallback __os_atomic_cas_ptr */
