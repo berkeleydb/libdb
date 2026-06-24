@@ -1010,6 +1010,8 @@ AH_TEMPLATE(HAVE_ATOMIC_SOLARIS,
     [Define to 1 to use Solaris library routes for atomic operations.])
 AH_TEMPLATE(HAVE_ATOMIC_BUILTINS,
     [Define to 1 to use GCC __atomic_* builtins for atomic operations.])
+AH_TEMPLATE(HAVE_ATOMIC_GCC_BUILTIN,
+    [Define to 1 when the GCC/Clang __atomic_* builtin tier is selected.])
 AH_TEMPLATE(HAVE_SYNC_BUILTINS,
     [Define to 1 to use GCC __sync_* builtins for atomic operations.])
 AH_TEMPLATE(HAVE_ATOMIC_AARCH64,
@@ -1030,11 +1032,24 @@ if test "$db_cv_mingw" = yes; then
 fi
 
 if test "$db_cv_atomic" = no; then
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <stdint.h>]], [[
+	uint32_t val32 = 1;
+	uint32_t exp32 = 1;
+	intptr_t valp = 1;
+	intptr_t expp = 1;
+	__atomic_add_fetch(&val32, 1, __ATOMIC_SEQ_CST);
+	__atomic_compare_exchange_n(&val32, &exp32, 2, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+	__atomic_compare_exchange_n(&valp, &expp, 2, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+]])], [db_cv_atomic="gcc/__atomic"])
+fi
+
+if test "$db_cv_atomic" = no; then
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 	#if ((defined(i386) || defined(__i386__)) && defined(__GNUC__))
-		exit(0);
+		(void)0;
 	#elif ((defined(x86_64) || defined(__x86_64__)) && defined(__GNUC__))
-		exit(0);
+		(void)0;
 	#else
 		FAIL TO COMPILE/LINK
 	#endif
@@ -1053,6 +1068,12 @@ fi
 ])
 
 case "$db_cv_atomic" in
+	gcc/__atomic)
+		AC_DEFINE(HAVE_ATOMIC_SUPPORT)
+		AC_DEFINE(HAVE_ATOMIC_BUILTINS)
+		AC_DEFINE(HAVE_ATOMIC_GCC_BUILTIN)
+		;;
+
 	x86/gcc-assembly)
 		AC_DEFINE(HAVE_ATOMIC_SUPPORT)
 		AC_DEFINE(HAVE_ATOMIC_X86_GCC_ASSEMBLY)
@@ -1085,6 +1106,16 @@ fi
 AC_CACHE_CHECK([for 64-bit atomic operations], db_cv_atomic_64bit, [
 db_cv_atomic_64bit=no
 case "$db_cv_atomic" in
+	gcc/__atomic)
+		AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <stdint.h>]], [[
+	int64_t val = 1;
+	int64_t exp = 1;
+	__atomic_add_fetch(&val, 1, __ATOMIC_SEQ_CST);
+	__atomic_sub_fetch(&val, 1, __ATOMIC_SEQ_CST);
+	__atomic_compare_exchange_n(&val, &exp, 2, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+]])], [db_cv_atomic_64bit=yes])
+		;;
 	x86/gcc-assembly)
 		AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <stdint.h>]], [[
