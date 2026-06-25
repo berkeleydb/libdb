@@ -28,7 +28,6 @@ typedef struct __db_globals {
 	SEM_ID db_global_lock;		/* VxWorks: global semaphore */
 #endif
 #ifdef DB_WIN32
-#ifndef DB_WINCE
 	/*
 	 * These fields are used by the Windows implementation of mutexes.
 	 * Usually they are initialized by the first DB API call to lock a
@@ -38,7 +37,6 @@ typedef struct __db_globals {
 	 */
 	SECURITY_DESCRIPTOR win_default_sec_desc;
 	SECURITY_ATTRIBUTES win_default_sec_attr;
-#endif
 	SECURITY_ATTRIBUTES *win_sec_attr;
 #endif
 	

@@ -84,16 +84,9 @@ typedef signed int atomic_value_t;
  * additional 32-bit value that can be harmlessly written for each value
  * used in Interlocked instructions.
  */
-#if defined(DB_WINCE)
-typedef struct {
-	volatile atomic_value_t value;
-	volatile atomic_value_t dummy;
-} db_atomic_t;
-#else
 typedef struct {
 	volatile atomic_value_t value;
 } db_atomic_t;
-#endif
 
 /*
  * Memory ordering constants for future use with relaxed/acquire/release
