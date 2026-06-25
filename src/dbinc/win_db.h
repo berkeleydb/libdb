@@ -13,7 +13,6 @@
 #define	_WIN32_WINNT 0x0500
 #endif
 
-#ifndef DB_WINCE
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/timeb.h>
@@ -25,7 +24,6 @@
 #include <memory.h>
 #include <process.h>
 #include <signal.h>
-#endif /* DB_WINCE */
 
 #include <errno.h>
 #include <stdio.h>
@@ -45,9 +43,7 @@
 #define	WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <winsock2.h>
-#ifndef DB_WINCE
 #include <WinIoCtl.h>
-#endif
 
 #ifdef HAVE_GETADDRINFO
 /*
@@ -64,9 +60,7 @@
  */
 #define	fsync			_commit
 
-#ifndef DB_WINCE
 #define	getcwd(buf, size)	_getcwd(buf, size)
-#endif
 #define	getpid			GetCurrentProcessId
 #define	snprintf		_snprintf
 #define	strcasecmp		_stricmp
