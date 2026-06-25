@@ -258,8 +258,6 @@ do
 	rm -f ${sln}.tmp
 done
 
-# Copy wince files
-cp -r $START_DIR/../build_wince $BDB_ROOT
 # Move docs
 if [ -e "$START_DIR/../docs/bdb-sql-ado" ]; then
 	mv "$START_DIR/../docs/bdb-sql-ado" Doc/
@@ -282,7 +280,6 @@ done
 
 # Replace SQLite source code with DBSQL source code
 cp -f $START_DIR/../lang/sql/generated/* SQLite.Interop/src/core/
-cp -f $START_DIR/adodotnet/testce.2008.csproj testce/
 
 # Apply patches
 PATCH='adodotnet/adodotnet.patch'
@@ -291,38 +288,9 @@ if [ $? -ne 0 ]; then
 	die "Can not apply patch $PATCH"
 fi
 
-#
-# Generate WinCE projects
-#
 WINDOWS_VCPROJ="SQLite.Interop/SQLite.Interop.2008.vcproj"
 WINDOWS_2010_VCPROJ="SQLite.Interop/SQLite.Interop.2010.vcxproj"
-WINCE_VCPROJ_NAME="SQLite.Interop.2008.WinCE"
-WINCE_VCPROJ="SQLite.Interop/${WINCE_VCPROJ_NAME}.vcproj"
 XQ_COMMON="$START_DIR/adodotnet/adapt_common.xq.in"
-
-# Define WINCE_PLATFORM_NAME
-# Use the most common project name for WinCE project file.
-WINCE_PLATFORM_NAME='Pocket PC 2003 (ARMV4)'
-WINCE_PROJECT_GUID='A7895F70-6FD5-11E0-A1F0-0800200C9A66'
-XQ='gen_wince_project.xq'
-XQ_IN="${XQ}.in"
-XQ_IN_SRC="$START_DIR/adodotnet/${XQ_IN}"
-# Generate XQuery script
-cp $XQ_COMMON $XQ_IN
-cat $XQ_IN_SRC >> $XQ_IN
-sed -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/g" \
-    -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/g" \
-    -e "s/@PROJECT_GUID@/$WINCE_PROJECT_GUID/g" \
-    -e "s/@PLATFORM_NAME@/$WINCE_PLATFORM_NAME/g" \
-    -e "s/@PROJECT_FILE@/$WINCE_VCPROJ_NAME/g" \
-    -e "s/@BDB_PATH@/$BDB_PATH4SED/g" \
-    -e "s/@BDB_NAME@/$BDB_ROOT/g" \
-    < $XQ_IN >> $XQ
-
-cp $WINDOWS_VCPROJ $WINCE_VCPROJ
-xqilla -u -i $WINCE_VCPROJ $XQ
-rm -f $XQ
-rm -f $XQ_IN
 
 #
 # Change SQLite.Interop/SQLite.Interop.2010.vcproj for Win32/x64
@@ -338,7 +306,6 @@ cat $XQ_COMMON >> $XQ_IN
 cat $XQ_IN_SRC >> $XQ_IN
 sed -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/g" \
     -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/g" \
-    -e "s/@WINCE_PLATFORM_NAME@/$WINCE_PLATFORM_NAME/g" \
     -e "s/@BDB_PATH@/$BDB_PATH4SED/g" \
     -e "s/@BDB_NAME@/$BDB_ROOT/g" \
     < $XQ_IN >> $XQ
@@ -359,14 +326,12 @@ cp $XQ_COMMON $XQ_IN
 cat $XQ_IN_SRC >> $XQ_IN
 sed -e "s/@DB_VERSION_MAJOR@/$DB_VERSION_MAJOR/g" \
     -e "s/@DB_VERSION_MINOR@/$DB_VERSION_MINOR/g" \
-    -e "s/@WINCE_PLATFORM_NAME@/$WINCE_PLATFORM_NAME/g" \
     -e "s/@BDB_PATH@/$BDB_PATH4SED/g" \
     -e "s/@BDB_NAME@/$BDB_ROOT/g" \
     < $XQ_IN >> $XQ
 
 # Change File list for vcproject file
 xqilla -u -i $WINDOWS_VCPROJ $XQ
-xqilla -u -i $WINCE_VCPROJ $XQ
 rm -f $XQ
 rm -f $XQ_IN
 
@@ -375,7 +340,7 @@ rm -f $XQ_IN
 # 1. Change xml version to 1.0, otherwise Visual Studio can not open it
 # 2. Remove unnecessary xmlns in VS2010 project file
 #
-for f in $WINDOWS_VCPROJ $WINCE_VCPROJ $WINDOWS_2010_VCPROJ
+for f in $WINDOWS_VCPROJ $WINDOWS_2010_VCPROJ
 do
 	forward="cat"
 	which tidy  > /dev/null 2>&1
@@ -421,52 +386,6 @@ do
 	sed -e 's///g' -e 's/$//' ${sln}.tmp > $sln
 
 	rm ${sln}.tmp
-done
-
-#
-# Generate WinCE edition for Solution files
-#
-# Skip *.MSBuild.sln and *.2010.sln since they don't include CompactFramework
-# components
-#
-for sln in SQLite.NET.2008.sln
-do
-	dst=`echo $sln | sed -e 's/2008/2008.WinCE/g'`
-
-	# Dos to unix
-	sed 's/$\r//' $sln > ${sln}.tmp
-	rm -f $TMP_FILE
-	
-	# Change Win32 projects to WinCE projects
-	sed -e "s/|Win32/|$WINCE_PLATFORM_NAME/g" ${sln}.tmp > $TMP_FILE
-	sed -e "s/SQLite.Interop.2008/SQLite.Interop.2008.WinCE/g" $TMP_FILE > ${sln}.tmp
-	# Remove x64 platform -- WinCE projects doesn't require it
-	sed -e "/|x64/d" ${sln}.tmp > $TMP_FILE
-
-	# Remove SQLite.Designer, since it's not for Windows mobile/CE
-	guid=`grep 'SQLite.Designer' $TMP_FILE | head -n 1 | awk -F '[{}]' '{print $4}'`
-	if [ "$guid" != "" ]; then
-		sed -e '/SQLite.Designer/,/EndProject/d' \
-		    -e "/$guid/d" $TMP_FILE > ${sln}.tmp
-	else
-		cp $TMP_FILE ${sln}.tmp
-	fi
-
-	# Change test.2008 to testce.2008 for WinCE testing
-	testceProj="$START_DIR/adodotnet/testce.2008.csproj"
-	test_GUID=`cat ${sln}.tmp | grep test\.2008 | awk -F "[{}]" '{print $4}'`
-	testce_GUID=`cat $testceProj |  grep ProjectGuid | awk -F "[{}]" '{print $2}'`
-
-	# Change test project name and UID
-	sed -e "s/test\\\/testce\\\/g" \
-    	    -e "s/$test_GUID/$testce_GUID/g" \
-    	    -e "s/test\.2008/testce\.2008/g" \
-    	${sln}.tmp > $TMP_FILE
-
-	# Change to dos format -- VisualStudio solution files must be dos format
-	sed -e 's///g' -e 's/$//' $TMP_FILE > $dst
-
-	rm -f ${sln}.tmp
 done
 
 #

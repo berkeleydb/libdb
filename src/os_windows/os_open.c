@@ -24,11 +24,8 @@ __os_open(env, name, page_size, flags, mode, fhpp)
 {
 	DB_ENV *dbenv;
 	DB_FH *fhp;
-#ifndef DB_WINCE
 	DWORD cluster_size, sector_size, free_clusters, total_clusters;
 	_TCHAR *drive, dbuf[4]; /* <letter><colon><slash><nul> */
-
-#endif
 	int access, attr, createflag, nrepeat, ret, share;
 	_TCHAR *tname;
 
@@ -92,21 +89,9 @@ __os_open(env, name, page_size, flags, mode, fhpp)
 	if (!LF_ISSET(DB_OSO_RDONLY))
 		access |= GENERIC_WRITE;
 
-#ifdef DB_WINCE
-	/*
-	 * WinCE translates these flags into share flags for
-	 * CreateFileForMapping.
-	 * Also WinCE does not support the FILE_SHARE_DELETE flag.
-	 */
-	if (LF_ISSET(DB_OSO_REGION))
-		share = GENERIC_READ | GENERIC_WRITE;
-	else
-		share = FILE_SHARE_READ | FILE_SHARE_WRITE;
-#else
 	share = FILE_SHARE_READ | FILE_SHARE_WRITE;
 	if (__os_is_winnt())
 		share |= FILE_SHARE_DELETE;
-#endif
 	attr = FILE_ATTRIBUTE_NORMAL;
 
 	/*
@@ -129,12 +114,10 @@ __os_open(env, name, page_size, flags, mode, fhpp)
 		attr |= FILE_FLAG_WRITE_THROUGH;
 	}
 
-#ifndef DB_WINCE
 	if (LF_ISSET(DB_OSO_SEQ))
 		attr |= FILE_FLAG_SEQUENTIAL_SCAN;
 	else
 		attr |= FILE_FLAG_RANDOM_ACCESS;
-#endif
 
 	if (LF_ISSET(DB_OSO_TEMP))
 		attr |= FILE_FLAG_DELETE_ON_CLOSE;
@@ -144,11 +127,7 @@ __os_open(env, name, page_size, flags, mode, fhpp)
 	 * multiple of the disk's sector size. To find the sector size,
 	 * we call GetDiskFreeSpace, which expects a drive name like "d:\\"
 	 * or NULL for the current disk (i.e., a relative path).
-	 *
-	 * WinCE only has GetDiskFreeSpaceEx which does not
-	 * return the sector size.
 	 */
-#ifndef DB_WINCE
 	if (LF_ISSET(DB_OSO_DIRECT) && page_size != 0 && name[0] != '\0') {
 		if (name[1] == ':') {
 			drive = dbuf;
@@ -165,37 +144,15 @@ __os_open(env, name, page_size, flags, mode, fhpp)
 		    page_size % sector_size == 0)
 			attr |= FILE_FLAG_NO_BUFFERING;
 	}
-#endif
 
 	fhp->handle = fhp->trunc_handle = INVALID_HANDLE_VALUE;
 	for (nrepeat = 1;; ++nrepeat) {
 		if (fhp->handle == INVALID_HANDLE_VALUE) {
-#ifdef DB_WINCE
-			if (LF_ISSET(DB_OSO_REGION))
-				fhp->handle = CreateFileForMapping(tname,
-				    access, share, NULL, createflag, attr, 0);
-			else
-#endif
-				fhp->handle = CreateFile(tname,
+			fhp->handle = CreateFile(tname,
 				    access, share, NULL, createflag, attr, 0);
 		}
 
 #ifdef HAVE_FTRUNCATE
-		/*
-		 * Older versions of WinCE may not support truncate, if so, the
-		 * HAVE_FTRUNCATE macro should be #undef'ed, and we
-		 * don't need to open this second handle.
-		 *
-		 * WinCE dose not support opening a second handle on the same
-		 * file via CreateFileForMapping, but this dose not matter
-		 * since we are not truncating region files but database files.
-		 *
-		 * But some older versions of WinCE even
-		 * dose not allow a second handle opened via CreateFile. If
-		 * this is the case, users will need to #undef the
-		 * HAVE_FTRUNCATE macro in build_wince/db_config.h.
-		 */
-
 		/*
 		 * Windows does not provide truncate directly.  There is no
 		 * safe way to use a handle for truncate concurrently with
@@ -205,10 +162,6 @@ __os_open(env, name, page_size, flags, mode, fhpp)
 		if (fhp->handle != INVALID_HANDLE_VALUE &&
 		    !LF_ISSET(DB_OSO_RDONLY | DB_OSO_TEMP) &&
 		    fhp->trunc_handle == INVALID_HANDLE_VALUE
-#ifdef DB_WINCE
-		    /* Do not open trunc handle for region files. */
-		    && (!LF_ISSET(DB_OSO_REGION))
-#endif
 		    )
 			fhp->trunc_handle = CreateFile(
 			    tname, access, share, NULL, OPEN_EXISTING, attr, 0);
@@ -220,10 +173,6 @@ __os_open(env, name, page_size, flags, mode, fhpp)
 		if (fhp->handle == INVALID_HANDLE_VALUE ||
 		    (!LF_ISSET(DB_OSO_RDONLY | DB_OSO_TEMP) &&
 		    fhp->trunc_handle == INVALID_HANDLE_VALUE
-#ifdef DB_WINCE
-		    /* Do not open trunc handle for region files. */
-		    && (!LF_ISSET(DB_OSO_REGION))
-#endif
 		    ))
 #endif
 		{

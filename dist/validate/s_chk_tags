@@ -23,7 +23,6 @@ t2=__2
     sed -e 's/\///' \
 	-e '/^CVS$/d' \
 	-e '/^build_vxworks$/d' \
-	-e '/^build_wince$/d' \
 	-e '/^build_windows$/d' \
 	-e '/^docs$/d' \
 	-e '/^docs_book$/d' \
