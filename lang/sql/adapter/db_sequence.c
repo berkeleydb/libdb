@@ -41,9 +41,6 @@
 #include "db.h"
 #include <stdarg.h>
 
-#ifdef DB_WINCE
-#define	vsnprintf _vsnprintf
-#endif
 #define	SEQ_HANDLE_OPEN		0x0001
 #define	SEQ_HANDLE_CREATE	0x0002
 

@@ -26,9 +26,7 @@ __os_attach(env, infop, rp)
 {
 	int ret;
 	int is_sparse;
-#ifndef DB_WINCE
 	DWORD dw;
-#endif
 
 	infop->fhp = NULL;
 	/*
@@ -55,7 +53,6 @@ __os_attach(env, infop, rp)
 	}
 
 	is_sparse = 0;
-#ifndef DB_WINCE
 	/*
 	 * Sparse file only works for NTFS filesystem. If we failed to set it,
 	 * just ignore the error and use the normal method.
@@ -64,7 +61,6 @@ __os_attach(env, infop, rp)
 	    infop->fhp->handle, FSCTL_SET_SPARSE, NULL, 0, NULL, 0,
 	    &dw, NULL)))
 		is_sparse = 1;
-#endif
 
 	/*
 	 * Map the file in.  If we're creating an in-system-memory region,
@@ -146,17 +142,6 @@ __os_mapfile(env, path, fhp, len, is_rdonly, addr)
 	size_t len;
 	void **addr;
 {
-#ifdef DB_WINCE
-	/*
-	 * Windows CE has special requirements for file mapping to work.
-	 * * The input handle needs to be opened using CreateFileForMapping
-	 * * Concurrent access via a non mapped file is not supported.
-	 * So we disable support for memory mapping files on Windows CE. It is
-	 * currently only used as an optimization in mpool for small read only
-	 * databases.
-	 */
-	return (EFAULT);
-#else
 	DB_ENV *dbenv;
 
 	dbenv = env == NULL ? NULL : env->dbenv;
@@ -165,7 +150,6 @@ __os_mapfile(env, path, fhp, len, is_rdonly, addr)
 	    FLD_ISSET(dbenv->verbose, DB_VERB_FILEOPS | DB_VERB_FILEOPS_ALL))
 		__db_msg(env, DB_STR_A("0008", "fileops: mmap %s", "%s"), path);
 	return (__os_map(env, path, NULL, fhp, len, 0, 0, is_rdonly, addr));
-#endif
 }
 
 /*
@@ -296,12 +280,6 @@ __os_map(env, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
 	 * paging file namespace.
 	 */
 	if (use_pagefile) {
-#ifdef DB_WINCE
-		__db_errx(env, DB_STR("0010",
-		    "Unable to memory map regions using system "
-		    "memory on WinCE."));
-		return (EFAULT);
-#endif
 		TO_TSTRING(env, path, tpath, ret);
 		if (ret != 0)
 			return (ret);
@@ -336,7 +314,6 @@ __os_map(env, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
 	 */
 	hMemory = NULL;
 	if (use_pagefile) {
-#ifndef DB_WINCE
 		hMemory = OpenFileMapping(
 		    is_rdonly ? FILE_MAP_READ : FILE_MAP_ALL_ACCESS,
 		    0, shmem_name);
@@ -345,19 +322,10 @@ __os_map(env, path, infop, fhp, len, is_region, is_system, is_rdonly, addr)
 			hMemory = CreateFileMapping((HANDLE)-1, 0,
 			    is_rdonly ? PAGE_READONLY : PAGE_READWRITE,
 			    (DWORD)(len64 >> 32), (DWORD)len64, shmem_name);
-#endif
 	} else {
 		hMemory = CreateFileMapping(fhp->handle, 0,
 		    is_rdonly ? PAGE_READONLY : PAGE_READWRITE,
 		    (DWORD)(len64 >> 32), (DWORD)len64, NULL);
-#ifdef DB_WINCE
-		/*
-		 * WinCE automatically closes the handle passed in.
-		 * Ensure DB does not attempt to close the handle again.
-		 */
-		fhp->handle = INVALID_HANDLE_VALUE;
-		F_CLR(fhp, DB_FH_OPENED);
-#endif
 	}
 
 	if (hMemory == NULL) {

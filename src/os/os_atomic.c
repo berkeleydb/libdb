@@ -1849,9 +1849,6 @@ __os_atomic_init(p, val)
 	atomic_value_t val;
 {
 	p->value = val;
-#if defined(DB_WINCE)
-	p->dummy = 0;
-#endif
 }
 
 /*
@@ -1893,7 +1890,6 @@ __os_atomic_store(p, val)
 	db_atomic_t *p;
 	atomic_value_t val;
 {
-	WINCE_ATOMIC_MAGIC(p);
 	InterlockedExchange(
 	    (interlocked_val)(&p->value), (LONG)val);
 }
@@ -1915,7 +1911,6 @@ __os_atomic_inc(env, p)
 	db_atomic_t *p;
 {
 	COMPQUIET(env, NULL);
-	WINCE_ATOMIC_MAGIC(p);
 	return ((atomic_value_t)InterlockedIncrement(
 	    (interlocked_val)(&p->value)));
 }
@@ -1937,7 +1932,6 @@ __os_atomic_dec(env, p)
 	db_atomic_t *p;
 {
 	COMPQUIET(env, NULL);
-	WINCE_ATOMIC_MAGIC(p);
 	return ((atomic_value_t)InterlockedDecrement(
 	    (interlocked_val)(&p->value)));
 }
@@ -1962,7 +1956,6 @@ __os_atomic_cas(env, p, oldval, newval)
 	atomic_value_t newval;
 {
 	COMPQUIET(env, NULL);
-	WINCE_ATOMIC_MAGIC(p);
 	return (InterlockedCompareExchange(
 	    (interlocked_val)(&p->value),
 	    (LONG)newval, (LONG)oldval) == (LONG)oldval);
@@ -1986,7 +1979,6 @@ __os_atomic_add(env, p, val)
 	atomic_value_t val;
 {
 	COMPQUIET(env, NULL);
-	WINCE_ATOMIC_MAGIC(p);
 	/* InterlockedExchangeAdd returns the OLD value. */
 	return ((atomic_value_t)InterlockedExchangeAdd(
 	    (interlocked_val)(&p->value), (LONG)val) + val);
@@ -2010,7 +2002,6 @@ __os_atomic_fetch_add(env, p, val)
 	atomic_value_t val;
 {
 	COMPQUIET(env, NULL);
-	WINCE_ATOMIC_MAGIC(p);
 	return ((atomic_value_t)InterlockedExchangeAdd(
 	    (interlocked_val)(&p->value), (LONG)val));
 }
@@ -2033,7 +2024,6 @@ __os_atomic_exchange(env, p, val)
 	atomic_value_t val;
 {
 	COMPQUIET(env, NULL);
-	WINCE_ATOMIC_MAGIC(p);
 	return ((atomic_value_t)InterlockedExchange(
 	    (interlocked_val)(&p->value), (LONG)val));
 }

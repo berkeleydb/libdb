@@ -5,8 +5,7 @@
 #
 # If you are adding a new file, putting the filename here in srcfiles.in and
 # indicate which modules require the file. Also make sure to add the file to
-# dist/win_projects/projects.template.xml for Windows, and
-# dist/win_projects/projects_wince.template.xml for Windows CE.
+# dist/win_projects/projects.template.xml for Windows.
 #
 # Please keep this list sorted alphabetically!
 #
