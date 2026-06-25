@@ -112,15 +112,6 @@ write_info(fp)
 	return (0);
 }
 
-#elif defined(HAVE_VXWORKS)
-static int
-write_info(fp)
-	FILE *fp;
-{
-	fprintf(fp, "<p>VxWorks");
-	return (0);
-}
-
 #else /* POSIX */
 #include <sys/utsname.h>
 

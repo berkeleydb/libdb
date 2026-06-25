@@ -85,7 +85,7 @@ for i in db btree clib common crypto dbreg env fileops hash heap \
 
 	if [ $i = os ] ; then
 		f=`ls ../src/$i/*.c \
-	    ../src/os_qnx/*.c ../src/os_vxworks/*.c ../src/os_windows/*.c`
+	    ../src/os_qnx/*.c ../src/os_windows/*.c`
 	elif [ $i = crypto ] ; then
 		f=`ls ../src/$i/*.c ../src/$i/*/*.c`
 	elif [ $i = env ] ; then

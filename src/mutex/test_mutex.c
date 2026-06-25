@@ -966,7 +966,7 @@ os_wait(procs, n)
 		while (++i < n)
 			procs[i - 1] = procs[i];
 	} while (--n);
-#elif !defined(HAVE_VXWORKS)
+#else
 	do {
 		if (wait(&status) == -1)
 			return (__os_posix_err(__os_get_syserr()));
@@ -1023,10 +1023,7 @@ os_spawn(path, argv)
 	COMPQUIET(pid, 0);
 	COMPQUIET(status, 0);
 
-#ifdef HAVE_VXWORKS
-	fprintf(stderr, "%s: os_spawn not supported for VxWorks.\n", progname);
-	return (OS_BAD_PID);
-#elif defined(HAVE_QNX)
+#if defined(HAVE_QNX)
 	/*
 	 * For QNX, we cannot fork if we've ever used threads.  So
 	 * we'll use their spawn function.  We use 'spawnl' which
