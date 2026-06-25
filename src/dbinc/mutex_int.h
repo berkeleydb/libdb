@@ -301,33 +301,6 @@ typedef volatile unsigned char tsl_t;
 #endif
 
 /*********************************************************************
- * VxWorks
- * Use basic binary semaphores in VxWorks, as we currently do not need
- * any special features.  We do need the ability to single-thread the
- * entire system, however, because VxWorks doesn't support the open(2)
- * flag O_EXCL, the mechanism we normally use to single thread access
- * when we're first looking for a DB environment.
- *********************************************************************/
-#ifdef HAVE_MUTEX_VXWORKS
-#include "taskLib.h"
-typedef SEM_ID tsl_t;
-
-#ifdef LOAD_ACTUAL_MUTEX_CODE
-/*
- * Uses of this MUTEX_SET() need to have a local 'nowait' variable,
- * which determines whether to return right away when the semaphore
- * is busy or to wait until it is available.
- */
-#define	MUTEX_SET(tsl)							\
-	(semTake((*(tsl)), nowait ? NO_WAIT : WAIT_FOREVER) == OK)
-#define	MUTEX_UNSET(tsl)	(semGive((*tsl)))
-#define	MUTEX_INIT(tsl)							\
-	((*(tsl) = semBCreate(SEM_Q_FIFO, SEM_FULL)) == NULL)
-#define	MUTEX_DESTROY(tsl)	semDelete(*tsl)
-#endif
-#endif
-
-/*********************************************************************
  * Win16
  *
  * Win16 spinlocks are simple because we cannot possibly be preempted.

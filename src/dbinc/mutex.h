@@ -260,32 +260,6 @@ static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
 /*
  * Berkeley DB ports may require single-threading at places in the code.
  */
-#ifdef HAVE_MUTEX_VXWORKS
-#include "taskLib.h"
-/*
- * Use the taskLock() mutex to eliminate a race where two tasks are
- * trying to initialize the global lock at the same time.
- */
-#define	DB_BEGIN_SINGLE_THREAD do {					\
-	if (DB_GLOBAL(db_global_init))					\
-		(void)semTake(DB_GLOBAL(db_global_lock), WAIT_FOREVER);	\
-	else {								\
-		taskLock();						\
-		if (DB_GLOBAL(db_global_init)) {			\
-			taskUnlock();					\
-			(void)semTake(DB_GLOBAL(db_global_lock),	\
-			    WAIT_FOREVER);				\
-			continue;					\
-		}							\
-		DB_GLOBAL(db_global_lock) =				\
-		    semBCreate(SEM_Q_FIFO, SEM_EMPTY);			\
-		if (DB_GLOBAL(db_global_lock) != NULL)			\
-			DB_GLOBAL(db_global_init) = 1;			\
-		taskUnlock();						\
-	}								\
-} while (DB_GLOBAL(db_global_init) == 0)
-#define	DB_END_SINGLE_THREAD	(void)semGive(DB_GLOBAL(db_global_lock))
-#endif
 
 /*
  * Single-threading defaults to a no-op.

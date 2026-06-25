@@ -166,7 +166,7 @@ cp -rp $DB_ADDONS/bfile $SQL_EXT_DIR
 # Remove source directories we don't distribute.
 cd $R && rm -rf test/tcl/TODO test/upgrade test/scr036 test/erlang
 cd $R && rm -rf test/perf test/purify test/repmgr
-cd $R && rm -rf test/server test/stl test/vxworks
+cd $R && rm -rf test/server test/stl
 cd $R && find . -name '.hg*' | xargs rm -f
 cd $R && find . -name 'tags' | xargs rm -f
 
