@@ -36,7 +36,6 @@ build src/mp/tags ../../dist/tagdir/tags
 build src/mutex/tags ../../dist/tagdir/tags
 build src/os/tags ../../dist/tagdir/tags
 build src/os_qnx/tags ../../dist/tagdir/tags
-build src/os_vxworks/tags ../../dist/tagdir/tags
 build src/os_windows/tags ../../dist/tagdir/tags
 build src/qam/tags ../../dist/tagdir/tags
 build src/rep/tags ../../dist/tagdir/tags

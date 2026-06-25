@@ -56,14 +56,3 @@ f=win_projects/projects.template.xml
 
  sh ./s_windows
  sh ./s_windows_dsp
-
-# VxWorks
-f=vx_config.in
-(echo '/#define.HAVE_CRYPTO/' &&
- echo 'c' &&
- echo '/* #undef HAVE_CRYPTO */'
- echo '.' &&
- echo 'w' &&
- echo 'q') | ed $f
-
- sh ./s_vxworks
