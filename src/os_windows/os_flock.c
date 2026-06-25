@@ -21,18 +21,6 @@ __os_fdlock(env, fhp, offset, acquire, nowait)
 	int acquire, nowait;
 	off_t offset;
 {
-#ifdef DB_WINCE
-	/*
-	 * This functionality is not supported by WinCE, so just fail.
-	 *
-	 * Should only happen if an app attempts to open an environment
-	 * with the DB_REGISTER flag.
-	 */
-	 __db_errx(env, DB_STR("0019",
-	    "fdlock API not implemented for WinCE, DB_REGISTER "
-	    "environment flag not supported."));
-	return (EFAULT);
-#else
 	DWORD low, high;
 	DB_ENV *dbenv;
 	OVERLAPPED over;
@@ -86,5 +74,4 @@ __os_fdlock(env, fhp, offset, acquire, nowait)
 		    !UnlockFile(fhp->handle, low, high, 1, 0), ret);
 
 	return (__os_posix_err(ret));
-#endif
 }

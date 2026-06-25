@@ -21,10 +21,8 @@ DB_GLOBALS __db_global_values = {
 	NULL,				/* VxWorks: db_global_lock */
 #endif
 #ifdef DB_WIN32
-#ifndef DB_WINCE
 	{ 0 },			/* SECURITY_DESCRIPTOR win_default_sec_desc */
 	{ 0 },			/* SECURITY_ATTRIBUTES win_default_sec_attr */
-#endif
 	NULL,				/* SECURITY_ATTRIBUTES *win_sec_attr */
 #endif
 	{ NULL, NULL },			/* XA env list */

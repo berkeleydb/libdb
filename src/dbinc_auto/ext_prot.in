@@ -36,7 +36,7 @@ int db_env_create __P((DB_ENV **, u_int32_t));
 char *db_version __P((int *, int *, int *));
 char *db_full_version __P((int *, int *, int *, int *, int *));
 int log_compare __P((const DB_LSN *, const DB_LSN *));
-#if defined(DB_WIN32) && !defined(DB_WINCE)
+#if defined(DB_WIN32)
 int db_env_set_win_security __P((SECURITY_ATTRIBUTES *sa));
 #endif
 int db_sequence_create __P((DB_SEQUENCE **, DB *, u_int32_t));
