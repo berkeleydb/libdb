@@ -64,6 +64,9 @@
 /* Define to 1 to use GCC __atomic_* builtins for atomic operations. */
 #undef HAVE_ATOMIC_BUILTINS
 
+/* Define to 1 when the GCC/Clang __atomic_* builtin tier is selected. */
+#undef HAVE_ATOMIC_GCC_BUILTIN
+
 /* Define to 1 to use Solaris library routes for atomic operations. */
 #undef HAVE_ATOMIC_SOLARIS
 
