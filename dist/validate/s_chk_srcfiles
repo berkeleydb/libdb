@@ -36,8 +36,7 @@ find $d -type f |
 	-e '/^test\/repmgr/d' \
 	-e '/^test\/stl/d' \
         -e '/^test\/server/d' \
-        -e '/^test_thread/d' \
-        -e '/^test\/vxworks/d' |
+        -e '/^test_thread/d' |
     egrep '\.c$|\.cpp$|\.def$|\.rc$' |
     sort > $t2
 

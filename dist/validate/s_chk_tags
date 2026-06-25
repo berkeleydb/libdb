@@ -22,7 +22,6 @@ t2=__2
 (cd $d && ls -F | egrep / | sort |
     sed -e 's/\///' \
 	-e '/^CVS$/d' \
-	-e '/^build_vxworks$/d' \
 	-e '/^build_wince$/d' \
 	-e '/^build_windows$/d' \
 	-e '/^docs$/d' \
@@ -37,8 +36,7 @@ t2=__2
 	-e '/^test_cxx$/d' \
 	-e '/^test_micro$/d' \
 	-e '/^test_purify$/d' \
-	-e '/^test_thread$/d' \
-	-e '/^test_vxworks$/d') > $t1
+	-e '/^test_thread$/d') > $t1
 
 (cd $d && ls */tags | sed 's/\/tags$//' | sort) > $t2
 if diff $t1 $t2 > /dev/null; then

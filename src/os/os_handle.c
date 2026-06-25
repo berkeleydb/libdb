@@ -27,9 +27,6 @@ __os_openhandle(env, name, flags, mode, fhpp)
 	DB_FH *fhp;
 	u_int nrepeat, retries;
 	int fcntl_flags, ret;
-#ifdef HAVE_VXWORKS
-	int newflags;
-#endif
 	/*
 	 * Allocate the file handle and copy the file name.  We generally only
 	 * use the name for verbose or error messages, but on systems where we
@@ -61,53 +58,6 @@ __os_openhandle(env, name, flags, mode, fhpp)
 	retries = 0;
 	for (nrepeat = 1; nrepeat < 4; ++nrepeat) {
 		ret = 0;
-#ifdef	HAVE_VXWORKS
-		/*
-		 * VxWorks does not support O_CREAT on open, you have to use
-		 * creat() instead.  (It does not support O_EXCL or O_TRUNC
-		 * either, even though they are defined "for future support".)
-		 * We really want the POSIX behavior that if O_CREAT is set,
-		 * we open if it exists, or create it if it doesn't exist.
-		 * If O_CREAT is specified, single thread and try to open the
-		 * file.  If successful, and O_EXCL return EEXIST.  If
-		 * unsuccessful call creat and then end single threading.
-		 */
-		if (LF_ISSET(O_CREAT)) {
-			DB_BEGIN_SINGLE_THREAD;
-			newflags = flags & ~(O_CREAT | O_EXCL);
-			if ((fhp->fd = open(name, newflags, mode)) != -1) {
-				/*
-				 * We need to mark the file opened at this
-				 * point so that if we get any error below
-				 * we will properly close the fd we just
-				 * opened on the error path.
-				 */
-				F_SET(fhp, DB_FH_OPENED);
-				if (LF_ISSET(O_EXCL)) {
-					/*
-					 * If we get here, want O_EXCL create,
-					 * and the file exists.  Close and
-					 * return EEXISTS.
-					 */
-					DB_END_SINGLE_THREAD;
-					ret = EEXIST;
-					goto err;
-				}
-				/*
-				 * XXX
-				 * Assume any error means non-existence.
-				 * Unfortunately return values (even for
-				 * non-existence) are driver specific so
-				 * there is no single error we can use to
-				 * verify we truly got the equivalent of
-				 * ENOENT.
-				 */
-			} else
-				fhp->fd = creat(name, newflags);
-			DB_END_SINGLE_THREAD;
-		} else
-		/* FALLTHROUGH */
-#endif
 #ifdef __VMS
 		/*
 		 * !!!
