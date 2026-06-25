@@ -23068,7 +23068,6 @@ fi
 # Mutexes we don't test for, but want the #defines to exist for other ports.
 
 
-
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for mutexes" >&5
 printf %s "checking for mutexes... " >&6; }
 if test ${db_cv_mutex+y}
@@ -25770,7 +25769,7 @@ fi
 # 2: Mutexes that must be destroyed, but which don't hold permanent system
 #    resources, for example, pthread mutexes on MVS aka OS/390 aka z/OS.
 # 3: Mutexes that must be destroyed, even after the process is gone, for
-#    example, pthread mutexes on QNX and binary semaphores on VxWorks.
+#    example, pthread mutexes on QNX.
 #
 # DB cannot currently distinguish between #2 and #3 because DB does not know
 # if the application is running environment recovery as part of startup and

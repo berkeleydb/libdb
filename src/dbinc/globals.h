@@ -18,15 +18,7 @@ extern "C" {
  *
  * Held in a single structure to minimize the name-space pollution.
  *******************************************************/
-#ifdef HAVE_VXWORKS
-#include "semLib.h"
-#endif
-
 typedef struct __db_globals {
-#ifdef HAVE_VXWORKS
-	u_int32_t db_global_init;	/* VxWorks: inited */
-	SEM_ID db_global_lock;		/* VxWorks: global semaphore */
-#endif
 #ifdef DB_WIN32
 #ifndef DB_WINCE
 	/*

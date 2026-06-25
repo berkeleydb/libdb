@@ -72,11 +72,11 @@ for i in $MSG_DIRS; do
 		elif [ "$3" = "common" ] || [ "$3" = "crypto" ] || \
 		    [ "$3" = "fileops" ] || [ "$3" = "hmac" ] || \
 		    [ "$3" = "os" ] || [ "$3" = "os_qnx" ] || \
-		    [ "$3" = "os_vxworks" ] || [ "$3" = "os_windows" ]; then 
+		    [ "$3" = "os_windows" ]; then 
 			cat_indx=0
 			cat_dirs=$i"common "$i"crypto "$i"fileops "
 			cat_dirs=$cat_dirs$i"hmac "$i"os "$i"os_qnx "
-			cat_dirs=$cat_dirs$i"os_vxworks "$i"os_windows"
+			cat_dirs=$cat_dirs$i"os_windows"
 		elif [ "$3" = "db" ] || [ "$3" = "dbinc" ] || \
 		    [ "$3" = "dbinc_auto" ]; then
 			cat_indx=1

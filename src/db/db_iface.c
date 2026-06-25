@@ -1284,13 +1284,6 @@ __db_open_arg(dbp, txn, fname, dname, type, flags)
 	if (LF_ISSET(DB_RDONLY) && LF_ISSET(DB_CREATE))
 		return (__db_ferr(env, "DB->open", 1));
 
-#ifdef	HAVE_VXWORKS
-	if (LF_ISSET(DB_TRUNCATE)) {
-		__db_errx(env, DB_STR("0591",
-		    "DB_TRUNCATE not supported on VxWorks"));
-		return (DB_OPNOTSUP);
-	}
-#endif
 	switch (type) {
 	case DB_UNKNOWN:
 		if (LF_ISSET(DB_CREATE|DB_TRUNCATE)) {

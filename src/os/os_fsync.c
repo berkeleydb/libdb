@@ -10,28 +10,6 @@
 
 #include "db_int.h"
 
-#ifdef	HAVE_VXWORKS
-#include "ioLib.h"
-
-#define	fsync(fd)	__vx_fsync(fd)
-
-int
-__vx_fsync(fd)
-	int fd;
-{
-	int ret;
-
-	/*
-	 * The results of ioctl are driver dependent.  Some will return the
-	 * number of bytes sync'ed.  Only if it returns 'ERROR' should we
-	 * flag it.
-	 */
-	if ((ret = ioctl(fd, FIOSYNC, 0)) != ERROR)
-		return (0);
-	return (ret);
-}
-#endif
-
 #ifdef __hp3000s900
 #define	fsync(fd)	__mpe_fsync(fd)
 
