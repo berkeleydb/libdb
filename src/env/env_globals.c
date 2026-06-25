@@ -16,10 +16,6 @@
  * See dbinc/globals.h for the structure definition.
  */
 DB_GLOBALS __db_global_values = {
-#ifdef HAVE_VXWORKS
-	0,				/* VxWorks: db_global_init */
-	NULL,				/* VxWorks: db_global_lock */
-#endif
 #ifdef DB_WIN32
 	{ 0 },			/* SECURITY_DESCRIPTOR win_default_sec_desc */
 	{ 0 },			/* SECURITY_ATTRIBUTES win_default_sec_attr */

@@ -31,12 +31,7 @@ __os_ctime(tod, time_buf)
 	 * return of (char *) from ctime_r, HP-UX 10.XX's version returned an
 	 * int.
 	 */
-#if defined(HAVE_VXWORKS)
-	{
-	size_t buflen = CTIME_BUFLEN;
-	(void)ctime_r(tod, time_buf, &buflen);
-	}
-#elif defined(HAVE_CTIME_R_3ARG)
+#if defined(HAVE_CTIME_R_3ARG)
 	(void)ctime_r(tod, time_buf, CTIME_BUFLEN);
 #elif defined(HAVE_CTIME_R)
 	(void)ctime_r(tod, time_buf);
