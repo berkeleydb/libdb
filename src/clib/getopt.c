@@ -46,8 +46,6 @@ extern char *__db_rpath(const char *);
 #include <stdio.h>
 #include <string.h>
 
-int	__db_getopt_reset;	/* global reset for VxWorks. */
-
 int	opterr = 1,		/* if error message should be printed */
 	optind = 1,		/* index into parent argv vector */
 	optopt,			/* character checked for validity */
@@ -79,19 +77,6 @@ getopt(nargc, nargv, ostr)
 	static char *place = EMSG;		/* option letter processing */
 	char *oli;				/* option letter list index */
 
-	/*
-	 * VxWorks needs to be able to repeatedly call getopt from multiple
-	 * programs within its global name space.
-	 */
-	if (__db_getopt_reset) {
-		__db_getopt_reset = 0;
-
-		opterr = optind = 1;
-		optopt = optreset = 0;
-		optarg = NULL;
-		progname = NULL;
-		place = EMSG;
-	}
 	if (!progname) {
 		if ((progname = __db_rpath(*nargv)) == NULL)
 			progname = *nargv;
