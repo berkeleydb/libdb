@@ -31,11 +31,7 @@ __os_id(dbenv, pidp, tidp)
 	 */
 	if (pidp != NULL) {
 		if (dbenv == NULL) {
-#if defined(HAVE_VXWORKS)
-			*pidp = taskIdSelf();
-#else
 			*pidp = getpid();
-#endif
 		} else
 			*pidp = dbenv->env->pid_cache;
 	}
