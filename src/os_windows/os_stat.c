@@ -27,9 +27,9 @@ __os_get_cluster_size(path, psize)
 	u_int32_t *psize;
 {
 
-#if (WINVER < 0x500) || defined(DB_WINCE)
+#if (WINVER < 0x500)
 	/*
-	 * WinCE and versions of Windows earlier than Windows NT don't have
+	 * Versions of Windows earlier than Windows NT don't have
 	 * the APIs required to retrieve the cluster size.
 	 */
 	*psize = DB_DEF_IOSIZE;

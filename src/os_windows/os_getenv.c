@@ -21,11 +21,6 @@ __os_getenv(env, name, bpp, buflen)
 	char **bpp;
 	size_t buflen;
 {
-#ifdef DB_WINCE
-	COMPQUIET(name, NULL);
-	/* WinCE does not have a getenv implementation. */
-	return (0);
-#else
 	_TCHAR *tname, tbuf[1024];
 	int ret;
 	char *p;
@@ -99,5 +94,4 @@ small_buf:
 	    "%s: buffer too small to hold environment variable %s", "%s %s"),
 	    name, p);
 	return (EINVAL);
-#endif
 }

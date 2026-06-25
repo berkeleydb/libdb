@@ -127,10 +127,6 @@ s/@DB_CONST@//
 s/@DB_PROTO1@/#undef __P/
 s/@DB_PROTO2@/#define	__P(protos)	protos/
 ENDOFSEDTEXT
-# The db.h, db_int.h files are identical between Windows and WinCE.
-# This may change in the future, for now have the script copy
-# the headers into the build_wince directory.
-# WinCE does not support the C++ API, so don't need to copy db_cxx.h
 
 (echo "$msgc" &&
     sed -f $s ../src/dbinc/db.in &&
@@ -142,9 +138,6 @@ test `egrep '@.*@' $t` && {
 	exit 1
 }
 f=../build_windows/db.h
-cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f)
-f=../build_wince/db.h
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f)
 
@@ -177,11 +170,8 @@ test `egrep '@.*@' $t` && {
 f=../build_windows/db_int.h
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f)
-f=../build_wince/db_int.h
-cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f)
 
-# Build the Windows and WinCE db_config.h.
+# Build the Windows db_config.h.
 # We don't fail, but we complain if the win_config.in file isn't up-to-date.
 check_config()
 {
@@ -197,11 +187,6 @@ check_config()
 check_config win_config.in
 f=../build_windows/db_config.h
 (echo "$msgc" && sed "s/__EDIT_DB_VERSION__/$DB_VERSION/" win_config.in) > $t
-cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f)
-check_config wince_config.in
-f=../build_wince/db_config.h
-(echo "$msgc" && sed "s/__EDIT_DB_VERSION__/$DB_VERSION/" wince_config.in) > $t
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f)
 
@@ -254,9 +239,6 @@ test `egrep '@.*@' $t` && {
 f=../build_windows/clib_port.h
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f)
-f=../build_wince/clib_port.h
-cmp $t $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp $t $f)
 
 # Build the Windows dbstl_common.h.
 cat <<ENDOFSEDTEXT > $s
@@ -268,10 +250,5 @@ sed -f $s ../lang/cxx/stl/dbstl_common.in > $t
 f=../build_windows/dbstl_common.h
 cmp $t $f > /dev/null 2>&1 ||
     (echo "Building $f" && rm -f $f && cp $t $f)
-
-# Copy in errno.h.
-f=../build_wince/errno.h
-cmp errno.h $f > /dev/null 2>&1 ||
-    (echo "Building $f" && rm -f $f && cp errno.h $f)
 
 rm -f $s $t

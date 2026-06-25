@@ -26,7 +26,6 @@ __os_io(env, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 {
 	int ret;
 
-#ifndef DB_WINCE
 	if (__os_is_winnt()) {
 		DB_ENV *dbenv;
 		DWORD nbytes;
@@ -78,7 +77,6 @@ __os_io(env, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 	}
 
 slow:
-#endif
 	MUTEX_LOCK(env, fhp->mtx_fh);
 
 	if ((ret = __os_seek(env, fhp, pgno, pgsize, relative)) != 0)

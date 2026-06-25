@@ -21,14 +21,6 @@ __os_openhandle(env, name, flags, mode, fhpp)
 	int flags, mode;
 	DB_FH **fhpp;
 {
-#ifdef DB_WINCE
-	/*
-	 * __os_openhandle API is not implemented on WinCE.
-	 * It is not currently called from within the Berkeley DB library,
-	 * so don't log the failure via the __db_err mechanism.
-	 */
-	return (EFAULT);
-#else
 	DB_FH *fhp;
 	int ret, nrepeat, retries;
 
@@ -96,7 +88,6 @@ __os_openhandle(env, name, flags, mode, fhpp)
 
 err:	(void)__os_closehandle(env, fhp);
 	return (ret);
-#endif
 }
 
 /*
@@ -136,11 +127,7 @@ __os_closehandle(env, fhp)
 		if (fhp->handle != INVALID_HANDLE_VALUE)
 			RETRY_CHK((!CloseHandle(fhp->handle)), ret);
 		else
-#ifdef DB_WINCE
-			ret = EFAULT;
-#else
 			RETRY_CHK((_close(fhp->fd)), ret);
-#endif
 
 		if (fhp->trunc_handle != INVALID_HANDLE_VALUE) {
 			RETRY_CHK((!CloseHandle(fhp->trunc_handle)), t_ret);
