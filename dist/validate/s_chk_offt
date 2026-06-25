@@ -52,8 +52,7 @@ sed -e "/#undef off_t/d" \
     -e "/os_truncate.c:.*off_t stat_offset;/d" \
     -e "/os_truncate.c:.*offset = /d" \
     -e "/test_perf\/perf_misc.c:/d" \
-    -e "/test_server\/dbs.c:/d" \
-    -e "/test_vxworks\/vx_mutex.c:/d" > $t
+    -e "/test_server\/dbs.c:/d" > $t
 
 test -s $t && {
 	cat $t

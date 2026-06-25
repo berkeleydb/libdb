@@ -33,7 +33,6 @@ sh s_test		# Test suite support.
 # Create the build environments last, they use files created
 # by previous steps.
 #############################################################
-sh s_vxworks		# VxWorks support.
 sh s_windows		# Windows support.
 sh s_windows_dsp	# Windows support: build environment.
 sh s_android            # Android support: drop-in build environment.

@@ -316,9 +316,6 @@
 /* Define to 1 to use VMS mutexes. */
 /* #undef HAVE_MUTEX_VMS */
 
-/* Define to 1 to use VxWorks mutexes. */
-/* #undef HAVE_MUTEX_VXWORKS */
-
 /* Define to 1 to use the MSVC compiler and Windows mutexes. */
 /* #undef HAVE_MUTEX_WIN32 */
 
@@ -538,9 +535,6 @@
 
 /* Define to 1 if you have the `vsnprintf' function. */
 #define HAVE_VSNPRINTF 1
-
-/* Define to 1 if building on VxWorks. */
-/* #undef HAVE_VXWORKS */
 
 /* Define to 1 if you have the `yield' function. */
 /* #undef HAVE_YIELD */

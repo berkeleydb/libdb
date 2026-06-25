@@ -7,8 +7,6 @@ AH_TEMPLATE(DB_WIN32,
     defines _WIN32, even though Cygwin/GCC closely emulates the Unix
     environment.])
 
-AH_TEMPLATE(HAVE_VXWORKS, [Define to 1 if building on VxWorks.])
-
 AH_TEMPLATE(HAVE_FILESYSTEM_NOTZERO,
     [Define to 1 if allocated filesystem blocks are not zeroed.])
 
