@@ -133,7 +133,6 @@ AC_DEFUN(AM_DEFINE_MUTEXES, [
 
 # Mutexes we don't test for, but want the #defines to exist for other ports.
 AH_TEMPLATE(HAVE_MUTEX_VMS, [Define to 1 to use VMS mutexes.])
-AH_TEMPLATE(HAVE_MUTEX_VXWORKS, [Define to 1 to use VxWorks mutexes.])
 
 AC_CACHE_CHECK([for mutexes], db_cv_mutex, [
 
@@ -971,7 +970,7 @@ fi
 # 2: Mutexes that must be destroyed, but which don't hold permanent system
 #    resources, for example, pthread mutexes on MVS aka OS/390 aka z/OS.
 # 3: Mutexes that must be destroyed, even after the process is gone, for
-#    example, pthread mutexes on QNX and binary semaphores on VxWorks.
+#    example, pthread mutexes on QNX.
 #
 # DB cannot currently distinguish between #2 and #3 because DB does not know
 # if the application is running environment recovery as part of startup and
