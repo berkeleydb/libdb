@@ -20,7 +20,6 @@ t=__1
 
 egrep -w off_t $d/src/*/*.[ch] $d/util/*.[ch] $d/src/*/*.in |
 sed -e "/#undef off_t/d" \
-    -e "/build_wince\//d" \
     -e "/build_windows\//d" \
     -e "/db_env_set_func_ftruncate/d" \
     -e "/db_env_set_func_pread/d" \

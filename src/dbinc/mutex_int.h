@@ -370,7 +370,7 @@ typedef LONG volatile tsl_t;
  * platforms, and it improves performance on Pentium 4 processor platforms."
  */
 #ifdef HAVE_MUTEX_WIN32
-#if !defined(_WIN64) && !defined(DB_WINCE)
+#if !defined(_WIN64)
 #define	MUTEX_PAUSE		{__asm{_emit 0xf3}; __asm{_emit 0x90}}
 #endif
 #endif

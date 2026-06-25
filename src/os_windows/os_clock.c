@@ -44,36 +44,10 @@ __os_gettime(env, tp, monotonic)
 		tp->tv_sec = base_seconds + (u_int32_t)(ticks / 1000);
 		tp->tv_nsec = (u_int32_t)((ticks % 1000) * NS_PER_MS);
 	} else {
-#ifdef DB_WINCE
-		FILETIME ft;
-		LARGE_INTEGER large_int;
-		LONGLONG ns_since_epoch, utc1970;
-		SYSTEMTIME st;
-
-		(void)GetSystemTime(&st);
-		(void)SystemTimeToFileTime(&st, &ft);
-
-		/*
-		 * A FILETIME expresses time as 100 nanosecond chunks from
-		 * Jan 1, 1601; convert to a timespec where the time is
-		 * is expressed in seconds and nanoseconds from Jan 1, 1970.
-		 *
-		 * UTC_1970 is the number of 100-nano-second chunks from
-		 * 1601 to 1970.
-		 */
-#define	NS100_PER_SEC	(NS_PER_SEC / 100)
-#define	UTC_1970	(((LONGLONG)27111902 << 32) + (LONGLONG)3577643008)
-		memcpy(&large_int, &ft, sizeof(large_int));
-		utc1970 = UTC_1970;
-		ns_since_epoch = (large_int.QuadPart - utc1970);
-		tp->tv_sec = (time_t)(ns_since_epoch / NS100_PER_SEC);
-		tp->tv_nsec = (long)(ns_since_epoch % NS100_PER_SEC);
-#else
 		struct _timeb now;
 
 		_ftime(&now);
 		tp->tv_sec = now.time;
 		tp->tv_nsec = now.millitm * NS_PER_MS;
-#endif
 	}
 }
