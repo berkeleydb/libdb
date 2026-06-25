@@ -35,14 +35,7 @@ create_projects()
     # location for output project files
     PROJECT_OUTPUT_PARENT_DIR=$3
 
-    # judge Windows or Win CE for vs2010
-    WinVersion=$4
-
-    if [ $WinVersion = "WinCE" ]; then
-      VLoop=VS8
-    else 
-      VLoop="VS8 VS10"
-    fi
+    VLoop="VS8 VS10"
 
     # for each project, substitute 2 variables in the XQuery script, then run it
     # temporarily use only VS10 here to omit the generation of VS8
@@ -171,11 +164,6 @@ cd win_projects
 echo "Building Visual Studio project files for Windows -- "
 echo "   output only for modified projects (this can take a while)"
 create_projects db.projects projects.template.xml ../../build_windows Win
-
-# Create/Update Windows CE project files
-echo "Building Visual Studio project files for Windows CE -- "
-echo "   output only for modified projects (this can take a while)"
-create_projects db_wince.projects projects_wince.template.xml ../../build_wince WinCE
 
 # Create/Update C Sharp project files
 echo "Building C Sharp project files -- "

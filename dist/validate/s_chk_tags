@@ -22,7 +22,6 @@ t2=__2
 (cd $d && ls -F | egrep / | sort |
     sed -e 's/\///' \
 	-e '/^CVS$/d' \
-	-e '/^build_wince$/d' \
 	-e '/^build_windows$/d' \
 	-e '/^docs$/d' \
 	-e '/^docs_book$/d' \

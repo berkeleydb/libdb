@@ -39,9 +39,8 @@ __os_dirlist(env, dir, returndir, namesp, cntp)
 	    _T("%s%hc*"), tdir, PATH_SEPARATOR[0]);
 
 	/*
-	 * On WinCE, FindFirstFile will return INVALID_HANDLE_VALUE when
-	 * the searched directory is empty, and set last error to
-	 * ERROR_NO_MORE_FILES, on Windows it will return "." instead.
+	 * FindFirstFile can return INVALID_HANDLE_VALUE with last error set to
+	 * ERROR_NO_MORE_FILES when the searched directory is empty.
 	 */
 	if ((dirhandle =
 	    FindFirstFile(tfilespec, &fdata)) == INVALID_HANDLE_VALUE) {
