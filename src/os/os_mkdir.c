@@ -32,21 +32,15 @@ __os_mkdir(env, name, mode)
 		    "%s"), name);
 
 	/* Make the directory, with paranoid permissions. */
-#if defined(HAVE_VXWORKS)
-	RETRY_CHK((mkdir(CHAR_STAR_CAST name)), ret);
-#else
 	RETRY_CHK((mkdir(name, DB_MODE_700)), ret);
-#endif
 	if (ret != 0)
 		return (__os_posix_err(ret));
 
 	/* Set the absolute permissions, if specified. */
-#if !defined(HAVE_VXWORKS)
 	if (mode != 0) {
 		RETRY_CHK((chmod(name, mode)), ret);
 		if (ret != 0)
 			ret = __os_posix_err(ret);
 	}
-#endif
 	return (ret);
 }
