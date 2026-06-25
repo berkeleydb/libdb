@@ -159,16 +159,12 @@ struct __fh_t {
 #define	CTIME_BUFLEN	26
 
 /*
- * VxWorks requires we cast (const char *) variables to (char *) in order to
- * pass them to system calls like stat, read and write.
+ * Some historical ports needed to cast away const when passing variables to
+ * system calls like stat, read and write.  On supported platforms these are
+ * no-ops, retained so call sites need not change.
  */
-#ifdef HAVE_VXWORKS
-#define	CHAR_STAR_CAST	(char *)
-#define	VOID_STAR_CAST	(void *)
-#else
 #define	CHAR_STAR_CAST
 #define VOID_STAR_CAST
-#endif
 
 #if defined(__cplusplus)
 }

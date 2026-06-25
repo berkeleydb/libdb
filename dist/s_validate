@@ -31,7 +31,7 @@ done
 
 # The set of full tests are those that have special env setup requirements
 # or take a long time to run. They should be run at release time.
-FULL_TESTS="s_chk_build_configs s_chk_vxworks"
+FULL_TESTS="s_chk_build_configs"
 EXCLUDE_TESTS="s_chk_logverify s_chk_srcfiles s_chk_java_samples"
 
 # Run all s_chk scripts, files with extensions are used by the script with

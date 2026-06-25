@@ -554,15 +554,7 @@ reopen:		if (!F_ISSET(dbp, DB_AM_INMEM) && (ret =
 	}
 
 	/* File does not exist. */
-#ifdef	HAVE_VXWORKS
-	/*
-	 * VxWorks can return file-system specific error codes if the
-	 * file does not exist, not ENOENT.
-	 */
-	if (!create_ok)
-#else
 	if (!create_ok || ret != ENOENT)
-#endif
 		goto err;
 	LF_SET(DB_CREATE);
 	/*
