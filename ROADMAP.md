@@ -17,11 +17,15 @@ are now implemented: the lock-table path and the `mp_fget` MVCC version-chain
 path. Also landed: the commit-time pivot-flag race is closed (txn-region
 serialization); SIREAD marker reclaim is incremental and bounded (a
 `__txn_begin`-driven sweep triggers when live markers exceed half the allocated
-lock objects, not only at checkpoint); and `DB_TXN_SNAPSHOT_SAFE` is rejected
-with `prepare()`/2PC until its conflict status can be frozen at prepare time.
-Remaining follow-up: broaden the qualification test matrix (HA/replication,
-recovery mid-state, region exhaustion, measured abort rates under contention)
-and evaluate finer-than-page conflict granularity.
+lock objects, not only at checkpoint, and now reaps committed read-only
+readers' markers and lockers so retention is bounded by concurrent load, not
+history); and `DB_TXN_SNAPSHOT_SAFE` is rejected with `prepare()`/2PC until its
+conflict status can be frozen at prepare time.  Qualification so far: recovery
+mid-state (ssi008), region exhaustion / graceful degradation (ssi007), and a
+measured abort-rate benchmark under contention (`lab/bench/ssi_abort_bench`).
+Remaining follow-up: HA/replication-client behaviour and role changes, and
+evaluating finer-than-page conflict granularity to cut the page-sharing abort
+rate the benchmark quantifies.
 
 ---
 
