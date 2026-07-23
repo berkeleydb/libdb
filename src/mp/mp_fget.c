@@ -97,6 +97,83 @@ err:	if (ret != 0)
 }
 
 /*
+ * __memp_si_rwconflict --
+ *	SSI mechanism (b): a snapshot-safe reader R was handed the version
+ *	visible at its read_lsn, but newer versions exist on the chain that R
+ *	skipped -- each created by a concurrent writer W.  Record the
+ *	rw-antidependency R --rw--> W for every such newer version, mirroring
+ *	the lock-table logic in __lock_get_internal (mechanism a) with the
+ *	roles mapped to this call site.  Returns DB_SNAPSHOT_CONFLICT if R
+ *	becomes the pivot of a dangerous structure and must abort.
+ *
+ *	Caller holds hp->mtx_hash; this takes TXN_SYSTEM_LOCK to serialize the
+ *	pivot-flag reads/writes with the commit-time check and mechanism (a)
+ *	(order mtx_hash -> txn-region is non-circular; verified).
+ */
+static int
+__memp_si_rwconflict(env, txn, visible_bhp)
+	ENV *env;
+	DB_TXN *txn;
+	BH *visible_bhp;
+{
+	TXN_DETAIL *rtd, *wtd;
+	BH *newer;
+	int ret;
+
+	if (txn == NULL || txn->td == NULL || !F_ISSET(txn, TXN_SNAPSHOT_SAFE))
+		return (0);
+	if (!SH_CHAIN_HASNEXT(visible_bhp, vc))
+		return (0);
+
+	rtd = (TXN_DETAIL *)txn->td;
+	ret = 0;
+	if (TXN_ON(env))
+		TXN_SYSTEM_LOCK(env);
+	for (newer = SH_CHAIN_NEXT(visible_bhp, vc, __bh);
+	    newer != NULL; newer = SH_CHAIN_NEXT(newer, vc, __bh)) {
+		if (newer->td_off == INVALID_ROFF)
+			continue;
+		wtd = BH_OWNER(env, newer);
+		if (wtd == rtd)			/* our own newer version */
+			continue;
+		/*
+		 * Only a writer still relevant to serializability: running,
+		 * or committed after R's snapshot (concurrent).  A version
+		 * whose owner committed before R's read_lsn is part of R's
+		 * consistent snapshot -- not a conflict.
+		 */
+		if (wtd->status != TXN_RUNNING &&
+		    LOG_COMPARE(&wtd->visible_lsn, &rtd->read_lsn) <= 0)
+			continue;
+
+		/*
+		 * Edge R --rw--> W.  W gets the write-end flag; R gets the
+		 * read-end flag.  If R already holds the write end it becomes
+		 * the pivot (both ends) and must abort now.
+		 */
+		if (F_ISSET(rtd, TXN_DTL_WCONF)) {
+			ret = DB_SNAPSHOT_CONFLICT;
+			break;
+		}
+		/*
+		 * Set W's write-end flag unless W already committed with the
+		 * read end set (W was itself a pivot that slipped through);
+		 * in that case the incoming edge still makes R the pivot.
+		 */
+		if (F_ISSET(wtd, TXN_DTL_RCONF) &&
+		    wtd->status == TXN_COMMITTED) {
+			ret = DB_SNAPSHOT_CONFLICT;
+			break;
+		}
+		F_SET(wtd, TXN_DTL_WCONF);
+		F_SET(rtd, TXN_DTL_RCONF);
+	}
+	if (TXN_ON(env))
+		TXN_SYSTEM_UNLOCK(env);
+	return (ret);
+}
+
+/*
  * __memp_fget --
  *	Get a page from the file.
  *
@@ -277,6 +354,16 @@ retry:		MUTEX_LOCK(env, hp->mtx_hash);
 				ret = DB_PAGE_NOTFOUND;
 				goto err;
 			}
+
+			/*
+			 * SSI mechanism (b): if this snapshot-safe reader
+			 * skipped newer versions created by concurrent
+			 * writers, record the rw-antidependency and abort if
+			 * it makes this reader a dangerous-structure pivot.
+			 */
+			if ((ret =
+			    __memp_si_rwconflict(env, txn, bhp)) != 0)
+				goto err;
 		}
 
 		makecopy = mvcc && dirty && !BH_OWNED_BY(env, bhp, txn);
