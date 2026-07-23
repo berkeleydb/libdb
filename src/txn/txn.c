@@ -433,6 +433,17 @@ __txn_begin_int(txn)
 	td->xa_ref = 1;
 	td->xa_br_status = TXN_XA_IDLE;
 
+	/*
+	 * SSI: no SIREAD markers reference this detail yet.  This must be
+	 * initialized under TXN_SYSTEM_LOCK and *before* the detail is placed
+	 * on the active-transaction list below: TXN_DETAIL is allocated from
+	 * region memory without guaranteed zeroing, and concurrent walkers of
+	 * the active list (lock-manager conflict flagging, checkpoint marker
+	 * reclaim, stats) read si_ref.  Publishing the detail before setting
+	 * this field lets them observe garbage.
+	 */
+	td->si_ref = 0;
+
 	/* Place transaction on active transaction list. */
 	SH_TAILQ_INSERT_HEAD(&region->active_txn, td, links, __txn_detail);
 	region->curtxns++;
@@ -451,7 +462,6 @@ __txn_begin_int(txn)
 
 	txn->txnid = id;
 	txn->td  = td;
-	td->si_ref = 0;		/* SSI: no SIREAD markers reference it yet. */
 
 	/* Allocate a locker for this txn. */
 	if (LOCKING_ON(env) && (ret =
@@ -1286,6 +1296,25 @@ __txn_prepare(txn, gid)
 		goto err;
 	if (F_ISSET(txn, TXN_DEADLOCK)) {
 		ret = __db_txn_deadlock_err(env, txn);
+		goto err;
+	}
+
+	/*
+	 * SSI: serializable snapshot isolation is not yet compatible with
+	 * two-phase commit.  The pivot check that can abort an SSI transaction
+	 * runs at commit time, but a prepared transaction must be guaranteed
+	 * committable -- upstream panics the environment if a prepared txn
+	 * cannot commit (see __txn_commit's err: path).  An SSI txn can still
+	 * acquire a second rw-conflict edge (becoming a pivot) after prepare
+	 * and before the commit decision, which would turn that panic into a
+	 * reachable, environment-wide crash for any XA user.  Until SSI's
+	 * conflict status is frozen at prepare time, refuse the combination.
+	 */
+	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
+		__db_errx(env, DB_STR("4575",
+		    "DB_TXN->prepare: DB_TXN_SNAPSHOT_SAFE (SSI) transactions "
+		    "cannot be prepared for two-phase commit"));
+		ret = EINVAL;
 		goto err;
 	}
 
