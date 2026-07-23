@@ -2365,6 +2365,27 @@ ssi006
 	pivot.  Fails if mechanism (b) is absent.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ssi007
+	Serializable Snapshot Isolation: behaviour under lock-region pressure.
+
+	(a) A long run of committed readers (far more than the region has
+	objects or lockers) must not exhaust the region -- bounded incremental
+	reclaim keeps marker objects and committed-reader lockers in check.
+	(b) A genuinely exhausted region returns a clean resource error and
+	the environment stays usable -- no panic or corruption.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ssi008
+	Serializable Snapshot Isolation: state across environment recovery.
+
+	SIREAD markers and SSI conflict flags are in-memory lock-region state,
+	not logged, so they vanish across a crash -- which is correct.  Runs
+	snapshot-safe txns (one left in-flight), reopens the environment with
+	-recover, and verifies recovery succeeds and SSI still works: a fresh
+	write-skew is caught and non-conflicting txns still commit (no stale
+	marker state causes spurious conflicts).
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test001
 	Small keys/data
 	Put/get per key
