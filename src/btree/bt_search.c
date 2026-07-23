@@ -383,9 +383,19 @@ retry:	if (lock_mode == DB_LOCK_WRITE)
 		} else if (atomic_read(&mpf->mfp->multiversion) != 0 &&
 		    lock_mode == DB_LOCK_WRITE && (ret = __memp_dirty(mpf, &h,
 		    dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0) {
-			(void)__memp_fput(mpf,
-			    dbc->thread_info, h, dbc->priority);
+			/*
+			 * __memp_dirty releases the read-only page and re-fetches
+			 * it dirty; on failure (e.g. DB_LOCK_DEADLOCK re-fetching
+			 * under MVCC write contention) it sets h to NULL.  Release
+			 * whatever we still hold and return the error -- do not
+			 * fall through to done: with a NULL page, which the caller
+			 * would dereference.
+			 */
+			if (h != NULL)
+				(void)__memp_fput(mpf,
+				    dbc->thread_info, h, dbc->priority);
 			(void)__LPUT(dbc, lock);
+			return (ret);
 		}
 	}
 
