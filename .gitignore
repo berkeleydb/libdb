@@ -14,3 +14,12 @@ build/
 
 # prototype build artifact
 lab/lsm/test_adaptive
+
+# benchmark driver binaries (built from lab/bench/*.c)
+lab/bench/scale_bench
+lab/bench/scale_iso
+lab/bench/lock_bench
+lab/bench/tproc_c
+lab/bench/tproc_b
+lab/bench/tproc_h
+lab/bench/ssi_abort_bench
