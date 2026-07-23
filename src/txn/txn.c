@@ -256,12 +256,22 @@ __txn_begin(env, ip, parent, txnpp, flags)
 			DB_LOCKREGION *lkreg =
 			    env->lk_handle->reginfo.primary;
 			/*
-			 * Trigger off currently allocated objects (always
-			 * non-zero), so the bound holds whether or not a max is
-			 * configured (st_maxobjects == 0 means "grow as needed").
+			 * Trigger the sweep on either dimension of pressure:
+			 *  - live SIREAD markers past half the allocated objects
+			 *    (bounds the version-conflict object footprint), or
+			 *  - current lockers past half the locker cap (bounds the
+			 *    committed-reader lockers that persist until their last
+			 *    marker is reaped -- reused-key workloads keep the object
+			 *    count tiny while lockers still accumulate one per
+			 *    committed reader, so the object test alone never fires).
+			 * st_max* == 0 means "grow as needed"; fall back to the
+			 * currently allocated counts so the bound still holds.
 			 */
 			u_int32_t nobj = lkreg->stat.st_objects;
-			if (nobj != 0 && lkreg->nsireaders > nobj / 2)
+			u_int32_t maxlk = lkreg->stat.st_maxlockers != 0 ?
+			    lkreg->stat.st_maxlockers : lkreg->stat.st_lockers;
+			if ((nobj != 0 && lkreg->nsireaders > nobj / 2) ||
+			    (maxlk != 0 && lkreg->nlockers > maxlk / 2))
 				(void)__lock_sicleanup(env);
 		}
 	}

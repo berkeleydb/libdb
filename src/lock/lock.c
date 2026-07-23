@@ -121,12 +121,28 @@ __lock_siclean_obj(env, obj, old_lsnp)
 			continue;
 
 		/*
-		 * Keep the marker while its snapshot is still within the
-		 * window of the oldest active reader.
+		 * Keep the marker while its snapshot may still be part of a
+		 * dangerous structure -- i.e. while some active transaction's
+		 * snapshot is no newer than this reader's.  A committed reader
+		 * that made writes advertises its serialization point in
+		 * visible_lsn (COMMITLSN); a read-only reader never sets
+		 * visible_lsn (it stays MAX_LSN), so fall back to its read_lsn
+		 * (READLSN).  In both cases the marker is obsolete once the
+		 * oldest active read LSN has advanced past that point.
 		 */
-		if (!(IS_MAX_LSN(LOCK_COMMITLSN(env, lp)) &&
-		    LOG_COMPARE(&LOCK_READLSN(env, lp), old_lsnp) > 0) &&
-		    LOG_COMPARE(&LOCK_COMMITLSN(env, lp), old_lsnp) > 0)
+		if (IS_MAX_LSN(LOCK_COMMITLSN(env, lp))) {
+			/*
+			 * Read-only committed reader (never sets visible_lsn):
+			 * order by its read_lsn.  Keep only while its snapshot is
+			 * strictly newer than the oldest active snapshot; once the
+			 * oldest active reader has caught up to (or passed) this
+			 * committed reader's snapshot, no new concurrent writer can
+			 * form a dangerous edge through it -- any still-active
+			 * reader sharing the snapshot carries its own marker.
+			 */
+			if (LOG_COMPARE(&LOCK_READLSN(env, lp), old_lsnp) > 0)
+				continue;
+		} else if (LOG_COMPARE(&LOCK_COMMITLSN(env, lp), old_lsnp) > 0)
 			continue;
 
 		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
@@ -194,6 +210,14 @@ __lock_sicleanup(env)
 		}
 		OBJECT_UNLOCK(lt, region, i);
 	}
+
+	/*
+	 * Reap committed-reader lockers whose last SIREAD marker was just
+	 * freed above.  Done after the object sweep (no object mutex held) so
+	 * the object->locker latch ordering holds.
+	 */
+	if ((ret = __lock_si_reap_lockers(lt)) != 0)
+		return (ret);
 
 	return (0);
 }
