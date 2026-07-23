@@ -652,6 +652,8 @@ LIBOBJS
 LISTPROBES_COMMAND
 LISTPROBES_DEPENDENCY
 DTRACE_CPP
+DEP_INCLUDE
+DEPFLAGS
 db_threadid_t_decl
 thread_h_decl
 uintptr_t_decl
@@ -20330,7 +20332,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20333 "configure" */
+/* #line 20335 "configure" */
 public class Test {
 }
 EOF
@@ -20625,7 +20627,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20628: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20630: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20757,7 +20759,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20760 "configure" */
+/* #line 20762 "configure" */
 public class Test {
 }
 EOF
@@ -20794,7 +20796,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20797 "configure" */
+/* [#]line 20799 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);
@@ -26082,6 +26084,50 @@ if test "$db_cv_atomic_64bit" = yes; then
 	printf '%s\n' "#define HAVE_ATOMIC_64BIT 1" >>confdefs.h
 
 fi
+
+
+# Automatic header-dependency tracking.  Berkeley DB's Makefile lists only .c
+# (and a few .incl) prerequisites per object -- no headers -- so editing a
+# shared header and running an incremental "make" silently leaves dependent
+# objects stale (a struct-layout change then mismatches across translation
+# units).  If the compiler understands the GCC/Clang -MMD/-MP/-MT flags, emit a
+# per-object .d makefile fragment and include it, so header edits rebuild every
+# dependent.  Left empty (today's behaviour) for compilers that don't.
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking whether $CC supports -MMD -MP for dependency tracking" >&5
+printf %s "checking whether $CC supports -MMD -MP for dependency tracking... " >&6; }
+db_save_cflags="$CFLAGS"
+CFLAGS="$CFLAGS -MMD -MP -MT conftest.o"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  db_dep_track=yes
+else case e in #(
+  e) db_dep_track=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+CFLAGS="$db_save_cflags"
+rm -f conftest.d
+if test "$db_dep_track" = yes; then
+	DEPFLAGS='-MMD -MP -MT $@'
+	DEP_INCLUDE='-include $(wildcard *.d) $(wildcard .libs/*.d)'
+else
+	DEPFLAGS=
+	DEP_INCLUDE=
+fi
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_dep_track" >&5
+printf '%s\n' "$db_dep_track" >&6; }
+
 
 
 # Check for os-specific event support for performance monitoring such as

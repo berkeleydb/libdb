@@ -746,6 +746,31 @@ AM_DEFINE_MUTEXES
 # atomic increment, decrement, and compare & exchange.
 AM_DEFINE_ATOMIC
 
+# Automatic header-dependency tracking.  Berkeley DB's Makefile lists only .c
+# (and a few .incl) prerequisites per object -- no headers -- so editing a
+# shared header and running an incremental "make" silently leaves dependent
+# objects stale (a struct-layout change then mismatches across translation
+# units).  If the compiler understands the GCC/Clang -MMD/-MP/-MT flags, emit a
+# per-object .d makefile fragment and include it, so header edits rebuild every
+# dependent.  Left empty (today's behaviour) for compilers that don't.
+AC_MSG_CHECKING([whether $CC supports -MMD -MP for dependency tracking])
+db_save_cflags="$CFLAGS"
+CFLAGS="$CFLAGS -MMD -MP -MT conftest.o"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[]])],
+    [db_dep_track=yes], [db_dep_track=no])
+CFLAGS="$db_save_cflags"
+rm -f conftest.d
+if test "$db_dep_track" = yes; then
+	DEPFLAGS='-MMD -MP -MT $@'
+	DEP_INCLUDE='-include $(wildcard *.d) $(wildcard .libs/*.d)'
+else
+	DEPFLAGS=
+	DEP_INCLUDE=
+fi
+AC_MSG_RESULT([$db_dep_track])
+AC_SUBST(DEPFLAGS)
+AC_SUBST(DEP_INCLUDE)
+
 # Check for os-specific event support for performance monitoring such as
 # DTrace or SystemTap.
 AM_DEFINE_PERFMON
