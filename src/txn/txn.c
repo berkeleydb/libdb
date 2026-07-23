@@ -239,8 +239,32 @@ __txn_begin(env, ip, parent, txnpp, flags)
 	}
 	/* SSI is snapshot isolation plus serializable conflict detection. */
 	if (LF_ISSET(DB_TXN_SNAPSHOT_SAFE) ||
-	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT_SAFE)))
+	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT_SAFE))) {
 		F_SET(txn, TXN_SNAPSHOT_SAFE);
+		/*
+		 * SSI: committed readers' SIREAD markers persist until GC, which
+		 * otherwise runs only at checkpoint -- so between checkpoints the
+		 * marker count (and the committed-reader locker/detail structs it
+		 * pins) can grow unbounded, exhausting the statically sized lock
+		 * region in a long-lived process.  Bound it: when the live-marker
+		 * count crosses half the currently allocated lock objects, run the
+		 * best-effort sweep now, before we begin (and allocate more).
+		 * No region lock is held here, so __lock_sicleanup's
+		 * txn-system-lock-first ordering is respected.
+		 */
+		if (parent == NULL && LOCKING_ON(env)) {
+			DB_LOCKREGION *lkreg =
+			    env->lk_handle->reginfo.primary;
+			/*
+			 * Trigger off currently allocated objects (always
+			 * non-zero), so the bound holds whether or not a max is
+			 * configured (st_maxobjects == 0 means "grow as needed").
+			 */
+			u_int32_t nobj = lkreg->stat.st_objects;
+			if (nobj != 0 && lkreg->nsireaders > nobj / 2)
+				(void)__lock_sicleanup(env);
+		}
+	}
 	if (LF_ISSET(DB_IGNORE_LEASE))
 		F_SET(txn, TXN_IGNORE_LEASE);
 
@@ -705,11 +729,27 @@ __txn_commit(txn, flags)
 	 * structure (both the read end and the write end of rw-conflicts, i.e.
 	 * has both TXN_DTL_RCONF and TXN_DTL_WCONF) cannot commit -- doing so
 	 * could produce a non-serializable schedule.
+	 *
+	 * The pivot flags are set on td by concurrent writers in the lock
+	 * manager, which serialize their flag writes on the txn-region mutex
+	 * (see __lock_get_internal).  Read both flags under the same mutex so
+	 * the two-flag test and this commit decision are atomic with respect
+	 * to a writer recording our second conflict edge -- otherwise an edge
+	 * set between the two reads, or just after they pass, would let a real
+	 * pivot commit.
 	 */
-	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE) &&
-	    F_ISSET(td, TXN_DTL_WCONF) && F_ISSET(td, TXN_DTL_RCONF)) {
-		ret = DB_SNAPSHOT_CONFLICT;
-		goto err;
+	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
+		int is_pivot;
+		if (TXN_ON(env))
+			TXN_SYSTEM_LOCK(env);
+		is_pivot = F_ISSET(td, TXN_DTL_WCONF) &&
+		    F_ISSET(td, TXN_DTL_RCONF);
+		if (TXN_ON(env))
+			TXN_SYSTEM_UNLOCK(env);
+		if (is_pivot) {
+			ret = DB_SNAPSHOT_CONFLICT;
+			goto err;
+		}
 	}
 
 	/* Close registered cursors before committing. */
