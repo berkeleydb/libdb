@@ -1,5 +1,10 @@
 # Berkeley DB (`libdb`)
 
+> **Not affiliated with or endorsed by Oracle Corporation.** "Berkeley DB" is
+> used here to name the software this project archives and forks. Releases
+> `v5.3.29` and later are community fork releases and are **not** Oracle
+> artifacts (Oracle's final 5.3 release was 5.3.28).
+
 This repository is two things at once:
 
 1. **A historical archive** of Berkeley DB — the complete published lineage of
