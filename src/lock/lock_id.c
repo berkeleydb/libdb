@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
+#include "dbinc/txn.h"
 
 static int __lock_freelocker_int
     __P((DB_LOCKTAB *, DB_LOCKREGION *, DB_LOCKER *, int));
@@ -491,13 +492,22 @@ __lock_freelocker_int(lt, region, sh_locker, reallyfree)
 	}
 
 	/*
-	 * SSI: a committed snapshot-safe reader is kept alive (DB_LOCKER_FREED)
-	 * while its persisted SIREAD markers still reference it; defer the real
-	 * free to __lock_sicleanup, which reclaims the markers and then the
-	 * locker once the oldest reader has advanced past its snapshot.
+	 * SSI: a committed snapshot-safe reader's persisted SIREAD markers stay
+	 * on their objects' sireaders lists (detached from heldby) and still
+	 * reference this locker via lp->holder.  Freeing the locker while any
+	 * such marker exists is a use-after-free when the GC (or a WRITE
+	 * acquirer) later dereferences LOCK_HOLDER(marker).  The per-detail
+	 * si_ref counts exactly those markers and is atomic, so it is the
+	 * race-free guard (nlocks is decremented under the object partition
+	 * mutex but read here under LOCK_LOCKERS -- a cross-domain race).
+	 * Defer while markers remain; flag DB_LOCKER_FREED so __lock_sicleanup
+	 * reclaims the locker once the last marker is gone.
 	 */
-	if (F_ISSET(sh_locker, DB_LOCKER_FREED) && sh_locker->nlocks != 0)
+	if (sh_locker->td_off != INVALID_ROFF &&
+	    atomic_read(&LOCKER_TD(env, sh_locker)->si_ref) != 0) {
+		F_SET(sh_locker, DB_LOCKER_FREED);
 		return (0);
+	}
 
 	/* If this is part of a family, we must fix up its links. */
 	if (sh_locker->master_locker != INVALID_ROFF) {
@@ -554,55 +564,6 @@ __lock_freelocker(lt, sh_locker)
 	return (ret);
 }
 
-/*
- * __lock_si_reap_lockers
- *	Reclaim committed snapshot-safe (SSI) reader lockers whose persisted
- *	SIREAD markers have all been garbage-collected.  Such a locker was
- *	flagged DB_LOCKER_FREED at commit and kept alive only to anchor its
- *	markers; once __lock_sicleanup has freed the last marker (nlocks == 0)
- *	the locker itself can go.  Without this pass a long-lived process that
- *	runs many committed SSI readers exhausts the statically sized locker
- *	region ("out of available locker entries") even though the markers are
- *	being reclaimed.  Called from __lock_sicleanup with no object mutex
- *	held, so taking the locker latches here respects the object->locker
- *	ordering.
- *
- * PUBLIC: int __lock_si_reap_lockers __P((DB_LOCKTAB *));
- */
-int
-__lock_si_reap_lockers(lt)
-	DB_LOCKTAB *lt;
-{
-	DB_LOCKREGION *region;
-	ENV *env;
-	DB_LOCKER *lk, *next_lk;
-	int ret;
-
-	region = lt->reginfo.primary;
-	env = lt->env;
-	ret = 0;
-
-	LOCK_LOCKERS(env, region);
-	for (lk = SH_TAILQ_FIRST(&region->lockers, __db_locker);
-	    lk != NULL; lk = next_lk) {
-		next_lk = SH_TAILQ_NEXT(lk, ulinks, __db_locker);
-		if (F_ISSET(lk, DB_LOCKER_FREED) && lk->nlocks == 0 &&
-		    SH_LIST_FIRST(&lk->heldby, __db_lock) == NULL) {
-			/*
-			 * Clear the flag so __lock_freelocker_int does not
-			 * defer again, then really free it (bucket is covered
-			 * by LOCK_LOCKERS).
-			 */
-			F_CLR(lk, DB_LOCKER_FREED);
-			if ((ret =
-			    __lock_freelocker_int(lt, region, lk, 1)) != 0)
-				break;
-		}
-	}
-	UNLOCK_LOCKERS(env, region);
-
-	return (ret);
-}
 
 /*
  * __lock_familyremove
