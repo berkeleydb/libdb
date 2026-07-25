@@ -2386,6 +2386,18 @@ ssi008
 	marker state causes spurious conflicts).
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ssi009
+	Serializable Snapshot Isolation: concurrent writers must not crash.
+
+	Spawns several processes hammering a shared multiversion database with
+	snapshot-safe read-then-write transactions on a small hot key set
+	(maximizing SIREAD-marker churn and conflict/deadlock aborts).  Passes
+	if every process exits cleanly (no crash/panic) and the database
+	verifies afterward.  Regression for the SIREAD marker/locker/detail
+	lifetime bugs -- notably a lock object reclaimed while still holding
+	SIREAD markers on its sireaders list.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test001
 	Small keys/data
 	Put/get per key

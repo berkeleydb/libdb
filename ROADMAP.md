@@ -21,8 +21,11 @@ lock objects, not only at checkpoint, and now reaps committed read-only
 readers' markers and lockers so retention is bounded by concurrent load, not
 history); and `DB_TXN_SNAPSHOT_SAFE` is rejected with `prepare()`/2PC until its
 conflict status can be frozen at prepare time.  Qualification so far: recovery
-mid-state (ssi008), region exhaustion / graceful degradation (ssi007), and a
-measured abort-rate benchmark under contention (`lab/bench/ssi_abort_bench`).
+mid-state (ssi008), region exhaustion / graceful degradation (ssi007), a
+measured abort-rate benchmark under contention (`lab/bench/ssi_abort_bench`),
+and concurrent-writer safety -- a family of pre-existing SIREAD
+marker/locker/detail use-after-frees was fixed under TSan/ASan and is guarded
+by a multi-process stress test (ssi009).
 Remaining follow-up: HA/replication-client behaviour and role changes, and
 evaluating finer-than-page conflict granularity to cut the page-sharing abort
 rate the benchmark quantifies.
