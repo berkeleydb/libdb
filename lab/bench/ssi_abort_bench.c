@@ -33,13 +33,14 @@
 #include <string.h>
 #include <time.h>
 #include "db.h"
+#include <stdatomic.h>
 
 static DB_ENV *env;
 static DB *db;
 static int hotkeys;
-static volatile int stop;
-static volatile int go;
-static volatile int panicked;	/* set on DB_RUNRECOVERY: stop, don't spin */
+static atomic_int stop;
+static atomic_int go;
+static atomic_int panicked;	/* set on DB_RUNRECOVERY: stop, don't spin */
 
 typedef struct {
 	pthread_t tid;
@@ -90,7 +91,7 @@ one_txn(targ_t *t)
 		goto conflict;
 	if (ret != 0) {
 		(void)txn->abort(txn);
-		if (ret == DB_RUNRECOVERY) panicked = 1;
+		if (ret == DB_RUNRECOVERY) atomic_store(&panicked, 1);
 		t->other++;
 		return;
 	}
@@ -99,7 +100,7 @@ one_txn(targ_t *t)
 	if (ret == 0) { t->committed++; return; }
 	if (ret == DB_SNAPSHOT_CONFLICT) { t->aborted++; return; }
 	if (ret == DB_LOCK_DEADLOCK) { t->deadlock++; return; }
-	if (ret == DB_RUNRECOVERY) panicked = 1;
+	if (ret == DB_RUNRECOVERY) atomic_store(&panicked, 1);
 	t->other++;
 	return;
 
@@ -113,8 +114,8 @@ static void *
 worker(void *arg)
 {
 	targ_t *t = arg;
-	while (!go) ;
-	while (!stop && !panicked)
+	while (!atomic_load(&go)) ;
+	while (!atomic_load(&stop) && !atomic_load(&panicked))
 		one_txn(t);
 	return (NULL);
 }
@@ -127,14 +128,14 @@ run(int nthreads, int secs)
 	long c = 0, a = 0, d = 0, o = 0, total;
 
 	ta = calloc((size_t)nthreads, sizeof(*ta));
-	stop = go = panicked = 0;
+	atomic_store(&stop, 0); atomic_store(&go, 0); atomic_store(&panicked, 0);
 	for (i = 0; i < nthreads; i++) {
 		ta[i].seed = (unsigned)(i * 2654435761u + 1);
 		pthread_create(&ta[i].tid, NULL, worker, &ta[i]);
 	}
-	go = 1;
+	atomic_store(&go, 1);
 	sleep(secs);
-	stop = 1;
+	atomic_store(&stop, 1);
 	for (i = 0; i < nthreads; i++) {
 		pthread_join(ta[i].tid, NULL);
 		c += ta[i].committed; a += ta[i].aborted;
@@ -145,7 +146,7 @@ run(int nthreads, int secs)
 	    "deadlock=%-6ld other=%-5ld  abort_rate=%.1f%% (%.0f txn/s)%s\n",
 	    nthreads, hotkeys, c, a, d, o,
 	    total ? 100.0 * (double)(a + d) / (double)total : 0.0,
-	    (double)total / secs, panicked ? "  [ENV PANIC -- see note]" : "");
+	    (double)total / secs, atomic_load(&panicked) ? "  [ENV PANIC -- see note]" : "");
 	free(ta);
 }
 
