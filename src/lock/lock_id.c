@@ -555,6 +555,56 @@ __lock_freelocker(lt, sh_locker)
 }
 
 /*
+ * __lock_si_reap_lockers
+ *	Reclaim committed snapshot-safe (SSI) reader lockers whose persisted
+ *	SIREAD markers have all been garbage-collected.  Such a locker was
+ *	flagged DB_LOCKER_FREED at commit and kept alive only to anchor its
+ *	markers; once __lock_sicleanup has freed the last marker (nlocks == 0)
+ *	the locker itself can go.  Without this pass a long-lived process that
+ *	runs many committed SSI readers exhausts the statically sized locker
+ *	region ("out of available locker entries") even though the markers are
+ *	being reclaimed.  Called from __lock_sicleanup with no object mutex
+ *	held, so taking the locker latches here respects the object->locker
+ *	ordering.
+ *
+ * PUBLIC: int __lock_si_reap_lockers __P((DB_LOCKTAB *));
+ */
+int
+__lock_si_reap_lockers(lt)
+	DB_LOCKTAB *lt;
+{
+	DB_LOCKREGION *region;
+	ENV *env;
+	DB_LOCKER *lk, *next_lk;
+	int ret;
+
+	region = lt->reginfo.primary;
+	env = lt->env;
+	ret = 0;
+
+	LOCK_LOCKERS(env, region);
+	for (lk = SH_TAILQ_FIRST(&region->lockers, __db_locker);
+	    lk != NULL; lk = next_lk) {
+		next_lk = SH_TAILQ_NEXT(lk, ulinks, __db_locker);
+		if (F_ISSET(lk, DB_LOCKER_FREED) && lk->nlocks == 0 &&
+		    SH_LIST_FIRST(&lk->heldby, __db_lock) == NULL) {
+			/*
+			 * Clear the flag so __lock_freelocker_int does not
+			 * defer again, then really free it (bucket is covered
+			 * by LOCK_LOCKERS).
+			 */
+			F_CLR(lk, DB_LOCKER_FREED);
+			if ((ret =
+			    __lock_freelocker_int(lt, region, lk, 1)) != 0)
+				break;
+		}
+	}
+	UNLOCK_LOCKERS(env, region);
+
+	return (ret);
+}
+
+/*
  * __lock_familyremove
  *	Remove a locker from its family.
  *

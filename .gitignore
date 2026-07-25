@@ -9,5 +9,8 @@ build/
 # nix build output symlink
 /result
 
+# agent working notes (audits, status, scratch design) — not product docs
+.agents/
+
 # prototype build artifact
 lab/lsm/test_adaptive
