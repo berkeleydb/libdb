@@ -193,6 +193,7 @@ __lock_region_init(env, lt)
 	}
 
 	region->need_dd = 0;
+	atomic_init(&region->nsireaders, 0);	/* SSI GC-trigger hint. */
 	timespecclear(&region->next_timeout);
 	region->detect = DB_LOCK_NORUN;
 	region->lk_timeout = dbenv->lk_timeout;
