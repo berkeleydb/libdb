@@ -1694,9 +1694,16 @@ __lock_put_internal(lt, lockp, obj_ndx, flags)
 		    sh_obj, &state_changed, flags)) != 0)
 			return (ret);
 
-	/* Check if object should be reclaimed. */
+	/*
+	 * Check if object should be reclaimed.  It must have no holders, no
+	 * waiters, AND no SSI SIREAD markers -- persisted markers live on the
+	 * sireaders list and still reference this object; freeing it out from
+	 * under them corrupts the list and crashes any concurrent walker
+	 * (a WRITE acquirer scanning sireaders, or the marker GC).
+	 */
 	if (SH_TAILQ_FIRST(&sh_obj->holders, __db_lock) == NULL &&
-	    SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock) == NULL) {
+	    SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock) == NULL &&
+	    SH_TAILQ_FIRST(&sh_obj->sireaders, __db_lock) == NULL) {
 		part_id = LOCK_PART(region, obj_ndx);
 		SH_TAILQ_REMOVE(
 		    &lt->obj_tab[obj_ndx], sh_obj, links, __db_lockobj);
