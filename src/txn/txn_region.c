@@ -445,6 +445,45 @@ __txn_oldest_reader(env, lsnp)
 }
 
 /*
+ * __txn_reap_si_details --
+ *	Free committed snapshot-safe reader details that __txn_end parked on
+ *	the mvcc_txn list (TXN_DTL_SNAPSHOT) because their SIREAD markers still
+ *	referenced them, and whose markers have since been garbage-collected
+ *	(si_ref back to 0).  Only reaps details with no MVCC pages either
+ *	(mvcc_ref == 0); genuine MVCC-version holders are freed by
+ *	__txn_remove_buffer when their last page is evicted.  Best effort.
+ *
+ * PUBLIC: int __txn_reap_si_details __P((ENV *));
+ */
+int
+__txn_reap_si_details(env)
+	ENV *env;
+{
+	DB_TXNMGR *mgr;
+	DB_TXNREGION *region;
+	TXN_DETAIL *td, *next_td;
+
+	if ((mgr = env->tx_handle) == NULL)
+		return (0);
+	region = mgr->reginfo.primary;
+
+	TXN_SYSTEM_LOCK(env);
+	for (td = SH_TAILQ_FIRST(&region->mvcc_txn, __txn_detail);
+	    td != NULL; td = next_td) {
+		next_td = SH_TAILQ_NEXT(td, links, __txn_detail);
+		if (F_ISSET(td, TXN_DTL_SNAPSHOT) &&
+		    td->mvcc_ref == 0 && atomic_read(&td->si_ref) == 0) {
+			SH_TAILQ_REMOVE(&region->mvcc_txn,
+			    td, links, __txn_detail);
+			__env_alloc_free(&mgr->reginfo, td);
+		}
+	}
+	TXN_SYSTEM_UNLOCK(env);
+
+	return (0);
+}
+
+/*
  * __txn_add_buffer --
  *	Add to the count of buffers created by the given transaction.
  *
@@ -496,7 +535,7 @@ __txn_remove_buffer(env, td, hash_mtx)
 	 * with active pages.
 	 */
 	need_free = (--td->mvcc_ref == 0) && F_ISSET(td, TXN_DTL_SNAPSHOT) &&
-	    td->si_ref == 0;
+	    atomic_read(&td->si_ref) == 0;
 	MUTEX_UNLOCK(env, td->mvcc_mtx);
 
 	if (need_free) {
