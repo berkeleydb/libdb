@@ -54,10 +54,14 @@ for full provenance and the per-version index.
   committed). SIREAD markers are reclaimed incrementally and bounded (not only
   at checkpoint); the commit-time pivot check is race-free against concurrent
   edge recording; and `DB_TXN_SNAPSHOT_SAFE` is rejected with `prepare()`/2PC.
-  **Still experimental:** page-granularity conflict tracking can raise abort
-  rates under contention, and the qualification test matrix (HA/replication,
-  recovery mid-state, region exhaustion, abort-rate benchmarks) is still being
-  built. This is the *first* of the planned features in
+  The SIREAD marker/locker/detail lifetime is hardened for concurrent writers:
+  a family of pre-existing use-after-free bugs (most importantly a lock object
+  reclaimed while it still held SIREAD markers) was found with TSan/ASan and
+  fixed, and a multi-process concurrent-writer stress test (`ssi009`) guards
+  against regression. **Still experimental** in that page-granularity conflict
+  tracking can raise abort rates under contention (measured by
+  `lab/bench/ssi_abort_bench`), and the HA/replication qualification is still
+  being built. This is the *first* of the planned features in
   [`ROADMAP.md`](ROADMAP.md), which targets matching or beating InnoDB and
   WiredTiger on multicore/NUMA scalability and performance.
 
