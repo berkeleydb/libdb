@@ -8,7 +8,7 @@ CFLAGS ?= -O2 -pthread
 INCLUDES = -I$(BDB)
 LIBS = -L$(BDB)/.libs -ldb-5.3
 
-BENCHES = scale_bench tproc_c tproc_b tproc_h lock_bench
+BENCHES = scale_bench tproc_c tproc_b tproc_h lock_bench ssi_abort_bench
 
 all: $(BENCHES)
 
@@ -17,6 +17,9 @@ scale_bench: scale_bench.c
 
 lock_bench: lock_bench.c
 	$(CC) $(CFLAGS) $(INCLUDES) lock_bench.c $(LIBS) -o $@
+
+ssi_abort_bench: ssi_abort_bench.c
+	$(CC) $(CFLAGS) $(INCLUDES) ssi_abort_bench.c $(LIBS) -o $@
 
 tproc_c: tproc_c.c bdb_bench.h
 	$(CC) $(CFLAGS) $(INCLUDES) tproc_c.c $(LIBS) -o $@

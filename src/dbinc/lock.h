@@ -112,12 +112,14 @@ typedef struct __db_lockregion { /* SHARED */
 	u_int32_t	lock_id;	/* Current lock(er) id to allocate. */
 	u_int32_t	cur_maxid;	/* Current max lock(er) id. */
 	u_int32_t	nlockers;	/* Current number of lockers. */
-	u_int32_t	nsireaders;	/* SSI: approximate count of live SIREAD
+	db_atomic_t	nsireaders;	/* SSI: approximate count of live SIREAD
 					   markers held by committed readers,
 					   used only to trigger best-effort GC
 					   (__lock_sicleanup) before the count
 					   grows unbounded between checkpoints.
-					   Not required to be exact. */
+					   Atomic: inc/dec happen under different
+					   partition mutexes.  Not required to be
+					   exact. */
 	int32_t		nmodes;		/* Number of modes in conflict table. */
 	DB_LOCK_STAT	stat;		/* stats about locking. */
 } DB_LOCKREGION;
