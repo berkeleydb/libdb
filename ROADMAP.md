@@ -12,10 +12,16 @@ memory placement. The roadmap is ordered roughly by expected scalability impact;
 the heaviest items are the multicore/NUMA ones.
 
 Feature **#0 — Serializable Snapshot Isolation (SSI)** — is already landed on
-`master` (opt-in `DB_TXN_SNAPSHOT_SAFE`). Its current follow-ups: port the
-`mp_fget` MVCC version-chain detection (second rw-conflict mechanism) and make
-the committed-reader locker/detail reclaim fully incremental (today markers are
-reclaimed at checkpoint; the locker/detail structs persist until env close).
+`master` (opt-in `DB_TXN_SNAPSHOT_SAFE`). Both rw-conflict detection mechanisms
+are now implemented: the lock-table path and the `mp_fget` MVCC version-chain
+path. Also landed: the commit-time pivot-flag race is closed (txn-region
+serialization); SIREAD marker reclaim is incremental and bounded (a
+`__txn_begin`-driven sweep triggers when live markers exceed half the allocated
+lock objects, not only at checkpoint); and `DB_TXN_SNAPSHOT_SAFE` is rejected
+with `prepare()`/2PC until its conflict status can be frozen at prepare time.
+Remaining follow-up: broaden the qualification test matrix (HA/replication,
+recovery mid-state, region exhaustion, measured abort rates under contention)
+and evaluate finer-than-page conflict granularity.
 
 ---
 

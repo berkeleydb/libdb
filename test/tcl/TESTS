@@ -2323,6 +2323,48 @@ ssi002
 	abort genuine dangerous structures, never independent transactions.
 
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ssi003
+	Serializable Snapshot Isolation: prepare() is rejected.
+
+	SSI's pivot check runs at commit time, but a prepared transaction
+	must be guaranteed committable.  Until SSI's conflict status is
+	frozen at prepare time, DB_TXN_SNAPSHOT_SAFE + prepare() is refused
+	with an error rather than allowed to reach the commit-time panic.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ssi004
+	Serializable Snapshot Isolation under a partitioned lock manager.
+
+	Regression for the commit-time pivot-flag race.  Runs the canonical
+	write-skew with many lock partitions (so the conflicting objects land
+	in different partitions and LOCK_SYSTEM_LOCK is a no-op), repeated, and
+	asserts the SSI invariant holds every iteration: at least one of each
+	conflicting pair aborts, never both.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ssi005
+	Serializable Snapshot Isolation: SIREAD markers reclaimed without
+	checkpoint.
+
+	Runs many committed snapshot-safe read-only transactions with no
+	checkpoint and asserts peak lock-object usage stays bounded -- the
+	__txn_begin-driven incremental sweep reclaims markers whose snapshot
+	no active reader can still see, so retention does not grow with the
+	number of transactions ever run.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ssi006
+	Serializable Snapshot Isolation: conflict detected via the MVCC
+	version chain (mechanism b).
+
+	Exercises the buffer-pool detection mechanism: writers overwrite items
+	and commit with no live SIREAD marker present, so the lock-table
+	mechanism records nothing.  Snapshot readers then cross-read the
+	overwritten items, walking past newer committed versions; the
+	version-chain check records the rw-antidependencies and SSI aborts the
+	pivot.  Fails if mechanism (b) is absent.
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 test001
 	Small keys/data
 	Put/get per key

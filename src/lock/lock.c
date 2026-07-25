@@ -121,16 +121,34 @@ __lock_siclean_obj(env, obj, old_lsnp)
 			continue;
 
 		/*
-		 * Keep the marker while its snapshot is still within the
-		 * window of the oldest active reader.
+		 * Keep the marker while its snapshot may still be part of a
+		 * dangerous structure -- i.e. while some active transaction's
+		 * snapshot is no newer than this reader's.  A committed reader
+		 * that made writes advertises its serialization point in
+		 * visible_lsn (COMMITLSN); a read-only reader never sets
+		 * visible_lsn (it stays MAX_LSN), so fall back to its read_lsn
+		 * (READLSN).  In both cases the marker is obsolete once the
+		 * oldest active read LSN has advanced past that point.
 		 */
-		if (!(IS_MAX_LSN(LOCK_COMMITLSN(env, lp)) &&
-		    LOG_COMPARE(&LOCK_READLSN(env, lp), old_lsnp) > 0) &&
-		    LOG_COMPARE(&LOCK_COMMITLSN(env, lp), old_lsnp) > 0)
+		if (IS_MAX_LSN(LOCK_COMMITLSN(env, lp))) {
+			/*
+			 * Read-only committed reader (never sets visible_lsn):
+			 * order by its read_lsn.  Keep only while its snapshot is
+			 * strictly newer than the oldest active snapshot; once the
+			 * oldest active reader has caught up to (or passed) this
+			 * committed reader's snapshot, no new concurrent writer can
+			 * form a dangerous edge through it -- any still-active
+			 * reader sharing the snapshot carries its own marker.
+			 */
+			if (LOG_COMPARE(&LOCK_READLSN(env, lp), old_lsnp) > 0)
+				continue;
+		} else if (LOG_COMPARE(&LOCK_COMMITLSN(env, lp), old_lsnp) > 0)
 			continue;
 
 		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
 		sh_locker = LOCK_HOLDER(env, lp);
+		if (((DB_LOCKREGION *)lt->reginfo.primary)->nsireaders > 0)
+			((DB_LOCKREGION *)lt->reginfo.primary)->nsireaders--;
 		/*
 		 * Committed readers' markers were already detached from the
 		 * locker's heldby list by __lock_sicommit, so free WITHOUT
@@ -193,6 +211,14 @@ __lock_sicleanup(env)
 		OBJECT_UNLOCK(lt, region, i);
 	}
 
+	/*
+	 * Reap committed-reader lockers whose last SIREAD marker was just
+	 * freed above.  Done after the object sweep (no object mutex held) so
+	 * the object->locker latch ordering holds.
+	 */
+	if ((ret = __lock_si_reap_lockers(lt)) != 0)
+		return (ret);
+
 	return (0);
 }
 
@@ -242,6 +268,8 @@ __lock_sicommit(env, sh_locker, is_commit)
 		obj = (DB_LOCKOBJ *)SH_OFF_TO_PTR(lp, lp->obj, DB_LOCKOBJ);
 		OBJECT_LOCK_NDX(lt, region, obj->indx);
 		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
+		if (region->nsireaders > 0)
+			region->nsireaders--;
 		if (sh_locker->td_off != INVALID_ROFF)
 			LOCKER_TD(env, sh_locker)->si_ref--;
 		sh_locker->nlocks--;
@@ -876,6 +904,23 @@ again:	if (obj == NULL) {
 	 */
 	if (safe_si && lp == NULL &&
 	    (lock_mode == DB_LOCK_WRITE || lock_mode == DB_LOCK_SIREAD)) {
+		/*
+		 * SSI pivot flags (TXN_DTL_RCONF/TXN_DTL_WCONF) and the txn
+		 * status read below are shared with the commit-time pivot check
+		 * in __txn_commit and with __txn_end's status transition.  Under
+		 * multiple lock partitions this walk holds only the object's
+		 * partition mutex, which does NOT exclude a flag write from a
+		 * writer in a different partition, nor the lock-free commit-time
+		 * read.  Serialize all of it on the txn-region mutex: two edge
+		 * recorders on the same reader detail, and the pivot's own commit
+		 * check, now observe one total order.  Lock ordering is
+		 * partition -> txn-region (never taken in reverse; __txn_end
+		 * releases the lock region before taking the txn region, and no
+		 * lock_vec/lock_get is issued while the txn region is held), so
+		 * this cannot deadlock.
+		 */
+		if (TXN_ON(env))
+			TXN_SYSTEM_LOCK(env);
 		for (sireadlp = SH_TAILQ_FIRST(&sh_obj->sireaders, __db_lock);
 		    sireadlp != NULL; sireadlp = next_lock) {
 			next_lock = SH_TAILQ_NEXT(sireadlp, links, __db_lock);
@@ -887,10 +932,15 @@ again:	if (obj == NULL) {
 				 */
 				SH_TAILQ_REMOVE(&sh_obj->sireaders,
 				    sireadlp, links, __db_lock);
+				if (region->nsireaders > 0)
+					region->nsireaders--;
 				if ((ret = __lock_freelock(lt, sireadlp,
 				    LOCK_HOLDER(env, sireadlp),
-				    DB_LOCK_UNLINK | DB_LOCK_FREE)) != 0)
+				    DB_LOCK_UNLINK | DB_LOCK_FREE)) != 0) {
+					if (TXN_ON(env))
+						TXN_SYSTEM_UNLOCK(env);
 					goto err;
+				}
 			} else if (lock_mode == DB_LOCK_WRITE &&
 			    sh_off != sireadlp->holder &&
 			    (LOCK_OWNER(env, sireadlp)->status == TXN_RUNNING ||
@@ -901,6 +951,8 @@ again:	if (obj == NULL) {
 				    LOCK_OWNER(env, sireadlp)->status ==
 				    TXN_COMMITTED) {
 					ret = DB_SNAPSHOT_UNSAFE;
+					if (TXN_ON(env))
+						TXN_SYSTEM_UNLOCK(env);
 					goto err;
 				}
 				rwconf = 1;
@@ -915,6 +967,8 @@ again:	if (obj == NULL) {
 					if (F_ISSET(LOCKER_TD(env, sh_locker),
 					    TXN_DTL_RCONF)) {
 						ret = DB_SNAPSHOT_UNSAFE;
+						if (TXN_ON(env))
+							TXN_SYSTEM_UNLOCK(env);
 						goto err;
 					}
 					F_SET(LOCKER_TD(env, sh_locker),
@@ -928,9 +982,13 @@ again:	if (obj == NULL) {
 				lock->off = R_OFFSET(&lt->reginfo, sireadlp);
 				lock->gen = sireadlp->gen;
 				lock->mode = sireadlp->mode;
+				if (TXN_ON(env))
+					TXN_SYSTEM_UNLOCK(env);
 				goto done;
 			}
 		}
+		if (TXN_ON(env))
+			TXN_SYSTEM_UNLOCK(env);
 		/*
 		 * Note: obsolete SIREAD markers are reclaimed by
 		 * __lock_sicleanup (run without a partition mutex held), not
@@ -1120,6 +1178,7 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 		if (safe_si && lock_mode == DB_LOCK_SIREAD) {
 			SH_TAILQ_INSERT_TAIL(&sh_obj->sireaders, newl, links);
 			LOCKER_TD(env, sh_locker)->si_ref++;
+			region->nsireaders++;	/* SSI: GC-trigger hint. */
 		} else
 			SH_TAILQ_INSERT_TAIL(&sh_obj->holders, newl, links);
 		break;

@@ -239,8 +239,42 @@ __txn_begin(env, ip, parent, txnpp, flags)
 	}
 	/* SSI is snapshot isolation plus serializable conflict detection. */
 	if (LF_ISSET(DB_TXN_SNAPSHOT_SAFE) ||
-	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT_SAFE)))
+	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT_SAFE))) {
 		F_SET(txn, TXN_SNAPSHOT_SAFE);
+		/*
+		 * SSI: committed readers' SIREAD markers persist until GC, which
+		 * otherwise runs only at checkpoint -- so between checkpoints the
+		 * marker count (and the committed-reader locker/detail structs it
+		 * pins) can grow unbounded, exhausting the statically sized lock
+		 * region in a long-lived process.  Bound it: when the live-marker
+		 * count crosses half the currently allocated lock objects, run the
+		 * best-effort sweep now, before we begin (and allocate more).
+		 * No region lock is held here, so __lock_sicleanup's
+		 * txn-system-lock-first ordering is respected.
+		 */
+		if (parent == NULL && LOCKING_ON(env)) {
+			DB_LOCKREGION *lkreg =
+			    env->lk_handle->reginfo.primary;
+			/*
+			 * Trigger the sweep on either dimension of pressure:
+			 *  - live SIREAD markers past half the allocated objects
+			 *    (bounds the version-conflict object footprint), or
+			 *  - current lockers past half the locker cap (bounds the
+			 *    committed-reader lockers that persist until their last
+			 *    marker is reaped -- reused-key workloads keep the object
+			 *    count tiny while lockers still accumulate one per
+			 *    committed reader, so the object test alone never fires).
+			 * st_max* == 0 means "grow as needed"; fall back to the
+			 * currently allocated counts so the bound still holds.
+			 */
+			u_int32_t nobj = lkreg->stat.st_objects;
+			u_int32_t maxlk = lkreg->stat.st_maxlockers != 0 ?
+			    lkreg->stat.st_maxlockers : lkreg->stat.st_lockers;
+			if ((nobj != 0 && lkreg->nsireaders > nobj / 2) ||
+			    (maxlk != 0 && lkreg->nlockers > maxlk / 2))
+				(void)__lock_sicleanup(env);
+		}
+	}
 	if (LF_ISSET(DB_IGNORE_LEASE))
 		F_SET(txn, TXN_IGNORE_LEASE);
 
@@ -433,6 +467,17 @@ __txn_begin_int(txn)
 	td->xa_ref = 1;
 	td->xa_br_status = TXN_XA_IDLE;
 
+	/*
+	 * SSI: no SIREAD markers reference this detail yet.  This must be
+	 * initialized under TXN_SYSTEM_LOCK and *before* the detail is placed
+	 * on the active-transaction list below: TXN_DETAIL is allocated from
+	 * region memory without guaranteed zeroing, and concurrent walkers of
+	 * the active list (lock-manager conflict flagging, checkpoint marker
+	 * reclaim, stats) read si_ref.  Publishing the detail before setting
+	 * this field lets them observe garbage.
+	 */
+	td->si_ref = 0;
+
 	/* Place transaction on active transaction list. */
 	SH_TAILQ_INSERT_HEAD(&region->active_txn, td, links, __txn_detail);
 	region->curtxns++;
@@ -451,7 +496,6 @@ __txn_begin_int(txn)
 
 	txn->txnid = id;
 	txn->td  = td;
-	td->si_ref = 0;		/* SSI: no SIREAD markers reference it yet. */
 
 	/* Allocate a locker for this txn. */
 	if (LOCKING_ON(env) && (ret =
@@ -695,11 +739,27 @@ __txn_commit(txn, flags)
 	 * structure (both the read end and the write end of rw-conflicts, i.e.
 	 * has both TXN_DTL_RCONF and TXN_DTL_WCONF) cannot commit -- doing so
 	 * could produce a non-serializable schedule.
+	 *
+	 * The pivot flags are set on td by concurrent writers in the lock
+	 * manager, which serialize their flag writes on the txn-region mutex
+	 * (see __lock_get_internal).  Read both flags under the same mutex so
+	 * the two-flag test and this commit decision are atomic with respect
+	 * to a writer recording our second conflict edge -- otherwise an edge
+	 * set between the two reads, or just after they pass, would let a real
+	 * pivot commit.
 	 */
-	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE) &&
-	    F_ISSET(td, TXN_DTL_WCONF) && F_ISSET(td, TXN_DTL_RCONF)) {
-		ret = DB_SNAPSHOT_CONFLICT;
-		goto err;
+	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
+		int is_pivot;
+		if (TXN_ON(env))
+			TXN_SYSTEM_LOCK(env);
+		is_pivot = F_ISSET(td, TXN_DTL_WCONF) &&
+		    F_ISSET(td, TXN_DTL_RCONF);
+		if (TXN_ON(env))
+			TXN_SYSTEM_UNLOCK(env);
+		if (is_pivot) {
+			ret = DB_SNAPSHOT_CONFLICT;
+			goto err;
+		}
 	}
 
 	/* Close registered cursors before committing. */
@@ -1286,6 +1346,25 @@ __txn_prepare(txn, gid)
 		goto err;
 	if (F_ISSET(txn, TXN_DEADLOCK)) {
 		ret = __db_txn_deadlock_err(env, txn);
+		goto err;
+	}
+
+	/*
+	 * SSI: serializable snapshot isolation is not yet compatible with
+	 * two-phase commit.  The pivot check that can abort an SSI transaction
+	 * runs at commit time, but a prepared transaction must be guaranteed
+	 * committable -- upstream panics the environment if a prepared txn
+	 * cannot commit (see __txn_commit's err: path).  An SSI txn can still
+	 * acquire a second rw-conflict edge (becoming a pivot) after prepare
+	 * and before the commit decision, which would turn that panic into a
+	 * reachable, environment-wide crash for any XA user.  Until SSI's
+	 * conflict status is frozen at prepare time, refuse the combination.
+	 */
+	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
+		__db_errx(env, DB_STR("4575",
+		    "DB_TXN->prepare: DB_TXN_SNAPSHOT_SAFE (SSI) transactions "
+		    "cannot be prepared for two-phase commit"));
+		ret = EINVAL;
 		goto err;
 	}
 

@@ -1,5 +1,10 @@
 # Berkeley DB (`libdb`)
 
+> **Not affiliated with or endorsed by Oracle Corporation.** "Berkeley DB" is
+> used here to name the software this project archives and forks. Releases
+> `v5.3.29` and later are community fork releases and are **not** Oracle
+> artifacts (Oracle's final 5.3 release was 5.3.28).
+
 This repository is two things at once:
 
 1. **A historical archive** of Berkeley DB — the complete published lineage of
@@ -41,10 +46,19 @@ for full provenance and the per-version index.
 ## What's new on the living fork
 
 - **Serializable Snapshot Isolation (SSI)** — an opt-in `DB_TXN_SNAPSHOT_SAFE`
-  transaction mode that prevents snapshot-isolation anomalies (e.g. write-skew)
-  by detecting dangerous read/write dependency structures and aborting the
-  pivot with `DB_SNAPSHOT_CONFLICT`. This is the *first* of the planned features
-  in [`ROADMAP.md`](ROADMAP.md), which targets matching or beating InnoDB and
+  transaction mode that detects dangerous read/write dependency structures and
+  aborts the pivot with `DB_SNAPSHOT_CONFLICT`. Both of Cahill's rw-conflict
+  detection mechanisms are implemented: the lock-table path (a concurrent
+  writer meeting a reader's SIREAD marker) and the MVCC version-chain path in
+  `mp_fget` (a reader handed an older version than one a concurrent writer
+  committed). SIREAD markers are reclaimed incrementally and bounded (not only
+  at checkpoint); the commit-time pivot check is race-free against concurrent
+  edge recording; and `DB_TXN_SNAPSHOT_SAFE` is rejected with `prepare()`/2PC.
+  **Still experimental:** page-granularity conflict tracking can raise abort
+  rates under contention, and the qualification test matrix (HA/replication,
+  recovery mid-state, region exhaustion, abort-rate benchmarks) is still being
+  built. This is the *first* of the planned features in
+  [`ROADMAP.md`](ROADMAP.md), which targets matching or beating InnoDB and
   WiredTiger on multicore/NUMA scalability and performance.
 
 ## Building
