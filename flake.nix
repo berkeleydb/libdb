@@ -10,7 +10,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        version = "5.3.29";
+        version = "5.3.30";
       in {
         packages = rec {
           # Default: the Meson/Ninja build of the core C library.
