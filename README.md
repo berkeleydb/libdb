@@ -54,15 +54,15 @@ for full provenance and the per-version index.
   committed). SIREAD markers are reclaimed incrementally and bounded (not only
   at checkpoint); the commit-time pivot check is race-free against concurrent
   edge recording; and `DB_TXN_SNAPSHOT_SAFE` is rejected with `prepare()`/2PC.
-  **Still experimental — not safe for concurrent writers yet:** there is a
-  known pre-existing crash in the SIREAD path under multiple concurrent
-  snapshot-safe *writers* (a use-after-free found by the abort-rate benchmark;
-  see the SSI notes). Use it only single-writer / read-mostly until that is
-  fixed. In addition, page-granularity conflict tracking can raise abort rates
-  under contention, and the qualification matrix (HA/replication, concurrent
-  writers) is still being built. This is the *first* of the planned features in
-  [`ROADMAP.md`](ROADMAP.md), which targets matching or beating InnoDB and
-  WiredTiger on multicore/NUMA scalability and performance.
+  **Still experimental:** the SIREAD marker/locker/detail lifetime was hardened
+  for concurrent writers (several pre-existing use-after-free bugs fixed under
+  TSan/ASan), but a residual crash remains under sustained high-abort
+  contention among many concurrent snapshot-safe *writers* (see the SSI notes);
+  a locking-domain audit is the tracked follow-up. Prefer single-writer /
+  read-mostly workloads for now. Page-granularity conflict tracking can also
+  raise abort rates under contention. This is the *first* of the planned
+  features in [`ROADMAP.md`](ROADMAP.md), which targets matching or beating
+  InnoDB and WiredTiger on multicore/NUMA scalability and performance.
 
 ## Building
 
