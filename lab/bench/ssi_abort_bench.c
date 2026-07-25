@@ -25,6 +25,7 @@
  * NOT a TPC benchmark and not comparable to any TPC result.
  */
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -38,6 +39,7 @@ static DB *db;
 static int hotkeys;
 static volatile int stop;
 static volatile int go;
+static volatile int panicked;	/* set on DB_RUNRECOVERY: stop, don't spin */
 
 typedef struct {
 	pthread_t tid;
@@ -86,12 +88,18 @@ one_txn(targ_t *t)
 	ret = db->put(db, txn, &key, &data, 0);
 	if (ret == DB_LOCK_DEADLOCK || ret == DB_SNAPSHOT_CONFLICT)
 		goto conflict;
-	if (ret != 0) { (void)txn->abort(txn); t->other++; return; }
+	if (ret != 0) {
+		(void)txn->abort(txn);
+		if (ret == DB_RUNRECOVERY) panicked = 1;
+		t->other++;
+		return;
+	}
 
 	ret = txn->commit(txn, 0);
 	if (ret == 0) { t->committed++; return; }
 	if (ret == DB_SNAPSHOT_CONFLICT) { t->aborted++; return; }
 	if (ret == DB_LOCK_DEADLOCK) { t->deadlock++; return; }
+	if (ret == DB_RUNRECOVERY) panicked = 1;
 	t->other++;
 	return;
 
@@ -106,7 +114,7 @@ worker(void *arg)
 {
 	targ_t *t = arg;
 	while (!go) ;
-	while (!stop)
+	while (!stop && !panicked)
 		one_txn(t);
 	return (NULL);
 }
@@ -119,7 +127,7 @@ run(int nthreads, int secs)
 	long c = 0, a = 0, d = 0, o = 0, total;
 
 	ta = calloc((size_t)nthreads, sizeof(*ta));
-	stop = go = 0;
+	stop = go = panicked = 0;
 	for (i = 0; i < nthreads; i++) {
 		ta[i].seed = (unsigned)(i * 2654435761u + 1);
 		pthread_create(&ta[i].tid, NULL, worker, &ta[i]);
@@ -134,10 +142,10 @@ run(int nthreads, int secs)
 	}
 	total = c + a + d + o;
 	printf("threads=%-3d hot=%-4d  commit=%-8ld ssi_abort=%-7ld "
-	    "deadlock=%-6ld other=%-5ld  abort_rate=%.1f%% (%.0f txn/s)\n",
+	    "deadlock=%-6ld other=%-5ld  abort_rate=%.1f%% (%.0f txn/s)%s\n",
 	    nthreads, hotkeys, c, a, d, o,
 	    total ? 100.0 * (double)(a + d) / (double)total : 0.0,
-	    (double)total / secs);
+	    (double)total / secs, panicked ? "  [ENV PANIC -- see note]" : "");
 	free(ta);
 }
 
@@ -157,17 +165,22 @@ main(int argc, char **argv)
 	hotkeys = atoi(argv[1]);
 	secs = atoi(argv[2]);
 
-	system("rm -rf /tmp/ssi_abort_env && mkdir -p /tmp/ssi_abort_env");
+	(void)mkdir("/tmp/ssi_abort_env", 0755);
 	if ((ret = db_env_create(&env, 0)) != 0) goto err;
 	env->set_cachesize(env, 0, 64 * 1024 * 1024, 1);
 	/* Size the lock region generously so exhaustion isn't the variable. */
-	env->set_lk_max_locks(env, 200000);
-	env->set_lk_max_objects(env, 200000);
-	env->set_lk_max_lockers(env, 200000);
+	env->set_lk_max_locks(env, 20000);
+	env->set_lk_max_objects(env, 20000);
+	env->set_lk_max_lockers(env, 20000);
 	/* Resolve lock cycles automatically so contention can't wedge us. */
 	env->set_lk_detect(env, DB_LOCK_MINWRITE);
+	/*
+	 * DB_RECOVER: a benchmark run may be killed (timeout) mid-transaction,
+	 * leaving a dirty region.  Always run recovery on open so a stale
+	 * environment is cleaned rather than hanging or crashing the next run.
+	 */
 	if ((ret = env->open(env, "/tmp/ssi_abort_env",
-	    DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
+	    DB_CREATE | DB_RECOVER | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
 	    DB_INIT_TXN | DB_THREAD | DB_MULTIVERSION, 0644)) != 0) goto err;
 	if ((ret = db_create(&db, env, 0)) != 0) goto err;
 	if ((ret = db->open(db, NULL, "ssi.db", NULL, DB_BTREE,
