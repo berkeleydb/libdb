@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
+#include "dbinc/txn.h"
 
 static int __lock_freelocker_int
     __P((DB_LOCKTAB *, DB_LOCKREGION *, DB_LOCKER *, int));
@@ -491,13 +492,22 @@ __lock_freelocker_int(lt, region, sh_locker, reallyfree)
 	}
 
 	/*
-	 * SSI: a committed snapshot-safe reader is kept alive (DB_LOCKER_FREED)
-	 * while its persisted SIREAD markers still reference it; defer the real
-	 * free to __lock_sicleanup, which reclaims the markers and then the
-	 * locker once the oldest reader has advanced past its snapshot.
+	 * SSI: a committed snapshot-safe reader's persisted SIREAD markers stay
+	 * on their objects' sireaders lists (detached from heldby) and still
+	 * reference this locker via lp->holder.  Freeing the locker while any
+	 * such marker exists is a use-after-free when the GC (or a WRITE
+	 * acquirer) later dereferences LOCK_HOLDER(marker).  The per-detail
+	 * si_ref counts exactly those markers and is atomic, so it is the
+	 * race-free guard (nlocks is decremented under the object partition
+	 * mutex but read here under LOCK_LOCKERS -- a cross-domain race).
+	 * Defer while markers remain; flag DB_LOCKER_FREED so __lock_sicleanup
+	 * reclaims the locker once the last marker is gone.
 	 */
-	if (F_ISSET(sh_locker, DB_LOCKER_FREED) && sh_locker->nlocks != 0)
+	if (sh_locker->td_off != INVALID_ROFF &&
+	    atomic_read(&LOCKER_TD(env, sh_locker)->si_ref) != 0) {
+		F_SET(sh_locker, DB_LOCKER_FREED);
 		return (0);
+	}
 
 	/* If this is part of a family, we must fix up its links. */
 	if (sh_locker->master_locker != INVALID_ROFF) {

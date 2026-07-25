@@ -265,7 +265,7 @@ __txn_begin(env, ip, parent, txnpp, flags)
 			 * or not a max is configured.
 			 */
 			u_int32_t nobj = lkreg->stat.st_objects;
-			if (nobj != 0 && lkreg->nsireaders > nobj / 2)
+			if (nobj != 0 && atomic_read(&lkreg->nsireaders) > nobj / 2)
 				(void)__lock_sicleanup(env);
 		}
 	}
@@ -470,7 +470,7 @@ __txn_begin_int(txn)
 	 * reclaim, stats) read si_ref.  Publishing the detail before setting
 	 * this field lets them observe garbage.
 	 */
-	td->si_ref = 0;
+	atomic_init(&td->si_ref, 0);
 
 	/* Place transaction on active transaction list. */
 	SH_TAILQ_INSERT_HEAD(&region->active_txn, td, links, __txn_detail);
@@ -1811,8 +1811,24 @@ __txn_end(txn, is_commit)
 				return (__env_panic(env, ret));
 	}
 
-	if (td != NULL && td->si_ref == 0)
-		__env_alloc_free(&mgr->reginfo, td);
+	if (td != NULL) {
+		if (atomic_read(&td->si_ref) == 0)
+			__env_alloc_free(&mgr->reginfo, td);
+		else {
+			/*
+			 * SSI: a committed snapshot-safe reader whose SIREAD
+			 * markers still reference this detail cannot be freed yet
+			 * (a marker's LOCK_OWNER dereferences it).  Keep it on the
+			 * mvcc_txn reclaim list, flagged TXN_DTL_SNAPSHOT, so the
+			 * marker GC (__lock_sicleanup) frees it when the last
+			 * marker goes -- rather than orphaning it off every list
+			 * (a leak) or freeing it early (a use-after-free).
+			 */
+			SH_TAILQ_INSERT_HEAD(&region->mvcc_txn,
+			    td, links, __txn_detail);
+			F_SET(td, TXN_DTL_SNAPSHOT);
+		}
+	}
 
 #ifdef HAVE_STATISTICS
 	if (is_commit)
