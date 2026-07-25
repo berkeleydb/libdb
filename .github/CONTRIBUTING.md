@@ -28,10 +28,13 @@ make -j
 
 Notes for engine work:
 
-- The `build_unix` Makefile under-tracks header dependencies. After editing any
-  `src/dbinc/*.h` struct, do a **clean rebuild** (`make clean && make`) or you
-  will get stale objects with mismatched struct layouts (silent memory
-  corruption).
+- The `build_unix` Makefile now tracks header dependencies automatically when
+  the compiler supports `-MMD -MP` (GCC/Clang), so editing a `src/dbinc/*.h`
+  struct rebuilds every dependent object. If you build with a compiler that
+  lacks those flags (dependency tracking is then disabled), still do a **clean
+  rebuild** (`make clean && make`) after a shared-header edit, or you will get
+  stale objects with mismatched struct layouts (silent memory corruption). Run
+  `../dist/configure` output shows `checking whether $CC supports -MMD -MP ...`.
 - Generated files (`src/dbinc_auto/*`, `build_*/db.h`, `test/tcl/TESTS`) are
   produced by `dist/s_*` scripts and `db.in` — edit the sources, then
   regenerate. Do not hand-edit generated output.

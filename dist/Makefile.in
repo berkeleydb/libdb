@@ -65,6 +65,7 @@ CPPFLAGS=	-I$(builddir) -I$(srcdir) @CPPFLAGS@
 # C API.
 ##################################################
 CFLAGS=		-c $(CPPFLAGS) @CFLAGS@
+DEPFLAGS=	@DEPFLAGS@
 CC=		@MAKEFILE_CC@
 CCLINK=		@MAKEFILE_CCLINK@ @CFLAGS@
 
@@ -1217,7 +1218,7 @@ mostly-clean clean:
 	$(RM) -r $(TCL_OBJS) $(UTIL_PROGS) *.exe $(CLEAN_LIST)
 	$(RM) -r $(JAVA_CLASSTOP) $(JAVA_EXCLASSTOP)
 	$(RM) -r $(DB_STL_TEST_OBJS) $(TEST_MICRO_OBJS)
-	$(RM) -r tags *@o@ *.o *.o.lock *.lo core *.core core.*
+	$(RM) -r tags *@o@ *.o *.o.lock *.lo *.d core *.core core.*
 	$(RM) -r ALL.OUT.* PARALLEL_TESTDIR.*
 	$(RM) -r RUN_LOG RUNQUEUE TESTDIR TESTDIR.A TEST.LIST
 	$(RM) -r logtrack_seen.db test_micro test_mutex .libs
@@ -1239,6 +1240,12 @@ distclean maintainer-clean realclean: clean
 check depend dvi info obj TAGS:
 	@echo "make: $@ target not available"
 
+# Automatic header-dependency tracking (GCC/Clang + a make that honours
+# -include; empty otherwise -- see configure.ac).  Pulls in the per-object .d
+# fragments emitted by $(DEPFLAGS) so a header edit rebuilds every dependent
+# object instead of silently leaving it stale.
+@DEP_INCLUDE@
+
 dist rpm rpmbuild:
 	@echo "make: $@ target not available" && exit 1
 
@@ -1246,27 +1253,27 @@ dist rpm rpmbuild:
 # Testers, benchmarks.
 ##################################################
 dbs@o@: $(testdir)/server/dbs.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_am@o@: $(testdir)/server/dbs_am.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_checkpoint@o@: $(testdir)/server/dbs_checkpoint.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_debug@o@: $(testdir)/server/dbs_debug.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_handles@o@: $(testdir)/server/dbs_handles.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_log@o@: $(testdir)/server/dbs_log.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_qam@o@: $(testdir)/server/dbs_qam.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_spawn@o@: $(testdir)/server/dbs_spawn.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_trickle@o@: $(testdir)/server/dbs_trickle.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_util@o@: $(testdir)/server/dbs_util.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbs_yield@o@: $(testdir)/server/dbs_yield.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 DBS_OBJS=\
 	dbs@o@ dbs_am@o@ dbs_checkpoint@o@ dbs_debug@o@ dbs_handles@o@ \
 	dbs_log@o@ dbs_qam@o@ dbs_spawn@o@ dbs_trickle@o@ dbs_util@o@ \
@@ -1277,47 +1284,47 @@ dbs: $(DBS_OBJS) $(DEF_LIB)
 	$(POSTLINK) $@
 
 db_perf@o@: $(testdir)/perf/db_perf.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_checkpoint@o@: $(testdir)/perf/perf_checkpoint.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_config@o@: $(testdir)/perf/perf_config.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_dbs@o@: $(testdir)/perf/perf_dbs.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_dead@o@: $(testdir)/perf/perf_dead.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_debug@o@: $(testdir)/perf/perf_debug.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_file@o@: $(testdir)/perf/perf_file.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_key@o@: $(testdir)/perf/perf_key.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_log@o@: $(testdir)/perf/perf_log.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_misc@o@: $(testdir)/perf/perf_misc.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_op@o@: $(testdir)/perf/perf_op.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_parse@o@: $(testdir)/perf/perf_parse.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_rand@o@: $(testdir)/perf/perf_rand.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_spawn@o@: $(testdir)/perf/perf_spawn.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_stat@o@: $(testdir)/perf/perf_stat.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_sync@o@: $(testdir)/perf/perf_sync.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_thread@o@: $(testdir)/perf/perf_thread.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_trickle@o@: $(testdir)/perf/perf_trickle.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_txn@o@: $(testdir)/perf/perf_txn.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_util@o@: $(testdir)/perf/perf_util.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 perf_vx@o@: $(testdir)/perf/perf_vx.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 DBPERF_OBJS=\
 	db_perf@o@ perf_checkpoint@o@ perf_config@o@ perf_dbs@o@ \
 	perf_dead@o@ perf_debug@o@ perf_file@o@ perf_key@o@ perf_log@o@ \
@@ -1371,15 +1378,15 @@ db_repsite: $(DBREPSITE_OBJS) $(DEF_LIB_CXX)
 	$(POSTLINK) $@ 
 
 db_reptest@o@: $(testdir)/repmgr/db_reptest.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 reptest_am@o@: $(testdir)/repmgr/reptest_am.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 reptest_handles@o@: $(testdir)/repmgr/reptest_handles.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 reptest_spawn@o@: $(testdir)/repmgr/reptest_spawn.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 reptest_util@o@: $(testdir)/repmgr/reptest_util.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 DBREPTEST_OBJS=\
 	db_reptest@o@ reptest_am@o@ reptest_handles@o@ \
 	reptest_spawn@o@ reptest_util@o@ 
@@ -1428,44 +1435,44 @@ test_dbstl_stlport: $(DB_STL_STLPORT_TEST_OBJS) $(DEF_LIB_CXX) $(DEF_LIB_STL)
 	$(POSTLINK) $@
 
 b_curalloc@o@: $(testdir)/micro/source/b_curalloc.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_curwalk@o@: $(testdir)/micro/source/b_curwalk.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_del@o@: $(testdir)/micro/source/b_del.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_get@o@: $(testdir)/micro/source/b_get.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_inmem@o@: $(testdir)/micro/source/b_inmem.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_latch@o@: $(testdir)/micro/source/b_latch.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_load@o@: $(testdir)/micro/source/b_load.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_open@o@: $(testdir)/micro/source/b_open.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_put@o@: $(testdir)/micro/source/b_put.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_recover@o@: $(testdir)/micro/source/b_recover.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_txn@o@: $(testdir)/micro/source/b_txn.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_txn_write@o@: $(testdir)/micro/source/b_txn_write.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_uname@o@: $(testdir)/micro/source/b_uname.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_util@o@: $(testdir)/micro/source/b_util.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 b_workload@o@: $(testdir)/micro/source/b_workload.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 test_micro@o@: $(testdir)/micro/source/test_micro.c
-	$(CC) $(CFLAGS) -I$(testdir)/micro/source $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/micro/source $<
 test_micro: $(TEST_MICRO_OBJS) $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) $(TEST_MICRO_OBJS) $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 test_mutex@o@: $(srcdir)/mutex/test_mutex.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 test_mutex: test_mutex@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) test_mutex@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
@@ -1496,19 +1503,19 @@ examples: examples_c examples_cxx examples_stl examples_sql
 # Example programs for C.
 ##################################################
 ex_access@o@: $(exampledir)/c/ex_access.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_access: ex_access@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_access@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 ex_apprec@o@: $(exampledir)/c/ex_apprec/ex_apprec.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_apprec_auto@o@: $(exampledir)/c/ex_apprec/ex_apprec_auto.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_apprec_autop@o@: $(exampledir)/c/ex_apprec/ex_apprec_autop.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_apprec_rec@o@: $(exampledir)/c/ex_apprec/ex_apprec_rec.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 EX_APPREC_OBJS=\
 	ex_apprec@o@ ex_apprec_auto@o@ ex_apprec_autop@o@ ex_apprec_rec@o@
 ex_apprec: $(EX_APPREC_OBJS) $(DEF_LIB)
@@ -1516,55 +1523,55 @@ ex_apprec: $(EX_APPREC_OBJS) $(DEF_LIB)
 	    $(LDFLAGS) $(EX_APPREC_OBJS) $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 
 ex_btrec@o@: $(exampledir)/c/ex_btrec.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_btrec: ex_btrec@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_btrec@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 ex_bulk@o@: $(exampledir)/c/ex_bulk.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_bulk: ex_bulk@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_bulk@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 ex_dbclient@o@: $(exampledir)/c/ex_dbclient.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_dbclient: ex_dbclient@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_dbclient@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 ex_env@o@: $(exampledir)/c/ex_env.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_env: ex_env@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_env@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 ex_heap@o@: $(exampledir)/c/ex_heap.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_heap: ex_heap@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_heap@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 ex_lock@o@: $(exampledir)/c/ex_lock.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_lock: ex_lock@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_lock@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 ex_mpool@o@: $(exampledir)/c/ex_mpool.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_mpool: ex_mpool@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_mpool@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 rep_base@o@: $(exampledir)/c/ex_rep/base/rep_base.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_common@o@: $(exampledir)/c/ex_rep/common/rep_common.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_msg@o@: $(exampledir)/c/ex_rep/base/rep_msg.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_net@o@: $(exampledir)/c/ex_rep/base/rep_net.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 EX_REP_BASE_OBJS=\
 	rep_base@o@ rep_common@o@ rep_msg@o@ rep_net@o@
 ex_rep_base: $(EX_REP_BASE_OBJS) $(DEF_LIB)
@@ -1573,9 +1580,9 @@ ex_rep_base: $(EX_REP_BASE_OBJS) $(DEF_LIB)
 	$(POSTLINK) $@
 
 rep_chan@o@: $(exampledir)/c/ex_rep_chan/rep_chan.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_chan_util@o@: $(exampledir)/c/ex_rep_chan/rep_chan_util.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 EX_REP_CHAN_OBJS=\
 	rep_chan@o@ rep_chan_util@o@
 ex_rep_chan: $(EX_REP_CHAN_OBJS) $(DEF_LIB)
@@ -1584,21 +1591,21 @@ ex_rep_chan: $(EX_REP_CHAN_OBJS) $(DEF_LIB)
 	$(POSTLINK) $@
 
 simple_txn@o@: $(exampledir)/c/ex_rep_gsg/simple_txn.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_rep_gsg_simple: simple_txn@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) simple_txn@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 rep_mgr_gsg@o@: $(exampledir)/c/ex_rep_gsg/rep_mgr_gsg.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_rep_gsg_repmgr: rep_mgr_gsg@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) rep_mgr_gsg@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 rep_mgr@o@: $(exampledir)/c/ex_rep/mgr/rep_mgr.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 EX_REP_MGR_OBJS=\
 	rep_common@o@ rep_mgr@o@
 ex_rep_mgr: $(EX_REP_MGR_OBJS) $(DEF_LIB)
@@ -1607,26 +1614,26 @@ ex_rep_mgr: $(EX_REP_MGR_OBJS) $(DEF_LIB)
 	$(POSTLINK) $@
 
 ex_sequence@o@: $(exampledir)/c/ex_sequence.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_sequence: ex_sequence@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_sequence@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 ex_stream@o@: $(exampledir)/c/ex_stream.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_stream: ex_stream@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_stream@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 ex_thread@o@: $(exampledir)/c/ex_thread.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_thread: ex_thread@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) ex_thread@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 ex_tpcb@o@: $(exampledir)/c/ex_tpcb.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 ex_tpcb: ex_tpcb@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) ex_tpcb@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
@@ -1636,10 +1643,10 @@ gettingstarted_common@o@: \
 	$(CC) -I$(exampledir)/c/getting_started $(CFLAGS) $?
 example_database_load@o@: \
     $(exampledir)/c/getting_started/example_database_load.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 example_database_read@o@: \
     $(exampledir)/c/getting_started/example_database_read.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 example_database_load: example_database_load@o@ gettingstarted_common@o@ \
     $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) \
@@ -1652,13 +1659,13 @@ example_database_read: example_database_read@o@ gettingstarted_common@o@ \
 	$(POSTLINK) $@
 
 txn_guide_inmemory@o@: $(exampledir)/c/txn_guide/txn_guide_inmemory.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_guide_inmemory: txn_guide_inmemory@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) txn_guide_inmemory@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 txn_guide@o@: $(exampledir)/c/txn_guide/txn_guide.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_guide: txn_guide@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) txn_guide@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
@@ -1840,611 +1847,611 @@ ex_sql_transaction: ex_sql_transaction@o@ ex_sql_utils@o@ $(DEF_LIB_SQL)
 	$(POSTLINK) $@
 
 ex_sql_binding@o@: $(exampledir)/sql/c/ex_sql_binding.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_fts3@o@: $(exampledir)/sql/c/ex_sql_fts3.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_index@o@: $(exampledir)/sql/c/ex_sql_index.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_load@o@: $(exampledir)/sql/c/ex_sql_load.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_multi_thread@o@: $(exampledir)/sql/c/ex_sql_multi_thread.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_utils@o@: $(exampledir)/sql/c/ex_sql_utils.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_query@o@: $(exampledir)/sql/c/ex_sql_query.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_rtree@o@: $(exampledir)/sql/c/ex_sql_rtree.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_savepoint@o@: $(exampledir)/sql/c/ex_sql_savepoint.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_statement@o@: $(exampledir)/sql/c/ex_sql_statement.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 ex_sql_transaction@o@: $(exampledir)/sql/c/ex_sql_transaction.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 
 ##################################################
 # C API build rules.
 ##################################################
 aes_method@o@: $(srcdir)/crypto/aes_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_compare@o@: $(srcdir)/btree/bt_compare.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_compress@o@: $(srcdir)/btree/bt_compress.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_conv@o@: $(srcdir)/btree/bt_conv.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_curadj@o@: $(srcdir)/btree/bt_curadj.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_cursor@o@: $(srcdir)/btree/bt_cursor.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_delete@o@: $(srcdir)/btree/bt_delete.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_method@o@: $(srcdir)/btree/bt_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_open@o@: $(srcdir)/btree/bt_open.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_put@o@: $(srcdir)/btree/bt_put.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_rec@o@: $(srcdir)/btree/bt_rec.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_reclaim@o@: $(srcdir)/btree/bt_reclaim.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_recno@o@: $(srcdir)/btree/bt_recno.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_rsearch@o@: $(srcdir)/btree/bt_rsearch.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_search@o@: $(srcdir)/btree/bt_search.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_split@o@: $(srcdir)/btree/bt_split.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_stat@o@: $(srcdir)/btree/bt_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_compact@o@: $(srcdir)/btree/bt_compact.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_upgrade@o@: $(srcdir)/btree/bt_upgrade.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 bt_verify@o@: $(srcdir)/btree/bt_verify.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 btree_auto@o@: $(srcdir)/btree/btree_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 btree_autop@o@: $(srcdir)/btree/btree_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 clock@o@: $(srcdir)/common/clock.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 crdel_auto@o@: $(srcdir)/db/crdel_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 crdel_autop@o@: $(srcdir)/db/crdel_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 crdel_rec@o@: $(srcdir)/db/crdel_rec.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 crypto@o@: $(srcdir)/crypto/crypto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 crypto_stub@o@: $(srcdir)/common/crypto_stub.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db185@o@: $(langdir)/db185/db185.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db@o@: $(srcdir)/db/db.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_am@o@: $(srcdir)/db/db_am.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_auto@o@: $(srcdir)/db/db_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_autop@o@: $(srcdir)/db/db_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_byteorder@o@: $(srcdir)/common/db_byteorder.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_backup@o@: $(srcdir)/db/db_backup.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_cam@o@: $(srcdir)/db/db_cam.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_cds@o@: $(srcdir)/db/db_cds.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_compact@o@: $(srcdir)/db/db_compact.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_compint@o@: $(srcdir)/common/db_compint.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_conv@o@: $(srcdir)/db/db_conv.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_copy@o@: $(srcdir)/db/db_copy.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_dispatch@o@: $(srcdir)/db/db_dispatch.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_dup@o@: $(srcdir)/db/db_dup.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_err@o@: $(srcdir)/common/db_err.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_getlong@o@: $(srcdir)/common/db_getlong.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_idspace@o@: $(srcdir)/common/db_idspace.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_iface@o@: $(srcdir)/db/db_iface.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_join@o@: $(srcdir)/db/db_join.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_log2@o@: $(srcdir)/common/db_log2.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_meta@o@: $(srcdir)/db/db_meta.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_method@o@: $(srcdir)/db/db_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_open@o@: $(srcdir)/db/db_open.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_overflow@o@: $(srcdir)/db/db_overflow.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_ovfl_vrfy@o@: $(srcdir)/db/db_ovfl_vrfy.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_pr@o@: $(srcdir)/db/db_pr.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_rec@o@: $(srcdir)/db/db_rec.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_reclaim@o@: $(srcdir)/db/db_reclaim.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_rename@o@: $(srcdir)/db/db_rename.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_remove@o@: $(srcdir)/db/db_remove.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_ret@o@: $(srcdir)/db/db_ret.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_setid@o@: $(srcdir)/db/db_setid.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_setlsn@o@: $(srcdir)/db/db_setlsn.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_shash@o@: $(srcdir)/common/db_shash.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_sort_multiple@o@: $(srcdir)/db/db_sort_multiple.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_stati@o@: $(srcdir)/db/db_stati.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_truncate@o@: $(srcdir)/db/db_truncate.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_upg@o@: $(srcdir)/db/db_upg.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_upg_opd@o@: $(srcdir)/db/db_upg_opd.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_vrfy@o@: $(srcdir)/db/db_vrfy.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_vrfyutil@o@: $(srcdir)/db/db_vrfyutil.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_vrfy_stub@o@: $(srcdir)/db/db_vrfy_stub.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbm@o@: $(langdir)/dbm/dbm.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbreg@o@: $(srcdir)/dbreg/dbreg.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbreg_auto@o@: $(srcdir)/dbreg/dbreg_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbreg_autop@o@: $(srcdir)/dbreg/dbreg_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbreg_rec@o@: $(srcdir)/dbreg/dbreg_rec.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbreg_stat@o@: $(srcdir)/dbreg/dbreg_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbreg_util@o@: $(srcdir)/dbreg/dbreg_util.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 dbt@o@: $(srcdir)/common/dbt.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_alloc@o@: $(srcdir)/env/env_alloc.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_config@o@: $(srcdir)/env/env_config.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_backup@o@: $(srcdir)/env/env_backup.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_failchk@o@: $(srcdir)/env/env_failchk.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_file@o@: $(srcdir)/env/env_file.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_globals@o@: $(srcdir)/env/env_globals.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_method@o@: $(srcdir)/env/env_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_name@o@: $(srcdir)/env/env_name.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_open@o@: $(srcdir)/env/env_open.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_recover@o@: $(srcdir)/env/env_recover.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_region@o@: $(srcdir)/env/env_region.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_register@o@: $(srcdir)/env/env_register.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_sig@o@: $(srcdir)/env/env_sig.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 env_stat@o@: $(srcdir)/env/env_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 fileops_auto@o@: $(srcdir)/fileops/fileops_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 fileops_autop@o@: $(srcdir)/fileops/fileops_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 fop_basic@o@: $(srcdir)/fileops/fop_basic.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 fop_rec@o@: $(srcdir)/fileops/fop_rec.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 fop_util@o@: $(srcdir)/fileops/fop_util.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash@o@: $(srcdir)/hash/hash.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_auto@o@: $(srcdir)/hash/hash_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_autop@o@: $(srcdir)/hash/hash_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_compact@o@: $(srcdir)/hash/hash_compact.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_conv@o@: $(srcdir)/hash/hash_conv.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_dup@o@: $(srcdir)/hash/hash_dup.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_func@o@: $(srcdir)/hash/hash_func.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_meta@o@: $(srcdir)/hash/hash_meta.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_method@o@: $(srcdir)/hash/hash_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_open@o@: $(srcdir)/hash/hash_open.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_page@o@: $(srcdir)/hash/hash_page.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_rec@o@: $(srcdir)/hash/hash_rec.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_reclaim@o@: $(srcdir)/hash/hash_reclaim.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_stat@o@: $(srcdir)/hash/hash_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_stub@o@: $(srcdir)/hash/hash_stub.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_upgrade@o@: $(srcdir)/hash/hash_upgrade.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hash_verify@o@: $(srcdir)/hash/hash_verify.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap@o@: $(srcdir)/heap/heap.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_auto@o@: $(srcdir)/heap/heap_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_autop@o@: $(srcdir)/heap/heap_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_backup@o@: $(srcdir)/heap/heap_backup.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_conv@o@: $(srcdir)/heap/heap_conv.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_method@o@: $(srcdir)/heap/heap_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_open@o@: $(srcdir)/heap/heap_open.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_rec@o@: $(srcdir)/heap/heap_rec.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_reclaim@o@: $(srcdir)/heap/heap_reclaim.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_stat@o@: $(srcdir)/heap/heap_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_stub@o@: $(srcdir)/heap/heap_stub.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 heap_verify@o@: $(srcdir)/heap/heap_verify.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hmac@o@: $(srcdir)/hmac/hmac.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 hsearch@o@: $(langdir)/hsearch/hsearch.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock@o@: $(srcdir)/lock/lock.c $(srcdir)/lock/lock_alloc.incl
-	 $(CC) $(CFLAGS) $(srcdir)/lock/lock.c
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/lock/lock.c
 lock_deadlock@o@:$(srcdir)/lock/lock_deadlock.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock_failchk@o@:$(srcdir)/lock/lock_failchk.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock_id@o@:$(srcdir)/lock/lock_id.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock_list@o@:$(srcdir)/lock/lock_list.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock_method@o@:$(srcdir)/lock/lock_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock_region@o@:$(srcdir)/lock/lock_region.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock_stat@o@:$(srcdir)/lock/lock_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock_stub@o@: $(srcdir)/lock/lock_stub.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock_timer@o@:$(srcdir)/lock/lock_timer.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 lock_util@o@:$(srcdir)/lock/lock_util.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log@o@: $(srcdir)/log/log.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_archive@o@: $(srcdir)/log/log_archive.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_compare@o@: $(srcdir)/log/log_compare.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_debug@o@: $(srcdir)/log/log_debug.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_get@o@: $(srcdir)/log/log_get.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_method@o@: $(srcdir)/log/log_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_print@o@: $(srcdir)/log/log_print.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_put@o@: $(srcdir)/log/log_put.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_stat@o@: $(srcdir)/log/log_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_verify@o@: $(srcdir)/log/log_verify.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_verify_auto@o@: $(srcdir)/log/log_verify_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_verify_int@o@: $(srcdir)/log/log_verify_int.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_verify_util@o@: $(srcdir)/log/log_verify_util.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_verify_stub@o@: $(srcdir)/log/log_verify_stub.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_log_verify@o@: $(utildir)/db_log_verify.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mkpath@o@: $(srcdir)/common/mkpath.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_alloc@o@: $(srcdir)/mp/mp_alloc.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_bh@o@: $(srcdir)/mp/mp_bh.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_backup@o@: $(srcdir)/mp/mp_backup.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_fget@o@: $(srcdir)/mp/mp_fget.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_fmethod@o@: $(srcdir)/mp/mp_fmethod.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_fopen@o@: $(srcdir)/mp/mp_fopen.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_fput@o@: $(srcdir)/mp/mp_fput.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_fset@o@: $(srcdir)/mp/mp_fset.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_method@o@: $(srcdir)/mp/mp_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_mvcc@o@: $(srcdir)/mp/mp_mvcc.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_region@o@: $(srcdir)/mp/mp_region.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_register@o@: $(srcdir)/mp/mp_register.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_resize@o@: $(srcdir)/mp/mp_resize.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_stat@o@: $(srcdir)/mp/mp_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_sync@o@: $(srcdir)/mp/mp_sync.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mp_trickle@o@: $(srcdir)/mp/mp_trickle.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mt19937db@o@: $(srcdir)/crypto/mersenne/mt19937db.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_alloc@o@: $(srcdir)/mutex/mut_alloc.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_failchk@o@: $(srcdir)/mutex/mut_failchk.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_fcntl@o@: $(srcdir)/mutex/mut_fcntl.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_method@o@: $(srcdir)/mutex/mut_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_pthread@o@: $(srcdir)/mutex/mut_pthread.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_region@o@: $(srcdir)/mutex/mut_region.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_stat@o@: $(srcdir)/mutex/mut_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_stub@o@: $(srcdir)/mutex/mut_stub.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_tas@o@: $(srcdir)/mutex/mut_tas.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_win32@o@: $(srcdir)/mutex/mut_win32.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 openflags@o@: $(srcdir)/common/openflags.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_abs@o@: $(srcdir)/@OSDIR@/os_abs.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_abort@o@: $(srcdir)/os/os_abort.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_addrinfo@o@: $(srcdir)/os/os_addrinfo.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_aio@o@: $(srcdir)/os/os_aio.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_aio_uring@o@: $(srcdir)/os/os_aio_uring.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_aio_posix@o@: $(srcdir)/os/os_aio_posix.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_aio_kqueue@o@: $(srcdir)/os/os_aio_kqueue.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_aio_pool@o@: $(srcdir)/os/os_aio_pool.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_aio_iocp@o@: $(srcdir)/os/os_aio_iocp.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_alloc@o@: $(srcdir)/os/os_alloc.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_atomic@o@: $(srcdir)/os/os_atomic.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_clock@o@: $(srcdir)/@OSDIR@/os_clock.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_config@o@: $(srcdir)/@OSDIR@/os_config.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_cpu@o@: $(srcdir)/@OSDIR@/os_cpu.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_ctime@o@: $(srcdir)/os/os_ctime.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_dir@o@: $(srcdir)/@OSDIR@/os_dir.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_errno@o@: $(srcdir)/@OSDIR@/os_errno.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_fid@o@: $(srcdir)/@OSDIR@/os_fid.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_flock@o@: $(srcdir)/@OSDIR@/os_flock.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_fsync@o@: $(srcdir)/@OSDIR@/os_fsync.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_getenv@o@: $(srcdir)/@OSDIR@/os_getenv.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_handle@o@: $(srcdir)/@OSDIR@/os_handle.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_map@o@: $(srcdir)/@OSDIR@/os_map.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_method@o@: $(srcdir)/common/os_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_mkdir@o@: $(srcdir)/@OSDIR@/os_mkdir.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_open@o@: $(srcdir)/@OSDIR@/os_open.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_path@o@: $(srcdir)/os/os_path.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_pid@o@: $(srcdir)/os/os_pid.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_qnx_fsync@o@: $(srcdir)/os_qnx/os_qnx_fsync.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_qnx_open@o@: $(srcdir)/os_qnx/os_qnx_open.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_rename@o@: $(srcdir)/@OSDIR@/os_rename.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_root@o@: $(srcdir)/os/os_root.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_rpath@o@: $(srcdir)/os/os_rpath.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_rw@o@: $(srcdir)/@OSDIR@/os_rw.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_seek@o@: $(srcdir)/@OSDIR@/os_seek.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_stack@o@: $(srcdir)/os/os_stack.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_stat@o@: $(srcdir)/@OSDIR@/os_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_tmpdir@o@: $(srcdir)/os/os_tmpdir.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_truncate@o@: $(srcdir)/@OSDIR@/os_truncate.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_uid@o@: $(srcdir)/os/os_uid.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_unlink@o@: $(srcdir)/@OSDIR@/os_unlink.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_yield@o@: $(srcdir)/@OSDIR@/os_yield.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 partition@o@: $(srcdir)/db/partition.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam@o@: $(srcdir)/qam/qam.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_auto@o@: $(srcdir)/qam/qam_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_autop@o@: $(srcdir)/qam/qam_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_conv@o@: $(srcdir)/qam/qam_conv.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_files@o@: $(srcdir)/qam/qam_files.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_method@o@: $(srcdir)/qam/qam_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_open@o@: $(srcdir)/qam/qam_open.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_rec@o@: $(srcdir)/qam/qam_rec.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_stat@o@: $(srcdir)/qam/qam_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_stub@o@: $(srcdir)/qam/qam_stub.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_upgrade@o@: $(srcdir)/qam/qam_upgrade.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 qam_verify@o@: $(srcdir)/qam/qam_verify.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_automsg@o@: $(srcdir)/rep/rep_automsg.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_backup@o@: $(srcdir)/rep/rep_backup.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_elect@o@: $(srcdir)/rep/rep_elect.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_lease@o@: $(srcdir)/rep/rep_lease.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_log@o@: $(srcdir)/rep/rep_log.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_method@o@: $(srcdir)/rep/rep_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_record@o@: $(srcdir)/rep/rep_record.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_region@o@: $(srcdir)/rep/rep_region.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_stub@o@: $(srcdir)/rep/rep_stub.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_stat@o@: $(srcdir)/rep/rep_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_util@o@: $(srcdir)/rep/rep_util.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 rep_verify@o@: $(srcdir)/rep/rep_verify.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_auto@o@: $(srcdir)/repmgr/repmgr_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_automsg@o@: $(srcdir)/repmgr/repmgr_automsg.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_autop@o@: $(srcdir)/repmgr/repmgr_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_elect@o@: $(srcdir)/repmgr/repmgr_elect.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_method@o@: $(srcdir)/repmgr/repmgr_method.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_msg@o@: $(srcdir)/repmgr/repmgr_msg.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_net@o@: $(srcdir)/repmgr/repmgr_net.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_posix@o@: $(srcdir)/repmgr/repmgr_posix.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_queue@o@: $(srcdir)/repmgr/repmgr_queue.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_rec@o@: $(srcdir)/repmgr/repmgr_rec.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_sel@o@: $(srcdir)/repmgr/repmgr_sel.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_stat@o@: $(srcdir)/repmgr/repmgr_stat.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_stub@o@: $(srcdir)/repmgr/repmgr_stub.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 repmgr_util@o@: $(srcdir)/repmgr/repmgr_util.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 rijndael-alg-fst@o@: $(srcdir)/crypto/rijndael/rijndael-alg-fst.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 rijndael-api-fst@o@: $(srcdir)/crypto/rijndael/rijndael-api-fst.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 seq_stat@o@: $(srcdir)/sequence/seq_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 sequence@o@: $(srcdir)/sequence/sequence.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 sha1@o@: $(srcdir)/hmac/sha1.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 stat_stub@o@: $(srcdir)/common/stat_stub.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn@o@: $(srcdir)/txn/txn.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_auto@o@: $(srcdir)/txn/txn_auto.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_autop@o@: $(srcdir)/txn/txn_autop.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_chkpt@o@: $(srcdir)/txn/txn_chkpt.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_failchk@o@: $(srcdir)/txn/txn_failchk.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_method@o@: $(srcdir)/txn/txn_method.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_rec@o@: $(srcdir)/txn/txn_rec.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_recover@o@: $(srcdir)/txn/txn_recover.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_region@o@: $(srcdir)/txn/txn_region.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_stat@o@: $(srcdir)/txn/txn_stat.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 txn_util@o@: $(srcdir)/txn/txn_util.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 util_arg@o@: $(srcdir)/common/util_arg.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 util_cache@o@: $(srcdir)/common/util_cache.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 util_log@o@: $(srcdir)/common/util_log.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 util_sig@o@: $(srcdir)/common/util_sig.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 uts4_cc@o@: $(srcdir)/mutex/uts4_cc.s
 	$(AS) $(ASFLAGS) -o $@ $?
 xa@o@: $(srcdir)/xa/xa.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 xa_map@o@: $(srcdir)/xa/xa_map.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 zerofill@o@: $(srcdir)/common/zerofill.c
-	 $(CC) $(CFLAGS) $?
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 
 ##################################################
 # C++ API build rules.
@@ -2482,15 +2489,15 @@ cxx_txn@o@: $(langdir)/cxx/cxx_txn.cpp
 # Java API build rules.
 ##################################################
 db_java_wrap@o@: $(langdir)/java/libdb_java/db_java_wrap.c
-	$(CC) $(CFLAGS) $(SWIGCFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SWIGCFLAGS) $<
 
 ##################################################
 # SQL API build rules.
 ##################################################
 sqlite3@o@: $(langdir)/sql/generated/sqlite3.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 shell@o@: $(langdir)/sql/sqlite/src/shell.c
-	$(CC) $(CFLAGS) $(SQLFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(SQLFLAGS) $<
 
 ##################################################
 # STL API build rules.
@@ -2504,154 +2511,154 @@ dbstl_resource_manager@o@: $(langdir)/cxx/stl/dbstl_resource_manager.cpp
 # Tcl API build rules.
 ##################################################
 tcl_compat@o@: $(TCL_SRCDIR)/tcl_compat.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_db@o@: $(TCL_SRCDIR)/tcl_db.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_db_pkg@o@: $(TCL_SRCDIR)/tcl_db_pkg.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_dbcursor@o@: $(TCL_SRCDIR)/tcl_dbcursor.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_env@o@: $(TCL_SRCDIR)/tcl_env.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_internal@o@: $(TCL_SRCDIR)/tcl_internal.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_lock@o@: $(TCL_SRCDIR)/tcl_lock.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_log@o@: $(TCL_SRCDIR)/tcl_log.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_mp@o@: $(TCL_SRCDIR)/tcl_mp.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_mutex@o@: $(TCL_SRCDIR)/tcl_mutex.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_rep@o@: $(TCL_SRCDIR)/tcl_rep.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_seq@o@: $(TCL_SRCDIR)/tcl_seq.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_txn@o@: $(TCL_SRCDIR)/tcl_txn.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 tcl_util@o@: $(TCL_SRCDIR)/tcl_util.c
-	$(CC) $(CFLAGS) $(TCL_INCLUDE_SPEC) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(TCL_INCLUDE_SPEC) $<
 
 ##################################################
 # Utility build rules.
 ##################################################
 db_archive@o@: $(utildir)/db_archive.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_checkpoint@o@: $(utildir)/db_checkpoint.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_deadlock@o@: $(utildir)/db_deadlock.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_dump@o@: $(utildir)/db_dump.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_dump185@o@: $(utildir)/db_dump185.c
 	$(CC) $(DB185INC) $?
 db_hotbackup@o@: $(utildir)/db_hotbackup.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_load@o@: $(utildir)/db_load.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_printlog@o@: $(utildir)/db_printlog.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_recover@o@: $(utildir)/db_recover.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_replicate@o@: $(utildir)/db_replicate.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_stat@o@: $(utildir)/db_stat.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_tuner@o@: $(utildir)/db_tuner.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_upgrade@o@: $(utildir)/db_upgrade.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 db_verify@o@: $(utildir)/db_verify.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 
 db_sql_codegen@o@: $(utildir)/db_sql_codegen/db_sql_codegen.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 preparser@o@: $(utildir)/db_sql_codegen/preparser.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 parsefuncs@o@: $(utildir)/db_sql_codegen/parsefuncs.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 tokenize@o@: $(utildir)/db_sql_codegen/tokenize.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 buildpt@o@: $(utildir)/db_sql_codegen/buildpt.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 utils@o@: $(utildir)/db_sql_codegen/utils.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 generate@o@: $(utildir)/db_sql_codegen/generate.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 generate_test@o@: $(utildir)/db_sql_codegen/generate_test.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 generate_verification@o@: $(utildir)/db_sql_codegen/generate_verification.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 generation_utils@o@: $(utildir)/db_sql_codegen/generation_utils.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 hint_comment@o@: $(utildir)/db_sql_codegen/hint_comment.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 sqlprintf@o@: $(utildir)/db_sql_codegen/sqlite/sqlprintf.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 parse@o@: $(utildir)/db_sql_codegen/sqlite/parse.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 
 ##################################################
 # C library replacement files.
 ##################################################
 atoi@o@: $(srcdir)/clib/atoi.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 atol@o@: $(srcdir)/clib/atol.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 bsearch@o@: $(srcdir)/clib/bsearch.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 getcwd@o@: $(srcdir)/clib/getcwd.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 getopt@o@: $(srcdir)/clib/getopt.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 isalpha@o@: $(srcdir)/clib/isalpha.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 isdigit@o@: $(srcdir)/clib/isdigit.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 isprint@o@: $(srcdir)/clib/isprint.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 isspace@o@: $(srcdir)/clib/isspace.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 memcmp@o@: $(srcdir)/clib/memcmp.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 memcpy@o@: $(srcdir)/clib/memmove.c
 	$(CC) -DMEMCOPY $(CFLAGS) $? -o $@
 memmove@o@: $(srcdir)/clib/memmove.c
 	$(CC) -DMEMMOVE $(CFLAGS) $?
 printf@o@: $(srcdir)/clib/printf.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 qsort@o@: $(srcdir)/clib/qsort.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 raise@o@: $(srcdir)/clib/raise.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 rand@o@: $(srcdir)/clib/rand.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strcasecmp@o@: $(srcdir)/clib/strcasecmp.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strdup@o@: $(srcdir)/clib/strdup.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 snprintf@o@: $(srcdir)/clib/snprintf.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strcat@o@: $(srcdir)/clib/strcat.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strchr@o@: $(srcdir)/clib/strchr.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strerror@o@: $(srcdir)/clib/strerror.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strncat@o@: $(srcdir)/clib/strncat.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strncmp@o@: $(srcdir)/clib/strncmp.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strrchr@o@: $(srcdir)/clib/strrchr.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strsep@o@: $(srcdir)/clib/strsep.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strtol@o@: $(srcdir)/clib/strtol.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 strtoul@o@: $(srcdir)/clib/strtoul.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 time@o@: $(srcdir)/clib/time.c
-	$(CC) $(CFLAGS) $?
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 
 ##################################################
 # Performance Event Monitoring build rules
@@ -2696,7 +2703,7 @@ DTRACE_OFILES=`echo $(DTRACE_OBJS) " " | $(SED) -e 's/\.lo /\.o /g'`
 db_provider@o@: db_provider.c $(DTRACE_OBJS) $(DTRACE_PROVIDER)
 	$(RM) db_provider.o .libs/db_provider.o
 	@# A compilation warning such as 'empty translation unit' is harmless.
-	$(CC) $(CFLAGS) db_provider.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) db_provider.c
 	if test -f db_provider.o ; then \
 		$(DTRACE) -G @DTRACE_CPP@ -I$(utildir)/dtrace -s $(DTRACE_PROVIDER) $(DTRACE_OFILES) ; \
 	fi
