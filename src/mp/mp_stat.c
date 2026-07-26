@@ -710,7 +710,7 @@ __memp_print_hash(env, dbmp, reginfo, fmap, flags)
 	DB_MSGBUF_INIT(&mb);
 	STAT_ULONG("Hash table last-checked", c_mp->last_checked);
 	STAT_ULONG("Wired buffers (non-evictable)",
-	    atomic_read(&c_mp->wired_pages));
+	    atomic_read_relaxed(&c_mp->wired_pages));
 	STAT_ULONG("Put counter", c_mp->put_counter);
 
 	/* Display the hash table list of BH's. */
@@ -726,7 +726,7 @@ __memp_print_hash(env, dbmp, reginfo, fmap, flags)
 			__db_msgadd(env, &mb,
 			    "bucket %lu: %lu (%lu dirty)",
 			    (u_long)bucket, (u_long)hp->hash_io_wait,
-			    (u_long)atomic_read(&hp->hash_page_dirty));
+			    (u_long)atomic_read_relaxed(&hp->hash_page_dirty));
 			if (hp->hash_frozen != 0)
 				__db_msgadd(env, &mb, "(MVCC %lu/%lu/%lu) ",
 				    (u_long)hp->hash_frozen,
@@ -900,6 +900,6 @@ __memp_stat_hash(reginfo, mp, dirtyp)
 
 	hp = R_ADDR(reginfo, mp->htab);
 	for (i = 0, dirty = 0; i < mp->htab_buckets; i++, hp++)
-		dirty += (u_int32_t)atomic_read(&hp->hash_page_dirty);
+		dirty += (u_int32_t)atomic_read_relaxed(&hp->hash_page_dirty);
 	*dirtyp = dirty;
 }
