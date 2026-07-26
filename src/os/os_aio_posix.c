@@ -61,7 +61,7 @@ static const DB_AIO_BACKEND __aio_posix_backend = {
  * __os_aio_posix_init --
  *	Attach the POSIX aio backend to a context.
  *
- * PUBLIC: int __os_aio_posix_init __P((ENV *, DB_AIO_CONTEXT *));
+ * Declared in dbinc/os_aio.h: int __os_aio_posix_init __P((ENV *, DB_AIO_CONTEXT *));
  */
 int
 __os_aio_posix_init(env, ctx)
@@ -251,7 +251,6 @@ __aio_posix_destroy(env, ctx)
  * __os_aio_posix_init --
  *	POSIX aio not configured.
  *
- * PUBLIC: int __os_aio_posix_init __P((ENV *, DB_AIO_CONTEXT *));
  */
 int
 __os_aio_posix_init(env, ctx)
