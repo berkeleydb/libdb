@@ -110,6 +110,18 @@ typedef struct {
 #define	atomic_read(p)		__os_atomic_read(p)
 #define	atomic_init(p, val)	__os_atomic_init((p), (val))
 
+/*
+ * atomic_read_relaxed: torn-read-free load with no ordering, for pure
+ * statistics counters where the ACQUIRE fence of atomic_read is wasted.
+ * Falls back to atomic_read when the backend has no relaxed variant.
+ */
+#if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && \
+    defined(HAVE_ATOMIC_SUPPORT)
+#define	atomic_read_relaxed(p)	__os_atomic_read_relaxed(p)
+#else
+#define	atomic_read_relaxed(p)	__os_atomic_read(p)
+#endif
+
 #ifdef HAVE_ATOMIC_SUPPORT
 
 #define	atomic_inc(env, p)	\

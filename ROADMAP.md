@@ -32,6 +32,74 @@ rate the benchmark quantifies.
 
 ---
 
+## Direction, measured baseline, and sequencing
+
+A July 2026 benchmark on a 2-socket `i4i.metal` (128 vCPU, 2 NUMA nodes, 1 TB
+RAM, local NVMe RAID0) compared libdb 5.3.30 to WiredTiger as embedded engines
+(YCSB-style driver against both C APIs; data on NVMe, not tmpfs; cache sized at
+0.5/0.75/1.0/1.5x the working set). It quantified where we stand:
+
+- **In-cache reads:** WT peaks ~1.36M ops/s at 16t and holds to 128t; libdb
+  peaks ~280K at 8t and *negatively scales* to ~53K at 128t (up to 16.8x gap).
+- **Zipfian hot-key:** WT 2.08M; libdb 25-46K past 32t (hot buffer-header +
+  lock-partition contention).
+- **Cold-NVMe eviction:** WT 220-315K and holds; libdb 11-85K and degrades with
+  threads (libdb evicts synchronously in the foreground; WT has async eviction
+  threads).
+- **Write / RMW / bulk load:** 5-12x slower (shared-handle serialization +
+  fsync-per-commit, no group commit).
+- **NUMA:** libdb *regresses* across sockets (-41% spread vs one-node-pinned);
+  WT scales up across sockets. Root: NUMA-oblivious shared regions.
+- libdb is competitive single-socket / low-thread; the default shared-`DB`-handle
+  API is a ~7x trap vs per-thread handles.
+
+### Two design decisions
+
+1. **`DB_PRIVATE` becomes the blessed fast path.** Single-process-multithreaded
+   is the performance target; multi-process (mmap regions) stays bit-for-bit
+   correct but is not the speed target. `DB_PRIVATE` already means one process
+   (region in heap), so pointers are process-stable -> it also enables raw
+   pointer swizzling for resident pages, thread-local lockers/cursors, seqlock
+   buffer headers, and epoch reclamation. Hot paths branch once on a per-env
+   fast bit into optimistic vs classic-latched code; multi-process users get
+   today's engine unchanged. This preserves the north star (embedded, ACID, all
+   access methods, multi-process correctness, format stability) while letting
+   the common case go fast.
+2. **Atomics: keep the BDB abstraction; add an auto-detected `stdatomic`
+   backend (default-on when present), fall back to the internal tiers
+   otherwise, and improve the primitives.** The real win is memory ordering:
+   every op is currently `SEQ_CST` (strongest/slowest); right-sizing to
+   acquire/release/relaxed per call-site (and replacing the region-mutex atomic
+   fallback with inline-asm) is a portable, measured gain and the prerequisite
+   for seqlock optimistic reads.
+
+### Sequencing (NUMA/sharding is LAST — it multiplies per-core speed, so make
+the per-core hot path fast first; sharding a slow path only yields more slow
+shards)
+
+1. **Modern primitives + single-process fast path** — ordering-aware atomics
+   (#7-adjacent), then seqlock/optimistic resident-page reads (#2), TLS
+   accounting. `BH_WIRED` (already implemented) pins the hot root/upper-internal
+   pages resident, so a reader of them needs no epoch reclamation — the 80/20
+   that attacks the biggest measured cost without solving general reclamation.
+2. **NVMe write/log path** — group commit + parallel logging (#3), io_uring
+   log/checkpoint/eviction writes (#8), and **concurrent background eviction
+   workers** (#6): move eviction off the foreground critical path (the
+   cold-NVMe gap).
+3. **Cursor/locker per-thread caching** — shard the cursor queues and cache
+   lockers in TLS to kill the shared-handle trap (part of #4).
+4. **Access-method algorithms** — optimistic B-tree descent (#2/#11), adaptive
+   LSM access method (#9), pluggable compression (#10), HASH review (#13).
+5. **NUMA-aware regions + buffer-pool sharding** (#1, #7) — the multiplier,
+   applied once the per-node path is fast.
+
+Every step is gated by the TCL correctness suite, TSan/ASan clean, and a re-run
+of the `i4i.metal` libdb-vs-WT benchmark (measured, not asserted — #17). The
+numbered items below are the work units; this section is the order and the
+rationale.
+
+---
+
 ## Core scalability (multicore / NUMA)
 
 ### 1. NUMA-aware regions and a sharded buffer pool (mpool)

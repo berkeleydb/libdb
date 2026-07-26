@@ -167,7 +167,7 @@ unpin:
 	 * Mark the file dirty.
 	 */
 	if (F_ISSET(bhp, BH_EXCLUSIVE) && F_ISSET(bhp, BH_DIRTY)) {
-		DB_ASSERT(env, atomic_read(&hp->hash_page_dirty) > 0);
+		DB_ASSERT(env, atomic_read_relaxed(&hp->hash_page_dirty) > 0);
 		mfp->file_written = 1;
 	}
 
@@ -347,7 +347,7 @@ __memp_wire(dbmfp, pgaddr, wiredp)
 	env = dbmfp->env;
 	dbmp = env->mp_handle;
 	c_mp = dbmp->reginfo[bhp->region].primary;
-	if (atomic_read(&c_mp->wired_pages) >=
+	if (atomic_read_relaxed(&c_mp->wired_pages) >=
 	    c_mp->pages * MPOOL_WIRED_MAX_PCT / 100)
 		return (0);
 
