@@ -125,6 +125,66 @@ atomic_value_t __os_atomic_exchange __P((ENV *, db_atomic_t *, atomic_value_t));
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
 void __os_atomic_thread_fence __P((void));
 #endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+void __os_atomic_init __P((db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_read __P((const db_atomic_t *));
+#endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+void __os_atomic_store __P((db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_inc __P((ENV *, db_atomic_t *));
+#endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_dec __P((ENV *, db_atomic_t *));
+#endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+int __os_atomic_cas __P((ENV *, db_atomic_t *, atomic_value_t, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_add __P((ENV *, db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_fetch_add __P((ENV *, db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_exchange __P((ENV *, db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+void __os_atomic_thread_fence __P((void));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+void __os_atomic_init __P((db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_read __P((const db_atomic_t *));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+void __os_atomic_store __P((db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_inc __P((ENV *, db_atomic_t *));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_dec __P((ENV *, db_atomic_t *));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+int __os_atomic_cas __P((ENV *, db_atomic_t *, atomic_value_t, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_add __P((ENV *, db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_fetch_add __P((ENV *, db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+atomic_value_t __os_atomic_exchange __P((ENV *, db_atomic_t *, atomic_value_t));
+#endif
+#if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+void __os_atomic_thread_fence __P((void));
+#endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
 void __os_atomic_init __P((db_atomic_t *, atomic_value_t));
 #endif
@@ -248,7 +308,7 @@ atomic_value_t __os_atomic_exchange __P((ENV *, db_atomic_t *, atomic_value_t));
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
 void __os_atomic_thread_fence __P((void));
 #endif
-#if !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#if !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) && !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
 int __os_atomic_cas_ptr __P((ENV *, void *volatile *, void *, void *));
 #endif
 void __os_gettime __P((ENV *, db_timespec *, int));
@@ -301,7 +361,6 @@ void __os_yield __P((ENV *, u_long, u_long));
 int __os_qnx_region_open __P((ENV *, const char *, int, int, DB_FH **));
 #endif
 int __os_is_winnt __P((void));
-u_int32_t __os_cpu_count __P((void));
 #ifdef HAVE_REPLICATION_THREADS
 int __os_get_neterr __P((void));
 #endif
