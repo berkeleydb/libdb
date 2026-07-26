@@ -58,10 +58,34 @@
  */
 
 /*
+ * Detect C11 <stdatomic.h> (Tier 0, preferred when present).
+ * Standards-portable; same codegen as the GCC/Clang __atomic_* builtins but
+ * not tied to a specific compiler-version probe.  Auto-detected and default-on
+ * when the freestanding/hosted C11 atomics are available; falls back to the
+ * builtin/sync/OS/mutex tiers below otherwise.  The BDB abstraction
+ * (db_atomic_t + the atomic_* macros in atomic.h) is unchanged either way.
+ */
+#if !defined(HAVE_ATOMIC_STDATOMIC) && \
+    !defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && \
+    !defined(HAVE_ATOMIC_SOLARIS) && !defined(DB_WIN32)
+#if !defined(__STDC_NO_ATOMICS__) && defined(__STDC_VERSION__) && \
+    (__STDC_VERSION__ >= 201112L)
+#if defined(__has_include)
+#if __has_include(<stdatomic.h>)
+#define	HAVE_ATOMIC_STDATOMIC	1
+#endif
+#else
+#define	HAVE_ATOMIC_STDATOMIC	1
+#endif
+#endif
+#endif
+
+/*
  * Detect GCC/Clang __atomic_* builtins (Tier 1).
  * GCC 5.1+ and Clang 3.6+ provide __atomic_* with explicit memory orders.
  */
-#if !defined(HAVE_ATOMIC_GCC_BUILTIN) && \
+#if !defined(HAVE_ATOMIC_STDATOMIC) && \
+    !defined(HAVE_ATOMIC_GCC_BUILTIN) && \
     !defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && \
     !defined(HAVE_ATOMIC_SOLARIS) && !defined(DB_WIN32)
 #if defined(__GNUC__) && \
@@ -90,21 +114,29 @@
 
 /*
  * =====================================================================
- * Tier 1: GCC/Clang __atomic_* builtins.
+ * Tier 0/1: C11 <stdatomic.h> or GCC/Clang __atomic_* builtins.
  *
- * These provide the most portable and correct atomic operations with
- * explicit memory ordering.  They cover ARM64, ARM32, PowerPC, MIPS,
- * x86, x86_64, RISC-V, s390x, and any other GCC-supported architecture.
+ * When <stdatomic.h> is present (Tier 0, preferred, auto-detected) the C11
+ * atomics and these __atomic_* intrinsics are the same operations with the
+ * same codegen; we use the intrinsic spelling because db_atomic_t wraps a
+ * plain int (not _Atomic int) so the region/mmap layout is unchanged and
+ * multi-process shared atomics keep working.  When only the builtins are
+ * detected (Tier 1) the behaviour is identical.  Explicit memory orders
+ * (ACQUIRE reads, RELEASE stores, ACQ_REL RMW) instead of blanket SEQ_CST.
+ *
+ * These cover ARM64, ARM32, PowerPC, MIPS, x86, x86_64, RISC-V, s390x, and
+ * any other GCC/Clang-supported architecture.
  * =====================================================================
  */
-#if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && \
+    defined(HAVE_ATOMIC_SUPPORT)
 
 /*
  * __os_atomic_init --
  *	Initialize an atomic variable.  Not itself atomic; the caller
  *	must guarantee single-threaded access during initialization.
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: void __os_atomic_init
  * PUBLIC:     __P((db_atomic_t *, atomic_value_t));
  * PUBLIC: #endif
@@ -121,7 +153,7 @@ __os_atomic_init(p, val)
  * __os_atomic_read --
  *	Atomically load and return the current value.
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: atomic_value_t __os_atomic_read
  * PUBLIC:     __P((const db_atomic_t *));
  * PUBLIC: #endif
@@ -130,15 +162,44 @@ atomic_value_t
 __os_atomic_read(p)
 	const db_atomic_t *p;
 {
+	/*
+	 * ACQUIRE, not SEQ_CST: a reader only needs to observe a fully
+	 * published value (and any writes the publisher released before it).
+	 * SEQ_CST here forced a full barrier on every read -- the hottest
+	 * atomic op in the engine (~113 call sites) -- which is a real penalty
+	 * on ARM/POWER and unnecessary; no BDB caller relies on a single total
+	 * order across independent atomics.  Stats-only readers that do not even
+	 * need ACQUIRE use __os_atomic_read_relaxed().
+	 */
 	return (__atomic_load_n(
-	    (volatile atomic_value_t *)&p->value, __ATOMIC_SEQ_CST));
+	    (volatile atomic_value_t *)&p->value, __ATOMIC_ACQUIRE));
+}
+
+/*
+ * __os_atomic_read_relaxed --
+ *	Atomically load with RELAXED ordering: no synchronization, just a
+ *	torn-read-free load.  For pure statistics counters (hash_page_dirty,
+ *	nsireaders, ...) where an exact/ordered value is not required and the
+ *	ACQUIRE fence of __os_atomic_read would be wasted.
+ *
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: atomic_value_t __os_atomic_read_relaxed
+ * PUBLIC:     __P((const db_atomic_t *));
+ * PUBLIC: #endif
+ */
+atomic_value_t
+__os_atomic_read_relaxed(p)
+	const db_atomic_t *p;
+{
+	return (__atomic_load_n(
+	    (volatile atomic_value_t *)&p->value, __ATOMIC_RELAXED));
 }
 
 /*
  * __os_atomic_store --
  *	Atomically store a value.
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: void __os_atomic_store
  * PUBLIC:     __P((db_atomic_t *, atomic_value_t));
  * PUBLIC: #endif
@@ -148,14 +209,16 @@ __os_atomic_store(p, val)
 	db_atomic_t *p;
 	atomic_value_t val;
 {
-	__atomic_store_n(&p->value, val, __ATOMIC_SEQ_CST);
+	/* RELEASE, not SEQ_CST: publish this store and everything before it to
+	 * an ACQUIRE reader; no need for a global total order. */
+	__atomic_store_n(&p->value, val, __ATOMIC_RELEASE);
 }
 
 /*
  * __os_atomic_inc --
  *	Atomically increment by 1, return the new value.
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: atomic_value_t __os_atomic_inc
  * PUBLIC:     __P((ENV *, db_atomic_t *));
  * PUBLIC: #endif
@@ -166,14 +229,14 @@ __os_atomic_inc(env, p)
 	db_atomic_t *p;
 {
 	COMPQUIET(env, NULL);
-	return (__atomic_add_fetch(&p->value, 1, __ATOMIC_SEQ_CST));
+	return (__atomic_add_fetch(&p->value, 1, __ATOMIC_ACQ_REL));
 }
 
 /*
  * __os_atomic_dec --
  *	Atomically decrement by 1, return the new value.
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: atomic_value_t __os_atomic_dec
  * PUBLIC:     __P((ENV *, db_atomic_t *));
  * PUBLIC: #endif
@@ -184,7 +247,7 @@ __os_atomic_dec(env, p)
 	db_atomic_t *p;
 {
 	COMPQUIET(env, NULL);
-	return (__atomic_sub_fetch(&p->value, 1, __ATOMIC_SEQ_CST));
+	return (__atomic_sub_fetch(&p->value, 1, __ATOMIC_ACQ_REL));
 }
 
 /*
@@ -192,7 +255,7 @@ __os_atomic_dec(env, p)
  *	Atomic compare-and-swap.  If *p equals oldval, set to newval.
  *	Returns 1 on success (swap performed), 0 on failure.
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: int __os_atomic_cas __P((ENV *,
  * PUBLIC:     db_atomic_t *, atomic_value_t, atomic_value_t));
  * PUBLIC: #endif
@@ -222,7 +285,7 @@ __os_atomic_cas(env, p, oldval, newval)
  *	value-preserving for object pointers.  Used by the lock-free cursor
  *	recycle pool (Treiber stack) in db_am.c.
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: int __os_atomic_cas_ptr
  * PUBLIC:     __P((ENV *, void *volatile *, void *, void *));
  * PUBLIC: #endif
@@ -247,7 +310,7 @@ __os_atomic_cas_ptr(env, p, oldval, newval)
  * __os_atomic_add --
  *	Atomically add a value, return the new value.
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: atomic_value_t __os_atomic_add
  * PUBLIC:     __P((ENV *, db_atomic_t *, atomic_value_t));
  * PUBLIC: #endif
@@ -266,7 +329,7 @@ __os_atomic_add(env, p, val)
  * __os_atomic_fetch_add --
  *	Atomically add a value, return the old value (before addition).
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: atomic_value_t __os_atomic_fetch_add
  * PUBLIC:     __P((ENV *, db_atomic_t *, atomic_value_t));
  * PUBLIC: #endif
@@ -285,7 +348,7 @@ __os_atomic_fetch_add(env, p, val)
  * __os_atomic_exchange --
  *	Atomically set a new value, return the old value.
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: atomic_value_t __os_atomic_exchange
  * PUBLIC:     __P((ENV *, db_atomic_t *, atomic_value_t));
  * PUBLIC: #endif
@@ -304,7 +367,7 @@ __os_atomic_exchange(env, p, val)
  * __os_atomic_thread_fence --
  *	Full memory barrier (sequentially consistent fence).
  *
- * PUBLIC: #if defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
  * PUBLIC: void __os_atomic_thread_fence __P((void));
  * PUBLIC: #endif
  */
