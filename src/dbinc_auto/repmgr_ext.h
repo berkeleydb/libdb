@@ -153,46 +153,32 @@ int __repmgr_stat_print_pp __P((DB_ENV *, u_int32_t));
 int __repmgr_stat_print __P((ENV *, u_int32_t));
 int __repmgr_site_list __P((DB_ENV *, u_int *, DB_REPMGR_SITE **));
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_close __P((ENV *));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_get_ack_policy __P((DB_ENV *, int *));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_set_ack_policy __P((DB_ENV *, int));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_site __P((DB_ENV *, const char *, u_int, DB_SITE **, u_int32_t));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_site_by_eid __P((DB_ENV *, int, DB_SITE **));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_local_site __P((DB_ENV *, DB_SITE **));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_site_list __P((DB_ENV *, u_int *, DB_REPMGR_SITE **));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_start __P((DB_ENV *, int, u_int32_t));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_stat_pp __P((DB_ENV *, DB_REPMGR_STAT **, u_int32_t));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_stat_print_pp __P((DB_ENV *, u_int32_t));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_handle_event __P((ENV *, u_int32_t, void *));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_channel __P((DB_ENV *, int, DB_CHANNEL **, u_int32_t));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_set_msg_dispatch __P((DB_ENV *, void (*)(DB_ENV *, DB_CHANNEL *, DBT *, u_int32_t, u_int32_t), u_int32_t));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
-int __repmgr_init_recover __P((ENV *, DB_DISTAB *));
 #endif
 int __repmgr_schedule_connection_attempt __P((ENV *, int, int));
 int __repmgr_is_server __P((ENV *, REPMGR_SITE *));

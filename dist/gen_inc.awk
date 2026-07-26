@@ -40,6 +40,13 @@
 	pline = sprintf("%s %s", pline, $0)
 	if (pline ~ /\)\);/) {
 		sub(/^[	 ]*/, "", pline)
+		# Defensive de-dup: a symbol may carry a PUBLIC: prototype in
+		# more than one #if/#else arm (a real impl plus a platform
+		# stub with the same signature).  Emit each distinct prototype
+		# once so the generated header is idempotent and never has
+		# duplicate declarations.
+		if (pline in seen_pub) { pline = ""; next }
+		seen_pub[pline] = 1
 		print pline >> i_pfile
 		if (pline !~ db_version_unique_name) {
 			gsub(/[	 ][	 ]*__P.*/, "", pline)
@@ -69,6 +76,8 @@
 	eline = sprintf("%s %s", eline, $0)
 	if (eline ~ /\)\);/) {
 		sub(/^[	 ]*/, "", eline)
+		if (eline in seen_ext) { eline = ""; next }
+		seen_ext[eline] = 1
 		print eline >> e_pfile
 		if (eline !~ db_version_unique_name) {
 			gsub(/[	 ][	 ]*__P.*/, "", eline)
