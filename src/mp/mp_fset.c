@@ -137,7 +137,7 @@ __memp_dirty(dbmfp, addrp, ip, txn, priority, flags)
 	MVCC_MPROTECT(bhp->buf, mfp->pagesize, PROT_READ | PROT_WRITE);
 #endif
 	DB_ASSERT(env, !F_ISSET(bhp, BH_DIRTY) ||
-	    atomic_read(&hp->hash_page_dirty) != 0);
+	    atomic_read_relaxed(&hp->hash_page_dirty) != 0);
 	return (0);
 }
 
