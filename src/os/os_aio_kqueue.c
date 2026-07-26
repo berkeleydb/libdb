@@ -64,7 +64,7 @@ static const DB_AIO_BACKEND __aio_kq_backend = {
  * __os_aio_kqueue_init --
  *	Create a kqueue and attach the backend to the context.
  *
- * PUBLIC: int __os_aio_kqueue_init __P((ENV *, DB_AIO_CONTEXT *));
+ * Declared in dbinc/os_aio.h: int __os_aio_kqueue_init __P((ENV *, DB_AIO_CONTEXT *));
  */
 int
 __os_aio_kqueue_init(env, ctx)
@@ -253,7 +253,6 @@ __aio_kq_destroy(env, ctx)
  * __os_aio_kqueue_init --
  *	kqueue aio not configured.
  *
- * PUBLIC: int __os_aio_kqueue_init __P((ENV *, DB_AIO_CONTEXT *));
  */
 int
 __os_aio_kqueue_init(env, ctx)

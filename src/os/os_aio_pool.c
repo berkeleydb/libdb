@@ -319,7 +319,7 @@ static const DB_AIO_BACKEND __aio_pool_backend = {
  *	Attach the thread-pool backend to a context.  No worker threads are
  *	created here; the shared pool starts lazily on the first submit.
  *
- * PUBLIC: int __os_aio_pool_init __P((ENV *, DB_AIO_CONTEXT *));
+ * Declared in dbinc/os_aio.h: int __os_aio_pool_init __P((ENV *, DB_AIO_CONTEXT *));
  */
 int
 __os_aio_pool_init(env, ctx)
@@ -353,7 +353,6 @@ __os_aio_pool_init(env, ctx)
  * __os_aio_pool_init --
  *	Thread-pool offload not configured.
  *
- * PUBLIC: int __os_aio_pool_init __P((ENV *, DB_AIO_CONTEXT *));
  */
 int
 __os_aio_pool_init(env, ctx)
