@@ -147,7 +147,7 @@ __lock_siclean_obj(env, obj, old_lsnp)
 
 		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
 		sh_locker = LOCK_HOLDER(env, lp);
-		if (atomic_read(&((DB_LOCKREGION *)lt->reginfo.primary)->nsireaders) > 0)
+		if (atomic_read_relaxed(&((DB_LOCKREGION *)lt->reginfo.primary)->nsireaders) > 0)
 			(void)atomic_dec(env,
 			    &((DB_LOCKREGION *)lt->reginfo.primary)->nsireaders);
 		/*
@@ -285,7 +285,7 @@ __lock_sicommit(env, sh_locker, is_commit)
 		/* Abort: drop the marker entirely. */
 		OBJECT_LOCK_NDX(lt, region, obj->indx);
 		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
-		if (atomic_read(&region->nsireaders) > 0)
+		if (atomic_read_relaxed(&region->nsireaders) > 0)
 			(void)atomic_dec(env, &region->nsireaders);
 		if (sh_locker->td_off != INVALID_ROFF)
 			(void)atomic_dec(env, &LOCKER_TD(env, sh_locker)->si_ref);
@@ -947,7 +947,7 @@ again:	if (obj == NULL) {
 				 */
 				SH_TAILQ_REMOVE(&sh_obj->sireaders,
 				    sireadlp, links, __db_lock);
-				if (atomic_read(&region->nsireaders) > 0)
+				if (atomic_read_relaxed(&region->nsireaders) > 0)
 					(void)atomic_dec(env,
 					    &region->nsireaders);
 				if ((ret = __lock_freelock(lt, sireadlp,

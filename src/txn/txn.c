@@ -265,7 +265,7 @@ __txn_begin(env, ip, parent, txnpp, flags)
 			 * or not a max is configured.
 			 */
 			u_int32_t nobj = lkreg->stat.st_objects;
-			if (nobj != 0 && atomic_read(&lkreg->nsireaders) > nobj / 2)
+			if (nobj != 0 && atomic_read_relaxed(&lkreg->nsireaders) > nobj / 2)
 				(void)__lock_sicleanup(env);
 		}
 	}
