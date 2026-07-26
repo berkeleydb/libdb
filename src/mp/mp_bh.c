@@ -460,7 +460,7 @@ __memp_pgwrite_finish(c, did_io, io_ret)
 		DB_ASSERT(env, !SH_CHAIN_HASNEXT(bhp, vc));
 		if (ret == 0 && F_ISSET(bhp, BH_DIRTY)) {
 			F_CLR(bhp, BH_DIRTY | BH_DIRTY_CREATE);
-			DB_ASSERT(env, atomic_read(&hp->hash_page_dirty) > 0);
+			DB_ASSERT(env, atomic_read_relaxed(&hp->hash_page_dirty) > 0);
 			atomic_dec(env, &hp->hash_page_dirty);
 		}
 
