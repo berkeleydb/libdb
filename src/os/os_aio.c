@@ -150,7 +150,7 @@ __os_aio_available(env)
  * __os_aio_ctx_available --
  *	Return 1 if the given context has a real (async) backend.
  *
- * PUBLIC: int __os_aio_ctx_available __P((DB_AIO_CONTEXT *));
+ * Declared in dbinc/os_aio.h: int __os_aio_ctx_available __P((DB_AIO_CONTEXT *));
  */
 int
 __os_aio_ctx_available(ctx)

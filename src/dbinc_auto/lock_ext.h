@@ -7,6 +7,8 @@ extern "C" {
 #endif
 
 int __lock_vec_pp __P((DB_ENV *, u_int32_t, u_int32_t, DB_LOCKREQ *, int, DB_LOCKREQ **));
+int __lock_sicleanup __P((ENV *));
+int __lock_sicommit __P((ENV *, DB_LOCKER *, int));
 int __lock_vec __P((ENV *, DB_LOCKER *, u_int32_t, DB_LOCKREQ *, int, DB_LOCKREQ **));
 int __lock_get_pp __P((DB_ENV *, u_int32_t, u_int32_t, DBT *, db_lockmode_t, DB_LOCK *));
 int __lock_get __P((ENV *, DB_LOCKER *, u_int32_t, const DBT *, db_lockmode_t, DB_LOCK *));
@@ -71,8 +73,6 @@ int __lock_inherit_timeout __P((ENV *, DB_LOCKER *, DB_LOCKER *));
 u_int32_t __lock_ohash __P((const DBT *));
 u_int32_t __lock_lhash __P((DB_LOCKOBJ *));
 int __lock_nomem __P((ENV *, const char *));
-int __lock_sicleanup __P((ENV *));
-int __lock_sicommit __P((ENV *, DB_LOCKER *, int));
 
 #if defined(__cplusplus)
 }
