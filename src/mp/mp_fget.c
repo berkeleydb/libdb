@@ -529,7 +529,7 @@ freebuf:		MUTEX_LOCK(env, hp->mtx_hash);
 			if (F_ISSET(bhp, BH_DIRTY)) {
 				F_CLR(bhp, BH_DIRTY | BH_DIRTY_CREATE);
 				DB_ASSERT(env,
-				   atomic_read(&hp->hash_page_dirty) > 0);
+				   atomic_read_relaxed(&hp->hash_page_dirty) > 0);
 				atomic_dec(env, &hp->hash_page_dirty);
 			}
 
@@ -1284,7 +1284,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 
 	DB_ASSERT(env, alloc_bhp == NULL);
 	DB_ASSERT(env, !(dirty || extending) ||
-	    atomic_read(&hp->hash_page_dirty) > 0);
+	    atomic_read_relaxed(&hp->hash_page_dirty) > 0);
 	DB_ASSERT(env, BH_REFCOUNT(bhp) > 0 &&
 	    !F_ISSET(bhp, BH_FREED | BH_FROZEN | BH_TRASH));
 

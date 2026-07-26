@@ -357,7 +357,7 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 #ifdef DIAGNOSTIC
 			if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) == NULL)
 #else
-			if (atomic_read(&hp->hash_page_dirty) == 0)
+			if (atomic_read_relaxed(&hp->hash_page_dirty) == 0)
 #endif
 				continue;
 
@@ -433,7 +433,7 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 			 * in sync with the number of bits counted.
 			 */
 			DB_ASSERT(env,
-			    dirty == (int)atomic_read(&hp->hash_page_dirty));
+			    dirty == (int)atomic_read_relaxed(&hp->hash_page_dirty));
 			MUTEX_UNLOCK(env, hp->mtx_hash);
 
 			/* Check if the call has been interrupted. */
