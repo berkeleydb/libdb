@@ -1585,172 +1585,256 @@
 #define	__os_atomic_cas_64 __os_atomic_cas_64@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_init __os_atomic_init@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_read __os_atomic_read@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_store __os_atomic_store@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_inc __os_atomic_inc@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_dec __os_atomic_dec@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_cas __os_atomic_cas@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_cas_ptr __os_atomic_cas_ptr@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_fetch_add __os_atomic_fetch_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_exchange __os_atomic_exchange@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_thread_fence __os_atomic_thread_fence@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_64BIT_TYPES)
+#define	__os_atomic_cas_64 __os_atomic_cas_64@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_init __os_atomic_init@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_read __os_atomic_read@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_store __os_atomic_store@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_inc __os_atomic_inc@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_dec __os_atomic_dec@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_cas __os_atomic_cas@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_fetch_add __os_atomic_fetch_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_exchange __os_atomic_exchange@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_X86_GCC_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_thread_fence __os_atomic_thread_fence@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_init __os_atomic_init@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_read __os_atomic_read@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_store __os_atomic_store@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_inc __os_atomic_inc@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_dec __os_atomic_dec@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_cas __os_atomic_cas@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_fetch_add __os_atomic_fetch_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_exchange __os_atomic_exchange@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM64_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_thread_fence __os_atomic_thread_fence@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_init __os_atomic_init@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_read __os_atomic_read@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_store __os_atomic_store@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_inc __os_atomic_inc@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_dec __os_atomic_dec@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_cas __os_atomic_cas@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_fetch_add __os_atomic_fetch_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_exchange __os_atomic_exchange@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_ARM32_ASSEMBLY) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_thread_fence __os_atomic_thread_fence@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_init __os_atomic_init@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_read __os_atomic_read@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_store __os_atomic_store@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_inc __os_atomic_inc@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_dec __os_atomic_dec@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_cas __os_atomic_cas@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_fetch_add __os_atomic_fetch_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_exchange __os_atomic_exchange@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SOLARIS) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_thread_fence __os_atomic_thread_fence@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_init __os_atomic_init@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_read __os_atomic_read@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_store __os_atomic_store@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_inc __os_atomic_inc@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_dec __os_atomic_dec@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_cas __os_atomic_cas@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_fetch_add __os_atomic_fetch_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_exchange __os_atomic_exchange@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN)
+#define	__os_atomic_thread_fence __os_atomic_thread_fence@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(DB_WIN32) && defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_ATOMIC_GCC_BUILTIN) && !defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_64BIT_TYPES)
+#define	__os_atomic_cas_64 __os_atomic_cas_64@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_init __os_atomic_init@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_read __os_atomic_read@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_store __os_atomic_store@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_inc __os_atomic_inc@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_dec __os_atomic_dec@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_cas __os_atomic_cas@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_fetch_add __os_atomic_fetch_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_exchange __os_atomic_exchange@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_thread_fence __os_atomic_thread_fence@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_init __os_atomic_init@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_read __os_atomic_read@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_store __os_atomic_store@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_inc __os_atomic_inc@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_dec __os_atomic_dec@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_cas __os_atomic_cas@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_fetch_add __os_atomic_fetch_add@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_exchange __os_atomic_exchange@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !defined(HAVE_ATOMIC_SUPPORT) && !defined(HAVE_MUTEX_SUPPORT)
+#define	__os_atomic_thread_fence __os_atomic_thread_fence@DB_VERSION_UNIQUE_NAME@
 #endif
 #if !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) && !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
+#define	__os_atomic_cas_ptr __os_atomic_cas_ptr@DB_VERSION_UNIQUE_NAME@
 #endif
 #define	__os_gettime __os_gettime@DB_VERSION_UNIQUE_NAME@
 #define	__os_fs_notzero __os_fs_notzero@DB_VERSION_UNIQUE_NAME@
@@ -1803,6 +1887,7 @@
 #endif
 #define	__os_is_winnt __os_is_winnt@DB_VERSION_UNIQUE_NAME@
 #ifdef HAVE_REPLICATION_THREADS
+#define	__os_get_neterr __os_get_neterr@DB_VERSION_UNIQUE_NAME@
 #endif
 #define	__qam_position __qam_position@DB_VERSION_UNIQUE_NAME@
 #define	__qam_pitem __qam_pitem@DB_VERSION_UNIQUE_NAME@
@@ -2150,32 +2235,46 @@
 #define	__repmgr_stat_print __repmgr_stat_print@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_site_list __repmgr_site_list@DB_VERSION_UNIQUE_NAME@
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_close __repmgr_close@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_get_ack_policy __repmgr_get_ack_policy@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_set_ack_policy __repmgr_set_ack_policy@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_site __repmgr_site@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_site_by_eid __repmgr_site_by_eid@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_local_site __repmgr_local_site@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_site_list __repmgr_site_list@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_start __repmgr_start@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_stat_pp __repmgr_stat_pp@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_stat_print_pp __repmgr_stat_print_pp@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_handle_event __repmgr_handle_event@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_channel __repmgr_channel@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_set_msg_dispatch __repmgr_set_msg_dispatch@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_init_recover __repmgr_init_recover@DB_VERSION_UNIQUE_NAME@
 #endif
 #define	__repmgr_schedule_connection_attempt __repmgr_schedule_connection_attempt@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_is_server __repmgr_is_server@DB_VERSION_UNIQUE_NAME@
