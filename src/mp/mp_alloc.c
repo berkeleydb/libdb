@@ -511,7 +511,7 @@ this_buffer:	/*
 		ret = 0;
 		dirty_eviction = 0;
 		if (F_ISSET(bhp, BH_DIRTY)) {
-			DB_ASSERT(env, atomic_read(&hp->hash_page_dirty) > 0);
+			DB_ASSERT(env, atomic_read_relaxed(&hp->hash_page_dirty) > 0);
 			ret = __memp_bhwrite(dbmp, hp, bh_mfp, bhp, 0);
 			DB_ASSERT(env, atomic_read(&bhp->ref) > 0);
 
