@@ -57,7 +57,7 @@ static const DB_AIO_BACKEND __aio_iocp_backend = {
  * __os_aio_iocp_init --
  *	Create a completion port and attach the backend.
  *
- * PUBLIC: int __os_aio_iocp_init __P((ENV *, DB_AIO_CONTEXT *));
+ * Declared in dbinc/os_aio.h: int __os_aio_iocp_init __P((ENV *, DB_AIO_CONTEXT *));
  */
 int
 __os_aio_iocp_init(env, ctx)
@@ -223,7 +223,6 @@ __aio_iocp_destroy(env, ctx)
  * __os_aio_iocp_init --
  *	IOCP not configured (non-Windows or thread-pool preferred).
  *
- * PUBLIC: int __os_aio_iocp_init __P((ENV *, DB_AIO_CONTEXT *));
  */
 int
 __os_aio_iocp_init(env, ctx)
