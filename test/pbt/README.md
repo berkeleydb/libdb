@@ -21,6 +21,10 @@ reachable) and then prints `SKIP` and exits 0, so CI stays green without the
 | `pbt_defcmp.c`      | key-comparator total order | `__bam_defcmp()` (`src/btree/bt_compare.c`) |
 | `pbt_put_get.c`     | put/get round-trip (end-to-end) | in-memory B-tree via `db_create` + `DB->open`/`put`/`get` |
 | `pbt_hash_model.c`  | DB_HASH vs. model map (stateful) | in-memory `DB_HASH` via `db_create` + `DB->open`/`put`/`del`/`get` |
+| `pbt_hash_func.c`   | key-hash determinism / length / FNV | `__ham_func2/3/4/5` (`src/hash/hash_func.c`) |
+| `pbt_compint.c`     | varint codec round-trip / order-preserving | `__db_compress_int` / `__db_decompress_int` / `__db_*_count_int` / `__db_decompress_int32` (`src/common/db_compint.c`) |
+| `pbt_compress.c`    | prefix-compression codec round-trip | `__bam_defcompress` / `__bam_defdecompress` (`src/btree/bt_compress.c`) |
+| `pbt_recno.c`       | recno append/get + DB_RENUMBER contiguity | in-memory `DB_RECNO` (`src/btree/bt_recno.c`) |
 
 ## Property catalog
 
@@ -37,6 +41,10 @@ The `M_*_SWAP` macros swap between big- and little-endian in place. Byte
 reversal is an involution.
 - **swap16/32/64_involution** — `swap(swap(x)) == x` for all inputs.
 - **swap32_reverses_bytes** — one swap equals a manual 4-byte reversal.
+- **copyswap32/16_unaligned** — `P_32_COPYSWAP` / `P_16_COPYSWAP` reverse
+  bytes into an *unaligned* destination (the form used for on-page fields).
+- **swap64_unaligned** — `P_64_SWAP` on an unaligned 8-byte location both
+  reverses (one call) and restores (two calls), at a random byte offset.
 
 ### `pbt_defcmp` — `__bam_defcmp()` total order
 Source contract: returns `< 0 / = 0 / > 0` for `a < / = / > b`, comparing byte
@@ -63,6 +71,41 @@ and a simple in-test array-map model, asserting they agree after every
 operation (and at the end over the whole key pool). Keys are drawn from a
 small fixed pool so overwrites, deletes of present/absent keys, and re-inserts
 occur frequently.
+
+### `pbt_compint` — integer-compression (varint) codec
+`src/common/db_compint.c` is the self-describing varint codec (1–9 bytes,
+high-bit length prefix) used for on-disk lengths/offsets in the compressed
+btree. Built only when `HAVE_COMPRESSION` is defined (the default). The
+source header comment gives the exact format table and states it "depends on
+big-endian order".
+- **roundtrip** — `decompress(compress(i)) == i` over the full `u_int64_t`
+  range (drawn as signed bits reinterpreted, so 9-byte encodings are hit).
+- **count_agrees** — `__db_compress_count_int(i)` equals the bytes
+  `__db_compress_int` writes, `__db_decompress_count_int(buf)`, and the length
+  `__db_decompress_int` reports.
+- **order_preserving** — the encoding sorts like the integers: `a<=b` iff the
+  encoded bytes compare `<=` (common-prefix compare, longer encoding wins
+  ties). This is what lets the codec store sortable keys.
+- **int32_matches** — for `i <= UINT32_MAX`, `__db_decompress_int32` agrees
+  with `__db_decompress_int` on both value and byte count.
+
+### `pbt_compress` — btree prefix-compression codec
+`__bam_defcompress` writes a compressed encoding of a `(key, data)` pair
+expressed relative to the preceding `(prevKey, prevData)`; `__bam_defdecompress`
+reverses it. (`src/btree/bt_compress.c`, `HAVE_COMPRESSION`.)
+- **compress_roundtrip** — `decompress(compress(prev, cur)) == cur`
+  byte-for-byte, for arbitrary preceding and current key/data byte strings
+  (sizes chosen to hit both long-shared-prefix and no-prefix paths). This is
+  the invariant the whole compressed on-disk format rests on.
+
+### `pbt_recno` — recno access method (end-to-end)
+Opens a real in-memory `DB_RECNO` and drives it through the public API.
+- **put_get_roundtrip** — a value appended with `DB_APPEND` reads back
+  byte-for-byte at its assigned record number.
+- **renumber_contiguous** — with `DB_RENUMBER`, after any generated sequence
+  of appends and in-range deletes, a cursor walk (`DB_NEXT`) yields record
+  numbers `1, 2, 3, …` with no gaps, and exactly `N − deletes` records
+  survive (the recno renumber contract in `bt_recno.c __ramc_del`).
 
 ## Building and running
 
