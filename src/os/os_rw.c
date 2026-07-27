@@ -107,7 +107,7 @@ __os_io(env, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 			    (u_int64_t)offset, io_len);
 			if (persist < 0) {
 				*niop = 0;
-				return (ENOSPC);
+				return (persist == -1 ? ENOSPC : EIO);
 			}
 			nio = DB_GLOBAL(j_pwrite) != NULL ?
 			    DB_GLOBAL(j_pwrite)(fhp->fd, buf,
