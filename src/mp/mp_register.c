@@ -102,8 +102,10 @@ __memp_register(env, ftype, pgin, pgout)
 		}
 
 	if (mpreg == NULL) {			/* New entry. */
-		if ((ret = __os_malloc(env, sizeof(DB_MPREG), &mpreg)) != 0)
+		if ((ret = __os_malloc(env, sizeof(DB_MPREG), &mpreg)) != 0) {
+			MUTEX_UNLOCK(env, dbmp->mutex);
 			return (ret);
+		}
 		mpreg->ftype = ftype;
 		mpreg->pgin = pgin;
 		mpreg->pgout = pgout;
