@@ -31,6 +31,7 @@ pbt_props = [
   'defcmp',        # __bam_defcmp total-order over byte strings
   'put_get',       # in-memory B-tree put/get round-trip (end-to-end)
   'hash_model',    # DB_HASH vs in-test model map (stateful)
+  'hash_func',     # __ham_func2/3/4/5 determinism + length-honoring + FNV oracle
 ]
 
 # Try to locate hegel-c.  cmake + pkg-config are both attempted; either
