@@ -106,6 +106,52 @@ static _Atomic int     g_io_enospc_pct;   /* per-1000 write ENOSPC */
 static _Atomic int     g_io_corrupt_pct;  /* per-1000 torn-write/corrupt-read */
 static _Atomic int     g_io_corrupt_on;
 
+/* ---- fault-activation coverage counters (FoundationDB-style) ----
+ * Each class counts how many times the fault actually FIRED this run, so
+ * a swarm can report per-fault activation.  Relaxed atomics: a count is a
+ * diagnostic, not a control path. */
+static _Atomic unsigned long g_fc[DB_SIM_FC_NCLASSES];
+
+static void
+fc_hit(cls)
+	int cls;
+{
+	if (cls >= 0 && cls < DB_SIM_FC_NCLASSES)
+		atomic_fetch_add_explicit(&g_fc[cls], 1, memory_order_relaxed);
+}
+
+unsigned long
+__db_sim_fault_count(cls)
+	int cls;
+{
+	if (cls < 0 || cls >= DB_SIM_FC_NCLASSES)
+		return (0);
+	return (atomic_load_explicit(&g_fc[cls], memory_order_relaxed));
+}
+
+void
+__db_sim_fault_count_reset()
+{
+	int i;
+	for (i = 0; i < DB_SIM_FC_NCLASSES; i++)
+		atomic_store_explicit(&g_fc[i], 0, memory_order_relaxed);
+}
+
+const char *
+__db_sim_fault_class_name(cls)
+	int cls;
+{
+	switch (cls) {
+	case DB_SIM_FC_TORN:     return ("torn");
+	case DB_SIM_FC_ENOSPC:   return ("enospc");
+	case DB_SIM_FC_CORRUPT:  return ("corrupt");
+	case DB_SIM_FC_STALE:    return ("stale");
+	case DB_SIM_FC_LATENCY:  return ("latency");
+	case DB_SIM_FC_SHORTEIO: return ("shorteio");
+	default:                 return ("?");
+	}
+}
+
 void
 __db_sim_activate(seed)
 	uint64_t seed;
@@ -304,9 +350,15 @@ __db_sim_io_should_fault()
 	pct = atomic_load_explicit(&g_io_fault_pct, memory_order_relaxed);
 	if (pct == 0)
 		return (0);
-	if (pct >= 1000)
+	if (pct >= 1000) {
+		fc_hit(DB_SIM_FC_SHORTEIO);
 		return (1);
-	return ((int)__db_sim_rng_range(DB_SIM_RNG_IO, 1000) < pct);
+	}
+	if ((int)__db_sim_rng_range(DB_SIM_RNG_IO, 1000) < pct) {
+		fc_hit(DB_SIM_FC_SHORTEIO);
+		return (1);
+	}
+	return (0);
 }
 
 void
@@ -576,6 +628,7 @@ __db_sim_io_sleep_latency()
 	ns = __db_sim_io_latency();
 	if (ns <= 0)
 		return;
+	fc_hit(DB_SIM_FC_LATENCY);
 	/* Cap so an over-large seeded value cannot wedge a test. */
 	if (ns > 2000000)
 		ns = 2000000;                 /* 2ms cap */
@@ -621,6 +674,12 @@ __db_sim_io_stale_enable(pct_per_1000)
 	    memory_order_release);
 }
 
+int
+__db_sim_io_stale_armed()
+{
+	return (atomic_load_explicit(&g_stale_pct, memory_order_acquire) > 0);
+}
+
 void
 __db_sim_io_stale_record(fkey, off, buf, len)
 	uint64_t fkey, off;
@@ -663,6 +722,7 @@ __db_sim_io_stale_read(fkey, off, buf, len)
 		    g_stale[k].off == off) {
 			int cp = g_stale[k].len < len ? g_stale[k].len : len;
 			memcpy(buf, g_stale[k].buf, (size_t)cp);
+			fc_hit(DB_SIM_FC_STALE);
 			return (1);
 		}
 	}
