@@ -43,16 +43,24 @@ bld="$root/build_unix"
 #                    src/qam/qam_verify.c, src/heap/heap_verify.c) *and*
 #                    salvage. Before this, only test001:btree ran, leaving
 #                    hash/queue/heap/recno + all verify code at 0%.
+#   proc@test@method -> `run_range_partition`/`run_partition_callback`
+#                    (or any run_* proc) with (test method) -- runs an
+#                    existing Tcl test under range partitioning / partition
+#                    callbacks, lighting up src/db/partition.c.
 #
 # The access-method matrix is deliberately curated (a few high-value tests per
 # method: basic put/get, cursors, dups, delete/renumber, partial) rather than
 # the whole suite, to keep the run bounded while lighting up the red files.
+# btree/test111 adds compaction coverage (src/btree/bt_compact.c); the
+# run_range_partition/run_partition_callback entries add src/db/partition.c.
 : "${COV_TESTS:=lock001: txn001: ssi001: ssi002: recd001:btree \
-  btree/test001 \
+  btree/test001 btree/test111 \
   hash/test001 hash/test006 hash/test010 hash/test025 hash/test077 \
   queue/test001 queue/test007 queue/test025 \
   recno/test001 recno/test006 recno/test024 recno/test025 \
-  heap/test001 heap/test013 heap/test024}"
+  heap/test001 heap/test013 heap/test024 \
+  run_range_partition@test001@btree \
+  run_partition_callback@test001@btree}"
 : "${COV_JOBS:=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 : "${TCLSH:=tclsh}"
 # TCL lib dir: nix store on this box, /usr/lib/tcl8.6 on ubuntu CI.
@@ -119,6 +127,12 @@ runtcl="$bld/.cov-run.tcl"
   echo 'source ../test/tcl/test.tcl'
   for pair in $COV_TESTS; do
     case "$pair" in
+    *@*)  # proc@test@method form -> `run_proc test method` (partition runners)
+      p="${pair%%@*}"; rest="${pair#*@}"; t="${rest%%@*}"; m="${rest#*@}"
+      printf 'source ../test/tcl/%s.tcl\n' "$t"
+      printf 'if {[catch {%s %s %s 0 1} res]} { puts "FAIL %s/%s/%s: $res"; exit 1 }\n' "$p" "$t" "$m" "$p" "$t" "$m"
+      printf 'puts "PASS %s/%s/%s"\n' "$p" "$t" "$m"
+      ;;
     */*)  # method/test form -> run_method (test + verify_dir + salvage_dir)
       m="${pair%%/*}"; t="${pair#*/}"
       printf 'source ../test/tcl/%s.tcl\n' "$t"
