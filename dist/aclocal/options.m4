@@ -202,6 +202,13 @@ AC_ARG_ENABLE(dst,
 	[db_cv_dst="$enable_dst"], [db_cv_dst="no"])
 AC_MSG_RESULT($db_cv_dst)
 
+AC_MSG_CHECKING(if --enable-faultinject option specified)
+AC_ARG_ENABLE(faultinject,
+	[AS_HELP_STRING([--enable-faultinject],
+			[Build with SQLite-style malloc-failure injection hooks at the __os_* allocation seam.])],
+	[db_cv_faultinject="$enable_faultinject"], [db_cv_faultinject="no"])
+AC_MSG_RESULT($db_cv_faultinject)
+
 AC_MSG_CHECKING(if --enable-dump185 option specified)
 AC_ARG_ENABLE(dump185,
 	[AS_HELP_STRING([--enable-dump185],

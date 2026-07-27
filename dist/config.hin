@@ -132,6 +132,9 @@
 /* Define to 1 if platform has EXIT_SUCCESS/EXIT_FAILURE #defines. */
 #undef HAVE_EXIT_SUCCESS
 
+/* Define to 1 to build with SQLite-style malloc-failure injection hooks. */
+#undef HAVE_FAULT_INJECT
+
 /* Define to 1 if you have the 'fchmod' function. */
 #undef HAVE_FCHMOD
 
