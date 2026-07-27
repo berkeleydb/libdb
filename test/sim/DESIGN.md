@@ -125,17 +125,30 @@ schedule):
 - **write-back cache crash model** — the ack-before-fsync durability catcher,
   below.
 
-**The write-back model (THE key to catching ack-before-fsync bugs).** The sim
-writes to a *real* file, so bytes reach the file on `pwrite` regardless of
-`fsync` — which means a naive crash test cannot catch a writer that ACKs a
-commit without fsyncing it. The model fixes this honestly:
+**The write-back model (THE key to catching ack-before-fsync bugs) — NOW FULLY
+WIRED.** The sim writes to a *real* file, so bytes reach the file on `pwrite`
+regardless of `fsync` — which means a naive crash test cannot catch a writer
+that ACKs a commit without fsyncing it. The model fixes this honestly:
 
 - a write records the **written high-water** offset for the file
-  (`__db_sim_io_wb_wrote`);
+  (`__db_sim_io_wb_wrote`) plus the file's on-disk **name**;
 - `fsync`/`fdatasync` promotes written → **durable** (`__db_sim_io_wb_synced`);
-- a crash loses everything past the last fsync;
-- a recovery test asks `__db_sim_io_durable_end(key)` for the true post-crash
-  durable frontier to truncate to, instead of trusting the writer.
+- at the crash boundary a scenario calls **`__db_sim_wb_crash()`**, which
+  `truncate()`s every tracked real file back to its durable frontier — so
+  bytes written but never fsync'd genuinely vanish, exactly as a disk loses
+  them on power loss;
+- recovery then runs against the truncated files, so a commit acked without
+  its log being fsync'd is **detectably lost**.
+
+This is what makes planted bug 1 (NODURABLE: `__log_flush_int` skips the log
+fsync) a hard catch: the durable frontier never advances, `wb_crash` truncates
+the un-synced tail, and every "committed" txn is lost after recovery.
+
+The write-side knobs are consumed now too: `__os_io`'s write fast path consults
+`__db_sim_io_write_fault_hook` (ENOSPC = whole write fails; torn = persist a
+strict prefix, report full). The read fast path consults
+`__db_sim_io_read_hook` (corrupt bit-flip + stale-read ring) and a per-I/O
+`__db_sim_io_latency_hook` (a tiny capped sleep when armed).
 
 Keyed by a **stable FNV-1a hash of the file name** (not the fd), so the
 frontier tracks a *logical* file across libdb's frequent close/reopen — exactly
@@ -164,9 +177,10 @@ case, and vanishes entirely when `HAVE_DST` is undefined.
 > hooked — on Linux with pread/pwrite the fast path always wins, so v1 is fully
 > covered there. `os_aio*` (the newer async buffer-pool I/O) is likewise not yet
 > hooked; the buffer pool's *synchronous* `__os_io` path (`mp_bh.c`) is, which is
-> what the pilots exercise. Torn-write and latency knobs exist but are only
-> consulted by the corrupt-read hook so far; wiring torn-write into the write
-> hook and latency into a v2 async path are §4 items.
+> what the scenarios exercise. The write-side ENOSPC/torn knobs, the read-side
+> corrupt/stale knobs, and the per-I/O latency knob are all consumed by the
+> `__os_io` fast path now; the stale-read ring is armable and consulted on read
+> but has no dedicated v1 scenario yet (a v1.x item).
 
 ### 1.6 The determinism-proof harness
 
@@ -186,8 +200,10 @@ replay of the same seed would fail.
   `dist/configure.ac`: `AC_DEFINE(HAVE_DST)`, append `$(SIM_OBJS)` to
   `ADDITIONAL_OBJS`, and add `-I$(topdir)/test/sim` to `CPPFLAGS`.
   `dist/Makefile.in` defines `SIM_OBJS = sim_core@o@ sim_os_hooks@o@`, their
-  compile rules, and a `dst_tests` target (`test_sim_rng`,
-  `test_sim_crash_recover`, `test_sim_torn`). `DSTBUG=<n>` plants bug n.
+  compile rules, and a `dst_tests` target (all fourteen `test_sim_*`).
+  `DSTBUG=<n>` plants a TEST-side bug n; a LIBRARY-site planted bug is built by
+  configuring with `CFLAGS="-DDB_DST_INJECT_BUG=<n>"` (a dedicated build tree),
+  which `test/sim/dst-bug-inject.sh` automates.
   All additions are additive and DST-scoped so they merge cleanly alongside the
   concurrent PBT work.
 
@@ -210,49 +226,72 @@ replay of the same seed would fail.
 
 ---
 
-## 3. Pilot scenarios (runnable now)
+## 3. Scenarios (all runnable now, all PASS)
 
-| Pilot | Proves | Result |
+Fourteen scenarios; the crash/fault ones each pass across a multi-seed sweep and
+replay bit-identically per seed.
+
+| Scenario | Proves | Result |
 |---|---|---|
 | `test_sim_rng` | seeded PRNG determinism, seed-sensitivity, stream independence, guard | PASS |
-| `test_sim_crash_recover` | **capstone**: N durable txns survive a mid-txn crash; uncommitted txn does not; DB verifies clean **after recovery** | PASS (64 txns; deterministic across seeds; replays) |
-| `test_sim_torn` | corrupt reads are caught by DB_CHKSUM or invisible — **never silently wrong** | PASS (e.g. 297 correct / 103 detected / 0 silent-bad) |
+| `test_sim_crash_recover` | **capstone**: N durable txns survive a mid-txn crash via the write-back drop; uncommitted does not; DB verifies clean **after recovery** | PASS (64 txns; 30/30 seed sweep) |
+| `test_sim_torn` | corrupt reads caught by DB_CHKSUM or invisible — **never silently wrong** | PASS (e.g. 297 correct / 103 detected / 0 silent-bad) |
+| `test_sim_hash_crash` | DB_HASH op+crash+recover | PASS (64 committed survive) |
+| `test_sim_recno_crash` | DB_RECNO append+crash+recover | PASS (64 appends survive) |
+| `test_sim_queue_crash` | DB_QUEUE enqueue+crash+recover | PASS (64 enqueues survive) |
+| `test_sim_ckp_crash` | page-flush durability across crash (no log) | PASS (200 flushed survive; catches LOSTUPDATE) |
+| `test_sim_torn_log` | recovery safe past a torn log tail; durable prefix intact | PASS (32 durable commits present) |
+| `test_sim_enospc` | ENOSPC graceful degradation, no corruption | PASS (all observed-committed durable) |
+| `test_sim_abort_atomic` | committed present + aborted leave no trace after crash | PASS (deterministic commit/abort split) |
+| `test_sim_recover_idempotent` | recover twice → identical full-state hash | PASS |
+| `test_sim_dup_crash` | DB_DUPSORT dups survive crash with exact multiplicity | PASS (24 keys x 8 dups) |
+| `test_sim_overflow_torn` | overflow (>page) records: corrupt read caught, never silently wrong | PASS |
+| `test_sim_split_crash` | btree split/merge churn survives crash, tree clean | PASS (380 live keys, 120 deletes) |
 
 **Recovery-before-verify discipline** (from
 `.agents/concurrent-btree-corruption.md`): a crashed txn env verified *without*
 recovery falsely looks corrupt. `test_sim_crash_recover` **always** runs
 `DB_RECOVER` before `db->verify`.
 
-**Planted-bug harness** (`sim_inject.h`, `DB_DST_INJECT_BUG=<n>`): the crash
-pilot has a `NODURABLE` hook (bug 1) that "acks" a commit with `DB_TXN_NOSYNC`
-and asserts it must *not* survive the crash — the scaffold for the
-FoundationDB-grade "DST finds real bugs within K seeds" proof. v1 wires the hook
-and the harness; planting the bug *inside* `__log_flush` (so the write-back
-model's durable frontier truly drops the un-fsynced tail) is the immediate next
-step (§4, item A) that turns this into a hard catch.
+**Planted-bug harness** (`sim_inject.h`, `DB_DST_INJECT_BUG=<n>`) — the
+FoundationDB-grade "DST finds real bugs" proof, LANDED. Three known durability
+bugs planted at real library sites, each caught by a scenario within **K=1**
+seeds (`test/sim/dst-bug-inject.sh` builds a dedicated library per bug and
+asserts the catch):
+
+| Bug | Site | Caught by | Effect |
+|---|---|---|---|
+| 1 NODURABLE | `__log_flush_int` (log_put.c) skips the log fsync, still acks | `test_sim_crash_recover` | 64 "committed" txns lost after the write-back crash drops the un-synced log |
+| 2 NOCKSUM | `__db_check_chksum` (hmac.c) ignores a checksum mismatch | `test_sim_torn` | corrupt pages flow in as SILENT-BAD data |
+| 3 LOSTUPDATE | `__memp_pgwrite` (mp_bh.c) skips a dirty-page write, reports success | `test_sim_ckp_crash` | flushed records lost after crash (no log to redo) |
+
+A normal build (`DB_DST_INJECT_BUG` undefined) compiles all three out and every
+scenario passes; the OFF library has **0** `__db_sim_*` symbols.
 
 ---
 
 ## 4. Immediate next steps (ordered)
 
-- **A. Real ack-before-fsync catch.** Truncate the log to
-  `__db_sim_io_durable_end(logkey)` before `DB_RECOVER` in the crash pilot, and
-  add a `DB_SIM_BUGGIFY("log.flush.skip_fsync")` in `__log_flush_int` that skips
-  the fsync while still returning success. Then bug-build must lose the "acked"
-  commit → capstone fires. This is the headline DST proof.
-- **B. Torn-write into the write hook.** Consult `__db_sim_io_torn_prefix` in
-  the write path and add a torn-log scenario (recovery must stop at the torn
-  record, not misparse past it).
-- **C. Disk-full scenario.** Arm `__db_sim_io_enospc` mid-workload; assert
-  graceful degradation (clean error, no corruption, recoverable).
-- **D. Stale-read model.** Port xtc's superseded-write ring
-  (`__xtc_sim_io_stale_*`) to catch recovery/cache code that skips an LSN check.
-- **E. Seed sweep driver.** `scripts/dst-sweep.sh SEED_LO SEED_HI` running each
-  scenario across a seed range, plus `scripts/dst-bug-inject.sh` asserting each
-  planted bug is caught within K seeds (the bug-detection-latency yardstick).
+Items A–E landed on this branch. Remaining:
+
+- ~~**A. Real ack-before-fsync catch.**~~ DONE: `__db_sim_wb_crash()` truncates
+  each tracked file to `durable_end` before recovery, and planted bug 1
+  (`__log_flush_int` skips fsync) makes `test_sim_crash_recover` lose every
+  "committed" txn — caught at K=1.
+- ~~**B. Torn-write into the write hook.**~~ DONE: `__os_io` consults
+  `__db_sim_io_write_fault_hook`; `test_sim_torn_log` proves recovery is safe
+  past a torn log tail.
+- ~~**C. Disk-full scenario.**~~ DONE: `test_sim_enospc`.
+- **D. Stale-read model.** Ring PORTED and consulted on read; no dedicated
+  scenario yet (needs offset-threaded write-side snapshot for a full LSN-skip
+  catch) — v1.x.
+- ~~**E. Seed sweep driver.**~~ DONE: `test/sim/dst-sweep.sh` and
+  `test/sim/dst-bug-inject.sh`.
 - **F. Meson wiring** (§2).
-- **G. Determinism-guard planting** at `__os_clock`, `__os_unique_id`,
-  `__os_id`, so a regression that reads wall-clock time on a sim path aborts.
+- **G. Determinism-guard planting** at `__os_gettime` / `__os_id`. Deferred:
+  these are read on legitimate recovery/txn paths, so a strict-abort guard
+  there would fire on every run; the guard earns its keep once a v2 scheduler
+  owns virtual time. The guard machinery + count API are in place.
 - **H. `os_aio*` + `__os_physwrite` hooks** for full I/O-path coverage.
 
 ---
@@ -264,18 +303,18 @@ Marked **v1** (mappable now on the single-process fault/crash axis),
 scheduler / multi-process). ~34 scenarios across BDB subsystems.
 
 ### Access methods (workload correctness under faults)
-1. **btree put/get/del** round-trip under corrupt-read — *v1* (shipped: torn).
-2. **btree split/merge** churn across a crash + recovery — *v1*.
-3. **hash** insert/lookup/delete round-trip under faults — *v1.x*.
-4. **recno / queue** append + consume across a crash — *v1.x*.
+1. **btree put/get/del** round-trip under corrupt-read — *v1* ✅ `test_sim_torn`.
+2. **btree split/merge** churn across a crash + recovery — *v1* ✅ `test_sim_split_crash`.
+3. **hash** insert/lookup/delete round-trip under faults — *v1.x* ✅ `test_sim_hash_crash`.
+4. **recno / queue** append + consume across a crash — *v1.x* ✅ `test_sim_recno_crash`, `test_sim_queue_crash`.
 5. **secondary index / join** consistency after recovery — *v1.x*.
-6. **large / overflow records** torn-write + checksum detection — *v1.x*.
-7. **duplicate keys** (sorted/unsorted) survive crash+recover — *v1.x*.
+6. **large / overflow records** torn-write + checksum detection — *v1.x* ✅ `test_sim_overflow_torn`.
+7. **duplicate keys** (sorted/unsorted) survive crash+recover — *v1.x* ✅ `test_sim_dup_crash`.
 
 ### Log / WAL
-8. **commit durability**: every fsync-acked commit survives a crash — *v1* (capstone).
-9. **ack-before-fsync bug caught** via the write-back frontier — *v1* (item A).
-10. **torn log write**: recovery stops cleanly at the torn record — *v1.x* (item B).
+8. **commit durability**: every fsync-acked commit survives a crash — *v1* ✅ `test_sim_crash_recover` (capstone).
+9. **ack-before-fsync bug caught** via the write-back frontier — *v1* ✅ planted bug 1, caught by the capstone.
+10. **torn log write**: recovery stops cleanly at the torn record — *v1.x* ✅ `test_sim_torn_log`.
 11. **log record checksum** mismatch detected on replay — *v1.x*.
 12. **log file rollover** crash at the boundary, clean recovery — *v1.x*.
 13. **in-memory log** (`DB_LOG_IN_MEMORY`) crash semantics — *v1.x*.
@@ -284,16 +323,16 @@ scheduler / multi-process). ~34 scenarios across BDB subsystems.
 14. **crash at every phase**: pre-commit, post-log-pre-fsync, post-fsync,
     mid-checkpoint, mid-recovery — parameterized by a seeded crash step — *v1*.
 15. **catastrophic (fatal) recovery** from an archived log set — *v1.x*.
-16. **recovery idempotency**: recover twice, identical state hash — *v1*.
+16. **recovery idempotency**: recover twice, identical state hash — *v1* ✅ `test_sim_recover_idempotent`.
 17. **partial page write** at crash; recovery repairs via WAL — *v1*.
 
 ### Checkpoint
-18. **crash mid-checkpoint**; recovery from the prior checkpoint — *v1*.
-19. **checkpoint + ENOSPC**: checkpoint fails cleanly, txns still durable — *v1.x* (item C).
+18. **crash mid-checkpoint**; recovery from the prior checkpoint — *v1* ✅ `test_sim_ckp_crash` (page-flush durability; catches planted bug 3).
+19. **checkpoint + ENOSPC**: checkpoint fails cleanly, txns still durable — *v1.x* ✅ `test_sim_enospc`.
 
 ### Buffer pool (mpool)
-20. **eviction under memory pressure** + corrupt-read on refetch — *v1* (torn uses DB_PRIVATE small cache).
-21. **dirty-page flush torn write** caught by page checksum — *v1.x* (item B).
+20. **eviction under memory pressure** + corrupt-read on refetch — *v1* ✅ `test_sim_torn` (DB_PRIVATE small cache).
+21. **dirty-page flush torn write** caught by page checksum — *v1.x* (partial: `test_sim_overflow_torn` covers overflow-page corrupt reads).
 22. **MVCC version-chain fget** returns the correct snapshot under faults — *v1.x*.
 23. **trickle / sync** interaction with a crash — *v2* (needs concurrency).
 
@@ -303,7 +342,7 @@ scheduler / multi-process). ~34 scenarios across BDB subsystems.
 26. **lock-table region exhaustion** graceful degradation — *v1.x*.
 
 ### Transactions
-27. **commit/abort mix**: aborted txns leave no trace after recovery — *v1*.
+27. **commit/abort mix**: aborted txns leave no trace after recovery — *v1* ✅ `test_sim_abort_atomic`.
 28. **nested / child txn** commit+abort correctness across crash — *v1.x*.
 29. **prepare/2PC**: prepared txns recover to the resolvable state — *v1.x*.
 30. **cursor stability** across abort — *v1.x*.
