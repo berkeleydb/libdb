@@ -1667,6 +1667,13 @@ test_sim_swarm: test_sim_swarm@o@ $(DEF_LIB)
 	    $(LDFLAGS) test_sim_swarm@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
+test_sim_ckp_lsn@o@: $(testdir)/sim/test_sim_ckp_lsn.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_ckp_lsn: test_sim_ckp_lsn@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_ckp_lsn@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
 dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_hash_crash test_sim_recno_crash test_sim_queue_crash \
 	test_sim_ckp_crash test_sim_torn_log test_sim_enospc \
@@ -1674,7 +1681,8 @@ dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_overflow_torn test_sim_split_crash test_sim_stale \
 	test_sim_ckp_enospc test_sim_split_torn test_sim_recover_corrupt \
 	test_sim_multi_fault test_sim_secondary_crash test_sim_largetxn_crash \
-	test_sim_cursor_crash test_sim_latency_load test_sim_swarm
+	test_sim_cursor_crash test_sim_latency_load test_sim_swarm \
+	test_sim_ckp_lsn
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.
