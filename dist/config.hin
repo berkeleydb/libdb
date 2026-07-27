@@ -120,6 +120,9 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
+/* Define to 1 to build with Deterministic Simulation Testing hooks. */
+#undef HAVE_DST
+
 /* Define to 1 to use dtrace for performance monitoring. */
 #undef HAVE_DTRACE
 

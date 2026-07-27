@@ -870,6 +870,7 @@ enable_debug
 enable_debug_rop
 enable_debug_wop
 enable_diagnostic
+enable_dst
 enable_dump185
 enable_java
 enable_mingw
@@ -1574,6 +1575,8 @@ Optional Features:
   --enable-debug_rop      Build a version that logs read operations.
   --enable-debug_wop      Build a version that logs write operations.
   --enable-diagnostic     Build a version with run-time diagnostics.
+  --enable-dst            Build with Deterministic Simulation Testing (DST)
+                          fault-injection hooks.
   --enable-dump185        Build db_dump185(1) to dump 1.85 databases.
   --enable-java           Build Java API.
   --enable-mingw          Build Berkeley DB for MinGW.
@@ -3928,6 +3931,20 @@ if test "$db_cv_diagnostic" = "no"; then
 printf '%s\n' "$db_cv_diagnostic" >&6; }
 fi
 
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-dst option specified" >&5
+printf %s "checking if --enable-dst option specified... " >&6; }
+# Check whether --enable-dst was given.
+if test ${enable_dst+y}
+then :
+  enableval=$enable_dst; db_cv_dst="$enable_dst"
+else case e in #(
+  e) db_cv_dst="no" ;;
+esac
+fi
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_dst" >&5
+printf '%s\n' "$db_cv_dst" >&6; }
+
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-dump185 option specified" >&5
 printf %s "checking if --enable-dump185 option specified... " >&6; }
 # Check whether --enable-dump185 was given.
@@ -4525,6 +4542,19 @@ if test "$db_cv_diagnostic" = "yes"; then
 	printf '%s\n' "#define DIAGNOSTIC 1" >>confdefs.h
 
 
+fi
+
+# Deterministic Simulation Testing (DST): compile the sim fault-injection
+# core into the library and enable the guarded __os_* I/O hooks.  Additive
+# and DST-scoped: when off (the default) HAVE_DST is undefined, the hooks
+# vanish, and none of the test/sim sources are built, so a production build
+# is bit-for-bit the stock library.
+if test "$db_cv_dst" = "yes"; then
+	printf '%s\n' "#define HAVE_DST 1" >>confdefs.h
+
+
+	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(SIM_OBJS)"
+	CPPFLAGS="$CPPFLAGS -I\$(topdir)/test/sim"
 fi
 if test "$db_cv_debug_rop" = "yes"; then
 	printf '%s\n' "#define DEBUG_ROP 1" >>confdefs.h
@@ -20332,7 +20362,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20335 "configure" */
+/* #line 20365 "configure" */
 public class Test {
 }
 EOF
@@ -20627,7 +20657,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20630: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20660: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20759,7 +20789,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20762 "configure" */
+/* #line 20792 "configure" */
 public class Test {
 }
 EOF
@@ -20796,7 +20826,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20799 "configure" */
+/* [#]line 20829 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);
