@@ -210,6 +210,10 @@ DTRACE_PROVIDER=	$(distdir)/db_provider.d
 ##################################################
 # Object and utility lists.
 ##################################################
+# Deterministic Simulation Testing (DST) sim core -- added to the library's
+# ADDITIONAL_OBJS by configure only when --enable-dst.  Compile rules below.
+SIM_OBJS=	sim_core@o@ sim_os_hooks@o@
+
 BTREE_OBJS=\
 	bt_compare@o@ bt_compress@o@ bt_conv@o@ bt_curadj@o@ bt_cursor@o@ \
 	bt_delete@o@ bt_method@o@ bt_open@o@ bt_put@o@ bt_rec@o@ \
@@ -1476,6 +1480,42 @@ test_mutex@o@: $(srcdir)/mutex/test_mutex.c
 test_mutex: test_mutex@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) test_mutex@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
+
+##################################################
+# Deterministic Simulation Testing (DST) -- test/sim/.
+#
+# The sim core objects (sim_core, sim_os_hooks) are added to the library's
+# ADDITIONAL_OBJS by configure when --enable-dst; their compile rules live
+# here.  `make dst_tests` builds the pilot scenarios; requires --enable-dst.
+# DSTBUG=<n> plants bug n (see test/sim/sim_inject.h) to prove DST catches it.
+##################################################
+sim_core@o@: $(testdir)/sim/sim_core.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/sim $<
+sim_os_hooks@o@: $(testdir)/sim/sim_os_hooks.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/sim $<
+
+DST_CFLAGS= $(CFLAGS) -I$(testdir)/sim $(DSTBUG:%=-DDB_DST_INJECT_BUG=%)
+
+test_sim_rng@o@: $(testdir)/sim/test_sim_rng.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_rng: test_sim_rng@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ $(LDFLAGS) test_sim_rng@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_crash_recover@o@: $(testdir)/sim/test_sim_crash_recover.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_crash_recover: test_sim_crash_recover@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_crash_recover@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_torn@o@: $(testdir)/sim/test_sim_torn.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_torn: test_sim_torn@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ $(LDFLAGS) test_sim_torn@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn
 
 ##################################################
 # Targets for example programs.

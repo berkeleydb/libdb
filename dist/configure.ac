@@ -134,6 +134,19 @@ if test "$db_cv_diagnostic" = "yes"; then
 	AH_TEMPLATE(DIAGNOSTIC,
     [Define to 1 if you want a version with run-time diagnostic checking.])
 fi
+
+# Deterministic Simulation Testing (DST): compile the sim fault-injection
+# core into the library and enable the guarded __os_* I/O hooks.  Additive
+# and DST-scoped: when off (the default) HAVE_DST is undefined, the hooks
+# vanish, and none of the test/sim sources are built, so a production build
+# is bit-for-bit the stock library.
+if test "$db_cv_dst" = "yes"; then
+	AC_DEFINE(HAVE_DST)
+	AH_TEMPLATE(HAVE_DST,
+    [Define to 1 to build with Deterministic Simulation Testing hooks.])
+	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(SIM_OBJS)"
+	CPPFLAGS="$CPPFLAGS -I\$(topdir)/test/sim"
+fi
 if test "$db_cv_debug_rop" = "yes"; then
 	AC_DEFINE(DEBUG_ROP)
 	AH_TEMPLATE(DEBUG_ROP,
