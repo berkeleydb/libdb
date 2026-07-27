@@ -1,0 +1,6 @@
+# Build output (harness binaries, artifacts, working corpora) — never tracked.
+build/
+
+# The recover seed is a *.log file; a global gitignore (*.log) would drop it,
+# so force it back in.  Corpus seeds are intentionally tracked.
+!corpus/recover/*.log
