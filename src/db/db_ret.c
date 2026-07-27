@@ -14,6 +14,105 @@
 #include "dbinc/heap.h"
 
 /*
+ * __db_ret_okitem --
+ *	Bounds-check the on-page leaf item at (h, indx) against the page size
+ *	before __db_ret dereferences its length/offset fields.
+ *
+ *	The page comes from an untrusted file: a corrupt inp[] offset or item
+ *	length field must not be trusted, or a copy-out (__db_retcopy /
+ *	__db_goff) reads past the end of the page (a heap OOB read).  This is
+ *	the lean, silent, hot-path mirror of __db_vrfy_inpitem (db_vrfy.c) --
+ *	it gates every access-method cursor return that routes through
+ *	__db_ret (btree, hash, heap), so all of them are covered in one place.
+ *
+ *	Returns 0 if the item is safe to read; DB_PAGE_NOTFOUND otherwise.
+ */
+static int
+__db_ret_okitem(dbp, h, indx)
+	DB *dbp;
+	PAGE *h;
+	u_int32_t indx;
+{
+	BKEYDATA *bk;
+	HEAPHDR *hdr;
+	db_indx_t *inp, off, prev;
+	size_t pgsize;
+
+	pgsize = dbp->pgsize;
+	inp = P_INP(dbp, h);
+
+	/* The index must be one of the entries the page claims to hold. */
+	if (indx >= NUM_ENT(h))
+		return (DB_PAGE_NOTFOUND);
+
+	/*
+	 * The item offset must fall after the inp[] array (which grows down
+	 * from the header) and strictly before the end of the page.
+	 */
+	off = inp[indx];
+	if ((size_t)((u_int8_t *)(inp + indx + 1) - (u_int8_t *)h) > pgsize)
+		return (DB_PAGE_NOTFOUND);
+	if ((size_t)off < (size_t)((u_int8_t *)(inp + NUM_ENT(h)) -
+	    (u_int8_t *)h) || (size_t)off >= pgsize)
+		return (DB_PAGE_NOTFOUND);
+
+	switch (TYPE(h)) {
+	case P_HASH_UNSORTED:
+	case P_HASH:
+		/*
+		 * The one-byte type selector must be on-page, and the item
+		 * length is derived as (prev_off - off) via LEN_HITEM, where
+		 * prev_off is pgsize for indx 0 else inp[indx-1].  Guard the
+		 * subtraction against underflow (prev_off <= off) and against
+		 * a prev_off that itself runs past the page.
+		 */
+		if ((size_t)off + 1 > pgsize)
+			return (DB_PAGE_NOTFOUND);
+		prev = indx == 0 ? (db_indx_t)pgsize : inp[indx - 1];
+		if ((size_t)prev > pgsize || off >= prev)
+			return (DB_PAGE_NOTFOUND);
+		if (HPAGE_PTYPE((u_int8_t *)h + off) == H_OFFPAGE &&
+		    (size_t)off + HOFFPAGE_SIZE > pgsize)
+			return (DB_PAGE_NOTFOUND);
+		/* On-page H_KEYDATA/H_DUPLICATE: item must hold its header. */
+		if (HPAGE_PTYPE((u_int8_t *)h + off) != H_OFFPAGE &&
+		    (size_t)(prev - off) < HKEYDATA_SIZE(0))
+			return (DB_PAGE_NOTFOUND);
+		break;
+	case P_HEAP:
+		if ((size_t)off + sizeof(HEAPHDR) > pgsize)
+			return (DB_PAGE_NOTFOUND);
+		hdr = (HEAPHDR *)((u_int8_t *)h + off);
+		/* Split records are copied out separately; skip the size check. */
+		if (!F_ISSET(hdr, (HEAP_RECSPLIT | HEAP_RECFIRST)) &&
+		    (size_t)off + sizeof(HEAPHDR) + hdr->size > pgsize)
+			return (DB_PAGE_NOTFOUND);
+		break;
+	case P_LBTREE:
+	case P_LDUP:
+	case P_LRECNO:
+		/* The BKEYDATA/BOVERFLOW header (len,type) must be on-page. */
+		if ((size_t)off + SSZA(BKEYDATA, data) > pgsize)
+			return (DB_PAGE_NOTFOUND);
+		bk = GET_BKEYDATA(dbp, h, indx);
+		if (B_TYPE(bk->type) == B_OVERFLOW ||
+		    B_TYPE(bk->type) == B_DUPLICATE) {
+			if ((size_t)off + BOVERFLOW_SIZE > pgsize)
+				return (DB_PAGE_NOTFOUND);
+		} else if (B_TYPE(bk->type) == B_KEYDATA) {
+			/* data[bk->len] must not run past the page end. */
+			if ((size_t)off + SSZA(BKEYDATA, data) + bk->len > pgsize)
+				return (DB_PAGE_NOTFOUND);
+		} else
+			return (DB_PAGE_NOTFOUND);
+		break;
+	default:
+		break;
+	}
+	return (0);
+}
+
+/*
  * __db_ret --
  *	Build return DBT.
  *
@@ -41,6 +140,17 @@ __db_ret(dbc, h, indx, dbt, memp, memsize)
 	if (F_ISSET(dbt, DB_DBT_READONLY))
 		return (0);
 	dbp = dbc->dbp;
+
+	/*
+	 * Validate the on-page item against the (possibly corrupt) page
+	 * before trusting any of its length/offset fields.  Only the leaf
+	 * item types that __db_ret reads below are checked.
+	 */
+	if ((TYPE(h) == P_HASH_UNSORTED || TYPE(h) == P_HASH ||
+	    TYPE(h) == P_HEAP || TYPE(h) == P_LBTREE ||
+	    TYPE(h) == P_LDUP || TYPE(h) == P_LRECNO) &&
+	    __db_ret_okitem(dbp, h, indx) != 0)
+		return (DB_PAGE_NOTFOUND);
 
 	switch (TYPE(h)) {
 	case P_HASH_UNSORTED:
