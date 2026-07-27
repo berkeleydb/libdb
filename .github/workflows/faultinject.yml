@@ -1,0 +1,128 @@
+# Malloc-failure injection (SQLite-style) — advisory fault-injection tier.
+#
+# Dedicated workflow (does NOT touch ci.yml). Builds libdb with the opt-in
+# --enable-faultinject allocation hook (zero-overhead when off) and runs the
+# test/faultinject/ sweep: measure the workload's baseline allocation count M,
+# then for K = 1..M fail the Kth allocation and assert the library returns a
+# clean error, holds no lock (a hang is caught by a per-run watchdog), and
+# leaves a re-openable environment.
+#
+# This is the dynamic complement to the Coccinelle malloc-leak /
+# mutex-unbalanced static rules — it exercises the OOM RETURN PATHS the static
+# rules can only inspect, and it catches exactly the #47 class of bug (a lock
+# or handle mishandled on the error return).
+#
+# continue-on-error is set so this tier is ADVISORY: the sweep is expected to
+# surface pre-existing OOM-path bugs (it already found several — see
+# test/faultinject/README.md), and this job reports them without gating merges
+# while those bugs are fixed separately.
+
+name: faultinject
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    paths:
+      - 'test/faultinject/**'
+      - 'src/os/os_alloc.c'
+      - 'dist/configure.ac'
+      - 'dist/aclocal/options.m4'
+      - 'dist/Makefile.in'
+      - '.github/workflows/faultinject.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: faultinject-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: malloc-failure sweep
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory tier: surfaces pre-existing OOM bugs
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential autoconf
+
+      # --- Gate signal: plain debug build, clean crash/hang/dirty
+      #     classification, completes fast. ---
+      - name: Configure (debug + faultinject)
+        run: |
+          mkdir -p build_unix
+          cd build_unix
+          ../dist/configure --enable-debug --enable-faultinject
+
+      - name: Build library + sweep driver
+        run: |
+          cd build_unix
+          make -j"$(nproc)"
+          make fi_tests
+
+      - name: Run the malloc-failure sweep
+        id: sweep
+        run: |
+          cd build_unix
+          # The driver forks + watchdogs each K, so a crash/hang in one
+          # failure point cannot wedge the sweep. It exits non-zero iff any
+          # run crashed, hung, or left the env un-reopenable.
+          set +e
+          ./libtool --mode=execute ./fi_sweep 2>fi_stderr.log | tee fi_result.log
+          echo "sweep_rc=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          set -e
+          echo "----- summary -----"
+          grep -E 'CRASH|HANG|DIRTY|BADSTATE|RESULT|baseline|exercised|= [0-9]' fi_result.log || true
+
+      # --- Advisory ASan pass: catch heap-UAF / leak on the CLEAN paths a
+      #     plain segfault-check misses. Bounded one-shot loop (not the
+      #     forking sweep) so ASan's halt-on-first-error stays contained. ---
+      - name: Configure ASan build
+        run: |
+          mkdir -p build_asan
+          cd build_asan
+          ../dist/configure --enable-debug --enable-faultinject \
+            CFLAGS="-g -O1 -fsanitize=address -fno-omit-frame-pointer" \
+            LDFLAGS="-fsanitize=address"
+
+      - name: Build ASan library + driver
+        run: |
+          cd build_asan
+          make -j"$(nproc)"
+          make fi_tests
+
+      - name: Run bounded ASan one-shot pass
+        run: |
+          cd build_asan
+          export LD_LIBRARY_PATH="$PWD/.libs:$LD_LIBRARY_PATH"
+          export ASAN_OPTIONS=abort_on_error=0:detect_leaks=1:halt_on_error=1
+          # Sweep a bounded K range one-shot; report any ASan-flagged K.
+          # Bounded (not full M) to keep CI time reasonable; widen locally.
+          hits=0
+          for K in $(seq 1 260); do
+            rm -rf TESTDIR_fi_sweep; mkdir -p TESTDIR_fi_sweep
+            out=$(DB_FI_FAIL_AT=$K ./.libs/fi_sweep --one 2>&1 || true)
+            if echo "$out" | grep -q "ERROR: AddressSanitizer"; then
+              site=$(echo "$out" | grep -m1 -oE 'in __[a-z_]+ .*\.c:[0-9]+' || echo '(site unknown)')
+              echo "ASan K=$K: $site"
+              hits=$((hits+1))
+            fi
+          done
+          echo "ASan flagged $hits failure point(s) in K=1..260 (advisory)."
+
+      - name: Upload sweep logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: faultinject-logs
+          path: |
+            build_unix/fi_result.log
+            build_unix/fi_stderr.log
+          if-no-files-found: ignore
