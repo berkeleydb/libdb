@@ -10,6 +10,21 @@
 
 #include "db_int.h"
 
+#ifdef HAVE_FAULT_INJECT
+#include "fi_alloc.h"		/* Malloc-failure injection (--enable-faultinject). */
+/*
+ * FI_FAIL() --
+ *	Consulted once per allocation from the __os_* seam.  Non-zero when
+ *	injection is armed and this is the allocation that should fail; the
+ *	caller then skips the real allocator and its existing OOM branch
+ *	runs exactly as for a real malloc() failure.  Compiles to constant
+ *	0 in production, so a stock build is bit-for-bit unchanged.
+ */
+#define	FI_FAIL()	__db_fi_fail()
+#else
+#define	FI_FAIL()	0
+#endif
+
 #ifdef DIAGNOSTIC
 static void __os_guard __P((ENV *));
 
@@ -62,7 +77,9 @@ __os_umalloc(env, size, storep)
 		++size;
 
 	if (dbenv == NULL || dbenv->db_malloc == NULL) {
-		if (DB_GLOBAL(j_malloc) != NULL)
+		if (FI_FAIL())
+			*(void **)storep = NULL;
+		else if (DB_GLOBAL(j_malloc) != NULL)
 			*(void **)storep = DB_GLOBAL(j_malloc)(size);
 		else
 			*(void **)storep = malloc(size);
@@ -81,7 +98,8 @@ __os_umalloc(env, size, storep)
 		return (0);
 	}
 
-	if ((*(void **)storep = dbenv->db_malloc(size)) == NULL) {
+	if ((*(void **)storep =
+	    FI_FAIL() ? NULL : dbenv->db_malloc(size)) == NULL) {
 		__db_errx(env, DB_STR("0144",
 		    "user-specified malloc function returned NULL"));
 		return (ENOMEM);
@@ -119,7 +137,9 @@ __os_urealloc(env, size, storep)
 		if (ptr == NULL)
 			return (__os_umalloc(env, size, storep));
 
-		if (DB_GLOBAL(j_realloc) != NULL)
+		if (FI_FAIL())
+			*(void **)storep = NULL;
+		else if (DB_GLOBAL(j_realloc) != NULL)
 			*(void **)storep = DB_GLOBAL(j_realloc)(ptr, size);
 		else
 			*(void **)storep = realloc(ptr, size);
@@ -138,7 +158,8 @@ __os_urealloc(env, size, storep)
 		return (0);
 	}
 
-	if ((*(void **)storep = dbenv->db_realloc(ptr, size)) == NULL) {
+	if ((*(void **)storep =
+	    FI_FAIL() ? NULL : dbenv->db_realloc(ptr, size)) == NULL) {
 		__db_errx(env, DB_STR("0146",
 		    "User-specified realloc function returned NULL"));
 		return (ENOMEM);
@@ -249,7 +270,9 @@ __os_malloc(env, size, storep)
 	size += sizeof(db_allocinfo_t) + 1;
 #endif
 
-	if (DB_GLOBAL(j_malloc) != NULL)
+	if (FI_FAIL())
+		p = NULL;
+	else if (DB_GLOBAL(j_malloc) != NULL)
 		p = DB_GLOBAL(j_malloc)(size);
 	else
 		p = malloc(size);
@@ -333,7 +356,9 @@ __os_realloc(env, size, storep)
 	 * Don't overwrite the original pointer, there are places in DB we
 	 * try to continue after realloc fails.
 	 */
-	if (DB_GLOBAL(j_realloc) != NULL)
+	if (FI_FAIL())
+		p = NULL;
+	else if (DB_GLOBAL(j_realloc) != NULL)
 		p = DB_GLOBAL(j_realloc)(ptr, size);
 	else
 		p = realloc(ptr, size);
