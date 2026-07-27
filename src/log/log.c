@@ -812,6 +812,15 @@ __log_valid(dblp, number, set_persist, fhpp, flags, statusp, versionp)
 		if (LOG_SWAPPED(env))
 			__log_persistswap(persist);
 		/*
+		 * hdr->len comes from a possibly corrupt log file; the record
+		 * data checksummed below lives in the fixed-size `persist`
+		 * buffer (recsize bytes).  A bogus hdr->len would make
+		 * __db_check_chksum read past that buffer.  The crypto path
+		 * above already enforces this equality; do the same here.
+		 */
+		if (hdr->len < hdrsize || (hdr->len - hdrsize) != recsize)
+			goto bad_checksum;
+		/*
 		 * We have the logversion here, so we know whether to include
 		 * the hdr or not.
 		 */
