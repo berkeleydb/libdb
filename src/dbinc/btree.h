@@ -138,6 +138,11 @@ typedef enum {
 #define	SR_DEL		0x40000		/* Get the tree to delete this key. */
 #define	SR_START	0x80000		/* Level to start stack. */
 #define	SR_BOTH		0x100000	/* Get this and the NEXT page */
+#define	SR_SNAPSHOT	0x200000	/* Descent started at a root-snapshot
+					 * child (bt_rsnap): the start page may
+					 * be a freed/reused page, so treat a bad
+					 * page type as a stale snapshot (restart)
+					 * rather than an assertion failure. */
 
 #define	SR_DELETE							\
 	(SR_WRITE | SR_DUPFIRST | SR_DELNO | SR_EXACT | SR_STACK)
