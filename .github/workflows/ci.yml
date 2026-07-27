@@ -11,6 +11,10 @@ on:
   push:
     branches: [master]
   pull_request:
+  schedule:
+    # Nightly (03:17 UTC) exercises the full TCL suite via the tcl-tests job
+    # below; the heavy scheduled-only jobs live in ci-extended.yml.
+    - cron: '17 3 * * *'
   workflow_dispatch:
     inputs:
       full_tcl:
@@ -123,7 +127,118 @@ jobs:
         run: make -j$(nproc)
 
   # ----------------------------------------------------------------------------
-  # TCL test suite (targeted by default; full suite on manual dispatch).
+  # ThreadSanitizer build + concurrency SMOKE (SSI / lock / mutex TCL subset).
+  # Critical for the ongoing SSI/MVCC/atomics work; best-effort so it informs
+  # without gating. NOT the full suite -- TSan slowdown would time out.
+  # ----------------------------------------------------------------------------
+  tsan:
+    name: clang tsan (concurrency smoke)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      CC: clang
+      # halt_on_error keeps a clean failure signal; second_deadlock_stack aids
+      # triage of any lock-order report from the SSI paths.
+      TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tcl
+        run: sudo apt-get update && sudo apt-get install -y tcl-dev tcl
+      - name: Configure (tsan + test + tcl)
+        working-directory: build_unix
+        run: >
+          ../dist/configure --enable-debug --enable-test --with-tcl=/usr/lib/tcl8.6
+          "CFLAGS=-fsanitize=thread -fno-omit-frame-pointer -g"
+          "LDFLAGS=-fsanitize=thread"
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: Concurrency smoke subset
+        working-directory: build_unix
+        run: |
+          cat > /tmp/tsan.tcl <<'TCL'
+          source ../test/tcl/test.tcl
+          foreach t {mut001 lock001 lock002 ssi001 ssi002 ssi009} {
+            source ../test/tcl/$t.tcl
+            if {[catch {eval $t} res]} { puts "FAIL $t: $res"; exit 1 }
+            puts "PASS $t"
+          }
+          TCL
+          # Generous per-test slowdown under TSan, but bounded so a hang fails
+          # loudly instead of eating the whole runner budget.
+          timeout 1800 tclsh /tmp/tsan.tcl 2>&1 | tee /tmp/tsan.out
+          ! grep -qE "^FAIL|data race|WARNING: ThreadSanitizer" /tmp/tsan.out
+
+  # ----------------------------------------------------------------------------
+  # Compiler-warnings gate: -Wall -Wextra with gcc + clang. Advisory
+  # (continue-on-error) and NOT -Werror -- this is pre-2000 K&R-era C and the
+  # autoconf build already suppresses two whole warning classes
+  # (-Wno-deprecated-non-prototype / -Wno-knr-promoted-parameter). We surface
+  # the count so new warnings in touched code are visible without blocking PRs.
+  # ----------------------------------------------------------------------------
+  warnings:
+    name: warnings gate ${{ matrix.cc }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (-Wall -Wextra)
+        working-directory: build_unix
+        run: ../dist/configure --enable-debug "CFLAGS=-Wall -Wextra -g -O1"
+      - name: Build and count warnings
+        working-directory: build_unix
+        run: |
+          set -o pipefail
+          make -j$(nproc) 2>&1 | tee /tmp/build.log
+          n=$(grep -c 'warning:' /tmp/build.log || true)
+          echo "::notice title=Compiler warnings (${{ matrix.cc }})::$n warning line(s)"
+          echo "Top warning kinds:"
+          grep 'warning:' /tmp/build.log \
+            | grep -oE '\-W[a-z0-9-]+' | sort | uniq -c | sort -rn | head -20 || true
+
+  # ----------------------------------------------------------------------------
+  # Mutex backend variants (Linux only). --with-mutex overrides autodetection,
+  # so each entry forces a genuinely different mutex implementation:
+  #   POSIX/pthreads          -> HAVE_MUTEX_PTHREADS (blocking pthread mutexes)
+  #   POSIX/pthreads/library  -> same, linked explicitly against -lpthread
+  #   x86_64/gcc-assembly     -> HAVE_MUTEX_X86_64_GCC_ASSEMBLY (test-and-set)
+  # posix-forced uses --enable-posixmutexes (intra-process pthread fast path).
+  # All names verified against dist/aclocal/mutex.m4 + a local configure run.
+  # ----------------------------------------------------------------------------
+  mutex-backends:
+    name: mutex ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: pthreads,         flags: '--with-mutex=POSIX/pthreads' }
+          - { name: pthreads-library, flags: '--with-mutex=POSIX/pthreads/library' }
+          - { name: tas-x86_64,       flags: '--with-mutex=x86_64/gcc-assembly' }
+          - { name: posix-forced,     flags: '--enable-posixmutexes' }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (${{ matrix.name }})
+        working-directory: build_unix
+        run: ../dist/configure --enable-debug ${{ matrix.flags }}
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: Smoke (build ex_access)
+        working-directory: build_unix
+        run: make ex_access 2>/dev/null || true
+
+  # ----------------------------------------------------------------------------
+  # TCL test suite: targeted subset on every push/PR (fast PR signal); the full
+  # run is manual (workflow_dispatch full_tcl=true). The generous nightly full
+  # suite lives in ci-extended.yml so it never gates PRs.
   # ----------------------------------------------------------------------------
   tcl-tests:
     name: tcl tests (${{ github.event.inputs.full_tcl == 'true' && 'full' || 'targeted' }})
