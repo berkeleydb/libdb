@@ -195,6 +195,13 @@ if test "$db_cv_diagnostic" = "no"; then
 	AC_MSG_RESULT($db_cv_diagnostic)
 fi
 
+AC_MSG_CHECKING(if --enable-dst option specified)
+AC_ARG_ENABLE(dst,
+	[AS_HELP_STRING([--enable-dst],
+			[Build with Deterministic Simulation Testing (DST) fault-injection hooks.])],
+	[db_cv_dst="$enable_dst"], [db_cv_dst="no"])
+AC_MSG_RESULT($db_cv_dst)
+
 AC_MSG_CHECKING(if --enable-dump185 option specified)
 AC_ARG_ENABLE(dump185,
 	[AS_HELP_STRING([--enable-dump185],
