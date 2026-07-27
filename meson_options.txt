@@ -1,0 +1,6 @@
+# Build options for the Meson build of libdb.
+#
+# PBT (property-based testing) is opt-in and OFF by default so the core
+# library build never depends on hegel-c or the `hegel` server binary.
+option('hegel', type: 'feature', value: 'disabled',
+  description: 'Build the Hegel property-based tests under test/pbt (needs hegel-c + the `hegel` server binary; pip install hegel-core).')
