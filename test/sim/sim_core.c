@@ -167,6 +167,7 @@ __db_sim_activate(seed)
 		g_sim_stream[i] = splitmix64(&t);
 	}
 	atomic_store_explicit(&g_nondet_count, 0, memory_order_relaxed);
+	__db_sim_fault_count_reset();
 	atomic_store_explicit(&g_sim_active, 1, memory_order_release);
 }
 
@@ -378,7 +379,11 @@ __db_sim_io_enospc()
 
 	if (pct <= 0 || !__db_sim_active())
 		return (0);
-	return ((int)__db_sim_rng_range(DB_SIM_RNG_IO, 1000) < pct);
+	if ((int)__db_sim_rng_range(DB_SIM_RNG_IO, 1000) < pct) {
+		fc_hit(DB_SIM_FC_ENOSPC);
+		return (1);
+	}
+	return (0);
 }
 
 /* ---- torn write / corrupt read ---- */
@@ -420,6 +425,7 @@ __db_sim_io_torn_prefix(full_len)
 {
 	if (full_len < 2 || !io_should_corrupt())
 		return (full_len);
+	fc_hit(DB_SIM_FC_TORN);
 	/* Persist a strict prefix in [1, full_len-1] -- a torn write always
 	 * loses at least the last byte -- but report full success. */
 	return (1 + (int)__db_sim_rng_range(DB_SIM_RNG_IO,
@@ -432,6 +438,7 @@ __db_sim_io_flip_byte(len)
 {
 	if (len <= 0 || !io_should_corrupt())
 		return (-1);
+	fc_hit(DB_SIM_FC_CORRUPT);
 	return ((int)__db_sim_rng_range(DB_SIM_RNG_IO, (uint64_t)len));
 }
 
