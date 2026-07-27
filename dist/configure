@@ -871,6 +871,7 @@ enable_debug_rop
 enable_debug_wop
 enable_diagnostic
 enable_dst
+enable_faultinject
 enable_dump185
 enable_java
 enable_mingw
@@ -1577,6 +1578,8 @@ Optional Features:
   --enable-diagnostic     Build a version with run-time diagnostics.
   --enable-dst            Build with Deterministic Simulation Testing (DST)
                           fault-injection hooks.
+  --enable-faultinject    Build with SQLite-style malloc-failure injection
+                          hooks at the __os_* allocation seam.
   --enable-dump185        Build db_dump185(1) to dump 1.85 databases.
   --enable-java           Build Java API.
   --enable-mingw          Build Berkeley DB for MinGW.
@@ -3945,6 +3948,20 @@ fi
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_dst" >&5
 printf '%s\n' "$db_cv_dst" >&6; }
 
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-faultinject option specified" >&5
+printf %s "checking if --enable-faultinject option specified... " >&6; }
+# Check whether --enable-faultinject was given.
+if test ${enable_faultinject+y}
+then :
+  enableval=$enable_faultinject; db_cv_faultinject="$enable_faultinject"
+else case e in #(
+  e) db_cv_faultinject="no" ;;
+esac
+fi
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_faultinject" >&5
+printf '%s\n' "$db_cv_faultinject" >&6; }
+
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-dump185 option specified" >&5
 printf %s "checking if --enable-dump185 option specified... " >&6; }
 # Check whether --enable-dump185 was given.
@@ -4555,6 +4572,19 @@ if test "$db_cv_dst" = "yes"; then
 
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(SIM_OBJS)"
 	CPPFLAGS="$CPPFLAGS -I\$(topdir)/test/sim"
+fi
+
+# Malloc-failure injection (SQLite-style): compile the fault-injection
+# state into the library and enable the guarded __os_* allocation hook.
+# Additive and faultinject-scoped: when off (the default) HAVE_FAULT_INJECT
+# is undefined, the hook vanishes, fi_alloc.c is not built, and a
+# production build is bit-for-bit the stock library.
+if test "$db_cv_faultinject" = "yes"; then
+	printf '%s\n' "#define HAVE_FAULT_INJECT 1" >>confdefs.h
+
+
+	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(FI_OBJS)"
+	CPPFLAGS="$CPPFLAGS -I\$(topdir)/test/faultinject"
 fi
 if test "$db_cv_debug_rop" = "yes"; then
 	printf '%s\n' "#define DEBUG_ROP 1" >>confdefs.h
@@ -20362,7 +20392,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20365 "configure" */
+/* #line 20395 "configure" */
 public class Test {
 }
 EOF
@@ -20657,7 +20687,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20660: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20690: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20789,7 +20819,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20792 "configure" */
+/* #line 20822 "configure" */
 public class Test {
 }
 EOF
@@ -20826,7 +20856,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20829 "configure" */
+/* [#]line 20859 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);
