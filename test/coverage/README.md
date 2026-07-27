@@ -29,7 +29,7 @@ Knobs (all optional env vars):
 
 | Var          | Default                                   | Meaning                          |
 |--------------|-------------------------------------------|----------------------------------|
-| `COV_TESTS`  | `lock001: txn001: test001:btree ssi001: ssi002: recd001:btree` | `test:arg` pairs to run |
+| `COV_TESTS`  | core `test:arg` pairs + a `method/test` access-method matrix (see script) | tests to run |
 | `COV_JOBS`   | `nproc`                                   | build parallelism                |
 | `TCL_LIB`    | autodetected (nix store or `/usr/lib/tcl8.6`) | Tcl lib dir for `--with-tcl` |
 | `COV_TIMEOUT`| `2400`                                    | seconds ceiling for the test run |
@@ -93,50 +93,85 @@ the job log.
 
 ---
 
-## Measured baseline (2026-07-27)
+## Measured baseline (2026-07-27, updated 2026-07-28)
 
-`CC=gcc`, `--coverage`, src/-only, subset
-`lock001 txn001 test001:btree ssi001 ssi002 recd001:btree`
-(278 source files, ~72.7k lines, ~78.2k branches):
+`CC=gcc`, `--coverage`, src/-only. Two subsets have been measured:
+
+**Original core subset** (`lock001 txn001 test001:btree ssi001 ssi002
+recd001:btree`) exercised only the transaction/lock/**btree**/SSI/recovery
+core, leaving every other access method and all of db verification at 0%:
 
 | Metric    | Coverage                    |
 |-----------|-----------------------------|
-| **Lines** | **18.6%** (13534 / 72681)   |
-| **Branches** | **12.3%** (9631 / 78233) |
+| Lines     | 18.6% (13534 / 72681)       |
+| Branches  | 12.3% (9631 / 78233)        |
 | Functions | 25.6% (712 / 2781)          |
 
-This subset exercises the transaction/lock/btree/SSI/recovery core. The full
-Tcl suite (`run_std`) and the PBT/DST tiers would raise these substantially —
-the nightly job can widen `COV_TESTS` toward that. The point is the *floor is
-now measured* and every future test can be aimed at a specific red file below.
+**Current subset** (default in `run_coverage.sh`) adds a curated access-method
+matrix run via `run_method` — which runs each test **and then `verify_dir` +
+`salvage_dir`** on the databases it leaves behind, so one form lights up the
+hash / queue / recno / heap access methods *and* the db-verification and
+salvage paths:
 
-## Top 15 least-covered source files (aim tests here next)
+| Metric    | Coverage                    | vs. original |
+|-----------|-----------------------------|-------------|
+| **Lines** | **26.9%** (19543 / 72694)   | **+8.3 pp** |
+| **Branches** | **17.8%** (13934 / 78249) | **+5.5 pp** |
+| Functions | 33.3% (925 / 2781)          | +7.7 pp     |
 
-Entirely-untested subsystems in this subset — the biggest actionable gaps
-(the recovery-critical and access-method files near the top are the highest
-leverage for DST scenarios):
+The access-method matrix is:
+`btree/test001`, `hash/test001,006,010,025,077`, `queue/test001,007,025`,
+`recno/test001,006,024,025`, `heap/test001,013,024` (all reuse existing Tcl
+tests — no new Tcl written; the win is just running tests the CI subset had
+not). The formerly-0% files it moved:
+
+| file | before | after (line% / br%) |
+|------|:------:|:------:|
+| `hash/hash.c`        | 0% | 53.4 / 36.5 |
+| `hash/hash_page.c`   | 0% | 42.5 / 27.5 |
+| `hash/hash_verify.c` | 0% | 62.1 / 45.9 |
+| `qam/qam.c`          | 0% | 52.5 / 26.0 |
+| `qam/qam_verify.c`   | 0% | 44.7 / 26.3 |
+| `btree/bt_recno.c`   | 0% | 41.4 / 21.7 |
+| `heap/heap.c`        | 0% | 31.4 / 19.2 |
+| `heap/heap_verify.c` | 0% | 48.0 / 37.9 |
+| `db/db_vrfy.c`       | 0% | 48.0 / 34.3 |
+| `btree/bt_verify.c`  | 0% | 49.5 / 37.3 |
+
+The full Tcl suite (`run_std`) and the PBT/DST tiers would raise these
+further — the nightly job (`coverage.yml.workflow`) / the `ci-extended`
+full-tcl job can widen the matrix toward that. The point is the *floor is
+measured* and each future test is aimed at a specific red file below.
+
+## Top least-covered source files (aim tests here next)
+
+The remaining big untested surfaces are now dominated by **replication /
+repmgr** and **log/db verification** — subsystems that need multi-process
+harnesses (rep/repmgr) or crafted corrupt inputs (`log_verify_*`), which is
+why they lag the single-process access-method tests:
 
 | line% | br% | lines | branches | file | subsystem |
 |------:|----:|------:|---------:|------|-----------|
 | 0.0 | 0.0 | 1769 | 1565 | `log/log_verify_int.c` | log verification |
 | 0.0 | 0.0 | 1397 | 1702 | `btree/bt_compact.c` | btree compaction |
-| 0.0 | 0.0 | 1385 | 1590 | `hash/hash_page.c` | hash access method |
-| 0.0 | 0.0 | 1307 | 1838 | `heap/heap.c` | heap access method |
-| 0.0 | 0.0 | 1089 | 933 | `hash/hash.c` | hash access method |
 | 0.0 | 0.0 | 1064 | 1619 | `rep/rep_record.c` | replication |
 | 0.0 | 0.0 | 1017 | 644 | `log/log_verify_util.c` | log verification |
 | 0.0 | 0.0 | 923 | 942 | `rep/rep_util.c` | replication |
 | 0.0 | 0.0 | 883 | 620 | `db/partition.c` | partitioning |
 | 0.0 | 0.0 | 864 | 540 | `repmgr/repmgr_sel.c` | replication manager |
-| 0.0 | 0.0 | 842 | 1129 | `qam/qam.c` | queue access method |
 | 0.0 | 0.0 | 836 | 2069 | `hash/hash_rec.c` | hash recovery records |
 | 0.0 | 0.0 | 704 | 556 | `repmgr/repmgr_net.c` | replication manager |
 | 0.0 | 0.0 | 701 | 556 | `repmgr/repmgr_msg.c` | replication manager |
 | 0.0 | 0.0 | 556 | 656 | `rep/rep_elect.c` | replication elections |
+| 0.0 | 0.0 | 541 | 460 | `rep/rep_automsg.c` | replication |
+| 0.0 | 0.0 | 457 | 674 | `lock/lock_deadlock.c` | deadlock detection |
+| 0.0 | 0.0 | 431 | 470 | `sequence/sequence.c` | sequences |
+| 0.0 | 0.0 | 394 | 398 | `xa/xa.c` | XA transactions |
 
-Grouped by subsystem, the biggest untested surfaces are **replication /
-repmgr** (`rep_*`, `repmgr_*`), the **hash** and **heap** and **queue** access
-methods (only btree is exercised by `test001:btree`), **log/db verification**
-(`log_verify_*`, `db_vrfy.c`, `bt_verify.c`), **btree compaction**, and
-**partitioning**. Adding a hash/queue/heap variant of the access-method tests
-and a replication smoke test to `COV_TESTS` would move the needle most.
+Next-highest-leverage additions (future work): a **replication smoke test**
+(needs the multi-process rep harness — `rep0NN` / `repmgr0NN` exist but each
+spins up multiple envs; scope as a separate job), **`bt_compact.c`** (a
+`test111`-family compaction run), **`partition.c`** (a partition-callback DB
+test), and **`log_verify_*`** (`db_log_verify` over a real log). The PBT tier
+(`test/pbt/pbt_hash_func.c`) now also covers `src/hash/hash_func.c` pure
+logic.
