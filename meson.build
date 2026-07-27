@@ -437,3 +437,11 @@ libdb = library('db', libdb_sources, clib_sources, db_h, db_int_h, db_int_def_h,
 
 summary({'backend': 'ninja (default)', 'sources': '@0@ files'.format(libdb_sources.length())},
   section: 'libdb')
+
+# ---------------------------------------------------------------------------
+# PBT tier (Hegel property-based tests) -- opt-in, off by default.
+# Owned by test/pbt/; entered only when -Dhegel is not 'disabled'.
+# ---------------------------------------------------------------------------
+if not get_option('hegel').disabled()
+  subdir('test/pbt')
+endif
