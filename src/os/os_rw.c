@@ -10,6 +10,10 @@
 
 #include "db_int.h"
 
+#ifdef HAVE_DST
+#include "sim_os.h"			/* DST I/O hooks (--enable-dst only). */
+#endif
+
 /*
  * __os_io --
  *	Do an I/O.
@@ -96,6 +100,17 @@ __os_io(env, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 	}
 	if (nio == (ssize_t)io_len) {
 		*niop = io_len;
+#ifdef HAVE_DST
+		/* DST write-back model: record the written high-water for the
+		 * page-write fast path.  A no-op unless a sim armed it. */
+		if (op == DB_IO_WRITE)
+			__db_sim_io_write_off_hook(fhp,
+			    (u_int64_t)offset + io_len);
+		/* DST corrupt-read: silently flip a byte the checksum must
+		 * catch.  A no-op unless a sim armed the corrupt knob. */
+		else if (op == DB_IO_READ)
+			__db_sim_io_read_hook(buf, io_len);
+#endif
 		return (0);
 	}
 slow:

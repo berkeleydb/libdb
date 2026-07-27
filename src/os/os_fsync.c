@@ -10,6 +10,10 @@
 
 #include "db_int.h"
 
+#ifdef HAVE_DST
+#include "sim_os.h"			/* DST I/O hooks (--enable-dst only). */
+#endif
+
 #ifdef __hp3000s900
 #define	fsync(fd)	__mpe_fsync(fd)
 
@@ -78,5 +82,14 @@ __os_fsync(env, fhp)
 		__db_syserr(env, ret, DB_STR("0151", "fsync"));
 		ret = __os_posix_err(ret);
 	}
+#ifdef HAVE_DST
+	/*
+	 * DST write-back cache crash model: a successful fsync promotes this
+	 * file's written extent to durable.  A no-op unless a sim run armed
+	 * the model.  (A single relaxed load in the common case.)
+	 */
+	if (ret == 0)
+		__db_sim_io_sync_hook(fhp);
+#endif
 	return (ret);
 }
