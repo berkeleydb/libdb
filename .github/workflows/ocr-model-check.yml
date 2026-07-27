@@ -1,0 +1,89 @@
+# Checks AWS Bedrock weekly for a newer Claude Opus inference profile than the
+# one OCR currently uses (vars.OCR_BEDROCK_MODEL) and, if found, opens/updates a
+# single GitHub issue telling the maintainer to bump the variable. It does NOT
+# change the model automatically: GITHUB_TOKEN cannot write Actions *variables*
+# (that needs a PAT with admin), so this is a notify-only mechanism by design.
+name: OCR model self-check
+
+on:
+  schedule:
+    - cron: '0 12 * * 1'   # Mondays 12:00 UTC
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+jobs:
+  check-model:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: ocr-model-check-${{ github.run_id }}
+
+      - name: Find newest Opus vs configured
+        id: check
+        env:
+          CURRENT: ${{ vars.OCR_BEDROCK_MODEL }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, re, subprocess, json
+          region = os.environ.get("AWS_REGION", "us-east-1")
+          current = os.environ.get("CURRENT", "")
+          out = subprocess.run(
+              ["aws", "bedrock", "list-inference-profiles", "--region", region,
+               "--query", "inferenceProfileSummaries[].inferenceProfileId", "--output", "json"],
+              capture_output=True, text=True)
+          ids = json.loads(out.stdout or "[]")
+          # Parse claude-opus-<major>-<minor> from any profile id (prefix us./global. ok).
+          def ver(s):
+              m = re.search(r"claude-opus-(\d+)-(\d+)", s)
+              return (int(m.group(1)), int(m.group(2))) if m else None
+          opus = [(ver(i), i) for i in ids if ver(i) and i.startswith(("us.", "global."))]
+          if not opus:
+              print("newer=false"); raise SystemExit(0)
+          best_ver, best_id = max(opus, key=lambda x: x[0])
+          cur = ver(current)
+          newer = (cur is None) or (best_ver > cur)
+          print(f"newer={'true' if newer else 'false'}")
+          print(f"best_id={best_id}")
+          print(f"best_ver={best_ver[0]}.{best_ver[1]}")
+          print(f"cur_ver={'unknown' if cur is None else f'{cur[0]}.{cur[1]}'}")
+          PY
+
+      - name: Open/update issue if a newer model exists
+        if: steps.check.outputs.newer == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const best = '${{ steps.check.outputs.best_id }}';
+            const bestVer = '${{ steps.check.outputs.best_ver }}';
+            const curVer = '${{ steps.check.outputs.cur_ver }}';
+            const marker = '<!-- ocr-model-self-check -->';
+            const title = `OCR: newer Claude Opus available (${bestVer} > ${curVer})`;
+            const body = `${marker}\n` +
+              `A newer Claude Opus inference profile is available on Bedrock.\n\n` +
+              `- **Configured** (\`vars.OCR_BEDROCK_MODEL\`): Opus ${curVer}\n` +
+              `- **Newest on Bedrock**: \`${best}\` (Opus ${bestVer})\n\n` +
+              `To upgrade, set the repo variable:\n\n` +
+              '```\n' +
+              `gh variable set OCR_BEDROCK_MODEL -R ${context.repo.owner}/${context.repo.repo} \\\n` +
+              `  -b "bedrock/converse/${best}"\n` +
+              '```\n\n' +
+              `Also confirm the \`ocr-bedrock-ci\` IAM inline policy allows invoking the new model ` +
+              `(the resource is scoped to \`anthropic.claude-opus-*\`), then re-run OCR.\n\n` +
+              `_Automated by \`.github/workflows/ocr-model-check.yml\`; this issue is upserted._`;
+            const q = `repo:${context.repo.owner}/${context.repo.repo} in:body "${marker}" state:open`;
+            const found = await github.rest.search.issuesAndPullRequests({ q, per_page: 1 });
+            if (found.data.total_count > 0) {
+              const n = found.data.items[0].number;
+              await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: n, title, body });
+            } else {
+              await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body });
+            }
