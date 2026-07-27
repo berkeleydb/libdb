@@ -31,7 +31,19 @@ axis. The full deterministic multi-process scheduler is v2 (design doc §0).
 | `test_sim_dup_crash.c` | sorted duplicates survive a crash with exact multiplicity |
 | `test_sim_overflow_torn.c` | overflow (>page) records: corrupt read caught, never silently wrong |
 | `test_sim_split_crash.c` | btree split/merge churn survives a crash, tree clean |
+| `test_sim_stale.c` | stale-read ring: a monotonic-version check catches every out-of-date read |
+| `test_sim_ckp_enospc.c` | checkpoint under ENOSPC degrades cleanly; committed txns durable |
+| `test_sim_split_torn.c` | torn write during a split-heavy flush caught by the page checksum |
+| `test_sim_recover_corrupt.c` | corrupt reads DURING recovery never yield silently-wrong data |
+| `test_sim_secondary_crash.c` | primary + secondary (associate) index consistent after recover |
+| `test_sim_largetxn_crash.c` | a 2000-op single txn is atomic across a crash |
+| `test_sim_cursor_crash.c` | cursor mutations durable; post-recovery cursor walk sees exact live set |
+| `test_sim_multi_fault.c` | latency + ENOSPC both active across a crash; committed durable |
+| `test_sim_latency_load.c` | slow disk makes progress; committed set byte-identical to fast disk |
+| `test_sim_ckp_lsn.c` | checkpoint LSN is the correct recovery start point |
+| `test_sim_swarm.c` | **swarm**: mixed-fault seed sweep + per-fault activation coverage |
 | `dst-sweep.sh` | run one scenario over a seed range, report pass count + failing seeds |
+| `dst-swarm.sh` | swarm the FULL scenario set + fault-mix activation, one CI summary |
 | `dst-bug-inject.sh` | build a library per planted bug, assert each is caught within K seeds |
 
 ## Build
@@ -49,7 +61,7 @@ nix develop --command bash -c '
   cd build_unix &&
   ../dist/configure --enable-debug --enable-dst &&
   make -j4 &&           # builds libdb with the DST core
-  make dst_tests'       # builds all fourteen scenario executables
+  make dst_tests'       # builds all 24 scenario executables + the swarm
 ```
 
 Run the pilots (they link the shared lib, so set `LD_LIBRARY_PATH`):
@@ -86,11 +98,11 @@ after recovery.
 
 ## Proving DST catches real bugs (planted-bug harness)
 
-`sim_inject.h` defines three planted durability bugs at REAL library sites.
-Each is caught by a specific scenario within **K=1** seeds. Because each bug
-lives in the library (not the test), activating one means (re)building the
-library with `-DDB_DST_INJECT_BUG=<n>`; `dst-bug-inject.sh` automates a
-dedicated build tree per bug and asserts the catch:
+`sim_inject.h` defines FIVE planted bugs at REAL library sites. Each is caught
+by a specific scenario within **K=1** seeds. Because each bug lives in the
+library (not the test), activating one means (re)building the library with
+`-DDB_DST_INJECT_BUG=<n>`; `dst-bug-inject.sh` automates a dedicated build tree
+per bug and asserts the catch, reporting the catch-latency K:
 
 ```sh
 sh test/sim/dst-bug-inject.sh 8    # K=8 max seeds; prints "CAUGHT bug N at seed 1"
@@ -101,15 +113,30 @@ sh test/sim/dst-bug-inject.sh 8    # K=8 max seeds; prints "CAUGHT bug N at seed
 | 1 NODURABLE | `__log_flush_int` skips the log fsync but acks | `test_sim_crash_recover` (loses every "committed" txn) |
 | 2 NOCKSUM | `__db_check_chksum` ignores a checksum mismatch | `test_sim_torn` (SILENT-BAD reads) |
 | 3 LOSTUPDATE | `__memp_pgwrite` skips a dirty-page write, acks | `test_sim_ckp_crash` (flushed records lost) |
+| 4 ABORTNOUNDO | `__txn_abort` skips the undo rollback pass | `test_sim_abort_atomic` (aborted changes left; recovery errors) |
+| 5 CKPBADLSN | `__txn_checkpoint` records a wrong (too-forward) checkpoint LSN | `test_sim_ckp_lsn` (post-ckp committed txns lost) |
 
-A normal build (`DB_DST_INJECT_BUG` undefined) compiles all three out; every
-scenario passes and the OFF library exports **0** `__db_sim_*` symbols.
+Measured: **all five caught at K=1**. A normal build (`DB_DST_INJECT_BUG`
+undefined) compiles all five out; every scenario passes and the OFF library
+exports **0** `__db_sim_*` symbols.
 
 Sweep a scenario over many seeds (from the build dir):
 
 ```sh
 sh ../test/sim/dst-sweep.sh test_sim_crash_recover 1 200
 ```
+
+Or swarm the FULL scenario set + fault-mix activation coverage in one run:
+
+```sh
+sh ../test/sim/dst-swarm.sh 30 256    # 30 seeds/scenario + 256-seed fault-mix
+# => 24 scenarios x 30 seeds -> N pass, 0 fail
+#    fault activation: torn ~74% corrupt ~73% stale ~50% enospc ~50% latency ~75% shorteio ~50%
+```
+
+The fault-mix swarm (`test_sim_swarm <count> <base>`) is shardable for a
+nightly soak: `./test_sim_swarm 100000 0 & ./test_sim_swarm 100000 100000 & ...`.
+Measured 2000-seed soak: 0 invariant violations, every fault class activates.
 
 ## Determinism guarantees
 
