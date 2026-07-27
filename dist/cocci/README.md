@@ -137,6 +137,16 @@ so you know when to shrink the baseline.
 
 ## CI (`.github/workflows/cocci.yml`)
 
+> **Note on placement:** this branch was pushed by a token without the GitHub
+> `workflow` scope, so the workflow could not be committed at
+> `.github/workflows/cocci.yml` directly. The identical file is staged at
+> `dist/cocci/cocci.yml.workflow`; a maintainer (or any push with `workflow`
+> scope) moves it into place with:
+>
+> ```sh
+> git mv dist/cocci/cocci.yml.workflow .github/workflows/cocci.yml
+> ```
+
 - **`conventions`** — installs `coccinelle` (apt), runs `configure` to generate
   the headers, runs the rules, diffs against `baseline.txt`, posts a PR comment,
   and **fails on NEW violations**.
