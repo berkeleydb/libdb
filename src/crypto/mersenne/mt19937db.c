@@ -72,8 +72,10 @@ __db_generate_iv(env, iv)
 	MUTEX_LOCK(env, env->mtx_mt);
 	if (env->mt == NULL) {
 		if ((ret = __os_calloc(env, 1, N*sizeof(unsigned long),
-		    &env->mt)) != 0)
+		    &env->mt)) != 0) {
+			MUTEX_UNLOCK(env, env->mtx_mt);
 			return (ret);
+		}
 		/* mti==N+1 means mt[N] is not initialized */
 		env->mti = N + 1;
 	}
