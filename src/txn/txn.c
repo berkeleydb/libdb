@@ -1760,6 +1760,20 @@ __txn_end(txn, is_commit)
 			return (__env_panic(env, ret));
 	}
 
+	/*
+	 * Free the locker BEFORE the transaction detail (td): __lock_freelocker
+	 * reads td->si_ref (via the locker's td_off) to decide whether committed
+	 * SIREAD markers still reference the locker.  The detail is freed below
+	 * under TXN_SYSTEM_LOCK, so the locker must be released here, while td is
+	 * still alive -- otherwise __lock_freelocker_int dereferences a freed td
+	 * (a use-after-free on the OOM/abort cleanup path).  The locker lives in
+	 * its own lock domain (LOCK_LOCKERS), independent of TXN_SYSTEM_LOCK, so
+	 * releasing it here does not change lock ordering.
+	 */
+	if (LOCKING_ON(env) && (ret =
+	    __lock_freelocker(env->lk_handle, txn->locker)) != 0)
+		return (__env_panic(env, ret));
+
 	TXN_SYSTEM_LOCK(env);
 	td->status = is_commit ? TXN_COMMITTED : TXN_ABORTED;
 	SH_TAILQ_REMOVE(&region->active_txn, td, links, __txn_detail);
@@ -1846,13 +1860,6 @@ __txn_end(txn, is_commit)
 
 	TXN_SYSTEM_UNLOCK(env);
 
-	/*
-	 * The transaction cannot get more locks, remove its locker info,
-	 * if any.
-	 */
-	if (LOCKING_ON(env) && (ret =
-	    __lock_freelocker(env->lk_handle, txn->locker)) != 0)
-		return (__env_panic(env, ret));
 	if (txn->parent != NULL)
 		TAILQ_REMOVE(&txn->parent->kids, txn, klinks);
 

@@ -338,20 +338,30 @@ __lock_getlocker_int(lt, locker, create, retp)
 			 * allocate as much as possible.
 			 */
 			F_SET(&lt->reginfo, REGION_TRACKED);
+			/*
+			 * Try to allocate nlockers entries; on failure halve the
+			 * request and retry, down to zero.  The halving assignment
+			 * (nlockers >>= 1) is essential: without it the loop either
+			 * spins on the same failing size or breaks with sh_locker
+			 * still NULL while nlockers is non-zero -- the insert loop
+			 * below would then dereference a NULL sh_locker.  When the
+			 * request cannot be satisfied at all, nlockers reaches 0 and
+			 * we take the __lock_nomem path before touching sh_locker.
+			 */
 			while (__env_alloc(&lt->reginfo, nlockers *
 			    sizeof(struct __db_locker), &sh_locker) != 0)
-				if ((nlockers >> 1) == 0)
+				if ((nlockers >>= 1) == 0)
 					break;
 			F_CLR(&lt->reginfo, REGION_TRACKED);
 			LOCK_REGION_UNLOCK(lt->env);
 			LOCK_LOCKERS(env, region);
+			if (nlockers == 0)
+				return (__lock_nomem(env, "locker entries"));
 			for (i = 0; i < nlockers; i++) {
 				SH_TAILQ_INSERT_HEAD(&region->free_lockers,
 				    sh_locker, links, __db_locker);
 				sh_locker++;
 			}
-			if (nlockers == 0)
-				return (__lock_nomem(env, "locker entries"));
 			region->stat.st_lockers += nlockers;
 			sh_locker = SH_TAILQ_FIRST(
 			    &region->free_lockers, __db_locker);
