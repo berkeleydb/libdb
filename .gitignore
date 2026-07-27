@@ -2,6 +2,10 @@ build_unix/**
 compile_commands.json
 test/tcl/tclIndex
 
+# DST scenario scratch env dirs (created by test_sim_* wherever they run)
+TESTDIR_sim_*/
+test/sim/TESTDIR_sim_*/
+
 # Meson/Ninja out-of-tree build dirs
 build-meson/
 build/

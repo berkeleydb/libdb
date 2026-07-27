@@ -89,9 +89,43 @@ __db_sim_io_write_off_hook(fhp, end_off)
 	DB_FH *fhp;
 	u_int64_t end_off;
 {
+	uint64_t key;
+
 	if (!__db_sim_active() || !__db_sim_wb_active())
 		return;
-	__db_sim_wb_wrote(db_sim_fkey(fhp), end_off);
+	key = db_sim_fkey(fhp);
+	__db_sim_wb_wrote(key, end_off);
+	if (fhp != NULL && fhp->name != NULL)
+		__db_sim_wb_note_name(key, fhp->name);
+}
+
+/*
+ * __db_sim_io_write_fault_hook --
+ *	Called from the write fast path BEFORE the real bytes are written,
+ *	with the intended transfer length.  Consults the seeded write-side
+ *	fault knobs and returns:
+ *	   -1  ENOSPC: the write must fail, nothing persists;
+ *	  >=0  the number of bytes to actually persist (a torn write
+ *	       persists a strict prefix < len but the caller still reports
+ *	       full success, leaving a latent bad tail a checksum must catch;
+ *	       len itself means "write it all", the common case).
+ *	A no-op (returns len) unless a sim armed the knobs.
+ *
+ * PUBLIC: #ifdef HAVE_DST
+ * PUBLIC: int __db_sim_io_write_fault_hook __P((DB_FH *, u_int32_t));
+ * PUBLIC: #endif
+ */
+int
+__db_sim_io_write_fault_hook(fhp, len)
+	DB_FH *fhp;
+	u_int32_t len;
+{
+	COMPQUIET(fhp, NULL);
+	if (!__db_sim_active())
+		return ((int)len);
+	if (__db_sim_io_enospc())
+		return (-1);
+	return (__db_sim_io_torn_prefix((int)len));
 }
 
 /*
@@ -124,15 +158,63 @@ __db_sim_io_sync_hook(fhp)
  * PUBLIC: #endif
  */
 void
-__db_sim_io_read_hook(buf, len)
+__db_sim_io_read_hook(fhp, off, buf, len)
+	DB_FH *fhp;
+	u_int64_t off;
 	void *buf;
 	size_t len;
 {
-	int fb;
+	int fb, ilen;
 
 	if (!__db_sim_active() || buf == NULL || len == 0)
 		return;
-	fb = __db_sim_io_flip_byte((int)(len > 0x7fffffff ? 0x7fffffff : len));
+	ilen = (int)(len > 0x7fffffff ? 0x7fffffff : len);
+	/* Stale read: return a prior (superseded) version of this exact
+	 * (file,offset) if one is in the ring and the seeded coin fires. */
+	(void)__db_sim_io_stale_read(db_sim_fkey(fhp), off, buf, ilen);
+	/* Corrupt read: silently flip a byte the checksum must catch. */
+	fb = __db_sim_io_flip_byte(ilen);
 	if (fb >= 0)
 		((unsigned char *)buf)[fb] ^= 0x40;
+}
+
+/*
+ * __db_sim_io_presnapshot_hook --
+ *	Called from the write path BEFORE overwriting, with the bytes
+ *	CURRENTLY on disk at this (file,offset).  Records them in the
+ *	stale-read ring so a later seeded stale read can return this
+ *	now-prior version.  A no-op unless stale injection is armed.
+ *
+ * PUBLIC: #ifdef HAVE_DST
+ * PUBLIC: void __db_sim_io_presnapshot_hook __P((DB_FH *, u_int64_t, void *, size_t));
+ * PUBLIC: #endif
+ */
+void
+__db_sim_io_presnapshot_hook(fhp, off, buf, len)
+	DB_FH *fhp;
+	u_int64_t off;
+	void *buf;
+	size_t len;
+{
+	if (!__db_sim_active() || buf == NULL || len == 0)
+		return;
+	__db_sim_io_stale_record(db_sim_fkey(fhp), off, buf,
+	    (int)(len > 0x7fffffff ? 0x7fffffff : len));
+}
+
+/*
+ * __db_sim_io_latency_hook --
+ *	Consume the seeded per-I/O latency knob (a tiny capped sleep when
+ *	armed; a no-op otherwise).
+ *
+ * PUBLIC: #ifdef HAVE_DST
+ * PUBLIC: void __db_sim_io_latency_hook __P((void));
+ * PUBLIC: #endif
+ */
+void
+__db_sim_io_latency_hook()
+{
+	if (!__db_sim_active())
+		return;
+	__db_sim_io_sleep_latency();
 }
