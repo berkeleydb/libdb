@@ -53,6 +53,22 @@ static int __bam_rsnap_refresh __P((DBC *));
 static int __bam_rsnap_child __P((DBC *, const DBT *, db_pgno_t *, DB_LSN *));
 
 /*
+ * __bam_rsnap_enabled --
+ *	The lock-free root-snapshot read descent is on by default; setting
+ *	DB_NO_RSNAP in the environment disables it (A/B benchmarking and
+ *	bisecting a suspected fast-path bug).  Read once, cached process-wide.
+ */
+static int
+__bam_rsnap_enabled()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_NO_RSNAP") != NULL ? 0 : 1;
+	return (cached);
+}
+
+/*
  * __bam_rsnap_refresh --
  *	Refresh this handle's private copy of the B-tree root.  Fetches the
  *	(wired) root once under its shared latch, takes a consistent copy and
@@ -264,6 +280,22 @@ retry:	if (lock_mode == DB_LOCK_WRITE)
 		/* Did not read it, so we can release the lock */
 		(void)__LPUT(dbc, lock);
 		return (ret);
+	}
+	/*
+	 * When the descent started at a root-snapshot child (SR_SNAPSHOT), the
+	 * start page number came from a private snapshot of the root and may
+	 * since have been freed and reused as a non-btree page.  A bad page type
+	 * is therefore not corruption but a stale snapshot: release the page and
+	 * the lock and tell the caller to restart from the real root.  For a
+	 * normal (non-snapshot) descent the root type is invariant, so keep the
+	 * assertion.
+	 */
+	if (LF_ISSET(SR_SNAPSHOT) &&
+	    TYPE(h) != P_IBTREE && TYPE(h) != P_IRECNO &&
+	    TYPE(h) != P_LBTREE && TYPE(h) != P_LRECNO && TYPE(h) != P_LDUP) {
+		(void)__memp_fput(mpf, dbc->thread_info, h, dbc->priority);
+		(void)__LPUT(dbc, lock);
+		return (DB_NOTFOUND);
 	}
 	DB_ASSERT(dbp->env, TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO ||
 	    TYPE(h) == P_LBTREE || TYPE(h) == P_LRECNO || TYPE(h) == P_LDUP);
@@ -487,7 +519,8 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	    SR_STK_ONLY) && !F_ISSET(dbc, DBC_OPD) &&
 	    dbc->dbtype == DB_BTREE && !F_ISSET(cp, C_RECNUM) &&
 	    atomic_read(&mpf->mfp->multiversion) == 0 &&
-	    LOGGING_ON(env) && !F_ISSET(dbp, DB_AM_NOT_DURABLE)) {
+	    LOGGING_ON(env) && !F_ISSET(dbp, DB_AM_NOT_DURABLE) &&
+	    __bam_rsnap_enabled()) {
 		if (__bam_rsnap_child(dbc, key, &snap_child, &snap_lsn) == 0) {
 			start_pgno = snap_child;
 			from_snap = 1;
@@ -495,8 +528,21 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 			(void)__bam_rsnap_refresh(dbc);
 	}
 	saved_level = MAXBTREELEVEL;
-retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel, flags, &stack)) != 0)
+retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel,
+	    from_snap ? (flags | SR_SNAPSHOT) : flags, &stack)) != 0) {
+		if (from_snap && ret == DB_NOTFOUND) {
+			/*
+			 * The snapshot child was a freed/reused non-btree page:
+			 * a stale snapshot.  Refresh and restart from the real
+			 * root (the page and lock were already released).
+			 */
+			from_snap = 0;
+			start_pgno = PGNO_INVALID;
+			(void)__bam_rsnap_refresh(dbc);
+			goto retry;
+		}
 		goto err;
+	}
 	lock_mode = cp->csp->lock_mode;
 	get_mode = lock_mode == DB_LOCK_WRITE ? DB_MPOOL_DIRTY : 0;
 	h = cp->csp->page;
