@@ -16,11 +16,23 @@ axis. The full deterministic multi-process scheduler is v2 (design doc §0).
 | `sim_fault.h` | fault toggles, buggify, I/O fault knobs, write-back model API |
 | `sim_os.h` | declarations of the `__os_*` I/O hooks (included by the os layer) |
 | `sim_inject.h` | planted-bug ids (`DB_DST_INJECT_BUG`) — the bug-detection yardstick |
-| `sim_core.c` | the DST core (PRNG, guard, buggify, I/O fault knobs, write-back crash model) — linked into libdb under `--enable-dst` |
+| `sim_scenario.h` | shared crash/recover helpers (fork+crash+recover boilerplate) |
+| `sim_core.c` | the DST core (PRNG, guard, buggify, I/O fault knobs, write-back crash model, stale-read ring) — linked into libdb under `--enable-dst` |
 | `sim_os_hooks.c` | bridge from `__os_*` (os_rw.c, os_fsync.c) to the core — linked into libdb under `--enable-dst` |
-| `test_sim_rng.c` | pilot: PRNG determinism / seed-sensitivity / stream independence / guard |
-| `test_sim_crash_recover.c` | **capstone** pilot: durable txns survive a crash; recovery is clean |
-| `test_sim_torn.c` | pilot: corrupt reads are caught by checksum or invisible — never silently wrong |
+| `test_sim_rng.c` | PRNG determinism / seed-sensitivity / stream independence / guard |
+| `test_sim_crash_recover.c` | **capstone**: durable txns survive a crash via the write-back drop; recovery clean |
+| `test_sim_torn.c` | corrupt reads caught by checksum or invisible — never silently wrong |
+| `test_sim_hash_crash.c` / `test_sim_recno_crash.c` / `test_sim_queue_crash.c` | per-access-method op+crash+recover (hash / recno / queue) |
+| `test_sim_ckp_crash.c` | page-flush (checkpoint) durability across a crash |
+| `test_sim_torn_log.c` | recovery is safe past a torn log tail |
+| `test_sim_enospc.c` | disk-full (ENOSPC) graceful degradation, no corruption |
+| `test_sim_abort_atomic.c` | committed present + aborted leave no trace after a crash |
+| `test_sim_recover_idempotent.c` | recover twice → identical full-state hash |
+| `test_sim_dup_crash.c` | sorted duplicates survive a crash with exact multiplicity |
+| `test_sim_overflow_torn.c` | overflow (>page) records: corrupt read caught, never silently wrong |
+| `test_sim_split_crash.c` | btree split/merge churn survives a crash, tree clean |
+| `dst-sweep.sh` | run one scenario over a seed range, report pass count + failing seeds |
+| `dst-bug-inject.sh` | build a library per planted bug, assert each is caught within K seeds |
 
 ## Build
 
@@ -37,7 +49,7 @@ nix develop --command bash -c '
   cd build_unix &&
   ../dist/configure --enable-debug --enable-dst &&
   make -j4 &&           # builds libdb with the DST core
-  make dst_tests'       # builds the three pilot executables
+  make dst_tests'       # builds all fourteen scenario executables
 ```
 
 Run the pilots (they link the shared lib, so set `LD_LIBRARY_PATH`):
@@ -74,20 +86,30 @@ after recovery.
 
 ## Proving DST catches real bugs (planted-bug harness)
 
-`sim_inject.h` defines planted-bug ids. A dedicated build activates exactly one:
+`sim_inject.h` defines three planted durability bugs at REAL library sites.
+Each is caught by a specific scenario within **K=1** seeds. Because each bug
+lives in the library (not the test), activating one means (re)building the
+library with `-DDB_DST_INJECT_BUG=<n>`; `dst-bug-inject.sh` automates a
+dedicated build tree per bug and asserts the catch:
 
 ```sh
-cd build_unix
-make test_sim_crash_recover DSTBUG=1   # plant bug 1 (NODURABLE)
-LD_LIBRARY_PATH=.libs ./test_sim_crash_recover
+sh test/sim/dst-bug-inject.sh 8    # K=8 max seeds; prints "CAUGHT bug N at seed 1"
 ```
 
-The bug build is *expected to fail* (an invariant fires) — that failure is the
-"DST caught it" signal. A planted bug the sweep does **not** catch is a hole in
-the DST coverage of that safety property. v1 ships the harness and the
-`NODURABLE` hook; wiring the fsync-skip into `__log_flush` itself (so the
-write-back durable frontier truly drops the un-fsynced tail) is the immediate
-next step — see design doc §4 item A.
+| Bug | Site | Caught by |
+|---|---|---|
+| 1 NODURABLE | `__log_flush_int` skips the log fsync but acks | `test_sim_crash_recover` (loses every "committed" txn) |
+| 2 NOCKSUM | `__db_check_chksum` ignores a checksum mismatch | `test_sim_torn` (SILENT-BAD reads) |
+| 3 LOSTUPDATE | `__memp_pgwrite` skips a dirty-page write, acks | `test_sim_ckp_crash` (flushed records lost) |
+
+A normal build (`DB_DST_INJECT_BUG` undefined) compiles all three out; every
+scenario passes and the OFF library exports **0** `__db_sim_*` symbols.
+
+Sweep a scenario over many seeds (from the build dir):
+
+```sh
+sh ../test/sim/dst-sweep.sh test_sim_crash_recover 1 200
+```
 
 ## Determinism guarantees
 
