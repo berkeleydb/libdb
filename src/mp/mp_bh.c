@@ -15,6 +15,10 @@
 #include "dbinc/log.h"
 #include "dbinc/txn.h"
 
+#ifdef HAVE_DST
+#include "sim_inject.h"			/* DST planted-bug harness. */
+#endif
+
 static int __memp_pgwrite
 	       __P((ENV *, DB_MPOOLFILE *, DB_MPOOL_HASH *, BH *));
 
@@ -496,11 +500,33 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 	if (ret == 0 && do_io) {
 		PERFMON3(env, mpool, write, __memp_fn(dbmfp), bhp->pgno, bhp);
 		did_io = 1;
+#if defined(HAVE_DST)
+#if DB_DST_BUG(3)
+		/*
+		 * PLANTED BUG LOSTUPDATE (DB_DST_INJECT_BUG=3): skip the page
+		 * write but report success, so __memp_pgwrite_finish clears
+		 * BH_DIRTY as if the page reached disk.  A checkpoint then
+		 * believes this dirty page is durable when it is not; after a
+		 * crash, recovery trusts the checkpoint and the update is lost.
+		 * test_sim_ckp_crash's "post-checkpoint committed data survives"
+		 * invariant fires.  Compiled out of every normal build.
+		 */
+		nw = c.mfp->pagesize;
+		ret = 0;
+#else
 		if ((ret = __os_io(env, DB_IO_WRITE, dbmfp->fhp, bhp->pgno,
 		    c.mfp->pagesize, 0, c.mfp->pagesize, c.buf, &nw)) != 0)
 			__db_errx(env, DB_STR_A("3015",
 			    "%s: write failed for page %lu", "%s %lu"),
 			    __memp_fn(dbmfp), (u_long)bhp->pgno);
+#endif
+#else
+		if ((ret = __os_io(env, DB_IO_WRITE, dbmfp->fhp, bhp->pgno,
+		    c.mfp->pagesize, 0, c.mfp->pagesize, c.buf, &nw)) != 0)
+			__db_errx(env, DB_STR_A("3015",
+			    "%s: write failed for page %lu", "%s %lu"),
+			    __memp_fn(dbmfp), (u_long)bhp->pgno);
+#endif
 	}
 	return (__memp_pgwrite_finish(&c, did_io, ret));
 }

@@ -1519,7 +1519,89 @@ test_sim_torn: test_sim_torn@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) test_sim_torn@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
-dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn
+test_sim_hash_crash@o@: $(testdir)/sim/test_sim_hash_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_hash_crash: test_sim_hash_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_hash_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_recno_crash@o@: $(testdir)/sim/test_sim_recno_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_recno_crash: test_sim_recno_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_recno_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_queue_crash@o@: $(testdir)/sim/test_sim_queue_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_queue_crash: test_sim_queue_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_queue_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_ckp_crash@o@: $(testdir)/sim/test_sim_ckp_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_ckp_crash: test_sim_ckp_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_ckp_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_torn_log@o@: $(testdir)/sim/test_sim_torn_log.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_torn_log: test_sim_torn_log@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_torn_log@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_enospc@o@: $(testdir)/sim/test_sim_enospc.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_enospc: test_sim_enospc@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_enospc@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_abort_atomic@o@: $(testdir)/sim/test_sim_abort_atomic.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_abort_atomic: test_sim_abort_atomic@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_abort_atomic@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_recover_idempotent@o@: $(testdir)/sim/test_sim_recover_idempotent.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_recover_idempotent: test_sim_recover_idempotent@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_recover_idempotent@o@ $(DEF_LIB) $(TEST_LIBS) \
+	    $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_dup_crash@o@: $(testdir)/sim/test_sim_dup_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_dup_crash: test_sim_dup_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_dup_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_overflow_torn@o@: $(testdir)/sim/test_sim_overflow_torn.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_overflow_torn: test_sim_overflow_torn@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_overflow_torn@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_split_crash@o@: $(testdir)/sim/test_sim_split_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_split_crash: test_sim_split_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_split_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
+	test_sim_hash_crash test_sim_recno_crash test_sim_queue_crash \
+	test_sim_ckp_crash test_sim_torn_log test_sim_enospc \
+	test_sim_abort_atomic test_sim_recover_idempotent test_sim_dup_crash \
+	test_sim_overflow_torn test_sim_split_crash
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.

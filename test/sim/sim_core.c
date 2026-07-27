@@ -29,6 +29,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 /* ---- activation + PRNG tree ---- */
 
@@ -133,6 +135,7 @@ __db_sim_deactivate()
 	atomic_store_explicit(&g_io_enospc_pct, 0, memory_order_release);
 	atomic_store_explicit(&g_io_corrupt_pct, 0, memory_order_release);
 	atomic_store_explicit(&g_io_corrupt_on, 0, memory_order_release);
+	__db_sim_io_stale_enable(0);
 	__db_sim_wb_enable(0);
 }
 
@@ -399,10 +402,12 @@ __db_sim_io_flip_byte(len)
  * or two files.  Upgrade to a hash keyed table if a scenario needs many.
  */
 #define DB_SIM_WB_FILES 16
+#define DB_SIM_WB_NAMELEN 256
 struct sim_wb_ent {
 	uint64_t key;
 	uint64_t written_end;
 	uint64_t durable_end;
+	char     name[DB_SIM_WB_NAMELEN];   /* path, for crash truncation */
 	int      used;
 };
 static struct sim_wb_ent g_wb[DB_SIM_WB_FILES];
@@ -440,9 +445,32 @@ wb_slot(key)
 		g_wb[free_k].key = key;
 		g_wb[free_k].written_end = 0;
 		g_wb[free_k].durable_end = 0;
+		g_wb[free_k].name[0] = '\0';
 		return (&g_wb[free_k]);
 	}
 	return (NULL);   /* table full: this file is not tracked (bounded) */
+}
+
+/*
+ * __db_sim_wb_note_name --
+ *	Record the on-disk path for a tracked file so a crash can truncate
+ *	it to the durable frontier.  Called from the write hook (which has
+ *	the DB_FH name).  A no-op unless the write-back model is armed.
+ */
+void
+__db_sim_wb_note_name(key, name)
+	uint64_t key;
+	const char *name;
+{
+	struct sim_wb_ent *e;
+
+	if (!__db_sim_wb_active() || name == NULL)
+		return;
+	e = wb_slot(key);
+	if (e != NULL && e->name[0] == '\0') {
+		(void)strncpy(e->name, name, DB_SIM_WB_NAMELEN - 1);
+		e->name[DB_SIM_WB_NAMELEN - 1] = '\0';
+	}
 }
 
 void
@@ -493,4 +521,150 @@ __db_sim_io_durable_end(key)
 		return (0);
 	e = wb_slot(key);
 	return (e != NULL ? e->durable_end : 0);
+}
+
+/*
+ * __db_sim_wb_crash --
+ *	Model a power loss: every tracked file's bytes past its last fsync
+ *	(durable frontier) never reached the platter, so truncate the real
+ *	file back to durable_end.  This is what makes an ACK-before-fsync
+ *	bug detectable -- a commit whose log was written but not fsync'd is
+ *	dropped here, exactly as a real disk would drop it on power loss.
+ *	Returns the number of files truncated.  Called by a crash-recovery
+ *	test in-process at the crash boundary, before recovery.
+ *
+ *	ponytail: truncate() by path (files are closed at crash); an
+ *	ftruncate on a live fd if a scenario needs it while the file is open.
+ */
+int
+__db_sim_wb_crash()
+{
+	int k, n = 0;
+
+	if (!__db_sim_wb_active())
+		return (0);
+	for (k = 0; k < DB_SIM_WB_FILES; k++) {
+		if (!g_wb[k].used || g_wb[k].name[0] == '\0')
+			continue;
+		/* Only shrink: durable_end <= written_end always, and we
+		 * never grow a file (that would fabricate bytes). */
+		if (truncate(g_wb[k].name, (off_t)g_wb[k].durable_end) == 0)
+			n++;
+		/* After the crash the volatile cache is gone: written == durable. */
+		g_wb[k].written_end = g_wb[k].durable_end;
+	}
+	return (n);
+}
+
+/* ---- latency (consumed by the __os_io hooks) ----
+ *
+ * A seeded per-I/O latency in ns.  In the single-process v1 pilots there
+ * is no scheduler to REORDER against, so latency does not change any
+ * invariant; but wiring it as a real (tiny, capped) sleep makes the knob
+ * genuinely CONSUMED and lets a scenario model a slow disk.  Off by
+ * default (lat_max == 0 => 0ns => no sleep).
+ *
+ * ponytail: a bounded nanosleep; the load-bearing use (completion-order
+ * interleaving) is a v2 async-path item, this just makes the knob real.
+ */
+void
+__db_sim_io_sleep_latency()
+{
+	int64_t ns;
+	struct timespec ts;
+
+	ns = __db_sim_io_latency();
+	if (ns <= 0)
+		return;
+	/* Cap so an over-large seeded value cannot wedge a test. */
+	if (ns > 2000000)
+		ns = 2000000;                 /* 2ms cap */
+	ts.tv_sec = 0;
+	ts.tv_nsec = ns;
+	(void)nanosleep(&ts, NULL);
+}
+
+/* ---- stale-read model (superseded-write ring) ----
+ *
+ * Catches recovery/cache code that returns a well-formed but OUT-OF-DATE
+ * version of a block (skipping an LSN/version check).  On a write we
+ * snapshot the CURRENT (about-to-be-superseded) bytes at (fkey,off) into
+ * a ring; on a seeded stale-read coin at a matching (fkey,off) we return
+ * that prior version instead of the fresh bytes.  Both bytes are
+ * well-formed -- the fault is that the reader accepted the old one.
+ * Adapted from xtc's __xtc_sim_io_stale_*.
+ *
+ * ponytail: fixed ring, O(n) newest-match scan (bounded); a scenario
+ * touches a handful of hot blocks.
+ */
+#define DB_SIM_STALE_RING   32
+#define DB_SIM_STALE_MAXLEN 512
+struct sim_stale_ent {
+	uint64_t fkey;
+	uint64_t off;
+	int      len;
+	unsigned char buf[DB_SIM_STALE_MAXLEN];
+};
+static struct sim_stale_ent g_stale[DB_SIM_STALE_RING];
+static _Atomic int g_stale_head;
+static _Atomic int g_stale_pct;
+
+void
+__db_sim_io_stale_enable(pct_per_1000)
+	unsigned pct_per_1000;
+{
+	if (pct_per_1000 > 1000)
+		pct_per_1000 = 1000;
+	memset(g_stale, 0, sizeof(g_stale));
+	atomic_store_explicit(&g_stale_head, 0, memory_order_relaxed);
+	atomic_store_explicit(&g_stale_pct, (int)pct_per_1000,
+	    memory_order_release);
+}
+
+void
+__db_sim_io_stale_record(fkey, off, buf, len)
+	uint64_t fkey, off;
+	const void *buf;
+	int len;
+{
+	int h, cp;
+
+	if (atomic_load_explicit(&g_stale_pct, memory_order_acquire) <= 0 ||
+	    !__db_sim_active() || buf == NULL || len <= 0)
+		return;
+	cp = len < DB_SIM_STALE_MAXLEN ? len : DB_SIM_STALE_MAXLEN;
+	h = atomic_load_explicit(&g_stale_head, memory_order_relaxed);
+	g_stale[h].fkey = fkey;
+	g_stale[h].off = off;
+	g_stale[h].len = cp;
+	memcpy(g_stale[h].buf, buf, (size_t)cp);
+	atomic_store_explicit(&g_stale_head, (h + 1) % DB_SIM_STALE_RING,
+	    memory_order_relaxed);
+}
+
+int
+__db_sim_io_stale_read(fkey, off, buf, len)
+	uint64_t fkey, off;
+	void *buf;
+	int len;
+{
+	int i, h, pct;
+
+	pct = atomic_load_explicit(&g_stale_pct, memory_order_acquire);
+	if (pct <= 0 || !__db_sim_active() || buf == NULL || len <= 0)
+		return (0);
+	if ((int)__db_sim_rng_range(DB_SIM_RNG_IO, 1000) >= pct)
+		return (0);
+	/* Newest matching prior version wins. */
+	h = atomic_load_explicit(&g_stale_head, memory_order_relaxed);
+	for (i = 0; i < DB_SIM_STALE_RING; i++) {
+		int k = (h - 1 - i + DB_SIM_STALE_RING) % DB_SIM_STALE_RING;
+		if (g_stale[k].len > 0 && g_stale[k].fkey == fkey &&
+		    g_stale[k].off == off) {
+			int cp = g_stale[k].len < len ? g_stale[k].len : len;
+			memcpy(buf, g_stale[k].buf, (size_t)cp);
+			return (1);
+		}
+	}
+	return (0);
 }

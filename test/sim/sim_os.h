@@ -19,8 +19,11 @@ extern "C" {
 uint64_t db_sim_fkey __P((DB_FH *));
 void __db_sim_io_write_hook __P((DB_FH *, u_int32_t));
 void __db_sim_io_write_off_hook __P((DB_FH *, u_int64_t));
+int __db_sim_io_write_fault_hook __P((DB_FH *, u_int32_t));
+void __db_sim_io_presnapshot_hook __P((DB_FH *, u_int64_t, void *, size_t));
 void __db_sim_io_sync_hook __P((DB_FH *));
-void __db_sim_io_read_hook __P((void *, size_t));
+void __db_sim_io_read_hook __P((DB_FH *, u_int64_t, void *, size_t));
+void __db_sim_io_latency_hook __P((void));
 
 #if defined(__cplusplus)
 }
