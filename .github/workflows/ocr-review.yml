@@ -120,6 +120,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ocr"
           git show "origin/${DEFAULT_BRANCH}:.github/ocr/litellm.yaml" > "$RUNNER_TEMP/ocr/litellm.yaml"
           git show "origin/${DEFAULT_BRANCH}:.github/ocr/rule.json"   > "$RUNNER_TEMP/ocr/rule.json"
+          git show "origin/${DEFAULT_BRANCH}:.github/ocr/context.md"  > "$RUNNER_TEMP/ocr/context.md"
           echo "Config materialized:"; ls -l "$RUNNER_TEMP/ocr"
 
       - name: Setup Python
@@ -180,6 +181,7 @@ jobs:
             --from "origin/${{ steps.pr.outputs.base_ref }}" \
             --to "${{ steps.pr.outputs.head_sha }}" \
             --rule "$RUNNER_TEMP/ocr/rule.json" \
+            --background-file "$RUNNER_TEMP/ocr/context.md" \
             --concurrency 3 \
             --timeout 20 \
             --format json \
@@ -280,96 +282,4 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber, body,
               });
-            }
-
-  # Companion job: OCR can't call MCP, so this separate agent ties the PR's
-  # changes to PostgreSQL git + pgsql-hackers history via the Agora MCP server
-  # (pg.ddx.io) and posts a single, upserted "history & discussion" comment.
-  pg-history:
-    runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'pull_request' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
-        (startsWith(github.event.comment.body, '/open-code-review') ||
-         startsWith(github.event.comment.body, '@open-code-review') ||
-         startsWith(github.event.comment.body, '/pg-history')))
-    steps:
-      - name: Resolve PR context
-        id: pr
-        uses: actions/github-script@v9
-        with:
-          script: |
-            let prNumber;
-            if (context.eventName === 'pull_request') prNumber = context.payload.pull_request.number;
-            else if (context.eventName === 'issue_comment') prNumber = context.issue.number;
-            else prNumber = parseInt('${{ github.event.inputs.pr_number }}', 10);
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner, repo: context.repo.repo, pull_number: prNumber });
-            core.setOutput('number', String(prNumber));
-            core.setOutput('base_ref', pr.base.ref);
-            core.setOutput('head_sha', pr.head.sha);
-            core.setOutput('title', pr.title || '');
-
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Make base/head refs available
-        env:
-          BASE_REF: ${{ steps.pr.outputs.base_ref }}
-          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
-        run: |
-          git fetch --no-tags origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" || true
-          git fetch --no-tags origin "${HEAD_SHA}" || true
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-          role-session-name: pg-history-${{ github.run_id }}
-
-      - name: Install deps
-        run: pip install boto3
-
-      - name: Run pg-history (Agora MCP)
-        env:
-          PG_HISTORY_MODEL: ${{ vars.OCR_BEDROCK_MODEL }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
-          BASE_REF: ${{ steps.pr.outputs.base_ref }}
-          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
-          GH_PR_TITLE: ${{ steps.pr.outputs.title }}
-          PG_HISTORY_OUT: ${{ runner.temp }}/pg-history.md
-        run: |
-          python .github/ocr/pg-history.py || true
-          echo "----- output -----"; cat "${{ runner.temp }}/pg-history.md" 2>/dev/null || echo "(no output)"
-
-      - name: Upsert PR comment
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const fs = require('fs');
-            const path = process.env.RUNNER_TEMP + '/pg-history.md';
-            let body = '';
-            try { body = fs.readFileSync(path, 'utf8').trim(); } catch (e) {}
-            if (!body) { console.log('pg-history: empty output, nothing to post'); return; }
-            const prNumber = parseInt('${{ steps.pr.outputs.number }}', 10);
-            const marker = '<!-- pg-history -->';
-            body = marker + '\n' + body;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber, per_page: 100 });
-            const mine = comments.find(c => c.user.type === 'Bot' && c.body && c.body.includes(marker));
-            if (mine) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner, repo: context.repo.repo, comment_id: mine.id, body });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber, body });
             }
