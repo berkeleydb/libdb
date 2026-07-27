@@ -175,6 +175,17 @@ skip_alloc:
 			return (ret);
 		DB_ASSERT(env, TYPE(h) == P_OVERFLOW);
 
+		/*
+		 * The page and its data length come from an untrusted file:
+		 * a non-overflow page or an OV_LEN that runs past the page's
+		 * data area would make the memcpy below read off the page.
+		 */
+		if (TYPE(h) != P_OVERFLOW ||
+		    OV_LEN(h) > P_MAXSPACE(dbp, dbp->pgsize)) {
+			(void)__memp_fput(mpf, ip, h, dbp->priority);
+			return (DB_PAGE_NOTFOUND);
+		}
+
 		/* Check if we need any bytes from this page. */
 		if (curoff + OV_LEN(h) >= start) {
 			bytes = OV_LEN(h);

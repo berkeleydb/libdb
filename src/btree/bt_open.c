@@ -342,6 +342,17 @@ __bam_read_root(dbp, ip, txn, base_pgno, flags)
 	 */
 	if (meta->dbmeta.magic == DB_BTREEMAGIC) {
 		t->bt_minkey = meta->minkey;
+		/*
+		 * minkey comes from a possibly corrupt meta page and is used
+		 * as a divisor by B_MINKEY_TO_OVFLSIZE; a zero value there is
+		 * a divide-by-zero (SIGFPE).  Reject an impossible minkey now.
+		 */
+		if (t->bt_minkey < 2) {
+			__db_errx(dbp->env, DB_STR("1031",
+			    "minimum bt_minkey value is 2"));
+			ret = EINVAL;
+			goto err;
+		}
 		t->re_pad = (int)meta->re_pad;
 		t->re_len = meta->re_len;
 
