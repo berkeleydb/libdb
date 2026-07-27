@@ -28,10 +28,31 @@ root="$(cd "$here/../.." && pwd)"
 bld="$root/build_unix"
 
 # --- config ------------------------------------------------------------------
-# Bounded, representative subset: lock/txn/basic-access + SSI + one access
-# method + a recovery test. Runs in a few minutes, exercises the core engine.
-# Format: "test arg" pairs (arg blank for tests that take none).
-: "${COV_TESTS:=lock001: txn001: test001:btree ssi001: ssi002: recd001:btree}"
+# Bounded, representative subset. Runs in a few minutes, exercises the core
+# engine AND every access method plus the verify/salvage paths.
+#
+# Two entry forms, space-separated:
+#   test:arg      -> `eval test arg` (arg blank for tests taking none).
+#                    Used for the lock/txn/SSI/recovery core.
+#   method/test   -> `run_method method test`, which runs the access-method
+#                    test AND then verify_dir + salvage_dir on the databases
+#                    it leaves behind -- so this one form covers the hash/
+#                    queue/recno/heap access methods (src/hash, src/qam,
+#                    src/btree/bt_recno.c, src/heap) *and* db verification
+#                    (src/db/db_vrfy.c, src/hash/hash_verify.c,
+#                    src/qam/qam_verify.c, src/heap/heap_verify.c) *and*
+#                    salvage. Before this, only test001:btree ran, leaving
+#                    hash/queue/heap/recno + all verify code at 0%.
+#
+# The access-method matrix is deliberately curated (a few high-value tests per
+# method: basic put/get, cursors, dups, delete/renumber, partial) rather than
+# the whole suite, to keep the run bounded while lighting up the red files.
+: "${COV_TESTS:=lock001: txn001: ssi001: ssi002: recd001:btree \
+  btree/test001 \
+  hash/test001 hash/test006 hash/test010 hash/test025 hash/test077 \
+  queue/test001 queue/test007 queue/test025 \
+  recno/test001 recno/test006 recno/test024 recno/test025 \
+  heap/test001 heap/test013 heap/test024}"
 : "${COV_JOBS:=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 : "${TCLSH:=tclsh}"
 # TCL lib dir: nix store on this box, /usr/lib/tcl8.6 on ubuntu CI.
@@ -97,10 +118,20 @@ runtcl="$bld/.cov-run.tcl"
 {
   echo 'source ../test/tcl/test.tcl'
   for pair in $COV_TESTS; do
-    t="${pair%%:*}"; a="${pair#*:}"
-    printf 'source ../test/tcl/%s.tcl\n' "$t"
-    printf 'if {[catch {eval %s %s} res]} { puts "FAIL %s: $res"; exit 1 }\n' "$t" "$a" "$t"
-    printf 'puts "PASS %s"\n' "$t"
+    case "$pair" in
+    */*)  # method/test form -> run_method (test + verify_dir + salvage_dir)
+      m="${pair%%/*}"; t="${pair#*/}"
+      printf 'source ../test/tcl/%s.tcl\n' "$t"
+      printf 'if {[catch {run_method %s %s 0 1} res]} { puts "FAIL %s/%s: $res"; exit 1 }\n' "$m" "$t" "$m" "$t"
+      printf 'puts "PASS %s/%s"\n' "$m" "$t"
+      ;;
+    *)    # test:arg form -> eval test arg
+      t="${pair%%:*}"; a="${pair#*:}"
+      printf 'source ../test/tcl/%s.tcl\n' "$t"
+      printf 'if {[catch {eval %s %s} res]} { puts "FAIL %s: $res"; exit 1 }\n' "$t" "$a" "$t"
+      printf 'puts "PASS %s"\n' "$t"
+      ;;
+    esac
   done
 } > "$runtcl"
 # tclsh8.6 preferred if present (nix); fall back to tclsh.
