@@ -3,26 +3,35 @@
  *
  * test_sim_crash_recover.c --
  *	THE capstone pilot: a transactional btree workload commits N
- *	durable txns, a child process "crashes" mid-uncommitted-txn (an
- *	abrupt _exit with a dirty env), then the parent runs recovery and
- *	verifies EVERY committed txn survived, the uncommitted one did not,
- *	and the DB verifies clean.
+ *	durable txns, then a "crash" drops every byte the write-back model
+ *	says was written but never fsync'd (a real power loss), the parent
+ *	runs recovery, and asserts EVERY committed txn survived, the
+ *	uncommitted one did not, and the DB verifies clean.
+ *
+ *	The write-back durable-frontier model is what makes this HONEST:
+ *	the sim writes to a real file, so bytes reach the file on pwrite
+ *	regardless of fsync -- a naive crash test therefore cannot catch a
+ *	writer that ACKs a commit it never fsync'd.  Here the child, at the
+ *	crash boundary, calls __db_sim_wb_crash(), which truncates the real
+ *	log file back to its durable frontier (last fsync).  So a commit
+ *	whose log was written but not synced is genuinely lost -- exactly
+ *	how a disk loses it on power loss.
  *
  *	Determinism: the workload keys/values are drawn from the seeded APP
  *	stream, so a given seed produces the exact same committed set --
- *	the same seed replays the same run.  The crash point is fixed
- *	(after N synced commits, inside txn N+1), which the deterministic
- *	fault schedule will later parameterize (v2).
+ *	the same seed replays the same run.
  *
  *	CRITICAL (see .agents/concurrent-btree-corruption.md): a crashed
  *	txn env verified WITHOUT recovery falsely looks corrupt.  This
  *	pilot ALWAYS runs DB_RECOVER before db->verify.
  *
- *	Planted-bug hook (DB_DST_INJECT_BUG=1, NODURABLE): the last "acked"
- *	txn commits with DB_TXN_NOSYNC (acked but not fsync'd).  A correct
- *	engine loses it across the crash (it was never durable); the buggy
- *	build ASSERTS it survived, so the DST invariant fires -- proving the
- *	capstone catches an ack-before-durable bug.
+ *	PLANTED BUG (DB_DST_INJECT_BUG=1, NODURABLE): __log_flush_int skips
+ *	the log fsync but still acks the commit.  The write-back durable
+ *	frontier then never advances past the last DB_TXN_SYNC commit's
+ *	log, so __db_sim_wb_crash() truncates that record away and the
+ *	"committed" txn is LOST after recovery -- the capstone invariant
+ *	fires.  This is the FoundationDB-grade "DST finds a real durability
+ *	bug, here is the seed" proof.
  *
  *	Build/run (from build_unix, after configure --enable-dst):
  *	    make test_sim_crash_recover && ./test_sim_crash_recover [seed]
@@ -72,10 +81,11 @@ run_child(seed)
 	int i, ret;
 
 	/* Re-seed identically in the child so its APP-stream draws match the
-	 * parent's expectation (fork copies the seed but we re-activate to
-	 * be explicit and independent of copy semantics). */
+	 * parent's expectation.  Arm the write-back model so the log's
+	 * durable frontier is tracked and un-fsync'd bytes get dropped at
+	 * the crash boundary below. */
 	__db_sim_activate(seed);
-	__db_sim_wb_enable(1);       /* honest disk: writes durable only on fsync */
+	__db_sim_wb_enable(1);
 
 	if ((ret = db_env_create(&env, 0)) != 0)
 		return (ret);
@@ -103,8 +113,10 @@ run_child(seed)
 			return (ret);
 	}
 
-#if DB_DST_BUG(1) == 0
-	/* Normal path: start an UNCOMMITTED txn, then crash inside it. */
+	/* An UNCOMMITTED txn, then crash inside it: its data must NOT
+	 * survive.  (With the NODURABLE planted bug, the DB_TXN_SYNC commits
+	 * above were never fsync'd, so the write-back crash below drops their
+	 * log too -- that is the bug the capstone catches.) */
 	mkrec(NCOMMIT, kbuf, vbuf);
 	if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
 		return (ret);
@@ -113,30 +125,18 @@ run_child(seed)
 	key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
 	data.data = vbuf; data.size = (u_int32_t)strlen(vbuf) + 1;
 	(void)db->put(db, txn, &key, &data, 0);
-	/* Deliberately DO NOT commit txn.  Crash now. */
-#else
-	/*
-	 * NODURABLE bug: "ack" a commit WITHOUT fsync (DB_TXN_NOSYNC) and
-	 * treat it as durable.  A correct engine loses this across a crash;
-	 * the harness invariant (below) asserts it survived, so the planted
-	 * bug makes the capstone FAIL -- exactly the DST catch we want.
-	 */
-	mkrec(NCOMMIT, kbuf, vbuf);
-	if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
-		return (ret);
-	memset(&key, 0, sizeof(key));
-	memset(&data, 0, sizeof(data));
-	key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
-	data.data = vbuf; data.size = (u_int32_t)strlen(vbuf) + 1;
-	(void)db->put(db, txn, &key, &data, 0);
-	(void)txn->commit(txn, DB_TXN_NOSYNC);   /* acked, NOT durable */
-#endif
+	/* Deliberately DO NOT commit txn. */
 
 	/*
-	 * CRASH: abrupt exit, no clean close, no checkpoint.  _exit skips
-	 * atexit handlers and libdb cleanup, leaving the env dirty exactly
-	 * as a kill -9 would.  Flush stdio so any child diagnostics escape.
+	 * CRASH (power loss): drop every byte written but not fsync'd.  The
+	 * write-back model truncates each tracked real file (the log) back
+	 * to its durable frontier.  A correct engine fsync'd each
+	 * DB_TXN_SYNC commit, so its durable frontier already covers all
+	 * NCOMMIT commits and only the uncommitted tail is dropped.  Then an
+	 * abrupt _exit (no clean close, no checkpoint) leaves the env dirty
+	 * exactly as kill -9 would.
 	 */
+	__db_sim_wb_crash();
 	fflush(NULL);
 	_exit(42);
 	/* NOTREACHED */
@@ -145,9 +145,9 @@ run_child(seed)
 
 /* Recover, reopen, and verify the committed set.  Returns 0 on success. */
 static int
-verify_after_recovery(seed, saw_nosync_key)
+verify_after_recovery(seed, saw_uncommitted, missing_out)
 	uint64_t seed;
-	int *saw_nosync_key;
+	int *saw_uncommitted, *missing_out;
 {
 	DB_ENV *env;
 	DB *db;
@@ -155,7 +155,8 @@ verify_after_recovery(seed, saw_nosync_key)
 	char kbuf[32], vbuf[32];
 	int i, ret, missing = 0, mismatch = 0;
 
-	*saw_nosync_key = 0;
+	*saw_uncommitted = 0;
+	*missing_out = 0;
 
 	/* ALWAYS recover before touching the tree (else a WAL-consistent
 	 * crashed tree falsely looks corrupt). */
@@ -194,14 +195,13 @@ verify_after_recovery(seed, saw_nosync_key)
 			mismatch++;
 		}
 	}
-	/* The (NOSYNC-acked or uncommitted) key NCOMMIT must be ABSENT after
-	 * a correct recovery. */
+	/* The uncommitted key NCOMMIT must be ABSENT after recovery. */
 	mkrec(NCOMMIT, kbuf, vbuf);
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 	key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
 	if (db->get(db, NULL, &key, &data, 0) == 0)
-		*saw_nosync_key = 1;
+		*saw_uncommitted = 1;
 	__db_sim_deactivate();
 
 	(void)db->close(db, 0);
@@ -217,6 +217,7 @@ verify_after_recovery(seed, saw_nosync_key)
 	}
 	(void)env->close(env, 0);
 
+	*missing_out = missing;
 	if (missing != 0 || mismatch != 0) {
 		fprintf(stderr, "%d missing, %d mismatched committed txns\n",
 		    missing, mismatch);
@@ -232,16 +233,16 @@ main(argc, argv)
 {
 	uint64_t seed = argc > 1 ? strtoull(argv[1], NULL, 0) : 0xDB5EEDull;
 	pid_t pid;
-	int status, ret, saw_nosync;
+	int status, ret, saw_uncommitted, missing;
 	char cmd[256];
 
-	/* Fresh env dir each run (trash-friendly: a plain rm of a known
-	 * scratch dir we created). */
+	/* Fresh env dir each run. */
 	(void)snprintf(cmd, sizeof(cmd), "rm -rf %s && mkdir -p %s",
 	    HOME, HOME);
 	(void)system(cmd);
 
-	/* Child does the durable work then crashes. */
+	/* Child does the durable work then crashes (dropping un-fsync'd
+	 * bytes via the write-back model). */
 	if ((pid = fork()) < 0) {
 		perror("fork");
 		return (EXIT_FAILURE);
@@ -259,26 +260,36 @@ main(argc, argv)
 		return (EXIT_FAILURE);
 	}
 
-	ret = verify_after_recovery(seed, &saw_nosync);
+	ret = verify_after_recovery(seed, &saw_uncommitted, &missing);
 
 #if DB_DST_BUG(1)
 	/*
-	 * NODURABLE invariant: the NOSYNC-acked commit must NOT survive.
-	 * If it did (or recovery/verify otherwise passed), the ack-before-
-	 * durable bug went UNDETECTED -- fail loudly so the sweep records
-	 * DST caught it (a nonzero exit is the "caught" signal here since
-	 * the bug is in what we ACCEPT, not what crashes).
+	 * NODURABLE invariant: with the fsync-skip bug, at least one
+	 * DB_TXN_SYNC-committed txn must be LOST after the crash (its log
+	 * was never made durable).  If everything survived, the bug went
+	 * UNDETECTED -- fail so the sweep records a coverage hole.  When the
+	 * bug IS caught (a committed txn missing => verify_after_recovery
+	 * returned nonzero), exit 0: DST caught the planted bug for this
+	 * seed, which is the success condition for the injected build.
 	 */
-	if (ret == 0 && saw_nosync) {
-		fprintf(stderr, "test_sim_crash_recover: DST CAUGHT NODURABLE "
-		    "-- a NOSYNC-acked commit survived a crash (seed 0x%llx)\n",
+	if (ret == 0 && missing == 0) {
+		fprintf(stderr, "test_sim_crash_recover: DST DID NOT CATCH "
+		    "NODURABLE -- every committed txn survived despite the "
+		    "skipped fsync (seed 0x%llx)\n",
 		    (unsigned long long)seed);
 		return (EXIT_FAILURE);
 	}
-	printf("test_sim_crash_recover: (bug build) NOSYNC commit correctly "
-	    "absent -- would need a real ack-before-fsync site to trip\n");
-#endif
-
+	printf("test_sim_crash_recover: DST CAUGHT NODURABLE -- %d "
+	    "\"committed\" txn(s) lost after crash because the log fsync was "
+	    "skipped (seed 0x%llx)\n", missing, (unsigned long long)seed);
+	return (EXIT_SUCCESS);
+#else
+	if (saw_uncommitted) {
+		fprintf(stderr, "test_sim_crash_recover: FAIL -- an "
+		    "uncommitted txn survived the crash (seed 0x%llx)\n",
+		    (unsigned long long)seed);
+		return (EXIT_FAILURE);
+	}
 	if (ret == 0) {
 		printf("test_sim_crash_recover: PASS -- %d committed txns "
 		    "survived, uncommitted did not, DB verifies clean "
@@ -288,4 +299,5 @@ main(argc, argv)
 	fprintf(stderr, "test_sim_crash_recover: FAIL (seed 0x%llx)\n",
 	    (unsigned long long)seed);
 	return (EXIT_FAILURE);
+#endif
 }
