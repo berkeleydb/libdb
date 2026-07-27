@@ -125,6 +125,11 @@ __db_sim_io_write_fault_hook(fhp, len)
 		return ((int)len);
 	if (__db_sim_io_enospc())
 		return (-1);
+	/* Short-transfer / EIO: a seeded whole-write failure distinct from
+	 * ENOSPC (models a transient device error).  Returns -2 => the
+	 * caller reports EIO, nothing persists. */
+	if (__db_sim_io_should_fault())
+		return (-2);
 	return (__db_sim_io_torn_prefix((int)len));
 }
 
