@@ -395,6 +395,18 @@ mvcc_err:				__db_errx(env, DB_STR("3041",
 		 * Pagesize of 0 is only allowed for in-mem dbs.
 		 */
 		DB_ASSERT(env, pagesize != 0);
+		/*
+		 * A real file with a zero pagesize (a corrupt or hostile
+		 * meta-page) would divide by zero below; DB_ASSERT is compiled
+		 * out of production builds, so reject it with a hard check too.
+		 */
+		if (pagesize == 0) {
+			__db_errx(env, DB_STR_A("3037",
+		    "%s: file size not a multiple of the pagesize", "%s"),
+			    rpath);
+			ret = EINVAL;
+			goto err;
+		}
 		if (bytes % pagesize != 0) {
 			if (LF_ISSET(DB_ODDFILESIZE))
 				bytes -= (u_int32_t)(bytes % pagesize);
