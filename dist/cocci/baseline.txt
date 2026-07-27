@@ -1,0 +1,22 @@
+rule_mutex_unbalanced|MUTEX_UNBALANCED|src/btree/bt_curadj.c|return (ret);
+rule_mutex_unbalanced|MUTEX_UNBALANCED|src/crypto/mersenne/mt19937db.c|return (ret);
+rule_mutex_unbalanced|MUTEX_UNBALANCED|src/mp/mp_alloc.c|return (ret);
+rule_mutex_unbalanced|MUTEX_UNBALANCED|src/mp/mp_bh.c|return (ret);
+rule_mutex_unbalanced|MUTEX_UNBALANCED|src/mp/mp_fset.c|return (0);
+rule_mutex_unbalanced|MUTEX_UNBALANCED|src/mp/mp_register.c|return (ret);
+rule_mutex_unbalanced|MUTEX_UNBALANCED|src/rep/rep_record.c|return (ret);
+rule_tret_clobber|TRET_CLOBBER|src/btree/bt_compress.c|if ((t_ret = __db_vrfy_prdbt(&compressed, 0, " ", handle, callback, 0, 0, vdp)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/btree/bt_search.c|if ((t_ret = __LPUT(dbc, lock)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/btree/bt_verify.c|if ((t_ret = __db_salvage_duptree(dbp, vdp, bi->pgno, key, handle, callback, flags)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/btree/bt_verify.c|if ((t_ret = __db_salvage_duptree(dbp, vdp, ri->pgno, key, handle, callback, flags)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/db/db_cam.c|if ((t_ret = __dbc_close(pdbc)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/db/db_ovfl_vrfy.c|err: if ((t_ret = __db_vrfy_putpageinfo(dbp->env, vdp, pip)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/db/db_vrfy.c|if ((t_ret = __db_close(mdbp, NULL, 0)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/db/db_vrfyutil.c|if ((t_ret = __db_close(vdp->pgdbp, NULL, 0)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/fileops/fop_util.c|if ((t_ret = __ENV_LPUT(env, elock)) != 0 ) {
+rule_tret_clobber|TRET_CLOBBER|src/heap/heap.c|if ((t_ret = __LPUT(dbc, meta_lock)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/repmgr/repmgr_elect.c|if ((t_ret = send_membership(env)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/rep/rep_record.c|if ((t_ret = __rep_fire_startupdone(env, gen, master)) != 0 ) {
+rule_tret_clobber|TRET_CLOBBER|src/rep/rep_record.c|if ((t_ret = __rep_lockout_msg(env, rep, 1)) != 0 ) {
+rule_tret_clobber|TRET_CLOBBER|src/rep/rep_record.c|if ((t_ret = __rep_notify_threads(env, AWAIT_LSN)) != 0 )
+rule_tret_clobber|TRET_CLOBBER|src/txn/txn.c|if ((t_ret = __txn_abort(txn)) != 0 )
