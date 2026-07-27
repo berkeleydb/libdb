@@ -43,7 +43,14 @@ void     __db_sim_io_faults_enable __P((int64_t, int64_t, unsigned));
 void     __db_sim_io_faults_disable __P((void));
 int      __db_sim_io_faults_active __P((void));
 int64_t  __db_sim_io_latency __P((void));
+void     __db_sim_io_sleep_latency __P((void));
 int      __db_sim_io_should_fault __P((void));
+
+/* Stale-read model: a seeded read returns a prior (superseded) version of
+ * the block -- well-formed but out of date, to catch a missing LSN check. */
+void     __db_sim_io_stale_enable __P((unsigned));
+void     __db_sim_io_stale_record __P((uint64_t, uint64_t, const void *, int));
+int      __db_sim_io_stale_read __P((uint64_t, uint64_t, void *, int));
 
 /* Disk-full (ENOSPC): a seeded coin fails a whole write, nothing
  * persists. */
@@ -69,9 +76,11 @@ int      __db_sim_io_flip_byte __P((int));
 void     __db_sim_wb_enable __P((int));
 int      __db_sim_wb_active __P((void));
 void     __db_sim_wb_wrote __P((uint64_t, uint64_t));
+void     __db_sim_wb_note_name __P((uint64_t, const char *));
 void     __db_sim_wb_synced __P((uint64_t));
 uint64_t __db_sim_wb_written_end __P((uint64_t));
 uint64_t __db_sim_io_durable_end __P((uint64_t));
+int      __db_sim_wb_crash __P((void));
 
 /*
  * Buggify branch macro for planting a legal-but-pessimal path in real
