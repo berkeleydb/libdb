@@ -147,6 +147,19 @@ if test "$db_cv_dst" = "yes"; then
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(SIM_OBJS)"
 	CPPFLAGS="$CPPFLAGS -I\$(topdir)/test/sim"
 fi
+
+# Malloc-failure injection (SQLite-style): compile the fault-injection
+# state into the library and enable the guarded __os_* allocation hook.
+# Additive and faultinject-scoped: when off (the default) HAVE_FAULT_INJECT
+# is undefined, the hook vanishes, fi_alloc.c is not built, and a
+# production build is bit-for-bit the stock library.
+if test "$db_cv_faultinject" = "yes"; then
+	AC_DEFINE(HAVE_FAULT_INJECT)
+	AH_TEMPLATE(HAVE_FAULT_INJECT,
+    [Define to 1 to build with SQLite-style malloc-failure injection hooks.])
+	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(FI_OBJS)"
+	CPPFLAGS="$CPPFLAGS -I\$(topdir)/test/faultinject"
+fi
 if test "$db_cv_debug_rop" = "yes"; then
 	AC_DEFINE(DEBUG_ROP)
 	AH_TEMPLATE(DEBUG_ROP,
