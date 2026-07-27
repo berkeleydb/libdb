@@ -27,11 +27,14 @@ pbt_common = files('pbt_common.h')
 
 pbt_props = [
   'log_compare',   # LSN total-order: log_compare() (public db.h)
-  'byteswap',      # M_*_SWAP involution (src/dbinc/db_swap.h)
+  'byteswap',      # M_*_SWAP + P_*_COPYSWAP involution (src/dbinc/db_swap.h)
   'defcmp',        # __bam_defcmp total-order over byte strings
   'put_get',       # in-memory B-tree put/get round-trip (end-to-end)
   'hash_model',    # DB_HASH vs in-test model map (stateful)
   'hash_func',     # __ham_func2/3/4/5 determinism + length-honoring + FNV oracle
+  'compint',       # varint codec round-trip/order-preserving (src/common/db_compint.c)
+  'compress',      # __bam_defcompress/decompress round-trip (src/btree/bt_compress.c)
+  'recno',         # recno append/get + DB_RENUMBER contiguity (src/btree/bt_recno.c)
 ]
 
 # Try to locate hegel-c.  cmake + pkg-config are both attempted; either

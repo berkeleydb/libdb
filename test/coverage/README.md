@@ -93,7 +93,7 @@ the job log.
 
 ---
 
-## Measured baseline (2026-07-27, updated 2026-07-28)
+## Measured baseline (2026-07-27, updated 2026-07-28, extended 2026-07-29)
 
 `CC=gcc`, `--coverage`, src/-only. Two subsets have been measured:
 
@@ -111,19 +111,23 @@ core, leaving every other access method and all of db verification at 0%:
 matrix run via `run_method` — which runs each test **and then `verify_dir` +
 `salvage_dir`** on the databases it leaves behind, so one form lights up the
 hash / queue / recno / heap access methods *and* the db-verification and
-salvage paths:
+salvage paths — plus a compaction test (`btree/test111`) and two
+partition runs (`run_range_partition` / `run_partition_callback` over
+`test001`) that light up `bt_compact.c` and `partition.c`:
 
 | Metric    | Coverage                    | vs. original |
 |-----------|-----------------------------|-------------|
-| **Lines** | **26.9%** (19543 / 72694)   | **+8.3 pp** |
-| **Branches** | **17.8%** (13934 / 78249) | **+5.5 pp** |
-| Functions | 33.3% (925 / 2781)          | +7.7 pp     |
+| **Lines** | **28.8%** (20970 / 72757)   | **+10.2 pp** |
+| **Branches** | **19.0%** (14921 / 78331) | **+6.7 pp** |
+| Functions | 34.9% (971 / 2782)          | +9.3 pp     |
 
 The access-method matrix is:
-`btree/test001`, `hash/test001,006,010,025,077`, `queue/test001,007,025`,
-`recno/test001,006,024,025`, `heap/test001,013,024` (all reuse existing Tcl
-tests — no new Tcl written; the win is just running tests the CI subset had
-not). The formerly-0% files it moved:
+`btree/test001`, `btree/test111` (compaction),
+`hash/test001,006,010,025,077`, `queue/test001,007,025`,
+`recno/test001,006,024,025`, `heap/test001,013,024`, plus
+`run_range_partition test001 btree` and `run_partition_callback test001 btree`
+(all reuse existing Tcl tests — no new Tcl written; the win is just running
+tests the CI subset had not). The formerly-0% files it moved:
 
 | file | before | after (line% / br%) |
 |------|:------:|:------:|
@@ -133,6 +137,8 @@ not). The formerly-0% files it moved:
 | `qam/qam.c`          | 0% | 52.5 / 26.0 |
 | `qam/qam_verify.c`   | 0% | 44.7 / 26.3 |
 | `btree/bt_recno.c`   | 0% | 41.4 / 21.7 |
+| `btree/bt_compact.c` | 0% | 30.1 / 17.4 |
+| `db/partition.c`     | 0% | 53.7 / 45.0 |
 | `heap/heap.c`        | 0% | 31.4 / 19.2 |
 | `heap/heap_verify.c` | 0% | 48.0 / 37.9 |
 | `db/db_vrfy.c`       | 0% | 48.0 / 34.3 |
@@ -153,11 +159,9 @@ why they lag the single-process access-method tests:
 | line% | br% | lines | branches | file | subsystem |
 |------:|----:|------:|---------:|------|-----------|
 | 0.0 | 0.0 | 1769 | 1565 | `log/log_verify_int.c` | log verification |
-| 0.0 | 0.0 | 1397 | 1702 | `btree/bt_compact.c` | btree compaction |
 | 0.0 | 0.0 | 1064 | 1619 | `rep/rep_record.c` | replication |
 | 0.0 | 0.0 | 1017 | 644 | `log/log_verify_util.c` | log verification |
 | 0.0 | 0.0 | 923 | 942 | `rep/rep_util.c` | replication |
-| 0.0 | 0.0 | 883 | 620 | `db/partition.c` | partitioning |
 | 0.0 | 0.0 | 864 | 540 | `repmgr/repmgr_sel.c` | replication manager |
 | 0.0 | 0.0 | 836 | 2069 | `hash/hash_rec.c` | hash recovery records |
 | 0.0 | 0.0 | 704 | 556 | `repmgr/repmgr_net.c` | replication manager |
@@ -167,11 +171,18 @@ why they lag the single-process access-method tests:
 | 0.0 | 0.0 | 457 | 674 | `lock/lock_deadlock.c` | deadlock detection |
 | 0.0 | 0.0 | 431 | 470 | `sequence/sequence.c` | sequences |
 | 0.0 | 0.0 | 394 | 398 | `xa/xa.c` | XA transactions |
+| 5.4 | 2.0 | 445 | 306 | `qam/qam_files.c` | queue extent files |
+| 30.1 | 17.4 | 1397 | 1702 | `btree/bt_compact.c` | btree compaction (was 0%) |
 
 Next-highest-leverage additions (future work): a **replication smoke test**
 (needs the multi-process rep harness — `rep0NN` / `repmgr0NN` exist but each
-spins up multiple envs; scope as a separate job), **`bt_compact.c`** (a
-`test111`-family compaction run), **`partition.c`** (a partition-callback DB
-test), and **`log_verify_*`** (`db_log_verify` over a real log). The PBT tier
-(`test/pbt/pbt_hash_func.c`) now also covers `src/hash/hash_func.c` pure
-logic.
+spins up multiple envs; scope as a separate job), **`log_verify_*`**
+(`db_log_verify` over a real log), **`hash/hash_rec.c`** (hash recovery
+records — needs a crash/recovery run over a hash DB), and **`sequence.c`** /
+**`xa.c`** (each has a small dedicated Tcl test that the subset omits).
+`btree/bt_compact.c` and `db/partition.c` moved off 0% in this subset via
+`btree/test111` and the partition runners; the PBT tier
+(`test/pbt/pbt_hash_func.c`, `pbt_compint.c`, `pbt_compress.c`,
+`pbt_recno.c`) covers pure logic in `hash_func.c`, `db_compint.c`,
+`bt_compress.c`, and `bt_recno.c` respectively (verified via hegel-c, run
+separately from this Tcl subset).
