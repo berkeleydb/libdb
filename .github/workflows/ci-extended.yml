@@ -1,0 +1,200 @@
+# libdb extended CI (heavy / scheduled-only).
+#
+# These jobs are too slow or too noisy to run on every PR, so they run nightly
+# (cron) and on demand (workflow_dispatch). Everything here is best-effort
+# (continue-on-error) and never gates a PR -- the fast PR signal lives in
+# ci.yml. Kept in a separate workflow so the PR "Checks" list stays readable.
+
+name: CI (extended)
+
+on:
+  schedule:
+    # Nightly at 04:23 UTC, staggered after the main CI cron (03:17).
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+    inputs:
+      full_tcl:
+        description: 'Run the full TCL regression suite (run_std)'
+        type: boolean
+        default: true
+
+concurrency:
+  group: ci-extended-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # Full TCL regression suite (run_std). Long-running: generous timeout, never
+  # on PRs. On manual dispatch, full_tcl=false narrows it to a broad subset.
+  # ----------------------------------------------------------------------------
+  full-tcl:
+    name: full tcl suite
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tcl
+        run: sudo apt-get update && sudo apt-get install -y tcl-dev tcl
+      - name: Configure (test + tcl)
+        working-directory: build_unix
+        run: ../dist/configure --enable-debug --enable-test --with-tcl=/usr/lib/tcl8.6
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: Run suite
+        working-directory: build_unix
+        run: |
+          # Scheduled runs (no dispatch input) default to the full suite; a
+          # manual dispatch may opt out via full_tcl=false for a broad subset.
+          if [ "${{ github.event.inputs.full_tcl }}" = "false" ]; then
+            cat > /tmp/run.tcl <<'TCL'
+          source ../test/tcl/test.tcl
+          foreach t {test001 test003 test010 lock001 lock002 txn001 txn003 \
+                     mut001 ssi001 ssi002 ssi003 ssi009 rep001 recd001} {
+            source ../test/tcl/$t.tcl
+            set a {}
+            if {[string match test* $t]} { set a btree }
+            if {[catch {eval $t $a} res]} { puts "FAIL $t: $res"; exit 1 }
+            puts "PASS $t"
+          }
+          TCL
+          else
+            cat > /tmp/run.tcl <<'TCL'
+          source ../test/tcl/test.tcl
+          run_std
+          TCL
+          fi
+          # 5h ceiling under the 5.5h job timeout.
+          timeout 18000 tclsh /tmp/run.tcl 2>&1 | tee /tmp/out.txt
+          ! grep -qE "^FAIL|FAIL:" /tmp/out.txt
+
+  # ----------------------------------------------------------------------------
+  # gcc/clang version matrix -- extra toolchain versions from apt (best-effort;
+  # a version may be unavailable on a given runner image, hence the guard).
+  # ----------------------------------------------------------------------------
+  compiler-versions:
+    name: build ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { compiler: gcc-12,   pkg: gcc-12,     cc: gcc-12 }
+          - { compiler: gcc-13,   pkg: gcc-13,     cc: gcc-13 }
+          - { compiler: clang-15, pkg: clang-15,   cc: clang-15 }
+          - { compiler: clang-17, pkg: clang-17,   cc: clang-17 }
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ${{ matrix.pkg }}
+        run: |
+          sudo apt-get update
+          if ! sudo apt-get install -y ${{ matrix.pkg }}; then
+            echo "::warning title=Toolchain unavailable::${{ matrix.pkg }} not installable on this runner image; skipping."
+            exit 0
+          fi
+      - name: Configure
+        working-directory: build_unix
+        run: |
+          command -v ${{ matrix.cc }} >/dev/null || { echo "::warning::${{ matrix.cc }} absent; skipping"; exit 0; }
+          ../dist/configure --enable-debug
+      - name: Build
+        working-directory: build_unix
+        run: |
+          command -v ${{ matrix.cc }} >/dev/null || exit 0
+          make -j$(nproc)
+
+  # ----------------------------------------------------------------------------
+  # Valgrind memcheck over a small core TCL subset. Noisy + slow, so advisory:
+  # we surface the error/leak summary but do not fail the job on it.
+  # ----------------------------------------------------------------------------
+  valgrind:
+    name: valgrind memcheck (core subset)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tcl + Valgrind
+        run: sudo apt-get update && sudo apt-get install -y tcl-dev tcl valgrind
+      - name: Configure (debug + test + tcl)
+        working-directory: build_unix
+        run: ../dist/configure --enable-debug --enable-test --with-tcl=/usr/lib/tcl8.6
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: Valgrind a small core subset
+        working-directory: build_unix
+        run: |
+          cat > /tmp/vg.tcl <<'TCL'
+          source ../test/tcl/test.tcl
+          foreach t {test001 lock001 txn001} {
+            source ../test/tcl/$t.tcl
+            set a {}
+            if {[string match test* $t]} { set a btree }
+            catch {eval $t $a}
+          }
+          TCL
+          # Leak-check the tclsh driver; --error-exitcode=0 keeps it advisory.
+          timeout 6000 valgrind --leak-check=full --show-leak-kinds=definite \
+            --errors-for-leak-kinds=definite --error-exitcode=0 \
+            --log-file=/tmp/vg.log \
+            tclsh /tmp/vg.tcl >/tmp/vg.out 2>&1 || true
+          echo "===== valgrind summary ====="
+          grep -E "ERROR SUMMARY|definitely lost|indirectly lost" /tmp/vg.log || true
+          n=$(grep -cE "definitely lost: [1-9]" /tmp/vg.log || true)
+          echo "::notice title=Valgrind::$n definite-leak line(s) (advisory)"
+
+  # ----------------------------------------------------------------------------
+  # Meson/Autoconf db_config.h feature-flag parity. Meson has no feature
+  # toggles today (always full build), so this diffs the DEFAULT autoconf
+  # db_config.h feature flags against meson's -- catching silent drift between
+  # the two build systems' baselines. Advisory.
+  # ----------------------------------------------------------------------------
+  config-parity:
+    name: meson/autoconf config parity
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Meson + Ninja
+        run: python -m pip install --upgrade meson ninja
+      - name: Autoconf configure (default)
+        working-directory: build_unix
+        run: ../dist/configure >/dev/null
+      - name: Meson configure (default)
+        run: meson setup build-meson >/dev/null
+      - name: Diff key feature flags
+        run: |
+          flags="HAVE_HASH HAVE_HEAP HAVE_QUEUE HAVE_VERIFY HAVE_STATISTICS \
+                 HAVE_REPLICATION HAVE_CRYPTO HAVE_COMPRESSION HAVE_PARTITION \
+                 HAVE_MUTEX_SUPPORT HAVE_SHARED_LATCHES HAVE_DBM \
+                 HAVE_LOG_CHECKSUM HAVE_UPGRADE_SUPPORT"
+          extract() {
+            for f in $flags; do
+              if grep -qE "^#define $f( |\$)" "$1" 2>/dev/null; then
+                echo "$f=1"
+              else
+                echo "$f=0"
+              fi
+            done
+          }
+          extract build_unix/db_config.h > /tmp/auto.flags
+          extract build-meson/db_config.h > /tmp/meson.flags
+          echo "=== autoconf | meson ==="
+          paste -d' ' /tmp/auto.flags /tmp/meson.flags
+          if diff -u /tmp/auto.flags /tmp/meson.flags > /tmp/flags.diff; then
+            echo "::notice title=Config parity::autoconf and meson agree on key feature flags"
+          else
+            echo "::warning title=Config parity::autoconf vs meson feature-flag drift (advisory):"
+            cat /tmp/flags.diff
+          fi
