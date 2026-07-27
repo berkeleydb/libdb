@@ -1,0 +1,83 @@
+# Property-based tests (Hegel) — advisory PBT tier.
+#
+# Dedicated workflow (does NOT touch ci.yml). Builds the opt-in Hegel
+# property tests under test/pbt/ with the real hegel-c library and the
+# `hegel` server binary, runs them, and uploads failure logs (which
+# contain the reproducing counterexample/seed) as an artifact.
+#
+# continue-on-error is set so this tier is advisory: it informs without
+# gating merges while the PBT suite matures.
+
+name: PBT
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    paths:
+      - 'test/pbt/**'
+      - 'meson.build'
+      - 'meson_options.txt'
+      - 'src/**'
+      - '.github/workflows/pbt.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pbt-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pbt:
+    name: hegel property tests
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory tier
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build + hegel dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build python3-pip cmake \
+            pkg-config libcbor-dev zlib1g-dev
+          # hegel-core provides the `hegel` server binary invoked at run time.
+          pip install --user hegel-core
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build and install hegel-c (the C library)
+        run: |
+          git clone --depth 1 https://github.com/gburd/hegel-c.git
+          cmake -S hegel-c -B hegel-c/build \
+            -DCMAKE_BUILD_TYPE=Release -DHEGEL_BUILD_TESTS=OFF
+          cmake --build hegel-c/build -j"$(nproc)"
+          sudo cmake --install hegel-c/build --prefix /usr/local
+          sudo ldconfig
+
+      - name: Configure libdb with PBT enabled
+        run: |
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH}"
+          export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH}"
+          meson setup build -Dhegel=enabled
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Run PBT suite
+        env:
+          # `hegel` (from hegel-core) is on PATH via ~/.local/bin; set the
+          # override explicitly as documentation of the mechanism.
+          HEGEL_SERVER_COMMAND: hegel
+        run: |
+          meson test -C build --suite pbt --print-errorlogs
+
+      - name: Upload PBT logs (reproducing counterexamples/seeds)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pbt-logs
+          path: |
+            build/meson-logs/testlog.txt
+            build/meson-logs/*.txt
+          if-no-files-found: warn
