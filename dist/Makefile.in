@@ -214,6 +214,10 @@ DTRACE_PROVIDER=	$(distdir)/db_provider.d
 # ADDITIONAL_OBJS by configure only when --enable-dst.  Compile rules below.
 SIM_OBJS=	sim_core@o@ sim_os_hooks@o@
 
+# Malloc-failure injection state -- added to the library's ADDITIONAL_OBJS
+# by configure only when --enable-faultinject.  Compile rule below.
+FI_OBJS=	fi_alloc@o@
+
 BTREE_OBJS=\
 	bt_compare@o@ bt_compress@o@ bt_conv@o@ bt_curadj@o@ bt_cursor@o@ \
 	bt_delete@o@ bt_method@o@ bt_open@o@ bt_put@o@ bt_rec@o@ \
@@ -1516,6 +1520,24 @@ test_sim_torn: test_sim_torn@o@ $(DEF_LIB)
 	$(POSTLINK) $@
 
 dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn
+
+##################################################
+# Malloc-failure injection (SQLite-style) -- test/faultinject/.
+#
+# fi_alloc.c is added to the library's ADDITIONAL_OBJS by configure when
+# --enable-faultinject; its compile rule lives here.  `make fi_tests`
+# builds the sweep driver; requires --enable-faultinject.
+##################################################
+fi_alloc@o@: $(testdir)/faultinject/fi_alloc.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/faultinject $<
+
+fi_sweep@o@: $(testdir)/faultinject/fi_sweep.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) -I$(testdir)/faultinject $<
+fi_sweep: fi_sweep@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ $(LDFLAGS) fi_sweep@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+fi_tests: fi_sweep
 
 ##################################################
 # Targets for example programs.
