@@ -16,6 +16,10 @@
 #include "dbinc/db_page.h"
 #include "dbinc_auto/db_ext.h"
 
+#ifdef HAVE_DST
+#include "sim_inject.h"			/* DST planted-bug harness. */
+#endif
+
 static int __log_encrypt_record __P((ENV *, DBT *, HDR *, u_int32_t));
 static int __log_file __P((ENV *, const DB_LSN *, char *, size_t));
 static int __log_fill __P((DB_LOG *, DB_LSN *, void *, u_int32_t));
@@ -1118,6 +1122,18 @@ flush:	MUTEX_LOCK(env, lp->mtx_flush);
 		LOG_SYSTEM_UNLOCK(env);
 
 	/* Sync all writes to disk. */
+#if defined(HAVE_DST)
+#if DB_DST_BUG(1)
+	/*
+	 * PLANTED BUG NODURABLE (DB_DST_INJECT_BUG=1): skip the log fsync
+	 * but still ack the commit as durable.  The write-back model's
+	 * durable frontier never advances past this record, so a crash
+	 * drops it -- and a commit the caller believes is durable is lost.
+	 * test_sim_crash_recover's "every committed txn survives" invariant
+	 * fires.  Compiled out of every normal build.
+	 */
+	ret = 0;
+#else
 	if ((ret = __os_fsync(env, dblp->lfhp)) != 0) {
 		MUTEX_UNLOCK(env, lp->mtx_flush);
 		if (release)
@@ -1125,6 +1141,16 @@ flush:	MUTEX_LOCK(env, lp->mtx_flush);
 		lp->in_flush--;
 		goto done;
 	}
+#endif
+#else
+	if ((ret = __os_fsync(env, dblp->lfhp)) != 0) {
+		MUTEX_UNLOCK(env, lp->mtx_flush);
+		if (release)
+			LOG_SYSTEM_LOCK(env);
+		lp->in_flush--;
+		goto done;
+	}
+#endif
 
 	/*
 	 * Set the last-synced LSN.
