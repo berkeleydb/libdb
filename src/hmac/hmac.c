@@ -18,6 +18,10 @@
 #include "dbinc/hmac.h"
 #include "dbinc/log.h"
 
+#ifdef HAVE_DST
+#include "sim_inject.h"			/* DST planted-bug harness. */
+#endif
+
 #define	HMAC_OUTPUT_SIZE	20
 #define	HMAC_BLOCK_SIZE	64
 
@@ -219,5 +223,18 @@ __db_check_chksum(env, hdr, db_cipher, chksum, data, data_len, is_hmac)
 		ret = memcmp(chksum, new, sum_len) ? -1 : 0;
 	}
 
+#if defined(HAVE_DST)
+#if DB_DST_BUG(2)
+	/*
+	 * PLANTED BUG NOCKSUM (DB_DST_INJECT_BUG=2): ignore a checksum
+	 * mismatch and accept the page as valid.  A torn/corrupt page then
+	 * flows silently into the tree; test_sim_torn's "never silently
+	 * wrong" invariant fires (a get returns bytes that do not match what
+	 * was stored, with no error).  Compiled out of every normal build.
+	 */
+	if (ret == -1)
+		ret = 0;
+#endif
+#endif
 	return (ret);
 }

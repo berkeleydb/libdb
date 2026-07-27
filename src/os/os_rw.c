@@ -91,9 +91,31 @@ __os_io(env, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 			    (u_long)offset);
 
 		LAST_PANIC_CHECK_BEFORE_IO(env);
+#ifdef HAVE_DST
+		{
+			/* DST write-side faults: ENOSPC (whole write fails,
+			 * nothing persists) or torn write (persist a strict
+			 * prefix but report full success -- a latent bad tail
+			 * a checksum must catch).  A no-op returning io_len
+			 * unless a sim armed the knobs. */
+			int persist = __db_sim_io_write_fault_hook(fhp, io_len);
+			if (persist < 0) {
+				*niop = 0;
+				return (ENOSPC);
+			}
+			nio = DB_GLOBAL(j_pwrite) != NULL ?
+			    DB_GLOBAL(j_pwrite)(fhp->fd, buf,
+				(size_t)persist, offset) :
+			    pwrite(fhp->fd, buf, (size_t)persist, offset);
+			/* Torn: a short physical write still reports full. */
+			if (nio == (ssize_t)persist && persist < (int)io_len)
+				nio = (ssize_t)io_len;
+		}
+#else
 		nio = DB_GLOBAL(j_pwrite) != NULL ?
 		    DB_GLOBAL(j_pwrite)(fhp->fd, buf, io_len, offset) :
 		    pwrite(fhp->fd, buf, io_len, offset);
+#endif
 		break;
 	default:
 		return (EINVAL);
@@ -101,15 +123,20 @@ __os_io(env, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 	if (nio == (ssize_t)io_len) {
 		*niop = io_len;
 #ifdef HAVE_DST
+		/* DST: consume the seeded per-I/O latency knob (tiny capped
+		 * sleep when armed; a no-op otherwise). */
+		__db_sim_io_latency_hook();
 		/* DST write-back model: record the written high-water for the
 		 * page-write fast path.  A no-op unless a sim armed it. */
 		if (op == DB_IO_WRITE)
 			__db_sim_io_write_off_hook(fhp,
 			    (u_int64_t)offset + io_len);
-		/* DST corrupt-read: silently flip a byte the checksum must
-		 * catch.  A no-op unless a sim armed the corrupt knob. */
+		/* DST corrupt/stale-read: silently flip a byte the checksum
+		 * must catch, or return a prior version.  A no-op unless a sim
+		 * armed the corrupt/stale knob. */
 		else if (op == DB_IO_READ)
-			__db_sim_io_read_hook(buf, io_len);
+			__db_sim_io_read_hook(fhp, (u_int64_t)offset,
+			    buf, io_len);
 #endif
 		return (0);
 	}
