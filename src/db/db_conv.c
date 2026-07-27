@@ -73,6 +73,17 @@ __db_pgin(dbenv, pg, pp, cookie)
 	int is_hmac, ret;
 	u_int8_t *chksum;
 
+	/*
+	 * The pgin/pgout cookie carries the DB_PGINFO the swap needs.  If a
+	 * file was registered for page-in but its cookie was never set (e.g.
+	 * an allocation failed while opening the file), __memp_get_pgcookie
+	 * hands back an empty DBT.  A page swap cannot proceed without the
+	 * page size and flags, so treat a missing/short cookie as an error
+	 * rather than dereferencing past it.
+	 */
+	if (cookie == NULL || cookie->data == NULL ||
+	    cookie->size < sizeof(DB_PGINFO))
+		return (EINVAL);
 	pginfo = (DB_PGINFO *)cookie->data;
 	env = dbenv->env;
 	pagep = (PAGE *)pp;
@@ -225,6 +236,10 @@ __db_pgout(dbenv, pg, pp, cookie)
 	PAGE *pagep;
 	int ret;
 
+	/* See __db_pgin: a page swap needs a valid DB_PGINFO cookie. */
+	if (cookie == NULL || cookie->data == NULL ||
+	    cookie->size < sizeof(DB_PGINFO))
+		return (EINVAL);
 	pginfo = (DB_PGINFO *)cookie->data;
 	env = dbenv->env;
 	pagep = (PAGE *)pp;
