@@ -125,6 +125,11 @@ __db_sim_io_write_fault_hook(fhp, len)
 		return ((int)len);
 	if (__db_sim_io_enospc())
 		return (-1);
+	/* Short-transfer / EIO: a seeded whole-write failure distinct from
+	 * ENOSPC (models a transient device error).  Returns -2 => the
+	 * caller reports EIO, nothing persists. */
+	if (__db_sim_io_should_fault())
+		return (-2);
 	return (__db_sim_io_torn_prefix((int)len));
 }
 
@@ -180,26 +185,37 @@ __db_sim_io_read_hook(fhp, off, buf, len)
 
 /*
  * __db_sim_io_presnapshot_hook --
- *	Called from the write path BEFORE overwriting, with the bytes
- *	CURRENTLY on disk at this (file,offset).  Records them in the
- *	stale-read ring so a later seeded stale read can return this
- *	now-prior version.  A no-op unless stale injection is armed.
+ *	Called from the write fast path BEFORE overwriting (fhp, off, len).
+ *	When the stale-read model is armed it reads the bytes CURRENTLY on
+ *	disk at this (file,offset) and records them in the stale-read ring,
+ *	so a later seeded stale read can hand back this now-prior version.
+ *	A no-op (no pread, no cost) unless stale injection is armed -- so it
+ *	never perturbs a non-stale run.
  *
  * PUBLIC: #ifdef HAVE_DST
- * PUBLIC: void __db_sim_io_presnapshot_hook __P((DB_FH *, u_int64_t, void *, size_t));
+ * PUBLIC: void __db_sim_io_presnapshot_hook __P((DB_FH *, u_int64_t, u_int32_t));
  * PUBLIC: #endif
  */
 void
-__db_sim_io_presnapshot_hook(fhp, off, buf, len)
+__db_sim_io_presnapshot_hook(fhp, off, len)
 	DB_FH *fhp;
 	u_int64_t off;
-	void *buf;
-	size_t len;
+	u_int32_t len;
 {
-	if (!__db_sim_active() || buf == NULL || len == 0)
+	unsigned char snap[512];
+	size_t cp;
+	ssize_t nr;
+
+	/* Only pay for the read-before-write when stale injection is armed
+	 * (the ring is otherwise inert), and only for a real named file. */
+	if (!__db_sim_active() || !__db_sim_io_stale_armed() ||
+	    fhp == NULL || fhp->fd < 0 || len == 0)
 		return;
-	__db_sim_io_stale_record(db_sim_fkey(fhp), off, buf,
-	    (int)(len > 0x7fffffff ? 0x7fffffff : len));
+	cp = len < sizeof(snap) ? (size_t)len : sizeof(snap);
+	nr = pread(fhp->fd, snap, cp, (off_t)off);
+	if (nr <= 0)
+		return;                 /* nothing there yet: no prior version */
+	__db_sim_io_stale_record(db_sim_fkey(fhp), off, snap, (int)nr);
 }
 
 /*
