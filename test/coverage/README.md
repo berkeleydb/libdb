@@ -33,6 +33,14 @@ Knobs (all optional env vars):
 | `COV_JOBS`   | `nproc`                                   | build parallelism                |
 | `TCL_LIB`    | autodetected (nix store or `/usr/lib/tcl8.6`) | Tcl lib dir for `--with-tcl` |
 | `COV_TIMEOUT`| `2400`                                    | seconds ceiling for the test run |
+| `COV_REP`    | `0`                                       | set `1` to also run the replication (rep/repmgr) tests |
+
+Set `COV_REP=1` to add the replication suite (biggest cold surface: rep/ +
+repmgr/ ~= 12.4k lines at 0.8%). It moves them to ~56% line / ~42% branch. Those
+tests each run in their own `tclsh` (driver-per-test, per-test timeout) because a
+few election/lease tests hang; see `REPLICATION-COVERAGE.md` for the exact set,
+the measured lift, and what still needs real multi-process orchestration
+(`rep*script.tcl` subprocess tests, repmgr 100-series needing `db_repsite`).
 
 Outputs land in `build_unix/` (gitignored):
 
