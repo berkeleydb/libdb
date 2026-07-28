@@ -51,6 +51,14 @@ Running the full standard suite roughly **+19 pts line / +17 pts branch**.
 - **Replication: `rep`, `repmgr` (rep_subset / auto_repmgr / other_repmgr /
   multi_repmgr).** Deliberately ordered last (documented multi-process hang
   risk) and not reached before the wall-clock ceiling. Coverage ≈ 0.8%.
+  **Update:** most of the replication suite does *not* actually need external
+  multi-process orchestration — the `rep0NN` in-process message harness and
+  the single-process `repmgrNN` socket tests run in one `tclsh` each. Running
+  37 of them lifts `rep/`+`repmgr/` from 0.8% to **~56.6% line / ~41.9%
+  branch** (~+9.7 pts of the whole-`src/` headline). See
+  `REPLICATION-COVERAGE.md` and `COV_REP=1 run_coverage.sh`. Still cold:
+  `rep_lease.c` (lease tests hang), the `rep*script.tcl` subprocess tests, and
+  the repmgr 100-series (need the `db_repsite` utility, absent from this fork).
 - **XA (`xa/xa.c`).** Not exercised by any group run. Coverage 0%.
 - **Redundant access methods** rbtree, frecno, rrecno, queueext were queued
   after the subsystem groups and not reached. Their coverage is near-identical
