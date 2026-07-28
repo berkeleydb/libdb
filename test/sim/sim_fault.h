@@ -33,6 +33,25 @@ extern "C" {
  * FAULT stream; 0 when sim inactive.  Same seed => same fault schedule. */
 int      __db_sim_fault __P((unsigned));
 
+/*
+ * Fault-activation coverage counters (FoundationDB-style).  Each fault
+ * class increments its counter every time it actually FIRES (not merely
+ * armed), so a swarm can report per-fault activation across a seed sweep
+ * -- a class that never fires is a coverage gap.  Reset at activate.
+ */
+enum db_sim_fault_class {
+	DB_SIM_FC_TORN     = 0,   /* torn write (short prefix persisted) */
+	DB_SIM_FC_ENOSPC   = 1,   /* whole write failed ENOSPC */
+	DB_SIM_FC_CORRUPT  = 2,   /* corrupt read (bit flip) */
+	DB_SIM_FC_STALE    = 3,   /* stale read (prior version returned) */
+	DB_SIM_FC_LATENCY  = 4,   /* per-I/O latency sleep taken */
+	DB_SIM_FC_SHORTEIO = 5,   /* short-transfer / EIO toggle fired */
+	DB_SIM_FC_NCLASSES
+};
+unsigned long __db_sim_fault_count __P((int));
+void          __db_sim_fault_count_reset __P((void));
+const char   *__db_sim_fault_class_name __P((int));
+
 /* Buggify: once-per-run cached coin per named site (BUGGIFY stream). */
 void     __db_sim_buggify_enable __P((unsigned));
 void     __db_sim_buggify_disable __P((void));
@@ -49,6 +68,7 @@ int      __db_sim_io_should_fault __P((void));
 /* Stale-read model: a seeded read returns a prior (superseded) version of
  * the block -- well-formed but out of date, to catch a missing LSN check. */
 void     __db_sim_io_stale_enable __P((unsigned));
+int      __db_sim_io_stale_armed __P((void));
 void     __db_sim_io_stale_record __P((uint64_t, uint64_t, const void *, int));
 int      __db_sim_io_stale_read __P((uint64_t, uint64_t, void *, int));
 

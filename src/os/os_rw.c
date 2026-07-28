@@ -99,9 +99,15 @@ __os_io(env, op, fhp, pgno, pgsize, relative, io_len, buf, niop)
 			 * a checksum must catch).  A no-op returning io_len
 			 * unless a sim armed the knobs. */
 			int persist = __db_sim_io_write_fault_hook(fhp, io_len);
+			/* DST stale-read model: snapshot the CURRENT on-disk
+			 * bytes at this (file,offset) BEFORE we overwrite, so
+			 * a later seeded stale read can hand back this prior
+			 * version.  A no-op (no read) unless stale is armed. */
+			__db_sim_io_presnapshot_hook(fhp,
+			    (u_int64_t)offset, io_len);
 			if (persist < 0) {
 				*niop = 0;
-				return (ENOSPC);
+				return (persist == -1 ? ENOSPC : EIO);
 			}
 			nio = DB_GLOBAL(j_pwrite) != NULL ?
 			    DB_GLOBAL(j_pwrite)(fhp->fd, buf,
