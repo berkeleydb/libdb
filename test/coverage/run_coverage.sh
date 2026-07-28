@@ -60,7 +60,8 @@ bld="$root/build_unix"
   recno/test001 recno/test006 recno/test024 recno/test025 \
   heap/test001 heap/test013 heap/test024 \
   run_range_partition@test001@btree \
-  run_partition_callback@test001@btree}"
+  run_partition_callback@test001@btree \
+  logverify001: logverify002:}"
 : "${COV_JOBS:=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 : "${TCLSH:=tclsh}"
 # TCL lib dir: nix store on this box, /usr/lib/tcl8.6 on ubuntu CI.
