@@ -45,6 +45,20 @@
  *	                   the update is lost.  test_sim_ckp_crash's
  *	                   "post-checkpoint committed data survives"
  *	                   invariant fires.
+ *	  4  ABORTNOUNDO -- src/txn/txn.c __txn_abort SKIPS the __txn_undo
+ *	                   rollback pass, so an aborting txn's dirty page
+ *	                   changes are left in place yet the txn reports
+ *	                   aborted.  The aborted records survive;
+ *	                   test_sim_abort_atomic's "aborted txns leave no
+ *	                   trace" invariant fires.
+ *	  5  CKPBADLSN  -- src/txn/txn_chkpt.c __txn_updateckp records a
+ *	                   checkpoint LSN advanced far past the true one, so
+ *	                   recovery starts too LATE and skips replaying
+ *	                   committed log records written after the real
+ *	                   checkpoint.  Post-checkpoint committed txns are
+ *	                   lost after a crash; test_sim_ckp_lsn's
+ *	                   "post-checkpoint committed data survives"
+ *	                   invariant fires.
  *
  *	When you add a safety invariant, add a bug id here, plant it at the
  *	real site, and add a case to scripts/dst-bug-inject.sh so DST must
@@ -68,5 +82,7 @@
 #define DB_DST_BUG_NODURABLE   1   /* log_put.c: skip log fsync, still ack */
 #define DB_DST_BUG_NOCKSUM     2   /* hmac.c: accept a checksum-mismatch page */
 #define DB_DST_BUG_LOSTUPDATE  3   /* mp_bh.c: skip a dirty-page write */
+#define DB_DST_BUG_ABORTNOUNDO 4   /* txn.c: skip an abort's undo pass */
+#define DB_DST_BUG_CKPBADLSN   5   /* txn_chkpt.c: record a wrong checkpoint LSN */
 
 #endif /* !_DB_SIM_INJECT_H_ */

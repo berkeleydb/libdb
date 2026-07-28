@@ -1597,11 +1597,92 @@ test_sim_split_crash: test_sim_split_crash@o@ $(DEF_LIB)
 	    $(LDFLAGS) test_sim_split_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
+test_sim_stale@o@: $(testdir)/sim/test_sim_stale.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_stale: test_sim_stale@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_stale@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_ckp_enospc@o@: $(testdir)/sim/test_sim_ckp_enospc.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_ckp_enospc: test_sim_ckp_enospc@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_ckp_enospc@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_split_torn@o@: $(testdir)/sim/test_sim_split_torn.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_split_torn: test_sim_split_torn@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_split_torn@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_recover_corrupt@o@: $(testdir)/sim/test_sim_recover_corrupt.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_recover_corrupt: test_sim_recover_corrupt@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_recover_corrupt@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_multi_fault@o@: $(testdir)/sim/test_sim_multi_fault.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_multi_fault: test_sim_multi_fault@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_multi_fault@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_secondary_crash@o@: $(testdir)/sim/test_sim_secondary_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_secondary_crash: test_sim_secondary_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_secondary_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_largetxn_crash@o@: $(testdir)/sim/test_sim_largetxn_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_largetxn_crash: test_sim_largetxn_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_largetxn_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_cursor_crash@o@: $(testdir)/sim/test_sim_cursor_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_cursor_crash: test_sim_cursor_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_cursor_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_latency_load@o@: $(testdir)/sim/test_sim_latency_load.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_latency_load: test_sim_latency_load@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_latency_load@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_swarm@o@: $(testdir)/sim/test_sim_swarm.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_swarm: test_sim_swarm@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_swarm@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_ckp_lsn@o@: $(testdir)/sim/test_sim_ckp_lsn.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_ckp_lsn: test_sim_ckp_lsn@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_ckp_lsn@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
 dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_hash_crash test_sim_recno_crash test_sim_queue_crash \
 	test_sim_ckp_crash test_sim_torn_log test_sim_enospc \
 	test_sim_abort_atomic test_sim_recover_idempotent test_sim_dup_crash \
-	test_sim_overflow_torn test_sim_split_crash
+	test_sim_overflow_torn test_sim_split_crash test_sim_stale \
+	test_sim_ckp_enospc test_sim_split_torn test_sim_recover_corrupt \
+	test_sim_multi_fault test_sim_secondary_crash test_sim_largetxn_crash \
+	test_sim_cursor_crash test_sim_latency_load test_sim_swarm \
+	test_sim_ckp_lsn
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.

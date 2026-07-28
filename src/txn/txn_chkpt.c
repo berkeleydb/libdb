@@ -45,6 +45,10 @@
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
+#ifdef HAVE_DST
+#include "sim_inject.h"			/* DST planted-bug harness. */
+#endif
+
 /*
  * __txn_checkpoint_pp --
  *	ENV->txn_checkpoint pre/post processing.
@@ -99,6 +103,11 @@ __txn_checkpoint(env, kbytes, minutes, flags)
 {
 	DB_LOG *dblp;
 	DB_LSN ckp_lsn, last_ckp, msg_lsn;
+#if defined(HAVE_DST)
+#if DB_DST_BUG(5)
+	DB_LSN bad_ckp;
+#endif
+#endif
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	LOG *lp;
@@ -307,8 +316,29 @@ do_ckp:
 		else if (region->stat.st_nrestores == 0)
 			op = DBREG_RCLOSE;
 		if ((ret = __dbreg_log_files(env, op)) != 0 ||
+#if defined(HAVE_DST)
+#if DB_DST_BUG(5)
+		/*
+		 * PLANTED BUG CKPBADLSN (DB_DST_INJECT_BUG=5): write a
+		 * checkpoint record whose recorded ckp_lsn is advanced far
+		 * past the true one.  Recovery reads this record and starts
+		 * its forward pass from the bogus LSN, skipping committed log
+		 * records written after the real checkpoint -- so after a
+		 * crash those committed txns are lost.  test_sim_ckp_lsn's
+		 * "post-checkpoint committed data survives" invariant fires.
+		 * Compiled out of every normal build.
+		 */
+		    (bad_ckp = ckp_lsn, bad_ckp.offset += 100000000,
+		    ret = __txn_ckp_log(env, NULL, &ckp_lsn, logflags,
+		    &bad_ckp, &last_ckp, (int32_t)time(NULL), id, 0)) != 0) {
+#else
 		    (ret = __txn_ckp_log(env, NULL, &ckp_lsn, logflags,
 		    &ckp_lsn, &last_ckp, (int32_t)time(NULL), id, 0)) != 0) {
+#endif
+#else
+		    (ret = __txn_ckp_log(env, NULL, &ckp_lsn, logflags,
+		    &ckp_lsn, &last_ckp, (int32_t)time(NULL), id, 0)) != 0) {
+#endif
 			__db_err(env, ret, DB_STR_A("4520",
 			    "txn_checkpoint: log failed at LSN [%ld %ld]",
 			    "%ld %ld"),

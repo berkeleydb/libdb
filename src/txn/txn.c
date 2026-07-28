@@ -48,6 +48,10 @@
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
+#ifdef HAVE_DST
+#include "sim_inject.h"			/* DST planted-bug harness. */
+#endif
+
 #define	LOG_FLAGS(txn)						\
 		(DB_LOG_COMMIT | (F_ISSET(txn, TXN_SYNC) ?	\
 		DB_FLUSH : (F_ISSET(txn, TXN_WRITE_NOSYNC) ?	\
@@ -1218,8 +1222,26 @@ __txn_abort(txn)
 		    env, txn->locker, 0, &request, 1, NULL)) != 0)
 			return (__env_panic(env, ret));
 	}
-undo:	if ((ret = __txn_undo(txn)) != 0)
+undo:
+#if defined(HAVE_DST)
+#if DB_DST_BUG(4)
+	/*
+	 * PLANTED BUG ABORTNOUNDO (DB_DST_INJECT_BUG=4): skip the abort's
+	 * undo pass, so the aborting txn's dirty page changes are left in
+	 * place (never rolled back) yet the txn still reports aborted.  The
+	 * aborted records then survive; test_sim_abort_atomic's "aborted
+	 * txns leave no trace" invariant fires.  Compiled out of every
+	 * normal build.
+	 */
+	ret = 0;
+#else
+	if ((ret = __txn_undo(txn)) != 0)
 		return (__env_panic(env, ret));
+#endif
+#else
+	if ((ret = __txn_undo(txn)) != 0)
+		return (__env_panic(env, ret));
+#endif
 
 	/*
 	 * Normally, we do not need to log aborts.  However, if we

@@ -40,6 +40,8 @@ BUGS="
 1|test_sim_crash_recover|exit0catch
 2|test_sim_torn|nonzerocatch
 3|test_sim_ckp_crash|nonzerocatch
+4|test_sim_abort_atomic|nonzerocatch
+5|test_sim_ckp_lsn|exit0catch
 "
 
 overall=0
@@ -72,14 +74,14 @@ for line in $BUGS; do
 	done
 
 	if [ -n "$caught_seed" ]; then
-		echo "  CAUGHT bug $n at seed $caught_seed (K<=$K)"
+		echo "  CAUGHT bug $n at seed $caught_seed (catch-latency K=$caught_seed, max $K)"
 	else
 		echo "  MISSED bug $n within $K seeds -- COVERAGE HOLE"
 		overall=1
 	fi
 done
 
-rm -rf "$TMPD"
+trash "$TMPD" 2>/dev/null || rm -rf "$TMPD"
 if [ "$overall" -eq 0 ]; then
 	echo "dst-bug-inject: ALL planted bugs caught within $K seeds"
 else
