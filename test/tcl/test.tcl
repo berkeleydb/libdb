@@ -589,6 +589,7 @@ proc r { args } {
 			env -
 			lock -
 			log -
+			logverify -
 			memp -
 			multi_repmgr -
 			mutex -
