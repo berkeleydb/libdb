@@ -6,10 +6,10 @@
 # crashed the engine (OOB read, SIGFPE, ...) and must now return an error
 # instead.  A crash/ASan fault here is a regression.
 #
-# Leak detection is intentionally OFF: some seeds reach the verify /
-# recovery cleanup paths that carry a documented, pre-existing leak (see
-# crashes/README.md and .agents/fuzz-found-bugs.md).  We assert only the
-# memory-safety property (no crash/OOB/FPE), which is what the fixes deliver.
+# Leak detection is ON: the DB_PRIVATE region-teardown leak that used to
+# fire on these verify / recovery cleanup paths is now fixed (see
+# .agents/fuzz-found-bugs.md), so every committed seed replays leak-clean.
+# We assert both the memory-safety property (no crash/OOB/FPE) and no leak.
 #
 # Build target: the standard (--enable-debug) build that run.sh uses.  Do NOT
 # run this against an --enable-diagnostic build: there DB_ASSERT / __env_panic
@@ -50,7 +50,7 @@ for seed in crashes/*.seed; do
 		echo "SKIP (unknown harness): $seed"
 		continue
 	fi
-	if ASAN_OPTIONS=detect_leaks=0 "build/fuzz_${h}_standalone" \
+	if ASAN_OPTIONS=detect_leaks=1 "build/fuzz_${h}_standalone" \
 	    "$seed" >/dev/null 2>&1; then
 		echo "PASS: $seed ($h)"
 	else
