@@ -41,6 +41,34 @@ __db_ret_okitem(dbp, h, indx)
 	pgsize = dbp->pgsize;
 	inp = P_INP(dbp, h);
 
+	/*
+	 * Heap pages use the inp[] array as an offset table with different
+	 * semantics from btree/hash: valid slot indexes run up to
+	 * HEAP_HIGHINDX (which can exceed NUM_ENT because deleted slots leave
+	 * holes), and a deleted/empty slot has offset 0.  Validate heap here
+	 * and return -- the generic NUM_ENT / offset-lower-bound checks below
+	 * assume btree/hash inp[] layout and would wrongly reject legal heap
+	 * indexes and offsets.
+	 */
+	if (TYPE(h) == P_HEAP) {
+		if (indx > HEAP_HIGHINDX(h))
+			return (DB_PAGE_NOTFOUND);
+		off = inp[indx];
+		/*
+		 * A zero offset is an empty/deleted slot -- nothing to copy out;
+		 * report "no such item" rather than corruption.  A non-zero
+		 * offset must leave room for the heap record header on-page.
+		 */
+		if (off == 0 || (size_t)off + sizeof(HEAPHDR) > pgsize)
+			return (DB_PAGE_NOTFOUND);
+		hdr = (HEAPHDR *)((u_int8_t *)h + off);
+		/* Split records are copied out separately; skip the size check. */
+		if (!F_ISSET(hdr, (HEAP_RECSPLIT | HEAP_RECFIRST)) &&
+		    (size_t)off + sizeof(HEAPHDR) + hdr->size > pgsize)
+			return (DB_PAGE_NOTFOUND);
+		return (0);
+	}
+
 	/* The index must be one of the entries the page claims to hold. */
 	if (indx >= NUM_ENT(h))
 		return (DB_PAGE_NOTFOUND);
@@ -77,15 +105,6 @@ __db_ret_okitem(dbp, h, indx)
 		/* On-page H_KEYDATA/H_DUPLICATE: item must hold its header. */
 		if (HPAGE_PTYPE((u_int8_t *)h + off) != H_OFFPAGE &&
 		    (size_t)(prev - off) < HKEYDATA_SIZE(0))
-			return (DB_PAGE_NOTFOUND);
-		break;
-	case P_HEAP:
-		if ((size_t)off + sizeof(HEAPHDR) > pgsize)
-			return (DB_PAGE_NOTFOUND);
-		hdr = (HEAPHDR *)((u_int8_t *)h + off);
-		/* Split records are copied out separately; skip the size check. */
-		if (!F_ISSET(hdr, (HEAP_RECSPLIT | HEAP_RECFIRST)) &&
-		    (size_t)off + sizeof(HEAPHDR) + hdr->size > pgsize)
 			return (DB_PAGE_NOTFOUND);
 		break;
 	case P_LBTREE:
