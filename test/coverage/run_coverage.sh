@@ -159,9 +159,52 @@ if grep -q '^FAIL' /tmp/cov-tests.log; then
 fi
 echo "  .gcda files: $(find . -name '*.gcda' | wc -l)"
 
+# --- optional replication tests (COV_REP=1) ----------------------------------
+# Replication is the single biggest cold surface (rep/ + repmgr/ ~= 12.4k lines
+# at ~0.8%). These tests are NOT in the default COV_TESTS because each one wants
+# its own tclsh (they reset TESTDIR and a few election/lease tests hang), so
+# they are run driver-per-test with a per-test timeout instead of one big tclsh.
+# Set COV_REP=1 to include them. They use the in-process message-shuffling
+# harness (rep0NN) and single-process real-socket repmgr (repmgrNN) -- no
+# external orchestration. See test/coverage/REPLICATION-COVERAGE.md.
+#
+# NOT included (need real multi-process): the rep*script.tcl subprocess tests
+# and the repmgr 100-series (need the db_repsite utility, absent from this fork)
+# and a few election/lease tests that hang (rep016, repmgr024/026).
+if [ "${COV_REP:-0}" = 1 ]; then
+  echo "== run replication tests (COV_REP=1) =="
+  : "${COV_REP_TIMEOUT:=300}"
+  : "${COV_REP_TESTS:=rep001 rep002 rep003 rep005 rep006 rep007 rep008 rep009 \
+ rep010 rep011 rep012 rep013 rep014 rep015 rep019 rep020 rep021 rep022 rep023 \
+ rep024 rep025 rep026}"
+  : "${COV_REPMGR_TESTS:=repmgr009 repmgr010 repmgr011 repmgr012 repmgr013 \
+ repmgr017 repmgr018 repmgr023 repmgr025 repmgr027 repmgr030 repmgr031 \
+ repmgr032 repmgr033 repmgr034}"
+  reptcl="$bld/.cov-rep-one.tcl"
+  for t in $COV_REP_TESTS $COV_REPMGR_TESTS; do
+    case "$t" in
+    rep[0-9]*) call="$t btree" ;;   # rep0NN take a method arg
+    *)         call="$t" ;;          # repmgrNN use defaults
+    esac
+    printf 'source ../test/tcl/test.tcl\nsource ../test/tcl/reputils.tcl\nif {[catch {%s} r]} { puts "FAIL %s: $r"; exit 3 }\nputs "PASS %s"\n' \
+      "$call" "$t" "$t" > "$reptcl"
+    timeout "$COV_REP_TIMEOUT" "$TCLBIN" "$reptcl" >/tmp/cov-rep-$t.log 2>&1
+    rc=$?
+    if [ $rc -eq 124 ]; then echo "HANG $t"
+    elif [ $rc -eq 0 ] && grep -q "^PASS $t" /tmp/cov-rep-$t.log; then echo "PASS $t"
+    else echo "FAIL $t (rc=$rc)"; fi
+    pkill -f "$reptcl" 2>/dev/null || true
+    find TESTDIR -mindepth 1 -delete 2>/dev/null || true
+  done
+  rm -f "$reptcl"
+  echo "  .gcda files after rep: $(find . -name '*.gcda' | wc -l)"
+fi
+
 # --- aggregate ---------------------------------------------------------------
 echo "== capture (lcov) =="
-"$LCOV" --capture --directory . --output-file coverage.info \
+# NOTE: capture from .libs (not .) -- libtool double-compiles, and only the
+# .libs/*.gcda carry the merged replication counts; capturing "." drops repmgr.
+"$LCOV" --capture --directory .libs --output-file coverage.info \
   --gcov-tool "$GCOV" --rc geninfo_unexecuted_blocks=1 --branch-coverage \
   --ignore-errors "$IGN" >/tmp/cov-lcov.log 2>&1 \
   || { echo "lcov capture failed:"; tail -20 /tmp/cov-lcov.log; exit 1; }
