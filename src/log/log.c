@@ -160,6 +160,21 @@ __log_open(env)
 err:	if (dblp->reginfo.addr != NULL) {
 		if (region_locked)
 			LOG_SYSTEM_UNLOCK(env);
+		/*
+		 * If we created and initialized the region, __log_init
+		 * allocated the log buffer as a separate heap block for a
+		 * private (heap-backed) environment.  __env_region_detach frees
+		 * the region primary (the LOG struct) but not that buffer, so a
+		 * failed open (e.g. corrupt-log recovery) would leak it -- the
+		 * normal-close path frees it in __log_env_refresh.  Free it here
+		 * to match, before we detach and lose the primary reference.
+		 */
+		if (F_ISSET(env, ENV_PRIVATE) &&
+		    F_ISSET(&dblp->reginfo, REGION_CREATE) &&
+		    (lp = dblp->reginfo.primary) != NULL &&
+		    lp->buffer_off != INVALID_ROFF)
+			__env_alloc_free(&dblp->reginfo,
+			    R_ADDR(&dblp->reginfo, lp->buffer_off));
 		(void)__env_region_detach(env, &dblp->reginfo, 0);
 	}
 	env->lg_handle = NULL;

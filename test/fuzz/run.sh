@@ -87,15 +87,12 @@ smoke() {
 		# writes newly found inputs into work_$h, keeping the tracked
 		# corpus/ dir pristine.
 		cp "$CORPUS/$h/"* "$OUT/work_$h/" 2>/dev/null || true
-		# The recover harness trips a KNOWN engine leak on the
-		# corrupt-log recovery-cleanup path (reported, not a harness
-		# bug) -- run it with leak detection off so ASan still catches
-		# crashes/OOB without halting on that documented leak.  See
-		# crashes/README.md and test/fuzz/README.md.
-		leakopt=1
-		[ "$h" = recover ] && leakopt=0
+		# Leak detection is ON for all harnesses: the DB_PRIVATE
+		# region-teardown leak on the corrupt verify / recovery-cleanup
+		# path (which used to force the recover harness to run with
+		# leaks off) is now fixed -- see .agents/fuzz-found-bugs.md.
 		# -artifact_prefix so any crashing input lands in a known dir.
-		if ASAN_OPTIONS="detect_leaks=$leakopt" \
+		if ASAN_OPTIONS="detect_leaks=1" \
 			"$OUT/fuzz_$h" "$OUT/work_$h" \
 			-max_total_time="$secs" -max_len=65536 -rss_limit_mb=4096 \
 			-artifact_prefix="$OUT/artifacts_$h/" \
