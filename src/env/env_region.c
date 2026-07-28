@@ -454,6 +454,7 @@ creation:
 	 * we're manipulating the list.
 	 */
 	renv->region_cnt = nregions;
+	renv->region_off = INVALID_ROFF;
 	if ((ret = __env_alloc(infop, nregions * sizeof(REGION), &rp)) != 0) {
 		__db_err(env, ret, DB_STR("1543",
 		    "unable to create new master region array"));
@@ -547,11 +548,22 @@ retry:	/* Close any open file handle. */
 		if (infop->rp == NULL)
 			infop->rp = &tregion;
 
+		/*
+		 * For a private (heap-backed) region, each __env_alloc call is
+		 * a separate malloc, so freeing infop->addr (the REGENV block)
+		 * in __env_sys_detach does NOT free the region array allocated
+		 * out of the region.  Free it here, the same way __env_detach
+		 * does, BEFORE __env_sys_detach frees the REGENV block that
+		 * renv->region_off is relative to.  (rp is unusable here: it
+		 * may have been reassigned or NULLed by __env_des_get above, so
+		 * recover the array via renv->region_off instead.)
+		 */
+		if (F_ISSET(env, ENV_PRIVATE) && F_ISSET(infop, REGION_CREATE) &&
+		    renv != NULL && renv->region_off != INVALID_ROFF)
+			__env_alloc_free(infop, R_ADDR(infop, renv->region_off));
+
 		(void)__env_sys_detach(env,
 		    infop, F_ISSET(infop, REGION_CREATE));
-
-		if (rp != NULL && F_ISSET(env, DB_PRIVATE))
-			__env_alloc_free(infop, rp);
 	}
 
 	/* Free the allocated name and/or REGINFO structure. */
