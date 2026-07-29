@@ -218,10 +218,13 @@ fi
 #     that drives the switch entry points + the internal 2PC / recovery path)
 #     and runs it under a timeout.  Lifts xa.c 0%->~57%, xa_map.c 0%->~78%.
 #   db/db_upg.c         -- the on-disk-format upgrade path.
-#     test/db/run_upgrade.sh runs the db_upgrade utility over the committed
-#     old-format fixture (test/csharp/bdb4.7.db).  Lifts db_upg.c 0%->~14%.
-#     (db_upg_opd.c stays cold: needs an old off-page-duplicate fixture that is
-#      not present in this fork -- see test/coverage/README.md.)
+#     test/db/run_upgrade.sh runs the db_upgrade utility + DB->upgrade over the
+#     committed old-format fixture, freshly-created current-format dbs of every
+#     access method, AND synthetic old-format fixtures (metadata pages rewritten
+#     into BTMETA2X/BTMETA30/HASHHDR/HMETA30/QMETA30/QMETA31 layouts).  Lifts
+#     db_upg.c 0%->~57%, qam_upgrade.c 0%->~97%, hash_upgrade.c 0%->~68%,
+#     bt_upgrade.c 0%->~82%.  (db_upg_opd.c stays cold: needs a genuine 3.0-era
+#     off-page-duplicate page chain -- see test/coverage/README.md.)
 # Both self-clean their home dir and run under a hard timeout, so they cannot
 # hang.  Set COV_XA_UPG=0 to skip.
 if [ "${COV_XA_UPG:-1}" = 1 ]; then
