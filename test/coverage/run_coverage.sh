@@ -72,9 +72,32 @@ bld="$root/build_unix"
 # mp_resize.c 0->~58%.  (Cache SHRINK is intentionally not exercised: it hits
 # a SIGSEGV off-by-one in __memp_remove_region -- see
 # test/coverage/MVCC-RESIZE-COVERAGE.md.)
+#
+# lock007 + test143:btree light up three cold lock/codec files:
+#   lock/lock_method.c   -- the DB_ENV lock-config setters/getters.  Cold
+#     because the rest of the suite runs with default lock sizing.  lock007
+#     sets every knob (set_lk_max_locks/lockers/objects, set_lk_partitions,
+#     set_lk_tablesize, the DB_MEM_LOCK/LOCKER/LOCKOBJECT init counts, and
+#     set_lk_detect for all nine deadlock-detection policies) and reads them
+#     back through the getters (10->~38%).
+#   lock/lock_alloc.incl -- the lock-region object/locker/lock allocator
+#     (included into lock_region.c).  Cold because default runs never exhaust
+#     the initial free lists.  lock007's many-locker workload (200 lockers x
+#     40 distinct objects) forces the region-growth loop (14->~82%).
+#   common/db_compint.c  -- the compressed-integer (varint) codec used by
+#     btree compression (bt_compress.c).  Cold because no default-subset test
+#     opens a -compress btree.  test143:btree stores records whose data sizes
+#     span the codec's 1/2/3-byte size classes and reads them back, driving
+#     __db_compress_int / __db_decompress_int32 (0->~16%, the full
+#     tcl-reachable ceiling).  NOTE: the 64-bit __db_decompress_int and the
+#     4-9 byte size classes are unreachable from any Tcl workload (btree
+#     compression only ever marshals 32-bit lengths); they are exhaustively
+#     property-tested by test/pbt/pbt_compint.c, a separate tier not in this
+#     subset -- so db_compint's ceiling here is ~24%, not 100%.
 : "${COV_TESTS:=lock001: txn001: ssi001: ssi002: recd001:btree \
   recd002:btree recd016:btree env007: \
-  btree/test001 btree/test111 \
+  lock007: \
+  btree/test001 btree/test111 test143:btree \
   hash/test001 hash/test006 hash/test010 hash/test025 hash/test077 \
   queue/test001 queue/test007 queue/test025 \
   recno/test001 recno/test006 recno/test024 recno/test025 \

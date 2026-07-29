@@ -233,6 +233,45 @@ off-by-one region index in `__memp_remove_region`. See
 [`MVCC-RESIZE-COVERAGE.md`](MVCC-RESIZE-COVERAGE.md) for the stack, root cause,
 and reproduction.
 
+## Lock configuration + region growth + the varint codec (`lock007`, `test143:btree`)
+
+Three cold files, all added to the default `COV_TESTS`:
+
+- **`lock/lock_method.c`** (was ~22%): the `DB_ENV` lock-subsystem config
+  setters/getters. Cold because the rest of the suite runs with default lock
+  sizing and detection. **`lock007`** (COV group `lock`) sets every knob
+  before open — `set_lk_max_locks`/`lockers`/`objects`, `set_lk_partitions`,
+  `set_lk_tablesize`, the `DB_MEM_LOCK`/`LOCKER`/`LOCKOBJECT` init counts, and
+  `set_lk_detect` for all nine deadlock-detection policies (plus a rejected
+  bogus policy) — then reads them back through the getters. Lift:
+  **lock_method.c 10%→~38%** (isolated subset; both the `ENV_ILLEGAL_AFTER_OPEN`
+  set path and the `LOCKING_ON` region get path are hit).
+- **`lock/lock_alloc.incl`** (was ~27%): the lock-region object/locker/lock
+  allocator, `#include`d into `lock_region.c`. Cold because default runs never
+  exhaust the initial free lists. `lock007`'s Part c allocates 200 lockers ×
+  40 distinct read-lock objects, exhausting the free lists and forcing the
+  region-growth loop (`__env_alloc` + free-list refill). Lift:
+  **lock_alloc.incl 14%→~82%**.
+- **`common/db_compint.c`** (was ~24%): the compressed-integer (varint) codec
+  used by btree compression (`bt_compress.c`). Cold in the subset because no
+  default test opens a `-compress` btree. **`test143:btree`** (COV group
+  `test`) stores records whose *data sizes* span the codec's 1-byte, 2-byte
+  and 3-byte size classes (1 B … 100 KB) into a `-compress` btree and reads
+  them back, driving `__db_compress_int` on write and `__db_decompress_int32`
+  on read, plus the key prefix/suffix length compression. Lift:
+  **db_compint.c 0%→~16%** in isolation.
+
+  **Codec ceiling / PBT tier.** db_compint cannot reach 100% from Tcl: btree
+  compression only ever marshals **32-bit** lengths, so the 64-bit
+  `__db_decompress_int` (~130 of the file's 324 lines) and the 4–9 byte size
+  classes are unreachable from *any* Tcl workload. Those paths are exhaustively
+  property-tested by [`test/pbt/pbt_compint.c`](../pbt/pbt_compint.c) — a
+  separate property-based-testing tier that round-trips random 64-bit values
+  through `__db_compress_int`/`__db_decompress_int` across every size class,
+  and is **not** part of this Tcl coverage subset (hence db_compint shows
+  "cold" in the ranking even though the codec is well covered overall). The
+  tcl-reachable ceiling is ~24%.
+
 Outputs land in `build_unix/` (gitignored):
 
 - `coverage-summary.txt` — the line/branch/function totals
