@@ -75,6 +75,27 @@ timeout, so they cannot hang:
     current db, because current off-page dups are already stored as a Recno
     tree (P_LRECNO/P_IRECNO), not a flat page chain. A genuine pre-3.1 fixture
     is required.
+- **Async I/O backends (os_aio)** — `test/os/run_os_aio.sh` builds
+  `test/os/os_aio_direct.c`, which links the internal libdb symbols and drives
+  the async-I/O abstraction (`src/os/os_aio.c`) and its backends
+  (`os_aio_pool.c`, `os_aio_posix.c`, `os_aio_uring.c`) directly. The buffer
+  pool reaches os_aio ONLY via `DB_ENV->set_flags(DB_MPOOL_AIO)` (off by
+  default) and then probes a SINGLE backend at runtime in preference order
+  (io_uring > IOCP > kqueue+aio > POSIX aio > thread-pool), so on a Linux box
+  with liburing a normal Tcl workload can only ever light up io_uring -- the
+  pool + posix backends stay dark. The driver forces EACH configured backend's
+  `__os_aio_*_init` in turn (submit N writes, reap, read back, verify the
+  round-trip), then exercises `__os_aio_create`'s automatic selection and the
+  synchronous fallback, and finally runs a real `DB_MPOOL_AIO` checkpoint
+  workload (tiny cache + 4000 puts + forced checkpoints) so the production
+  `mp_sync` -> `__memp_bhwrite_async` -> backend -> `__memp_aio_drain` path
+  runs too. It also sets/clears every `DB_ENV` os-method function
+  (`common/os_method.c`). Lift: `os_aio.c` **0%→~84%**, `os_aio_pool.c`
+  **0%→~73%**, `os_aio_posix.c` **0%→~84%**, `os_aio_uring.c` **0%→~81%**,
+  `common/os_method.c` **0%→100%**.
+  - `os_aio_iocp.c` (Windows IOCP) and `os_aio_kqueue.c` (BSD kqueue+aio)
+    **stay 0%**: on Linux they compile only their `#else` init stub (empty
+    translation unit); they need their target OS to be reachable.
   - **`__db_set_lastpgno` off-by-one (finding, not fixed):** the btree v6/v7
     upgrade path calls `__db_set_lastpgno()`, which stores `__db_lastpgno()`'s
     result -- the page COUNT (`bytes/pagesize`) -- directly into
