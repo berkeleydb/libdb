@@ -35,6 +35,7 @@ Knobs (all optional env vars):
 | `COV_TIMEOUT`| `2400`                                    | seconds ceiling for the test run |
 | `COV_REP`    | `0`                                       | set `1` to also run the replication (rep/repmgr) tests |
 | `COV_XA_UPG` | `1`                                       | run the XA + on-disk-upgrade drivers (fast, non-hanging) |
+| `COV_BACKUP` | `1`                                       | run the hot-backup-API + compaction-recovery drivers (fast, non-hanging) |
 | `COV_DEAD_REG` | `1`                                     | run the deadlock-detector + DB_REGISTER multi-process tests |
 
 Set `COV_REP=1` to add the replication suite (biggest cold surface: rep/ +
@@ -88,6 +89,42 @@ timeout, so they cannot hang:
     Berkeley DB 4.7/4.8, so this is likely a long-standing latent defect; the
     fixtures here are synthetic, so it is reported to confirm against a genuine
     old fixture, not fixed. See `DB-REPSITE-TODO.md` for the analogous repmgr gap.
+
+## The hot-backup API + compaction-recovery surface (`COV_BACKUP`)
+
+`COV_BACKUP` (on by default) runs two more standalone C drivers, same
+self-clean + hard-timeout shape as the XA/upgrade drivers, aimed at code the
+Tcl suite structurally cannot reach:
+
+- **Hot-backup API** — `test/backup/run_backup_direct.sh` builds
+  `test/backup/backup_direct.c`. `env/env_backup.c` is *only* the four backup
+  config setters/getters (`set/get_backup_config` for `READ_COUNT`/
+  `READ_SLEEP`/`SIZE`/`WRITE_DIRECT`) and the backup-callback setter/getter
+  (`set/get_backup_callbacks`). The Tcl `backup.tcl` test drives hot backup
+  only through the `db_hotbackup` utility, which calls `DB_ENV->backup()` with
+  a **NULL** `backup_handle` — so none of `env_backup.c` runs and the
+  `backup->open/write/close` callback branches of `db/db_backup.c` stay cold.
+  The driver calls those public entry points directly (as an embedding app
+  would): getters-before-alloc (the `EINVAL` branches), all four config enums,
+  `WRITE_DIRECT` on **and** off (both `F_SET`/`F_CLR`), then installs write
+  callbacks and runs `DB_ENV->backup()` + `DB_ENV->dbbackup()` so the callback
+  copy path executes. Lift: `env_backup.c` **0%→~97% line / ~82% branch**,
+  plus `db/db_backup.c`'s callback path (**~43% line / ~30% branch**).
+- **Compaction recovery** — `test/db/run_recd_compact.sh` builds
+  `test/db/recd_compact.c`. Three recovery handlers in `db/db_rec.c` —
+  `__db_merge_recover`, `__db_pgno_recover`, `__db_pg_trunc_recover` (~330
+  lines) — fire only when btree **compaction** / page **truncation** log
+  records are replayed, and no `recd0NN` test runs compaction under recovery,
+  so they were completely cold. The driver fills a small-page btree, deletes a
+  large contiguous range to leave sparse/empty pages, runs
+  `DB->compact(DB_FREE_SPACE)` in a txn (logging `__db_merge`/`__db_pgno`/
+  `__db_pg_trunc` records), then re-opens under `DB_RECOVER_FATAL`
+  (catastrophic recovery replays the whole log from the start → the redo /
+  forward-roll branches of those handlers). It verifies the db still opens and
+  reads back afterward. Combined with `recd002:btree` (splits) + `recd016`
+  (catastrophic recovery), both added to the default `COV_TESTS`, this lifts
+  `db/db_rec.c` from **18%→~27% line / ~13%→~18% branch** in the subset
+  (merge/pgno/pg_trunc/relink no longer cold).
 
 ## The statistics (`*_stat_print`) surface
 
