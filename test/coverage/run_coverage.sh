@@ -239,6 +239,18 @@ if [ "${COV_XA_UPG:-1}" = 1 ]; then
   else
     echo "FAIL db_upgrade (rc=$?)"; tail -5 /tmp/cov-upg.log
   fi
+  # os_aio async-I/O backends: the buffer pool reaches os_aio only via
+  # DB_ENV->set_flags(DB_MPOOL_AIO) and then picks a SINGLE backend at
+  # runtime (io_uring first on Linux), so no Tcl workload can light up the
+  # pool + posix backends.  This driver drives EACH configured backend
+  # directly plus a real DB_MPOOL_AIO checkpoint workload.  Lifts os_aio.c
+  # 0%->~84%, os_aio_pool.c 0%->~73%, os_aio_posix.c 0%->~84%,
+  # os_aio_uring.c 0%->~81%, common/os_method.c 0%->100%.
+  if sh "$root/test/os/run_os_aio.sh" >/tmp/cov-osaio.log 2>&1; then
+    echo "PASS os_aio_direct"
+  else
+    echo "FAIL os_aio_direct (rc=$?)"; tail -5 /tmp/cov-osaio.log
+  fi
   echo "  .gcda files after xa/upg: $(find . -name '*.gcda' | wc -l)"
 fi
 
