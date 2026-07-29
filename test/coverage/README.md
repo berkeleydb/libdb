@@ -35,6 +35,7 @@ Knobs (all optional env vars):
 | `COV_TIMEOUT`| `2400`                                    | seconds ceiling for the test run |
 | `COV_REP`    | `0`                                       | set `1` to also run the replication (rep/repmgr) tests |
 | `COV_XA_UPG` | `1`                                       | run the XA + on-disk-upgrade drivers (fast, non-hanging) |
+| `COV_DEAD_REG` | `1`                                     | run the deadlock-detector + DB_REGISTER multi-process tests |
 
 Set `COV_REP=1` to add the replication suite (biggest cold surface: rep/ +
 repmgr/ ~= 12.4k lines at 0.8%). It moves them to ~56% line / ~42% branch. Those
@@ -130,6 +131,26 @@ Tcl tests now drive the whole surface (both in the default `COV_TESTS`):
   Still cold: `seq_stat.c`'s `__seq_print_all` (a no-op stub, and the Tcl seq
   binding exposes only `-clear`, not `-all`); `repmgr_stat.c` needs a live
   repmgr transport (`repmgr009`+, `COV_REP=1`) for its send-path counters.
+
+`COV_DEAD_REG` (on by default) runs the two multi-process suites that reach the
+deadlock detector and the process-registry crash/recovery path. Like `COV_REP`,
+they run driver-per-test with a per-test timeout and orphan-worker cleanup
+(they reset `TESTDIR` and each spawns child `tclsh` via `wrap.tcl`, so a hung
+worker must not wedge the whole run):
+
+- **Deadlock detector** — the `dead` group (`dead001`–`dead006`) spawns
+  `ddscript.tcl` workers that grab locks in a ring/clump cycle; the detector
+  (`src/lock/lock_deadlock.c`, `__lock_detect`) then picks a victim. `dead002`/
+  `dead003` set `-lock_detect` so detection runs **in-process** in each worker
+  (which flushes its own `.gcda`); `dead001`/`dead004`/`dead005` use the
+  standalone `db_deadlock` utility. Proc counts are trimmed to `{2 4}` (`{4}`
+  for `dead005`) — the full `{2 4 10}` matrix adds only minutes, no new lines.
+  Lift: `lock_deadlock.c` **0.7%→~66%**.
+- **DB_REGISTER** — `env012` (with `env007`) uses `envscript.tcl` to open the
+  env with `DB_REGISTER`, "crash" a process (kill without close), then reopen
+  with `-recover`/`-failchk` so the survivor detects the dead slot
+  (`src/env/env_register.c`, `__envreg_register`/`__envreg_isalive`) and runs
+  recovery. Lift: `env_register.c` **0%→~55%**.
 
 Outputs land in `build_unix/` (gitignored):
 
@@ -265,11 +286,12 @@ why they lag the single-process access-method tests:
 | 0.0 | 0.0 | 701 | 556 | `repmgr/repmgr_msg.c` | replication manager |
 | 0.0 | 0.0 | 556 | 656 | `rep/rep_elect.c` | replication elections |
 | 0.0 | 0.0 | 541 | 460 | `rep/rep_automsg.c` | replication |
-| 0.0 | 0.0 | 457 | 674 | `lock/lock_deadlock.c` | deadlock detection |
 | 0.0 | 0.0 | 431 | 470 | `sequence/sequence.c` | sequences |
-| 0.0 | 0.0 | 394 | 398 | `xa/xa.c` | XA transactions |
 | 5.4 | 2.0 | 445 | 306 | `qam/qam_files.c` | queue extent files |
 | 30.1 | 17.4 | 1397 | 1702 | `btree/bt_compact.c` | btree compaction (was 0%) |
+| 54.7 | 43.1 | 223 | 174 | `env/env_register.c` | DB_REGISTER / failchk (was 0%, COV_DEAD_REG) |
+| 57.1 | ~ | 394 | 398 | `xa/xa.c` | XA transactions (was 0%, COV_XA_UPG) |
+| 65.9 | 43.3 | 457 | 674 | `lock/lock_deadlock.c` | deadlock detection (was 0.7%, COV_DEAD_REG) |
 
 Next-highest-leverage additions (future work): a **replication smoke test**
 (needs the multi-process rep harness — `rep0NN` / `repmgr0NN` exist but each
