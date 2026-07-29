@@ -62,6 +62,16 @@ bld="$root/build_unix"
 # on-disk __*_stat_print entry path). Together: env_stat 17->80, lock_stat
 # 17->74, rep_stat 19->72, log_stat 23->87, mut_stat 29->87, db_stati 22->62,
 # seq_stat 0->63, dbreg_stat 0->70, heap_stat 0->80.
+#
+# mvcc001 forces the two cold multiversion/cache paths the functional suite
+# never applies pressure to: mp_mvcc.c freeze/thaw (a tiny multiversion cache
+# with snapshot readers pinning old versions while a writer churns pages, so
+# old versions spill to the __db.freezer file and thaw back) and mp_resize.c
+# region growth (a small multi-region cache grown past region boundaries via
+# resize_cache with a larger cache_max).  Lifts mp_mvcc.c 0->~70% and
+# mp_resize.c 0->~58%.  (Cache SHRINK is intentionally not exercised: it hits
+# a SIGSEGV off-by-one in __memp_remove_region -- see
+# test/coverage/MVCC-RESIZE-COVERAGE.md.)
 : "${COV_TESTS:=lock001: txn001: ssi001: ssi002: recd001:btree \
   btree/test001 btree/test111 \
   hash/test001 hash/test006 hash/test010 hash/test025 hash/test077 \
@@ -71,7 +81,7 @@ bld="$root/build_unix"
   run_range_partition@test001@btree \
   run_partition_callback@test001@btree \
   logverify001: logverify002: \
-  env020: statprint001:}"
+  env020: statprint001: mvcc001:}"
 : "${COV_JOBS:=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 : "${TCLSH:=tclsh}"
 # TCL lib dir: nix store on this box, /usr/lib/tcl8.6 on ubuntu CI.
