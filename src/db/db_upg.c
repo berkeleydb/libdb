@@ -506,6 +506,7 @@ __db_set_lastpgno(dbp, real_name, fhp)
 {
 	DBMETA meta;
 	ENV *env;
+	db_pgno_t last_pgno;
 	int ret;
 	size_t n;
 
@@ -515,8 +516,18 @@ __db_set_lastpgno(dbp, real_name, fhp)
 	if ((ret = __os_read(env, fhp, &meta, sizeof(meta), &n)) != 0)
 		return (ret);
 	dbp->pgsize = meta.pagesize;
-	if ((ret = __db_lastpgno(dbp, real_name, fhp, &meta.last_pgno)) != 0)
+	/*
+	 * __db_lastpgno returns the page COUNT (file bytes / pagesize), but
+	 * meta.last_pgno is the last valid page NUMBER (0-indexed).  For an
+	 * N-page file the last page number is N-1, so convert; a page-count of
+	 * 0 (impossible for a real DB, which always has a meta page) would map
+	 * to PGNO_INVALID rather than underflowing.  Storing the raw count here
+	 * left last_pgno one too high, which db_verify rejects under
+	 * HAVE_FTRUNCATE ("last_pgno is not correct").
+	 */
+	if ((ret = __db_lastpgno(dbp, real_name, fhp, &last_pgno)) != 0)
 		return (ret);
+	meta.last_pgno = last_pgno == 0 ? PGNO_INVALID : last_pgno - 1;
 	if ((ret = __os_seek(env, fhp, 0, 0, 0)) != 0)
 		return (ret);
 	if ((ret = __os_write(env, fhp, &meta, sizeof(meta), &n)) != 0)
