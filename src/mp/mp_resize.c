@@ -447,8 +447,15 @@ __memp_remove_region(dbmp)
 		if ((ret = __memp_remove_bucket(dbmp)) != 0)
 			return (ret);
 
-	/* Detach from the region then destroy it. */
-	infop = &dbmp->reginfo[mp->nreg];
+	/*
+	 * Detach from the region then destroy it.  Live cache regions occupy
+	 * reginfo[0 .. nreg-1], so the last one -- the region being removed --
+	 * is at index nreg-1.  (The add path uses reginfo[nreg] because it is
+	 * initializing the next, not-yet-counted slot before incrementing nreg;
+	 * removal is the mirror and must index the last LIVE region, else it
+	 * detaches/munmaps a stale slot one past the end -> SIGSEGV.)
+	 */
+	infop = &dbmp->reginfo[mp->nreg - 1];
 	if (F_ISSET(env, ENV_PRIVATE)) {
 		hp = R_ADDR(infop, ((MPOOL*)infop->primary)->htab);
 		for (i = 0; i < env->dbenv->mp_mtxcount; i++)
