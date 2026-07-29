@@ -200,6 +200,35 @@ if [ "${COV_REP:-0}" = 1 ]; then
   echo "  .gcda files after rep: $(find . -name '*.gcda' | wc -l)"
 fi
 
+# --- optional XA + on-disk-upgrade drivers (COV_XA_UPG=1, default on) --------
+# These are NOT Tcl tests: they are standalone drivers that light up two cold
+# subsystems the Tcl suite never reaches.
+#   xa/xa.c + xa_map.c  -- the X/Open XA resource-manager switch (db_xa_switch).
+#     test/xa/run_xa_direct.sh compiles test/xa/xa_direct.c (a Tuxedo-free TM
+#     that drives the switch entry points + the internal 2PC / recovery path)
+#     and runs it under a timeout.  Lifts xa.c 0%->~57%, xa_map.c 0%->~78%.
+#   db/db_upg.c         -- the on-disk-format upgrade path.
+#     test/db/run_upgrade.sh runs the db_upgrade utility over the committed
+#     old-format fixture (test/csharp/bdb4.7.db).  Lifts db_upg.c 0%->~14%.
+#     (db_upg_opd.c stays cold: needs an old off-page-duplicate fixture that is
+#      not present in this fork -- see test/coverage/README.md.)
+# Both self-clean their home dir and run under a hard timeout, so they cannot
+# hang.  Set COV_XA_UPG=0 to skip.
+if [ "${COV_XA_UPG:-1}" = 1 ]; then
+  echo "== run XA + upgrade drivers (COV_XA_UPG=1) =="
+  if sh "$root/test/xa/run_xa_direct.sh" >/tmp/cov-xa.log 2>&1; then
+    echo "PASS xa_direct"
+  else
+    echo "FAIL xa_direct (rc=$?)"; tail -5 /tmp/cov-xa.log
+  fi
+  if sh "$root/test/db/run_upgrade.sh" >/tmp/cov-upg.log 2>&1; then
+    echo "PASS db_upgrade"
+  else
+    echo "FAIL db_upgrade (rc=$?)"; tail -5 /tmp/cov-upg.log
+  fi
+  echo "  .gcda files after xa/upg: $(find . -name '*.gcda' | wc -l)"
+fi
+
 # --- aggregate ---------------------------------------------------------------
 echo "== capture (lcov) =="
 # NOTE: capture from .libs (not .) -- libtool double-compiles, and only the
