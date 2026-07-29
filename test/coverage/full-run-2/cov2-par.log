@@ -1,0 +1,233 @@
+[23:26:51] === launch access-method groups (parallel) ===
+[23:26:52] === launch subsystem groups (parallel) ===
+[23:26:55] GRP-DONE sub_dbm rc=0 dur=0s FAILlines=0
+0
+[23:26:55] GRP-DONE sub_ndbm rc=0 dur=0s FAILlines=0
+0
+[23:26:55] GRP-DONE sub_rsrc rc=0 dur=0s FAILlines=0
+0
+[23:26:56] GRP-DONE sub_hsearch rc=0 dur=1s FAILlines=0
+0
+[23:26:57] GRP-DONE sub_sec rc=0 dur=1s FAILlines=0
+0
+[23:26:57] === launch logverify (parallel) ===
+[23:26:58] === launch rep0NN in-process tests (parallel, all) ===
+[23:27:00] GRP-DONE sub_backup rc=0 dur=8s FAILlines=0
+0
+[23:27:00] GRP-DONE sub_env rc=0 dur=8s FAILlines=1
+[23:27:03] REP-DONE rep003: PASS
+[23:27:04] === launch repmgrNN socket tests (parallel, distinct base ports) ===
+[23:27:05] REP-DONE rep010: PASS
+[23:27:05] GRP-DONE sub_mutex rc=0 dur=11s FAILlines=0
+0
+[23:27:05] GRP-DONE sub_archive rc=0 dur=13s FAILlines=0
+0
+[23:27:07] REP-DONE rep014: PASS
+[23:27:08] REP-DONE rep015: PASS
+[23:27:10] REP-DONE repmgr009: PASS
+[23:27:10] REP-DONE rep008: PASS
+[23:27:11] REP-DONE rep007: PASS
+[23:27:11] REP-DONE rep011: PASS
+[23:27:11] REP-DONE repmgr013: PASS
+[23:27:12] REP-DONE rep006: PASS
+[23:27:12] === all groups launched; waiting ===
+[23:27:14] REP-DONE rep009: PASS
+[23:27:14] REP-DONE rep023: PASS
+[23:27:16] REP-DONE repmgr018: PASS
+[23:27:17] REP-DONE rep012: PASS
+[23:27:18] REP-DONE rep025: PASS
+[23:27:20] REP-DONE repmgr031: PASS
+[23:27:22] REP-DONE repmgr027: PASS
+[23:27:24] REP-DONE repmgr010: PASS
+[23:27:25] REP-DONE rep013: PASS
+[23:27:25] REP-DONE repmgr033: PASS
+[23:27:27] REP-DONE repmgr025: PASS
+[23:27:30] REP-DONE repmgr012: PASS
+[23:27:31] REP-DONE rep021: PASS
+[23:27:35] REP-DONE repmgr030: PASS
+[23:27:35] REP-DONE rep019: PASS
+[23:27:36] REP-DONE repmgr023: PASS
+[23:27:39] GRP-DONE logverify rc=0 dur=41s FAILlines=0
+0
+[23:27:40] REP-DONE rep024: PASS
+[23:27:42] REP-DONE rep001: PASS
+[23:27:42] REP-DONE repmgr017: PASS
+[23:27:45] REP-DONE repmgr011: PASS
+[23:27:47] REP-DONE repmgr032: PASS
+[23:28:05] REP-DONE rep022: PASS
+[23:28:06] REP-DONE repmgr034: PASS
+[23:28:18] GRP-DONE sub_log rc=0 dur=85s FAILlines=0
+0
+[23:28:52] GRP-DONE sub_compact rc=0 dur=116s FAILlines=0
+0
+[23:29:03] REP-DONE rep026: PASS
+[23:29:09] REP-DONE rep020: PASS
+[23:29:46] GRP-DONE sub_lock rc=0 dur=173s FAILlines=0
+0
+[23:30:35] REP-DONE rep002: PASS
+[23:30:41] REP-DONE rep005: PASS
+[23:30:52] GRP-DONE sub_byte rc=0 dur=238s FAILlines=0
+0
+[23:31:47] GRP-DONE sub_txn rc=0 dur=293s FAILlines=0
+0
+[23:32:17] GRP-DONE am_heap rc=0 dur=325s FAILlines=1
+[23:32:27] GRP-DONE sub_sdb rc=0 dur=333s FAILlines=0
+0
+[23:38:15] GRP-DONE sub_memp rc=0 dur=682s FAILlines=4
+[23:43:10] GRP-DONE sub_sindex rc=0 dur=974s FAILlines=0
+0
+[23:55:43] GRP-DONE am_recno rc=0 dur=1732s FAILlines=5
+[23:58:39] GRP-DONE am_queue rc=0 dur=1907s FAILlines=0
+0
+[00:00:27] GRP-DONE sub_compressed rc=0 dur=2010s FAILlines=1
+[00:04:48] GRP-DONE sub_fop rc=0 dur=2275s FAILlines=2
+[00:06:45] GRP-DONE am_btree rc=0 dur=2394s FAILlines=2017
+[00:07:23] GRP-DONE am_hash rc=0 dur=2432s FAILlines=2
+[00:56:57] GRP-DONE sub_partition rc=124 dur=5400s FAILlines=1
+[00:56:57] GRP-DONE recd rc=124 dur=5400s FAILlines=2
+[00:56:57] === ALL COMPLETE. gcda=296 ===
+[00:56:57] lcov capture from .libs
+[00:57:06] summary
+Summary coverage rate:
+  lines......: 62.3% (45034 of 72311 lines)
+  functions..: 72.3% (1909 of 2642 functions)
+  branches...: 46.2% (36096 of 78213 branches)
+[00:57:07] ranking
+[00:57:07] subsystems
+ line%    br%  lines  lhit  branch  bhit  file
+   0.0    0.0    394     0     398     0  xa/xa.c
+   0.0    0.0    223     0     174     0  env/env_register.c
+   0.0    0.0    187     0     140     0  db/db_upg.c
+   0.0    0.0    173     0     190     0  rep/rep_lease.c
+   0.0    0.0    148     0     142     0  db/db_upg_opd.c
+   0.0    0.0    141     0      62     0  os/os_aio_pool.c
+   0.0    0.0    108     0      42     0  hash/hash_upgrade.c
+   0.0    0.0     92     0     126     0  sequence/seq_stat.c
+   0.0    0.0     85     0      60     0  os/os_aio_posix.c
+   0.0    0.0     68     0       0     0  common/os_method.c
+   0.0    0.0     60     0      22     0  env/env_backup.c
+   0.0    0.0     56     0      46     0  dbreg/dbreg_stat.c
+   0.0    0.0     51     0      28     0  btree/bt_upgrade.c
+   0.7    0.1    453     3     674     1  lock/lock_deadlock.c
+   8.9    6.9    292    26     418    29  mp/mp_mvcc.c
+   9.7    6.6    258    25     290    19  mp/mp_resize.c
+  16.8   10.4    364    61     297    31  env/env_stat.c
+  17.4   11.5    409    71     321    37  lock/lock_stat.c
+  17.4    4.5    207    36     202     9  env/env_failchk.c
+  18.8   50.0     69    13      22    11  hash/hash_autop.c
+  19.4   20.1    319    62     174    35  rep/rep_stat.c
+  21.7    6.9    226    49     218    15  lock/lock_method.c
+  22.0   15.8    186    41     196    31  db/db_stati.c
+  22.9   17.2    140    32     128    22  log/log_stat.c
+  24.4   30.7    324    79      88    27  common/db_compint.c
+  27.0   17.7    248    67     249    44  env/env_config.c
+  27.3   19.4     77    21     232    45  lock/lock_alloc.incl
+  29.4   19.9    238    70     231    46  mutex/mut_stat.c
+  29.8   21.9    205    61     128    28  crypto/rijndael/rijndael-api-fst.c
+=== subsystems ===
+ line%    br%    fn%  lines   lhit  branch   bhit    fn fnhit files  subsystem
+  99.3   83.8  100.0    143    142      74     62     8     8     2  hmac
+  78.9   62.4   89.7    829    654     909    567    39    35     6  dbreg
+  73.5   47.5   84.2   2190   1609    2758   1310    57    48    11  heap
+  73.3   60.5   80.0   1141    836    1262    763    40    32     5  fileops
+  72.1   54.8   84.1  10201   7352   12250   6710   245   206    21  btree
+  68.1   49.9   81.6   2132   1452    2484   1239   103    84    11  txn
+  66.6   45.1   73.7   5427   3614    6518   2941   152   112    16  hash
+  64.6   48.7   75.1  13835   8932   15791   7694   470   353    38  db
+  64.5   46.0   85.2    753    486     335    154    27    23     5  crypto
+  63.6   43.9   79.2    891    567     861    378    53    42     7  mutex
+  63.3   43.6   77.3   2373   1501    2612   1139    66    51    11  qam
+  60.0   44.3   65.7   6087   3650    5584   2476   268   176    13  log
+  59.9   44.6   67.6   4276   2563    5171   2307   136    92    16  mp
+  58.1   43.2   77.4   5334   3099    4156   1794   283   219    13  repmgr
+  55.6   40.9   71.5   7106   3953    8039   3285   207   148    11  rep
+  53.2   40.6   56.0   3745   1993    2989   1215   168    94    13  env
+  52.6   30.5   72.7    521    274     596    182    22    16     2  sequence
+  49.9   38.5   59.0   1143    570    1091    420   100    59    39  os
+  48.6   32.3   66.0   2791   1357    3743   1208    94    62    11  lock
+  44.8   45.5   58.3    959    430     554    252    84    49    16  common
+   0.0    0.0    0.0    434      0     436      0    20     0     2  xa
+  62.3   46.2   72.3  72311  45034   78213  36096  2642  1909        TOTAL
+=== results ===
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+am_btree rc=0 dur=2394 faillines=2017
+am_hash rc=0 dur=2432 faillines=2
+am_heap rc=0 dur=325 faillines=1
+am_queue rc=0 dur=1907 faillines=0
+am_recno rc=0 dur=1732 faillines=5
+logverify rc=0 dur=41 faillines=0
+recd rc=124 dur=5400 faillines=2
+rep_rep001 PASS
+rep_rep002 PASS
+rep_rep003 PASS
+rep_rep005 PASS
+rep_rep006 PASS
+rep_rep007 PASS
+rep_rep008 PASS
+rep_rep009 PASS
+rep_rep010 PASS
+rep_rep011 PASS
+rep_rep012 PASS
+rep_rep013 PASS
+rep_rep014 PASS
+rep_rep015 PASS
+rep_rep019 PASS
+rep_rep020 PASS
+rep_rep021 PASS
+rep_rep022 PASS
+rep_rep023 PASS
+rep_rep024 PASS
+rep_rep025 PASS
+rep_rep026 PASS
+rep_repmgr009 PASS
+rep_repmgr010 PASS
+rep_repmgr011 PASS
+rep_repmgr012 PASS
+rep_repmgr013 PASS
+rep_repmgr017 PASS
+rep_repmgr018 PASS
+rep_repmgr023 PASS
+rep_repmgr025 PASS
+rep_repmgr027 PASS
+rep_repmgr030 PASS
+rep_repmgr031 PASS
+rep_repmgr032 PASS
+rep_repmgr033 PASS
+rep_repmgr034 PASS
+sub_archive rc=0 dur=13 faillines=0
+sub_backup rc=0 dur=8 faillines=0
+sub_byte rc=0 dur=238 faillines=0
+sub_compact rc=0 dur=116 faillines=0
+sub_compressed rc=0 dur=2010 faillines=1
+sub_dbm rc=0 dur=0 faillines=0
+sub_env rc=0 dur=8 faillines=1
+sub_fop rc=0 dur=2275 faillines=2
+sub_hsearch rc=0 dur=1 faillines=0
+sub_lock rc=0 dur=173 faillines=0
+sub_log rc=0 dur=85 faillines=0
+sub_memp rc=0 dur=682 faillines=4
+sub_mutex rc=0 dur=11 faillines=0
+sub_ndbm rc=0 dur=0 faillines=0
+sub_partition rc=124 dur=5400 faillines=1
+sub_rsrc rc=0 dur=0 faillines=0
+sub_sdb rc=0 dur=333 faillines=0
+sub_sec rc=0 dur=1 faillines=0
+sub_sindex rc=0 dur=974 faillines=0
+sub_txn rc=0 dur=293 faillines=0
+[00:57:08] DONE

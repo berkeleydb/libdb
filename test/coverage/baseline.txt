@@ -2,5 +2,5 @@
 # src/-only, gcov/lcov, representative test subset (see test/coverage/README.md).
 # The Coverage workflow warns (advisory) if branch coverage drops >0.5% below this.
 # Update after landing new tests that raise coverage (ratchet upward, never down).
-line=48.0
-branch=36.1
+line=62.3
+branch=46.2
