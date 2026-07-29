@@ -855,6 +855,13 @@ proc r { args } {
 					eval statprint001
 				}
 			}
+			mvcc {
+				if { $display } { puts "eval mvcc001" }
+				if { $run } {
+					check_handles
+					eval mvcc001
+				}
+			}
 			btree -
 			rbtree -
 			hash -
