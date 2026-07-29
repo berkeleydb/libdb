@@ -848,6 +848,13 @@ proc r { args } {
 					}
 				}
 			}
+			statprint {
+				if { $display } { puts "eval statprint001" }
+				if { $run } {
+					check_handles
+					eval statprint001
+				}
+			}
 			btree -
 			rbtree -
 			hash -
