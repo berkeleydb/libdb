@@ -37,6 +37,7 @@ Knobs (all optional env vars):
 | `COV_XA_UPG` | `1`                                       | run the XA + on-disk-upgrade drivers (fast, non-hanging) |
 | `COV_BACKUP` | `1`                                       | run the hot-backup-API + compaction-recovery drivers (fast, non-hanging) |
 | `COV_DEAD_REG` | `1`                                     | run the deadlock-detector + DB_REGISTER multi-process tests |
+| `COV_RECD`   | `1`                                       | run the recovery-record handler tests (`recd` group, driver-per-test) |
 
 Set `COV_REP=1` to add the replication suite (biggest cold surface: rep/ +
 repmgr/ ~= 12.4k lines at 0.8%). It moves them to ~56% line / ~42% branch. Those
@@ -209,6 +210,52 @@ worker must not wedge the whole run):
   with `-recover`/`-failchk` so the survivor detects the dead slot
   (`src/env/env_register.c`, `__envreg_register`/`__envreg_isalive`) and runs
   recovery. Lift: `env_register.c` **0%→~55%**.
+
+## Recovery-record handlers (`COV_RECD`)
+
+The per-operation recovery handlers — `__xxx_recover` in `db/db_rec.c`
+(3189 branches), `hash/hash_rec.c` (2069), `btree/bt_rec.c` (2366),
+`qam/qam_rec.c` (574) — are the biggest cold **branch** surface in the tree.
+Each handler has redo / undo / abort / do-nothing branches, and the main
+`COV_TESTS` loop used to run only `recd001/002/016` on **btree**, so the hash
+and queue handlers sat at **0%** and most redo/undo branches of the btree/db
+handlers were cold.
+
+`COV_RECD` (on by default) drives the `recd` group. `op_recover`
+(`testutils.tcl`) crashes the env at every log-record boundary and replays
+recovery forward (redo) **and** backward (undo/abort) — exactly the cold
+branches. Like `COV_REP`/`COV_DEAD_REG` these run **driver-per-test** (each in
+its own `tclsh`, per-test timeout, `recdscript.tcl` orphan cleanup): several
+`recd` tests use conflicting globals (e.g. `recd006` sets `kvals` as a scalar,
+`recd010` uses it as an array) so they cannot share one interpreter.
+
+The set is curated for **coverage-per-minute** across every access method each
+test supports — splits (`recd002` on btree/hash/queue/recno), file-id reuse
+(`recd005` ×4 AMs), nested txns (`recd006` btree/hash), deep/many-child txns
+(`recd008`), recnum stability (`recd009`), off-page-dup splits (`recd010`),
+cursor adjust (`recd013` btree/hash), queue-extent create/delete (`recd014`
+queueext, the only thing that reaches `__qam_delext_recover`), checksum-error
+(`recd016`), crypto (`recd017`), checkpoint/commit (`recd018`), txn-id wrap
+(`recd019`), intermediate dirs (`recd020`), aborted-prepared page-alloc
+(`recd022`), reverse split (`recd023`), streaming partial-put overflow
+(`recd024`), TXN_BULK (`recd025`), big-key-to-internal (`recd004`). Whole
+block ~10 min. Lift (recd-driven branch %):
+
+| file | before | after |
+|------|--------|-------|
+| `db/db_rec.c`    | 14.6% | **16.4%** |
+| `btree/bt_rec.c` | 12.3% | **21.6%** |
+| `hash/hash_rec.c`| 0%    | **24.2%** |
+| `qam/qam_rec.c`  | 0%    | **45.5%** |
+
+**Deliberately excluded** (too slow for the marginal branches they add under
+`-O0`): `recd001` (~6.5 min/method — the other tests already cover its per-op
+redo/undo branches; dropping it entirely moved the totals by ~1 branch);
+`recd003` (~7.3 min, dup — does **not** unlock the still-cold
+`__bam_root/irep/rcuradj` or `__db_ovref` handlers, which need scenarios no
+bounded `recd` test reaches); `recd015` (~4.6 min — prepared-txn branches
+already hit by `recd002`/`recd022`); `recd007` (~4.3 min — db_rec
+create/rename branches already covered by the compaction + upgrade drivers).
 
 ## MVCC freeze/thaw + cache resize (`mvcc001`)
 
@@ -447,13 +494,16 @@ why they lag the single-process access-method tests:
 | 0.0 | 0.0 | 1017 | 644 | `log/log_verify_util.c` | log verification |
 | 0.0 | 0.0 | 923 | 942 | `rep/rep_util.c` | replication |
 | 0.0 | 0.0 | 864 | 540 | `repmgr/repmgr_sel.c` | replication manager |
-| 0.0 | 0.0 | 836 | 2069 | `hash/hash_rec.c` | hash recovery records |
 | 0.0 | 0.0 | 704 | 556 | `repmgr/repmgr_net.c` | replication manager |
 | 0.0 | 0.0 | 701 | 556 | `repmgr/repmgr_msg.c` | replication manager |
 | 0.0 | 0.0 | 556 | 656 | `rep/rep_elect.c` | replication elections |
 | 0.0 | 0.0 | 541 | 460 | `rep/rep_automsg.c` | replication |
 | 0.0 | 0.0 | 431 | 470 | `sequence/sequence.c` | sequences |
 | 5.4 | 2.0 | 445 | 306 | `qam/qam_files.c` | queue extent files |
+| 40.1 | 24.2 | 836 | 2069 | `hash/hash_rec.c` | hash recovery records (was 0%, COV_RECD) |
+| 41.6 | 21.6 | 1015 | 2366 | `btree/bt_rec.c` | btree recovery records (12.3%→, COV_RECD) |
+| 34.1 | 16.4 | 1342 | 3189 | `db/db_rec.c` | db recovery records (14.6%→, COV_RECD) |
+| 66.7 | 45.5 | 291 | 574 | `qam/qam_rec.c` | queue recovery records (was 0%, COV_RECD) |
 | 30.1 | 17.4 | 1397 | 1702 | `btree/bt_compact.c` | btree compaction (was 0%) |
 | 54.7 | 43.1 | 223 | 174 | `env/env_register.c` | DB_REGISTER / failchk (was 0%, COV_DEAD_REG) |
 | 57.1 | ~ | 394 | 398 | `xa/xa.c` | XA transactions (was 0%, COV_XA_UPG) |
