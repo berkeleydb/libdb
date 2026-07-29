@@ -55,14 +55,38 @@ timeout, so they cannot hang:
   harness needs an Oracle Tuxedo install (`atmi.h`, `tmboot`, …) which is not
   available; this driver needs none. Lift: `xa.c` **0%→~57%**, `xa_map.c`
   **0%→~78%**.
-- **On-disk upgrade** — `test/db/run_upgrade.sh` runs the `db_upgrade` utility
-  over the one committed old-format fixture (`test/csharp/bdb4.7.db`, a btree
-  meta version-9 db) and verifies the result. Lift: `db_upg.c` **0%→~14%**
-  (the utility open + version-check + no-op-when-current path). `db_upg_opd.c`
-  stays 0%: the off-page-duplicate conversion needs a genuinely old
-  (pre-version-9) db with off-page dups, and the full Tcl `upgrade` group's
-  per-version fixture tree (`test/tcl/upgrade/databases/`) is **not present in
-  this fork**. See `DB-REPSITE-TODO.md` for the analogous repmgr gap.
+- **On-disk upgrade** — `test/db/run_upgrade.sh` runs the `db_upgrade`
+  utility (which calls `DB->upgrade`) + `db_verify` over Berkeley DB files of
+  many on-disk versions. It uses the one committed old-format fixture
+  (`test/csharp/bdb4.7.db`, a btree meta version-9 db) plus freshly-created
+  current-format dbs of every access method, and -- since this fork lacks the
+  upstream Tcl `upgrade` per-version fixture tree
+  (`test/tcl/upgrade/databases/`) -- it manufactures old-format fixtures
+  *without an old library* by rewriting the metadata page of a current db into
+  the byte layout of an older release (BTMETA2X / BTMETA30 / HASHHDR / HMETA30
+  / QMETA30 / QMETA31 from `dbinc/db_upgrade.h`) with the version field set
+  back. Lift: `qam_upgrade.c` **0%→~97%**, `hash_upgrade.c` **0%→~68%**,
+  `bt_upgrade.c` **0%→~82%**, `db_upg.c` **0%→~57%** (the whole magic/version
+  dispatch + real per-version transforms).
+  - `db_upg_opd.c` **still 0%**: the 3.0→3.1 off-page-duplicate conversion
+    (`__db_31_offdup`) needs a genuine 3.0-era off-page-duplicate page CHAIN
+    (linked `__P_DUPLICATE` pages). That cannot be produced by rewriting a
+    current db, because current off-page dups are already stored as a Recno
+    tree (P_LRECNO/P_IRECNO), not a flat page chain. A genuine pre-3.1 fixture
+    is required.
+  - **`__db_set_lastpgno` off-by-one (finding, not fixed):** the btree v6/v7
+    upgrade path calls `__db_set_lastpgno()`, which stores `__db_lastpgno()`'s
+    result -- the page COUNT (`bytes/pagesize`) -- directly into
+    `meta->last_pgno`, the last page NUMBER (`count-1`). On a page-aligned file
+    that is off by +1, so `db_verify` reports `last_pgno is not correct: N !=
+    N-1` (`db_vrfy.c`, under `HAVE_FTRUNCATE`). The hash path avoids it because
+    its v8→v9 pass runs through mpool, which recomputes `last_pgno` correctly
+    on close. The driver therefore upgrades the btree v6/v7 fixtures (to cover
+    the transform code) but skips `db_verify` on them, asserting the metadata
+    version bumped instead. `__db_set_lastpgno` is identical to upstream
+    Berkeley DB 4.7/4.8, so this is likely a long-standing latent defect; the
+    fixtures here are synthetic, so it is reported to confirm against a genuine
+    old fixture, not fixed. See `DB-REPSITE-TODO.md` for the analogous repmgr gap.
 
 ## The statistics (`*_stat_print`) surface
 
