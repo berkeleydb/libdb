@@ -229,6 +229,55 @@ if [ "${COV_XA_UPG:-1}" = 1 ]; then
   echo "  .gcda files after xa/upg: $(find . -name '*.gcda' | wc -l)"
 fi
 
+# --- optional deadlock-detector + DB_REGISTER drivers (COV_DEAD_REG=1) -------
+# The deadlock DETECTOR (lock/lock_deadlock.c, __lock_detect) and the
+# process-registration + failchk-on-crash path (env/env_register.c,
+# __envreg_register/isalive) are both multi-process: the `dead` group and
+# env012 spawn worker tclsh via wrap.tcl (ddscript.tcl / envscript.tcl) that
+# contend for locks in a cycle (detector picks a victim) or open the env with
+# DB_REGISTER, crash, and let a survivor recover.  They cannot run in the main
+# single-tclsh COV_TESTS loop (they reset TESTDIR and a hung worker would wedge
+# the whole run), so -- like COV_REP -- they run driver-per-test with a
+# per-test timeout and orphan-worker cleanup.  Lifts lock_deadlock.c 0.7%->~66%
+# and env_register.c 0%->~55%.  proc counts are trimmed (default {2 4}) so each
+# test finishes well inside the timeout; the full {2 4 10} matrix adds no new
+# coverage, only minutes.  Set COV_DEAD_REG=0 to skip.
+if [ "${COV_DEAD_REG:-1}" = 1 ]; then
+  echo "== run deadlock + DB_REGISTER drivers (COV_DEAD_REG=1) =="
+  : "${COV_DEAD_REG_TIMEOUT:=300}"
+  # Each entry is "name:tcl-call"; trimmed proc counts keep each run bounded.
+  # A bash array so the spaces inside a call ({2 4}) survive word-splitting.
+  cov_dead_reg_tests=(
+    "dead001:dead001 {2 4}"
+    "dead002:dead002 {2 4}"
+    "dead003:dead003 {2 4}"
+    "dead004:dead004"
+    "dead005:dead005 {4}"
+    "dead006:dead006 {2 4}"
+    "env007:env007"
+    "env012:env012"
+  )
+  dregtcl="$bld/.cov-deadreg-one.tcl"
+  for spec in "${cov_dead_reg_tests[@]}"; do
+    name="${spec%%:*}"; call="${spec#*:}"
+    printf 'source ../test/tcl/test.tcl\nif {[catch {%s} r]} { puts "FAIL %s: $r"; exit 3 }\nputs "PASS %s"\n' \
+      "$call" "$name" "$name" > "$dregtcl"
+    timeout "$COV_DEAD_REG_TIMEOUT" "$TCLBIN" "$dregtcl" >/tmp/cov-dreg-$name.log 2>&1
+    rc=$?
+    # kill orphan workers a hung/killed test may have left behind
+    pkill -f 'wrap.tcl' 2>/dev/null || true
+    pkill -f 'ddscript' 2>/dev/null || true
+    pkill -f 'envscript' 2>/dev/null || true
+    pkill -f 'db_deadlock' 2>/dev/null || true
+    if [ $rc -eq 124 ]; then echo "HANG $name"
+    elif [ $rc -eq 0 ] && grep -q "^PASS $name" /tmp/cov-dreg-$name.log; then echo "PASS $name"
+    else echo "FAIL $name (rc=$rc)"; fi
+    find TESTDIR -mindepth 1 -delete 2>/dev/null || true
+  done
+  rm -f "$dregtcl"
+  echo "  .gcda files after dead/register: $(find . -name '*.gcda' | wc -l)"
+fi
+
 # --- aggregate ---------------------------------------------------------------
 echo "== capture (lcov) =="
 # NOTE: capture from .libs (not .) -- libtool double-compiles, and only the
