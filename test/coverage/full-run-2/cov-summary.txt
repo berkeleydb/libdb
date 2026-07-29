@@ -1,0 +1,4 @@
+Summary coverage rate:
+  lines......: 62.3% (45034 of 72311 lines)
+  functions..: 72.3% (1909 of 2642 functions)
+  branches...: 46.2% (36096 of 78213 branches)
