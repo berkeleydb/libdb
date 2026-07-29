@@ -34,6 +34,7 @@ Knobs (all optional env vars):
 | `TCL_LIB`    | autodetected (nix store or `/usr/lib/tcl8.6`) | Tcl lib dir for `--with-tcl` |
 | `COV_TIMEOUT`| `2400`                                    | seconds ceiling for the test run |
 | `COV_REP`    | `0`                                       | set `1` to also run the replication (rep/repmgr) tests |
+| `COV_XA_UPG` | `1`                                       | run the XA + on-disk-upgrade drivers (fast, non-hanging) |
 
 Set `COV_REP=1` to add the replication suite (biggest cold surface: rep/ +
 repmgr/ ~= 12.4k lines at 0.8%). It moves them to ~56% line / ~42% branch. Those
@@ -41,6 +42,27 @@ tests each run in their own `tclsh` (driver-per-test, per-test timeout) because 
 few election/lease tests hang; see `REPLICATION-COVERAGE.md` for the exact set,
 the measured lift, and what still needs real multi-process orchestration
 (`rep*script.tcl` subprocess tests, repmgr 100-series needing `db_repsite`).
+
+`COV_XA_UPG` (on by default) runs two non-Tcl drivers that light up subsystems
+the Tcl suite never reaches. Both self-clean their home dir and run under a hard
+timeout, so they cannot hang:
+
+- **XA** — `test/xa/run_xa_direct.sh` builds `test/xa/xa_direct.c`, a
+  **Tuxedo-free** transaction manager that drives `db_xa_switch`
+  (`src/xa/xa.c` + `xa_map.c`) directly: `xa_open/start/end/prepare/commit/
+  rollback/recover/forget` plus the internal two-phase-commit path and the XA
+  recovery scan (`__txn_get_prepared`, DB_FIRST/DB_NEXT). The full `chk.xa`
+  harness needs an Oracle Tuxedo install (`atmi.h`, `tmboot`, …) which is not
+  available; this driver needs none. Lift: `xa.c` **0%→~57%**, `xa_map.c`
+  **0%→~78%**.
+- **On-disk upgrade** — `test/db/run_upgrade.sh` runs the `db_upgrade` utility
+  over the one committed old-format fixture (`test/csharp/bdb4.7.db`, a btree
+  meta version-9 db) and verifies the result. Lift: `db_upg.c` **0%→~14%**
+  (the utility open + version-check + no-op-when-current path). `db_upg_opd.c`
+  stays 0%: the off-page-duplicate conversion needs a genuinely old
+  (pre-version-9) db with off-page dups, and the full Tcl `upgrade` group's
+  per-version fixture tree (`test/tcl/upgrade/databases/`) is **not present in
+  this fork**. See `DB-REPSITE-TODO.md` for the analogous repmgr gap.
 
 Outputs land in `build_unix/` (gitignored):
 
