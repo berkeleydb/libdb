@@ -152,6 +152,29 @@ worker must not wedge the whole run):
   (`src/env/env_register.c`, `__envreg_register`/`__envreg_isalive`) and runs
   recovery. Lift: `env_register.c` **0%→~55%**.
 
+## MVCC freeze/thaw + cache resize (`mvcc001`)
+
+`mp/mp_mvcc.c` and `mp/mp_resize.c` sat near-cold (functional baseline ~9%)
+because the suite uses multiversion DBs but never applies the *cache pressure*
+that spills old page versions to disk, nor grows the cache after open.
+`mvcc001` (COV group `mvcc`, in the default `COV_TESTS`) forces both:
+
+- **freeze/thaw** (`mp_mvcc.c`): a tiny 512K multiversion cache, two
+  long-lived `txn -snapshot` readers pinning the original versions, and a
+  writer churning every page — old versions spill to `__db.freezer.*` (freeze)
+  and are read back when the readers touch them (thaw). Asserts the readers
+  still see their snapshot and the `Buffers frozen`/`Buffers thawed` counters
+  are non-zero. Lift: **mp_mvcc.c 0%→~70%**.
+- **cache growth** (`mp_resize.c`): a small 2-region cache with a larger
+  `cache_max`, grown in steps via `resize_cache`, re-hashing buffers into new
+  regions; the data is re-verified after each grow and an over-max resize is
+  asserted to fail cleanly. Lift: **mp_resize.c 0%→~58%**.
+
+The cache **shrink** path is intentionally *not* exercised: it SIGSEGVs on an
+off-by-one region index in `__memp_remove_region`. See
+[`MVCC-RESIZE-COVERAGE.md`](MVCC-RESIZE-COVERAGE.md) for the stack, root cause,
+and reproduction.
+
 Outputs land in `build_unix/` (gitignored):
 
 - `coverage-summary.txt` — the line/branch/function totals
