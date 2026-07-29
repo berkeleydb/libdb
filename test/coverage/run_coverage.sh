@@ -104,8 +104,11 @@ bld="$root/build_unix"
 #     compression only ever marshals 32-bit lengths); they are exhaustively
 #     property-tested by test/pbt/pbt_compint.c, a separate tier not in this
 #     subset -- so db_compint's ceiling here is ~24%, not 100%.
-: "${COV_TESTS:=lock001: txn001: ssi001: ssi002: recd001:btree \
-  recd002:btree recd016:btree env007: \
+#
+# recd001/002/016 are NOT listed here: the recd recovery-record group is run
+# by the dedicated COV_RECD block below (driver-per-test, timeout-guarded),
+# which covers *_rec.c branches across all access methods.
+: "${COV_TESTS:=lock001: txn001: ssi001: ssi002: env007: \
   lock007: \
   btree/test001 btree/test111 test143:btree \
   hash/test001 hash/test006 hash/test010 hash/test025 hash/test077 \
@@ -379,6 +382,80 @@ if [ "${COV_DEAD_REG:-1}" = 1 ]; then
   done
   rm -f "$dregtcl"
   echo "  .gcda files after dead/register: $(find . -name '*.gcda' | wc -l)"
+fi
+
+# --- optional recovery-record handlers (COV_RECD=1, default on) --------------
+# The per-operation recovery handlers in db/db_rec.c, hash/hash_rec.c,
+# btree/bt_rec.c and qam/qam_rec.c (__xxx_recover: redo / undo / abort /
+# do-nothing branches) are the single biggest cold BRANCH surface
+# (db_rec.c 3189 branches, hash_rec.c 2069, bt_rec.c 2366, qam_rec.c 574).
+# The main COV_TESTS loop runs only recd001/002/016 on btree, so the hash and
+# queue recover handlers sat at 0% branch and most redo/undo branches of the
+# btree/db handlers were cold.
+#
+# The `recd` group drives exactly those branches: op_recover (testutils.tcl)
+# crashes the env at every log-record boundary and replays recovery forward
+# (redo) AND backward (undo/abort).  They CANNOT share one tclsh -- several
+# recd tests use conflicting globals (e.g. recd006 sets `kvals` scalar,
+# recd010 uses it as an array) and each spawns recdscript.tcl subprocesses --
+# so, like COV_DEAD_REG, they run driver-per-test with a per-test timeout and
+# orphan-subprocess cleanup.
+#
+# The set is curated for coverage-per-minute across the FOUR access methods
+# each test supports (splits recd002, fileid-reuse recd005, nested-txn recd006,
+# deep/many-child recd008, recnum recd009, off-page-dup splits recd010, cursor
+# adjust recd013, queue-extent create/delete recd014, checksum-error recd016,
+# crypto recd017, checkpoint/commit recd018, txn-id-wrap recd019, intermediate
+# dirs recd020, aborted-prepared page-alloc recd022, reverse-split recd023,
+# streaming partial-put overflow recd024, TXN_BULK recd025, big-key-to-internal
+# recd004).  Lifts (recd-driven branch %): db_rec.c 14.6->16.4, bt_rec.c
+# 12.3->21.6, hash_rec.c 0->24.2, qam_rec.c 0->45.5.  Whole block ~10 min.
+#
+# DELIBERATELY EXCLUDED (too slow for the marginal branches they add):
+#   recd001 (~6.5 min/method): the other tests already cover its per-op
+#     redo/undo branches -- dropping it entirely changed the totals by ~1
+#     branch.  recd001:btree/recno each add nothing the set doesn't have.
+#   recd003 (~7.3 min, dup): does NOT unlock the cold __bam_root/irep/rcuradj
+#     or __db_ovref handlers (they need scenarios no bounded recd test hits),
+#     so its 7 minutes buy only a handful of already-adjacent branches.
+#   recd015 (~4.6 min, many prepared txns): prepare/recover branches are
+#     already exercised by recd002/recd022's prepare paths.
+#   recd007 (~4.3 min, file create/delete): db_rec create/rename branches are
+#     covered by the recd_compact + upgrade drivers already in the subset.
+# Set COV_RECD=0 to skip.
+if [ "${COV_RECD:-1}" = 1 ]; then
+  echo "== run recovery-record handler tests (COV_RECD=1) =="
+  : "${COV_RECD_TIMEOUT:=300}"
+  # Each entry is "test:method:extra-arg" (extra blank for tests taking none).
+  cov_recd_tests=(
+    "recd002:btree:0" "recd002:hash:0" "recd002:queue:0" "recd002:recno:0"
+    "recd004:btree:"
+    "recd005:btree:" "recd005:hash:" "recd005:queue:" "recd005:recno:"
+    "recd006:btree:" "recd006:hash:"
+    "recd008:btree:" "recd009:btree:" "recd010:btree:"
+    "recd013:btree:" "recd013:hash:"
+    "recd014:queueext:"
+    "recd016:btree:" "recd017:btree:" "recd018:btree:" "recd019:btree:"
+    "recd020:btree:" "recd022:btree:" "recd023:btree:" "recd024:btree:"
+    "recd025:btree:"
+  )
+  recdtcl="$bld/.cov-recd-one.tcl"
+  for spec in "${cov_recd_tests[@]}"; do
+    t="${spec%%:*}"; rest="${spec#*:}"; m="${rest%%:*}"; a="${rest#*:}"
+    printf 'source ../test/tcl/test.tcl\nsource ../test/tcl/%s.tcl\nif {[catch {eval %s %s %s} r]} { puts "FAIL %s %s: $r"; exit 3 }\nputs "PASS %s %s"\n' \
+      "$t" "$t" "$m" "$a" "$t" "$m" "$t" "$m" > "$recdtcl"
+    timeout "$COV_RECD_TIMEOUT" "$TCLBIN" "$recdtcl" >/tmp/cov-recd-$t-$m.log 2>&1
+    rc=$?
+    # kill orphan recdscript.tcl subprocesses a hung/killed test may leave
+    pkill -f "$recdtcl" 2>/dev/null || true
+    pkill -f 'recdscript' 2>/dev/null || true
+    if [ $rc -eq 124 ]; then echo "HANG $t $m"
+    elif [ $rc -eq 0 ] && grep -q "^PASS $t $m" /tmp/cov-recd-$t-$m.log; then echo "PASS $t $m"
+    else echo "FAIL $t $m (rc=$rc)"; fi
+    find TESTDIR -mindepth 1 -delete 2>/dev/null || true
+  done
+  rm -f "$recdtcl"
+  echo "  .gcda files after recd: $(find . -name '*.gcda' | wc -l)"
 fi
 
 # --- aggregate ---------------------------------------------------------------
