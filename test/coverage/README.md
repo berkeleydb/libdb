@@ -233,6 +233,53 @@ off-by-one region index in `__memp_remove_region`. See
 [`MVCC-RESIZE-COVERAGE.md`](MVCC-RESIZE-COVERAGE.md) for the stack, root cause,
 and reproduction.
 
+## Encryption (`sec001` + `sec002`)
+
+`crypto/` + `hmac/` sat cold in the subset because **no other subset test opens
+an encrypted env or db** -- AES page/log encryption, the HMAC-SHA1 password /
+checksum path, and the mt19937 IV generator (`__db_generate_iv`) only run when
+`DB_ENV->set_encrypt(passwd, DB_ENCRYPT_AES)` + `DB->set_flags(DB_ENCRYPT)` are
+in play. `sec001` and `sec002` (both now in the default `COV_TESTS`, both
+already-registered Tcl tests -- no new Tcl written) drive that whole path:
+
+- **`sec001`** -- the encryption *interface*: create/open/join an encrypted
+  env + db, `DB_ENCRYPT_ANY`, and every failure branch (empty password,
+  algorithm-not-supplied, joining a non-encrypted env with a key and vice
+  versa, wrong-length password, **wrong password**, opening an encrypted db
+  with no key). These light up `crypto.c`'s cipher setup + the auth-failure
+  branches and `aes_method.c`'s key-derivation.
+- **`sec002`** -- the page-encryption *round-trip* and *tamper* paths:
+  encrypted put/get across pages (AES CBC block encrypt/decrypt +
+  IV generation), then scribbling on the meta page / swapping a root page and
+  reopening -- driving the HMAC-SHA1 `metadata page checksum error` and the
+  `checksum error` -> `DB_RUNRECOVERY` branches.
+
+Measured lift (subset baseline -> with sec001+sec002):
+
+| file | before | after (line% / br%) |
+|------|:------:|:------:|
+| `crypto/mersenne/mt19937db.c` | 0.0 | **95.6 / 56.2** |
+| `hmac/hmac.c`                 | 10.4 | **91.0 / 80.0** |
+| `crypto/rijndael/rijndael-alg-fst.c` | 18.8 | **83.5 / 55.0** |
+| `crypto/crypto.c`             | 50.7 | **77.9 / 60.5** |
+| `crypto/aes_method.c`         | 27.8 | **44.3 / 36.6** |
+| `crypto/rijndael/rijndael-api-fst.c` | 6.3 | **29.8 / 21.9** |
+| `hmac/sha1.c`                 | 97.4 | **98.7 / 72.7** |
+
+`rijndael-api-fst.c` caps at ~30% *by design*: `aes_method.c` only ever calls
+`__db_blockEncrypt`/`__db_blockDecrypt` with `MODE_CBC`, so the file's ECB and
+CFB1 branches and the entire `__db_padEncrypt`/`__db_padDecrypt` /
+`__db_cipherUpdateRounds` halves are **dead code from BDB's point of view** --
+unreachable by any Tcl workload. Similarly, `aes_method.c`'s remaining cold
+lines are the `HAVE_CRYPTO_IPP` alternate-backend blocks (this build is not
+IPP) and the `__aes_err` message table + `EAGAIN` branches, which fire only if
+an internal cipher call returns a negative error (bad key length / bad cipher
+state) -- states not reachable through the public API without fault injection.
+
+(`run_secmethod` / `run_secenv`, which run a full access-method test *twice*
+under encryption, add only ~1-2 pp over sec001+sec002 -- not worth ~doubling
+the subset runtime, so they are left out.)
+
 Outputs land in `build_unix/` (gitignored):
 
 - `coverage-summary.txt` — the line/branch/function totals
