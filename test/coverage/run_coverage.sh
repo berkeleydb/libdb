@@ -72,6 +72,17 @@ bld="$root/build_unix"
 # mp_resize.c 0->~58%.  (Cache SHRINK is intentionally not exercised: it hits
 # a SIGSEGV off-by-one in __memp_remove_region -- see
 # test/coverage/MVCC-RESIZE-COVERAGE.md.)
+#
+# sec001 + sec002 run the ENCRYPTION path (AES page/log encryption + HMAC-SHA1
+# checksums + the mt19937 IV generator).  No other subset test opens an
+# encrypted env/db, so crypto/ + hmac/ were the coldest reachable surface:
+# sec001 drives the create/open/join interface plus every wrong-password /
+# empty-password / algorithm-mismatch error branch; sec002 drives the
+# page-encryption round-trip (encrypted put/get across pages) and the
+# metadata/root-page checksum-error + DB_RUNRECOVERY paths.  Lift:
+# mt19937db.c 0->~96, hmac.c 10->~91, rijndael-alg-fst.c 19->~84,
+# crypto.c 51->~78, aes_method.c 28->~44, rijndael-api-fst.c 6->~30 (capped:
+# BDB only uses AES MODE_CBC, so the ECB/CFB1/pad* halves are dead code here).
 : "${COV_TESTS:=lock001: txn001: ssi001: ssi002: recd001:btree \
   recd002:btree recd016:btree env007: \
   btree/test001 btree/test111 \
@@ -82,7 +93,8 @@ bld="$root/build_unix"
   run_range_partition@test001@btree \
   run_partition_callback@test001@btree \
   logverify001: logverify002: \
-  env020: statprint001: mvcc001:}"
+  env020: statprint001: mvcc001: \
+  sec001: sec002:}"
 : "${COV_JOBS:=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 : "${TCLSH:=tclsh}"
 # TCL lib dir: nix store on this box, /usr/lib/tcl8.6 on ubuntu CI.
