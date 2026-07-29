@@ -1,0 +1,81 @@
+sub_dbm rc=0 dur=0 faillines=0
+0
+sub_ndbm rc=0 dur=0 faillines=0
+0
+sub_rsrc rc=0 dur=0 faillines=0
+0
+sub_hsearch rc=0 dur=1 faillines=0
+0
+sub_sec rc=0 dur=1 faillines=0
+0
+sub_backup rc=0 dur=8 faillines=0
+0
+sub_env rc=0 dur=8 faillines=1
+rep_rep003 PASS
+rep_rep010 PASS
+sub_mutex rc=0 dur=11 faillines=0
+0
+sub_archive rc=0 dur=13 faillines=0
+0
+rep_rep014 PASS
+rep_rep015 PASS
+rep_repmgr009 PASS
+rep_rep008 PASS
+rep_rep007 PASS
+rep_rep011 PASS
+rep_repmgr013 PASS
+rep_rep006 PASS
+rep_rep009 PASS
+rep_rep023 PASS
+rep_repmgr018 PASS
+rep_rep012 PASS
+rep_rep025 PASS
+rep_repmgr031 PASS
+rep_repmgr027 PASS
+rep_repmgr010 PASS
+rep_rep013 PASS
+rep_repmgr033 PASS
+rep_repmgr025 PASS
+rep_repmgr012 PASS
+rep_rep021 PASS
+rep_repmgr030 PASS
+rep_rep019 PASS
+rep_repmgr023 PASS
+logverify rc=0 dur=41 faillines=0
+0
+rep_rep024 PASS
+rep_rep001 PASS
+rep_repmgr017 PASS
+rep_repmgr011 PASS
+rep_repmgr032 PASS
+rep_rep022 PASS
+rep_repmgr034 PASS
+sub_log rc=0 dur=85 faillines=0
+0
+sub_compact rc=0 dur=116 faillines=0
+0
+rep_rep026 PASS
+rep_rep020 PASS
+sub_lock rc=0 dur=173 faillines=0
+0
+rep_rep002 PASS
+rep_rep005 PASS
+sub_byte rc=0 dur=238 faillines=0
+0
+sub_txn rc=0 dur=293 faillines=0
+0
+am_heap rc=0 dur=325 faillines=1
+sub_sdb rc=0 dur=333 faillines=0
+0
+sub_memp rc=0 dur=682 faillines=4
+sub_sindex rc=0 dur=974 faillines=0
+0
+am_recno rc=0 dur=1732 faillines=5
+am_queue rc=0 dur=1907 faillines=0
+0
+sub_compressed rc=0 dur=2010 faillines=1
+sub_fop rc=0 dur=2275 faillines=2
+am_btree rc=0 dur=2394 faillines=2017
+am_hash rc=0 dur=2432 faillines=2
+sub_partition rc=124 dur=5400 faillines=1
+recd rc=124 dur=5400 faillines=2
