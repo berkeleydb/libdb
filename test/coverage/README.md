@@ -64,6 +64,49 @@ timeout, so they cannot hang:
   per-version fixture tree (`test/tcl/upgrade/databases/`) is **not present in
   this fork**. See `DB-REPSITE-TODO.md` for the analogous repmgr gap.
 
+## The statistics (`*_stat_print`) surface
+
+The verbose `stat_print` / `DB_STAT_ALL` formatters (`env_stat.c`,
+`lock_stat.c`, `rep_stat.c`, `db_stati.c`, `log_stat.c`, `mut_stat.c`,
+`seq_stat.c`, `dbreg_stat.c`, `heap_stat.c` …) were ~0-29% covered: functional
+tests call `stat()` for values but almost never `stat_print(DB_STAT_ALL)`. Two
+Tcl tests now drive the whole surface (both in the default `COV_TESTS`):
+
+- **`env020`** (already registered, was just never in the coverage subset)
+  exercises every Tcl `*_stat_print` binding
+  (`env`/`lock`/`log`/`mpool`/`mutex`/`txn`/`rep`/`repmgr`/`db`/`seq`) with
+  each flag (default, `-clear`, `-all`, `-subsystem`, `-lk_*`, `-hash`, …).
+- **`statprint001`** (new) closes the two spots `env020` misses and adds the
+  `db_stat` **utility** entry path:
+  - `heap_stat.c` — `env020` opens no heap DB.
+  - `dbreg_stat.c`'s `__dbreg_print_all` — reached only with
+    `DB_STAT_ALL | DB_STAT_SUBSYSTEM` set *together* and databases open;
+    `env020` passes those flags separately.
+  - a `db_stat` flag sweep (`-e -E -c -C -l -L -m -M -x -X -r -R -t -Z -d -f`)
+    over a populated all-subsystems env, driving `util/db_stat.c ->
+    __*_stat_print` through the read-only on-disk path.
+
+  Measured lift (env020 + statprint001 vs. the full-suite baseline in
+  `full-run-2/cov-ranking.txt`):
+
+  | file | before | after |
+  |------|-------:|------:|
+  | `env/env_stat.c`     | 16.8% | **79.9%** |
+  | `lock/lock_stat.c`   | 17.4% | **73.6%** |
+  | `rep/rep_stat.c`     | 19.4% | **72.4%** |
+  | `db/db_stati.c`      | 22.0% | **61.8%** |
+  | `log/log_stat.c`     | 22.9% | **87.1%** |
+  | `mutex/mut_stat.c`   | 29.4% | **86.8%** |
+  | `sequence/seq_stat.c`| 0.0%  | **63.0%** |
+  | `dbreg/dbreg_stat.c` | 0.0%  | **69.6%** |
+  | `heap/heap_stat.c`   | 0.0%  | **80.3%** |
+  | `qam/qam_stat.c`     | 57.6% | **78.0%** |
+  | `txn/txn_stat.c`     | 56.8% | **69.0%** |
+
+  Still cold: `seq_stat.c`'s `__seq_print_all` (a no-op stub, and the Tcl seq
+  binding exposes only `-clear`, not `-all`); `repmgr_stat.c` needs a live
+  repmgr transport (`repmgr009`+, `COV_REP=1`) for its send-path counters.
+
 Outputs land in `build_unix/` (gitignored):
 
 - `coverage-summary.txt` — the line/branch/function totals
