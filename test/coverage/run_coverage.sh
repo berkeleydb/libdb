@@ -73,6 +73,7 @@ bld="$root/build_unix"
 # a SIGSEGV off-by-one in __memp_remove_region -- see
 # test/coverage/MVCC-RESIZE-COVERAGE.md.)
 : "${COV_TESTS:=lock001: txn001: ssi001: ssi002: recd001:btree \
+  recd002:btree recd016:btree env007: \
   btree/test001 btree/test111 \
   hash/test001 hash/test006 hash/test010 hash/test025 hash/test077 \
   queue/test001 queue/test007 queue/test025 \
@@ -262,6 +263,39 @@ if [ "${COV_XA_UPG:-1}" = 1 ]; then
     echo "FAIL os_aio_direct (rc=$?)"; tail -5 /tmp/cov-osaio.log
   fi
   echo "  .gcda files after xa/upg: $(find . -name '*.gcda' | wc -l)"
+fi
+
+# --- optional backup-API + compaction-recovery drivers (COV_BACKUP=1) --------
+# Two more standalone C drivers (same self-clean + hard-timeout shape as the
+# XA/upgrade drivers above) that light up code the Tcl suite cannot reach:
+#   env/env_backup.c   -- the hot-backup config + callback API
+#     (set/get_backup_config for all four enums, set/get_backup_callbacks).
+#     backup.tcl drives db_hotbackup, which calls DB_ENV->backup() with a NULL
+#     backup_handle, so env_backup.c stays 0%.  test/backup/run_backup_direct.sh
+#     compiles backup_direct.c, which calls those public entry points directly
+#     and then runs DB_ENV->backup()/dbbackup() with write callbacks installed
+#     -- lifting env_backup.c 0%->~97% and the backup->open/write/close callback
+#     branches of db/db_backup.c.
+#   db/db_rec.c        -- the btree-compaction + page-truncation recovery
+#     handlers __db_merge_recover / __db_pgno_recover / __db_pg_trunc_recover.
+#     No recd0NN test runs compaction under recovery, so those ~330 lines are
+#     cold.  test/db/run_recd_compact.sh compiles recd_compact.c, which fills+
+#     sparsifies a btree, compacts with DB_FREE_SPACE (logging merge/pgno/
+#     pg_trunc records) and re-opens under DB_RECOVER_FATAL to replay them.
+# Set COV_BACKUP=0 to skip.
+if [ "${COV_BACKUP:-1}" = 1 ]; then
+  echo "== run backup + compaction-recovery drivers (COV_BACKUP=1) =="
+  if sh "$root/test/backup/run_backup_direct.sh" >/tmp/cov-backup.log 2>&1; then
+    echo "PASS backup_direct"
+  else
+    echo "FAIL backup_direct (rc=$?)"; tail -5 /tmp/cov-backup.log
+  fi
+  if sh "$root/test/db/run_recd_compact.sh" >/tmp/cov-recdcompact.log 2>&1; then
+    echo "PASS recd_compact"
+  else
+    echo "FAIL recd_compact (rc=$?)"; tail -5 /tmp/cov-recdcompact.log
+  fi
+  echo "  .gcda files after backup/compact: $(find . -name '*.gcda' | wc -l)"
 fi
 
 # --- optional deadlock-detector + DB_REGISTER drivers (COV_DEAD_REG=1) -------
