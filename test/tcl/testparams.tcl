@@ -14,7 +14,7 @@ set serial_tests {rep002 rep005 rep016 rep020 rep022 rep026 rep031 rep063 \
 #set serial_tests {}
 
 set subs {auto_repmgr bigfile dead env fop lock log logverify memp multi_repmgr \
-    mutex other_repmgr plat recd rep rsrc sdb sdbtest sec si statprint test txn}
+    mutex other_repmgr plat recd rep rsrc sdb sdbtest sec si statprint mvcc test txn}
 
 set test_names(bigfile)	[list bigfile001 bigfile002]
 set test_names(compact) [list test111 \
@@ -82,6 +82,7 @@ set test_names(sec)	[list sec001 sec002]
 set test_names(si)	[list si001 si002 si003 si004 si005 si006 si007 si008]
 set test_names(ssi)	[list ssi001 ssi002 ssi003 ssi004 ssi005 ssi006 ssi007 ssi008 ssi009]
 set test_names(statprint)	[list statprint001]
+set test_names(mvcc)	[list mvcc001]
 set test_names(bt_rsnap)	[list bt_rsnap001]
 set test_names(test)	[list test001 test002 test003 test004 test005 \
     test006 test007 test008 test009 test010 test011 test012 test013 test014 \
