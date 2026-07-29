@@ -53,6 +53,15 @@ bld="$root/build_unix"
 # the whole suite, to keep the run bounded while lighting up the red files.
 # btree/test111 adds compaction coverage (src/btree/bt_compact.c); the
 # run_range_partition/run_partition_callback entries add src/db/partition.c.
+# env020 + statprint001 drive every *_stat_print / stat_print(DB_STAT_ALL)
+# path -- the verbose stat formatters that functional tests never reach.
+# env020 covers the Tcl bindings (lock/log/mpool/mutex/txn/rep/repmgr/db/seq),
+# statprint001 adds the two cold spots env020 misses (heap_stat.c, and
+# dbreg_stat.c's __dbreg_print_all which needs DB_STAT_ALL|DB_STAT_SUBSYSTEM
+# together with open DBs) plus a db_stat *utility* flag sweep (the read-only
+# on-disk __*_stat_print entry path). Together: env_stat 17->80, lock_stat
+# 17->74, rep_stat 19->72, log_stat 23->87, mut_stat 29->87, db_stati 22->62,
+# seq_stat 0->63, dbreg_stat 0->70, heap_stat 0->80.
 : "${COV_TESTS:=lock001: txn001: ssi001: ssi002: recd001:btree \
   btree/test001 btree/test111 \
   hash/test001 hash/test006 hash/test010 hash/test025 hash/test077 \
@@ -61,7 +70,8 @@ bld="$root/build_unix"
   heap/test001 heap/test013 heap/test024 \
   run_range_partition@test001@btree \
   run_partition_callback@test001@btree \
-  logverify001: logverify002:}"
+  logverify001: logverify002: \
+  env020: statprint001:}"
 : "${COV_JOBS:=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 : "${TCLSH:=tclsh}"
 # TCL lib dir: nix store on this box, /usr/lib/tcl8.6 on ubuntu CI.
