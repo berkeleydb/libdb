@@ -25,6 +25,10 @@ reachable) and then prints `SKIP` and exits 0, so CI stays green without the
 | `pbt_compint.c`     | varint codec round-trip / order-preserving | `__db_compress_int` / `__db_decompress_int` / `__db_*_count_int` / `__db_decompress_int32` (`src/common/db_compint.c`) |
 | `pbt_compress.c`    | prefix-compression codec round-trip | `__bam_defcompress` / `__bam_defdecompress` (`src/btree/bt_compress.c`) |
 | `pbt_recno.c`       | recno append/get + DB_RENUMBER contiguity | in-memory `DB_RECNO` (`src/btree/bt_recno.c`) |
+| `pbt_getlong.c`     | string->number parse (round-trip / range / robustness) | `__db_getlong` / `__db_getulong` (`src/common/db_getlong.c`) |
+| `pbt_defpfx.c`      | prefix-length separator | `__bam_defpfx()` (`src/btree/bt_compare.c`) |
+| `pbt_lsn.c`         | LSN wire codec (structured record) | `LOGCOPY_TOLSN` / `LOGCOPY_FROMLSN` (`src/dbinc/db_swap.h`) |
+| `pbt_chksum.c`      | page/log checksum compute + verify | `__db_chksum` / `__db_check_chksum` (`src/hmac/hmac.c`) |
 
 ## Property catalog
 
@@ -107,6 +111,88 @@ Opens a real in-memory `DB_RECNO` and drives it through the public API.
   numbers `1, 2, 3, …` with no gaps, and exactly `N − deletes` records
   survive (the recno renumber contract in `bt_recno.c __ramc_del`).
 
+### `pbt_getlong` — `__db_getlong` / `__db_getulong` numeric-argument parse
+String→number parsers for utility/config arguments. Returns `0` on success,
+`EINVAL` on empty/trailing-garbage, `ERANGE` on overflow or out-of-`[min,max]`.
+This is pure string logic the tcl suite never exercises directly
+(`db_getlong.c` sits at ~47% line coverage in the tcl COV run), so the PBT
+tier closes that gap.
+- **roundtrip_in_range** — `%ld`-formatted value parsed back within a
+  covering window returns `0` and the identical value.
+- **rejects_out_of_range** — an in-range integer parsed against a window
+  that *excludes* it returns `ERANGE` and leaves `*storep` untouched.
+- **rejects_trailing** — digits followed by a non-digit, non-newline byte
+  are `EINVAL`; a trailing `\n` is tolerated (the `end[0]` guard).
+- **robust_no_crash** — arbitrary bytes never crash, always return
+  `{0, EINVAL, ERANGE}`, and on success land in `[min,max]`.
+- **getulong_zero_is_max** — `__db_getulong` treats `max == 0` as
+  "unbounded" (documented `ULONG_MAX` substitute).
+
+### `pbt_defpfx` — `__bam_defpfx()` prefix-length separator
+The default prefix routine used during splits/compaction to pick the shortest
+key that still separates two neighbours. Returns the count of leading bytes
+of the larger key that must be retained.
+- **bounded** — `pfx <= min(la,lb)+1` always; when the longer key is
+  non-empty, `1 <= pfx <= max(la,lb)`; two empty keys give `pfx == 0`
+  (a real boundary — the source returns `b->size`, asserted explicitly).
+- **locates_diff** — when the keys differ inside the common region, `pfx-1`
+  is exactly the index of the first differing byte, and everything before
+  it is equal in both keys.
+- **symmetric** — `__bam_defpfx(a,b) == __bam_defpfx(b,a)`.
+- **separates** — consistency with `__bam_defcmp`: truncating the strictly
+  greater key to `pfx` bytes still sorts strictly after the smaller key
+  (the invariant a split relies on when it stores only the prefix).
+
+### `pbt_lsn` — LSN wire codec (`LOGCOPY_TOLSN` / `LOGCOPY_FROMLSN`)
+Extends the scalar swap coverage in `pbt_byteswap` to a whole *structured
+record*: the two-field `DB_LSN` `(file, offset)` marshalled to/from an 8-byte
+log-wire buffer. Logs are written little-endian on disk for portability.
+- **lsn_roundtrip** — `FROMLSN` then `TOLSN` is the identity in either
+  endian mode.
+- **wire_is_canonical** — with an *honest* env flag (matching the host,
+  detected at run time), the wire bytes are little-endian canonical
+  (compared against an independent hand-marshalling). You cannot simulate
+  the other endianness on one host — the swap is relative to native order.
+- **field_order** — `.file` occupies wire `[0..3]`, `.offset` `[4..7]`:
+  swapping the two LSN fields swaps the two 4-byte halves of the wire.
+- **lsn_roundtrip_unaligned** — the round-trip holds at any byte offset
+  (the codec is byte-at-a-time, so must not assume 4-byte alignment).
+
+### `pbt_chksum` — `__db_chksum` / `__db_check_chksum` (non-crypto path)
+The page/log checksum on the `mac_key == NULL, is_hmac == 0` path: a plain
+4-byte hash over the data (via `__ham_func4`), plus its verifier.
+- **deterministic** — the same bytes checksum identically (pure function).
+- **verify_accepts** — a checksum from `__db_chksum` verifies against the
+  same data.
+- **detects_bitflip** — flipping any single data bit makes the stored
+  checksum no longer verify (a corrupt page is caught).
+- **detects_wrong_sum** — flipping a bit of the *stored checksum* makes
+  verify reject.
+- *Deliberate non-property:* this bare hash does **not** detect truncation
+  — `__ham_func4` returns 0 for an empty buffer and for any all-zero prefix,
+  so `hash("") == hash("\0\0") == 0`. Torn-page/truncation detection in real
+  BDB comes from the `HDR` `prev`/`len` XOR on the log path (`hdr != NULL`),
+  which this pure-hash test avoids on purpose.
+
+## IMPORTANT — `hegel_assume` is a filter, not an assertion
+
+Use **`PBT_CHECK(cond, msg)`** (from `pbt_common.h`) for every actual
+property. It calls `hegel_fail()` when the condition is false, which marks
+the case INTERESTING and lets the server shrink a counterexample.
+
+`hegel_assume(cond)` is a **precondition filter**: a false condition marks
+the case INVALID (skipped), *not* failed. Empirically confirmed against
+hegel-c 0.10.0 — a property written as `hegel_assume(property)` can **never
+fail**; violating inputs are silently skipped. Reserve `hegel_assume()` for
+genuine domain constraints (e.g. `hegel_assume(malloc_result != NULL)`), and
+assert real properties with `PBT_CHECK`.
+
+> Known debt: the nine *pre-existing* `pbt_*.c` files (log_compare, byteswap,
+> defcmp, put_get, hash_model, hash_func, compint, compress, recno) express
+> their properties with `hegel_assume`, so those assertions currently skip
+> rather than fail. They should be converted to `PBT_CHECK` in a follow-up.
+> The four files added here (getlong, defpfx, lsn, chksum) use `PBT_CHECK`.
+
 ## Building and running
 
 ### Meson (primary path)
@@ -186,3 +272,25 @@ every drawn example.
 3. Add `'<name>'` to `pbt_props` in `test/pbt/meson.build`.
 4. Prefer broad generators (full ranges, empty collections, boundary values);
    use `hegel_assume()` only for genuine domain constraints.
+5. Assert the actual property with **`PBT_CHECK(cond, "msg")`**, never with
+   `hegel_assume()` (which only *skips* the case on failure — see the
+   "`hegel_assume` is a filter" note above).
+
+## tcl-uncoverable gaps the PBT tier closes
+
+Some pure logic cannot be reached from the tcl test harness, so it stays
+uncovered in the tcl COV subset no matter how many tcl cases run. The PBT
+tier targets exactly those:
+
+- **`__db_getlong` / `__db_getulong`** (`pbt_getlong`) — `db_getlong.c` is
+  ~47% line-covered by tcl; these string→number parsers have no tcl entry
+  point. `pbt_getlong` drives them directly (round-trip, range rejection,
+  overflow, robustness).
+- **`__db_compress_int` / `__db_decompress_int` 64-bit path** (`pbt_compint`)
+  — the btree compression that reaches this codec from tcl is 32-bit only,
+  so the 9-byte / full-`u_int64_t` encodings are tcl-unreachable.
+  `pbt_compint` draws the full 64-bit range (signed bits reinterpreted), so
+  those large encodings are exercised.
+
+The PBT tier is intentionally *not* part of the tcl COV subset (it is a
+separate opt-in suite), but it is where these gaps get real coverage.
