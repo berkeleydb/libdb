@@ -18,6 +18,7 @@
 
 #ifdef HAVE_DST
 #include "sim_inject.h"			/* DST planted-bug harness. */
+#include "sim_buggify.h"			/* DST buggify points. */
 #endif
 
 static int __log_encrypt_record __P((ENV *, DBT *, HDR *, u_int32_t));
@@ -308,6 +309,18 @@ __log_put(env, lsnp, udbt, flags)
 	 * If a flush is not needed, see if WRITE_NOSYNC was set and we
 	 * need to write out the log buffer.
 	 */
+#ifdef HAVE_DST
+	/*
+	 * BUGGIFY log.flush_now: force a synchronous log flush on a put
+	 * that would otherwise buffer.  Legal-but-pessimal: an EXTRA fsync
+	 * only makes more of the log durable sooner -- it can never lose or
+	 * reorder a record -- so correctness (and crash recovery) is
+	 * unchanged; it just exercises the flush path far more often than a
+	 * lazy WRNOSYNC workload would.
+	 */
+	if (DB_BUGGIFY(BUGGIFY_LOG_FLUSH_NOW))
+		LF_SET(DB_FLUSH);
+#endif
 	if (LF_ISSET(DB_FLUSH | DB_LOG_WRNOSYNC)) {
 		if (!lock_held) {
 			LOG_SYSTEM_LOCK(env);
@@ -469,6 +482,26 @@ __log_put_next(env, lsn, dbt, hdr, old_lsnp)
 		__log_set_version(env, DB_LOGVERSION);
 		adv_file = 1;
 	}
+
+#ifdef HAVE_DST
+	/*
+	 * BUGGIFY log.newfile_early: roll over to a fresh log file before
+	 * the current one is actually full, to stress log-file switching
+	 * and the archive/rollover path (which a steady workload hits only
+	 * every few MB).  Legal-but-pessimal: a rollover is exactly what
+	 * the engine does when a file fills; forcing it early just yields
+	 * more, smaller files -- recovery and archiving handle any number
+	 * of files, so the result is unchanged.  Gated on the file already
+	 * being at least half full (offset*2 > log_size) so files stay a
+	 * bounded size (no one-record-per-file explosion that would swamp
+	 * the write-back crash model's fixed file table).
+	 */
+	if (!adv_file && lp->lsn.offset != 0 &&
+	    (u_int32_t)lp->lsn.offset * 2 > lp->log_size &&
+	    hdr->size + sizeof(LOGP) + dbt->size <= lp->log_nsize &&
+	    DB_BUGGIFY(BUGGIFY_LOG_NEWFILE_EARLY))
+		adv_file = 1;
+#endif
 
 	/*
 	 * If this information won't fit in the file, or if we're a

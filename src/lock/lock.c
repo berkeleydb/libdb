@@ -13,6 +13,10 @@
 #include "dbinc/log.h"
 #include "dbinc/txn.h"
 
+#ifdef HAVE_DST
+#include "sim_buggify.h"		/* DST buggify points (--enable-dst only). */
+#endif
+
 static int __lock_allocobj __P((DB_LOCKTAB *, u_int32_t));
 static int __lock_alloclock __P((DB_LOCKTAB *, u_int32_t));
 static int  __lock_freelock __P((DB_LOCKTAB *,
@@ -574,6 +578,21 @@ __lock_vec(env, sh_locker, flags, list, nlist, elistp)
 	if (ret == 0 && region->detect != DB_LOCK_NORUN &&
 	     (region->need_dd || timespecisset(&region->next_timeout)))
 		run_dd = 1;
+#ifdef HAVE_DST
+	/*
+	 * BUGGIFY lock.dd_now: run the deadlock detector on this lock-vec
+	 * operation even though nothing flagged a possible deadlock
+	 * (need_dd clear, no timeout).  Legal-but-pessimal: the detector is
+	 * a read-only graph walk that aborts a txn ONLY on a real cycle, so
+	 * running it more often can never manufacture a false deadlock or
+	 * change a result -- it just exercises the detector (and the abort/
+	 * retry path when it does find a genuine cycle) far more than a lazy
+	 * need_dd policy would.  Only when detection is enabled at all.
+	 */
+	if (ret == 0 && region->detect != DB_LOCK_NORUN &&
+	    DB_BUGGIFY(BUGGIFY_LOCK_DD_NOW))
+		run_dd = 1;
+#endif
 	LOCK_SYSTEM_UNLOCK(lt, region);
 
 	if (run_dd)
@@ -1324,6 +1343,21 @@ in_abort:	newl->status = DB_LSTAT_WAITING;
 		 */
 		if (region->detect != DB_LOCK_NORUN && !no_dd)
 			(void)__lock_detect(env, region->detect, &did_abort);
+#ifdef HAVE_DST
+		/*
+		 * BUGGIFY lock.dd_wait_now: run the deadlock detector before
+		 * this thread blocks even in the no_dd case (the locker holds
+		 * no locks yet, so it is in no cycle).  Legal-but-pessimal: the
+		 * detector is a read-only cycle finder that aborts only on a
+		 * genuine deadlock, so running it here finds nothing to abort
+		 * for this locker and cannot change a result -- it just drives
+		 * the detector on the blocking path far more often, surfacing
+		 * detector-vs-block races.  Only when detection is enabled.
+		 */
+		else if (region->detect != DB_LOCK_NORUN &&
+		    DB_BUGGIFY(BUGGIFY_LOCK_DD_WAIT_NOW))
+			(void)__lock_detect(env, region->detect, &did_abort);
+#endif
 
 		ip = NULL;
 		if (env->thr_hashtab != NULL &&
