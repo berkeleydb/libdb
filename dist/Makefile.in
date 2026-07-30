@@ -1738,6 +1738,29 @@ test_sim_logrollover_crash: test_sim_logrollover_crash@o@ $(DEF_LIB)
 	    $(LIBS)
 	$(POSTLINK) $@
 
+test_sim_clockskew_timeout@o@: $(testdir)/sim/test_sim_clockskew_timeout.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_clockskew_timeout: test_sim_clockskew_timeout@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_clockskew_timeout@o@ $(DEF_LIB) $(TEST_LIBS) \
+	    $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_clockskew_ckp@o@: $(testdir)/sim/test_sim_clockskew_ckp.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_clockskew_ckp: test_sim_clockskew_ckp@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_clockskew_ckp@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_clockskew_backward@o@: $(testdir)/sim/test_sim_clockskew_backward.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_clockskew_backward: test_sim_clockskew_backward@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_clockskew_backward@o@ $(DEF_LIB) $(TEST_LIBS) \
+	    $(LIBS)
+	$(POSTLINK) $@
+
 # DST v2 multi-process failchk-recovery pilot (test/sim/mp_failchk_pilot.c).
 # Runs OUTSIDE the single-process test_sim harness: it forks + kill -9's real
 # processes sharing a real (non-DB_PRIVATE) region.  Driver: mp-failchk.sh.
@@ -1793,7 +1816,9 @@ dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	mp_failchk_pilot \
 	test_sim_crash_in_recovery test_sim_recovery_undo_crash \
 	test_sim_recovery_redo_crash test_sim_recovery_ckp_crash \
-	test_sim_buggify
+	test_sim_buggify \
+	test_sim_clockskew_timeout test_sim_clockskew_ckp \
+	test_sim_clockskew_backward
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.
