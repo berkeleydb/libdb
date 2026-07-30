@@ -82,7 +82,7 @@ Streams (`enum db_sim_stream`):
 | `DB_SIM_RNG_FAULT` | generic fault-injection toggles |
 | `DB_SIM_RNG_BUGGIFY` | buggify per-run activation coins |
 | `DB_SIM_RNG_APP` | application/test workload draws |
-| `DB_SIM_RNG_SCHED` | **reserved** for the v2 deterministic scheduler |
+| `DB_SIM_RNG_SCHED` | **v2**: deterministic scheduler / multi-process (kill point; see `test/sim/DST-V2-DESIGN.md`) |
 
 `SCHED` is reserved (not yet drawn) so adding the scheduler later does not move
 v1 seeds. `__db_sim_rng(s)` returns 0 when sim is inactive; callers gate on
@@ -446,7 +446,13 @@ scheduler / multi-process). ~34 scenarios across BDB subsystems.
 33. **SIREAD marker reclaim** correctness across crash+recover — *v1.x*.
 
 ### Multi-process / scheduler (the v2 frontier)
-34. **concurrent writers** deterministic interleaving + crash — *v2*.
+34. **concurrent writers** deterministic interleaving + crash — *v2* (scheduler
+    pending); **process-death-mid-txn + failchk recovery** ✅ **PILOT LANDED**
+    (`test/sim/mp_failchk_pilot.c` + `mp-failchk.sh`; see
+    `test/sim/DST-V2-DESIGN.md`) — two real processes share a real
+    (non-`DB_PRIVATE`) region, one is killed mid-txn holding a write lock, the
+    other runs `DB_ENV->failchk`; **found a real failchk EBUSY recovery defect**
+    (DST-V2-DESIGN §3a).
 35. **network partition / replication** role change (repmgr) — *v2* (xtc models
     partition at the message seam; BDB's real socket transport needs a v2 shim).
 
