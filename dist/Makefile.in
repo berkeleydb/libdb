@@ -1731,6 +1731,29 @@ test_sim_logrollover_crash: test_sim_logrollover_crash@o@ $(DEF_LIB)
 	    $(LIBS)
 	$(POSTLINK) $@
 
+test_sim_clockskew_timeout@o@: $(testdir)/sim/test_sim_clockskew_timeout.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_clockskew_timeout: test_sim_clockskew_timeout@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_clockskew_timeout@o@ $(DEF_LIB) $(TEST_LIBS) \
+	    $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_clockskew_ckp@o@: $(testdir)/sim/test_sim_clockskew_ckp.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_clockskew_ckp: test_sim_clockskew_ckp@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_clockskew_ckp@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_clockskew_backward@o@: $(testdir)/sim/test_sim_clockskew_backward.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_clockskew_backward: test_sim_clockskew_backward@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_clockskew_backward@o@ $(DEF_LIB) $(TEST_LIBS) \
+	    $(LIBS)
+	$(POSTLINK) $@
+
 dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_hash_crash test_sim_recno_crash test_sim_queue_crash \
 	test_sim_ckp_crash test_sim_torn_log test_sim_enospc \
@@ -1741,7 +1764,9 @@ dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_cursor_crash test_sim_latency_load test_sim_swarm \
 	test_sim_ckp_lsn test_sim_multidb_crash test_sim_largeabort \
 	test_sim_log_enospc test_sim_data_log_order test_sim_torn_meta \
-	test_sim_stale_meta test_sim_compound_fault test_sim_logrollover_crash
+	test_sim_stale_meta test_sim_compound_fault test_sim_logrollover_crash \
+	test_sim_clockskew_timeout test_sim_clockskew_ckp \
+	test_sim_clockskew_backward
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.
