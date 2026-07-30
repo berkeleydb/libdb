@@ -1,0 +1,3 @@
+  lines......: 68.0% (49192 of 72377 lines)
+  functions..: 80.5% (2129 of 2644 functions)
+  branches...: 50.2% (39238 of 78236 branches)
