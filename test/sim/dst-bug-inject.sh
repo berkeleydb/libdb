@@ -45,6 +45,7 @@ BUGS="
 6|test_sim_recover_idempotent|nonzerocatch
 7|test_sim_ckp_crash|nonzerocatch
 8|test_sim_log_enospc|exit0catch
+9|test_sim_recovery_redo_crash|nonzerocatch
 "
 
 overall=0
