@@ -25,6 +25,7 @@
 #include "db_int.h"
 #include "sim_rng.h"
 #include "sim_fault.h"
+#include "sim_clock.h"
 
 /*
  * db_sim_fkey --
@@ -233,4 +234,35 @@ __db_sim_io_latency_hook()
 	if (!__db_sim_active())
 		return;
 	__db_sim_io_sleep_latency();
+}
+
+/*
+ * __db_sim_clock_hook --
+ *	Called from __os_gettime AFTER a real clock reading has landed in
+ *	`tp`.  When the clock-skew fault is armed, applies the seeded skew
+ *	(fixed offset + jitter + occasional forward/backward jump) in place;
+ *	a no-op (leaves tp untouched, ~zero cost) otherwise.  This is the
+ *	one seam every lock/txn timeout deadline, the deadlock detector's
+ *	expiry scan, checkpoint scheduling and the replication timers read
+ *	their notion of "now" through.
+ *
+ * PUBLIC: #ifdef HAVE_DST
+ * PUBLIC: void __db_sim_clock_hook __P((db_timespec *, int));
+ * PUBLIC: #endif
+ */
+void
+__db_sim_clock_hook(tp, monotonic)
+	db_timespec *tp;
+	int monotonic;
+{
+	time_t sec;
+	long nsec;
+
+	if (tp == NULL || !__db_sim_clock_armed())
+		return;
+	sec = tp->tv_sec;
+	nsec = (long)tp->tv_nsec;
+	__db_sim_clock_skew(&sec, &nsec, monotonic);
+	tp->tv_sec = sec;
+	tp->tv_nsec = nsec;
 }
