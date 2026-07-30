@@ -6,7 +6,7 @@ Status: **v1 foundation landed + v1.x depth grown** (this branch). Seeded
 PRNG tree, determinism
 guard, buggify, simulated-I/O fault knobs, the write-back-cache durable-frontier
 crash model, the `__os_*` I/O hooks, a `--enable-dst` build switch that is
-zero-overhead when off, and a **32-scenario** catalog plus a FoundationDB-style
+zero-overhead when off, and a **36-scenario** catalog plus a FoundationDB-style
 **swarm runner** with per-fault activation coverage (now with a hard
 coverage-gap guard) and **eight** planted-bug yardsticks. Modeled on
 FoundationDB / TigerBeetle and the xtc project's DST (`/home/gburd/ws/xtc`).
@@ -242,7 +242,7 @@ replay of the same seed would fail.
 
 ## 3. Scenarios (all runnable now, all PASS)
 
-Thirty-two scenarios (plus the swarm runner); the crash/fault ones each pass
+Thirty-six scenarios (plus the swarm runner); the crash/fault ones each pass
 across a multi-seed sweep and replay bit-identically per seed.
 
 | Scenario | Proves | Result |
@@ -279,6 +279,10 @@ across a multi-seed sweep and replay bit-identically per seed.
 | `test_sim_stale_meta` | stale read of a real DB meta page after overwrite: caught by the page LSN+checksum, never silent-bad | PASS (stale reads fired) |
 | `test_sim_compound_fault` | latency + ENOSPC + torn all active at once across a crash: durable prefix intact, tree clean, no silent-bad | PASS (3 faults fire) |
 | `test_sim_logrollover_crash` | crash with the WAL spread over multiple log files: every commit survives across the rollover boundary | PASS (400 commits / 3 log files) |
+| `test_sim_crash_in_recovery` | **crash-during-recovery capstone**: crash at every recovery-phase I/O op (+ a double-crash), then finish recovery — converges to the SAME reference state hash regardless of how many partial-recovery crashes happened (recovery is idempotent + convergent) | PASS (19 trials / 20 crash points) |
+| `test_sim_recovery_undo_crash` | crash mid-UNDO then recover: committed present, aborted gone, DB clean | PASS |
+| `test_sim_recovery_redo_crash` | crash mid-REDO (tiny cache forces real page evictions), recovery-ckp not durable, then recover: idempotent re-apply, clean (catches RECINITNOSTAMP) | PASS |
+| `test_sim_recovery_ckp_crash` | crash during the recovery checkpoint write, then recover: converges, committed intact | PASS |
 | `test_sim_swarm` | **swarm**: mixed-fault sweep, per-fault activation coverage + gap guard, replay | PASS (512 seeds, 0 violations) |
 
 **Recovery-before-verify discipline** (from
@@ -287,7 +291,7 @@ recovery falsely looks corrupt. `test_sim_crash_recover` **always** runs
 `DB_RECOVER` before `db->verify`.
 
 **Planted-bug harness** (`sim_inject.h`, `DB_DST_INJECT_BUG=<n>`) — the
-FoundationDB-grade "DST finds real bugs" proof, LANDED. **Eight** known bugs
+FoundationDB-grade "DST finds real bugs" proof, LANDED. **Nine** known bugs
 planted at real library sites, each caught by a scenario within **K=1**
 seeds (`test/sim/dst-bug-inject.sh` builds a dedicated library per bug and
 asserts the catch, reporting the catch-latency K):
@@ -302,11 +306,36 @@ asserts the catch, reporting the catch-latency K):
 | 6 REDONOSTAMP | `__db_addrem_recover` (db_rec.c) applies a redo but skips the page-LSN stamp | `test_sim_recover_idempotent` | a second recovery re-applies the same redo -- recovery is not idempotent |
 | 7 SYNCSKIP | `__memp_sync_int` (mp_sync.c) writes a single-file sync's pages but skips the fsync | `test_sim_ckp_crash` | pages written but not durable; write-back crash drops them, flushed records lost |
 | 8 LOGWRITEIGNORE | `__log_write` (log_put.c) ignores an `__os_io` write error and advances `w_off` | `test_sim_log_enospc` | a commit is acked whose log bytes never persisted; lost after crash |
+| 9 RECINITNOSTAMP | `__db_pg_alloc_recover` (db_rec.c) skips the meta-page LSN stamp on redo | `test_sim_recovery_redo_crash` | a non-idempotent redo -- caught ONLY by the crash-during-recovery loop (invisible to plain double-recover + single crash+recover): re-applying the redo after a mid-recovery crash corrupts the meta page |
 
-Measured catch-latency (dst-bug-inject.sh, K max 8): **all eight caught at K=1**.
-A normal build (`DB_DST_INJECT_BUG` undefined) compiles all eight out and every
+Measured catch-latency (dst-bug-inject.sh, K max 8): **all nine caught at K=1**.
+A normal build (`DB_DST_INJECT_BUG` undefined) compiles all nine out and every
 scenario passes; the OFF library has **0** `__db_sim_*` symbols (verified via
 `nm` on a fresh `--enable-debug` build tree).
+
+### 3.0 Crash-during-recovery (recovery is itself crash-safe)
+
+v1 originally crashed *once* then recovered *once*. FoundationDB reboots
+repeatedly, so recovery's OWN crash-safety was an untested surface. The
+crash-during-recovery mechanism (`__db_sim_reccrash_enable/ticks/tick` in
+`sim_core.c`, fired from the existing `__os_io`/`__os_fsync` write-back seam,
+all `#ifdef HAVE_DST`) crashes at the Nth recovery-phase I/O op and drops its
+un-fsynced work, exactly modelling a process dying part-way through
+`__db_apprec`. An opt-in `DB_SIM_WB_SEED_ONDISK` mode lets a recovery process
+treat inherited (already-durable) files correctly.
+
+The capstone `test_sim_crash_in_recovery` sweeps every recovery-phase I/O op as
+a crash point (plus a double-crash), runs recovery to completion after each,
+and asserts the final full-state hash is **identical** no matter how many
+partial-recovery crashes intervened — i.e. recovery is idempotent AND
+convergent. **Finding:** the initial "recovery not re-runnable" failure was a
+*mechanism artifact* (the write-back model was dropping bytes that were durable
+*before* the recovery process started), fixed via `DB_SIM_WB_SEED_ONDISK`; **no
+real recovery-safety bug was found** — libdb recovery is idempotent + convergent
+across every interruption point tested. Planted bug 9 (RECINITNOSTAMP) proves
+the check has teeth: a non-idempotent redo that is *invisible* to the plain
+double-recover and single crash+recover scenarios is caught by the
+crash-during-recovery loop at K=1.
 
 ### 3.1 Swarm methodology + measured fault-activation coverage
 

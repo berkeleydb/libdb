@@ -87,6 +87,23 @@
  *	                   write failed must not silently vanish" invariant
  *	                   fires.
  *
+ *	  9  RECINITNOSTAMP -- src/db/db_rec.c __db_pg_init_recover applies a
+ *	                   page-init redo but SKIPS the `pagep->lsn = *lsnp`
+ *	                   stamp, so the page LSN never advances past the
+ *	                   record and the idempotency guard (cmp_p == 0)
+ *	                   still holds on a later pass.  A recovery that is
+ *	                   CRASHED partway and re-run then re-applies the
+ *	                   same pg_init redo -- recovery is not idempotent
+ *	                   UNDER INTERRUPTION.  Distinct from bug 6 (a
+ *	                   non-idempotent __db_addrem redo, caught by the
+ *	                   double-recover test): this one is caught by the
+ *	                   crash-DURING-recovery loop
+ *	                   (test_sim_crash_in_recovery /
+ *	                   test_sim_recovery_redo_crash), where a partial
+ *	                   recovery is interrupted and re-run -- the
+ *	                   convergence invariant (final state must equal the
+ *	                   clean-recovery reference) fires.
+ *
  *	When you add a safety invariant, add a bug id here, plant it at the
  *	real site, and add a case to scripts/dst-bug-inject.sh so DST must
  *	prove it catches it.
@@ -114,5 +131,6 @@
 #define DB_DST_BUG_REDONOSTAMP 6   /* db_rec.c: skip the redo page-LSN stamp */
 #define DB_DST_BUG_SYNCSKIP    7   /* mp_sync.c: skip a single-file sync's fsync */
 #define DB_DST_BUG_LOGWRITEIGNORE 8 /* log_put.c: ignore a log-write error */
+#define DB_DST_BUG_RECINITNOSTAMP 9 /* db_rec.c: skip a pg_init redo's LSN stamp */
 
 #endif /* !_DB_SIM_INJECT_H_ */
