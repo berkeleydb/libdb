@@ -35,9 +35,12 @@ test_sim_torn_log test_sim_enospc test_sim_abort_atomic \
 test_sim_recover_idempotent test_sim_dup_crash test_sim_overflow_torn \
 test_sim_split_crash test_sim_ckp_enospc test_sim_split_torn \
 test_sim_recover_corrupt test_sim_secondary_crash test_sim_largetxn_crash \
-test_sim_cursor_crash test_sim_multi_fault test_sim_ckp_lsn"
+test_sim_cursor_crash test_sim_multi_fault test_sim_ckp_lsn \
+test_sim_multidb_crash test_sim_largeabort test_sim_log_enospc \
+test_sim_data_log_order test_sim_torn_meta test_sim_compound_fault \
+test_sim_logrollover_crash"
 
-ONCE="test_sim_rng test_sim_stale test_sim_latency_load"
+ONCE="test_sim_rng test_sim_stale test_sim_stale_meta test_sim_latency_load"
 
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-.libs}"
 
