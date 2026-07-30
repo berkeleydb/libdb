@@ -69,7 +69,8 @@ prop_reflexive(hegel_test_case *tc, void *u)
 	uint8_t *pa;
 	(void)u;
 	pa = draw_dbt(tc, &a);
-	hegel_assume(__bam_defcmp(NULL, &a, &a) == 0);
+	PBT_CHECK(__bam_defcmp(NULL, &a, &a) == 0,
+	    "__bam_defcmp(a, a) != 0 (not reflexive)");
 	free(pa);
 }
 
@@ -82,8 +83,9 @@ prop_antisymmetric(hegel_test_case *tc, void *u)
 	(void)u;
 	pa = draw_dbt(tc, &a);
 	pb = draw_dbt(tc, &b);
-	hegel_assume(sign(__bam_defcmp(NULL, &a, &b)) ==
-	    -sign(__bam_defcmp(NULL, &b, &a)));
+	PBT_CHECK(sign(__bam_defcmp(NULL, &a, &b)) ==
+	    -sign(__bam_defcmp(NULL, &b, &a)),
+	    "__bam_defcmp not antisymmetric in sign");
 	free(pa);
 	free(pb);
 }
@@ -103,9 +105,9 @@ prop_transitive(hegel_test_case *tc, void *u)
 	bc = sign(__bam_defcmp(NULL, &b, &c));
 	ac = sign(__bam_defcmp(NULL, &a, &c));
 	if (ab <= 0 && bc <= 0)
-		hegel_assume(ac <= 0);
+		PBT_CHECK(ac <= 0, "__bam_defcmp not transitive (a<=b<=c)");
 	if (ab >= 0 && bc >= 0)
-		hegel_assume(ac >= 0);
+		PBT_CHECK(ac >= 0, "__bam_defcmp not transitive (a>=b>=c)");
 	free(pa);
 	free(pb);
 	free(pc);
@@ -120,7 +122,8 @@ prop_matches_oracle(hegel_test_case *tc, void *u)
 	(void)u;
 	pa = draw_dbt(tc, &a);
 	pb = draw_dbt(tc, &b);
-	hegel_assume(sign(__bam_defcmp(NULL, &a, &b)) == oracle_cmp(&a, &b));
+	PBT_CHECK(sign(__bam_defcmp(NULL, &a, &b)) == oracle_cmp(&a, &b),
+	    "__bam_defcmp disagrees in sign with memcmp oracle");
 	free(pa);
 	free(pb);
 }

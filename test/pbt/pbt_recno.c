@@ -94,16 +94,17 @@ prop_put_get_roundtrip(hegel_test_case *tc, void *u)
 	hegel_assume(dbp != NULL);
 
 	rec = recno_append(dbp, vbuf, vlen);
-	hegel_assume(rec != 0);
+	PBT_CHECK(rec != 0, "DB_APPEND did not assign a record number");
 
 	memset(&key, 0, sizeof(key));
 	memset(&out, 0, sizeof(out));
 	key.data = &rec;
 	key.size = sizeof(rec);
 	ret = dbp->get(dbp, NULL, &key, &out, 0);
-	hegel_assume(ret == 0);
-	hegel_assume(out.size == (u_int32_t)vlen);
-	hegel_assume(memcmp(out.data, vbuf, vlen) == 0);
+	PBT_CHECK(ret == 0, "get of appended record failed");
+	PBT_CHECK(out.size == (u_int32_t)vlen, "appended record read back wrong size");
+	PBT_CHECK(memcmp(out.data, vbuf, vlen) == 0,
+	    "appended record read back wrong bytes");
 
 	(void)dbp->close(dbp, 0);
 	free(vbuf);
@@ -132,7 +133,8 @@ prop_renumber_contiguous(hegel_test_case *tc, void *u)
 	/* Append n records (1..n). */
 	n = (int)hegel_draw_int(tc, hegel_integers(1, 30));
 	for (i = 0; i < n; i++)
-		hegel_assume(recno_append(dbp, payload, sizeof(payload)) != 0);
+		PBT_CHECK(recno_append(dbp, payload, sizeof(payload)) != 0,
+		    "append during renumber setup failed");
 	live = n;
 
 	/* Delete ndel records, each at a currently-valid position. */
@@ -144,12 +146,12 @@ prop_renumber_contiguous(hegel_test_case *tc, void *u)
 		key.data = &rec;
 		key.size = sizeof(rec);
 		ret = dbp->del(dbp, NULL, &key, 0);
-		hegel_assume(ret == 0);
+		PBT_CHECK(ret == 0, "del of an in-range record failed");
 		live--;
 	}
 
 	/* Walk every live record; recnos must be 1, 2, 3, ... contiguously. */
-	hegel_assume(dbp->cursor(dbp, NULL, &dbc, 0) == 0);
+	PBT_CHECK(dbp->cursor(dbp, NULL, &dbc, 0) == 0, "cursor open failed");
 	expected = 1;
 	for (;;) {
 		memset(&key, 0, sizeof(key));
@@ -157,14 +159,15 @@ prop_renumber_contiguous(hegel_test_case *tc, void *u)
 		ret = dbc->get(dbc, &key, &data, DB_NEXT);
 		if (ret == DB_NOTFOUND)
 			break;
-		hegel_assume(ret == 0);
-		hegel_assume(key.size == sizeof(walk));
+		PBT_CHECK(ret == 0, "cursor DB_NEXT failed");
+		PBT_CHECK(key.size == sizeof(walk), "cursor recno key wrong size");
 		memcpy(&walk, key.data, sizeof(walk));
-		hegel_assume(walk == expected);	/* no gaps, in order */
+		PBT_CHECK(walk == expected, "renumber left a gap or wrong order");
 		expected++;
 	}
 	/* Exactly `live` records survived, numbered 1..live. */
-	hegel_assume((int)(expected - 1) == live);
+	PBT_CHECK((int)(expected - 1) == live,
+	    "surviving record count != N - deletes");
 
 	(void)dbc->close(dbc);
 	(void)dbp->close(dbp, 0);
