@@ -48,6 +48,7 @@
             pkgs.meson pkgs.ninja pkgs.python3 pkgs.pkg-config
             pkgs.gcc pkgs.clang pkgs.autoconf pkgs.gnumake
             pkgs.tcl   # for the TCL test harness (--enable-test)
+            pkgs.cbmc  # bounded model checker for the formal-verification harnesses (test/cbmc)
           ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
             pkgs.liburing  # Linux io_uring AIO backend (HAVE_IO_URING)
           ];
