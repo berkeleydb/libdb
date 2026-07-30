@@ -80,9 +80,10 @@ prop_roundtrip(hegel_test_case *tc, void *u)
 
 	v = draw_u64(tc);
 	n = __db_compress_int(buf, v);
-	hegel_assume(n >= 1 && n <= CMP_MAXLEN);
+	PBT_CHECK(n >= 1 && n <= CMP_MAXLEN,
+	    "__db_compress_int returned out-of-range length");
 	(void)__db_decompress_int(buf, &out);
-	hegel_assume(out == v);
+	PBT_CHECK(out == v, "varint roundtrip: decompress(compress(v)) != v");
 }
 
 /*
@@ -105,9 +106,12 @@ prop_count_agrees(hegel_test_case *tc, void *u)
 	back = __db_decompress_count_int(buf);
 	read_len = __db_decompress_int(buf, &out);
 
-	hegel_assume((u_int32_t)written == predicted);
-	hegel_assume(back == predicted);
-	hegel_assume((u_int32_t)read_len == predicted);
+	PBT_CHECK((u_int32_t)written == predicted,
+	    "__db_compress_int wrote a different byte count than count_int");
+	PBT_CHECK(back == predicted,
+	    "__db_decompress_count_int disagrees with count_int");
+	PBT_CHECK((u_int32_t)read_len == predicted,
+	    "__db_decompress_int length disagrees with count_int");
 }
 
 /*
@@ -136,11 +140,11 @@ prop_order_preserving(hegel_test_case *tc, void *u)
 		cmp = (la > lb) - (la < lb);	/* longer enc => larger value */
 
 	if (a < b)
-		hegel_assume(cmp < 0);
+		PBT_CHECK(cmp < 0, "varint encoding not order-preserving (a<b)");
 	else if (a > b)
-		hegel_assume(cmp > 0);
+		PBT_CHECK(cmp > 0, "varint encoding not order-preserving (a>b)");
 	else
-		hegel_assume(cmp == 0);
+		PBT_CHECK(cmp == 0, "varint encoding not order-preserving (a==b)");
 }
 
 /*
@@ -162,9 +166,12 @@ prop_int32_matches(hegel_test_case *tc, void *u)
 	n32 = __db_decompress_int32(buf, &out32);
 	n64 = __db_decompress_int(buf, &out64);
 
-	hegel_assume((u_int64_t)out32 == out64);
-	hegel_assume(out32 == (u_int32_t)v);
-	hegel_assume(n32 == n64);
+	PBT_CHECK((u_int64_t)out32 == out64,
+	    "int32 decoder value disagrees with 64-bit decoder");
+	PBT_CHECK(out32 == (u_int32_t)v,
+	    "int32 decoder value != original");
+	PBT_CHECK(n32 == n64,
+	    "int32 decoder byte count disagrees with 64-bit decoder");
 }
 
 static const pbt_entry_t tests[] = {

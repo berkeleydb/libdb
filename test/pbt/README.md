@@ -187,11 +187,11 @@ fail**; violating inputs are silently skipped. Reserve `hegel_assume()` for
 genuine domain constraints (e.g. `hegel_assume(malloc_result != NULL)`), and
 assert real properties with `PBT_CHECK`.
 
-> Known debt: the nine *pre-existing* `pbt_*.c` files (log_compare, byteswap,
-> defcmp, put_get, hash_model, hash_func, compint, compress, recno) express
-> their properties with `hegel_assume`, so those assertions currently skip
-> rather than fail. They should be converted to `PBT_CHECK` in a follow-up.
-> The four files added here (getlong, defpfx, lsn, chksum) use `PBT_CHECK`.
+> All nine originally-`hegel_assume` property files (log_compare, byteswap,
+> defcmp, put_get, hash_model, hash_func, compint, compress, recno) now
+> assert with `PBT_CHECK`; only genuine domain/setup guards (draw/malloc/open
+> `!= NULL`) remain as `hegel_assume`.  The four files added in #97 (getlong,
+> defpfx, lsn, chksum) already use `PBT_CHECK`.
 
 ## Building and running
 
