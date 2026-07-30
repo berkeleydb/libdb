@@ -580,7 +580,7 @@ typedef struct _qpage {
  * field, it requires no alignment, and it's in the same location in all three
  * structures, there's a pair of macros.
  */
-#define	HPAGE_PTYPE(p)		(*(u_int8_t *)p)
+#define	HPAGE_PTYPE(p)		(*(u_int8_t *)(p))
 #define	HPAGE_TYPE(dbp, pg, indx)	(*P_ENTRY(dbp, pg, indx))
 
 /*
