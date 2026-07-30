@@ -227,6 +227,15 @@ err:	if (jc != NULL) {
 			__os_free(env, jc->j_fdupcurs);
 		if (jc->j_exhausted != NULL)
 			__os_free(env, jc->j_exhausted);
+		/*
+		 * j_key.data (malloc'd above) and j_rdata.data (DB_DBT_REALLOC)
+		 * are freed on the normal close path; free them here too or an
+		 * allocation failure after j_key.data was set leaks them.
+		 */
+		if (jc->j_key.data != NULL)
+			__os_free(env, jc->j_key.data);
+		if (jc->j_rdata.data != NULL)
+			__os_ufree(env, jc->j_rdata.data);
 		__os_free(env, jc);
 	}
 	if (dbc != NULL)
