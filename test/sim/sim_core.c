@@ -24,6 +24,7 @@
 #include "db_int.h"
 #include "sim_rng.h"
 #include "sim_fault.h"
+#include "sim_clock.h"
 
 #include <stdatomic.h>
 #include <stdio.h>
@@ -148,6 +149,7 @@ __db_sim_fault_class_name(cls)
 	case DB_SIM_FC_STALE:    return ("stale");
 	case DB_SIM_FC_LATENCY:  return ("latency");
 	case DB_SIM_FC_SHORTEIO: return ("shorteio");
+	case DB_SIM_FC_CLOCK:    return ("clock");
 	default:                 return ("?");
 	}
 }
@@ -184,6 +186,7 @@ __db_sim_deactivate()
 	atomic_store_explicit(&g_io_corrupt_on, 0, memory_order_release);
 	__db_sim_io_stale_enable(0);
 	__db_sim_wb_enable(0);
+	__db_sim_clock_disable();
 }
 
 uint64_t
@@ -734,4 +737,149 @@ __db_sim_io_stale_read(fkey, off, buf, len)
 		}
 	}
 	return (0);
+}
+
+/* ---- clock-skew / time-jump fault (sim_clock.h) ----
+ *
+ * A seeded skew applied at the __os_gettime seam.  Three components, all
+ * bounded and drawn from the dedicated CLOCK stream so arming this never
+ * shifts another site's draws:
+ *   - g_clk_offset: a FIXED per-run offset (set once at arm), applied to
+ *     every read -- a clock that reads steadily ahead/behind true time;
+ *   - g_clk_jitter: a per-read uniform jitter in [-j, +j] -- an imprecise,
+ *     jumpy clock;
+ *   - g_clk_jump*:  an occasional discrete jump, forward or BACKWARD, by
+ *     up to g_clk_jump_ns, with per-1000 probability g_clk_jump_pct.  The
+ *     backward jump is the dangerous one: it can make a deadline (now +
+ *     timeout, compared later against a smaller now) never be reached.
+ *
+ * The skew is applied to a signed nanosecond accumulator then clamped so
+ * the result never goes negative (a negative tv_sec would be nonsense to
+ * the caller and is not what "clock reads earlier" means).  Determinism:
+ * the whole sequence of skews is a pure function of the seed.
+ */
+static _Atomic int     g_clk_on;
+static _Atomic int64_t g_clk_offset;     /* fixed per-run offset (ns) */
+static _Atomic int64_t g_clk_jitter;     /* per-read jitter bound (ns) */
+static _Atomic int64_t g_clk_jump_ns;    /* jump magnitude (ns) */
+static _Atomic int     g_clk_jump_pct;   /* per-1000 jump probability */
+static _Atomic unsigned long g_clk_fires;
+static _Atomic long    g_clk_settle;     /* skew reads left; <0 => never */
+
+#define NS_PER_S 1000000000LL
+
+void
+__db_sim_clock_enable(offset_ns, jitter_ns, jump_ns, jump_pct)
+	int64_t offset_ns, jitter_ns, jump_ns;
+	unsigned jump_pct;
+{
+	int64_t off = offset_ns;
+
+	/* If no fixed offset requested, draw a seeded one in [-1s, +1s] so a
+	 * bare enable still models a clock that is off by a constant. */
+	if (off == 0)
+		off = (int64_t)__db_sim_rng_range(DB_SIM_RNG_CLOCK,
+		    (uint64_t)(2 * NS_PER_S + 1)) - NS_PER_S;
+	atomic_store_explicit(&g_clk_offset, off, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_jitter,
+	    jitter_ns < 0 ? -jitter_ns : jitter_ns, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_jump_ns,
+	    jump_ns < 0 ? -jump_ns : jump_ns, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_jump_pct,
+	    jump_pct > 1000 ? 1000 : (int)jump_pct, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_fires, 0, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_settle, -1, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_on, 1, memory_order_release);
+}
+
+void
+__db_sim_clock_settle_after(n)
+	unsigned n;
+{
+	atomic_store_explicit(&g_clk_settle, (long)n, memory_order_relaxed);
+}
+
+void
+__db_sim_clock_disable()
+{
+	atomic_store_explicit(&g_clk_on, 0, memory_order_release);
+	atomic_store_explicit(&g_clk_offset, 0, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_jitter, 0, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_jump_ns, 0, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_jump_pct, 0, memory_order_relaxed);
+	atomic_store_explicit(&g_clk_settle, -1, memory_order_relaxed);
+}
+
+int
+__db_sim_clock_armed()
+{
+	return (atomic_load_explicit(&g_clk_on, memory_order_acquire) &&
+	    __db_sim_active());
+}
+
+unsigned long
+__db_sim_clock_fire_count()
+{
+	return (atomic_load_explicit(&g_clk_fires, memory_order_relaxed));
+}
+
+void
+__db_sim_clock_skew(sec, nsec, monotonic)
+	time_t *sec;
+	long *nsec;
+	int monotonic;
+{
+	int64_t total, jit, jbound, jmag;
+	int jpct;
+	long left;
+
+	COMPQUIET(monotonic, 0);
+	if (sec == NULL || nsec == NULL || !__db_sim_clock_armed())
+		return;
+
+	/* Transient-jump budget: after `settle` skewed reads the clock
+	 * returns to true time (a bounded disturbance that recovers). */
+	left = atomic_load_explicit(&g_clk_settle, memory_order_relaxed);
+	if (left == 0)
+		return;                     /* settled: real clock */
+	if (left > 0)
+		atomic_store_explicit(&g_clk_settle, left - 1,
+		    memory_order_relaxed);
+
+	/* real reading as a signed ns accumulator */
+	total = (int64_t)*sec * NS_PER_S + (int64_t)*nsec;
+
+	/* fixed per-run offset */
+	total += atomic_load_explicit(&g_clk_offset, memory_order_relaxed);
+
+	/* per-read jitter in [-bound, +bound] */
+	jbound = atomic_load_explicit(&g_clk_jitter, memory_order_relaxed);
+	if (jbound > 0) {
+		jit = (int64_t)__db_sim_rng_range(DB_SIM_RNG_CLOCK,
+		    (uint64_t)(2 * jbound + 1)) - jbound;
+		total += jit;
+	}
+
+	/* occasional discrete jump, forward or BACKWARD */
+	jmag = atomic_load_explicit(&g_clk_jump_ns, memory_order_relaxed);
+	jpct = atomic_load_explicit(&g_clk_jump_pct, memory_order_relaxed);
+	if (jmag > 0 && jpct > 0 &&
+	    (int)__db_sim_rng_range(DB_SIM_RNG_CLOCK, 1000) < jpct) {
+		/* seeded coin: 0 => backward, 1 => forward */
+		int64_t j = (int64_t)__db_sim_rng_range(DB_SIM_RNG_CLOCK,
+		    (uint64_t)jmag + 1);
+		if (__db_sim_rng_range(DB_SIM_RNG_CLOCK, 2) == 0)
+			total -= j;                 /* BACKWARD (dangerous) */
+		else
+			total += j;                 /* forward */
+	}
+
+	/* Clamp: a clock never reads before the epoch here. */
+	if (total < 0)
+		total = 0;
+
+	*sec = (time_t)(total / NS_PER_S);
+	*nsec = (long)(total % NS_PER_S);
+	fc_hit(DB_SIM_FC_CLOCK);
+	atomic_fetch_add_explicit(&g_clk_fires, 1, memory_order_relaxed);
 }

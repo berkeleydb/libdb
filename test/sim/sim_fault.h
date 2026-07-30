@@ -46,6 +46,7 @@ enum db_sim_fault_class {
 	DB_SIM_FC_STALE    = 3,   /* stale read (prior version returned) */
 	DB_SIM_FC_LATENCY  = 4,   /* per-I/O latency sleep taken */
 	DB_SIM_FC_SHORTEIO = 5,   /* short-transfer / EIO toggle fired */
+	DB_SIM_FC_CLOCK    = 6,   /* clock skew / time-jump applied */
 	DB_SIM_FC_NCLASSES
 };
 unsigned long __db_sim_fault_count __P((int));
