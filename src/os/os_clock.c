@@ -10,6 +10,10 @@
 
 #include "db_int.h"
 
+#ifdef HAVE_DST
+#include "sim_os.h"			/* DST clock-skew hook (--enable-dst only). */
+#endif
+
 /*
  * __os_gettime --
  *	Return the current time-of-day clock in seconds and nanoseconds.
@@ -64,6 +68,18 @@ __os_gettime(env, tp, monotonic)
 	tp->tv_nsec = 0;
 #else
 	NO AVAILABLE CLOCK IMPLEMENTATION
+#endif
+#ifdef HAVE_DST
+	/*
+	 * DST clock-skew / time-jump fault: when a sim armed the knob, apply
+	 * the seeded skew (fixed offset + jitter + occasional forward/BACKWARD
+	 * jump) to the reading BDB is about to return.  This is the single
+	 * seam every time-dependent decision (lock/txn timeout deadlines, the
+	 * deadlock detector's expiry scan, checkpoint scheduling, replication
+	 * lease/election timers) reads "now" through.  A no-op when no sim is
+	 * running; compiled out entirely without --enable-dst (zero overhead).
+	 */
+	__db_sim_clock_hook(tp, monotonic);
 #endif
 	COMPQUIET(monotonic, 0);
 	return;
