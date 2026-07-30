@@ -57,6 +57,10 @@
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
 
+#ifdef HAVE_DST
+#include "sim_buggify.h"		/* DST buggify points (--enable-dst only). */
+#endif
+
 static int __hamc_delpg
     __P((DBC *, db_pgno_t, db_pgno_t, u_int32_t, db_ham_mode, u_int32_t *));
 static int __ham_getindex_sorted
@@ -2667,6 +2671,19 @@ __ham_add_el(dbc, key, val, type)
 	if (do_expand || (hcp->hdr->ffactor != 0 &&
 	    (u_int32_t)H_NUMPAIRS(hcp->page) > hcp->hdr->ffactor))
 		F_SET(hcp, H_EXPAND);
+#ifdef HAVE_DST
+	/*
+	 * BUGGIFY hash.expand_early: expand the hash table (split a bucket)
+	 * sooner than the fill factor requires, to stress the bucket-split
+	 * path (which normally fires only when a bucket exceeds ffactor).
+	 * Legal-but-pessimal: __ham_expand_table is safe to run at any time
+	 * (it just adds a bucket and rehashes; it even ignores ENOSPC for a
+	 * non-txn cursor), so forcing it early changes only the table shape
+	 * and timing, never a lookup result.
+	 */
+	if (DB_BUGGIFY(BUGGIFY_HASH_EXPAND_EARLY))
+		F_SET(hcp, H_EXPAND);
+#endif
 	return (0);
 }
 

@@ -103,11 +103,45 @@ lets a harness assert 0 to *prove* a run was fully deterministic.
 
 ### 1.3 Buggify (per-run cached coin)
 
-`DB_SIM_BUGGIFY("name")`: a named point in real library code that, under sim,
-takes a legal-but-pessimal path. Unlike a per-call fault, a buggify point is a
-coin flipped **once per run per site**, cached, so all reaches of a name agree
-and the run replays. Drawn from the dedicated `BUGGIFY` stream so enabling it
-never perturbs the IO/FAULT streams. Compiles to constant 0 when DST is off.
+`DB_BUGGIFY(name)`: a named point in real library code that, under sim, takes a
+legal-but-pessimal path. Unlike a per-call fault, a buggify point is a coin
+flipped **once per run per site**, cached, so all reaches of a name agree and
+the run replays. Drawn from the dedicated `BUGGIFY` stream so enabling it never
+perturbs the IO/FAULT streams. Compiles to constant 0 when DST is off (verified:
+`nm` shows 0 sim symbols and no point name appears in any engine `.o`).
+
+The invariant that makes buggify safe: **every buggified path is legal**
+(correctness-preserving) — it only changes timing/sizing/path-choice, never a
+result. So the whole scenario suite must still pass with buggify forced on. If
+turning a point on ever breaks an invariant, either the point isn't actually
+legal (a bug in the point) or the engine mishandles a rare-but-legal path (a
+real engine bug) — that is buggify's purpose.
+
+**Point catalog** (9 points, all `#ifdef HAVE_DST`, each a legal-but-pessimal choice):
+
+| Point | Site | Pessimal choice |
+|---|---|---|
+| `bt.split_early` | `bt_put.c` | force `DB_NEEDSPLIT` when the page is >3/4 full (guarded ≥4 entries + <pgsize/4 free, so no split loop) |
+| `hash.expand_early` | `hash_page.c` | force `H_EXPAND` before the fill factor is reached |
+| `mp.alloc_aggressive` | `mp_alloc.c` | start the eviction scan in aggressive mode |
+| `mp.evict_cold` | `mp_fput.c` | pin the buffer at the coldest warmth |
+| `log.flush_now` | `log_put.c` | force `DB_FLUSH` on a would-be-buffered log put |
+| `log.newfile_early` | `log_put.c` | roll to a new log file at >half full |
+| `txn.chkpt_force` | `txn_chkpt.c` | checkpoint past the byte/time threshold |
+| `lock.dd_now` | `lock.c` | run the deadlock detector on a lock-vector op |
+| `lock.dd_wait_now` | `lock.c` | run the detector before blocking |
+
+**Measured activation** (`test_sim_buggify`, 24-seed sweep, all pessimal paths
+forced): bt.split_early 79%, hash.expand_early 67%, mp.alloc_aggressive 100%,
+mp.evict_cold 83%, log.flush_now 75%, log.newfile_early 75%, txn.chkpt_force 88%,
+lock.dd_now 83%, **lock.dd_wait_now 0%** (never reached — this single-writer
+workload has no blocked waiter to drive the site; the point is valid, the
+coverage is workload-limited; a WARN, not a failure). **0 invariant violations
+across all 24 seeds with every pessimal path on** — every committed txn survived
+crash+recovery, no uncommitted survived, both DBs verified clean. **No real
+engine bug found**: an early over-aggressive split point caused a non-termination
+loop, which was an *illegal* buggify point (self-inflicted), correctly fixed by
+the >3/4-full guard — buggify's own self-check working as designed.
 
 ### 1.4 Simulated I/O faults + the write-back crash model
 
