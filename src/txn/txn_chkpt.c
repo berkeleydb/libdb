@@ -47,6 +47,7 @@
 
 #ifdef HAVE_DST
 #include "sim_inject.h"			/* DST planted-bug harness. */
+#include "sim_buggify.h"			/* DST buggify points. */
 #endif
 
 /*
@@ -172,6 +173,22 @@ __txn_checkpoint(env, kbytes, minutes, flags)
 		/* Don't checkpoint a quiescent database. */
 		if (bytes == 0 && mbytes == 0)
 			goto err;
+
+#ifdef HAVE_DST
+		/*
+		 * BUGGIFY txn.chkpt_force: take the checkpoint NOW even though
+		 * the kbytes/minutes threshold has not been reached (there IS
+		 * log activity -- the quiescent guard above already bailed if
+		 * not).  Legal-but-pessimal: a more frequent checkpoint is
+		 * always correct (it only advances the recovery start point and
+		 * flushes the cache sooner); it just makes the checkpoint /
+		 * cache-flush / ckp-LSN machinery run far more often than a
+		 * time-or-bytes policy would, stressing checkpoint-vs-workload
+		 * interleavings.
+		 */
+		if (DB_BUGGIFY(BUGGIFY_TXN_CHKPT_FORCE))
+			goto do_ckp;
+#endif
 
 		/*
 		 * If either kbytes or minutes is non-zero, then only take the
