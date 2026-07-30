@@ -66,8 +66,9 @@ prop_determinism(hegel_test_case *tc, void *u)
 
 	k = draw_key(tc, &len);
 	for (i = 0; i < NFUNCS; i++)
-		hegel_assume(FUNCS[i](NULL, k, (u_int32_t)len) ==
-		    FUNCS[i](NULL, k, (u_int32_t)len));
+		PBT_CHECK(FUNCS[i](NULL, k, (u_int32_t)len) ==
+		    FUNCS[i](NULL, k, (u_int32_t)len),
+		    "hash function is non-deterministic");
 	free(k);
 }
 
@@ -95,9 +96,10 @@ prop_length_honoring(hegel_test_case *tc, void *u)
 		memcpy(joined + plen, suffix, slen);
 
 	for (i = 0; i < NFUNCS; i++)
-		hegel_assume(
+		PBT_CHECK(
 		    FUNCS[i](NULL, prefix, (u_int32_t)plen) ==
-		    FUNCS[i](NULL, joined, (u_int32_t)plen));
+		    FUNCS[i](NULL, joined, (u_int32_t)plen),
+		    "hash depends on bytes past len (not length-honoring)");
 
 	free(prefix);
 	free(suffix);
@@ -118,7 +120,8 @@ prop_func5_is_fnv(hegel_test_case *tc, void *u)
 		h *= 16777619U;
 		h ^= k[i];
 	}
-	hegel_assume(__ham_func5(NULL, k, (u_int32_t)len) == h);
+	PBT_CHECK(__ham_func5(NULL, k, (u_int32_t)len) == h,
+	    "__ham_func5 != FNV-1 recurrence");
 	free(k);
 }
 

@@ -121,31 +121,36 @@ prop_hash_matches_model(hegel_test_case *tc, void *u)
 			memset(&v, 0, sizeof(v));
 			v.data = vbuf;
 			v.size = (u_int32_t)vlen;
-			hegel_assume(dbp->put(dbp, NULL, &k, &v, 0) == 0);
+			PBT_CHECK(dbp->put(dbp, NULL, &k, &v, 0) == 0,
+			    "put into DB_HASH failed");
 			model[ki].present = 1;
 			model[ki].vlen = vlen;
 			if (vlen != 0)
 				memcpy(model[ki].val, vbuf, vlen);
 		} else if (op == 1) {		/* del */
 			int ret = dbp->del(dbp, NULL, &k, 0);
-			hegel_assume(ret == 0 || ret == DB_NOTFOUND);
+			PBT_CHECK(ret == 0 || ret == DB_NOTFOUND,
+			    "del returned an unexpected code");
 			/* del must succeed iff key was present. */
 			if (model[ki].present)
-				hegel_assume(ret == 0);
+				PBT_CHECK(ret == 0,
+				    "del of a present key did not succeed");
 			else
-				hegel_assume(ret == DB_NOTFOUND);
+				PBT_CHECK(ret == DB_NOTFOUND,
+				    "del of an absent key was not DB_NOTFOUND");
 			model[ki].present = 0;
 			model[ki].vlen = 0;
 		}
 		/* op == 2 (get) is covered by the check below. */
 
 		ok = check_key(dbp, &model[ki], ki);
-		hegel_assume(ok);
+		PBT_CHECK(ok, "DB_HASH disagrees with model after operation");
 	}
 
 	/* Final full agreement over the whole pool. */
 	for (ki = 0; ki < POOL_KEYS; ki++)
-		hegel_assume(check_key(dbp, &model[ki], ki));
+		PBT_CHECK(check_key(dbp, &model[ki], ki),
+		    "DB_HASH disagrees with model at end");
 
 	(void)dbp->close(dbp, 0);
 }

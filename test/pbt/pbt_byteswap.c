@@ -40,7 +40,7 @@ prop_swap16_involution(hegel_test_case *tc, void *u)
 	v = orig = (u_int16_t)hegel_draw_int(tc, hegel_integers(0, 0xFFFF));
 	M_16_SWAP(v);
 	M_16_SWAP(v);
-	hegel_assume(v == orig);
+	PBT_CHECK(v == orig, "M_16_SWAP is not an involution");
 }
 
 /* P2: M_32_SWAP is an involution. */
@@ -52,7 +52,7 @@ prop_swap32_involution(hegel_test_case *tc, void *u)
 	v = orig = (u_int32_t)hegel_draw_int(tc, hegel_integers(0, 0xFFFFFFFFLL));
 	M_32_SWAP(v);
 	M_32_SWAP(v);
-	hegel_assume(v == orig);
+	PBT_CHECK(v == orig, "M_32_SWAP is not an involution");
 }
 
 /* P3: M_64_SWAP is an involution over the full 64-bit range. */
@@ -64,7 +64,7 @@ prop_swap64_involution(hegel_test_case *tc, void *u)
 	v = orig = (u_int64_t)hegel_draw_int(tc, hegel_integers(INT64_MIN, INT64_MAX));
 	M_64_SWAP(v);
 	M_64_SWAP(v);
-	hegel_assume(v == orig);
+	PBT_CHECK(v == orig, "M_64_SWAP is not an involution");
 }
 
 /* P4: one M_32_SWAP equals the manual reversal of the 4 bytes. */
@@ -78,8 +78,9 @@ prop_swap32_reverses_bytes(hegel_test_case *tc, void *u)
 	memcpy(a, &orig, 4);
 	M_32_SWAP(v);
 	memcpy(b, &v, 4);
-	hegel_assume(a[0] == b[3] && a[1] == b[2] &&
-	    a[2] == b[1] && a[3] == b[0]);
+	PBT_CHECK(a[0] == b[3] && a[1] == b[2] &&
+	    a[2] == b[1] && a[3] == b[0],
+	    "M_32_SWAP does not reverse the 4 bytes");
 }
 
 /*
@@ -103,8 +104,9 @@ prop_copyswap32_unaligned(hegel_test_case *tc, void *u)
 		src[i] = (u_int8_t)hegel_draw_int(tc, hegel_integers(0, 0xFF));
 
 	P_32_COPYSWAP(src, dst);
-	hegel_assume(dst[0] == src[3] && dst[1] == src[2] &&
-	    dst[2] == src[1] && dst[3] == src[0]);
+	PBT_CHECK(dst[0] == src[3] && dst[1] == src[2] &&
+	    dst[2] == src[1] && dst[3] == src[0],
+	    "P_32_COPYSWAP does not reverse bytes (unaligned)");
 }
 
 /* P6: P_16_COPYSWAP into an unaligned destination reverses the 2 bytes. */
@@ -124,7 +126,8 @@ prop_copyswap16_unaligned(hegel_test_case *tc, void *u)
 	src[1] = (u_int8_t)hegel_draw_int(tc, hegel_integers(0, 0xFF));
 
 	P_16_COPYSWAP(src, dst);
-	hegel_assume(dst[0] == src[1] && dst[1] == src[0]);
+	PBT_CHECK(dst[0] == src[1] && dst[1] == src[0],
+	    "P_16_COPYSWAP does not reverse bytes (unaligned)");
 }
 
 /*
@@ -146,11 +149,13 @@ prop_swap64_unaligned(hegel_test_case *tc, void *u)
 		p[i] = orig[i] = (u_int8_t)hegel_draw_int(tc, hegel_integers(0, 0xFF));
 
 	P_64_SWAP(p);
-	for (i = 0; i < 8; i++)
-		hegel_assume(p[i] == orig[7 - i]);	/* one swap reverses */
+	for (i = 0; i < 8; i++)				/* one swap reverses */
+		PBT_CHECK(p[i] == orig[7 - i],
+		    "P_64_SWAP does not reverse bytes (unaligned)");
 	P_64_SWAP(p);
-	for (i = 0; i < 8; i++)
-		hegel_assume(p[i] == orig[i]);		/* two swaps restore */
+	for (i = 0; i < 8; i++)				/* two swaps restore */
+		PBT_CHECK(p[i] == orig[i],
+		    "P_64_SWAP twice does not restore (unaligned)");
 }
 
 static const pbt_entry_t tests[] = {

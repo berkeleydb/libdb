@@ -61,14 +61,15 @@ prop_put_get_roundtrip(hegel_test_case *tc, void *u)
 	val.size = (u_int32_t)vlen;
 
 	ret = dbp->put(dbp, NULL, &key, &val, DB_NOOVERWRITE);
-	hegel_assume(ret == 0);
+	PBT_CHECK(ret == 0, "put(NOOVERWRITE) of a fresh key failed");
 
 	ret = dbp->get(dbp, NULL, &key, &out, 0);
-	hegel_assume(ret == 0);
+	PBT_CHECK(ret == 0, "get of a just-put key failed");
 
 	/* Round-trip identity: same length and same bytes. */
-	hegel_assume(out.size == val.size);
-	hegel_assume(val.size == 0 || memcmp(out.data, val.data, val.size) == 0);
+	PBT_CHECK(out.size == val.size, "get returned wrong value size");
+	PBT_CHECK(val.size == 0 || memcmp(out.data, val.data, val.size) == 0,
+	    "get returned wrong value bytes");
 
 	(void)dbp->close(dbp, 0);
 	free(kbuf);
@@ -98,7 +99,7 @@ prop_get_missing_notfound(hegel_test_case *tc, void *u)
 	key.size = (u_int32_t)klen;
 
 	ret = dbp->get(dbp, NULL, &key, &out, 0);
-	hegel_assume(ret == DB_NOTFOUND);
+	PBT_CHECK(ret == DB_NOTFOUND, "get of an absent key did not return DB_NOTFOUND");
 
 	(void)dbp->close(dbp, 0);
 	free(kbuf);
