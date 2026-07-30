@@ -1,4 +1,5 @@
 build_unix/**
+build_asan/**
 compile_commands.json
 test/tcl/tclIndex
 
