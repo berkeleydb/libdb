@@ -92,12 +92,22 @@ __db_sim_io_write_off_hook(fhp, end_off)
 {
 	uint64_t key;
 
-	if (!__db_sim_active() || !__db_sim_wb_active())
+	if (!__db_sim_active())
+		return;
+	/* Crash-during-recovery: if a recovery-crash point is armed, this
+	 * page write is a recovery-phase I/O op -- may crash here.  A no-op
+	 * unless __db_sim_reccrash_enable(N>0) armed it (i.e. only during a
+	 * recovery pass the harness is crashing). */
+	__db_sim_reccrash_tick();
+	if (!__db_sim_wb_active())
 		return;
 	key = db_sim_fkey(fhp);
-	__db_sim_wb_wrote(key, end_off);
+	/* Record the name FIRST so the frontier is seeded from the file's
+	 * current on-disk size (already-durable bytes) before this write
+	 * advances the written high-water. */
 	if (fhp != NULL && fhp->name != NULL)
 		__db_sim_wb_note_name(key, fhp->name);
+	__db_sim_wb_wrote(key, end_off);
 }
 
 /*
@@ -147,7 +157,15 @@ void
 __db_sim_io_sync_hook(fhp)
 	DB_FH *fhp;
 {
-	if (!__db_sim_active() || !__db_sim_wb_active())
+	if (!__db_sim_active())
+		return;
+	/* Crash-during-recovery: an fsync is a recovery-phase I/O op.  Tick
+	 * BEFORE promoting written->durable, so a crash armed at this op
+	 * drops the just-written (not-yet-durable) bytes -- e.g. crashing
+	 * ON the recovery-checkpoint fsync leaves the checkpoint un-durable,
+	 * exactly the ack-before-durable window.  A no-op unless armed. */
+	__db_sim_reccrash_tick();
+	if (!__db_sim_wb_active())
 		return;
 	__db_sim_wb_synced(db_sim_fkey(fhp));
 }
@@ -206,6 +224,20 @@ __db_sim_io_presnapshot_hook(fhp, off, len)
 	unsigned char snap[512];
 	size_t cp;
 	ssize_t nr;
+
+	/*
+	 * Write-back frontier seed: BEFORE this process's first write to a
+	 * tracked file lands, seed its durable frontier from the file's
+	 * current on-disk size.  Bytes already on disk when this process
+	 * begins tracking are DURABLE (a prior fsync in another process --
+	 * e.g. the workload that ran before this recovery opened the file).
+	 * Doing it here (pre-pwrite) is correct where doing it at the
+	 * post-write hook would wrongly count this write's own bytes as
+	 * pre-existing.  A no-op unless the write-back model is armed.
+	 */
+	if (__db_sim_active() && __db_sim_wb_active() &&
+	    fhp != NULL && fhp->name != NULL)
+		__db_sim_wb_note_name(db_sim_fkey(fhp), fhp->name);
 
 	/* Only pay for the read-before-write when stale injection is armed
 	 * (the ring is otherwise inert), and only for a real named file. */

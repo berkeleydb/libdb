@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -187,6 +188,7 @@ __db_sim_deactivate()
 	__db_sim_io_stale_enable(0);
 	__db_sim_wb_enable(0);
 	__db_sim_clock_disable();
+	__db_sim_reccrash_enable(0);
 }
 
 uint64_t
@@ -474,6 +476,19 @@ struct sim_wb_ent {
 };
 static struct sim_wb_ent g_wb[DB_SIM_WB_FILES];
 static _Atomic int g_wb_on;
+/*
+ * When set, a freshly-tracked file's durable frontier is SEEDED from its
+ * current on-disk size at first touch (the bytes already on disk when
+ * THIS process started are treated as durable).  Correct ONLY for a
+ * process that inherited genuinely-durable files from a PRIOR process
+ * (e.g. a recovery process opening files a crashed workload already
+ * truncated to its durable frontier).  It is WRONG for a process that
+ * creates/pre-extends its own files (a pre-extended-but-unsynced log
+ * would be miscounted as durable), so it is OFF by default and the
+ * single-process crash tests never set it -- only the crash-DURING-
+ * recovery harness does, via __db_sim_wb_enable(DB_SIM_WB_SEED_ONDISK).
+ */
+static _Atomic int g_wb_seed_ondisk;
 
 void
 __db_sim_wb_enable(on)
@@ -481,6 +496,8 @@ __db_sim_wb_enable(on)
 {
 	if (on)
 		memset(g_wb, 0, sizeof(g_wb));
+	atomic_store_explicit(&g_wb_seed_ondisk,
+	    on == DB_SIM_WB_SEED_ONDISK ? 1 : 0, memory_order_release);
 	atomic_store_explicit(&g_wb_on, on ? 1 : 0, memory_order_release);
 }
 
@@ -525,6 +542,7 @@ __db_sim_wb_note_name(key, name)
 	const char *name;
 {
 	struct sim_wb_ent *e;
+	struct stat sb;
 
 	if (!__db_sim_wb_active() || name == NULL)
 		return;
@@ -532,6 +550,24 @@ __db_sim_wb_note_name(key, name)
 	if (e != NULL && e->name[0] == '\0') {
 		(void)strncpy(e->name, name, DB_SIM_WB_NAMELEN - 1);
 		e->name[DB_SIM_WB_NAMELEN - 1] = '\0';
+		/*
+		 * Seed the durable frontier from the file's CURRENT on-disk
+		 * size ONLY when explicitly requested (a recovery process that
+		 * inherited durable files from a crashed workload).  Bytes
+		 * already on disk when this process began tracking are then
+		 * durable; without this a crash-during-recovery would drop
+		 * bytes that were ALREADY durable before recovery started,
+		 * which no real power loss does.  OFF for a self-creating
+		 * process (a pre-extended-but-unsynced log must NOT be counted
+		 * durable -- that is the ack-before-fsync bug we catch).
+		 */
+		if (atomic_load_explicit(&g_wb_seed_ondisk,
+		    memory_order_acquire) &&
+		    e->durable_end == 0 && e->written_end == 0 &&
+		    stat(name, &sb) == 0 && sb.st_size > 0) {
+			e->durable_end = (uint64_t)sb.st_size;
+			e->written_end = (uint64_t)sb.st_size;
+		}
 	}
 }
 
@@ -616,6 +652,66 @@ __db_sim_wb_crash()
 		g_wb[k].written_end = g_wb[k].durable_end;
 	}
 	return (n);
+}
+
+/* ---- crash-DURING-recovery model ----
+ *
+ * Recovery (__db_apprec) does all its page writes and its recovery
+ * checkpoint through the SAME __os_io/__os_fsync seam the write hooks
+ * already sit on.  This model arms a per-run counter: when a target N > 0
+ * is set, the Nth recovery-phase I/O op crashes the process (truncate to
+ * the durable frontier, exactly like the workload crash, then _exit(42)).
+ * That lets a scenario crash a recovery pass PARTWAY -- after some redo
+ * pages are applied but before the recovery checkpoint is durable -- and
+ * prove the NEXT recovery re-converges (recovery is idempotent +
+ * interruptible, BDB's most important correctness property).
+ *
+ * ticks() reports how many recovery I/O ops have run this process, so a
+ * harness runs recovery once uncrashed to learn the full-recovery I/O
+ * count, then sweeps crash points 1..that.  Deterministic: the same seed
+ * drives the same workload => the same recovery => the same I/O sequence
+ * => the same crash point for a given N.
+ */
+static _Atomic unsigned long g_reccrash_target;   /* 0 = disarmed */
+static _Atomic unsigned long g_reccrash_ticks;
+
+void
+__db_sim_reccrash_enable(target)
+	unsigned long target;
+{
+	atomic_store_explicit(&g_reccrash_ticks, 0, memory_order_relaxed);
+	atomic_store_explicit(&g_reccrash_target, target,
+	    memory_order_release);
+}
+
+unsigned long
+__db_sim_reccrash_ticks()
+{
+	return (atomic_load_explicit(&g_reccrash_ticks, memory_order_relaxed));
+}
+
+void
+__db_sim_reccrash_tick()
+{
+	unsigned long tgt, n;
+
+	tgt = atomic_load_explicit(&g_reccrash_target, memory_order_acquire);
+	if (!__db_sim_active())
+		return;
+	/* Count this recovery-phase I/O op. */
+	n = atomic_fetch_add_explicit(&g_reccrash_ticks, 1,
+	    memory_order_relaxed) + 1;
+	if (tgt == 0 || n < tgt)
+		return;
+	/* Reached the seeded crash point: drop every byte written but not
+	 * yet fsync'd (recovery's own un-durable work AND any workload tail),
+	 * then die abruptly like a power loss.  Disarm first so wb_crash's
+	 * own I/O (it uses truncate, not the hooks, but be safe) cannot
+	 * re-enter. */
+	atomic_store_explicit(&g_reccrash_target, 0, memory_order_release);
+	(void)__db_sim_wb_crash();
+	fflush(NULL);
+	_exit(42);
 }
 
 /* ---- latency (consumed by the __os_io hooks) ----
