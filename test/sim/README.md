@@ -14,6 +14,7 @@ axis. The full deterministic multi-process scheduler is v2 (design doc §0).
 |---|---|
 | `sim_rng.h` | seeded per-stream PRNG + activation/guard API |
 | `sim_fault.h` | fault toggles, buggify, I/O fault knobs, write-back model API |
+| `sim_clock.h` | clock-skew / time-jump fault knobs (offset + jitter + forward/backward jump) at the `__os_gettime` seam |
 | `sim_os.h` | declarations of the `__os_*` I/O hooks (included by the os layer) |
 | `sim_inject.h` | planted-bug ids (`DB_DST_INJECT_BUG`) — the bug-detection yardstick |
 | `sim_scenario.h` | shared crash/recover helpers (fork+crash+recover boilerplate) |
@@ -42,6 +43,9 @@ axis. The full deterministic multi-process scheduler is v2 (design doc §0).
 | `test_sim_latency_load.c` | slow disk makes progress; committed set byte-identical to fast disk |
 | `test_sim_ckp_lsn.c` | checkpoint LSN is the correct recovery start point |
 | `test_sim_swarm.c` | **swarm**: mixed-fault seed sweep + per-fault activation coverage |
+| `test_sim_clockskew_timeout.c` | lock timeout under a non-monotonic clock (offset+jitter+forward/backward jump); the timeout still fires, no hang, no corruption |
+| `test_sim_clockskew_ckp.c` | checkpoint + recovery under a large forward clock jump; committed data durable, tree clean |
+| `test_sim_clockskew_backward.c` | the dangerous case: a transient BACKWARD jump does not lose an already-set txn timeout (fires once the clock recovers); deterministic |
 | `dst-sweep.sh` | run one scenario over a seed range, report pass count + failing seeds |
 | `dst-swarm.sh` | swarm the FULL scenario set + fault-mix activation, one CI summary |
 | `dst-bug-inject.sh` | build a library per planted bug, assert each is caught within K seeds |
@@ -151,6 +155,31 @@ Measured 2000-seed soak: 0 invariant violations, every fault class activates.
 - **Fault config never perturbs the schedule.** All fault knobs draw on the IO
   stream, so enabling/disabling faults does not change what the APP workload
   produces — the same workload replays regardless of fault config.
+- **Clock skew is its own stream.** The clock-skew / time-jump fault
+  (`sim_clock.h`) draws from a dedicated `DB_SIM_RNG_CLOCK` stream, so arming
+  it never shifts the IO/FAULT/APP sequences; same seed => same skew sequence.
+
+## Clock-skew / time-jump fault
+
+The `__os_gettime` seam has an `#ifdef HAVE_DST` hook that, when a sim arms it,
+skews every clock reading (fixed offset + per-read jitter + occasional forward
+or **backward** jump), modeling FoundationDB's clock skew.  It exercises the
+code that reads the clock for timeouts: lock/txn deadlines
+(`__clock_set_expires`/`__clock_expired`) and the deadlock detector's expiry
+scan.  Three scenarios (`test_sim_clockskew_{timeout,ckp,backward}`) assert the
+timeout still fires (no hang, no premature abort-storm), checkpoints make
+progress, and a **transient backward jump does not lose an already-set
+timeout**.  Each is guarded by a hard wall-clock `alarm()` so a lost/hung
+timeout is reported as a failure with the seed instead of wedging CI.
+
+**Finding:** BDB's expiry scan re-reads the clock fresh each pass against a
+fixed deadline target, so it is robust to a non-monotonic clock -- no lost or
+premature timeout.  Note that on Linux `__os_gettime` effectively returns
+wall-clock time even when asked for monotonic (a stray second
+`clock_gettime(CLOCK_REALTIME)` in `os_clock.c` clobbers the monotonic read),
+so clock skew is a *real* risk these scenarios prove robustness against; and
+the checkpoint minute-interval reads libc `time()` directly, bypassing this
+seam.  See `DESIGN.md` §1.4a.
 
 ## Housekeeping
 

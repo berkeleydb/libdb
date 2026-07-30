@@ -6,7 +6,7 @@ Status: **v1 foundation landed + v1.x depth grown** (this branch). Seeded
 PRNG tree, determinism
 guard, buggify, simulated-I/O fault knobs, the write-back-cache durable-frontier
 crash model, the `__os_*` I/O hooks, a `--enable-dst` build switch that is
-zero-overhead when off, and a **32-scenario** catalog plus a FoundationDB-style
+zero-overhead when off, and a **35-scenario** catalog plus a FoundationDB-style
 **swarm runner** with per-fault activation coverage (now with a hard
 coverage-gap guard) and **eight** planted-bug yardsticks. Modeled on
 FoundationDB / TigerBeetle and the xtc project's DST (`/home/gburd/ws/xtc`).
@@ -161,6 +161,58 @@ Each fault firing (not merely arming) bumps a **fault-activation counter**
 (`__db_sim_fault_count(class)`), so the swarm can report per-fault activation
 coverage across a seed sweep -- a class that never fires is a coverage gap.
 
+### 1.4a Clock-skew / time-jump fault (`sim_clock.h`, in `sim_core.c`)
+
+A fault class at BDB's **time seam** (`__os_gettime`), modeled on
+FoundationDB's clock skew: a process's clock can read ahead/behind "true"
+time and can jump.  When armed under sim, the `__os_gettime` hook applies a
+seeded skew to every reading BDB is about to return:
+
+- **fixed per-run offset** -- a clock steadily ahead/behind true time
+  (cancels out in a `deadline = now + timeout` / `now2 >= deadline`
+  comparison, so on its own it is benign -- proving the comparison is
+  offset-relative);
+- **per-read jitter** -- a jumpy, imprecise clock (uniform in `[-j, +j]`);
+- **occasional discrete JUMP** -- forward or, the dangerous one, **BACKWARD**,
+  by up to a bounded magnitude with a per-1000 probability.  A backward jump
+  can push a fresh `now2` reading below an already-set deadline, so a
+  timeout that trusts a monotonic clock could **never fire (hang)** or fire
+  **instantly (premature)**.
+
+The disturbance can be bounded to the first *N* clock reads
+(`__db_sim_clock_settle_after`), after which the clock "settles" back to true
+time.  This models a **transient** jump (a real skew event has finite
+duration): a persistent adversary clock that never advances past a fixed
+deadline could never fire ANY deadline-based timeout -- that is physics, not
+a bug -- so the dangerous-case scenarios use a bounded, recovering jump and
+assert the timeout fires ONCE the clock recovers.
+
+All bounded + seeded, drawn from a **dedicated CLOCK PRNG stream**
+(`DB_SIM_RNG_CLOCK`) so arming clock skew never perturbs the IO/FAULT/APP
+streams -- same seed => same skew sequence => replayable.  A firing bumps the
+`clock` fault-activation counter.  The hook is `#ifdef HAVE_DST` in
+`src/os/os_clock.c` and is a single `__db_sim_active()` relaxed load in the
+no-sim case; a DST-off build compiles it out entirely (verified: 0
+`__db_sim_*` symbols, `os_clock.o` has no `sim` references).
+
+**Which decisions read the clock (and could misbehave on a jump):** lock/txn
+timeout deadlines (`__clock_set_expires` / `__clock_expired` in
+`src/common/clock.c`, driving `__lock_get_internal`'s `tx_expire`/`lk_expire`
+and the deadlock detector's `DB_LOCK_EXPIRE` scan in `lock_deadlock.c` /
+`lock.c`), and the replication lease/election timers (`src/rep`,
+`src/repmgr`).  **Honest finding on the time seam:** libdb's `__os_gettime`
+is called with `monotonic=1` on the timeout paths, but on the
+`HAVE_CLOCK_GETTIME` platform (Linux) the function unconditionally re-reads
+`CLOCK_REALTIME` after the monotonic read (a stray second `clock_gettime`
+call in `os_clock.c`), so every reading is effectively **wall-clock, not
+monotonic** -- which makes clock skew a *real* risk worth testing rather than
+a theoretical one.  The checkpoint MINUTE-interval decision in
+`__txn_checkpoint` and the checkpoint-record timestamp read libc `time()`
+**directly** (because `HAVE_TIME` is defined the library's `time()` wrapper is
+not compiled), so they bypass `__os_gettime` and are NOT reachable by this
+skew -- itself a finding (that decision is inherently robust to
+`__os_gettime` skew).
+
 Keyed by a **stable FNV-1a hash of the file name** (not the fd), so the
 frontier tracks a *logical* file across libdb's frequent close/reopen — exactly
 how a real disk behaves.
@@ -242,7 +294,7 @@ replay of the same seed would fail.
 
 ## 3. Scenarios (all runnable now, all PASS)
 
-Thirty-two scenarios (plus the swarm runner); the crash/fault ones each pass
+Thirty-five scenarios (plus the swarm runner); the crash/fault ones each pass
 across a multi-seed sweep and replay bit-identically per seed.
 
 | Scenario | Proves | Result |
@@ -280,6 +332,9 @@ across a multi-seed sweep and replay bit-identically per seed.
 | `test_sim_compound_fault` | latency + ENOSPC + torn all active at once across a crash: durable prefix intact, tree clean, no silent-bad | PASS (3 faults fire) |
 | `test_sim_logrollover_crash` | crash with the WAL spread over multiple log files: every commit survives across the rollover boundary | PASS (400 commits / 3 log files) |
 | `test_sim_swarm` | **swarm**: mixed-fault sweep, per-fault activation coverage + gap guard, replay | PASS (512 seeds, 0 violations) |
+| `test_sim_clockskew_timeout` | **lock timeout under a non-monotonic clock**: main thread holds a write lock, a helper blocks on a conflicting lock with a lock timeout, the clock is skewed (offset + jitter + forward AND backward jumps); the deadlock detector's expiry scan still fires the timeout (DB_LOCK_NOTGRANTED) -- no hang, no corruption; wall-clock-alarm-guarded | PASS (deterministic; skew count seed-sensitive) |
+| `test_sim_clockskew_ckp` | **checkpoint + recovery under a large FORWARD clock jump**: explicit checkpoints taken while the clock leaps ahead by up to an hour; after a crash every acked commit is durable and the tree verifies clean -- a forward jump corrupts no checkpoint/recovery state | PASS (256 committed durable) |
+| `test_sim_clockskew_backward` | **the dangerous case -- a TRANSIENT BACKWARD jump**: a legitimately-set txn deadline, then the clock is knocked backward (offset + backward-leaning jumps) for a bounded window, then settles; the timeout still fires once the recovered clock crosses the fixed deadline -- **the timeout is not LOST**; asserts determinism (replay identical skew count + verdict); wall-clock-alarm-guarded | PASS (deterministic; robust to backward jump) |
 
 **Recovery-before-verify discipline** (from
 `.agents/concurrent-btree-corruption.md`): a crashed txn env verified *without*
@@ -431,7 +486,7 @@ scheduler / multi-process). ~34 scenarios across BDB subsystems.
 
 ### Lock / deadlock
 24. **deadlock detection** picks a victim deterministically (seeded) — *v2*.
-25. **lock timeout** under seeded clock skew — *v2* (needs virtual clock).
+25. **lock timeout** under seeded clock skew — *v1.x* ✅ `test_sim_clockskew_timeout` (lock timeout fires under offset+jitter+jump), `test_sim_clockskew_backward` (a transient BACKWARD jump does not lose the timeout).  Single-process, driven via the lock API + a helper thread + the deadlock detector's `DB_LOCK_EXPIRE` scan; the virtual-clock seam is the `__os_gettime` skew hook.  **Result: BDB's expiry scan re-reads the clock fresh each scan and holds a fixed deadline target, so it is robust to a non-monotonic (jumping/backward) clock -- no lost or premature timeout.**
 26. **lock-table region exhaustion** graceful degradation — *v1.x*.
 
 ### Transactions
