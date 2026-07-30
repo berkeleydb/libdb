@@ -10,7 +10,7 @@
 # bindings (C++, Java, Tcl, SQL) and non-POSIX platforms.
 
 project('libdb', 'c',
-  version: '5.3.31',
+  version: '5.3.32',
   license: 'AGPL-3.0-or-later OR Sleepycat',
   meson_version: '>=0.56.0',
   default_options: ['c_std=c99', 'warning_level=1'])
@@ -103,8 +103,8 @@ cdata.set('SIZEOF_CHAR_P', cc.sizeof('void *'))
 # Package strings.
 cdata.set_quoted('PACKAGE_NAME', 'Berkeley DB')
 cdata.set_quoted('PACKAGE_TARNAME', 'db')
-cdata.set_quoted('PACKAGE_VERSION', '5.3.31')
-cdata.set_quoted('PACKAGE_STRING', 'Berkeley DB 5.3.31')
+cdata.set_quoted('PACKAGE_VERSION', '5.3.32')
+cdata.set_quoted('PACKAGE_STRING', 'Berkeley DB 5.3.32')
 cdata.set_quoted('PACKAGE_BUGREPORT', '')
 cdata.set_quoted('PACKAGE_URL', '')
 cdata.set_quoted('LT_OBJDIR', '.libs/')
