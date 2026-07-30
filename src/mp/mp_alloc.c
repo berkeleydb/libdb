@@ -12,6 +12,10 @@
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
+#ifdef HAVE_DST
+#include "sim_buggify.h"		/* DST buggify points (--enable-dst only). */
+#endif
+
 /*
  * This configuration parameter limits the number of hash buckets which
  * __memp_alloc() searches through while excluding buffers with a 'high'
@@ -63,6 +67,23 @@ __memp_alloc(dbmp, infop, mfp, len, offsetp, retp)
 
 	buckets = buffers = put_counter = total_buckets = versions = 0;
 	aggressive = alloc_freeze = giveup = h_locked = 0;
+
+#ifdef HAVE_DST
+	/*
+	 * BUGGIFY mp.alloc_aggressive: start the buffer-pool scan in
+	 * AGGRESSIVE mode instead of ramping into it only after a full
+	 * sweep frees nothing.  Aggressive means "consider buffers of any
+	 * warmth, one per bucket" -- a strict SUPERSET of the normal
+	 * second-chance scan, so it still only ever evicts a legally
+	 * evictable buffer; it just picks victims more eagerly, stressing
+	 * the write-back / re-read path that a lazy cache rarely exercises.
+	 * aggressive==1 is the mildest level (its switch arm is a plain
+	 * break), so no sync/yield is forced here -- purely a scan-policy
+	 * change, never a correctness change.
+	 */
+	if (DB_BUGGIFY(BUGGIFY_MP_ALLOC_AGGRESSIVE))
+		aggressive = 1;
+#endif
 
 	/*
 	 * If we're allocating a buffer, and the one we're discarding is the

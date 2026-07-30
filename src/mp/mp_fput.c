@@ -12,6 +12,10 @@
 #include "dbinc/log.h"
 #include "dbinc/mp.h"
 
+#ifdef HAVE_DST
+#include "sim_buggify.h"		/* DST buggify points (--enable-dst only). */
+#endif
+
 
 /*
  * __memp_fput_pp --
@@ -215,6 +219,19 @@ unpin:
 	if (priority == DB_PRIORITY_VERY_LOW ||
 	    mfp->priority == MPOOL_PRI_VERY_LOW)
 		bhp->priority = MPOOL_CLOCK_VERY_LOW;
+#ifdef HAVE_DST
+	/*
+	 * BUGGIFY mp.evict_cold: pin this buffer at the COLDEST warmth
+	 * regardless of its access hint, so the CLOCK hand evicts it first.
+	 * Legal-but-pessimal: warmth is a pure eviction-ORDER hint (it never
+	 * affects what a page contains or whether it is written back before
+	 * reuse -- that is the dirty/latch machinery), so forcing a buffer
+	 * cold only makes the cache churn harder and re-read more often,
+	 * exercising the read-back path.  Never a correctness change.
+	 */
+	else if (DB_BUGGIFY(BUGGIFY_MP_EVICT_COLD))
+		bhp->priority = MPOOL_CLOCK_VERY_LOW;
+#endif
 	else if (priority == DB_PRIORITY_HIGH ||
 	    priority == DB_PRIORITY_VERY_HIGH) {
 		/* Explicit high-priority hint pins the buffer at the ceiling. */
