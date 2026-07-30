@@ -50,7 +50,9 @@ The driver:
 1. **Phase 1 (baseline):** run the workload with injection OFF to count the
    total allocations `M` (a transactional `DB_PRIVATE` env + a btree AND a
    hash DB, put/get, a cursor walk, a committed txn, an aborted txn, a
-   checkpoint).
+   checkpoint, plus a secondary index / `pget`, a join cursor, bulk
+   put/get, an in-memory DB, a subdatabase, `DB->compact`, `DB->stat`, and a
+   2PC prepare — **M ≈ 947**).
 2. **Phase 2 (sweep):** for `K = 1..M`, run the SAME workload with "fail the
    Kth allocation." Each K runs in a **forked, watchdogged child** so a
    crash/hang/leak in one failure point can't wedge the sweep.
@@ -96,88 +98,145 @@ The in-process API (`fi_alloc.h`) — `__db_fi_arm(K)`, `__db_fi_disarm()`,
 `__db_fi_reset()`, `__db_fi_count()`, `__db_fi_fired()` — is what the driver
 uses to sweep without rebuilding.
 
-## Measured results (this branch, 2026-07-27)
+## Measured results (agent/malloc-deepen, 2026-07-30)
 
-Workload baseline: **M = 506 allocations.**
+The workload was broadened from the original basic flow (open env + btree +
+hash, put/get/cursor/txn commit+abort, checkpoint; **M = 506**) to also drive
+the warmer error paths functional tests miss:
+
+- a **secondary index** (`associate` + get-by-secondary + `pget`),
+- a **join cursor** (`DB->join`),
+- **bulk put/get** (`DB_MULTIPLE_KEY` write buffer + `DB_MULTIPLE_KEY` cursor scan),
+- an **in-memory DB** (NULL filename),
+- a **subdatabase** open (named DB inside a container file),
+- **compaction** (`DB->compact` with `DB_FREE_SPACE`),
+- **`DB->stat`**,
+- a **2PC prepare** (`txn->prepare` then resolve).
+
+New workload baseline: **M = 947 allocations** (up from 506 — +441 sites,
+~87% more failure points swept).
 
 | Metric | Count |
 |--------|------:|
-| Failure points exercised (K = 1..506) | 506 |
-| Clean error return (OOM → error, env re-openable) | 467 |
-| Clean/tolerated | 31 |
-| **CRASH** | **8** |
+| Failure points exercised (K = 1..947) | 947 |
+| Clean error return (OOM → error, env re-openable) | 861 |
+| Clean/tolerated | 81 |
+| **CRASH** | **5** |
 | HANG | 0 |
 | DIRTY | 0 |
 
-The 467 clean-error paths are the good news: the vast majority of OOM sites
-return a clean error and leave a recoverable environment (many print a `PANIC`
-to stderr and return an error — that is BDB's *defined* in-region-OOM
-behavior, not a crash). The 8 crashes are **real pre-existing bugs** on OOM
-return paths, listed below.
+The 5 crashes are a **single new root cause** on the hash-abort *undo* path
+(reached now that the wider workload leaves an aborted-hash txn to undo at
+env teardown). The ASan one-shot pass additionally flagged **leaks** on the
+`db_create` / `__db_join` OOM teardown paths (advisory). All are new,
+pre-existing engine bugs surfaced by the wider sweep; per the harness policy
+they are reported here, not fixed in this PR.
 
-## Bugs found (report only — NOT fixed in this PR)
+Note on `txn_recover`: it was intentionally left out of the workload. In a
+single live process the prepared txn is still active, so a `txn_recover` +
+resolve double-resolves it and panics the region (`transaction already
+committed` → `DB_RUNRECOVERY`). `txn_recover` is a separate-process recovery
+operation; `txn->prepare` alone reaches the new 2PC prepare/gid alloc sites.
 
-Per the task, this PR is the harness; engine bugs are for the maintainer to
-fix separately. Four distinct root causes, all NULL-deref / use-after-free on
-allocation-failure paths — exactly the #47 class the Coccinelle static rules
-target statically and this sweep confirms dynamically.
+### Reproduce the new findings
 
-### Bug 1 — NULL-deref in `db_env_create` OOM teardown (K=2)
-`src/rep/rep_method.c:95` (`__rep_env_destroy`), via
-`src/env/env_method.c:105,123`.
+```sh
+# plain-debug build (crash):
+DB_FI_FAIL_AT=490 ./libtool --mode=execute ./fi_sweep --one   # SIGSEGV
+# ASan build (leaks):
+DB_FI_FAIL_AT=503 ./.libs/fi_sweep --one    # db_create bt_internal leak
+DB_FI_FAIL_AT=641 ./.libs/fi_sweep --one    # __db_join cursor leak
+```
 
-In `db_env_create`, alloc #1 is the `DB_ENV`, alloc #2 is the `ENV`. When the
-`ENV` alloc fails (`env_method.c:87`), `dbenv->env` is still NULL and the
-`err:` path calls `__db_env_destroy(dbenv)` → `__rep_env_destroy(dbenv)`, which
-does `env = dbenv->env; if (env->rep_handle != NULL)` → dereferences NULL.
-Fix shape: guard `__rep_env_destroy` (and siblings) on `dbenv->env == NULL`.
+## Historical results (agent/malloc-inject, 2026-07-27)
 
-Repro: `DB_FI_FAIL_AT=2 ./fi_sweep --one`
+Original basic-workload baseline: **M = 506 allocations.** That sweep found
+8 crashes across 4 root causes on OOM return paths (`db_env_create` teardown,
+`__lock_getlocker_int`, `__db_pgin`, and a txn/lock double-free). Those four
+were fixed separately (see PR #52); the current tree returns clean errors at
+those K.
 
-### Bug 2 — NULL-deref in `__lock_getlocker_int` shared-region OOM (K=212, 214, 220, 353, 359)
-`src/lock/lock_id.c:349`.
+## Bugs found by the expanded sweep (report only — NOT fixed in this PR)
 
-When the free-locker list is empty and `__env_alloc` (shared-region alloc) can
-never satisfy the request, the `while (__env_alloc(...) != 0) if ((nlockers >> 1) == 0) break;`
-loop breaks with `nlockers` still ≥ 1 and `sh_locker` still NULL, then the
-`for (i = 0; i < nlockers; i++) SH_TAILQ_INSERT_HEAD(..., sh_locker, ...)`
-loop dereferences the NULL `sh_locker`. The `if (nlockers == 0)` nomem check
-comes *after* the deref and never fires. Reached via `__txn_begin_int` and
-`__db_open`/`__fop_file_setup`'s `__lock_id`.
-Fix shape: on the `break`, set `nlockers = 0` (or bail to `__lock_nomem`)
-*before* the insert loop.
+Per the harness policy, this PR broadens the workload and reports engine bugs;
+fixes are separate focused PRs (like PR #52 for the first batch). The wider
+workload surfaced **one new crash root cause** (5 K values) plus a **family of
+OOM-teardown leaks** the ASan pass flags.
 
-Repro: `DB_FI_FAIL_AT=212 ./fi_sweep --one`
+### New Bug A — NULL-deref in hash-abort undo cursor open (K=490, 491, 492, 493, 497)
+`src/db/db_iface.c:370` (`__db_cursor`, the `MULTIVERSION(dbp)` check reads an
+atomic off a partially-built handle), via
+`src/hash/hash_rec.c:84` (`__ham_insdel_recover`) ←
+`src/txn/txn.c:1942,2036` (`__txn_dispatch_undo`/`__txn_undo`) ←
+`src/txn/txn.c:1242` (`__txn_abort`) ←
+`src/txn/txn_region.c:252` (`__txn_env_refresh`) ← `__env_refresh` at env close.
 
-### Bug 3 — NULL-deref in `__db_pgin` with a NULL pgin cookie (K=375, 376)
-`src/db/db_conv.c:76`, via `__memp_pg`/`__memp_pgread`/`__memp_fget` ←
-`__ham_get_meta` ← `__ham_open`.
+The wider workload leaves an **aborted hash transaction** whose insdel log
+records must be undone. When an allocation on the undo path fails (K in
+490..497), `__ham_insdel_recover` still calls `__db_cursor` on a dbp whose
+backing (mpf / cursor prerequisites) was never allocated, and
+`__os_atomic_read(p=0xa4)` dereferences a NULL base + field offset.
+Same stack for all five K.
+Fix shape: propagate the undo-path alloc failure so `__ham_insdel_recover`
+does not open a cursor on a half-built handle (or guard `__db_cursor` /
+`REC_INTRO` when the handle's mpf is NULL).
 
-`__db_pgin` does `pginfo = (DB_PGINFO *)cookie->data;` with `cookie == NULL` —
-the pgin cookie / DB_PGINFO allocation failed upstream (in the hash-open page
-read setup) but the page-in proceeds and dereferences the NULL cookie.
-Fix shape: propagate the upstream alloc failure so `__db_pgin` is never called
-with a NULL cookie (or guard it).
+Repro: `DB_FI_FAIL_AT=490 ./libtool --mode=execute ./fi_sweep --one`
 
-Repro: `DB_FI_FAIL_AT=375 ./fi_sweep --one`
+### New Bug B — `db_create` OOM teardown leaks the access-method private struct (ASan; K=485,488,503,540,641,775,813,823,860,886,909,928,930,932,933,935,937,…)
+`src/db/db_method.c:206` (`__db_create_internal` `err:` path), leaking the
+struct allocated by `__db_init` → `__bam_db_create` (`src/btree/bt_method.c:47`,
+152 bytes) or `__qam_db_create` (queue), and analogous `__env_alloc` /
+`__lock_vec` region allocations.
 
-### Bug 4 — heap-use-after-free in txn/lock OOM cleanup (K≈213, 215, 216; ASan-only)
-`src/lock/lock_id.c:507` (`__lock_freelocker_int` → `__os_atomic_read`), via
-`src/txn/txn.c:1854` (`__txn_end`) ← `__txn_abort`.
+`__db_create_internal`'s `err:` path frees only `dbp` and `dbp->mpf`:
+```c
+err:    if (dbp != NULL) {
+                if (dbp->mpf != NULL)
+                        (void)__memp_fclose(dbp->mpf, 0);
+                __os_free(env, dbp);   /* does NOT free dbp->bt_internal */
+        }
+```
+When an allocation *after* `__bam_db_create`/`__qam_db_create` fails (e.g.
+`__memp_fcreate`), the access-method private struct hung off
+`dbp->bt_internal` / `dbp->q_internal` leaks, and `*dbpp` is set to NULL so
+the caller cannot free it either. A per-access-method OOM leak.
+Fix shape: call the access-method's own destructor (or free
+`dbp->bt_internal`/`dbp->q_internal`/`dbp->h_internal`) on the `err:` path.
 
-When `__txn_begin_int` partially fails under OOM (locker allocated at
-`txn.c:423`), the abort path's `__txn_end` frees the locker once (`txn.c:1816`)
-and then calls `__lock_freelocker` again at `txn.c:1854` on the already-freed
-locker, whose `__os_atomic_read` reads freed memory. A double-cleanup on the
-transaction OOM path. Caught by the ASan build; the plain-debug build
-tolerates the adjacent reads and instead segfaults at the nearby K in Bug 2.
-Fix shape: null out / de-link the locker after the first free so `__txn_end`
-does not free it twice.
+Repro (ASan build): `DB_FI_FAIL_AT=503 ./.libs/fi_sweep --one`
 
-Repro (ASan build): `DB_FI_FAIL_AT=213 ./.libs/fi_sweep --one`
+### New Bug C — `__db_join` leaks the join cursor on OOM (ASan; K=641, and nearby)
+`src/db/db_join.c:93` (`__db_join`).
+
+`__db_join` allocates the join-cursor struct (256 bytes) and then does further
+allocations while wiring up the constituent cursors. When one of those later
+allocations fails, `__db_join` returns an error **without freeing the
+already-allocated join cursor**, and since it never set `*dbcp` the caller
+cannot free it. An OOM leak local to `__db_join`.
+Fix shape: free the partially-built join cursor on `__db_join`'s error path.
+
+Repro (ASan build): `DB_FI_FAIL_AT=641 ./.libs/fi_sweep --one`
+
+### Note on classification
+
+Bug A is caught by BOTH the plain-debug forking sweep (as a `CRASH`) and the
+ASan one-shot pass (as `SEGV`). Bugs B and C are **leaks** that the plain
+segfault check cannot see; only the ASan build flags them (`LeakSanitizer`),
+so they are advisory. The four original bugs (K=2, 212…, 375…, txn/lock UAF)
+are no longer reproducible on the current tree — they were fixed in PR #52.
 
 ## CI
 
-`.github/workflows/faultinject.yml` runs the plain-debug sweep as the primary
-signal plus a bounded ASan one-shot pass, both `continue-on-error: true`
-(advisory) until the bugs above are fixed. See the workflow header for detail.
+`.github/workflows/faultinject.yml` runs the full plain-debug sweep
+(K = 1..M, ~46s at M=947) as the primary signal plus a full ASan one-shot
+pass (K = 1..M, ~2min), both `continue-on-error: true` (advisory) until the
+bugs above are fixed. The full sweep is cheap enough to run unbounded in CI;
+cap it with `FI_MAXK` locally if needed. See the workflow header for detail.
+
+Updating the workflow requires a token with `workflow` scope, which agent
+pushes do not carry, so the updated workflow is staged alongside this README
+as `test/faultinject/faultinject.yml.workflow`. A maintainer syncs it into
+`.github/workflows/faultinject.yml` (the only change vs. the installed file:
+the ASan one-shot pass now sweeps the full K = 1..M range instead of
+stopping at K = 260, so it reaches the new leaks/crashes past K = 480).

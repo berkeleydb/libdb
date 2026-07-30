@@ -46,7 +46,11 @@
 #define HOME     "TESTDIR_fi_sweep"
 #define BTFILE   "fi_bt.db"
 #define HFILE    "fi_h.db"
+#define SECFILE  "fi_sec.db"      /* secondary index DB          */
+#define MULTIFILE "fi_multi.db"    /* subdatabase container       */
 #define NREC     40
+#define NBULK    24               /* records for the bulk put    */
+#define GID_A    0x51             /* first byte of the 2PC gid   */
 
 /* Child exit codes the parent interprets. */
 #define EX_OK        0   /* workload completed with no injected failure   */
@@ -58,6 +62,29 @@ static int workload __P((int *));
 static int reopen_ok __P((void));
 static int run_child __P((long));
 static void cleanup __P((void));
+static int seckey __P((DB *, const DBT *, const DBT *, DBT *));
+
+/*
+ * seckey --
+ *	Secondary-index key extractor: the secondary key is the first 4
+ *	bytes of the primary value (deterministic, so associate/pget/
+ *	get-by-secondary hit the same alloc sites every run).
+ */
+static int
+seckey(sdb, pkey, pdata, skey)
+	DB *sdb;
+	const DBT *pkey, *pdata;
+	DBT *skey;
+{
+	(void)sdb;
+	(void)pkey;
+	memset(skey, 0, sizeof(*skey));
+	if (pdata->size < 4)
+		return (DB_DONOTINDEX);
+	skey->data = pdata->data;
+	skey->size = 4;
+	return (0);
+}
 
 /*
  * cleanup --
@@ -75,8 +102,13 @@ cleanup()
  *	A representative single-process DB_PRIVATE workload touching the
  *	paths a real app hits: open a transactional env, a btree AND a
  *	hash DB, put/get, a cursor walk, a committed txn and an aborted
- *	txn, and a checkpoint.  Returns the first non-zero DB error it
- *	sees (so an injected OOM surfaces as that op's error), or 0.
+ *	txn, and a checkpoint.  It then broadens into the warmer error
+ *	paths functional tests miss: a secondary index (associate +
+ *	get-by-secondary + pget), a 2PC transaction (prepare + resolve),
+ *	bulk put/get (DB_MULTIPLE / DB_MULTIPLE_KEY), an in-memory DB, a
+ *	subdatabase open, a join cursor, DB->compact, and DB->stat.
+ *	Returns the first non-zero DB error it sees (so an injected OOM
+ *	surfaces as that op's error), or 0.
  *
  *	The point is NOT that every op succeeds under injection -- it is
  *	that whichever op the injected OOM lands in returns cleanly and
@@ -91,12 +123,17 @@ workload(heldp)
 	int *heldp;
 {
 	DB_ENV *env = NULL;
-	DB *bt = NULL, *h = NULL;
+	DB *bt = NULL, *h = NULL, *sec = NULL, *mem = NULL, *sub = NULL;
 	DB_TXN *txn = NULL;
-	DBC *dbc = NULL;
-	DBT key, data;
+	DBC *dbc = NULL, *jc[2] = { NULL, NULL }, *jcur = NULL;
+	DB_COMPACT c_data;
+	DBT key, data, pkey, skey;
+	void *bulk = NULL;
+	void *ptr;
+	u_int8_t gid[DB_GID_SIZE];
 	int i, ret, t_ret;
 	char kbuf[32], vbuf[64];
+	DB_BTREE_STAT *bstat = NULL;
 
 	*heldp = 0;
 
@@ -189,8 +226,234 @@ workload(heldp)
 		goto done;
 
 	/* Checkpoint the environment. */
-	ret = env->txn_checkpoint(env, 0, 0, 0);
+	if ((ret = env->txn_checkpoint(env, 0, 0, 0)) != 0)
+		goto done;
 
+	/*
+	 * --- Secondary index: associate a secondary DB with the btree,
+	 * then read back through it (get-by-secondary + pget).  This
+	 * reaches the associate/callback/secondary-cursor alloc sites.
+	 */
+	if ((ret = db_create(&sec, env, 0)) != 0)
+		goto done;
+	/* Secondary keys are the 4-byte value prefix -> duplicates. */
+	if ((ret = sec->set_flags(sec, DB_DUPSORT)) != 0)
+		goto done;
+	if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
+		goto done;
+	*heldp = 1;
+	if ((ret = sec->open(sec, txn, SECFILE, NULL, DB_BTREE,
+	    DB_CREATE, 0664)) != 0)
+		goto done;
+	if ((ret = bt->associate(bt, txn, sec, seckey, DB_CREATE)) != 0)
+		goto done;
+	ret = txn->commit(txn, 0);
+	txn = NULL;
+	*heldp = 0;
+	if (ret != 0)
+		goto done;
+	/* get-by-secondary: look up a primary row via its secondary key. */
+	memset(&skey, 0, sizeof(skey));
+	memset(&data, 0, sizeof(data));
+	skey.data = "bval"; skey.size = 4;
+	if ((ret = sec->get(sec, NULL, &skey, &data, 0)) != 0 &&
+	    ret != DB_NOTFOUND)
+		goto done;
+	/* pget: fetch secondary key + primary key + primary data. */
+	memset(&skey, 0, sizeof(skey));
+	memset(&pkey, 0, sizeof(pkey));
+	memset(&data, 0, sizeof(data));
+	skey.data = "bval"; skey.size = 4;
+	if ((ret = sec->pget(sec, NULL, &skey, &pkey, &data, 0)) != 0 &&
+	    ret != DB_NOTFOUND)
+		goto done;
+
+	/*
+	 * --- Join cursor: build two btree cursors positioned on the same
+	 * secondary key and join them (a single-DB self-join is enough to
+	 * reach the join-cursor alloc sites).
+	 */
+	if ((ret = sec->cursor(sec, NULL, &jc[0], 0)) != 0)
+		goto done;
+	*heldp = 1;
+	memset(&skey, 0, sizeof(skey));
+	memset(&data, 0, sizeof(data));
+	skey.data = "bval"; skey.size = 4;
+	if ((ret = jc[0]->get(jc[0], &skey, &data, DB_SET)) != 0 &&
+	    ret != DB_NOTFOUND)
+		goto done;
+	if (ret == 0) {
+		if ((ret = bt->join(bt, jc, &jcur, 0)) != 0)
+			goto done;
+		memset(&key, 0, sizeof(key));
+		memset(&data, 0, sizeof(data));
+		while ((ret = jcur->get(jcur, &key, &data, 0)) == 0)
+			;
+		if (ret == DB_NOTFOUND)
+			ret = 0;
+		(void)jcur->close(jcur);
+		jcur = NULL;
+	}
+	(void)jc[0]->close(jc[0]);
+	jc[0] = NULL;
+	*heldp = 0;
+	if (ret != 0)
+		goto done;
+
+	/*
+	 * --- Bulk put + bulk get: DB_MULTIPLE_KEY put into the btree and
+	 * a DB_MULTIPLE_KEY cursor read back.  Reaches the bulk-buffer /
+	 * DB_MULTIPLE alloc sites.
+	 */
+	if ((bulk = malloc(64 * 1024)) == NULL) {
+		ret = ENOMEM;
+		goto done;
+	}
+	memset(&key, 0, sizeof(key));
+	key.data = bulk; key.ulen = 64 * 1024;
+	key.flags = DB_DBT_USERMEM | DB_DBT_BULK;
+	DB_MULTIPLE_WRITE_INIT(ptr, &key);
+	for (i = 0; i < NBULK; i++) {
+		(void)snprintf(kbuf, sizeof(kbuf), "mkey-%06d", i);
+		(void)snprintf(vbuf, sizeof(vbuf), "mval-%06d", i);
+		DB_MULTIPLE_KEY_WRITE_NEXT(ptr, &key,
+		    kbuf, strlen(kbuf) + 1, vbuf, strlen(vbuf) + 1);
+		if (ptr == NULL)
+			break;
+	}
+	if ((ret = bt->put(bt, NULL, &key, NULL, DB_MULTIPLE_KEY)) != 0)
+		goto done;
+	/* Bulk get: DB_MULTIPLE_KEY cursor scan of the btree. */
+	if ((ret = bt->cursor(bt, NULL, &dbc, 0)) != 0)
+		goto done;
+	*heldp = 1;
+	memset(&key, 0, sizeof(key));
+	memset(&data, 0, sizeof(data));
+	data.data = bulk; data.ulen = 64 * 1024;
+	data.flags = DB_DBT_USERMEM;
+	while ((ret = dbc->get(dbc, &key, &data,
+	    DB_NEXT | DB_MULTIPLE_KEY)) == 0) {
+		void *bp, *kp, *dp;
+		u_int32_t klen, dlen;
+		DB_MULTIPLE_INIT(bp, &data);
+		for (;;) {
+			DB_MULTIPLE_KEY_NEXT(bp, &data, kp, klen, dp, dlen);
+			if (kp == NULL)
+				break;
+		}
+	}
+	if (ret == DB_NOTFOUND)
+		ret = 0;
+	{
+		int cret = dbc->close(dbc);
+		dbc = NULL;
+		*heldp = 0;
+		if (ret == 0)
+			ret = cret;
+	}
+	if (ret != 0)
+		goto done;
+
+	/*
+	 * --- In-memory DB (NULL filename): reaches the in-memory-named-DB
+	 * open + mpool-backing alloc sites distinct from on-disk opens.
+	 */
+	if ((ret = db_create(&mem, env, 0)) != 0)
+		goto done;
+	if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
+		goto done;
+	*heldp = 1;
+	if ((ret = mem->open(mem, txn, NULL, NULL, DB_BTREE,
+	    DB_CREATE, 0664)) != 0)
+		goto done;
+	for (i = 0; i < 8; i++) {
+		memset(&key, 0, sizeof(key));
+		memset(&data, 0, sizeof(data));
+		(void)snprintf(kbuf, sizeof(kbuf), "ikey-%06d", i);
+		(void)snprintf(vbuf, sizeof(vbuf), "ival-%06d", i);
+		key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
+		data.data = vbuf; data.size = (u_int32_t)strlen(vbuf) + 1;
+		if ((ret = mem->put(mem, txn, &key, &data, 0)) != 0)
+			goto done;
+	}
+	ret = txn->commit(txn, 0);
+	txn = NULL;
+	*heldp = 0;
+	if (ret != 0)
+		goto done;
+
+	/*
+	 * --- Subdatabase open: a named DB inside a container file reaches
+	 * the multi-DB / master-DB open alloc sites.
+	 */
+	if ((ret = db_create(&sub, env, 0)) != 0)
+		goto done;
+	if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
+		goto done;
+	*heldp = 1;
+	if ((ret = sub->open(sub, txn, MULTIFILE, "sub1", DB_BTREE,
+	    DB_CREATE, 0664)) != 0)
+		goto done;
+	for (i = 0; i < 8; i++) {
+		memset(&key, 0, sizeof(key));
+		memset(&data, 0, sizeof(data));
+		(void)snprintf(kbuf, sizeof(kbuf), "skey-%06d", i);
+		(void)snprintf(vbuf, sizeof(vbuf), "sval-%06d", i);
+		key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
+		data.data = vbuf; data.size = (u_int32_t)strlen(vbuf) + 1;
+		if ((ret = sub->put(sub, txn, &key, &data, 0)) != 0)
+			goto done;
+	}
+	ret = txn->commit(txn, 0);
+	txn = NULL;
+	*heldp = 0;
+	if (ret != 0)
+		goto done;
+
+	/*
+	 * --- Compaction: DB->compact on the btree exercises the compact
+	 * alloc sites (compaction working buffers, page fetches).
+	 */
+	memset(&c_data, 0, sizeof(c_data));
+	if ((ret = bt->compact(bt, NULL, NULL, NULL, &c_data,
+	    DB_FREE_SPACE, NULL)) != 0)
+		goto done;
+
+	/*
+	 * --- DB->stat: gather btree statistics (allocates the stat
+	 * struct + walks metadata).
+	 */
+	if ((ret = bt->stat(bt, NULL, &bstat, 0)) != 0)
+		goto done;
+	free(bstat);
+	bstat = NULL;
+
+	/*
+	 * --- 2PC: prepare a transaction, then resolve it.  prepare()
+	 * reaches the log-flush / gid-write / prepare alloc sites that the
+	 * plain commit/abort paths do not.  (txn_recover is a
+	 * separate-process recovery operation; calling it on a still-live
+	 * prepared txn in the same process double-resolves it, so we just
+	 * commit through our own handle here.)
+	 */
+	if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
+		goto done;
+	*heldp = 1;
+	memset(&key, 0, sizeof(key));
+	memset(&data, 0, sizeof(data));
+	key.data = "pkey-2pc"; key.size = 9;
+	data.data = "pval-2pc"; data.size = 9;
+	if ((ret = bt->put(bt, txn, &key, &data, 0)) != 0)
+		goto done;
+	memset(gid, 0, sizeof(gid));
+	gid[0] = GID_A;
+	if ((ret = txn->prepare(txn, gid)) != 0)
+		goto done;
+	ret = txn->commit(txn, 0);
+	txn = NULL;
+	*heldp = 0;
+	if (ret != 0)
+		goto done;
 done:
 	/*
 	 * Teardown IS part of the test.  Release anything still held, in
@@ -201,8 +464,27 @@ done:
 	 */
 	if (dbc != NULL)
 		(void)dbc->close(dbc);
+	if (jcur != NULL)
+		(void)jcur->close(jcur);
+	if (jc[0] != NULL)
+		(void)jc[0]->close(jc[0]);
 	if (txn != NULL)
 		(void)txn->abort(txn);
+	free(bulk);
+	free(bstat);
+	if (sub != NULL) {
+		if ((t_ret = sub->close(sub, 0)) != 0 && ret == 0)
+			ret = t_ret;
+	}
+	if (mem != NULL) {
+		if ((t_ret = mem->close(mem, 0)) != 0 && ret == 0)
+			ret = t_ret;
+	}
+	if (sec != NULL) {
+		/* Secondary must close before its primary. */
+		if ((t_ret = sec->close(sec, 0)) != 0 && ret == 0)
+			ret = t_ret;
+	}
 	if (h != NULL) {
 		if ((t_ret = h->close(h, 0)) != 0 && ret == 0)
 			ret = t_ret;
