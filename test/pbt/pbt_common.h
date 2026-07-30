@@ -16,7 +16,9 @@
  *	The real API mirrored here is from hegel-c (https://github.com/
  *	gburd/hegel-c): hegel_session_new/free, hegel_run_test returning
  *	hegel_results, HEGEL_DEFAULT_SETTINGS, and the hegel_draw_int,
- *	hegel_integers, hegel_binary, and hegel_assume surface.
+ *	hegel_integers, hegel_binary, hegel_assume, and hegel_fail surface.
+ *	Properties assert with PBT_CHECK (-> hegel_fail); hegel_assume is a
+ *	precondition filter only (see PBT_CHECK below).
  */
 
 #ifndef LIBDB_PBT_COMMON_H
@@ -25,6 +27,17 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+/*
+ * PBT_CHECK(cond, msg) -- the property-assertion helper.  A property must
+ * *fail* (not merely skip) when violated.  In hegel, hegel_assume(false)
+ * marks a case INVALID (skipped) -- it is a PRECONDITION filter, never an
+ * assertion.  The failure signal is hegel_fail(), which marks the case
+ * INTERESTING and lets the server shrink a minimal counterexample.  Use
+ * PBT_CHECK for every actual property; reserve hegel_assume() for genuine
+ * domain preconditions.  In stub mode both are no-ops (bodies unreached).
+ */
+#define PBT_CHECK(cond, msg) do { if (!(cond)) hegel_fail(msg); } while (0)
 
 #if defined(PBT_HAVE_HEGEL)
 
@@ -150,6 +163,9 @@ hegel_binary(size_t lo, size_t hi)
 static inline void
 hegel_assume(int cond)
 { (void)cond; }
+static inline void
+hegel_fail(const char *msg)
+{ (void)msg; }
 static inline void
 hegel_note(const char *msg)
 { (void)msg; }
