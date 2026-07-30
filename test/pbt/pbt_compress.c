@@ -92,21 +92,24 @@ prop_compress_roundtrip(hegel_test_case *tc, void *u)
 
 	ret = __bam_defcompress(NULL, &prevKey, &prevData, &key, &data, &dest);
 	/* enc[] is generously sized; a full buffer is not the property here. */
-	hegel_assume(ret == 0);
+	PBT_CHECK(ret == 0, "__bam_defcompress failed");
 
 	/* dest.size now holds the encoded length; feed it back to decompress. */
 	set_out(&dkey, outk, sizeof(outk));
 	set_out(&ddata, outd, sizeof(outd));
 	ret = __bam_defdecompress(NULL, &prevKey, &prevData, &dest,
 	    &dkey, &ddata);
-	hegel_assume(ret == 0);
+	PBT_CHECK(ret == 0, "__bam_defdecompress failed");
 
 	/* Round-trip identity for both key and data. */
-	hegel_assume(dkey.size == key.size);
-	hegel_assume(key.size == 0 || memcmp(dkey.data, key.data, key.size) == 0);
-	hegel_assume(ddata.size == data.size);
-	hegel_assume(data.size == 0 ||
-	    memcmp(ddata.data, data.data, data.size) == 0);
+	PBT_CHECK(dkey.size == key.size, "decompressed key size != key size");
+	PBT_CHECK(key.size == 0 || memcmp(dkey.data, key.data, key.size) == 0,
+	    "decompressed key bytes != key bytes");
+	PBT_CHECK(ddata.size == data.size,
+	    "decompressed data size != data size");
+	PBT_CHECK(data.size == 0 ||
+	    memcmp(ddata.data, data.data, data.size) == 0,
+	    "decompressed data bytes != data bytes");
 
 	free(pk);
 	free(pd);
