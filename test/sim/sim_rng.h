@@ -39,6 +39,7 @@ enum db_sim_stream {
 	DB_SIM_RNG_BUGGIFY = 2,   /* buggify per-run activation coins */
 	DB_SIM_RNG_APP     = 3,   /* application/test workload draws */
 	DB_SIM_RNG_SCHED   = 4,   /* RESERVED: deterministic scheduler (v2) */
+	DB_SIM_RNG_CLOCK   = 5,   /* clock-skew / time-jump fault stream */
 	DB_SIM_RNG_NSTREAMS
 };
 
