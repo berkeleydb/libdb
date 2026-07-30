@@ -42,6 +42,9 @@ BUGS="
 3|test_sim_ckp_crash|nonzerocatch
 4|test_sim_abort_atomic|nonzerocatch
 5|test_sim_ckp_lsn|exit0catch
+6|test_sim_recover_idempotent|nonzerocatch
+7|test_sim_ckp_crash|nonzerocatch
+8|test_sim_log_enospc|exit0catch
 "
 
 overall=0

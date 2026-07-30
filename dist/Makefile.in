@@ -1674,6 +1674,63 @@ test_sim_ckp_lsn: test_sim_ckp_lsn@o@ $(DEF_LIB)
 	    $(LDFLAGS) test_sim_ckp_lsn@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
+test_sim_multidb_crash@o@: $(testdir)/sim/test_sim_multidb_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_multidb_crash: test_sim_multidb_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_multidb_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_largeabort@o@: $(testdir)/sim/test_sim_largeabort.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_largeabort: test_sim_largeabort@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_largeabort@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_log_enospc@o@: $(testdir)/sim/test_sim_log_enospc.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_log_enospc: test_sim_log_enospc@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_log_enospc@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_data_log_order@o@: $(testdir)/sim/test_sim_data_log_order.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_data_log_order: test_sim_data_log_order@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_data_log_order@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_torn_meta@o@: $(testdir)/sim/test_sim_torn_meta.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_torn_meta: test_sim_torn_meta@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_torn_meta@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_stale_meta@o@: $(testdir)/sim/test_sim_stale_meta.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_stale_meta: test_sim_stale_meta@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_stale_meta@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_compound_fault@o@: $(testdir)/sim/test_sim_compound_fault.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_compound_fault: test_sim_compound_fault@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_compound_fault@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_logrollover_crash@o@: $(testdir)/sim/test_sim_logrollover_crash.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_logrollover_crash: test_sim_logrollover_crash@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_logrollover_crash@o@ $(DEF_LIB) $(TEST_LIBS) \
+	    $(LIBS)
+	$(POSTLINK) $@
+
 dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_hash_crash test_sim_recno_crash test_sim_queue_crash \
 	test_sim_ckp_crash test_sim_torn_log test_sim_enospc \
@@ -1682,7 +1739,9 @@ dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_ckp_enospc test_sim_split_torn test_sim_recover_corrupt \
 	test_sim_multi_fault test_sim_secondary_crash test_sim_largetxn_crash \
 	test_sim_cursor_crash test_sim_latency_load test_sim_swarm \
-	test_sim_ckp_lsn
+	test_sim_ckp_lsn test_sim_multidb_crash test_sim_largeabort \
+	test_sim_log_enospc test_sim_data_log_order test_sim_torn_meta \
+	test_sim_stale_meta test_sim_compound_fault test_sim_logrollover_crash
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.
