@@ -1336,8 +1336,27 @@ __log_write(dblp, addr, len)
 	 * since we last did).
 	 */
 	if ((ret = __os_io(env, DB_IO_WRITE,
-	    dblp->lfhp, 0, 0, lp->w_off, len, addr, &nw)) != 0)
+	    dblp->lfhp, 0, 0, lp->w_off, len, addr, &nw)) != 0) {
+#if defined(HAVE_DST)
+#if DB_DST_BUG(8)
+		/*
+		 * PLANTED BUG LOGWRITEIGNORE (DB_DST_INJECT_BUG=8): swallow
+		 * the log write error (e.g. ENOSPC / EIO) and fall through as
+		 * if the record reached the file, advancing lp->w_off.  A
+		 * commit is then acked whose log bytes never persisted; after
+		 * a crash the record is gone.  test_sim_log_enospc's "an
+		 * acked commit whose log write failed must not silently
+		 * vanish" invariant fires.  Compiled out of every normal
+		 * build.
+		 */
+		ret = 0;
+#else
 		return (ret);
+#endif
+#else
+		return (ret);
+#endif
+	}
 
 	/* Reset the buffer offset and update the seek offset. */
 	lp->w_off += len;
