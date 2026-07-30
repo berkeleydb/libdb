@@ -49,6 +49,10 @@
 #include "dbinc/lock.h"
 #include "dbinc/mp.h"
 
+#ifdef HAVE_DST
+#include "sim_buggify.h"		/* DST buggify points (--enable-dst only). */
+#endif
+
 static int __bam_build
 	       __P((DBC *, u_int32_t, DBT *, PAGE *, u_int32_t, u_int32_t));
 static int __bam_dup_check __P((DBC *, u_int32_t,
@@ -276,6 +280,31 @@ __bam_iitem(dbc, key, data, op, flags)
 	/* Split the page if there's not enough room. */
 	if (P_FREESPACE(dbp, h) < needed)
 		return (DB_NEEDSPLIT);
+
+#ifdef HAVE_DST
+	/*
+	 * BUGGIFY bt.split_early: force an EARLY split even though the item
+	 * fits, to stress the split/merge machinery (which normally runs
+	 * only when a page fills).  Legal-but-pessimal: the caller catches
+	 * DB_NEEDSPLIT, splits, and retries the put -- the retry has more
+	 * room and succeeds, so the result is identical, only slower and
+	 * with a taller/wider tree.
+	 *
+	 * Two guards keep it legal AND terminating.  (a) leaf pages only
+	 * (P_LBTREE / P_LDUP / P_LRECNO) with NUM_ENT(h) >= 4, so the
+	 * split-point picker has a couple of entries per side.  (b) fire
+	 * ONLY when the page is already more than THREE-QUARTERS full
+	 * (P_FREESPACE < pgsize/4): the buggify coin is cached per run, so
+	 * it re-fires on the post-split RETRY too -- after splitting a
+	 * >3/4-full page each half is well under half full, so the retry no
+	 * longer qualifies and the put completes (no split loop).
+	 */
+	if ((TYPE(h) == P_LBTREE || TYPE(h) == P_LDUP ||
+	    TYPE(h) == P_LRECNO) && NUM_ENT(h) >= 4 &&
+	    P_FREESPACE(dbp, h) < dbp->pgsize / 4 &&
+	    DB_BUGGIFY(BUGGIFY_BT_SPLIT_EARLY))
+		return (DB_NEEDSPLIT);
+#endif
 
 	/*
 	 * Check to see if we will convert to off page duplicates -- if
