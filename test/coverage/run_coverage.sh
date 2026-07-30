@@ -319,6 +319,16 @@ fi
 #     cold.  test/db/run_recd_compact.sh compiles recd_compact.c, which fills+
 #     sparsifies a btree, compacts with DB_FREE_SPACE (logging merge/pgno/
 #     pg_trunc records) and re-opens under DB_RECOVER_FATAL to replay them.
+#   bt_rec.c / db_rec.c -- four per-operation recovery handlers no recd0NN
+#     test reaches (recd003 does NOT unlock them -- they "need scenarios no
+#     bounded recd test hits"): __bam_root_recover (subdb-create root update),
+#     __bam_irep_recover (compaction internal-record replace),
+#     __bam_rcuradj_recover (rrecno child-txn cursor adjust) and
+#     __db_ovref_recover (truncate of a btree with overflow items).
+#     test/db/run_recd_handlers.sh compiles recd_handlers.c, which builds each
+#     scenario and replays it under DB_RECOVER / DB_RECOVER_FATAL (and txn
+#     abort for the undo paths).  Lifts those four handlers 0 -> covered
+#     (__bam_irep 60% br, __bam_root 53%, __bam_rcuradj 74%, __db_ovref 68%).
 # Set COV_BACKUP=0 to skip.
 if [ "${COV_BACKUP:-1}" = 1 ]; then
   echo "== run backup + compaction-recovery drivers (COV_BACKUP=1) =="
@@ -331,6 +341,11 @@ if [ "${COV_BACKUP:-1}" = 1 ]; then
     echo "PASS recd_compact"
   else
     echo "FAIL recd_compact (rc=$?)"; tail -5 /tmp/cov-recdcompact.log
+  fi
+  if sh "$root/test/db/run_recd_handlers.sh" >/tmp/cov-recdhandlers.log 2>&1; then
+    echo "PASS recd_handlers"
+  else
+    echo "FAIL recd_handlers (rc=$?)"; tail -5 /tmp/cov-recdhandlers.log
   fi
   echo "  .gcda files after backup/compact: $(find . -name '*.gcda' | wc -l)"
 fi
