@@ -317,6 +317,24 @@ main(argc, argv)
 		    "workload is not seed-sensitive\n");
 		return (EXIT_FAILURE);
 	}
+	/*
+	 * Coverage-gap guard (FoundationDB discipline): on a sweep large
+	 * enough that every class SHOULD fire, a class that never activated
+	 * is a hole in the fault coverage -- surface it as a failure so a
+	 * regression that silently stops arming a fault class is caught.
+	 */
+	if (n_seeds >= 64) {
+		int gap = 0;
+		for (cls = 0; cls < DB_SIM_FC_NCLASSES; cls++)
+			if (act[cls] == 0) {
+				printf("FAIL: fault class '%s' NEVER activated "
+				    "across %ld seeds -- a coverage gap\n",
+				    __db_sim_fault_class_name(cls), n_seeds);
+				gap = 1;
+			}
+		if (gap)
+			return (EXIT_FAILURE);
+	}
 	printf("OK: %ld-seed swarm -- 0 invariant violations (no corrupt/"
 	    "stale page ever accepted as valid), every seed replayed "
 	    "identically, %d distinct results explored\n", n_seeds, n_seen);
