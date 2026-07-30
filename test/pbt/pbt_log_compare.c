@@ -40,7 +40,8 @@ prop_result_in_range(hegel_test_case *tc, void *u)
 	a = draw_lsn(tc);
 	b = draw_lsn(tc);
 	r = log_compare(&a, &b);
-	hegel_assume(r == -1 || r == 0 || r == 1);
+	PBT_CHECK(r == -1 || r == 0 || r == 1,
+	    "log_compare result not in {-1,0,1}");
 }
 
 /* P2: reflexivity -- log_compare(a, a) == 0. */
@@ -50,7 +51,8 @@ prop_reflexive(hegel_test_case *tc, void *u)
 	DB_LSN a;
 	(void)u;
 	a = draw_lsn(tc);
-	hegel_assume(log_compare(&a, &a) == 0);
+	PBT_CHECK(log_compare(&a, &a) == 0,
+	    "log_compare(a, a) != 0 (not reflexive)");
 }
 
 /* P3: antisymmetry -- log_compare(a, b) == -log_compare(b, a). */
@@ -61,7 +63,8 @@ prop_antisymmetric(hegel_test_case *tc, void *u)
 	(void)u;
 	a = draw_lsn(tc);
 	b = draw_lsn(tc);
-	hegel_assume(log_compare(&a, &b) == -log_compare(&b, &a));
+	PBT_CHECK(log_compare(&a, &b) == -log_compare(&b, &a),
+	    "log_compare not antisymmetric");
 }
 
 /* P4: transitivity -- a<=b and b<=c imply a<=c (and the strict/equal
@@ -80,13 +83,13 @@ prop_transitive(hegel_test_case *tc, void *u)
 	ac = log_compare(&a, &c);
 	/* If a<=b and b<=c then a<=c. */
 	if (ab <= 0 && bc <= 0)
-		hegel_assume(ac <= 0);
+		PBT_CHECK(ac <= 0, "log_compare not transitive (a<=b<=c)");
 	/* If a>=b and b>=c then a>=c. */
 	if (ab >= 0 && bc >= 0)
-		hegel_assume(ac >= 0);
+		PBT_CHECK(ac >= 0, "log_compare not transitive (a>=b>=c)");
 	/* If a==b and b==c then a==c. */
 	if (ab == 0 && bc == 0)
-		hegel_assume(ac == 0);
+		PBT_CHECK(ac == 0, "log_compare not transitive (a==b==c)");
 }
 
 static const pbt_entry_t tests[] = {
