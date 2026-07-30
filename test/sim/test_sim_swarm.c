@@ -325,13 +325,22 @@ main(argc, argv)
 	 */
 	if (n_seeds >= 64) {
 		int gap = 0;
-		for (cls = 0; cls < DB_SIM_FC_NCLASSES; cls++)
+		for (cls = 0; cls < DB_SIM_FC_NCLASSES; cls++) {
+			/*
+			 * The clock-skew class is exercised by the dedicated
+			 * test_sim_clockskew_* scenarios, not this I/O swarm
+			 * (which arms only the disk-fault knobs), so it is not
+			 * expected to fire here -- skip it in the gap guard.
+			 */
+			if (cls == DB_SIM_FC_CLOCK)
+				continue;
 			if (act[cls] == 0) {
 				printf("FAIL: fault class '%s' NEVER activated "
 				    "across %ld seeds -- a coverage gap\n",
 				    __db_sim_fault_class_name(cls), n_seeds);
 				gap = 1;
 			}
+		}
 		if (gap)
 			return (EXIT_FAILURE);
 	}
