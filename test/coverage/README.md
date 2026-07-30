@@ -35,7 +35,7 @@ Knobs (all optional env vars):
 | `COV_TIMEOUT`| `2400`                                    | seconds ceiling for the test run |
 | `COV_REP`    | `0`                                       | set `1` to also run the replication (rep/repmgr) tests |
 | `COV_XA_UPG` | `1`                                       | run the XA + on-disk-upgrade drivers (fast, non-hanging) |
-| `COV_BACKUP` | `1`                                       | run the hot-backup-API + compaction-recovery drivers (fast, non-hanging) |
+| `COV_BACKUP` | `1`                                       | run the hot-backup-API + compaction-recovery + per-op-recovery drivers (fast, non-hanging) |
 | `COV_DEAD_REG` | `1`                                     | run the deadlock-detector + DB_REGISTER multi-process tests |
 | `COV_RECD`   | `1`                                       | run the recovery-record handler tests (`recd` group, driver-per-test) |
 
@@ -114,7 +114,7 @@ timeout, so they cannot hang:
 
 ## The hot-backup API + compaction-recovery surface (`COV_BACKUP`)
 
-`COV_BACKUP` (on by default) runs two more standalone C drivers, same
+`COV_BACKUP` (on by default) runs three more standalone C drivers, same
 self-clean + hard-timeout shape as the XA/upgrade drivers, aimed at code the
 Tcl suite structurally cannot reach:
 
@@ -147,6 +147,42 @@ Tcl suite structurally cannot reach:
   (catastrophic recovery), both added to the default `COV_TESTS`, this lifts
   `db/db_rec.c` from **18%→~27% line / ~13%→~18% branch** in the subset
   (merge/pgno/pg_trunc/relink no longer cold).
+- **Per-operation recovery handlers** — `test/db/run_recd_handlers.sh` builds
+  `test/db/recd_handlers.c`. Four `*_recover` handlers stayed cold because no
+  bounded `recd0NN` test produces the exact log record they replay (recd003
+  does **not** unlock them — they "need scenarios no bounded recd test hits"):
+  - `bt_rec.c` `__bam_root_recover` — a `__bam_root` record (sets a tree's
+    root page on the file meta page) is logged when a **sub-database** is
+    created inside a file (`bt_open.c`). The driver creates a subdb under a
+    txn: commit → REDO on replay, abort → UNDO.
+  - `bt_rec.c` `__bam_irep_recover` — a `__bam_irep` (internal-record
+    replace) is logged from `__bam_pupdate → __bam_pinsert(BPI_REPLACE)`,
+    and `BPI_UPDATE`/`__bam_pupdate` is only ever driven by **compaction**
+    (plain delete uses `BTD_RELINK`, never `BTD_UPDATE`). The driver builds a
+    deep multi-level btree, deletes the front of the keyspace, then
+    `DB->compact()` so merging pages replace parent separators; commit +
+    fatal recover replays REDO.
+  - `bt_rec.c` `__bam_rcuradj_recover` — an rrecno (`DB_RENUMBER`) cursor
+    adjustment is logged only under a **child** transaction (`CURADJ_LOG`
+    requires `txn->parent != NULL`) and the handler acts only on
+    `DB_TXN_ABORT`. The driver inserts under a nested txn with a second
+    cursor parked on the shifting record, then **aborts** the child txn.
+  - `db_rec.c` `__db_ovref_recover` — a `__db_ovref(-1)` record is logged per
+    overflow page by `DB->truncate()`'s `__db_truncate_callback`
+    (`db_reclaim.c`). The driver puts big (overflow) items, truncates under a
+    txn (commit → REDO, abort → UNDO), then recovers.
+
+  Lift (driver alone): all four go **0 calls → covered** —
+  `__bam_root_recover` ~53% branch, `__bam_irep_recover` ~60%,
+  `__bam_rcuradj_recover` ~74%, `__db_ovref_recover` ~68%.
+
+  **Not covered (documented):** `db_rec.c` `__db_cksum_recover`. Its
+  `__db_cksum` marker record is only written when a checksum error is detected
+  on a page-in with logging on (`db_conv.c`). On the recovery pass, redo of the
+  records that built that page re-reads the still-corrupt page and panics
+  (`pgin failed`) **before** recovery reaches the marker record — so the
+  handler never runs. Tcl `recd016` has the same limitation (the standalone
+  `db_recover` util also does not execute `__db_cksum_recover` in-process).
 
 ## The statistics (`*_stat_print`) surface
 
