@@ -703,7 +703,32 @@ __db_pg_alloc_recover(env, dbtp, lsnp, op, info)
 	if (cmp_p == 0 && DB_REDO(op)) {
 		/* Need to redo update described. */
 		REC_DIRTY(mpf, ip, file_dbp->priority, &meta);
+#if defined(HAVE_DST)
+#if DB_DST_BUG(9)
+		/*
+		 * PLANTED BUG RECINITNOSTAMP (DB_DST_INJECT_BUG=9): apply the
+		 * page-alloc redo (advance the meta free list / last_pgno) but
+		 * SKIP the `LSN(meta) = *lsnp` stamp, so the meta page LSN
+		 * never advances past this record.  The idempotency guard
+		 * (cmp_p == 0) still holds on a LATER recovery pass, so a
+		 * recovery that is CRASHED partway and re-run RE-APPLIES this
+		 * same allocation -- the free list is advanced twice, so
+		 * recovery is not idempotent UNDER INTERRUPTION.  Distinct
+		 * from bug 6 (a non-idempotent __db_addrem redo, caught by the
+		 * plain double-recover test): this one is caught only by the
+		 * crash-DURING-recovery loop (test_sim_crash_in_recovery /
+		 * test_sim_recovery_redo_crash), where a partial recovery is
+		 * interrupted then re-run -- the convergence invariant (final
+		 * state must equal the clean-recovery reference) fires.
+		 * Compiled out of every normal build.
+		 */
+		;
+#else
 		LSN(meta) = *lsnp;
+#endif
+#else
+		LSN(meta) = *lsnp;
+#endif
 		meta->free = argp->next;
 		if (argp->pgno > meta->last_pgno)
 			meta->last_pgno = argp->pgno;
