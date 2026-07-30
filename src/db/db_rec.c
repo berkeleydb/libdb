@@ -17,6 +17,10 @@
 #include "dbinc/btree.h"
 #include "dbinc/hash.h"
 
+#ifdef HAVE_DST
+#include "sim_inject.h"			/* DST planted-bug harness. */
+#endif
+
 static int __db_pg_free_recover_int __P((ENV *, DB_THREAD_INFO *,
     __db_pg_freedata_args *, DB *, DB_LSN *, DB_MPOOLFILE *, db_recops, int));
 static int __db_pg_free_recover_42_int __P((ENV *, DB_THREAD_INFO *,
@@ -81,10 +85,31 @@ __db_addrem_recover(env, dbtp, lsnp, op, info)
 	}
 
 	if (modified) {
+#if defined(HAVE_DST)
+#if DB_DST_BUG(6)
+		/*
+		 * PLANTED BUG REDONOSTAMP (DB_DST_INJECT_BUG=6): apply the
+		 * redo/undo but SKIP stamping the page LSN, so LSN(pagep)
+		 * never advances past this record.  The idempotency guard
+		 * (cmp_p == 0) therefore still holds on a SECOND recovery
+		 * pass, which re-applies the same redo -- recovery is no
+		 * longer idempotent.  test_sim_recover_idempotent's
+		 * "identical state hash across two recoveries" invariant
+		 * fires.  Compiled out of every normal build.
+		 */
+		;
+#else
 		if (DB_REDO(op))
 			LSN(pagep) = *lsnp;
 		else
 			LSN(pagep) = argp->pagelsn;
+#endif
+#else
+		if (DB_REDO(op))
+			LSN(pagep) = *lsnp;
+		else
+			LSN(pagep) = argp->pagelsn;
+#endif
 	}
 
 	if ((ret = __memp_fput(mpf, ip, pagep, dbc->priority)) != 0)

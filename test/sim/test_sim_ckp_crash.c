@@ -74,6 +74,12 @@ populate(seed)
 	int i, ret;
 
 	__db_sim_activate(seed);
+	/* Arm the write-back model so a WRITTEN-but-not-fsync'd page (the
+	 * SYNCSKIP bug, #7) is dropped at the crash boundary -- otherwise the
+	 * page reached the file via pwrite and a skipped fsync is invisible.
+	 * In a correct build db->sync fsyncs, the frontier advances, and
+	 * wb_crash truncates nothing. */
+	__db_sim_wb_enable(1);
 
 	if ((ret = db_env_create(&env, 0)) != 0)
 		return (ret);
@@ -99,11 +105,13 @@ populate(seed)
 	}
 
 	/* The checkpoint analogue: flush every dirty page to the data file.
-	 * A correct __memp_pgwrite lands them all. */
+	 * A correct __memp_pgwrite lands them all AND a correct sync fsyncs. */
 	if ((ret = db->sync(db, 0)) != 0)
 		return (ret);
 
-	/* CRASH abruptly -- no clean close (which would flush again). */
+	/* CRASH abruptly -- drop every byte written but not fsync'd (a power
+	 * loss), then _exit with no clean close (which would flush again). */
+	__db_sim_wb_crash();
 	fflush(NULL);
 	_exit(42);
 	/* NOTREACHED */
