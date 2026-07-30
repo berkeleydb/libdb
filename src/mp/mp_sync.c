@@ -15,6 +15,10 @@
 #include "dbinc/db_page.h"
 #include "dbinc/hash.h"
 
+#ifdef HAVE_DST
+#include "sim_inject.h"			/* DST planted-bug harness. */
+#endif
+
 typedef struct {
 	DB_MPOOL_HASH *track_hp;	/* Hash bucket. */
 
@@ -661,8 +665,29 @@ done:	/*
 	if (ret == 0 && required_write) {
 		if (dbmfp == NULL)
 			ret = __memp_sync_files(env);
+#if defined(HAVE_DST)
+#if DB_DST_BUG(7)
+		/*
+		 * PLANTED BUG SYNCSKIP (DB_DST_INJECT_BUG=7): a single-file
+		 * sync (db->sync / checkpoint of one file) WRITES the dirty
+		 * pages but SKIPS the fsync, then reports success.  The
+		 * pages reached the file via pwrite, but the durable frontier
+		 * never advances, so a power loss (write-back crash) drops
+		 * them.  With no log to redo (a non-txn env), the flushed
+		 * records are gone after the crash; test_sim_ckp_crash's
+		 * "every synced record survives" invariant fires.  Compiled
+		 * out of every normal build.
+		 */
+		else
+			ret = 0;
+#else
 		else
 			ret = __os_fsync(env, dbmfp->fhp);
+#endif
+#else
+		else
+			ret = __os_fsync(env, dbmfp->fhp);
+#endif
 	}
 
 	/* If we've opened files to flush pages, close them. */
