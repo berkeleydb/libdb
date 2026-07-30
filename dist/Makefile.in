@@ -1731,6 +1731,16 @@ test_sim_logrollover_crash: test_sim_logrollover_crash@o@ $(DEF_LIB)
 	    $(LIBS)
 	$(POSTLINK) $@
 
+# DST v2 multi-process failchk-recovery pilot (test/sim/mp_failchk_pilot.c).
+# Runs OUTSIDE the single-process test_sim harness: it forks + kill -9's real
+# processes sharing a real (non-DB_PRIVATE) region.  Driver: mp-failchk.sh.
+mp_failchk_pilot@o@: $(testdir)/sim/mp_failchk_pilot.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+mp_failchk_pilot: mp_failchk_pilot@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) mp_failchk_pilot@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
 dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_hash_crash test_sim_recno_crash test_sim_queue_crash \
 	test_sim_ckp_crash test_sim_torn_log test_sim_enospc \
@@ -1741,7 +1751,8 @@ dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_cursor_crash test_sim_latency_load test_sim_swarm \
 	test_sim_ckp_lsn test_sim_multidb_crash test_sim_largeabort \
 	test_sim_log_enospc test_sim_data_log_order test_sim_torn_meta \
-	test_sim_stale_meta test_sim_compound_fault test_sim_logrollover_crash
+	test_sim_stale_meta test_sim_compound_fault test_sim_logrollover_crash \
+	mp_failchk_pilot
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.
