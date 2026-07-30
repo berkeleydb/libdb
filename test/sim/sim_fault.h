@@ -95,6 +95,20 @@ int      __db_sim_io_flip_byte __P((int));
  * file to __db_sim_io_durable_end(key).
  */
 void     __db_sim_wb_enable __P((int));
+
+/*
+ * __db_sim_wb_enable() modes:
+ *   0                    -- disable the write-back model.
+ *   1 (any nonzero !=2)  -- enable; a fresh file's durable frontier
+ *                           starts at 0 and grows only via fsync (the
+ *                           single-process crash tests: a pre-extended
+ *                           but unsynced log is correctly NOT durable).
+ *   DB_SIM_WB_SEED_ONDISK-- enable AND seed each freshly-tracked file's
+ *                           durable frontier from its current on-disk
+ *                           size (a recovery process inheriting durable
+ *                           files from a crashed workload).
+ */
+#define DB_SIM_WB_SEED_ONDISK 2
 int      __db_sim_wb_active __P((void));
 void     __db_sim_wb_wrote __P((uint64_t, uint64_t));
 void     __db_sim_wb_note_name __P((uint64_t, const char *));
@@ -102,6 +116,27 @@ void     __db_sim_wb_synced __P((uint64_t));
 uint64_t __db_sim_wb_written_end __P((uint64_t));
 uint64_t __db_sim_io_durable_end __P((uint64_t));
 int      __db_sim_wb_crash __P((void));
+
+/*
+ * Crash-DURING-recovery model.  Recovery (__db_apprec, run inside
+ * env->open(DB_RECOVER)) writes pages + a recovery checkpoint through the
+ * same __os_io / __os_fsync seam.  When armed with a target N > 0, the
+ * Nth recovery-phase I/O op (page write or fsync) truncates every tracked
+ * file to its durable frontier (a power loss that drops recovery's own
+ * un-fsync'd work) and _exit(42)s -- i.e. the recovery process CRASHES
+ * mid-pass.  A NEXT recovery must then re-converge (recovery must be
+ * idempotent + interruptible).  A no-op (never crashes) unless armed.
+ *   arm(0)         -> disarm.
+ *   arm(N>0)       -> crash on the Nth recovery I/O op.
+ *   ticks()        -> how many recovery I/O ops have happened this run
+ *                     (lets a harness discover the full-recovery I/O
+ *                     count, then sweep crash points 1..ticks).
+ * The tick counter is reset by arm(); a recovery that finishes without
+ * hitting the target leaves ticks() == the full-recovery I/O count.
+ */
+void     __db_sim_reccrash_enable __P((unsigned long));
+unsigned long __db_sim_reccrash_ticks __P((void));
+void     __db_sim_reccrash_tick __P((void));
 
 /*
  * Buggify branch macro for planting a legal-but-pessimal path in real

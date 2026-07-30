@@ -61,7 +61,7 @@ nix develop --command bash -c '
   cd build_unix &&
   ../dist/configure --enable-debug --enable-dst &&
   make -j4 &&           # builds libdb with the DST core
-  make dst_tests'       # builds all 24 scenario executables + the swarm
+  make dst_tests'       # builds all scenario executables + the swarm
 ```
 
 Run the pilots (they link the shared lib, so set `LD_LIBRARY_PATH`):
@@ -98,14 +98,14 @@ after recovery.
 
 ## Proving DST catches real bugs (planted-bug harness)
 
-`sim_inject.h` defines FIVE planted bugs at REAL library sites. Each is caught
+`sim_inject.h` defines NINE planted bugs at REAL library sites. Each is caught
 by a specific scenario within **K=1** seeds. Because each bug lives in the
 library (not the test), activating one means (re)building the library with
 `-DDB_DST_INJECT_BUG=<n>`; `dst-bug-inject.sh` automates a dedicated build tree
 per bug and asserts the catch, reporting the catch-latency K:
 
 ```sh
-sh test/sim/dst-bug-inject.sh 8    # K=8 max seeds; prints "CAUGHT bug N at seed 1"
+sh test/sim/dst-bug-inject.sh 9    # K=9 max seeds; prints "CAUGHT bug N at seed 1"
 ```
 
 | Bug | Site | Caught by |
@@ -117,7 +117,7 @@ sh test/sim/dst-bug-inject.sh 8    # K=8 max seeds; prints "CAUGHT bug N at seed
 | 5 CKPBADLSN | `__txn_checkpoint` records a wrong (too-forward) checkpoint LSN | `test_sim_ckp_lsn` (post-ckp committed txns lost) |
 
 Measured: **all five caught at K=1**. A normal build (`DB_DST_INJECT_BUG`
-undefined) compiles all five out; every scenario passes and the OFF library
+undefined) compiles all nine out; every scenario passes and the OFF library
 exports **0** `__db_sim_*` symbols.
 
 Sweep a scenario over many seeds (from the build dir):
