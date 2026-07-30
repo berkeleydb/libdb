@@ -25,6 +25,7 @@
 #include "sim_rng.h"
 #include "sim_fault.h"
 #include "sim_clock.h"
+#include "sim_buggify.h"		/* buggify coverage-query API (owned there) */
 
 #include <stdatomic.h>
 #include <stdio.h>
@@ -229,19 +230,36 @@ __db_sim_fault(pct_per_1000)
 	return (__db_sim_rng_range(DB_SIM_RNG_FAULT, 1000) < pct_per_1000);
 }
 
-/* ---- buggify (per-run cached coin) ---- */
-
+/* ---- buggify (per-run cached coin + coverage counters) ----
+ *
+ * A buggify point (see sim_buggify.h, DB_BUGGIFY) is a named site in real
+ * library code that, under sim, MAY take a legal-but-pessimal path -- the
+ * coin is flipped ONCE per run per name and cached, so every reach of a
+ * name agrees and the whole run replays (the FoundationDB discipline).
+ *
+ * Coverage: per name we count how many times the point was REACHED and,
+ * separately, whether its coin ACTIVATED (came up 1) this run.  A swarm
+ * folds these across a seed sweep: a point reached-but-never-activated
+ * across many seeds is a coverage gap (its pessimal path never ran).
+ */
 #define DB_SIM_BUG_MAX 64
-static char        g_bug_name[DB_SIM_BUG_MAX][48];
-static signed char g_bug_decided[DB_SIM_BUG_MAX];   /* 0/1 */
-static _Atomic int g_bug_n;
-static _Atomic int g_bug_on;
-static _Atomic int g_bug_pct;
+static char          g_bug_name[DB_SIM_BUG_MAX][48];
+static signed char   g_bug_decided[DB_SIM_BUG_MAX];   /* 0/1 */
+static unsigned long g_bug_reached[DB_SIM_BUG_MAX];   /* reaches this run */
+static _Atomic int   g_bug_n;
+static _Atomic int   g_bug_on;
+static _Atomic int   g_bug_pct;
 
 void
 __db_sim_buggify_enable(pct_per_1000)
 	unsigned pct_per_1000;
 {
+	int i;
+	for (i = 0; i < DB_SIM_BUG_MAX; i++) {
+		g_bug_name[i][0] = '\0';
+		g_bug_decided[i] = 0;
+		g_bug_reached[i] = 0;
+	}
 	atomic_store_explicit(&g_bug_n, 0, memory_order_relaxed);
 	atomic_store_explicit(&g_bug_pct, (int)pct_per_1000,
 	    memory_order_relaxed);
@@ -259,7 +277,8 @@ __db_sim_buggify_disable()
  * Once-per-run decision for buggify point `name`: 1 to take the pessimal
  * path, 0 otherwise.  Decided on first reach (seeded coin from the
  * BUGGIFY stream) and cached, so every reach of the same name in a run
- * agrees and the whole run replays.
+ * agrees and the whole run replays.  Each reach bumps the name's reach
+ * count for coverage reporting.
  *
  * ponytail: single global array + linear scan (bounded 64 names, called
  * from tests not a hot library path), a hash map if the site count grows.
@@ -279,8 +298,10 @@ __db_sim_buggify(name)
 
 	n = atomic_load_explicit(&g_bug_n, memory_order_relaxed);
 	for (i = 0; i < n; i++)
-		if (strncmp(g_bug_name[i], name, sizeof(g_bug_name[0])) == 0)
+		if (strncmp(g_bug_name[i], name, sizeof(g_bug_name[0])) == 0) {
+			g_bug_reached[i]++;
 			return (g_bug_decided[i]);
+		}
 
 	if (n >= DB_SIM_BUG_MAX)
 		return (0);                 /* table full: no buggify */
@@ -295,8 +316,67 @@ __db_sim_buggify(name)
 	(void)strncpy(g_bug_name[n], name, sizeof(g_bug_name[0]) - 1);
 	g_bug_name[n][sizeof(g_bug_name[0]) - 1] = '\0';
 	g_bug_decided[n] = (signed char)decision;
+	g_bug_reached[n] = 1;
 	atomic_store_explicit(&g_bug_n, n + 1, memory_order_relaxed);
 	return (decision);
+}
+
+/*
+ * Buggify coverage query (for the swarm / coverage report).  A name is
+ * only in the table once it has been reached at least once this run.
+ */
+int
+__db_sim_buggify_npoints()
+{
+	return (atomic_load_explicit(&g_bug_n, memory_order_relaxed));
+}
+
+const char *
+__db_sim_buggify_point_name(idx)
+	int idx;
+{
+	if (idx < 0 || idx >= atomic_load_explicit(&g_bug_n, memory_order_relaxed))
+		return (NULL);
+	return (g_bug_name[idx]);
+}
+
+unsigned long
+__db_sim_buggify_point_reached(idx)
+	int idx;
+{
+	if (idx < 0 || idx >= atomic_load_explicit(&g_bug_n, memory_order_relaxed))
+		return (0);
+	return (g_bug_reached[idx]);
+}
+
+int
+__db_sim_buggify_point_activated(idx)
+	int idx;
+{
+	if (idx < 0 || idx >= atomic_load_explicit(&g_bug_n, memory_order_relaxed))
+		return (0);
+	return (g_bug_decided[idx]);
+}
+
+/*
+ * Query the cached decision for a name WITHOUT reaching it (does not bump
+ * the reach count and does not decide an unseen point).  -1 if the name
+ * has not been reached yet this run.  Lets a test assert a specific point
+ * activated on a given seed.
+ */
+int
+__db_sim_buggify_decided(name)
+	const char *name;
+{
+	int i, n;
+
+	if (name == NULL)
+		return (-1);
+	n = atomic_load_explicit(&g_bug_n, memory_order_relaxed);
+	for (i = 0; i < n; i++)
+		if (strncmp(g_bug_name[i], name, sizeof(g_bug_name[0])) == 0)
+			return (g_bug_decided[i]);
+	return (-1);
 }
 
 /* ---- simulated I/O faults ---- */
