@@ -35,6 +35,10 @@ pbt_props = [
   'compint',       # varint codec round-trip/order-preserving (src/common/db_compint.c)
   'compress',      # __bam_defcompress/decompress round-trip (src/btree/bt_compress.c)
   'recno',         # recno append/get + DB_RENUMBER contiguity (src/btree/bt_recno.c)
+  'getlong',       # __db_getlong/__db_getulong string->number parse (src/common/db_getlong.c)
+  'defpfx',        # __bam_defpfx prefix-length separator (src/btree/bt_compare.c)
+  'lsn',           # LOGCOPY_TOLSN/FROMLSN LSN wire codec (src/dbinc/db_swap.h)
+  'chksum',        # __db_chksum/__db_check_chksum page checksum (src/hmac/hmac.c)
 ]
 
 # Try to locate hegel-c.  cmake + pkg-config are both attempted; either
