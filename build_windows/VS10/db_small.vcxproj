@@ -303,6 +303,10 @@
     <ClCompile Include="..\..\src\mutex\mut_win32.c"/>
     <ClCompile Include="..\..\src\os\os_abort.c"/>
     <ClCompile Include="..\..\src\os\os_alloc.c"/>
+    <ClCompile Include="..\..\src\os\os_atomic.c"/>
+    <ClCompile Include="..\..\src\os\os_aio.c"/>
+    <ClCompile Include="..\..\src\os\os_aio_iocp.c"/>
+    <ClCompile Include="..\..\src\os\os_aio_pool.c"/>
     <ClCompile Include="..\..\src\os\os_ctime.c"/>
     <ClCompile Include="..\..\src\os\os_pid.c"/>
     <ClCompile Include="..\..\src\os\os_root.c"/>

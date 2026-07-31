@@ -335,6 +335,10 @@
     <ClCompile Include="..\..\src\os\os_addrinfo.c"/>
     <ClCompile Include="..\..\src\os_windows\os_abs.c"/>
     <ClCompile Include="..\..\src\os\os_alloc.c"/>
+    <ClCompile Include="..\..\src\os\os_atomic.c"/>
+    <ClCompile Include="..\..\src\os\os_aio.c"/>
+    <ClCompile Include="..\..\src\os\os_aio_iocp.c"/>
+    <ClCompile Include="..\..\src\os\os_aio_pool.c"/>
     <ClCompile Include="..\..\src\os_windows\os_clock.c"/>
     <ClCompile Include="..\..\src\os_windows\os_config.c"/>
     <ClCompile Include="..\..\src\os_windows\os_cpu.c"/>
