@@ -301,12 +301,12 @@ and the `futex`/atomic self-time collapse.
 - Interaction of trickle/group-commit (#3 in the roadmap) — the async writer and
   the WAL group-commit should share the log-flush coordination.
 
-## 11. Reference implementations (sqlxtc, noxu) and refinements
+## 11. Reference implementations and refinements
 
-Two sibling projects implement LeanStore/Umbra-style cooling buffer managers;
-studying them validates this design and sharpens three points.
+Two prototype buffer managers implement LeanStore/Umbra-style cooling; studying
+them validates this design and sharpens three points.
 
-**sqlxtc `bufmgr.c`** (libxtc `examples/06_sqlxtc`): frame states
+**A cooling clock-sweep buffer manager**: frame states
 `FREE/HOT/COOL/LOADED/WRITING`; the eviction state lives in the parent **swip**
 and transitions are owned by whoever wins a CAS (loser retries) — exactly the
 tagged-swip model here. Its `evict_one` clock sweep is the key:
@@ -326,11 +326,12 @@ tagged-swip model here. Its `evict_one` clock sweep is the key:
   reclaims a clean victim and leaves dirty `COOL` pages for the trickler; it
   flushes a dirty page inline only as a last-resort progress guarantee.
 
-**noxu `noxu-evictor`** (Berkeley-DB-JE lineage): a per-operation **`CacheMode`**
-(`Default/Unchanged/EvictLn/EvictBin/KeepHot/MakeEvictable`) drives **two
-independent tracking sets** — `primary` and `scan_resistant` — and the evictor
-drains *scan → primary → dirty* with per-phase quotas. Pluggable LRU/Clock/ARC/
-CAR/LIRS; it notes LRU pollutes on scans while ARC/CAR/LIRS resist inherently.
+**A CacheMode-driven evictor** (Berkeley DB Java Edition lineage): a
+per-operation **`CacheMode`** (`Default/Unchanged/EvictLn/EvictBin/KeepHot/
+MakeEvictable`) drives **two independent tracking sets** — `primary` and
+`scan_resistant` — and the evictor drains *scan → primary → dirty* with
+per-phase quotas. Pluggable LRU/Clock/ARC/CAR/LIRS; it notes LRU pollutes on
+scans while ARC/CAR/LIRS resist inherently.
 
 ### What this changes here
 
