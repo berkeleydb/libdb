@@ -33,6 +33,10 @@ exclude = [
   "transapp.cs",
   "writetest.cs",
   "solaris.txt",
+  # A dead link in the upstream DocBook: am_second points at "second.javas"
+  # (a Java API example in the deferred java tree; the filename is even
+  # malformed). Dead in the source too -- not a migration regression.
+  "second.javas",
 ]
 
 # Internal-only run: skip all network schemes so a PR gate never depends on the
