@@ -71,7 +71,7 @@ jobs:
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: |
-          dist/android/build_android.sh aarch64 "${{ github.event.inputs.api || 24 }}"
+          bash dist/android/build_android.sh aarch64 "${{ github.event.inputs.api || 24 }}"
 
       - name: Assert the artifact is an ARM aarch64 shared object
         run: |
