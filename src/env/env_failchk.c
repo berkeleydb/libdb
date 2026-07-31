@@ -56,6 +56,15 @@ __env_failchk_pp(dbenv, flags)
 	ENV_ENTER(env, ip);
 	FAILCHK_THREAD(env, ip);	/* mark as failchk thread */
 	ret = __env_failchk_int(dbenv);
+	/*
+	 * Clear the failchk marker so ENV_LEAVE retires the slot normally.
+	 * ENV_ENTER/ENV_LEAVE preserve THREAD_FAILCHK across the nested
+	 * enters that the cleanup path (e.g. __dbreg_log_close -> __log_put)
+	 * performs, so this thread is still marked THREAD_FAILCHK here; undo
+	 * it explicitly since this is the frame that owns the marker.
+	 */
+	if (ip != NULL && ip->dbth_state == THREAD_FAILCHK)
+		ip->dbth_state = THREAD_ACTIVE;
 	ENV_LEAVE(env, ip);
 	return (ret);
 }
@@ -506,7 +515,17 @@ init:			ip->dbth_pid = id.pid;
 			SH_TAILQ_INIT(&ip->dbth_xatxn);
 		}
 		MUTEX_UNLOCK(env, renv->mtx_regenv);
-	} else
+	} else if (state == THREAD_ACTIVE && ip->dbth_state == THREAD_FAILCHK)
+		/*
+		 * A nested ENV_ENTER by the failchk thread (e.g. the failchk
+		 * cleanup path logging through __log_put) must not downgrade
+		 * the THREAD_FAILCHK marker to THREAD_ACTIVE: the mutex-destroy
+		 * code relies on it to recover a dead process's mutex in place
+		 * instead of returning a hard EBUSY.  No-op for normal threads,
+		 * whose state is never THREAD_FAILCHK.
+		 */
+		; /* preserve THREAD_FAILCHK */
+	else
 		ip->dbth_state = state;
 	*ipp = ip;
 
