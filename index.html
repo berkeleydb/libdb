@@ -1,63 +1,117 @@
 <!DOCTYPE html>
-<html lang="en-US" style=""><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>libdb — Berkeley DB, continued</title>
+<meta name="description" content="libdb: a maintained, modernized continuation of Berkeley DB — the embedded transactional (ACID, WAL, recovery) key/value store. Source, releases, and documentation.">
+<link rel="canonical" href="https://libdb.org/">
+<meta property="og:title" content="libdb — Berkeley DB, continued">
+<meta property="og:description" content="A maintained continuation of Berkeley DB: embedded, transactional, no server. Source, releases, docs.">
+<meta property="og:url" content="https://libdb.org/">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+<!-- GoatCounter (privacy-friendly, no cookies) -->
+<script data-goatcounter="https://stats.burd.me/count" async src="//stats.burd.me/count.js"></script>
+</head>
+<body>
+<header>
+  <h1>libdb</h1>
+  <p class="tagline">Berkeley DB, continued — an embedded, transactional key/value store.</p>
+  <nav>
+    <a href="https://github.com/berkeleydb/libdb">Source</a>
+    <a href="https://github.com/berkeleydb/libdb/releases">Releases</a>
+    <a href="#docs">Docs</a>
+    <a href="https://github.com/berkeleydb/libdb/actions">CI</a>
+    <a href="https://github.com/berkeleydb/libdb/issues">Issues</a>
+  </nav>
+</header>
 
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+<main>
 
-    <title>libdb.org</title>
-    <meta property="og:title" content="libdb.org">
-    <meta property="og:locale" content="en_US">
-    <meta name="description" content="libdb Website">
-    <meta property="og:description" content="libdb Website">
-    <link rel="canonical" href="https://libdb.org/">
-    <meta property="og:url" content="https://libdb.org/">
-    <meta property="og:site_name" content="libdb.org">
-    <script type="application/ld+json">
-      {"@type":"WebSite","url":"https://libdb.org/","headline":"libdb.org","name":"libdb.org","description":"libdb Website","@context":"https://schema.org"}</script>
+<section id="about">
+  <p><strong>libdb</strong> is a community continuation of Berkeley DB, maintained by a
+  former member of Sleepycat Software and Oracle's Berkeley DB team. It keeps Berkeley
+  DB what it has always been — a small, fast, <em>embedded</em> library (no server, no
+  daemon) that links directly into your process — while modernizing the build, the
+  tests, and the code.</p>
 
-    <link rel="stylesheet" href="style.css">
-    <script src="jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
-    <script src="respond.js"></script>
-    <!--[if lt IE 9]>
-	<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-     <!--[if lt IE 8]>
-     <link rel="stylesheet" href="/assets/css/ie.css">
-     <![endif]-->
-      <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<!-- Begin GoatCounter Code -->
-<script data-goatcounter="https://stats.burd.me/count"
-        async src="//stats.burd.me/count.js"></script>
-<!-- End GoatCounter Code -->
-  </head>
-  <body data-gr-c-s-loaded="true">
-    <div id="header">
-      <nav>
-	<li class="fork"><a href="https://github.com/berkeleydb">View On GitHub</a></li>
-      </nav>
-    </div>
+  <p class="what">What it is:
+    <span class="tag">ACID transactions</span>
+    <span class="tag">write-ahead log + crash recovery</span>
+    <span class="tag">B-tree · Hash · Queue · Recno</span>
+    <span class="tag">concurrent multi-process</span>
+    <span class="tag">C / C++ / SQL</span>
+    <span class="tag">tiny footprint</span>
+  </p>
+</section>
 
-    <div class="wrapper">
-      <section>
+<section id="get">
+  <h2>Get it</h2>
+  <p>Latest release: <a href="https://github.com/berkeleydb/libdb/releases/latest"><strong>v5.3.33</strong></a>
+     (<a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.33">notes</a>).</p>
+  <pre><code>git clone https://github.com/berkeleydb/libdb.git
+cd libdb/build_unix
+../dist/configure &amp;&amp; make</code></pre>
+  <p class="note">Also builds with Meson/Ninja (<code>meson setup build &amp;&amp; ninja -C build</code>)
+     and ships a Nix flake (<code>nix build github:berkeleydb/libdb</code>).</p>
+</section>
 
-	<div id="title">
-	  <h1 id="table-of-contents">Documentation</h1>
-	  <p>A partial archive of sources and information related to BerkeleyDB maintained by a former employee of Sleepycat Software and Oracle's Berkeley DB team.  This is not meant to be a comprehensive archive, as I have no plans to include anything related to releases under the GPL.</p>
-	  <p>Releases from Oracle can be found at https://ftp.osuosl.org/pub/blfs/conglomeration/db/db-M.m.p.tar.gz as in 6.0.19</a>
-	  <p>FreeBSD maintains <a href="https://ftp.tw.freebsd.org/distfiles/bdb/">a complete archive of releases as source code and patches</a> they use.</p>
-	</div>
+<section id="releases">
+  <h2>Releases</h2>
+  <table>
+    <thead><tr><th>Version</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.33">v5.3.33</a></td><td>Testing depth: DST fault-class parity + formal verification (CBMC), PBT hardening</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.32">v5.3.32</a></td><td>Coverage &amp; correctness: full-suite coverage to the mid-70s, several bug fixes</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.31">v5.3.31</a></td><td>Testing &amp; hardening: fuzzing, malloc-injection, 10 bug fixes</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.30">v5.3.30</a></td><td>SSI (serializable snapshot isolation) hardening, build hygiene</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.28">v5.3.28</a></td><td>Berkeley DB 11gR2 (11.2.5.3.28) — the last Oracle open-source release</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v4.6.21-SSI">v4.6.21-SSI</a></td><td>Cahill SSI prototype (SIGMOD 2008), historical</td></tr>
+    </tbody>
+  </table>
+  <p class="note"><a href="https://github.com/berkeleydb/libdb/releases">All releases &rarr;</a> ·
+     Oracle's original tarballs mirror at
+     <a href="https://ftp.osuosl.org/pub/blfs/conglomeration/db/">osuosl.org</a> ·
+     FreeBSD keeps <a href="https://ftp.tw.freebsd.org/distfiles/bdb/">a full source+patch archive</a>.</p>
+</section>
 
-	<h2 id="table-of-contents">BerkeleyDB</h2>
-	<ul>
-	  <li><a href="docs/db/5.3.21">libdb-5.3.21</a></li>
-	  <li><a href="docs/db/5.3.28">libdb-5.3.28</a></li>
-	</ul>
+<section id="docs">
+  <h2>Documentation</h2>
+  <p>The full Berkeley DB manuals — API reference, Getting Started guides, and
+     the programmer's reference — ship in the repository under
+     <a href="https://github.com/berkeleydb/libdb/tree/master/docs"><code>docs/</code></a>
+     and are the authoritative reference for the current release.</p>
+  <h3>Archived manuals (hosted here)</h3>
+  <ul class="docs">
+    <li><a href="docs/db/5.3.28/">Berkeley DB 5.3.28</a> — API reference, Getting Started (C, C++, Java), Reference Guide</li>
+    <li><a href="docs/db/5.3.21/">Berkeley DB 5.3.21 (11gR2)</a> — API reference and guides</li>
+    <li><a href="docs/dbxml/2.5.16/">Berkeley DB XML 2.5.16</a> — the XML/XQuery layer (historical)</li>
+  </ul>
+  <p class="note">The 5.3.x manuals apply to the current 5.3.33 release; the on-disk,
+     log, and API formats are stable across the 5.3 line.</p>
+</section>
 
-	<h2 id="table-of-contents">BerkeleyDB XML</h2>
-	<ul>
-	  <li><a href="docs/dbxml/2.5.16">dbxml-2.5.16</a></li>
-	</ul>
+<section id="status">
+  <h2>Project status</h2>
+  <p>Actively maintained. The single-node transactional core is production-grade and,
+     by the fork's own measure, better-tested than the last Oracle release: unit tests,
+     deterministic simulation testing (crash / torn-write / corruption / disk-full /
+     clock-skew / crash-during-recovery / multi-process failchk / buggify),
+     property-based tests, fuzzing, malloc-fault injection, static analysis + ABI
+     checks, and CBMC formal verification — all run in
+     <a href="https://github.com/berkeleydb/libdb/actions">CI</a> across Linux, macOS,
+     32-bit, and multiple compilers and mutex backends.</p>
+  <p class="note">License: the historical Sleepycat license for the original code;
+     see the repository for details on newer contributions.</p>
+</section>
 
-      </section>
-    </div>
-  </body>
+</main>
+
+<footer>
+  <p>libdb.org — a partial, GPL-free archive and continuation of Berkeley DB.
+     Not affiliated with Oracle. Berkeley DB is a trademark of Oracle.</p>
+  <p><a href="https://github.com/berkeleydb/libdb">github.com/berkeleydb/libdb</a></p>
+</footer>
+</body>
 </html>
