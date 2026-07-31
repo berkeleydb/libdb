@@ -1,0 +1,17 @@
+# Project wordlist for codespell over the libdb docs.
+#
+# codespell only flags words in its own typo dictionary, and (verified) it does
+# NOT flag Berkeley DB jargon like mpool / DBT / txnid / lsn / btree / recno /
+# subdatabase / memp / repmgr / logc. So this list is deliberately short: it is
+# for the handful of domain tokens or abbreviations that a future codespell
+# dictionary bump might start flagging. Add a term here (lowercased) to teach
+# codespell it is correct. One word per line; codespell reads this via
+# --ignore-words.
+#
+# Known BDB terms (kept as documentation even though current codespell passes
+# them): mpool, dbt, txnid, lsn, btree, recno, subdatabase, memp, repmgr, logc.
+mpool
+txnid
+subdatabase
+recno
+btree
