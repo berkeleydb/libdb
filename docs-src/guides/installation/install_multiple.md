@@ -1,0 +1,14 @@
+---
+title: "Building with multiple versions of Berkeley DB"
+api-name: "Building with multiple versions of Berkeley DB"
+source: docs/installation/install_multiple.html
+---
+## Building with multiple versions of Berkeley DB
+
+In some cases it may be necessary to build applications which include multiple versions of Berkeley DB. Examples include applications which include software from other vendors, or applications running on a system where the system C library itself uses Berkeley DB. In such cases, the two versions of Berkeley DB may be incompatible, that is, they may have different external and internal interfaces, and may even have different underlying database formats.
+
+To create a Berkeley DB library whose symbols won't collide with other Berkeley DB libraries (or other application or library modules, for that matter), configure Berkeley DB using the <a href="build_unix_conf.md#build_unix_conf.--with-uniquename=NAME" class="link">--with-uniquename=NAME</a> configuration option, and then build Berkeley DB as usual. (Note that <a href="build_unix_conf.md#build_unix_conf.--with-uniquename=NAME" class="link">--with-uniquename=NAME</a> only affects the Berkeley DB C language library build; loading multiple versions of the C++ or Java APIs will require additional work.) The modified symbol names are hidden from the application in the Berkeley DB header files, that is, there is no need for the application to be aware that it is using a special library build as long as it includes the appropriate Berkeley DB header file.
+
+If "NAME" is not specified when configuring with <a href="build_unix_conf.md#build_unix_conf.--with-uniquename=NAME" class="link">--with-uniquename=NAME</a>, a default value built from the major and minor numbers of the Berkeley DB release will be used. It is rarely necessary to specify NAME; using the major and minor release numbers will ensure that only one copy of the library will be loaded into the application unless two distinct versions really are necessary.
+
+When distributing any library software that uses Berkeley DB, or any software which will be recompiled by users for their systems, we recommend two things: First, include the Berkeley DB release as part of your release. This will insulate your software from potential Berkeley DB API changes as well as simplifying your coding because you will only have to code to a single version of the Berkeley DB API instead of adapting at compile time to whatever version of Berkeley DB happens to be installed on the target system. Second, use <a href="build_unix_conf.md#build_unix_conf.--with-uniquename=NAME" class="link">--with-uniquename=NAME</a> when configuring Berkeley DB, because that will insure that you do not unexpectedly collide with other application code or a library already installed on the target system.
