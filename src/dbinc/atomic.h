@@ -108,7 +108,16 @@ typedef struct {
  * Modification operations delegate to ENV-aware functions.
  */
 #define	atomic_read(p)		__os_atomic_read(p)
+/*
+ * atomic_init collides with the C++ <atomic> free function std::atomic_init
+ * (and C11 <stdatomic.h> atomic_init).  MSVC's C++ standard library pulls
+ * <atomic> into any C++ translation unit, and the macro would rewrite that
+ * declaration -> compile failure.  Berkeley DB only calls atomic_init() from
+ * C sources, so define the macro only for C.
+ */
+#if !defined(__cplusplus)
 #define	atomic_init(p, val)	__os_atomic_init((p), (val))
+#endif
 
 /*
  * atomic_read_relaxed: torn-read-free load with no ordering, for pure
