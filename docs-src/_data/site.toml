@@ -1,0 +1,10 @@
+# Single source of truth for docs boilerplate.
+# The version is NOT stored here — it is read live from dist/RELEASE at build
+# time (see build.py load_version). Everything else that used to be duplicated
+# across 2703 generated HTML pages lives here, in ONE place.
+
+project    = "Berkeley DB"
+short_name = "libdb"
+base_url   = "https://libdb.org/docs/"
+copyright  = "Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved."
+tagline    = "The Berkeley DB reference documentation"
