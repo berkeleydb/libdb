@@ -49,6 +49,7 @@
             pkgs.gcc pkgs.clang pkgs.autoconf pkgs.gnumake
             pkgs.tcl   # for the TCL test harness (--enable-test)
             pkgs.cbmc  # bounded model checker for the formal-verification harnesses (test/cbmc)
+            pkgs.pandoc  # docs pipeline: html->md extraction + md->html/pdf/man (docs-src/build.py)
           ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
             pkgs.liburing  # Linux io_uring AIO backend (HAVE_IO_URING)
           ];
