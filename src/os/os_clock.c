@@ -38,8 +38,6 @@ __os_gettime(env, tp, monotonic)
 #endif
 		RETRY_CHK((clock_gettime(
 		    CLOCK_REALTIME, (struct timespec *)tp)), ret);
-
-	RETRY_CHK((clock_gettime(CLOCK_REALTIME, (struct timespec *)tp)), ret);
 	if (ret != 0) {
 		sc = "clock_gettime";
 		goto err;
