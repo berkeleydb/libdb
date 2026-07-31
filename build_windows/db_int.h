@@ -24,9 +24,6 @@
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
 #endif
-#ifdef HAVE_VXWORKS
-#include <selectLib.h>
-#endif
 #endif
 
 #if TIME_WITH_SYS_TIME
@@ -40,11 +37,7 @@
 #endif
 #endif
 
-#ifdef HAVE_VXWORKS
-#include <net/uio.h>
-#else
 #include <sys/uio.h>
-#endif
 
 #if defined(HAVE_REPLICATION_THREADS)
 #ifdef HAVE_SYS_SOCKET_H
@@ -644,12 +637,13 @@ typedef enum {
 	if ((ip) != NULL) {						\
 		DB_ASSERT(env, ((ip)->dbth_state == THREAD_ACTIVE  ||	\
 		    (ip)->dbth_state == THREAD_FAILCHK));		\
-		(ip)->dbth_state = THREAD_OUT;				\
+		if ((ip)->dbth_state != THREAD_FAILCHK)			\
+			(ip)->dbth_state = THREAD_OUT;			\
 	}								\
 } while (0)
 #else
 #define	ENV_LEAVE(env, ip) do {						\
-	if ((ip) != NULL)						\
+	if ((ip) != NULL && (ip)->dbth_state != THREAD_FAILCHK)		\
 		(ip)->dbth_state = THREAD_OUT;				\
 } while (0)
 #endif
