@@ -2,8 +2,8 @@
 
 Coverage-guided fuzz harnesses for libdb, targeting the highest-bug-yield
 surfaces: the on-disk **page parser**, the **recovery/log replay** path, and
-the **public API call-sequence**.  This is Tier C of
-`.agents/test-suite-maturity-plan.md` — the SQLite `dbsqlfuzz` / TigerBeetle
+the **public API call-sequence**.  This is Tier C of the test-suite maturity
+plan — the SQLite `dbsqlfuzz` / TigerBeetle
 VOPR axis: continuous, mutation-driven, ASan+UBSan builds.
 
 Each harness is a standard `LLVMFuzzerTestOneInput(const uint8_t*, size_t)`

@@ -7,7 +7,7 @@ leaves no corruption. libdb routes essentially all allocation through one
 seam — `__os_malloc` / `__os_calloc` / `__os_realloc` / `__os_umalloc` /
 `__os_urealloc` in `src/os/os_alloc.c` — so a single injection point covers
 the library. This is the dynamic complement to the Coccinelle `malloc-leak` /
-`mutex-unbalanced` static rules (Tier B1 of `.agents/test-suite-maturity-plan.md`).
+`mutex-unbalanced` static rules (Tier B1 of the test-suite maturity plan).
 
 ## What's here
 

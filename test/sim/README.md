@@ -1,8 +1,8 @@
 # test/sim — Deterministic Simulation Testing (DST) for libdb
 
 Seed-driven, replayable fault-injection and crash/recovery testing, modeled on
-FoundationDB / TigerBeetle and the xtc project's DST. See
-See [`DESIGN.md`](DESIGN.md) (or the local canonical copy `.agents/dst-design.md`) for the full architecture
+FoundationDB / TigerBeetle and a prior cooperative-fiber DST runtime. See
+See [`DESIGN.md`](DESIGN.md) for the full architecture
 and scenario catalog.
 
 **v1 scope:** deterministic fault-injection + crash/recovery on the single-process
@@ -56,7 +56,7 @@ to the stock code path, and none of `sim_core.c`/`sim_os_hooks.c` are linked
 From the nix dev shell:
 
 ```sh
-cd /home/gburd/ws/libdb
+cd /path/to/libdb
 nix develop --command bash -c '
   cd build_unix &&
   ../dist/configure --enable-debug --enable-dst &&
@@ -158,5 +158,4 @@ Measured 2000-seed soak: 0 invariant violations, every fault class activates.
   remove them at start. If a run is killed mid-way, remove leftovers with
   `trash TESTDIR_sim_*` (this repo blocks `rm -rf`).
 - **Always recover before verifying** a crashed transactional env — verifying
-  an unrecovered crash falsely looks like corruption (see
-  `.agents/concurrent-btree-corruption.md`). The crash pilot does this.
+  an unrecovered crash falsely looks like corruption. The crash pilot does this.
