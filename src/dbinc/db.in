@@ -2778,16 +2778,21 @@ typedef struct {
  *
  * The global variables dbrdonly, dirf and pagf were not retained when 4BSD
  * replaced the dbm interface with ndbm, and are not supported here.
+ *
+ * These unprefixed 4BSD names (delete, fetch, firstkey, nextkey, store, ...)
+ * are C-only historic aliases: they collide with C++ keywords and standard
+ * library member names (e.g. std::atomic<>::store, which MSVC's <atomic>
+ * pulls into any C++ translation unit).  Suppress them for C++.
  */
+#if !defined(__cplusplus)
 #define	dbminit(a)	__db_dbm_init@DB_VERSION_UNIQUE_NAME@(a)
 #define	dbmclose	__db_dbm_close@DB_VERSION_UNIQUE_NAME@
-#if !defined(__cplusplus)
 #define	delete(a)	__db_dbm_delete@DB_VERSION_UNIQUE_NAME@(a)
-#endif
 #define	fetch(a)	__db_dbm_fetch@DB_VERSION_UNIQUE_NAME@(a)
 #define	firstkey	__db_dbm_firstkey@DB_VERSION_UNIQUE_NAME@
 #define	nextkey(a)	__db_dbm_nextkey@DB_VERSION_UNIQUE_NAME@(a)
 #define	store(a, b)	__db_dbm_store@DB_VERSION_UNIQUE_NAME@(a, b)
+#endif
 
 /*******************************************************
  * Hsearch historic interface.
