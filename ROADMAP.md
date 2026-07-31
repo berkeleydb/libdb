@@ -34,7 +34,7 @@ rate the benchmark quantifies.
 
 ## Direction, measured baseline, and sequencing
 
-A July 2026 benchmark on a 2-socket `i4i.metal` (128 vCPU, 2 NUMA nodes, 1 TB
+A July 2026 benchmark on a 2-socket bare-metal server (128 vCPU, 2 NUMA nodes, 1 TB
 RAM, local NVMe RAID0) compared libdb 5.3.30 to WiredTiger as embedded engines
 (YCSB-style driver against both C APIs; data on NVMe, not tmpfs; cache sized at
 0.5/0.75/1.0/1.5x the working set). It quantified where we stand:
@@ -94,7 +94,7 @@ shards)
    applied once the per-node path is fast.
 
 Every step is gated by the TCL correctness suite, TSan/ASan clean, and a re-run
-of the `i4i.metal` libdb-vs-WT benchmark (measured, not asserted — #17). The
+of the bare-metal libdb-vs-WT benchmark (measured, not asserted — #17). The
 numbered items below are the work units; this section is the order and the
 rationale.
 
@@ -158,8 +158,8 @@ Add a log-structured merge-tree access method alongside B-tree/Hash/Queue/Recno
 for write-heavy workloads. Design synthesized in
 [`docs/design/lsm.md`](docs/design/lsm.md) from three implementations plus a
 paper: HanoiDB Towers-of-Hanoi levels + SuRF/Bloom filters and **structure-level
-adaptation** (SingleIndex - Hybrid - MultiLevel) from `gburd/aether`'s
-`src/lsm`, combined with **segment-level adaptive compaction** (per-segment
+adaptation** (SingleIndex - Hybrid - MultiLevel) from a structure-adaptive
+HanoiDB-style LSM prototype, combined with **segment-level adaptive compaction** (per-segment
 leveled - tiered selection via a finite-state controller with cooldowns) from
 *"Amethyst: Adaptive Compaction for LSM Trees via Segment-Level Policy
 Selection"* (Shankar & Rose). These are two **orthogonal adaptation axes**
@@ -192,7 +192,7 @@ uncoordinated manner** — concurrent tries (**Ctrie**), **hash array mapped tri
 to reduce coordination on the hash directory and per-bucket latching under high
 core counts. This review feeds two consumers: the in-place HASH access method,
 and the **in-memory key directory of the `LSM-HASH`/Bitcask config (#14)** —
-`gburd/libxtc`'s `rexis` Bitcask uses a plain hash directory today, which a
+a Bitcask store uses a plain hash directory today, which a
 Ctrie/HAMT would make concurrently updatable without a global directory latch.
 See [`docs/design/lsm.md`](docs/design/lsm.md) for how the HASH directory and
 the log-structured core relate.
@@ -202,25 +202,25 @@ the log-structured core relate.
 ### 14. JE-style index-in-WAL with a log cleaner (new config option)
 Offer a **log-structured storage model** as a per-database configuration option
 for **both B-tree and Hash**, modeled on Berkeley DB **Java Edition (JE)** and
-Oracle NoSQL DB (cf. `gburd/noxu`): the index and data live *in the WAL/log*
+Oracle NoSQL DB: the index and data live *in the WAL/log*
 itself, with a background **cleaner** reclaiming obsolete log segments instead
 of updating pages in place. This trades in-place writes for sequential log
 writes (great on flash and for write amplification). A **`LSM-HASH`** variant
 along these lines resembles Riak's **Bitcask** (append-only log + in-memory key
-directory; cf. `gburd/libxtc` `rexis`) and is a natural fit for write-heavy,
+directory) and is a natural fit for write-heavy,
 point-lookup workloads. Per [`docs/design/lsm.md`](docs/design/lsm.md), this
-shares **one log-structured core** with the adaptive LSM (#9): a JE/`noxu`
+shares **one log-structured core** with the adaptive LSM (#9): a JE-style
 **cleaner** and an LSM **compactor** are the same mechanism viewed from
 different access methods (B-tree-in-log uses the cleaner; Hash uses Bitcask
-merge). Reuse `noxu`'s VLSN/cleaner learnings, and align the cleaner's
+merge). Reuse the index-in-WAL VLSN/cleaner learnings, and align the cleaner's
 reclaim-scheduling with the adaptive controller (#9) so log GC and compaction
 share one workload-driven policy.
 
 ### 15. Scalable replication / HA: quorum systems + Fast Paxos
 Rework replication toward flexible, analyzable consensus. Use **quorum systems**
-via `gburd/rs-quoracle` (construct and analyze read/write quorum systems to tune
+via a quorum-systems toolkit (construct and analyze read/write quorum systems to tune
 the latency/fault-tolerance/throughput trade-off) together with **Fast Paxos**
-for low-latency commit, following the approach taken in `gburd/noxu`. Goal:
+for low-latency commit, following the JE-style index-in-WAL replication approach. Goal:
 replication that scales out reads, survives node loss with tunable quorums, and
 avoids the leader bottleneck of classic single-master log shipping.
 

@@ -1,7 +1,7 @@
 # Code coverage (gcov/lcov) -- advisory measurement tier.
 #
 # SQLite's ethic is 100% MC/DC branch coverage. We are nowhere near that, but
-# Tier B3 of .agents/test-suite-maturity-plan.md says: MEASURE branch coverage,
+# Tier B3 of the project's test-suite maturity plan says: MEASURE branch coverage,
 # then aim new DST/PBT/unit tests at the uncovered branches, and ratchet the
 # number upward. This workflow does the measuring.
 #
