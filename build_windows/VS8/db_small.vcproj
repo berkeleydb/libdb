@@ -237,6 +237,9 @@
     <File RelativePath="..\..\src\os\os_abort.c"/>
     <File RelativePath="..\..\src\os\os_alloc.c"/>
     <File RelativePath="..\..\src\os\os_atomic.c"/>
+    <File RelativePath="..\..\src\os\os_aio.c"/>
+    <File RelativePath="..\..\src\os\os_aio_iocp.c"/>
+    <File RelativePath="..\..\src\os\os_aio_pool.c"/>
     <File RelativePath="..\..\src\os\os_ctime.c"/>
     <File RelativePath="..\..\src\os\os_pid.c"/>
     <File RelativePath="..\..\src\os\os_root.c"/>
