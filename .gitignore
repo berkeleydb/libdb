@@ -30,3 +30,7 @@ lab/bench/tproc_c
 lab/bench/tproc_b
 lab/bench/tproc_h
 lab/bench/ssi_abort_bench
+
+# Generated documentation (docs-src/build.py output)
+docs-build/
+docs-src/**/__pycache__/
