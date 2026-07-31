@@ -236,6 +236,7 @@
     <File RelativePath="..\..\src\mutex\mut_win32.c"/>
     <File RelativePath="..\..\src\os\os_abort.c"/>
     <File RelativePath="..\..\src\os\os_alloc.c"/>
+    <File RelativePath="..\..\src\os\os_atomic.c"/>
     <File RelativePath="..\..\src\os\os_ctime.c"/>
     <File RelativePath="..\..\src\os\os_pid.c"/>
     <File RelativePath="..\..\src\os\os_root.c"/>
