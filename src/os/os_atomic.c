@@ -1896,6 +1896,15 @@ __os_atomic_thread_fence()
     !defined(HAVE_ATOMIC_SYNC_BUILTIN)
 
 /*
+ * The Interlocked* intrinsics take a `LONG volatile *`.  We cast the address
+ * of db_atomic_t::value to that type through `interlocked_val` (matching
+ * mut_win32.c); it was referenced here but never defined for this TU.
+ */
+#ifndef interlocked_val
+#define	interlocked_val		long volatile *
+#endif
+
+/*
  * __os_atomic_init --
  *	Initialize an atomic variable (Windows).
  *
