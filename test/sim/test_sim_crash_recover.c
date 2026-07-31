@@ -21,7 +21,7 @@
  *	stream, so a given seed produces the exact same committed set --
  *	the same seed replays the same run.
  *
- *	CRITICAL (see .agents/concurrent-btree-corruption.md): a crashed
+ *	CRITICAL: a crashed
  *	txn env verified WITHOUT recovery falsely looks corrupt.  This
  *	pilot ALWAYS runs DB_RECOVER before db->verify.
  *

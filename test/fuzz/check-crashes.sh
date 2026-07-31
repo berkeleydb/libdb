@@ -7,8 +7,8 @@
 # instead.  A crash/ASan fault here is a regression.
 #
 # Leak detection is ON: the DB_PRIVATE region-teardown leak that used to
-# fire on these verify / recovery cleanup paths is now fixed (see
-# .agents/fuzz-found-bugs.md), so every committed seed replays leak-clean.
+# fire on these verify / recovery cleanup paths is now fixed, so every
+# committed seed replays leak-clean.
 # We assert both the memory-safety property (no crash/OOB/FPE) and no leak.
 #
 # Build target: the standard (--enable-debug) build that run.sh uses.  Do NOT

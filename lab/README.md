@@ -60,8 +60,8 @@ Example:
 
 Prototype of the two-axis adaptive controller from
 [`docs/design/lsm.md`](../../docs/design/lsm.md): one rolling-window + cooldown
-core driving both the **structure axis** (SINGLE ⇄ HYBRID ⇄ MULTILEVEL, aether-
-style) and the **per-segment policy axis** (LEVELED ⇄ TIERED, Amethyst-style).
+core driving both the **structure axis** (SINGLE ⇄ HYBRID ⇄ MULTILEVEL,
+structure-adaptive) and the **per-segment policy axis** (LEVELED ⇄ TIERED, Amethyst-style).
 
 Time is a caller-supplied "tick" so the logic is deterministic and testable.
 

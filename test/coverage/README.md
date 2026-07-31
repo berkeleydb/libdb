@@ -1,7 +1,7 @@
 # Code coverage (Tier B3)
 
 SQLite's testing ethic is **100% MC/DC branch coverage**. libdb is nowhere near
-that yet — but per Tier B3 of `.agents/test-suite-maturity-plan.md` the point is
+that yet — but per Tier B3 of the test-suite maturity plan the point is
 to **measure** branch coverage now, aim new DST/PBT/unit tests at the uncovered
 branches, and ratchet the number upward over time. This directory holds the
 measurement machinery.
