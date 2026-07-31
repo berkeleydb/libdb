@@ -1,0 +1,44 @@
+# Nav/index metadata for the collections guide (auto-derived from the
+# source index.html TOC chain). `order` pins the reading order for nav
+# and later PDF assembly; `landing` is the tree's index page.
+
+title = "Berkeley DB Collections Tutorial"
+landing = "index.md"
+order = [
+  "preface",
+  "moreinfo",
+  "intro",
+  "developing",
+  "tutorialintroduction",
+  "BasicProgram",
+  "opendbenvironment",
+  "openclasscatalog",
+  "opendatabases",
+  "createbindingscollections",
+  "implementingmain",
+  "usingtransactions",
+  "addingdatabaseitems",
+  "retrievingdatabaseitems",
+  "handlingexceptions",
+  "UsingSecondaries",
+  "openingforeignkeys",
+  "indexedcollections",
+  "retrievingbyindexkey",
+  "Entity",
+  "creatingentitybindings",
+  "collectionswithentities",
+  "entitieswithcollections",
+  "Tuple",
+  "tupleswithkeycreators",
+  "tuplekeybindings",
+  "tuple-serialentitybindings",
+  "sortedcollections",
+  "SerializableEntity",
+  "transientfieldsinbinding",
+  "removingredundantvalueclasses",
+  "Summary",
+  "collectionOverview",
+  "UsingCollectionsAPI",
+  "UsingStoredCollections",
+  "SerializedObjectStorage",
+]
