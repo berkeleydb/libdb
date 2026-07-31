@@ -10,6 +10,8 @@ test/sim/TESTDIR_sim_*/
 # Meson/Ninja out-of-tree build dirs
 build-meson/
 build/
+build-android/
+build-android.cross.txt
 
 # nix build output symlink
 /result
