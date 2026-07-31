@@ -13,7 +13,7 @@ DB_ENV->set_isalive(DB_ENV *dbenv, int (*is_alive)(DB_ENV *dbenv,
     pid_t pid, db_threadid_t tid, u_int32_t flags));  
 ```
 
-Declare a function that returns if a thread of control (either a true thread or a process) is still running. The `DB_ENV->set_isalive()` method supports the <a href="envfailchk.md" class="xref" title="DB_ENV-&gt;failchk()">DB_ENV-&gt;failchk()</a> method. For more information, see <a href="../../programmer_reference/cam_app.html" class="olink">Architecting Data Store and Concurrent Data Store applications</a>, and <a href="../../programmer_reference/transapp_app.html" class="olink">Architecting Transactional Data Store applications</a>, both in the *Berkeley DB Programmer's Reference Guide*.
+Declare a function that returns if a thread of control (either a true thread or a process) is still running. The `DB_ENV->set_isalive()` method supports the <a href="envfailchk.md" class="xref" title="DB_ENV-&gt;failchk()">DB_ENV-&gt;failchk()</a> method. For more information, see <a href="../../guides/programmer_reference/cam_app.md" class="olink">Architecting Data Store and Concurrent Data Store applications</a>, and <a href="../../guides/programmer_reference/transapp_app.md" class="olink">Architecting Transactional Data Store applications</a>, both in the *Berkeley DB Programmer's Reference Guide*.
 
 The `DB_ENV->set_isalive()` method configures operations performed using the specified <a href="env.md" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle, not all operations performed on the underlying database environment.
 

@@ -31,7 +31,7 @@ In the presence of duplicate key values, `DB->get()` will return the first data 
 
 When called on a database that has been made into a secondary index using the <a href="dbassociate.md" class="xref" title="DB-&gt;associate()">DB-&gt;associate()</a> method, the `DB->get()` and `DB->pget()` methods return the key from the secondary index and the data item from the primary database. In addition, the `DB->pget()` method returns the key from the primary database. In databases that are not secondary indices, the `DB->pget()` method will always fail.
 
-The `DB->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the specified key is not in the database. The `DB->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if the database is a Queue or Recno database and the specified key exists, but was never explicitly created by the application or was later deleted. Unless otherwise specified, the `DB->get()` method returns a non-zero error value on failure and 0 on success.
+The `DB->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the specified key is not in the database. The `DB->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if the database is a Queue or Recno database and the specified key exists, but was never explicitly created by the application or was later deleted. Unless otherwise specified, the `DB->get()` method returns a non-zero error value on failure and 0 on success.
 
 ### Parameters
 
@@ -65,7 +65,7 @@ The **flags** parameter must be set to 0 or one of the following values:
 
   The DB_CONSUME_WAIT flag is the same as the DB_CONSUME flag, except that if the Queue database is empty, the thread of control will wait until there is data in the queue before returning. The underlying database must be of type Queue for DB_CONSUME_WAIT to be specified.
 
-  If lock or transaction timeouts have been specified, the `DB->get()` method with the DB_CONSUME_WAIT flag may return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>. This failure, by itself, does not require the enclosing transaction be aborted.
+  If lock or transaction timeouts have been specified, the `DB->get()` method with the DB_CONSUME_WAIT flag may return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>. This failure, by itself, does not require the enclosing transaction be aborted.
 
 - `DB_GET_BOTH`
 

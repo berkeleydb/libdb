@@ -14,7 +14,7 @@ DB_ENV->cdsgroup_begin(DB_ENV *dbenv, DB_TXN **tid);
 
 The `DB_ENV->cdsgroup_begin()` method allocates a locker ID in an environment configured for Berkeley DB Concurrent Data Store applications. It copies a pointer to a <a href="txn.md" class="link" title="Chapter 12.  The DB_TXN Handle">DB_TXN</a> that uniquely identifies the locker ID into the memory to which **tid** refers. Calling the <a href="txncommit.md" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a> method will discard the allocated locker ID.
 
-See <a href="../../programmer_reference/cam.html#cam_intro" class="olink">Berkeley DB Concurrent Data Store applications</a> for more information about when this is required.
+See <a href="../../guides/programmer_reference/cam.md#cam_intro" class="olink">Berkeley DB Concurrent Data Store applications</a> for more information about when this is required.
 
 The `DB_ENV->cdsgroup_begin()` method may be called at any time during the life of the application.
 

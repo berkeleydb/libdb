@@ -20,7 +20,7 @@ source: docs/api_reference/C/dbt.html
  
 ```
 
-Storage and retrieval for the <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> access methods are based on key/data pairs. Both key and data items are represented by the DBT data structure. (The name DBT is a mnemonic for data base thang, and was used because no one could think of a reasonable name that wasn't already in use somewhere else.) Key and data byte strings may refer to strings of zero length up to strings of essentially unlimited length. See <a href="../../programmer_reference/am_misc_dbsizes.html" class="olink">Database limits</a> for more information.
+Storage and retrieval for the <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> access methods are based on key/data pairs. Both key and data items are represented by the DBT data structure. (The name DBT is a mnemonic for data base thang, and was used because no one could think of a reasonable name that wasn't already in use somewhere else.) Key and data byte strings may refer to strings of zero length up to strings of essentially unlimited length. See <a href="../../guides/programmer_reference/am_misc_dbsizes.md" class="olink">Database limits</a> for more information.
 
 All fields of the DBT structure that are not explicitly set should be initialized to nul bytes before the first time the structure is used. Do this by declaring the structure external or static, or by calling the C library routine **memset**(3).
 

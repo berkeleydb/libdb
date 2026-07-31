@@ -14,7 +14,7 @@ DB->set_bt_minkey(DB *db, u_int32_t bt_minkey);
 
 Set the minimum number of key/data pairs intended to be stored on any single Btree leaf page.
 
-This value is used to determine if key or data items will be stored on overflow pages instead of Btree leaf pages. For more information on the specific algorithm used, see <a href="../../programmer_reference/bt_conf.html#am_conf_bt_minkey" class="olink">Minimum keys per page</a>. The **bt_minkey** value specified must be at least 2; if **bt_minkey** is not explicitly set, a value of 2 is used.
+This value is used to determine if key or data items will be stored on overflow pages instead of Btree leaf pages. For more information on the specific algorithm used, see <a href="../../guides/programmer_reference/bt_conf.md#am_conf_bt_minkey" class="olink">Minimum keys per page</a>. The **bt_minkey** value specified must be at least 2; if **bt_minkey** is not explicitly set, a value of 2 is used.
 
 The `DB->set_bt_minkey()` method configures a database, not only operations performed using the specified <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle.
 

@@ -14,7 +14,7 @@ DB_TXN->set_commit_token(DB_TXN *txn, DB_TXN_TOKEN *buffer);
 
 The `DB_TXN->set_commit_token()` method configures the transaction for commit token generation, and accepts the address of an application-supplied buffer to receive the token. The actual generation of the token contents does not occur until commit time.
 
-Commit tokens are used to enable some consistency guarantees for replicated applications. Please see the <a href="../../programmer_reference/rep_ryw.html" class="olink">Read your writes consistency</a> section in the *Berkeley DB Programmer's Reference Guide* for more information.
+Commit tokens are used to enable some consistency guarantees for replicated applications. Please see the <a href="../../guides/programmer_reference/rep_ryw.md" class="olink">Read your writes consistency</a> section in the *Berkeley DB Programmer's Reference Guide* for more information.
 
 The `DB_TXN->set_commit_token()` method may be called at any time after the <a href="txnbegin.md" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a> method has been called, and before <a href="txncommit.md" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a> has been called.
 

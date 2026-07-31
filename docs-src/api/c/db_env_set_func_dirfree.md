@@ -30,4 +30,4 @@ The **namesp** and **cnt** parameters to this function are the same values as we
 
 ### See Also
 
-<a href="../../programmer_reference/program_runtime.html" class="olink">Run-time configuration</a>
+<a href="../../guides/programmer_reference/program_runtime.md" class="olink">Run-time configuration</a>

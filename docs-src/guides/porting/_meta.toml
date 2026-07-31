@@ -1,0 +1,23 @@
+# Nav/index metadata for the porting guide (auto-derived from the
+# source index.html TOC chain). `order` pins the reading order for nav
+# and later PDF assembly; `landing` is the tree's index page.
+
+title = "Porting Berkeley DB"
+landing = "index.md"
+order = [
+  "preface",
+  "audience",
+  "moreinfo",
+  "introduction",
+  "portprocess",
+  "newbinary",
+  "modscope",
+  "buildtarget",
+  "layout",
+  "testport",
+  "modifytest",
+  "testrun",
+  "testreview",
+  "sourceintegrate",
+  "certport",
+]

@@ -1,0 +1,9 @@
+# Nav/index metadata for the C++ STL API reference tree.
+#
+# `index.md` is the tree landing page (migrated from the DocBook book index).
+# build.py uses `title` for breadcrumbs/nav labels; `order` (optional) can pin
+# a reading order for PDF/man assembly in later phases. Left implicit this
+# phase since index.md already carries the ordered class/method listing.
+
+title = "C++ STL API Reference"
+landing = "index.md"

@@ -1,0 +1,37 @@
+# Nav/index metadata for the bdb-sql guide (auto-derived from the
+# source index.html TOC chain). `order` pins the reading order for nav
+# and later PDF assembly; `landing` is the tree's index page.
+
+title = "Getting Started with the Oracle Berkeley DB SQL APIs"
+landing = "index.md"
+order = [
+  "preface",
+  "moreinfo",
+  "dbsqlbasics",
+  "buildinstall",
+  "accessing_bdb_sql_databases.title",
+  "journaldirectory",
+  "unsupportedpragmas",
+  "changedpragmas",
+  "addedpragmas",
+  "miscdiff",
+  "bdb-concepts",
+  "sql_encryption",
+  "sequencesupport",
+  "normal-sql",
+  "lockingnotes",
+  "lockhandling",
+  "dbfeatures",
+  "mvcc",
+  "selectpage_size",
+  "sqlrep",
+  "reppragma",
+  "repstatistics",
+  "rep_usageexamples",
+  "admin",
+  "sync",
+  "datamigration",
+  "bfile-extension",
+  "bfile-sql",
+  "bfile-c",
+]

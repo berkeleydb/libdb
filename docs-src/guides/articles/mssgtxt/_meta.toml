@@ -1,0 +1,8 @@
+# Nav/index metadata for the mssgtxt guide (auto-derived from the
+# source index.html TOC chain). `order` pins the reading order for nav
+# and later PDF assembly; `landing` is the tree's index page.
+
+title = "Berkeley DB Message Reference for Stripped Libraries"
+landing = "index.md"
+order = [
+]

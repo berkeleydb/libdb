@@ -1,0 +1,11 @@
+---
+title: "Database verification and salvage"
+api-name: "Database verification and salvage"
+source: docs/programmer_reference/am_verify.html
+---
+## Database verification and salvage
+
+The <a href="../../api/c/dbverify.md" class="olink">DB-&gt;verify()</a> method verifies that a file, and any databases it may contain, are uncorrupted. In addition, the method may optionally be called with a file stream argument to which all key/data pairs found in the database are output. There are two modes for finding key/data pairs to be output:
+
+1.  If the <a href="../../api/c/dbverify.md#verify_DB_SALVAGE" class="olink">DB_SALVAGE</a> flag is specified, the key/data pairs in the database are output. When run in this mode, the database is assumed to be largely uncorrupted. For example, the <a href="../../api/c/dbverify.md" class="olink">DB-&gt;verify()</a> method will search for pages that are no longer linked into the database, and will output key/data pairs from such pages. However, key/data items that have been marked as deleted in the database will not be output, as the page structures are generally trusted in this mode.
+2.  If both the <a href="../../api/c/dbverify.md#verify_DB_SALVAGE" class="olink">DB_SALVAGE</a> and <a href="../../api/c/dbverify.md#verify_DB_AGGRESSIVE" class="olink">DB_AGGRESSIVE</a> flags are specified, all possible key/data pairs are output. When run in this mode, the database is assumed to be seriously corrupted. For example, key/data pairs that have been deleted will re-appear in the output. In addition, because pages may have been subsequently reused and modified during normal database operations after the key/data pairs were deleted, it is not uncommon for apparently corrupted key/data pairs to be output in this mode, even when there is no corruption in the underlying database. The output will almost always have to be edited by hand or other means before the data is ready for reload into another database. We recommend that <a href="../../api/c/dbverify.md#verify_DB_SALVAGE" class="olink">DB_SALVAGE</a> be tried first, and <a href="../../api/c/dbverify.md#verify_DB_AGGRESSIVE" class="olink">DB_AGGRESSIVE</a> only tried if the output from that first attempt is obviously missing data items or the data is sufficiently valuable that human review of the output is preferable to any kind of data loss.

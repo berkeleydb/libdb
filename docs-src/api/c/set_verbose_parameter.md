@@ -7,7 +7,7 @@ source: docs/api_reference/C/set_verbose_parameter.html
 
 Enables/disables specific additional informational and debugging messages in the Berkeley DB message output.
 
-The syntax of the entry in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `set_verbose`, one or more whitespace characters, the method flag parameter as a string, optionally one or more whitespace characters and the string `on` or `off`. If the optional string is omitted, the default is `on`.
+The syntax of the entry in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `set_verbose`, one or more whitespace characters, the method flag parameter as a string, optionally one or more whitespace characters and the string `on` or `off`. If the optional string is omitted, the default is `on`.
 
 For example:
 

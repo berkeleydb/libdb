@@ -65,13 +65,13 @@ The **flags** parameter must be set to 0 or by bitwise inclusively **OR**'ing to
 
 - `DB_TXN_NOWAIT`
 
-  If a lock is unavailable for any Berkeley DB operation performed in the context of this transaction, cause the operation to return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a> (or <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> if the database environment has been configured using the <a href="envset_flags.md#envset_flags_DB_TIME_NOTGRANTED" class="link">DB_TIME_NOTGRANTED</a> flag).
+  If a lock is unavailable for any Berkeley DB operation performed in the context of this transaction, cause the operation to return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a> (or <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> if the database environment has been configured using the <a href="envset_flags.md#envset_flags_DB_TIME_NOTGRANTED" class="link">DB_TIME_NOTGRANTED</a> flag).
 
   This behavior may be set for a Berkeley DB environment using the <a href="envset_flags.md" class="xref" title="DB_ENV-&gt;set_flags()">DB_ENV-&gt;set_flags()</a> method. Any value specified to this method overrides that setting.
 
 - `DB_TXN_SNAPSHOT`
 
-  This transaction will execute with <a href="../../programmer_reference/transapp_read.html" class="olink">snapshot isolation</a>. For databases with the <a href="dbopen.md#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> flag set, data values will be read as they are when the transaction begins, without taking read locks. Silently ignored for operations on databases with <a href="dbopen.md#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> not set on the underlying database (read locks are acquired).
+  This transaction will execute with <a href="../../guides/programmer_reference/transapp_read.md" class="olink">snapshot isolation</a>. For databases with the <a href="dbopen.md#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> flag set, data values will be read as they are when the transaction begins, without taking read locks. Silently ignored for operations on databases with <a href="dbopen.md#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> not set on the underlying database (read locks are acquired).
 
   The error `DB_LOCK_DEADLOCK` will be returned from update operations if a snapshot transaction attempts to update data which was modified after the snapshot transaction read it.
 

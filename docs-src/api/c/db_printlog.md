@@ -14,7 +14,7 @@ The <span class="command">**db_printlog**</span> utility is a debugging utility 
 
 ### Note
 
-If the application(s) that use the environment make use of the <a href="envset_lg_dir.md" class="xref" title="DB_ENV-&gt;set_lg_dir()">DB_ENV-&gt;set_lg_dir()</a> method, then in order for this utility to run correctly, you need a <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file which sets the proper paths using the <a href="set_lg_dir_parameter.md" class="xref" title="set_lg_dir">set_lg_dir</a> configuration parameter.
+If the application(s) that use the environment make use of the <a href="envset_lg_dir.md" class="xref" title="DB_ENV-&gt;set_lg_dir()">DB_ENV-&gt;set_lg_dir()</a> method, then in order for this utility to run correctly, you need a <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file which sets the proper paths using the <a href="set_lg_dir_parameter.md" class="xref" title="set_lg_dir">set_lg_dir</a> configuration parameter.
 
 The options are as follows:
 
@@ -50,7 +50,7 @@ The options are as follows:
 
   Write the library version number to the standard output, and exit.
 
-For more information on the <span class="command">**db_printlog**</span> output and using it to debug applications, see <a href="../../installation/debug_printlog.html" class="olink">Reviewing Berkeley DB log files</a>.
+For more information on the <span class="command">**db_printlog**</span> output and using it to debug applications, see <a href="../../guides/installation/debug_printlog.md" class="olink">Reviewing Berkeley DB log files</a>.
 
 The <span class="command">**db_printlog**</span> utility uses a Berkeley DB environment (as described for the **-h** option, the environment variable **DB_HOME**, or because the utility was run in a directory containing a Berkeley DB environment). In order to avoid environment corruption when using a Berkeley DB environment, <span class="command">**db_printlog**</span> should always be given the chance to detach from the environment and exit gracefully. To cause <span class="command">**db_printlog**</span> to release all environment resources and exit cleanly, send it an interrupt signal (SIGINT).
 

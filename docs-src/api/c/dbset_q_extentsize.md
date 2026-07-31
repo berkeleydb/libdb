@@ -14,7 +14,7 @@ DB->set_q_extentsize(DB *db, u_int32_t extentsize);
 
 Set the size of the extents used to hold pages in a Queue database, specified as a number of pages. Each extent is created as a separate physical file. If no extent size is set, the default behavior is to create only a single underlying database file.
 
-For information on tuning the extent size, see <a href="../../programmer_reference/rq_conf.html#am_conf_extentsize" class="olink">Selecting a extent size</a>.
+For information on tuning the extent size, see <a href="../../guides/programmer_reference/rq_conf.md#am_conf_extentsize" class="olink">Selecting a extent size</a>.
 
 The `DB->set_q_extentsize()` method configures a database, not only operations performed using the specified <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle.
 

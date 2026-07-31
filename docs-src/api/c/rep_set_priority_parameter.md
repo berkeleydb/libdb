@@ -7,7 +7,7 @@ source: docs/api_reference/C/rep_set_priority_parameter.html
 
 Specifies the database environment's priority in replication group elections. A special value of 0 indicates that this environment cannot be a replication group master.
 
-The syntax of this parameter in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `rep_set_priority`, one or more whitespace characters, and the priority of this site. For example:
+The syntax of this parameter in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `rep_set_priority`, one or more whitespace characters, and the priority of this site. For example:
 
 ``` c
 rep_set_priority 1

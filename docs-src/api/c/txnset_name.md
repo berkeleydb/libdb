@@ -14,7 +14,7 @@ DB_TXN->set_name(DB_TXN *txn, const char *name);
 
 The `DB_TXN->set_name()` method associates the specified string with the transaction. The string is returned by <a href="txnstat.md" class="xref" title="DB_ENV-&gt;txn_stat()">DB_ENV-&gt;txn_stat()</a> and displayed by <a href="txnstat_print.md" class="xref" title="DB_ENV-&gt;txn_stat_print()">DB_ENV-&gt;txn_stat_print()</a>.
 
-If the database environment has been configured for logging and the Berkeley DB library was configured with <a href="../../installation/build_unix_conf.html" class="olink">--enable-diagnostic</a>, a debugging log record is written including the transaction ID and the name.
+If the database environment has been configured for logging and the Berkeley DB library was configured with <a href="../../guides/installation/build_unix_conf.md" class="olink">--enable-diagnostic</a>, a debugging log record is written including the transaction ID and the name.
 
 The `DB_TXN->set_name()` method may be called at any time during the life of the application.
 

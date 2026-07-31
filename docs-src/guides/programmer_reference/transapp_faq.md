@@ -1,0 +1,34 @@
+---
+title: "Transaction FAQ"
+api-name: "Transaction FAQ"
+source: docs/programmer_reference/transapp_faq.html
+---
+## Transaction FAQ
+
+1.  **What should a transactional program do when an error occurs?**
+
+    Any time an error occurs, such that a transactionally protected set of operations cannot complete successfully, the transaction must be aborted. While deadlock is by far the most common of these errors, there are other possibilities; for example, running out of disk space for the filesystem. In Berkeley DB transactional applications, there are three classes of error returns: "expected" errors, "unexpected but recoverable" errors, and a single "unrecoverable" error. Expected errors are errors like <a href="program_errorret.md#program_errorret.DB_NOTFOUND" class="link">DB_NOTFOUND</a>, which indicates that a searched-for key item is not present in the database. Applications may want to explicitly test for and handle this error, or, in the case where the absence of a key implies the enclosing transaction should fail, simply call <a href="../../api/c/txnabort.md" class="olink">DB_TXN-&gt;abort()</a>. Unexpected but recoverable errors are errors like <a href="program_errorret.md#program_errorret.DB_LOCK_DEADLOCK" class="link">DB_LOCK_DEADLOCK</a>, which indicates that an operation has been selected to resolve a deadlock, or a system error such as EIO, which likely indicates that the filesystem has no available disk space. Applications must immediately call <a href="../../api/c/txnabort.md" class="olink">DB_TXN-&gt;abort()</a> when these returns occur, as it is not possible to proceed otherwise. The only unrecoverable error is <a href="program_errorret.md#program_errorret.DB_RUNRECOVERY" class="link">DB_RUNRECOVERY</a>, which indicates that the system must stop and recovery must be run.
+
+2.  **How can hot backups work? Can't you get an inconsistent picture of the database when you copy it?**
+
+    First, Berkeley DB is based on the technique of "write-ahead logging", which means that before any change is made to a database, a log record is written that describes the change. Further, Berkeley DB guarantees that the log record that describes the change will always be written to stable storage (that is, disk) before the database page where the change was made is written to stable storage. Because of this guarantee, we know that any change made to a database will appear either in just a log file, or both the database and a log file, but never in just the database.
+
+    Second, you can always create a consistent and correct database based on the log files and the databases from a database environment. So, during a hot backup, we first make a copy of the databases and then a copy of the log files. The tricky part is that there may be pages in the database that are related for which we won't get a consistent picture during this copy. For example, let's say that we copy pages 1-4 of the database, and then are swapped out. For whatever reason (perhaps because we needed to flush pages from the cache, or because of a checkpoint), the database pages 1 and 5 are written. Then, the hot backup process is re-scheduled, and it copies page 5. Obviously, we have an inconsistent database snapshot, because we have a copy of page 1 from before it was written by the other thread of control, and a copy of page 5 after it was written by the other thread. What makes this work is the order of operations in a hot backup. Because of the write-ahead logging guarantees, we know that any page written to the database will first be referenced in the log. If we copy the database first, then we can also know that any inconsistency in the database will be described in the log files, and so we know that we can fix everything up during recovery.
+
+3.  **My application has <a href="program_errorret.md#program_errorret.DB_LOCK_DEADLOCK" class="link">DB_LOCK_DEADLOCK</a> errors. Is the normal, and what should I do?**
+
+    It is quite rare for a transactional application to be deadlock free. All applications should be prepared to handle deadlock returns, because even if the application is deadlock free when deployed, future changes to the application or the Berkeley DB implementation might introduce deadlocks.
+
+    Practices which reduce the chance of deadlock include:
+
+    - Not using cursors which move backwards through the database (<a href="../../api/c/dbcget.md#dbcget_DB_PREV" class="olink">DB_PREV</a>), as backward scanning cursors can deadlock with page splits;
+    - Configuring <a href="../../api/c/dbset_flags.md#dbset_flags_DB_REVSPLITOFF" class="olink">DB_REVSPLITOFF</a> to turn off reverse splits in applications which repeatedly delete and re-insert the same keys, to minimize the number of page splits as keys are re-inserted;
+    - Not configuring <a href="../../api/c/dbopen.md#dbopen_DB_READ_UNCOMMITTED" class="olink">DB_READ_UNCOMMITTED</a> as that flag requires write transactions upgrade their locks when aborted, which can lead to deadlock. Generally, <a href="../../api/c/dbcget.md#dbcget_DB_READ_COMMITTED" class="olink">DB_READ_COMMITTED</a> or non-transactional read operations are less prone to deadlock than <a href="../../api/c/dbopen.md#dbopen_DB_READ_UNCOMMITTED" class="olink">DB_READ_UNCOMMITTED</a>.
+
+4.  **How can I move a database from one transactional environment into another?**
+
+    Because database pages contain references to log records, databases cannot be simply moved into different database environments. To move a database into a different environment, dump and reload the database before moving it. If the database is too large to dump and reload, the database may be prepared in place using the <a href="../../api/c/envlsn_reset.md" class="olink">DB_ENV-&gt;lsn_reset()</a> method or the **-r** argument to the <a href="../../api/c/db_load.md" class="olink">db_load</a> utility.
+
+5.  **I'm seeing the error "log_flush: LSN past current end-of-log", what does that mean?**
+
+    The most common cause of this error is that a system administrator has removed all of the log files from a database environment. You should shut down your database environment as gracefully as possible, first flushing the database environment cache to disk, if that's possible. Then, dump and reload your databases. If the database is too large to dump and reload, the database may be reset in place using the <a href="../../api/c/envlsn_reset.md" class="olink">DB_ENV-&gt;lsn_reset()</a> method or the **-r** argument to the <a href="../../api/c/db_load.md" class="olink">db_load</a> utility. However, if you reset the database in place, you should verify your databases before using them again. (It is possible for the databases to be corrupted by running after all of the log files have been removed, and the longer the application runs, the worse it can get.)
