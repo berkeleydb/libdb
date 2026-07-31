@@ -18,7 +18,7 @@ You can use this method to override DB's mutex calculation, but it is not recomm
 
 Calling the `DB_ENV->mutex_set_max()` method discards any value previously set using the <a href="mutexset_increment.md" class="xref" title="DB_ENV-&gt;mutex_set_increment()">DB_ENV-&gt;mutex_set_increment()</a> method.
 
-The database environment's total number of mutexes may also be configured using the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. The syntax of the entry in that file is a single line with the string "mutex_set_max", one or more whitespace characters, and the total number of mutexes. Because the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is read when the database environment is opened, it will silently overrule configuration done before that time.
+The database environment's total number of mutexes may also be configured using the environment's <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. The syntax of the entry in that file is a single line with the string "mutex_set_max", one or more whitespace characters, and the total number of mutexes. Because the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is read when the database environment is opened, it will silently overrule configuration done before that time.
 
 The `DB_ENV->mutex_set_max()` method configures a database environment, not only operations performed using the specified <a href="env.md" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle.
 

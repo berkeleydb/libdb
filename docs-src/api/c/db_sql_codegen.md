@@ -38,7 +38,7 @@ The options are as follows:
 
 The <span class="command">**db_sql_codegen**</span> utility exits 0 on success, and \>0 if an error occurs.
 
-Note that the <span class="command">**db_sql_codegen**</span> utility is built only when --enable-sql_codegen option is passed as an argument when you are configuring Berkeley DB. For more information, see <a href="../../installation/build_unix_conf.html" class="olink">"Configuring Berkeley DB"</a>
+Note that the <span class="command">**db_sql_codegen**</span> utility is built only when --enable-sql_codegen option is passed as an argument when you are configuring Berkeley DB. For more information, see <a href="../../guides/installation/build_unix_conf.md" class="olink">"Configuring Berkeley DB"</a>
 
 ### Input Syntax
 

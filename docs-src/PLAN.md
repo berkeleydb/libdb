@@ -116,14 +116,54 @@ the site (and can attach to GitHub releases).
 
 ## Execution phases
 
-1. **Scaffold**: `docs-src/` skeleton, `site.toml` (version from `dist/RELEASE`),
-   templates, `build.py` (HTML first), one hand-migrated sample page end-to-end.
-2. **Extractor**: `extract.py` on the API-reference C tree; diff-verify; iterate
-   the cleanup until content matches. Then C++/STL, then the guides.
-3. **Man pages**: per-API `*.3` + the `libdb.3` overview; `mandoc -Tlint` clean.
-4. **PDF**: pandoc per book (programmer_reference, the GSGs, api_reference).
-5. **CI**: `docs.yml` with all validators + the completeness gate.
-6. **Publish**: wire gh-pages to the generated HTML; update the landing page.
+1. **Scaffold** (DONE, PR #119): `docs-src/` skeleton, `site.toml` (version from
+   `dist/RELEASE`), templates, `build.py` (HTML first).
+2. **Extractor + trees** (DONE): `extract.py` + `verify.py` no-loss gate on the
+   C API tree (100.00%), then STL (100.00%) and every guide tree. See the
+   retention table below. `migrate_tree.py` drives chaptered guides (order from
+   the index TOC, image copy); `fix_xrefs.py` remaps cross-tree links to the new
+   `docs-src/` layout.
+3. **Man pages** (DONE): `build_man()` -> 787 `*.3` (785 C+STL refentry pages +
+   `libdb.3` overview + utilities), `mandoc -Tlint` = 0 errors. `man_coverage.py`
+   reports API coverage (measure-only; the CI gate is phase 5).
+4. **PDF** (TODO): pandoc per book (programmer_reference, the GSGs, api_reference)
+   with a shared LaTeX header. `build.py build_pdf()` is the stubbed seam.
+5. **CI** (TODO): `docs.yml` with all validators + the completeness gate (wire
+   `verify.py` per tree + `man_coverage.py` as hard gates).
+6. **Publish** (TODO): wire gh-pages to the generated HTML; update the landing
+   page.
+
+### Phase 2 retention (verify.py, mean word retention; 0 hard drops on all)
+
+| tree                    | pages | retention |
+|-------------------------|-------|-----------|
+| api/c                   | 470   | 100.00%   |
+| api/stl                 | 322   | 100.00%   |
+| guides/programmer_reference | 203 | 99.98%  |
+| guides/upgrading        | 180   | 100.00%   |
+| guides/installation     | 101   | 99.99%    |
+| guides/porting          | 16    | 100.00%   |
+| guides/gsg (C)          | 37    | 100.00%   |
+| guides/gsg_txn (C)      | 38    | 100.00%   |
+| guides/gsg_db_rep (C)   | 26    | 100.00%   |
+| guides/collections      | 37    | 99.98%    |
+| guides/bdb-sql          | 30    | 100.00%   |
+| guides/articles         | 2     | 100.00%   |
+
+### Deferred: docs/csharp (38 MB) and docs/java (12 MB)
+
+These are LANGUAGE-BINDING docs and are NOT DocBook, so the reverse-DocBook
+extractor does not apply:
+- **csharp** — a compiled Sandcastle/MS-Help-Viewer tree (`.chm` + `.aspx` +
+  JS/PNG, 2457 files, only 1 real `.html`). Would need a bespoke extractor.
+- **java** — standard Javadoc HTML (525 files: allclasses-frame, package-frame,
+  index-all). Different structure; the `refentry`/`chapter` isolation is moot.
+
+Both are enormous and lower-value for the core C engine. Deferred to a future
+phase (regenerate from the C#/Java sources with their native doc tools, or write
+a per-format extractor) rather than sink budget reverse-engineering rendered
+help output. The gsg/gsg_txn/gsg_db_rep CXX/JAVA sub-variants are likewise
+deferred; the C variants are migrated.
 
 ## Non-negotiables
 

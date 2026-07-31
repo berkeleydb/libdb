@@ -7,7 +7,7 @@ source: docs/api_reference/C/set_create_dir_parameter.html
 
 Sets the path of a directory to be used as the location to create the access method database files.
 
-The syntax of this parameter in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `set_create_dir`, one or more whitespace characters, and the directory name.
+The syntax of this parameter in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `set_create_dir`, one or more whitespace characters, and the directory name.
 
 For example:
 

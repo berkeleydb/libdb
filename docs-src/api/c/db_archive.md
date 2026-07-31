@@ -21,7 +21,7 @@ If the application(s) that use the environment make use of any of the following 
 | <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> |
 | <a href="envset_lg_dir.md" class="xref" title="DB_ENV-&gt;set_lg_dir()">DB_ENV-&gt;set_lg_dir()</a> |
 
-then in order for this utility to run correctly, you need a <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file which sets the proper paths using the <a href="add_data_dir_parameter.md" class="xref" title="add_data_dir">add_data_dir</a>, or <a href="set_lg_dir_parameter.md" class="xref" title="set_lg_dir">set_lg_dir</a> configuration parameters.
+then in order for this utility to run correctly, you need a <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file which sets the proper paths using the <a href="add_data_dir_parameter.md" class="xref" title="add_data_dir">add_data_dir</a>, or <a href="set_lg_dir_parameter.md" class="xref" title="set_lg_dir">set_lg_dir</a> configuration parameters.
 
 The options are as follows:
 

@@ -41,7 +41,7 @@ The options are as follows:
 
   Run in verbose mode, displaying a message for each successful upgrade.
 
-**It is important to realize that Berkeley DB database upgrades are done in place, and so are potentially destructive.** This means that if the system crashes during the upgrade procedure, or if the upgrade procedure runs out of disk space, the databases may be left in an inconsistent and unrecoverable state. See <a href="../../programmer_reference/am_upgrade.html" class="olink">Upgrading databases</a> for more information.
+**It is important to realize that Berkeley DB database upgrades are done in place, and so are potentially destructive.** This means that if the system crashes during the upgrade procedure, or if the upgrade procedure runs out of disk space, the databases may be left in an inconsistent and unrecoverable state. See <a href="../../guides/programmer_reference/am_upgrade.md" class="olink">Upgrading databases</a> for more information.
 
 The <span class="command">**db_upgrade**</span> utility may be used with a Berkeley DB environment (as described for the **-h** option, the environment variable **DB_HOME**, or because the utility was run in a directory containing a Berkeley DB environment). In order to avoid environment corruption when using a Berkeley DB environment, <span class="command">**db_upgrade**</span> should always be given the chance to detach from the environment and exit gracefully. To cause <span class="command">**db_upgrade**</span> to release all environment resources and exit cleanly, send it an interrupt signal (SIGINT).
 

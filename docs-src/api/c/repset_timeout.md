@@ -14,7 +14,7 @@ DB_ENV->rep_set_timeout(DB_ENV *env, int which, u_int32_t timeout);
 
 The `DB_ENV->rep_set_timeout()` method specifies a variety of replication timeout values.
 
-The database environment's replication subsystem may also be configured using the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. The syntax of the entry in that file is a single line with the string "rep_set_timeout", one or more whitespace characters, and the **which** parameter specified as a string and the timeout specified as two parts. For example, "rep_set_timeout DB_REP_CONNECTION_RETRY 15000000" specifies the connection retry timeout for 15 seconds. Because the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is read when the database environment is opened, it will silently overrule configuration done before that time.
+The database environment's replication subsystem may also be configured using the environment's <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. The syntax of the entry in that file is a single line with the string "rep_set_timeout", one or more whitespace characters, and the **which** parameter specified as a string and the timeout specified as two parts. For example, "rep_set_timeout DB_REP_CONNECTION_RETRY 15000000" specifies the connection retry timeout for 15 seconds. Because the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is read when the database environment is opened, it will silently overrule configuration done before that time.
 
 The `DB_ENV->rep_set_timeout()` method configures a database environment, not only operations performed using the specified <a href="env.md" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle.
 
@@ -54,7 +54,7 @@ The **which** parameter must be set to one of the following values:
 
 - `DB_REP_FULL_ELECTION_TIMEOUT`
 
-  An optional configuration timeout period to wait for full election participation the first time the replication group finds a master. By default this option is turned off and normal election timeouts are used. (See the <a href="../../programmer_reference/rep_elect.html" class="olink">Elections</a> section in the *Berkeley DB Programmer's Reference Guide* for more information.)
+  An optional configuration timeout period to wait for full election participation the first time the replication group finds a master. By default this option is turned off and normal election timeouts are used. (See the <a href="../../guides/programmer_reference/rep_elect.md" class="olink">Elections</a> section in the *Berkeley DB Programmer's Reference Guide* for more information.)
 
 - `DB_REP_HEARTBEAT_MONITOR`
 
@@ -66,7 +66,7 @@ The **which** parameter must be set to one of the following values:
 
 - `DB_REP_LEASE_TIMEOUT`
 
-  Configure the amount of time a client grants its master lease to a master. When using master leases all sites in a replication group must use the same lease timeout value. There is no default value. If leases are desired, this method must be called prior to calling <a href="repstart.md" class="xref" title="DB_ENV-&gt;rep_start()">DB_ENV-&gt;rep_start()</a> method. See also <a href="repclockskew.md" class="xref" title="DB_ENV-&gt;rep_set_clockskew()">DB_ENV-&gt;rep_set_clockskew()</a> method, <a href="repconfig.md" class="xref" title="DB_ENV-&gt;rep_set_config()">DB_ENV-&gt;rep_set_config()</a> method or <a href="../../programmer_reference/rep_lease.html" class="olink">Master leases</a>.
+  Configure the amount of time a client grants its master lease to a master. When using master leases all sites in a replication group must use the same lease timeout value. There is no default value. If leases are desired, this method must be called prior to calling <a href="repstart.md" class="xref" title="DB_ENV-&gt;rep_start()">DB_ENV-&gt;rep_start()</a> method. See also <a href="repclockskew.md" class="xref" title="DB_ENV-&gt;rep_set_clockskew()">DB_ENV-&gt;rep_set_clockskew()</a> method, <a href="repconfig.md" class="xref" title="DB_ENV-&gt;rep_set_config()">DB_ENV-&gt;rep_set_config()</a> method or <a href="../../guides/programmer_reference/rep_lease.md" class="olink">Master leases</a>.
 
 ### Errors
 

@@ -13,7 +13,7 @@ DB_ENV->set_thread_id(DB_ENV *dbenv,
     void (*thread_id)(DB_ENV *dbenv, pid_t *pid, db_threadid_t *tid));  
 ```
 
-Declare a function that returns a unique identifier pair for the current thread of control. The `DB_ENV->set_thread_id()` method supports the <a href="envfailchk.md" class="xref" title="DB_ENV-&gt;failchk()">DB_ENV-&gt;failchk()</a> method. For more information, see <a href="../../programmer_reference/cam_app.html" class="olink">Architecting Data Store and Concurrent Data Store applications</a> , and <a href="../../programmer_reference/transapp_app.html" class="olink">Architecting Transactional Data Store applications</a> , both in the *Berkeley DB Programmer's Reference Guide*.
+Declare a function that returns a unique identifier pair for the current thread of control. The `DB_ENV->set_thread_id()` method supports the <a href="envfailchk.md" class="xref" title="DB_ENV-&gt;failchk()">DB_ENV-&gt;failchk()</a> method. For more information, see <a href="../../guides/programmer_reference/cam_app.md" class="olink">Architecting Data Store and Concurrent Data Store applications</a> , and <a href="../../guides/programmer_reference/transapp_app.md" class="olink">Architecting Transactional Data Store applications</a> , both in the *Berkeley DB Programmer's Reference Guide*.
 
 The `DB_ENV->set_thread_id()` method configures operations performed using the specified <a href="env.md" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle, not all operations performed on the underlying database environment.
 

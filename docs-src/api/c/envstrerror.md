@@ -14,7 +14,7 @@ db_strerror(int error);
 
 The `db_strerror()` method returns an error message string corresponding to the error number **error** parameter.
 
-This function is a superset of the ANSI C X3.159-1989 (ANSI C) **strerror**(3) function. If the error number **error** is greater than or equal to 0, then the string returned by the system function **strerror**(3) is returned. If the error number is less than 0, an error string appropriate to the corresponding Berkeley DB library error is returned. See <a href="../../programmer_reference/program_errorret.html" class="olink">Error returns to applications</a> for more information.
+This function is a superset of the ANSI C X3.159-1989 (ANSI C) **strerror**(3) function. If the error number **error** is greater than or equal to 0, then the string returned by the system function **strerror**(3) is returned. If the error number is less than 0, an error string appropriate to the corresponding Berkeley DB library error is returned. See <a href="../../guides/programmer_reference/program_errorret.md" class="olink">Error returns to applications</a> for more information.
 
 ### Parameters
 

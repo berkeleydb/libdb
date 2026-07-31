@@ -28,4 +28,4 @@ The **func_unlink** parameter is the replacement function. It must conform to th
 
 ### See Also
 
-<a href="../../programmer_reference/program_runtime.html" class="olink">Run-time configuration</a>
+<a href="../../guides/programmer_reference/program_runtime.md" class="olink">Run-time configuration</a>

@@ -7,7 +7,7 @@ source: docs/api_reference/C/rep_set_clockskew_parameter.html
 
 Sets the clock skew ratio among replication group members based on the fastest and slowest measurements among the group for use with master leases.
 
-The syntax of this parameter in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `rep_set_clockskew`, one or more whitespace characters, and the clockskew specified in two parts: the fast_clock and the slow_clock.
+The syntax of this parameter in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `rep_set_clockskew`, one or more whitespace characters, and the clockskew specified in two parts: the fast_clock and the slow_clock.
 
 For example:
 

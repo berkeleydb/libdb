@@ -14,7 +14,7 @@ DB_ENV->rep_set_config(DB_ENV *env, u_int32_t which, int onoff);
 
 The `DB_ENV->rep_set_config()` method configures the Berkeley DB replication subsystem.
 
-The database environment's replication subsystem may also be configured using the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. The syntax of the entry in that file is a single line with the string "rep_set_config", one or more whitespace characters, and the method **which** parameter as a string and optionally one or more whitespace characters, and the string "on" or "off". If the optional string is omitted, the default is "on"; for example, "rep_set_config DB_REP_CONF_NOWAIT" or "rep_set_config DB_REP_CONF_NOWAIT on". Because the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is read when the database environment is opened, it will silently overrule configuration done before that time.
+The database environment's replication subsystem may also be configured using the environment's <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. The syntax of the entry in that file is a single line with the string "rep_set_config", one or more whitespace characters, and the method **which** parameter as a string and optionally one or more whitespace characters, and the string "on" or "off". If the optional string is omitted, the default is "on"; for example, "rep_set_config DB_REP_CONF_NOWAIT" or "rep_set_config DB_REP_CONF_NOWAIT on". Because the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is read when the database environment is opened, it will silently overrule configuration done before that time.
 
 The `DB_ENV->rep_set_config()` method configures a database environment, not only operations performed using the specified <a href="env.md" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle.
 
@@ -52,7 +52,7 @@ The **which** parameter must be set to one of the following values:
 
   - An application has a slight risk that the wrong site may win an election, resulting in the loss of some data. This is consistent with the general loss of data durability when running in-memory.
 
-  - Replication Manager applications will no longer maintain group membership information persistently on-disk. For more information, see <a href="../../programmer_reference/rep_filename.html" class="olink">Managing Replication Files</a> in the *Berkeley DB Programmer's Reference Guide*.
+  - Replication Manager applications will no longer maintain group membership information persistently on-disk. For more information, see <a href="../../guides/programmer_reference/rep_filename.md" class="olink">Managing Replication Files</a> in the *Berkeley DB Programmer's Reference Guide*.
 
   This configuration flag can only be turned on before the environment is opened with the <a href="envopen.md" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> method. Its value cannot be changed while the environment is open. All sites in the replication group should have the same value for this configuration flag.
 
@@ -82,7 +82,7 @@ The **which** parameter must be set to one of the following values:
 
 - `DB_REPMGR_CONF_2SITE_STRICT`
 
-  Replication Manager observes the strict "majority" rule in managing elections, even in a group with only 2 sites. This means the client in a 2-site group will be unable to take over as master if the original master fails or becomes disconnected. (See the <a href="../../programmer_reference/rep_twosite.html" class="olink">Special considerations for two-site replication groups</a> section in the *Berkeley DB Programmer's Reference Guide* for more information.) Both sites in the replication group should have the same value for this configuration flag. This option is turned on by default.
+  Replication Manager observes the strict "majority" rule in managing elections, even in a group with only 2 sites. This means the client in a 2-site group will be unable to take over as master if the original master fails or becomes disconnected. (See the <a href="../../guides/programmer_reference/rep_twosite.md" class="olink">Special considerations for two-site replication groups</a> section in the *Berkeley DB Programmer's Reference Guide* for more information.) Both sites in the replication group should have the same value for this configuration flag. This option is turned on by default.
 
 #### onoff
 

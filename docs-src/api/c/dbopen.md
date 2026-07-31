@@ -27,11 +27,11 @@ The `DB->open()` method returns a non-zero error value on failure and 0 on succe
 
 #### txnid
 
-If the operation is part of an application-specified transaction, the **txnid** parameter is a transaction handle returned from <a href="txnbegin.md" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; if the operation is part of a Berkeley DB Concurrent Data Store group, the **txnid** parameter is a handle returned from <a href="envcdsgroup_begin.md" class="xref" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>; otherwise NULL. If no transaction handle is specified, but the DB_AUTO_COMMIT flag is specified, the operation will be implicitly transaction protected. Note that transactionally protected operations on a <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle requires the <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle itself be transactionally protected during its open. Also note that the transaction must be committed before the handle is closed; see <a href="../../programmer_reference/program_scope.html" class="olink">Berkeley DB handles</a> for more information.
+If the operation is part of an application-specified transaction, the **txnid** parameter is a transaction handle returned from <a href="txnbegin.md" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; if the operation is part of a Berkeley DB Concurrent Data Store group, the **txnid** parameter is a handle returned from <a href="envcdsgroup_begin.md" class="xref" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a>; otherwise NULL. If no transaction handle is specified, but the DB_AUTO_COMMIT flag is specified, the operation will be implicitly transaction protected. Note that transactionally protected operations on a <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle requires the <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle itself be transactionally protected during its open. Also note that the transaction must be committed before the handle is closed; see <a href="../../guides/programmer_reference/program_scope.md" class="olink">Berkeley DB handles</a> for more information.
 
 #### file
 
-The **file** parameter is used as the name of an underlying file that will be used to back the database; see <a href="../../programmer_reference/env_naming.html" class="olink">File naming</a> for more information.
+The **file** parameter is used as the name of an underlying file that will be used to back the database; see <a href="../../guides/programmer_reference/env_naming.md" class="olink">File naming</a> for more information.
 
 In-memory databases never intended to be preserved on disk may be created by setting the **file** parameter to NULL. Whether other threads of control can access this database is driven entirely by whether the **database** parameter is set to NULL.
 
@@ -39,7 +39,7 @@ When using a Unicode build on Windows (the default), the **file** argument will 
 
 #### database
 
-The **database** parameter is optional, and allows applications to have multiple databases in a single file. Although no **database** parameter needs to be specified, it is an error to attempt to open a second database in a **file** that was not initially created using a **database** name. Further, the **database** parameter is not supported by the Queue format. Finally, when opening multiple databases in the same physical file, it is important to consider locking and memory cache issues; see <a href="../../programmer_reference/am_opensub.html" class="olink">Opening multiple databases in a single file</a> for more information.
+The **database** parameter is optional, and allows applications to have multiple databases in a single file. Although no **database** parameter needs to be specified, it is an error to attempt to open a second database in a **file** that was not initially created using a **database** name. Further, the **database** parameter is not supported by the Queue format. Finally, when opening multiple databases in the same physical file, it is important to consider locking and memory cache issues; see <a href="../../guides/programmer_reference/am_opensub.md" class="olink">Opening multiple databases in a single file</a> for more information.
 
 If both the **database** and **file** parameters are NULL, the database is strictly temporary and cannot be opened by any other thread of control. Thus the database can only be accessed by sharing the single database handle that created it, in circumstances where doing so is safe.
 
@@ -69,7 +69,7 @@ The **flags** parameter must be set to zero or by bitwise inclusively **OR**'ing
 
 - `DB_MULTIVERSION`
 
-  Open the database with support for <a href="../../programmer_reference/transapp_read.html" class="olink">multiversion concurrency control</a>. This will cause updates to the database to follow a copy-on-write protocol, which is required to support snapshot isolation. The `DB_MULTIVERSION` flag requires that the database be transactionally protected during its open and is not supported by the queue format.
+  Open the database with support for <a href="../../guides/programmer_reference/transapp_read.md" class="olink">multiversion concurrency control</a>. This will cause updates to the database to follow a copy-on-write protocol, which is required to support snapshot isolation. The `DB_MULTIVERSION` flag requires that the database be transactionally protected during its open and is not supported by the queue format.
 
 - `DB_NOMMAP`
 
@@ -105,7 +105,7 @@ On UNIX systems or in IEEE/ANSI Std 1003.1 (POSIX) environments, files created b
 
 If the database was opened within a database environment, the environment variable **DB_HOME** may be used as the path of the database environment home.
 
-`DB->open()` is affected by any database directory specified using the <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> method, or by setting the "set_data_dir" string in the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.
+`DB->open()` is affected by any database directory specified using the <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> method, or by setting the "set_data_dir" string in the environment's <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.
 
 - **TMPDIR**
 
