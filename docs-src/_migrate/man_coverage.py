@@ -15,6 +15,7 @@ handle->prefix table the DocBook tree uses, and report matched/unmatched.
 Usage:  man_coverage.py
 """
 import re
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -33,7 +34,7 @@ HANDLE_PREFIX = {
     "__db_sequence": ("seq",),
     "__db_log_cursor": ("logc",),
     "__db_channel": ("dbchannel",),
-    "__db_site": ("repmgr",),
+    "__db_site": ("dbsite", "repmgr"),
 }
 
 # Internal method-table slots that were never public API and have no DocBook
@@ -67,6 +68,42 @@ def ext_functions():
                                  r"((?:db_[a-z_]+)|log_compare) __P", t, re.M)))
 
 
+# Known method slots with NO dedicated DocBook refentry page. These are the
+# historic doc structure, NOT new gaps:
+#   - getter halves of a set/get pair, documented on the setter page
+#     (get_bt_compare is on dbset_bt_compare(3), etc.);
+#   - internal/callback vtable slots never given their own page
+#     (pget, prdbt, s_callback, stored_*, is_bigendian, version, ...).
+# The completeness gate is HARD on functions (must be 100%) and HARD on any
+# method that is NOT on this list -- a genuinely new undocumented method fails
+# CI. The list is frozen against phase-3's audit (only 2 genuinely-undocumented
+# APIs existed, both now stub pages). Shrinking it (documenting one) is fine;
+# GROWING it needs a real page or a deliberate edit here.
+KNOWN_UNDOCUMENTED_METHODS = {
+    ("__db", "db_append_recno"), ("__db", "get_append_recno"),
+    ("__db", "get_assoc_flags"), ("__db", "get_bt_compare"),
+    ("__db", "get_bt_compress"), ("__db", "get_bt_prefix"),
+    ("__db", "get_dup_compare"), ("__db", "get_errcall"),
+    ("__db", "get_feedback"), ("__db", "get_h_compare"),
+    ("__db", "get_h_hash"), ("__db", "get_msgcall"),
+    ("__db", "pget"), ("__db", "s_callback"),
+    ("__db", "set_paniccall"), ("__db", "stored_close"),
+    ("__db", "stored_get"),
+    ("__db_env", "get_app_dispatch"), ("__db_env", "get_errcall"),
+    ("__db_env", "get_feedback"), ("__db_env", "get_isalive"),
+    ("__db_env", "get_mp_max_openfd"), ("__db_env", "get_mp_max_write"),
+    ("__db_env", "get_msgcall"), ("__db_env", "get_thread_id_fn"),
+    ("__db_env", "get_thread_id_string_fn"), ("__db_env", "is_bigendian"),
+    ("__db_env", "log_put_record"), ("__db_env", "log_read_record"),
+    ("__db_env", "prdbt"), ("__db_env", "rep_flush"),
+    ("__db_env", "rep_process_message"), ("__db_env", "set_mp_max_openfd"),
+    ("__db_env", "set_mp_max_write"), ("__db_env", "set_paniccall"),
+    ("__db_log_cursor", "version"), ("__db_mpoolfile", "get_last_pgno"),
+    ("__db_sequence", "get_db"), ("__db_txn", "set_txn_lsnp"),
+    ("__dbc", "pget"),
+}
+
+
 def man_stems():
     return {p.stem for p in MAN.glob("*.3")}
 
@@ -86,10 +123,19 @@ def matches(prefixes, meth, stems):
     # DocBook stems collapse the FIRST subsystem underscore but keep the rest:
     # rep_get_config -> repget_config, rep_stat_print -> repstat_print.
     first_collapse = meth.replace("_", "", 1)
+    # Setter pages drop the `set_` entirely: rep_set_config -> repconfig,
+    # rep_set_transport -> reptransport, set_event_notify -> event_notify
+    # (matched with a handle prefix below). Try the set_-dropped forms too.
+    set_dropped = meth.replace("set_", "", 1) if "set_" in meth else None
     if meth in stems or tail in stems or first_collapse in stems:
+        return True
+    if set_dropped is not None and (set_dropped in stems
+                                    or set_dropped.replace("_", "") in stems):
         return True
     for prefix in prefixes:
         cands = {prefix + meth, prefix + "_" + meth, prefix + tail}
+        if set_dropped is not None:
+            cands |= {prefix + set_dropped, prefix + set_dropped.replace("_", "")}
         if cands & stems:
             return True
         for s in stems:
@@ -143,6 +189,36 @@ def main():
                   f"e.g. {', '.join(sorted(by_h[h])[:8])}")
     if fmiss:
         print(f"\nfunctions with no matched man page: {', '.join(fmiss)}")
+
+    # --ci: HARD completeness gate. Every public function must be covered, and
+    # every uncovered method must be on the frozen allowlist (a NEW undocumented
+    # method fails). Exit non-zero on any violation so CI blocks the PR.
+    if "--ci" in sys.argv:
+        new_gaps = [(h, m) for (h, m) in missing
+                    if (h, m) not in KNOWN_UNDOCUMENTED_METHODS]
+        stale = sorted(KNOWN_UNDOCUMENTED_METHODS - set(missing))
+        fail = False
+        if fmiss:
+            print(f"\nGATE FAIL: {len(fmiss)} public function(s) undocumented: "
+                  f"{', '.join(fmiss)}")
+            fail = True
+        if new_gaps:
+            print(f"\nGATE FAIL: {len(new_gaps)} NEW undocumented method(s) "
+                  "(add a refentry .md, or allowlist deliberately):")
+            for h, m in new_gaps:
+                print(f"  {h} {m}")
+            fail = True
+        if stale:
+            # A previously-undocumented method is now documented -> tidy the
+            # allowlist. Advisory (doesn't fail), just nudges the list smaller.
+            print(f"\nnote: {len(stale)} allowlisted method(s) are now covered; "
+                  "trim KNOWN_UNDOCUMENTED_METHODS:")
+            for h, m in stale:
+                print(f"  {h} {m}")
+        if fail:
+            sys.exit(1)
+        print("\nGATE PASS: all public functions documented; "
+              f"all {len(missing)} uncovered methods are known non-page slots.")
 
 
 if __name__ == "__main__":
