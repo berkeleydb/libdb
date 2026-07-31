@@ -277,6 +277,60 @@ jobs:
           ! grep -qE "^FAIL|FAIL:" /tmp/out.txt
 
   # ----------------------------------------------------------------------------
+  # Deterministic Simulation Testing (DST): build --enable-dst, run one capstone
+  # per fault class + the multi-process failchk pilot, and enforce the
+  # zero-overhead-when-off gate (an --enable-dst-off build must contain 0
+  # __db_sim_* symbols). The full 41-scenario sweep + planted-bug harness is a
+  # local/nightly concern; this is the fast per-push regression signal that the
+  # DST layer still builds, runs, and stays compiled-out in production builds.
+  # ----------------------------------------------------------------------------
+  dst:
+    name: dst (fault-class smoke + off-build gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Off-build zero-symbol gate
+        working-directory: build_unix
+        run: |
+          # A normal (--enable-dst absent) debug build must compile the DST
+          # hooks and every planted-bug/buggify site out entirely.
+          ../dist/configure --enable-debug
+          make -j$(nproc) libdb.a
+          n=$(nm .libs/*.o 2>/dev/null | grep -c '__db_sim_' || true)
+          echo "OFF-build __db_sim_* symbols: $n"
+          test "$n" -eq 0 || { echo 'FAIL: DST symbols leaked into a non-DST build'; exit 1; }
+          make realclean >/dev/null 2>&1 || make clean >/dev/null 2>&1
+      - name: Configure + build (--enable-dst)
+        working-directory: build_unix
+        run: |
+          ../dist/configure --enable-debug --enable-dst
+          make -j$(nproc)
+      - name: Fault-class smoke (one capstone per class)
+        working-directory: build_unix
+        run: |
+          set -e
+          for t in test_sim_crash_recover test_sim_crash_in_recovery \
+                   test_sim_clockskew_backward test_sim_buggify \
+                   test_sim_torn test_sim_stale test_sim_enospc; do
+            make "$t"
+            echo "--- $t ---"
+            timeout 240 "./$t"
+          done
+      # The multi-process failchk pilot spawns + kill -9's real processes
+      # sharing a real region. That is inherently timing-sensitive on shared
+      # CI runners (a survivor can stall waiting on a dead peer's slot), so it
+      # is best-effort here -- the authoritative sweep runs locally/nightly.
+      # We still BUILD it every push (a compile break is a hard signal) and
+      # smoke ONE seed with a tight timeout so a hang informs without gating.
+      - name: Multi-process failchk pilot (build + 1-seed smoke, best-effort)
+        continue-on-error: true
+        working-directory: build_unix
+        run: |
+          make mp_failchk_pilot
+          SEEDS=0x1 timeout 90 bash ../test/sim/mp-failchk.sh || \
+            echo '::warning title=mp-failchk::pilot smoke did not pass cleanly on this runner (best-effort; run locally for the authoritative sweep)'
+
+  # ----------------------------------------------------------------------------
   # Windows build via the bundled Visual Studio solution (best-effort).
   # ----------------------------------------------------------------------------
   windows:
