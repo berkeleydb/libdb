@@ -1,6 +1,6 @@
 # OS / mpool I/O survey — basis for an internal async-I/O abstraction
 
-Read-only survey of `/Users/gregburd/oss/libdb` @ `master`. No source was
+Read-only survey of the libdb tree @ `master`. No source was
 modified. All line numbers are from the working tree at survey time
 (2026-06-17). Paths are repo-relative.
 
