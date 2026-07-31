@@ -50,6 +50,13 @@
             pkgs.tcl   # for the TCL test harness (--enable-test)
             pkgs.cbmc  # bounded model checker for the formal-verification harnesses (test/cbmc)
             pkgs.pandoc  # docs pipeline: html->md extraction + md->html/pdf/man (docs-src/build.py)
+            # Docs validation toolchain (docs-src/build.py + .github/workflows/docs.yml):
+            pkgs.python3Packages.weasyprint  # HTML->PDF (build_pdf; no TeX needed)
+            pkgs.poppler-utils               # pdfinfo/pdftotext: PDF page-count + title check
+            pkgs.mandoc                      # man -Tlint (0 ERRORS gate)
+            pkgs.codespell                   # spelling gate (docs-src/_migrate/spellcheck.py)
+            pkgs.lychee                      # internal link-check gate
+            pkgs.write-good                  # prose advisory (passive voice / wordiness)
           ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
             pkgs.liburing  # Linux io_uring AIO backend (HAVE_IO_URING)
           ];

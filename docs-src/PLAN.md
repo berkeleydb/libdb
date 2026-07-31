@@ -126,12 +126,32 @@ the site (and can attach to GitHub releases).
 3. **Man pages** (DONE): `build_man()` -> 787 `*.3` (785 C+STL refentry pages +
    `libdb.3` overview + utilities), `mandoc -Tlint` = 0 errors. `man_coverage.py`
    reports API coverage (measure-only; the CI gate is phase 5).
-4. **PDF** (TODO): pandoc per book (programmer_reference, the GSGs, api_reference)
-   with a shared LaTeX header. `build.py build_pdf()` is the stubbed seam.
-5. **CI** (TODO): `docs.yml` with all validators + the completeness gate (wire
-   `verify.py` per tree + `man_coverage.py` as hard gates).
+4. **PDF** (DONE): `build_pdf()` renders ONE PDF per book (13 books: 2 API refs
+   + 9 guides + articles' 2 sub-books) via pandoc(html)->**weasyprint** -- no TeX
+   toolchain, deterministic, ~3.5 min for all 13. Title page (project + live
+   version + copyright) + running header/footer via `_templates/pdf-print.css`
+   (CSS paged-media). Output `docs-build/pdf/<book>.pdf`; `validate_pdf.py`
+   asserts non-empty + sane page count + version on the title page. Page counts:
+   api_c 655, programmer_reference 370, api_stl 257, installation 168,
+   upgrading 164, gsg_txn 119, gsg 96, collections 93, gsg_db_rep 66, bdb-sql 47,
+   mssgtxt 41, inmemory 20, porting 16.
+5. **CI** (DONE): `.github/workflows/docs.yml` (nix devShell for tool parity).
+   HARD gates: build (html+man, 0 errors), no-loss (`verify_all.py`, all 13
+   trees), completeness (`man_coverage.py --ci`: 28/28 functions + allowlisted
+   methods), spelling (`spellcheck.py`, codespell baselined to legacy typos),
+   internal link-check (`lychee` + `lychee.toml`), man-lint (mandoc, 0 ERRORS).
+   ADVISORY: prose (write-good). BEST-EFFORT/scheduled: PDF build+validate,
+   external link-check. The 2 genuinely-undocumented APIs
+   (`db_env_set_func_assert`, `db_env_set_win_security`) got real stub pages, so
+   the function gate is a hard 100%.
 6. **Publish** (TODO): wire gh-pages to the generated HTML; update the landing
-   page.
+   page. Needs: a `pages` job (or step) that runs `build.py`, uploads
+   `docs-build/html` via `actions/upload-pages-artifact` + `deploy-pages`
+   (permissions: `pages: write`, `id-token: write`); a top-level `index.md`
+   linking the 12 book landing pages + the man/PDF outputs; and a decision on
+   whether PDFs/man are published alongside HTML. The deferred CXX/TCL/java/
+   csharp trees stay out until regenerated from their native doc tools (their
+   inbound links are excluded in `lychee.toml`).
 
 ### Phase 2 retention (verify.py, mean word retention; 0 hard drops on all)
 
