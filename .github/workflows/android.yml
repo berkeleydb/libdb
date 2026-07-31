@@ -1,0 +1,91 @@
+# Android cross-build — core libdb for aarch64-linux-android (bionic libc).
+#
+# Dedicated workflow (does NOT touch ci.yml). Cross-compiles the core C
+# library with the NDK's clang against the existing root meson.build and
+# asserts that a real ARM aarch64 libdb.so is produced. This is a cross-BUILD
+# test: no emulator or device is used or needed.
+#
+# The NDK clang is just a cross-compiler; meson's HAVE_* probes are all
+# compile/link checks (which succeed cross) and sizeof/alignment resolve via
+# compile-only probes, so no target execution is required and no db_config.h
+# hand-patching is needed. As of this workflow the core library cross-builds
+# clean with zero source changes.
+#
+# continue-on-error keeps the job advisory (Android is not yet a release
+# target), but the cross-build + `file` assertion are a real signal: a
+# regression that breaks the arm64 build turns the assert step red.
+
+name: Android
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'meson.build'
+      - 'meson_options.txt'
+      - 'meson/**'
+      - 'dist/android/**'
+      - '.github/workflows/android.yml'
+  schedule:
+    # Weekly (Mon 04:23 UTC): catches NDK/toolchain drift on a low cadence.
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      api:
+        description: 'Android API level'
+        default: '24'
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cross-aarch64:
+    name: cross-build aarch64-linux-android (API ${{ github.event.inputs.api || '24' }})
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory tier — Android is not yet a release target
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Meson + Ninja
+        run: python -m pip install --upgrade meson ninja
+
+      - name: Set up Android NDK
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          # r29 matches the nixpkgs ndk-bundle this path was validated against.
+          ndk-version: r29
+          local-cache: true
+
+      - name: Cross-build libdb.so (aarch64)
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          dist/android/build_android.sh aarch64 "${{ github.event.inputs.api || 24 }}"
+
+      - name: Assert the artifact is an ARM aarch64 shared object
+        run: |
+          out=build-android/libdb.so
+          file "$out"
+          # Real gate: fail if it is not an AArch64 ELF shared object.
+          file "$out" | grep -q 'ELF 64-bit LSB shared object, ARM aarch64' \
+            || { echo "::error title=Android build::libdb.so is not aarch64"; exit 1; }
+          echo "::notice title=Android build::core libdb cross-built for aarch64-linux-android"
+
+      - name: Upload libdb.so (arm64)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: libdb-android-aarch64
+          path: build-android/libdb.so
+          if-no-files-found: ignore
