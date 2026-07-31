@@ -280,6 +280,9 @@
     <File RelativePath="..\..\src\os_windows\os_abs.c"/>
     <File RelativePath="..\..\src\os\os_alloc.c"/>
     <File RelativePath="..\..\src\os\os_atomic.c"/>
+    <File RelativePath="..\..\src\os\os_aio.c"/>
+    <File RelativePath="..\..\src\os\os_aio_iocp.c"/>
+    <File RelativePath="..\..\src\os\os_aio_pool.c"/>
     <File RelativePath="..\..\src\os_windows\os_clock.c"/>
     <File RelativePath="..\..\src\os_windows\os_config.c"/>
     <File RelativePath="..\..\src\os_windows\os_cpu.c"/>
