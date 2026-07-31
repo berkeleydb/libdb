@@ -636,12 +636,13 @@ typedef enum {
 	if ((ip) != NULL) {						\
 		DB_ASSERT(env, ((ip)->dbth_state == THREAD_ACTIVE  ||	\
 		    (ip)->dbth_state == THREAD_FAILCHK));		\
-		(ip)->dbth_state = THREAD_OUT;				\
+		if ((ip)->dbth_state != THREAD_FAILCHK)			\
+			(ip)->dbth_state = THREAD_OUT;			\
 	}								\
 } while (0)
 #else
 #define	ENV_LEAVE(env, ip) do {						\
-	if ((ip) != NULL)						\
+	if ((ip) != NULL && (ip)->dbth_state != THREAD_FAILCHK)		\
 		(ip)->dbth_state = THREAD_OUT;				\
 } while (0)
 #endif
