@@ -42,7 +42,7 @@ The **flags** parameter must be set to one of the following values:
 
   The DB_AFTER flag may not be specified to the Queue access method.
 
-  The `DBcursor->put()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the current cursor record has already been deleted and the underlying access method is Hash.
+  The `DBcursor->put()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the current cursor record has already been deleted and the underlying access method is Hash.
 
 - `DB_BEFORE`
 
@@ -52,13 +52,13 @@ The **flags** parameter must be set to one of the following values:
 
   The DB_BEFORE flag may not be specified to the Queue access method.
 
-  The `DBcursor->put()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the current cursor record has already been deleted and the underlying access method is Hash.
+  The `DBcursor->put()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the current cursor record has already been deleted and the underlying access method is Hash.
 
 - `DB_CURRENT`
 
   Overwrite the data of the key/data pair to which the cursor refers with the specified data item. The **key** parameter is ignored.
 
-  The `DBcursor->put()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the current cursor record has already been deleted.
+  The `DBcursor->put()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the current cursor record has already been deleted.
 
 - `DB_KEYFIRST`
 

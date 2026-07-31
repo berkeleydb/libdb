@@ -11,7 +11,7 @@ dbsql [OPTIONS] FILENAME SQL
 
 `dbsql` is a command line tool that provides access to the Berkeley DB SQL interface.
 
-To build this tool, run the configure script with the `--enable-sql `option when you are building the Berkeley DB SQL interface. For more information on building this tool, see <a href="../../installation/build_unix.html#build_unix_intro" class="olink">"Building for UNIX/POSIX"</a>.
+To build this tool, run the configure script with the `--enable-sql `option when you are building the Berkeley DB SQL interface. For more information on building this tool, see <a href="../../guides/installation/build_unix.md#build_unix_intro" class="olink">"Building for UNIX/POSIX"</a>.
 
 FILENAME is the name of a Berkeley DB database file created with the SQL interface. A new database is created if the file does not exist. The options are as follows:
 

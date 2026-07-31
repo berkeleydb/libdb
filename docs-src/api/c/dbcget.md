@@ -53,7 +53,7 @@ The **flags** parameter must be set to one of the following values:
 
   Return the key/data pair to which the cursor refers.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if DB_CURRENT is set and the cursor key/data pair was deleted.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if DB_CURRENT is set and the cursor key/data pair was deleted.
 
 - `DB_FIRST`
 
@@ -61,7 +61,7 @@ The **flags** parameter must be set to one of the following values:
 
   If the database is a Queue or Recno database, `DBcursor->get()` using the DB_FIRST flag will ignore any keys that exist but were never explicitly created by the application, or were created and later deleted.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_FIRST is set and the database is empty.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_FIRST is set and the database is empty.
 
 - `DB_GET_BOTH`
 
@@ -99,7 +99,7 @@ The **flags** parameter must be set to one of the following values:
 
   If the database is a Queue or Recno database, `DBcursor->get()` using the DB_LAST flag will ignore any keys that exist but were never explicitly created by the application, or were created and later deleted.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_LAST is set and the database is empty.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_LAST is set and the database is empty.
 
 - `DB_NEXT`
 
@@ -107,15 +107,15 @@ The **flags** parameter must be set to one of the following values:
 
   If the database is a Queue or Recno database, `DBcursor->get()` using the DB_NEXT flag will skip any keys that exist but were never explicitly created by the application, or those that were created and later deleted.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_NEXT is set and the cursor is already on the last record in the database.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_NEXT is set and the cursor is already on the last record in the database.
 
 - `DB_NEXT_DUP`
 
   If the next key/data pair of the database is a duplicate data record for the current key/data pair, the cursor is moved to the next key/data pair of the database, and that pair is returned.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_NEXT_DUP is set and the next key/data pair of the database is not a duplicate data record for the current key/data pair.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_NEXT_DUP is set and the next key/data pair of the database is not a duplicate data record for the current key/data pair.
 
-  If using a Heap database, this flag results in this method returning <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a>.
+  If using a Heap database, this flag results in this method returning <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a>.
 
 - `DB_NEXT_NODUP`
 
@@ -123,7 +123,7 @@ The **flags** parameter must be set to one of the following values:
 
   If the database is a Queue or Recno database, `DBcursor->get()` using the DB_NEXT_NODUP flag will ignore any keys that exist but were never explicitly created by the application, or those that were created and later deleted.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_NEXT_NODUP is set and no non-duplicate key/data pairs exist after the cursor position in the database.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_NEXT_NODUP is set and no non-duplicate key/data pairs exist after the cursor position in the database.
 
   If using a Heap database, this flag is identical to the `DB_NEXT` flag.
 
@@ -133,15 +133,15 @@ The **flags** parameter must be set to one of the following values:
 
   If the database is a Queue or Recno database, `DBcursor->get()` using the DB_PREV flag will skip any keys that exist but were never explicitly created by the application, or those that were created and later deleted.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_PREV is set and the cursor is already on the first record in the database.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_PREV is set and the cursor is already on the first record in the database.
 
 - `DB_PREV_DUP`
 
   If the previous key/data pair of the database is a duplicate data record for the current key/data pair, the cursor is moved to the previous key/data pair of the database, and that pair is returned.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_PREV_DUP is set and the previous key/data pair of the database is not a duplicate data record for the current key/data pair.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_PREV_DUP is set and the previous key/data pair of the database is not a duplicate data record for the current key/data pair.
 
-  If using a Heap database, this flag results in this method returning <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a>.
+  If using a Heap database, this flag results in this method returning <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a>.
 
 - `DB_PREV_NODUP`
 
@@ -149,7 +149,7 @@ The **flags** parameter must be set to one of the following values:
 
   If the database is a Queue or Recno database, `DBcursor->get()` using the DB_PREV_NODUP flag will ignore any keys that exist but were never explicitly created by the application, or those that were created and later deleted.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_PREV_NODUP is set and no non-duplicate key/data pairs exist before the cursor position in the database.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_PREV_NODUP is set and no non-duplicate key/data pairs exist before the cursor position in the database.
 
   If using a Heap database, this flag is identical to the `DB_PREV` flag.
 
@@ -157,7 +157,7 @@ The **flags** parameter must be set to one of the following values:
 
   Move the cursor to the specified key/data pair of the database, and return the datum associated with the given key.
 
-  The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_SET is set and no matching keys are found. The `DBcursor->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if DB_SET is set and the database is a Queue or Recno database, and the specified key exists, but was never explicitly created by the application or was later deleted. In the presence of duplicate key values, `DBcursor->get()` will return the first data item for the given key.
+  The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_SET is set and no matching keys are found. The `DBcursor->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if DB_SET is set and the database is a Queue or Recno database, and the specified key exists, but was never explicitly created by the application or was later deleted. In the presence of duplicate key values, `DBcursor->get()` will return the first data item for the given key.
 
 - `DB_SET_RANGE`
 
@@ -191,9 +191,9 @@ In addition, the following flags may be set by bitwise inclusively **OR**'ing th
 
   Return multiple data items in the **data** parameter.
 
-  In the case of Btree or Hash databases, duplicate data items for the current key, starting at the current cursor position, are entered into the buffer. Subsequent calls with both the DB_NEXT_DUP and DB_MULTIPLE flags specified will return additional duplicate data items associated with the current key or <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if there are no additional duplicate data items to return. Subsequent calls with both the DB_NEXT and DB_MULTIPLE flags specified will return additional duplicate data items associated with the current key or if there are no additional duplicate data items will return the next key and its data items or <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if there are no additional keys in the database.
+  In the case of Btree or Hash databases, duplicate data items for the current key, starting at the current cursor position, are entered into the buffer. Subsequent calls with both the DB_NEXT_DUP and DB_MULTIPLE flags specified will return additional duplicate data items associated with the current key or <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if there are no additional duplicate data items to return. Subsequent calls with both the DB_NEXT and DB_MULTIPLE flags specified will return additional duplicate data items associated with the current key or if there are no additional duplicate data items will return the next key and its data items or <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if there are no additional keys in the database.
 
-  In the case of Queue, Recno, or Heap databases, data items starting at the current cursor position are entered into the buffer. The record number (or the RID, in the case of Heap) of the first record will be returned in the **key** parameter. For Queue and Recno, the record number of each subsequent returned record must be calculated from this value. For Heap databases, the RID of subsequent returned records cannot be known. Subsequent calls with the DB_MULTIPLE flag specified will return additional data items or <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if there are no additional data items to return.
+  In the case of Queue, Recno, or Heap databases, data items starting at the current cursor position are entered into the buffer. The record number (or the RID, in the case of Heap) of the first record will be returned in the **key** parameter. For Queue and Recno, the record number of each subsequent returned record must be calculated from this value. For Heap databases, the RID of subsequent returned records cannot be known. Subsequent calls with the DB_MULTIPLE flag specified will return additional data items or <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if there are no additional data items to return.
 
   The buffer to which the **data** parameter refers must be provided from user memory (see <a href="dbt.md#dbt_DB_DBT_USERMEM" class="link">DB_DBT_USERMEM</a> ). The buffer must be at least as large as the page size of the underlying database, aligned for unsigned integer access, and be a multiple of 1024 bytes in size. If the buffer size is insufficient, then upon return from the call the size field of the **data** parameter will have been set to an estimated buffer size, and the error DB_BUFFER_SMALL is returned. (The size is an estimate as the exact size needed may not be known until all entries are read. It is best to initially provide a relatively large buffer, but applications should be prepared to resize the buffer as necessary and repeatedly call the method.)
 
@@ -205,7 +205,7 @@ In addition, the following flags may be set by bitwise inclusively **OR**'ing th
 
   Return multiple key and data pairs in the **data** parameter.
 
-  Key and data pairs, starting at the current cursor position, are entered into the buffer. Subsequent calls with both the DB_NEXT and DB_MULTIPLE_KEY flags specified will return additional key and data pairs or <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if there are no additional key and data items to return.
+  Key and data pairs, starting at the current cursor position, are entered into the buffer. Subsequent calls with both the DB_NEXT and DB_MULTIPLE_KEY flags specified will return additional key and data pairs or <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if there are no additional key and data items to return.
 
   In the case of Btree, Hash or Heap databases, the multiple key and data pairs can be iterated over using the <a href="DB_MULTIPLE_KEY_NEXT.md" class="xref" title="DB_MULTIPLE_KEY_NEXT">DB_MULTIPLE_KEY_NEXT</a> macro.
 

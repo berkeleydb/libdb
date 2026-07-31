@@ -62,4 +62,4 @@ The **func_region_unmap** parameter is the function which unmaps a shared memory
 
 ### See Also
 
-<a href="../../programmer_reference/program_runtime.html" class="olink">Run-time configuration</a>
+<a href="../../guides/programmer_reference/program_runtime.md" class="olink">Run-time configuration</a>

@@ -15,7 +15,7 @@ DB_ENV->txn_applied(DB_ENV *env, DB_TXN_TOKEN *token,
 
 The `DB_ENV->txn_applied()` method checks to see if a specified transaction has been replicated from the master of a replication group. It may be called by applications using either the Base API or the Replication Manager.
 
-If the transaction has not yet arrived, this method will block for the amount of time specified on the `timeout` parameter while it waits for the result to be determined. For more information, please refer to the <a href="../../programmer_reference/rep_ryw.html" class="olink">Read your writes consistency</a> section in the *Berkeley DB Programmer's Reference Guide*.
+If the transaction has not yet arrived, this method will block for the amount of time specified on the `timeout` parameter while it waits for the result to be determined. For more information, please refer to the <a href="../../guides/programmer_reference/rep_ryw.md" class="olink">Read your writes consistency</a> section in the *Berkeley DB Programmer's Reference Guide*.
 
 The `DB_ENV->txn_applied()` method may not be called before the <a href="envopen.md" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> method.
 

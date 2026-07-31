@@ -18,7 +18,7 @@ This method is explicitly called in the <a href="db_printlog.md" class="xref" ti
 
 If you want to call this method from the primary application and have it set the maximum number of bytes to display for each key/data item, then you must bring the db_dump/db_printlog code into the primary application and ensure that the same environment handle is used throughout.
 
-This limit may also be configured using the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. In this case, the limit will equally affect your application code, as well as the command line utilities noted above without modification to their code. The syntax of the entry in that file is a single line with the string "set_data_len", one or more whitespace characters, and the limit in bytes that you want to set.
+This limit may also be configured using the environment's <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. In this case, the limit will equally affect your application code, as well as the command line utilities noted above without modification to their code. The syntax of the entry in that file is a single line with the string "set_data_len", one or more whitespace characters, and the limit in bytes that you want to set.
 
 The `DB_ENV->set_data_len()` method configures operations performed using the specified <a href="env.md" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle, not all operations performed on the underlying database environment.
 

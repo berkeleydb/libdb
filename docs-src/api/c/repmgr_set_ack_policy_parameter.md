@@ -7,7 +7,7 @@ source: docs/api_reference/C/repmgr_set_ack_policy_parameter.html
 
 Specifies how master and client sites will handle acknowledgment of replication messages which are necessary for "permanent" records.
 
-The syntax of this parameter in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `repmgr_set_ack_policy`, one or more whitespace characters, and the ack_policy parameter specified as a string. For example:
+The syntax of this parameter in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `repmgr_set_ack_policy`, one or more whitespace characters, and the ack_policy parameter specified as a string. For example:
 
 ``` c
 repmgr_set_ack_policy DB_REPMGR_ACKS_ALL

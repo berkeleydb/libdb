@@ -10,7 +10,7 @@ db_replicate [-MVv] [-h home]
     [-L file] [-P password] [-T num_threads] [-t secs]  
 ```
 
-The <span class="command">**db_replicate**</span> utility is a daemon process that provides replication/HA services on a transactional environment. This utility enables you to upgrade an existing Transactional Data Store application to an HA application with minor modifications. For more information on the db_replicate utility, see the <a href="../../programmer_reference/rep_replicate.html" class="olink">Running Replication Using the db_replicate Utility</a> section in the <span class="emphasis">*Berkeley DB Programmer's Reference Guide.*</span>
+The <span class="command">**db_replicate**</span> utility is a daemon process that provides replication/HA services on a transactional environment. This utility enables you to upgrade an existing Transactional Data Store application to an HA application with minor modifications. For more information on the db_replicate utility, see the <a href="../../guides/programmer_reference/rep_replicate.md" class="olink">Running Replication Using the db_replicate Utility</a> section in the <span class="emphasis">*Berkeley DB Programmer's Reference Guide.*</span>
 
 ### Note
 
