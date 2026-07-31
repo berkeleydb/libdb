@@ -3,16 +3,60 @@ title: "Berkeley DB Documentation"
 ---
 # Berkeley DB Documentation
 
-Reference documentation for Berkeley DB, generated from Markdown source.
+The complete reference for **libdb** (Berkeley DB) — the embedded,
+transactional key/value storage engine. Generated from Markdown source by
+`docs-src/build.py`; available as HTML (here), [PDF](#pdf), and
+[man pages](#man). Version and copyright are single-sourced from
+`docs-src/_data/site.toml` + `dist/RELEASE`.
 
-This tree is the modernized replacement for the lost-source DocBook HTML: one
-Markdown file per topic, rendered to HTML (and, in later phases, PDF and man
-pages) by `docs-src/build.py`. Version and copyright live in one place
-(`docs-src/_data/site.toml` + `dist/RELEASE`), not duplicated per page.
+## API reference
 
-## Reference
+- [C API Reference](api/c/index.html) — the primary interface: `DB_ENV`, `DB`,
+  `DBC` (cursor), `DBT`, transactions, locking, logging, replication, and the
+  command-line utilities.
+- [C++ / STL API Reference](api/stl/index.html) — the `dbstl` standard-template-
+  library containers and iterators backed by Berkeley DB.
 
-- [C API Reference](api/c/index.html)
+## Guides
 
-*(C++/STL API, the Getting Started guides, the Programmer's Reference, and the
-other trees are migrated in follow-up phases.)*
+- [Programmer's Reference](guides/programmer_reference/index.html) — the
+  conceptual manual: access methods, the environment, memory pool, locking,
+  logging, transactions, replication, XA, and tuning.
+- [Getting Started with Data Storage](guides/gsg/index.html) — databases,
+  cursors, secondary indexes, the four access methods.
+- [Getting Started with Transactions](guides/gsg_txn/index.html) — ACID,
+  isolation, deadlocks, recovery, checkpoints.
+- [Getting Started with Replication](guides/gsg_db_rep/index.html) — the
+  replication framework and Replication Manager.
+- [Collections (Bindings) Tutorial](guides/collections/index.html) — the
+  Java-style collections/bindings API.
+- [Berkeley DB SQL](guides/bdb-sql/index.html) — the SQLite-compatible SQL
+  interface.
+- [Installation & Build](guides/installation/index.html) — building on Unix,
+  Windows, Android; configuration flags; the test suite.
+- [Upgrading](guides/upgrading/index.html) — release-to-release upgrade notes
+  (2.0 through 4.7 and the 11gR2 line).
+- [Porting](guides/porting/index.html) — porting Berkeley DB to a new platform.
+- Articles: [In-Memory Databases](guides/articles/inmemory/index.html) ·
+  [Message Text](guides/articles/mssgtxt/index.html).
+
+## <a id="man"></a>Man pages
+
+Every public API has a section-3 man page, plus a library overview
+(**`libdb(3)`**). They are built to `docs-build/man/man3/` (787 pages) and
+shipped in the release man-page tarball. Install and use like any system man
+page, e.g. `man libdb`, `man db_get`.
+
+## <a id="pdf"></a>PDF downloads
+
+Each book is also available as a PDF (see the release assets / `docs-build/pdf/`):
+`api_c.pdf`, `api_stl.pdf`, `guides_programmer_reference.pdf`,
+`guides_gsg.pdf`, `guides_gsg_txn.pdf`, `guides_gsg_db_rep.pdf`,
+`guides_collections.pdf`, `guides_bdb-sql.pdf`, `guides_installation.pdf`,
+`guides_upgrading.pdf`, `guides_porting.pdf`,
+`guides_articles_inmemory.pdf`, `guides_articles_mssgtxt.pdf`.
+
+---
+
+*The C#/Java language-binding manuals (Sandcastle / Javadoc, not DocBook) are
+archived separately and are not part of this Markdown-sourced tree.*
