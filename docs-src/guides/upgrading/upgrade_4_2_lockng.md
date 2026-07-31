@@ -1,0 +1,16 @@
+---
+title: "DB_LOCK_NOTGRANTED"
+api-name: "DB_LOCK_NOTGRANTED"
+source: docs/upgrading/upgrade_4_2_lockng.html
+---
+## DB_LOCK_NOTGRANTED
+
+In previous releases, configuring lock or transaction timeout values or calling the <a href="../../api/c/txnbegin.md" class="olink">DB_ENV-&gt;txn_begin()</a> method with the <a href="../../api/c/txnbegin.md#txnbegin_DB_TXN_NOWAIT" class="olink">DB_TXN_NOWAIT</a> flag caused database operation methods to return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>, or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception. This required applications to unnecessarily handle multiple errors or exception types.
+
+In the Berkeley DB 4.2 release, with one exception, database operations will no longer return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception. Instead, database operations will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a> or throw a <a href="../api_reference/CXX/dbdeadlock.html" class="olink">DbDeadlockException</a> exception. This change should require no application changes, as applications must already be dealing with the possible <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a> error return or <a href="../api_reference/CXX/dbdeadlock.html" class="olink">DbDeadlockException</a> exception from database operations.
+
+The one exception to this rule is the <a href="../../api/c/dbget.md" class="olink">DB-&gt;get()</a> method using the <a href="../../api/c/dbget.md#dbget_DB_CONSUME_WAIT" class="olink">DB_CONSUME_WAIT</a> flag to consume records from a Queue. If lock or transaction timeouts are set, this method and flag combination may return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception.
+
+Applications wanting to distinguish between true deadlocks and timeouts can configure database operation methods to return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception using the <a href="../../api/c/envset_flags.md#envset_flags_DB_TIME_NOTGRANTED" class="olink">DB_TIME_NOTGRANTED</a> flag.
+
+The <a href="../../api/c/lockget.md" class="olink">DB_ENV-&gt;lock_get()</a> and <a href="../../api/c/lockvec.md" class="olink">DB_ENV-&gt;lock_vec()</a> methods will continue to return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>, or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception as they have previously done.
