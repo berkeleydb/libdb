@@ -14,7 +14,7 @@ DBcursor->close(DBC *DBcursor);
 
 The `DBcursor->close()` method discards the cursor.
 
-It is possible for the `DBcursor->close()` method to return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a>, signaling that any enclosing transaction should be aborted. If the application is already intending to abort the transaction, this error should be ignored, and the application should proceed.
+It is possible for the `DBcursor->close()` method to return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a>, signaling that any enclosing transaction should be aborted. If the application is already intending to abort the transaction, this error should be ignored, and the application should proceed.
 
 After the `DBcursor->close()` method has been called, regardless of its return value, you can not use the cursor handle again.
 

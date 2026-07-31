@@ -11,7 +11,7 @@ If the <a href="db_printlog.md" class="xref" title="db_printlog">db_printlog</a>
 
 The value set here must be greater than 0. The default value is 100.
 
-The syntax of this parameter in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `set_data_len`, one or more whitespace characters, and the directory name.
+The syntax of this parameter in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `set_data_len`, one or more whitespace characters, and the directory name.
 
 For example:
 

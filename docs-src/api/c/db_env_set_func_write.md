@@ -29,4 +29,4 @@ The **func_write** parameter is the replacement function. It must conform to the
 
 ### See Also
 
-<a href="../../programmer_reference/program_runtime.html" class="olink">Run-time configuration</a>
+<a href="../../guides/programmer_reference/program_runtime.md" class="olink">Run-time configuration</a>

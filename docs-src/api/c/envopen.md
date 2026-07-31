@@ -18,13 +18,13 @@ The `DB_ENV->open()` method method returns a non-zero error value on failure and
 
 ### Warning
 
-Using environments with some journaling filesystems might result in log file corruption. This can occur if the operating system experiences an unclean shutdown when a log file is being created. Please see <a href="../../programmer_reference/transapp_journal.html" class="olink">Using Recovery on Journaling Filesystems</a> in the *Berkeley DB Programmer's Reference Guide* for more information.
+Using environments with some journaling filesystems might result in log file corruption. This can occur if the operating system experiences an unclean shutdown when a log file is being created. Please see <a href="../../guides/programmer_reference/transapp_journal.md" class="olink">Using Recovery on Journaling Filesystems</a> in the *Berkeley DB Programmer's Reference Guide* for more information.
 
 ### Parameters
 
 #### db_home
 
-The **db_home** parameter is the database environment's home directory. For more information on **db_home**, and filename resolution in general, see <a href="../../programmer_reference/env_naming.html" class="olink">Berkeley DB File Naming</a>. The environment variable **DB_HOME** may be used as the path of the database home, as described in <a href="../../programmer_reference/env_naming.html" class="olink">Berkeley DB File Naming</a>.
+The **db_home** parameter is the database environment's home directory. For more information on **db_home**, and filename resolution in general, see <a href="../../guides/programmer_reference/env_naming.md" class="olink">Berkeley DB File Naming</a>. The environment variable **DB_HOME** may be used as the path of the database home, as described in <a href="../../guides/programmer_reference/env_naming.md" class="olink">Berkeley DB File Naming</a>.
 
 When using a Unicode build on Windows (the default), the **db_home** argument will be interpreted as a UTF-8 string, which is equivalent to ASCII for Latin characters.
 
@@ -38,7 +38,7 @@ The choice of subsystems initialized for a Berkeley DB database environment is s
 
 - `DB_INIT_CDB`
 
-  Initialize locking for the <a href="../../programmer_reference/cam.html#cam_intro" class="olink">Berkeley DB Concurrent Data Store</a> product. In this mode, Berkeley DB provides multiple reader/single writer access. The only other subsystem that should be specified with the `DB_INIT_CDB` flag is `DB_INIT_MPOOL`.
+  Initialize locking for the <a href="../../guides/programmer_reference/cam.md#cam_intro" class="olink">Berkeley DB Concurrent Data Store</a> product. In this mode, Berkeley DB provides multiple reader/single writer access. The only other subsystem that should be specified with the `DB_INIT_CDB` flag is `DB_INIT_MPOOL`.
 
 - `DB_INIT_LOCK`
 
@@ -56,7 +56,7 @@ The choice of subsystems initialized for a Berkeley DB database environment is s
 
   Initialize the replication subsystem. This subsystem should be used whenever an application plans on using replication. The `DB_INIT_REP` flag requires the `DB_INIT_TXN` and `DB_INIT_LOCK` flags also be configured.
 
-  You can also specify this flag in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file. The syntax is a single line with the string "set_open_flags", one or more whitespace characters, the string "DB_INIT_REP", optionally one or more whitespace characters and the string "on" or "off". If the optional string is omitted, the default is "on"; for example, "set_open_flags DB_INIT_REP" or "set_open_flags DB_INIT_REP on". Because the DB_CONFIG file is read when the database environment is opened, it will silently overrule configuration done before that time.
+  You can also specify this flag in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file. The syntax is a single line with the string "set_open_flags", one or more whitespace characters, the string "DB_INIT_REP", optionally one or more whitespace characters and the string "on" or "off". If the optional string is omitted, the default is "on"; for example, "set_open_flags DB_INIT_REP" or "set_open_flags DB_INIT_REP on". Because the DB_CONFIG file is read when the database environment is opened, it will silently overrule configuration done before that time.
 
 - `DB_INIT_TXN`
 
@@ -80,11 +80,11 @@ The third group of flags govern file-naming extensions in the environment:
 
 - `DB_USE_ENVIRON`
 
-  The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see <a href="../../programmer_reference/env_naming.html" class="olink">Berkeley DB File Naming</a>. Because permitting users to specify which files are used can create security problems, environment information will be used in file naming for all users only if the `DB_USE_ENVIRON` flag is set.
+  The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see <a href="../../guides/programmer_reference/env_naming.md" class="olink">Berkeley DB File Naming</a>. Because permitting users to specify which files are used can create security problems, environment information will be used in file naming for all users only if the `DB_USE_ENVIRON` flag is set.
 
 - `DB_USE_ENVIRON_ROOT`
 
-  The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see <a href="../../programmer_reference/env_naming.html" class="olink">Berkeley DB File Naming</a>. Because permitting users to specify which files are used can create security problems, if the `DB_USE_ENVIRON_ROOT` flag is set, environment information will be used in file naming only for users with appropriate permissions (for example, users with a user-ID of 0 on `UNIX` systems).
+  The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see <a href="../../guides/programmer_reference/env_naming.md" class="olink">Berkeley DB File Naming</a>. Because permitting users to specify which files are used can create security problems, if the `DB_USE_ENVIRON_ROOT` flag is set, environment information will be used in file naming only for users with appropriate permissions (for example, users with a user-ID of 0 on `UNIX` systems).
 
 Finally, there are a few additional unrelated flags:
 
@@ -102,7 +102,7 @@ Finally, there are a few additional unrelated flags:
 
   If the `DB_FAILCHK` flag is used in conjunction with the `DB_REGISTER` flag, then a check will be made to see if the environment needs recovery. If recovery is needed, a call will be made to the `DB_ENV->failchk()` method to release any database reads locks held by the thread of control that exited and, if needed, to abort the unresolved transaction. If `DB_ENV->failchk()` determines environment recovery is still required, the recovery actions for `DB_REGISTER` will be followed.
 
-  If the `DB_FAILCHK` flag is not used in conjunction with the `DB_REGISTER` flag, then make an internal call to `DB_ENV->failchk()` as the last step of opening the environment. If `DB_ENV->failchk()` determines database environment recovery is required, <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a> will be returned.
+  If the `DB_FAILCHK` flag is not used in conjunction with the `DB_REGISTER` flag, then make an internal call to `DB_ENV->failchk()` as the last step of opening the environment. If `DB_ENV->failchk()` determines database environment recovery is required, <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a> will be returned.
 
 - `DB_PRIVATE`
 
@@ -114,19 +114,19 @@ Finally, there are a few additional unrelated flags:
 
   This flag has two effects on the Berkeley DB environment. First, all underlying data structures are allocated from per-process memory instead of from shared memory that is accessible to more than a single process. Second, mutexes are only configured to work between threads.
 
-  See <a href="../../programmer_reference/env_region.html" class="olink">Shared Memory Regions</a> for more information.
+  See <a href="../../guides/programmer_reference/env_region.md" class="olink">Shared Memory Regions</a> for more information.
 
-  You can also specify this flag in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file. The syntax is a single line with the string "set_open_flags", one or more whitespace characters, the string "DB_PRIVATE", optionally one or more whitespace characters and the string "on" or "off". If the optional string is omitted, the default is "on"; for example, "set_open_flags DB_PRIVATE" or "set_open_flags DB_PRIVATE on". Because the DB_CONFIG file is read when the database environment is opened, it will silently overrule configuration done before that time.
+  You can also specify this flag in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file. The syntax is a single line with the string "set_open_flags", one or more whitespace characters, the string "DB_PRIVATE", optionally one or more whitespace characters and the string "on" or "off". If the optional string is omitted, the default is "on"; for example, "set_open_flags DB_PRIVATE" or "set_open_flags DB_PRIVATE on". Because the DB_CONFIG file is read when the database environment is opened, it will silently overrule configuration done before that time.
 
 - `DB_REGISTER`
 
-  Check to see if recovery needs to be performed before opening the database environment. (For this check to be accurate, all processes using the environment must specify `DB_REGISTER` when opening the environment.) If recovery needs to be performed for any reason (including the initial use of the `DB_REGISTER` flag), and `DB_RECOVER` is also specified, recovery will be performed and the open will proceed normally. If recovery needs to be performed and `DB_RECOVER` is not specified, <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a> will be returned. If recovery does not need to be performed, the `DB_RECOVER` flag will be ignored. See <a href="../../programmer_reference/transapp_app.html" class="olink">Architecting Transactional Data Store applications</a> for more information.
+  Check to see if recovery needs to be performed before opening the database environment. (For this check to be accurate, all processes using the environment must specify `DB_REGISTER` when opening the environment.) If recovery needs to be performed for any reason (including the initial use of the `DB_REGISTER` flag), and `DB_RECOVER` is also specified, recovery will be performed and the open will proceed normally. If recovery needs to be performed and `DB_RECOVER` is not specified, <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a> will be returned. If recovery does not need to be performed, the `DB_RECOVER` flag will be ignored. See <a href="../../guides/programmer_reference/transapp_app.md" class="olink">Architecting Transactional Data Store applications</a> for more information.
 
 - `DB_SYSTEM_MEM`
 
   Allocate region memory from system shared memory instead of from heap memory or memory backed by the filesystem.
 
-  See <a href="../../programmer_reference/env_region.html" class="olink">Shared Memory Regions</a> for more information.
+  See <a href="../../guides/programmer_reference/env_region.md" class="olink">Shared Memory Regions</a> for more information.
 
 - `DB_THREAD`
 
@@ -134,7 +134,7 @@ Finally, there are a few additional unrelated flags:
 
   This flag is required when using the Replication Manager.
 
-  You can also specify this flag in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file. The syntax is a single line with the string "set_open_flags", one or more whitespace characters, the string "DB_THREAD", optionally one or more whitespace characters and the string "on" or "off". If the optional string is omitted, the default is "on"; for example, "set_open_flags DB_THREAD" or "set_open_flags DB_THREAD on". Because the DB_CONFIG file is read when the database environment is opened, it will silently overrule configuration done before that time.
+  You can also specify this flag in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file. The syntax is a single line with the string "set_open_flags", one or more whitespace characters, the string "DB_THREAD", optionally one or more whitespace characters and the string "on" or "off". If the optional string is omitted, the default is "on"; for example, "set_open_flags DB_THREAD" or "set_open_flags DB_THREAD on". Because the DB_CONFIG file is read when the database environment is opened, it will silently overrule configuration done before that time.
 
 #### mode
 

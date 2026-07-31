@@ -13,7 +13,7 @@ DB->join(DB *primary,
     DBC **curslist, DBC **dbcp, u_int32_t flags);  
 ```
 
-The `DB->join()` method creates a specialized join cursor for use in performing equality or natural joins on secondary indices. For information on how to organize your data to use this functionality, see <a href="../../programmer_reference/am_cursor.html#am_join" class="olink">Equality join</a>.
+The `DB->join()` method creates a specialized join cursor for use in performing equality or natural joins on secondary indices. For information on how to organize your data to use this functionality, see <a href="../../guides/programmer_reference/am_cursor.md#am_join" class="olink">Equality join</a>.
 
 The `DB->join()` method is called using the <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle of the primary database.
 

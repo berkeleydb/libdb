@@ -14,7 +14,7 @@ DB->exists(DB *db, DB_TXN *txnid, DBT *key, u_int32_t flags);
 
 The `DB->exists()` method returns whether the specified key appears in the database.
 
-The `DB->exists()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the specified key is not in the database. The `DB->exists()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if the database is a Queue or Recno database and the specified key exists, but was never explicitly created by the application or was later deleted.
+The `DB->exists()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if the specified key is not in the database. The `DB->exists()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if the database is a Queue or Recno database and the specified key exists, but was never explicitly created by the application or was later deleted.
 
 ### Parameters
 

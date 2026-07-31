@@ -13,7 +13,7 @@ DB->set_bt_prefix(DB *db,
     size_t (*bt_prefix_fcn)(DB *, const *dbt1, const *dbt2));  
 ```
 
-Set the Btree prefix function. The prefix function is used to determine the amount by which keys stored on the Btree internal pages can be safely truncated without losing their uniqueness. See the <a href="../../programmer_reference/bt_conf.html#am_conf_bt_prefix" class="olink">Btree prefix comparison</a> section of the Berkeley DB Reference Guide for more details about how this works. The usefulness of this is data-dependent, but can produce significantly reduced tree sizes and search times in some data sets.
+Set the Btree prefix function. The prefix function is used to determine the amount by which keys stored on the Btree internal pages can be safely truncated without losing their uniqueness. See the <a href="../../guides/programmer_reference/bt_conf.md#am_conf_bt_prefix" class="olink">Btree prefix comparison</a> section of the Berkeley DB Reference Guide for more details about how this works. The usefulness of this is data-dependent, but can produce significantly reduced tree sizes and search times in some data sets.
 
 If no prefix function or key comparison function is specified by the application, a default lexical comparison function is used as the prefix function. If no prefix function is specified and a key comparison function is specified, no prefix function is used. It is an error to specify a prefix function without also specifying a Btree key comparison function.
 

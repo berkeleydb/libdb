@@ -14,7 +14,7 @@ DB->set_pagesize(DB *db, u_int32_t pagesize);
 
 Set the size of the pages used to hold items in the database, in bytes. The minimum page size is 512 bytes, the maximum page size is 64K bytes, and the page size must be a power-of-two. If the page size is not explicitly set, one is selected based on the underlying filesystem I/O block size. The automatically selected size has a lower limit of 512 bytes and an upper limit of 16K bytes.
 
-For information on tuning the Berkeley DB page size, see <a href="../../programmer_reference/general_am_conf.html#am_conf_pagesize" class="olink">Selecting a page size</a>.
+For information on tuning the Berkeley DB page size, see <a href="../../guides/programmer_reference/general_am_conf.md#am_conf_pagesize" class="olink">Selecting a page size</a>.
 
 The `DB->set_pagesize()` method configures a database, not only operations performed using the specified <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle.
 
