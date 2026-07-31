@@ -7,10 +7,10 @@ coverage/-O0 resource artifact vs. real engine bug.
 
 ## Method
 
-- Worktree: `/tmp/libdb-wt-test-triage`, branch `agent/test-triage` off master.
+- A clean checkout of `master` (no `--coverage`).
 - Build (NO `--coverage`):
   `../dist/configure --enable-debug --enable-diagnostic --enable-test
-  --with-tcl=/nix/store/mzx2cj89c7phpv7cb6r9hydadnndp53m-tcl-8.6.16/lib && make -j4`.
+  --with-tcl=/path/to/tcl && make -j4`.
   Note: BDB `--enable-debug` compiles at `-g -O2` (adds `-g`, not `-O0`);
   `--enable-diagnostic` sets `DIAGNOSTIC 1` so `DB_ASSERT` is live.
 - Each test run via the harness: `source test.tcl; run_method <method> testNNN 0 1`,

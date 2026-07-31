@@ -5,7 +5,7 @@
 # measure branch coverage, then aim new tests at the gaps).
 #
 # See test/coverage/README.md for how to read the report and find the
-# least-covered files. Tier B3 of .agents/test-suite-maturity-plan.md.
+# least-covered files. Tier B3 of the test-suite maturity plan.
 #
 # Usage:
 #   test/coverage/run_coverage.sh              # subset build + report

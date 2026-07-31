@@ -1,7 +1,6 @@
 # libdb DST v2 — deterministic multi-process design & failchk pilot
 
-> Canonical working copy lives at `.agents/dst-v2-design.md` (gitignored, per
-> repo convention); this is the committed PR copy. v1 (single-process
+> v1 (single-process
 > fault-injection + crash/recovery) is documented in `test/sim/DESIGN.md`;
 > read that first. This document is the v2 plan and records the **pilot that
 > actually landed** on this branch.
@@ -47,7 +46,7 @@ processes on real `mmap`, precisely so that a hard `kill -9` models a real
 crash. Turning them into cooperative fibers would delete the exact property v2
 exists to test.
 
-So v2 is fundamentally harder than xtc's fiber model, and pretending a
+So v2 is fundamentally harder than a single-thread fiber model, and pretending a
 single-thread scheduler applies would be coverage theater. v2 is **phased**,
 and this branch delivers the phase with the best value-to-tractability ratio.
 
@@ -80,9 +79,9 @@ interleaving of real processes sharing a real region** — the real thing.
 ### (b) Single-process, multiple ENVs / thread-simulated "processes", cooperatively scheduled
 
 Run N "processes" as N threads (or N `DB_ENV` handles) in one process,
-cooperatively scheduled like xtc fibers.
+cooperatively scheduled like fibers.
 
-- **Cost:** low — closest to xtc, reuses the v1 seam philosophy.
+- **Cost:** low — closest to a fiber model, reuses the v1 seam philosophy.
 - **Coverage:** poor for the thing that matters. Threads in one process share
   one address space, not a cross-process `mmap` region with separate page
   tables; `kill -9` of a thread is not a process crash; region mutexes behave
@@ -319,7 +318,7 @@ report-don't-fix rule); this section is the precise, reproducible report.
   bugs. Large; the `SCHED` stream + `sim_sched.h` seam are the foundation.
 - **Phase 3: replication / network faults on top.** With the deterministic
   multi-process substrate in place, model repmgr role changes and network
-  partitions at the message seam (as xtc does), driving replication crash /
+  partitions at the message seam, driving replication crash /
   election scenarios deterministically. Depends on phase 2.
 
 ---
@@ -344,7 +343,7 @@ mutex cannot leave orphans holding the shared region. Each run is
 
 ## 6. References
 
-- v1 design: `test/sim/DESIGN.md` (§0 the xtc gap, the `SCHED` reservation).
+- v1 design: `test/sim/DESIGN.md` (§0 the fiber-DST gap, the `SCHED` reservation).
 - Multi-process test orchestration model: `test/tcl/env012.tcl` (DB_REGISTER +
   failchk, kill process 1, process 3 runs failchk and cleans up — env012.j),
   `test/tcl/ssi009.tcl` + `test/tcl/wrap.tcl` (spawn N workers, `watch_procs`).
