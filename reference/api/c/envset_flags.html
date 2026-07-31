@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DB_ENV-&gt;set_flags() — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="db_env-set_flags">DB_ENV-&gt;set_flags()</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db.h&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>DB_ENV<span class="op">-&gt;</span>set_flags<span class="op">(</span>DB_ENV <span class="op">*</span>dbenv<span class="op">,</span> u_int32_t flags<span class="op">,</span> <span class="dt">int</span> onoff<span class="op">);</span>  </span></code></pre></div>
+<p>Configure a database environment.</p>
+<p>The database environment's flag values may also be configured using the environment's <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. The syntax of the entry in that file is a single line with the string "set_flags", one or more whitespace characters, and the method flag parameter as a string, and optionally one or more whitespace characters, and the string "on" or "off". If the optional string is omitted, the default is "on"; for example, "set_flags DB_TXN_NOSYNC" or "set_flags DB_TXN_NOSYNC on". Because the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is read when the database environment is opened, it will silently overrule configuration done before that time.</p>
+<p>The <code>DB_ENV-&gt;set_flags()</code> method returns a non-zero error value on failure and 0 on success.</p>
+<h3 id="parameters">Parameters</h3>
+<h4 id="flags">flags</h4>
+<p>The <strong>flags</strong> parameter must be set by bitwise inclusively <strong>OR</strong>'ing together one or more of the following values:</p>
+<ul>
+<li><p><code>DB_AUTO_COMMIT</code></p>
+<p>If set, <a href="db.html" class="link" title="Chapter 2.  The DB Handle">DB</a> handle operations for which no explicit transaction handle was specified, and which modify databases in the database environment, will be automatically enclosed within a transaction.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with this flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set this flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>This flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_CDB_ALLDB</code></p>
+<p>If set, Berkeley DB Concurrent Data Store applications will perform locking on an environment-wide basis rather than on a per-database basis.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_CDB_ALLDB flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_CDB_ALLDB flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_CDB_ALLDB flag may be used to configure Berkeley DB only before the <a href="envopen.html" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> method is called.</p></li>
+<li><p><code>DB_DIRECT_DB</code></p>
+<p>Turn off system buffering of Berkeley DB database files to avoid double caching.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_DIRECT_DB flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_DIRECT_DB flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_DIRECT_DB flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_HOTBACKUP_IN_PROGRESS</code></p>
+<p>Set this flag prior to creating a hot backup of a database environment. If a transaction with the bulk insert optimization enabled (with the <a href="txnbegin.html#txnbegin_DB_TXN_BULK" class="xref"><code class="literal">DB_TXN_BULK</code></a> flag) is in progress, setting the <code>DB_HOTBACKUP_IN_PROGRESS</code> flag forces a checkpoint in the environment. After this flag is set in the environment, the bulk insert optimization is disabled, until the flag is reset. Using this protocol allows a hot backup procedure to make a consistent copy of the database even when bulk transactions are ongoing. For more information, see the section on Hot Backup in the <span class="emphasis"><em>Getting Started With Transaction Processing Guide</em></span> and the description of the <a href="txnbegin.html#txnbegin_DB_TXN_BULK" class="xref"><code class="literal">DB_TXN_BULK</code></a> flag in the <a href="txnbegin.html" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a> method.</p>
+<p>The <a href="db_hotbackup.html" class="xref" title="db_hotbackup">db_hotbackup</a> utility implements the protocol described above.</p></li>
+<li><p><code>DB_DSYNC_DB</code></p>
+<p>Configure Berkeley DB to flush database writes to the backing disk before returning from the write system call, rather than flushing database writes explicitly in a separate system call, as necessary. This is only available on some systems (for example, systems supporting the IEEE/ANSI Std 1003.1 (POSIX) standard O_DSYNC flag, or systems supporting the Windows FILE_FLAG_WRITE_THROUGH flag). This flag may result in inaccurate file modification times and other file-level information for Berkeley DB database files. This flag will almost certainly result in a performance decrease on most systems. This flag is only applicable to certain filesysystems (for example, the Veritas VxFS filesystem), where the filesystem's support for trickling writes back to stable storage behaves badly (or more likely, has been misconfigured).</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_DSYNC_DB flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_DSYNC_DB flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_DSYNC_DB flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_MPOOL_AIO</code></p>
+<p>If set, the Berkeley DB memory pool performs buffer-pool writeback (checkpoint, sync, and trickle) asynchronously, using a per-process native asynchronous I/O engine (io_uring, IOCP, POSIX aio, or a portable thread-pool fallback) when one is available. When this flag is not set — the default — or when no asynchronous I/O backend is configured for the platform, writeback is performed synchronously exactly as in prior releases. Foreground buffer eviction is always synchronous.</p>
+<p>Asynchronous writeback can reduce stalls under write-heavy or cache-pressure workloads on storage that benefits from multiple outstanding I/Os; on a single slow device it may not help, so it is opt-in.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_MPOOL_AIO flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). The asynchronous I/O context is private to each process.</p>
+<p>The DB_MPOOL_AIO flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_MULTIVERSION</code></p>
+<p>If set, all databases in the environment will be opened as if DB_MULTIVERSION is passed to the <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> method. This flag will be ignored for queue databases for which DB_MULTIVERSION is not supported.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_MULTIVERSION flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_MULTIVERSION flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_MULTIVERSION flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_NOLOCKING</code></p>
+<p>If set, Berkeley DB will grant all requested mutual exclusion mutexes and database locks without regard for their actual availability. This functionality should never be used for purposes other than debugging.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_NOLOCKING flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p>
+<p>The DB_NOLOCKING flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_NOMMAP</code></p>
+<p>If set, Berkeley DB will copy read-only database files into the local cache instead of potentially mapping them into process memory (see the description of the <a href="envset_mp_mmapsize.html" class="xref" title="DB_ENV-&gt;set_mp_mmapsize()">DB_ENV-&gt;set_mp_mmapsize()</a> method for further information).</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_NOMMAP flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_NOMMAP flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_NOMMAP flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_NOPANIC</code></p>
+<p>If set, Berkeley DB will ignore any panic state in the database environment. (Database environments in a panic state normally refuse all attempts to call Berkeley DB functions, returning <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a>.) This functionality should never be used for purposes other than debugging.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_NOPANIC flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p>
+<p>The DB_NOPANIC flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_OVERWRITE</code></p>
+<p>Overwrite files stored in encrypted formats before deleting them. Berkeley DB overwrites files using alternating 0xff, 0x00 and 0xff byte patterns. For file overwriting to be effective, the underlying file must be stored on a fixed-block filesystem. Systems with journaling or logging filesystems will require operating system support and probably modification of the Berkeley DB sources.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_OVERWRITE flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p>
+<p>The DB_OVERWRITE flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_PANIC_ENVIRONMENT</code></p>
+<p>If set, Berkeley DB will set the panic state for the database environment. (Database environments in a panic state normally refuse all attempts to call Berkeley DB functions, returning <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a>.) This flag may not be specified using the environment's <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_PANIC_ENVIRONMENT flag affects the database environment, including all threads of control accessing the database environment.</p>
+<p>The DB_PANIC_ENVIRONMENT flag may be used to configure Berkeley DB only after the <a href="envopen.html" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> method is called.</p></li>
+<li><p><code>DB_REGION_INIT</code></p>
+<p>In some applications, the expense of page-faulting the underlying shared memory regions can affect performance. (For example, if the page-fault occurs while holding a lock, other lock requests can convoy, and overall throughput may decrease.) If set, Berkeley DB will page-fault shared regions into memory when initially creating or joining a Berkeley DB environment. In addition, Berkeley DB will write the shared regions when creating an environment, forcing the underlying virtual memory and filesystems to instantiate both the necessary memory and the necessary disk space. This can also avoid out-of-disk space failures later on.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_REGION_INIT flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_REGION_INIT flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_REGION_INIT flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_TIME_NOTGRANTED</code></p>
+<p>If set, database calls timing out based on lock or transaction timeout values will return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> instead of <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a>. This allows applications to distinguish between operations which have deadlocked and operations which have exceeded their time limits.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_TIME_NOTGRANTED flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_TIME_NOTGRANTED flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The <code>DB_TIME_NOTGRANTED</code> flag may be used to configure Berkeley DB at any time during the life of the application.</p>
+<p>Note that the <a href="lockget.html" class="xref" title="DB_ENV-&gt;lock_get()">DB_ENV-&gt;lock_get()</a> and <a href="lockvec.html" class="xref" title="DB_ENV-&gt;lock_vec()">DB_ENV-&gt;lock_vec()</a> methods are unaffected by this flag.</p></li>
+<li><p><code>DB_TXN_NOSYNC</code></p>
+<p>If set, Berkeley DB will not write or synchronously flush the log on transaction commit. This means that transactions exhibit the ACI (atomicity, consistency, and isolation) properties, but not D (durability); that is, database integrity will be maintained, but if the application or system fails, it is possible some number of the most recently committed transactions may be undone during recovery. The number of transactions at risk is governed by how many log updates can fit into the log buffer, how often the operating system flushes dirty buffers to disk, and how often the log is checkpointed.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_TXN_NOSYNC flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_TXN_NOSYNC flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_TXN_NOSYNC flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_TXN_NOWAIT</code></p>
+<p>If set and a lock is unavailable for any Berkeley DB operation performed in the context of a transaction, cause the operation to return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a> (or <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> if configured using the DB_TIME_NOTGRANTED flag).</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_TXN_NOWAIT flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_TXN_NOWAIT flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_TXN_NOWAIT flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_TXN_SNAPSHOT</code></p>
+<p>If set, all transactions in the environment will be started as if DB_TXN_SNAPSHOT were passed to the <a href="txnbegin.html" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a> method, and all non-transactional cursors will be opened as if DB_TXN_SNAPSHOT were passed to the <a href="dbcursor.html" class="xref" title="DB-&gt;cursor()">DB-&gt;cursor()</a> method.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_TXN_SNAPSHOT flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_TXN_SNAPSHOT flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_TXN_SNAPSHOT flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_TXN_WRITE_NOSYNC</code></p>
+<p>If set, Berkeley DB will write, but will not synchronously flush, the log on transaction commit. This means that transactions exhibit the ACI (atomicity, consistency, and isolation) properties, but not D (durability); that is, database integrity will be maintained, but if the system fails, it is possible some number of the most recently committed transactions may be undone during recovery. The number of transactions at risk is governed by how often the system flushes dirty buffers to disk and how often the log is checkpointed.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_TXN_WRITE_NOSYNC flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_TXN_WRITE_NOSYNC flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_TXN_WRITE_NOSYNC flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<li><p><code>DB_YIELDCPU</code></p>
+<p>If set, Berkeley DB will yield the processor immediately after each page or mutex acquisition. This functionality should never be used for purposes other than stress testing.</p>
+<p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_YIELDCPU flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_YIELDCPU flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
+<p>The DB_YIELDCPU flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+</ul>
+<h4 id="onoff">onoff</h4>
+<p>If the <strong>onoff</strong> parameter is zero, the specified flags are cleared; otherwise they are set.</p>
+<h3 id="errors">Errors</h3>
+<p>The <code>DB_ENV-&gt;set_flags()</code> method may fail and return one of the following non-zero errors:</p>
+<h4 id="einval">EINVAL</h4>
+<p>An invalid flag value or parameter was specified.</p>
+<h3 id="class">Class</h3>
+<p><a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a></p>
+<h3 id="see-also">See Also</h3>
+<p><a href="env.html#envlist" class="xref" title="Database Environments and Related Methods">Database Environments and Related Methods</a></p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

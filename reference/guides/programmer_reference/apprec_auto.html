@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Automatically generated functions — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="automatically-generated-functions">Automatically generated functions</h2>
+<p>The XXX.src file is processed using the gen_rec.awk script included in the dist directory of the Berkeley DB distribution. This is an awk script that is executed from with the following command line:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>awk <span class="op">-</span>f gen_rec<span class="op">.</span>awk \</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>v source_file<span class="op">=</span>C_FILE \</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>v header_file<span class="op">=</span>H_FILE \</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>v print_file<span class="op">=</span>P_FILE \</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>v template_file<span class="op">=</span>TMP_FILE <span class="op">&lt;</span> XXX<span class="op">.</span>src</span></code></pre></div>
+<p>where <span class="emphasis"><em>C_FILE</em></span> is the name of the file into which to place the automatically generated C code, <span class="emphasis"><em>H_FILE</em></span> is the name of the file into which to place the automatically generated data structures and declarations, <span class="emphasis"><em>P_FILE</em></span> is the name of the file into which to place the automatically generated C code that prints log records, and <span class="emphasis"><em>TMP_FILE</em></span> is the name of the file into which to place a template for the recovery routines.</p>
+<p>Because the gen_rec.awk script uses sources files located relative to the Berkeley DB dist directory, it must be run from the dist directory. For example, in building the Berkeley DB logging and recovery routines for ex_apprec, the following script is used to rebuild the automatically generated files:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>E<span class="op">=../</span>examples_c<span class="op">/</span>ex_apprec</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>cd <span class="op">../../</span>dist</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>awk <span class="op">-</span>f gen_rec<span class="op">.</span>awk \</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>v source_file<span class="op">=</span>$E<span class="op">/</span>ex_apprec_auto<span class="op">.</span>c \</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>v header_file<span class="op">=</span>$E<span class="op">/</span>ex_apprec_auto<span class="op">.</span>h \</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>v print_file<span class="op">=</span>$E<span class="op">/</span>ex_apprec_autop<span class="op">.</span>c \</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">-</span>v template_file<span class="op">=</span>$E<span class="op">/</span>ex_apprec_template <span class="op">&lt;</span> $E<span class="op">/</span>ex_apprec<span class="op">.</span>src</span></code></pre></div>
+<p>For each log record description found in the XXX.src file, the following structure declarations and #defines will be created in the file <span class="emphasis"><em>header_file</em></span>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define DB_PREFIX_RECORD_TYPE        </span><span class="co">/* Integer ID number */</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> _PREFIX_RECORD_TYPE_args <span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">     * These three fields are generated for every record.</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    u_int32_t type<span class="op">;</span>      <span class="co">/* Record type used for dispatch. */</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co">     * Transaction handle that identifies the transaction on whose</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co">     * behalf the record is being logged.</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    DB_TXN <span class="op">*</span>txnid<span class="op">;</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co">     * The log sequence number returned by the previous call to log_put</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="co">     * for this transaction.</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    DB_LSN <span class="op">*</span>prev_lsn<span class="op">;</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a><span class="co">     * The rest of the structure contains one field for each of</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="co">     * the entries in the record statement.</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<p>Thus, the auto-generated ex_apprec_mkdir_args structure looks as follows:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> _ex_apprec_mkdir_args <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    u_int32_t type<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    DB_TXN <span class="op">*</span>txnid<span class="op">;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    DB_LSN prev_lsn<span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    DBT dirname<span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> ex_apprec_mkdir_args<span class="op">;</span></span></code></pre></div>
+<p>The template_file will contain a template for a recovery function. The recovery function is called on each record read from the log during system recovery, transaction abort, or the application of log records on a replication client, and is expected to redo or undo the operations described by that record. The details of the recovery function will be specific to the record being logged and need to be written manually, but the template provides a good starting point. (See ex_apprec_template and ex_apprec_rec.c for an example of both the template produced and the resulting recovery function.)</p>
+<p>The template file should be copied to a source file in the application (but not the automatically generated source_file, as that will get overwritten each time gen_rec.awk is run) and fully developed there. The recovery function takes the following parameters:</p>
+<blockquote>
+<p><span class="term">dbenv</span><br />
+The environment in which recovery is running.</p>
+<p><span class="term">rec</span><br />
+The record being recovered.</p>
+<p><span class="term">lsn</span><br />
+The log sequence number of the record being recovered. The prev_lsn field, automatically included in every auto-generated log record, should be returned through this argument. The prev_lsn field is used to chain log records together to allow transaction aborts; because the recovery function is the only place that a log record gets parsed, the responsibility for returning this value lies with the recovery function writer.</p>
+<p><span class="term">op</span><br />
+A parameter of type db_recops, which indicates what operation is being run (<a href="../../api/c/envset_app_dispatch.html#set_app_dispatch_DB_TXN_ABORT" class="olink">DB_TXN_ABORT</a>, <a href="../../api/c/envset_app_dispatch.html#set_app_dispatch_DB_TXN_APPLY" class="olink">DB_TXN_APPLY</a>, <a href="../../api/c/envset_app_dispatch.html#set_app_dispatch_DB_TXN_BACKWARD_ROLL" class="olink">DB_TXN_BACKWARD_ROLL</a>, <a href="../../api/c/envset_app_dispatch.html#set_app_dispatch_DB_TXN_FORWARD_ROLL" class="olink">DB_TXN_FORWARD_ROLL</a> or <a href="../../api/c/envset_app_dispatch.html#set_app_dispatch_DB_TXN_PRINT" class="olink">DB_TXN_PRINT</a>).</p>
+</blockquote>
+<p>In addition to the header_file and template_file, a source_file is created, containing a log, read, recovery, and print function for each record type.</p>
+<p>The log function marshalls the parameters into a buffer, and calls <a href="../../api/c/logput.html" class="olink">DB_ENV-&gt;log_put()</a> on that buffer returning 0 on success and non-zero on failure. The log function takes the following parameters:</p>
+<blockquote>
+<p><span class="term">dbenv</span><br />
+The environment in which recovery is running.</p>
+<p><span class="term">txnid</span><br />
+The transaction identifier for the transaction handle returned by <a href="../../api/c/txnbegin.html" class="olink">DB_ENV-&gt;txn_begin()</a>.</p>
+<p><span class="term">lsnp</span><br />
+A pointer to storage for a log sequence number into which the log sequence number of the new log record will be returned.</p>
+<p><span class="term">syncflag</span><br />
+A flag indicating whether the record must be written synchronously. Valid values are 0 and <a href="../../api/c/logput.html#put_DB_FLUSH" class="olink">DB_FLUSH</a>.</p>
+<p><span class="term">args</span><br />
+The remaining parameters to the log message are the fields described in the XXX.src file, in order.</p>
+</blockquote>
+<p>The read function takes a buffer and unmarshalls its contents into a structure of the appropriate type. It returns 0 on success and non-zero on error. After the fields of the structure have been used, the pointer returned from the read function should be freed. The read function takes the following parameters:</p>
+<blockquote>
+<p><span class="term">dbenv</span><br />
+The environment in which recovery is running.</p>
+<p><span class="term">recbuf</span><br />
+A buffer.</p>
+<p><span class="term">argp</span><br />
+A pointer to a structure of the appropriate type.</p>
+</blockquote>
+<p>The print function displays the contents of the record. The print function takes the same parameters as the recovery function described previously. Although some of the parameters are unused by the print function, taking the same parameters allows a single dispatch loop to dispatch to a variety of functions. The print function takes the following parameters:</p>
+<blockquote>
+<p><span class="term">dbenv</span><br />
+The environment in which recovery is running.</p>
+<p><span class="term">rec</span><br />
+The record being recovered.</p>
+<p><span class="term">lsn</span><br />
+The log sequence number of the record being recovered.</p>
+<p><span class="term">op</span><br />
+Unused.</p>
+</blockquote>
+<p>Finally, the source file will contain a function (named XXX_init_print, where XXX is replaced by the prefix) which should be added to the initialization part of the standalone <a href="../../api/c/db_printlog.html" class="olink">db_printlog</a> utility code so that utility can be used to display application-specific log records.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AIX — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="aix">AIX</h2>
+<ol type="1">
+<li><p><strong>I can't compile and run multithreaded applications.</strong></p>
+<p>Special compile-time flags are required when compiling threaded applications on AIX. If you are compiling a threaded application, you must compile with the _THREAD_SAFE flag and load with specific libraries; for example, "-lc_r". Specifying the compiler name with a trailing "_r" usually performs the right actions for the system.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>xlc_r <span class="op">...</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>cc <span class="op">-</span>D_THREAD_SAFE <span class="op">-</span>lc_r <span class="op">...</span></span></code></pre></div>
+<p>The Berkeley DB library will automatically build with the correct options.</p></li>
+<li><p><strong>I can't run using the <a href="../../api/c/envopen.html#envopen_DB_SYSTEM_MEM" class="olink">DB_SYSTEM_MEM</a> option to <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a>.</strong></p>
+<p>AIX 4.1 allows applications to map only 10 system shared memory segments. In AIX 4.3, this has been raised to 256K segments, but only if you set the environment variable "export EXTSHM=ON".</p></li>
+<li><p><strong>On AIX 4.3.2 (or before) I see duplicate symbol warnings when building the C++ shared library and when linking applications.</strong></p>
+<p>We are aware of some duplicate symbol warnings with this platform, but they do not appear to affect the correct operation of applications.</p></li>
+<li><p><strong>On AIX 4.3.3 I see undefined symbols for DbEnv::set_error_stream, Db::set_error_stream or DbEnv::verify when linking C++ applications. (These undefined symbols also appear when building the Berkeley DB C++ example applications).</strong></p>
+<p>By default, Berkeley DB is built with _LARGE_FILES set to 1 to support the creation of "large" database files. However, this also affects how standard classes, like iostream, are named internally. When building your application, use a "-D_LARGE_FILES=1" compilation option, or insert "#define _LARGE_FILES 1" before any #include statements.</p></li>
+<li><p><strong>I can't create database files larger than 1GB on AIX.</strong></p>
+<p>If you're running on AIX 4.1 or earlier, try changing the source code for <code>os/os_open.c</code> to always specify the <strong>O_LARGEFILE</strong> flag to the <code>open</code>(2) system call, and recompile Berkeley DB from scratch.</p>
+<p>Also, the documentation for the IBM Visual Age compiler states that it does not not support the 64-bit filesystem APIs necessary for creating large files; the ibmcxx product must be used instead. We have not heard whether the GNU gcc compiler supports the 64-bit APIs or not.</p>
+<p>Finally, to create large files under AIX, the filesystem has to be configured to support large files and the system wide user hard-limit for file sizes has to be greater than 1GB.</p></li>
+<li><p><strong>I see errors about "open64" when building Berkeley DB applications.</strong></p>
+<p>System include files (most commonly fcntl.h) in some releases of AIX and Solaris redefine "open" when large-file support is enabled for applications. This causes problems when compiling applications because "open" is a method in the Berkeley DB APIs. To work around this problem:</p>
+<ol type="1">
+<li>Avoid including the problematical system include files in source code files which also include Berkeley DB include files and call into the Berkeley DB API.</li>
+<li>Before building Berkeley DB, modify the generated include file db.h to itself include the problematical system include files.</li>
+<li>Turn off Berkeley DB large-file support by specifying the <a href="build_unix_conf.html#build_unix_conf.--disable-largefile" class="link">--disable-largefile</a> configuration option and rebuilding.</li>
+</ol></li>
+<li><p><strong>I see the error "Redeclaration of lseek64" when building Berkeley DB with the --enable-sql and --enable-test options.</strong></p>
+<p>In some releases of AIX, the system include files (most commonly <code>unistd.h</code>) redefine <code>lseek</code> to <code>lseek64</code> when large-file support is enabled even though <code>lseek</code> may have already been defined when the <code>_LARGE_FILE_API</code> macro is on. To work around this problem, do either one of the following:</p>
+<ol type="1">
+<li>Disable large-file support in Berkeley DB by specifying the <code>--disable-largefile</code> configuration option and rebuilding.</li>
+<li>Edit <code>db.h</code> manually after running the configure command, and remove the line that includes <code>unistd.h</code>.</li>
+</ol></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

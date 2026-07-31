@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 4. Building Berkeley DB for Android — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="chapter-4-building-berkeley-db-for-android">Chapter 4. Building Berkeley DB for Android</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="build_android_intro.html#build_android">Building the Drop-In Replacement for Android</a> </span></p>
+<p><span class="sect2"> <a href="build_android_intro.html#build_android_migrate">Migrating from SQLite to Berkeley DB</a> </span></p>
+<p><span class="sect1"> <a href="build_android_jdbc.html">Building the Android JDBC Driver</a> </span></p>
+<p><span class="sect1"> <a href="build_android_config.html">Android Configuration Options</a> </span></p>
+<p>Berkeley DB provides support for the Android platform enabling you to develop and deploy a wide range of mobile applications and services. Android provides SQLite as the default database for developing applications that need database support. Berkeley DB SQL API is fully compatible with SQLite and can be used as a replacement. The <code>build_android</code> directory in the Berkeley DB distribution contains a makefile, <code>Android.mk</code>, for building a drop-in replacement for SQLite.</p>
+<p>Oracle offers two different solutions for building the BDB SQL API for Android. The first creates a library that can be used as a drop-in replacement for SQLite on Android. The second creates a JDBC driver for Android.</p>
+<h2 id="building-the-drop-in-replacement-for-android">Building the Drop-In Replacement for Android</h2>
+<p><span class="sect2"> <a href="build_android_intro.html#build_android_migrate">Migrating from SQLite to Berkeley DB</a> </span></p>
+<p>This section describes how to build a library that can be used as a drop-in replacement for SQLite on Android.</p>
+<ol type="1">
+<li><p>Download and compile the Android source tree.</p>
+<p>The compiling process takes time but is a one time activity. For information on downloading and compiling the Android source code, see <a href="http://source.android.com/source/download.html" class="ulink" target="_top"><a href="http://source.android.com/source/download.html">http://source.android.com/source/download.html</a></a>.</p></li>
+<li><p>Copy the Berkeley DB code into the Android build tree.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>$ cd <span class="op">&lt;</span>root<span class="op">&gt;/</span>external<span class="op">/</span>sqlite<span class="op">/</span>dist</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>$ tar zxf $<span class="op">{</span>DB_PATH<span class="op">}</span> </span></code></pre></div>
+<p>where &lt;root&gt; is the root of the Android source tree and ${DB_PATH} is the path where you saved the <code>db-xx.tar.gz</code> version of the Berkeley DB distribution.</p></li>
+<li><p>Update the Android build file to identify Berkeley DB.</p>
+<p>Replace the <code>Android.mk</code> file with the one from the Berkeley DB source tree by doing the following:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>$ cd <span class="op">&lt;</span>root<span class="op">&gt;/</span>external<span class="op">/</span>sqlite<span class="op">/</span>dist</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>$ mv Android<span class="op">.</span>mk Android<span class="op">.</span>mk<span class="op">.</span>sqlite</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>$ cp $<span class="op">{</span>DB_INSTALL<span class="op">}/</span>build_android<span class="op">/</span>Android<span class="op">.</span>mk <span class="op">./</span> </span></code></pre></div>
+<p>where ${DB_INSTALL} is the directory into which you installed the Berkeley DB library.</p></li>
+<li><p>Tuning parameters.</p>
+<p>The configuration options for performance tuning can be added/edited in the <code>Android.mk</code> file by modifying <code>LOCAL_CFLAGS</code> located in the <code>build libsqlite replacement</code> section. For more information, see <a href="build_android_config.html" class="xref" title="Android Configuration Options">Android Configuration Options</a>.</p>
+<p>It is also possible to change these settings using PRAGMA commands or through the <a href="../../api/c/configuration_reference.html" class="olink">DB_CONFIG</a> file.</p></li>
+<li><p>Build the new Android image.</p>
+<p>To build the Android image with Berkeley DB SQL included, do the following:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>$ cd <span class="op">&lt;</span>root<span class="op">&gt;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>$ <span class="op">.</span> build<span class="op">/</span>envsetup<span class="op">.</span>sh</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>$ make clean<span class="op">-</span>libsqlite</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>$ mmm <span class="op">-</span>B external<span class="op">/</span>sqlite<span class="op">/</span>dist</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>$ make snod</span></code></pre></div>
+<p>You can locate the new image in <code>&lt;root&gt;/out/target/product/generic</code>.</p></li>
+</ol>
+<h3 id="migrating-from-sqlite-to-berkeley-db">Migrating from SQLite to Berkeley DB</h3>
+<p>This section describes how to enable automatic conversion of SQLite format databases to Berkeley DB SQL when they are opened. To do this, you must first make sure that the <code>-DBDBSQL_CONVERT_SQLITE</code> option is added to <code>LOCAL_CFLAGS</code> when you configure your Berkeley DB database build.</p>
+<ol type="1">
+<li><p>Build a static SQLite shell for Android platform.</p>
+<p>Create a script, build_sqlite3_shell.sh, in the &lt;root&gt;/external/sqlite/dist directory.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#</span><span class="er">!/bin/bash</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">This script shows how to use built-in toolchain to build</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">sqlite3 shell, which is required by Berkeley DB SQL </span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">on-the-fly migration feature.</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">Note: these variables should be set per active Android source tree</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">We assume $PWD=$ROOT/external/sqlite/dist</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>ROOT<span class="op">=</span>$<span class="op">{</span>PWD<span class="op">}/../../..</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>TOOLCHAIN<span class="op">=</span>$<span class="op">{</span>ROOT<span class="op">}/</span>prebuilt<span class="op">/</span>linux<span class="op">-</span>x86<span class="op">/</span>toolchain<span class="op">/</span>arm<span class="op">-</span>eabi<span class="op">-</span><span class="fl">4.4</span><span class="er">.0</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>CC<span class="op">=</span>$<span class="op">{</span>TOOLCHAIN<span class="op">}/</span>bin<span class="op">/</span>arm<span class="op">-</span>eabi<span class="op">-</span>gcc</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>LIB<span class="op">=</span><span class="st">&quot;${ROOT}/out/target/product/generic/obj/lib&quot;</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>INCLUDE<span class="op">=</span><span class="st">&quot;${ROOT}/ndk/build/platforms/android-8/arch-arm/usr/include&quot;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">CFLAGS should be set per Android.mk.sqlite (the original </span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">version of SQLite&#39;s Android.mk)</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>CFLAGS<span class="op">=</span><span class="st">&quot;-DHAVE_USLEEP=1 -DSQLITE_THREADSAFE=1 -DNDEBUG=1 </span><span class="op">\</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="st"> -DSQLITE_DEFAULT_JOURNAL_SIZE_LIMIT=1048576 </span><span class="op">\</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="st"> -DSQLITE_ENABLE_MEMORY_MANAGEMENT=1 </span><span class="op">\</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a><span class="st"> -DSQLITE_DEFAULT_AUTOVACUUM=1 </span><span class="op">\</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="st"> -DSQLITE_TEMP_STORE=3 -DSQLITE_ENABLE_FTS3 </span><span class="op">\</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a><span class="st"> -DSQLITE_ENABLE_FTS3_BACKWARDS -DTHREADSAFE=1&quot;</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>CFLAGS<span class="op">=</span><span class="st">&quot;${CFLAGS} -I${INCLUDE}&quot;</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>LDFLAGS<span class="op">=</span><span class="st">&quot;-ldl -nostdlib -Wl,--gc-sections -lc -llog -lgcc </span><span class="op">\</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="st"> -Wl,--no-undefined,-z,nocopyreloc ${LIB}/crtend_android.o </span><span class="op">\</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a><span class="st"> ${LIB}/crtbegin_dynamic.o -L${LIB} -Wl,-rpath,${LIB}&quot;</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>$<span class="op">{</span>CC<span class="op">}</span> <span class="op">-</span>DANDROID <span class="op">-</span>DOS_ANDROID <span class="op">--</span>sysroot<span class="op">=</span><span class="st">&quot;${SYSROOT}&quot;</span> <span class="op">-</span>mandroid \</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>      <span class="op">-</span>fvisibility<span class="op">=</span>hidden <span class="op">-</span>ffunction<span class="op">-</span>sections <span class="op">-</span>fdata<span class="op">-</span>sections \</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>      <span class="op">-</span>fPIC $<span class="op">{</span>LDFLAGS<span class="op">}</span> $<span class="op">{</span>CFLAGS<span class="op">}</span> \</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>      sqlite3<span class="op">.</span>c shell<span class="op">.</span>c <span class="op">-</span>o sqlite3orig</span></code></pre></div>
+<p>Ensure you adjust the variables as per your actual Android environment. This script is suited for Android 2.2.</p></li>
+<li><p>Execute the build_sqlite3_shell.sh script and to get the static sqlite3 shell utility - sqlite3orig.</p></li>
+<li><p>Change the system image file.</p>
+<p>Use the <code>xyaffs2</code> utiltiy to decompress the <code>system.img</code> and get the directory system.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>$ xyaffs2 <span class="op">./</span>system<span class="op">.</span>img system</span></code></pre></div>
+<p>Add static sqlite3 shell utility.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>$ cp <span class="op">&lt;</span>root<span class="op">&gt;/</span>external<span class="op">/</span>sqlite<span class="op">/</span>dist<span class="op">/</span>sqlite3orig \</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                      system<span class="op">/</span>xbin<span class="op">/</span>sqlite3orig</span></code></pre></div>
+<p>Use the <code>mkyaffs2image</code> utility to rebuild <code>system.img</code> from the changed directory system.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>$ mkyaffs2image <span class="op">-</span>f $PWD<span class="op">/</span>system system<span class="op">.</span>img</span></code></pre></div>
+<h3 id="note">Note</h3>
+<p>To open the database in the <code>SQLite</code> format use the <code>sqlite3orig</code> command.</p></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

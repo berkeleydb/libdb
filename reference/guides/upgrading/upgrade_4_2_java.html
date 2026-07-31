@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Java — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / upgrading</nav>
+  <main>
+<h2 id="java">Java</h2>
+<p>There are a number of major changes to the Java support in Berkeley DB in this release. Despite that we have tried to make this a bridge release, a release where we don't require you to change anything. We've done this using the standard approach to deprecation in Java. If you do not compile with deprecation warnings on, your existing sources should work with this new release with only minor changes despite the large number of changes. Expect that in a future release we will remove all the deprecated API and only support the new API names.</p>
+<p>This is a list of areas where we have broken compatibility with the 4.1 release. In most cases it is a name change in an interface class.</p>
+<ul>
+<li><p><strong>DbAppDispatch.app_dispatch(DbEnv,Dbt,DbLsn,int)</strong></p>
+<p>is now: <strong>DbAppDispatch.appDispatch(DbEnv,Dbt,DbLsn,int)</strong></p></li>
+<li><p><strong>DbAppendRecno.db_append_recno(Db,Dbt,int)</strong></p>
+<p>is now: <strong>DbAppendRecno.dbAppendRecno(Db,Dbt,int)</strong></p></li>
+<li><p><strong>DbBtreeCompare.bt_compare(Db,Dbt,Dbt)</strong></p>
+<p>is now: <strong>DbBtreeCompare.compare(Db,Dbt,Dbt)</strong></p></li>
+<li><p><strong>DbBtreeCompare.dup_compare(Db,Dbt,Dbt)</strong></p>
+<p>is now: <strong>DbBtreeCompare.compareDuplicates(Db,Dbt,Dbt)</strong></p></li>
+<li><p><strong>DbBtreePrefix.bt_prefix(Db,Dbt,Dbt)</strong></p>
+<p>is now: <strong>DbBtreePrefix.prefix(Db,Dbt,Dbt)</strong></p></li>
+<li><p><strong>DbSecondaryKeyCreate.secondary_key_create(Db,Dbt,Dbt,Dbt)</strong></p>
+<p>is now: <strong>DbSecondaryKeyCreate.secondaryKeyCreate(Db,Dbt,Dbt,Dbt)</strong></p></li>
+</ul>
+<p>The 4.2 release of Berkeley DB requires at minimum a J2SE 1.3.1 certified Java virtual machine and associated classes to properly build and execute. To determine what version virtual machine you are running, enter:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>java <span class="op">-</span>version</span></code></pre></div>
+<p>at a command line and look for the version number. If you need to deploy to a version 1.1 or 1.0 Java environment, it may be possible to do so by not including the classes in the com.sleepycat.bdb package in the Java build process (however, that workaround has not been tested by us).</p>
+<p>A few inconsistent methods have been cleaned up (for example, Db.close now returns void; previously, it returned an int which was always zero). The synchronized attributed has been toggled on some methods -- this is an attempt to prevent multithreaded applications from calling close or similar methods concurrently from multiple threads.</p>
+<p>The Berkeley DB API has up until now been consistent across all language APIs. Although consistency has is benefits, it made our Java API look strange to Java programmers. Many methods have been renamed in this release of the Java API to conform with Java naming conventions. Sometimes this renaming was simply "camel casing", sometimes it required rewording. The mapping file for these name changes is in <code>dist/camel.pm</code>. The Perl script we use to convert code to the new names is called <code>dist/camelize.pl</code>, and may help with updating Java applications written for earlier versions of Berkeley DB.</p>
+<p>Berkeley DB has a number of places where as a C library it uses function pointers to move into custom code for the purpose of notification of some event. In Java the best parallel is the registration of some class which implements an interface. In this version of Berkeley DB we have made an effort to make those interfaces more uniform and predictable. Specifically, DbEnvFeedback is now DbEnvFeedbackHandler, DbErrcall is DbErrorHandler and DbFeedback is DbFeedbackHandler. In every case we have kept the older interfaces and the older registration methods so as to allow for backward compatibility in this release. Expect them to be removed in future releases.</p>
+<p>As you upgrade to this release of Berkeley DB you will notice that we have added an entirely new layer inside the package com.sleepycat.bdb. This was formerly the Greybird project by Mark Hayes. Sleepycat Software and Mark worked together to incorporate his work. We have done this in hopes of reducing the learning curve when using Berkeley DB in a Java project. When you upgrade you should consider switching to this layer as over time the historical classes and the new bdb package classes will be more and more integrated providing a simple yet powerful interface from Java into the Berkeley DB library.</p>
+<p>Berkeley DB's Java API is now generated with <a href="http://www.swig.org" class="ulink" target="_top">SWIG</a>. The new Java API is significantly faster for many operations.</p>
+<p>Some internal methods and constructors that were previously public have been hidden or removed.</p>
+<p>Packages found under com.sleepycat are considered different APIs into the Berkeley DB system. These include the core db api (com.sleepycat.db), the collections style access layer (com.sleepycat.bdb) and the now relocated XA system (com.sleepycat.xa).</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Building the communications infrastructure — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="building-the-communications-infrastructure">Building the communications infrastructure</h2>
+<p>Replication Manager provides a built-in communications infrastructure.</p>
+<p>Base API applications must provide their own communications infrastructure, which is typically written with one or more threads of control looping on one or more communication channels, receiving and sending messages. These threads accept messages from remote environments for the local database environment, and accept messages from the local environment for remote environments. Messages from remote environments are passed to the local database environment using the <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> method. Messages from the local environment are passed to the application for transmission using the callback function specified to the <a href="../../api/c/reptransport.html" class="olink">DB_ENV-&gt;rep_set_transport()</a> method.</p>
+<p>Processes establish communication channels by calling the <a href="../../api/c/reptransport.html" class="olink">DB_ENV-&gt;rep_set_transport()</a> method, regardless of whether they are running in client or server environments. This method specifies the <strong>send</strong> function, a callback function used by Berkeley DB for sending messages to other database environments in the replication group. The <strong>send</strong> function takes an environment ID and two opaque data objects. It is the responsibility of the <strong>send</strong> function to transmit the information in the two data objects to the database environment corresponding to the ID, with the receiving application then calling the <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> method to process the message.</p>
+<p>The details of the transport mechanism are left entirely to the application; the only requirement is that the data buffer and size of each of the control and rec <a href="../../api/c/dbt.html" class="olink">DBT</a>s passed to the <strong>send</strong> function on the sending site be faithfully copied and delivered to the receiving site by means of a call to <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> with corresponding arguments. Messages that are broadcast (whether by broadcast media or when directed by setting the <a href="../../api/c/reptransport.html" class="olink">DB_ENV-&gt;rep_set_transport()</a> method's envid parameter DB_EID_BROADCAST), should not be processed by the message sender. In all cases, the application's transport media or software must ensure that <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> is never called with a message intended for a different database environment or a broadcast message sent from the same environment on which <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> will be called. The <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> method is free-threaded; it is safe to deliver any number of messages simultaneously, and from any arbitrary thread or process in the Berkeley DB environment.</p>
+<p>There are a number of informational returns from the <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> method:</p>
+<p><span class="term"> <a href="../../api/c/repmessage.html#repmsg_DB_REP_DUPMASTER" class="olink">DB_REP_DUPMASTER</a> </span><br />
+When <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> returns <a href="../../api/c/repmessage.html#repmsg_DB_REP_DUPMASTER" class="olink">DB_REP_DUPMASTER</a>, it means that another database environment in the replication group also believes itself to be the master. The application should complete all active transactions, close all open database handles, reconfigure itself as a client using the <a href="../../api/c/repstart.html" class="olink">DB_ENV-&gt;rep_start()</a> method, and then call for an election by calling the <a href="../../api/c/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> method.</p>
+<p><span class="term"> <a href="../../api/c/repmessage.html#repmsg_DB_REP_HOLDELECTION" class="olink">DB_REP_HOLDELECTION</a> </span><br />
+When <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> returns <a href="../../api/c/repmessage.html#repmsg_DB_REP_HOLDELECTION" class="olink">DB_REP_HOLDELECTION</a>, it means that another database environment in the replication group has called for an election. The application should call the <a href="../../api/c/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> method.</p>
+<p><span class="term"> <a href="../../api/c/repmessage.html#repmsg_DB_REP_IGNORE" class="olink">DB_REP_IGNORE</a> </span><br />
+When <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> returns <a href="../../api/c/repmessage.html#repmsg_DB_REP_IGNORE" class="olink">DB_REP_IGNORE</a>, it means that this message cannot be processed. This is normally an indication that this message is irrelevant to the current replication state, such as a message from an old generation that arrived late.</p>
+<p><span class="term"> <a href="../../api/c/repmessage.html#repmsg_DB_REP_ISPERM" class="olink">DB_REP_ISPERM</a> </span><br />
+When <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> returns <a href="../../api/c/repmessage.html#repmsg_DB_REP_ISPERM" class="olink">DB_REP_ISPERM</a>, it means a permanent record, perhaps a message previously returned as <a href="../../api/c/repmessage.html#repmsg_DB_REP_NOTPERM" class="olink">DB_REP_NOTPERM</a>, was successfully written to disk. This record may have filled a gap in the log record that allowed additional records to be written. The <strong>ret_lsnp</strong> contains the maximum LSN of the permanent records written.</p>
+<p><span class="term"> <a href="../../api/c/repmessage.html#repmsg_DB_REP_NEWSITE" class="olink">DB_REP_NEWSITE</a> </span><br />
+When <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> returns <a href="../../api/c/repmessage.html#repmsg_DB_REP_NEWSITE" class="olink">DB_REP_NEWSITE</a>, it means that a message from a previously unknown member of the replication group has been received. The application should reconfigure itself as necessary so it is able to send messages to this site.</p>
+<p><span class="term"> <a href="../../api/c/repmessage.html#repmsg_DB_REP_NOTPERM" class="olink">DB_REP_NOTPERM</a> </span><br />
+When <a href="../../api/c/repmessage.html" class="olink">DB_ENV-&gt;rep_process_message()</a> returns <a href="../../api/c/repmessage.html#repmsg_DB_REP_NOTPERM" class="olink">DB_REP_NOTPERM</a>, it means a message marked as <a href="../../api/c/reptransport.html#transport_DB_REP_PERMANENT" class="olink">DB_REP_PERMANENT</a> was processed successfully but was not written to disk. This is normally an indication that one or more messages, which should have arrived before this message, have not yet arrived. This operation will be written to disk when the missing messages arrive. The <strong>ret_lsnp</strong> argument will contain the LSN of this record. The application should take whatever action is deemed necessary to retain its recoverability characteristics.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

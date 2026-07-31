@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Building the SQL API — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="building-the-sql-api">Building the SQL API</h2>
+<p><span class="sect2"> <a href="build_win_sql.html#idp290248">Binary Compatibility With SQLite</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp276576">Setting Preprocessor Flags</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp288280">Enabling Extensions</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#win-disablechecksums">Disabling Log Checksums</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#build_jdbc">Building the JDBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp266616">Using the JDBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp305704">Building the ODBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp320888">Using the ADO.NET Driver</a> </span></p>
+<p>SQL support is built as part of the default build on Windows. For information on the build instructions, see <a href="build_win.html" class="xref" title="Chapter 5.  Building Berkeley DB for Windows">Building Berkeley DB for Windows</a> .</p>
+<p>The SQL library is built as <code>libdb_sql53.dll</code> in the Release mode or <code>libdb_sql53d.dll</code> in the Debug mode. An SQL command line interpreter called <code>dbsql.exe</code> is also built.</p>
+<h3 id="binary-compatibility-with-sqlite">Binary Compatibility With SQLite</h3>
+<p><code>libdb_sql53.dll</code> is compatible with <code>sqlite3.dll</code>. You can copy <code>libdb_sql53.dll</code> to <code>sqlite3.dll</code> and <code>dbsql.exe</code> to <code>sqlite3.exe</code>, and use these applications as a replacement for the standard SQLite binaries with the same names. However, if you want to do this, then any legacy data in use by those tools must be migrated from the standard SQLite database to a Berkeley DB SQL database <span class="emphasis"><em>before</em></span> you replace the standard SQLite dll and executable with the Berkeley DB equivalent. For information on migrating data from standard SQLite databases to a Berkeley DB SQL database, see the <em>Berkeley DB Getting Started with the SQL APIs</em> guide.</p>
+<h3 id="warning">Warning</h3>
+<p>Rename your dlls and executables to the standard SQLite names with <span class="emphasis"><em>extreme</em></span> care. Doing this will cause all existing tools to break that currently have data stored in a standard SQLite database.</p>
+<p><span class="emphasis"> <em>For best results, rename your dlls and command line tool to use the standard SQLite names only if you know there are no other tools on your production platform that rely on standard SQLite.</em> </span></p>
+<h3 id="setting-preprocessor-flags">Setting Preprocessor Flags</h3>
+<p>By default, Berkeley DB SQL generates each table as a subdatabase in a single file. To generate each table in a separate file, specify <span class="emphasis"><em>BDBSQL_FILE_PER_TABLE</em></span> in <span class="emphasis"><em>Preprocessor Definitions</em> </span>of the <code>db_sql</code> project.</p>
+<p>When this option is enabled, the SQL database name is used as a directory name. This directory contains one file for the metadata and one file each for every table created by the SQL API. Do not add or delete files from the database directory. Adding or deleting files may corrupt the database. To backup just the metadata (schema), make a copy of the <code>metadata</code> and <code>table00001</code> files from the database directory. Make a new copy whenever the schema is changed.</p>
+<h3 id="enabling-extensions">Enabling Extensions</h3>
+<p>The Berkeley DB SQL API provides extensions such as full text search and R-Tree index. To enable these extensions, do the following:</p>
+<ol type="1">
+<li>Open the Berkeley DB solution in Visual Studio.</li>
+<li>Specify <span class="emphasis"><em>SQLITE_ENABLE_FTS3</em></span> or <span class="emphasis"><em>SQLITE_ENABLE_RTREE</em></span> in <span class="emphasis"><em>Preprocessor Definitions</em></span> of the <code>db_sql</code> project.</li>
+<li>Re-build the <code>db_sql</code> project.</li>
+</ol>
+<p>See the SQLite Documentation for more information on <a href="http://www.sqlite.org/fts3.html" class="ulink" target="_top">full text search</a> and <a href="http://www.sqlite.org/rtree.html" class="ulink" target="_top">R-Tree</a>.</p>
+<h3 id="disabling-log-checksums">Disabling Log Checksums</h3>
+<p>You can disable checksums in log records so as to provide a boost to database performance. However, this comes at the risk of having undetectable log file corruption that could prevent data recovery in the event of database corruption.</p>
+<h3 id="note">Note</h3>
+<p>Note that disabling log record checksums is meant to only be used with the SQL interface. However, disabling checksums for the SQL interface also disables checksums for the non-SQL interfaces.</p>
+<p>To disable log checksums, before you build the library edit the <code>build_windows/db_config.h</code> file, and delete the following line:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define HAVE_LOG_CHECKSUM </span><span class="dv">1</span></span></code></pre></div>
+<h3 id="building-the-jdbc-driver">Building the JDBC Driver</h3>
+<p>This section describes the steps to build the JDBC driver.</p>
+<ol type="1">
+<li><p>Configure your build environment. For information on how to configure to build Java applications, see <a href="build_win_java.html" class="xref" title="Building the Java API">Building the Java API</a>.</p></li>
+<li><p>Build the SQL project in Debug mode.</p></li>
+<li><p>Open Berkeley_DB.sln or Berkeley_DB_vs2010.sln in Visual Studio. If you are using Java 1.6, do the following:</p>
+<ul>
+<li><p>In the Solution Explorer, right-click the <code>db_sql_jdbc</code> project and select <span class="emphasis"><em>properties</em></span>.</p></li>
+<li><p>In the <span class="emphasis"><em>Configuration Properties -&gt; Build Events -&gt; Pre-Build Event</em></span> section, alter the command to refer to <code>JDBC2z</code> instead of <code>JDBC2x</code>.</p></li>
+</ul>
+<p>If you are using Java 1.7, do the following:</p>
+<ul>
+<li><p>In the Solution Explorer, right-click the <code>db_sql_jdbc</code> project and select <span class="emphasis"><em>properties</em></span>.</p></li>
+<li><p>In the <span class="emphasis"><em>Configuration Properties -&gt; Build Events -&gt; Pre-Build Event</em></span> section, alter the command to refer to <code>JDBC2z1</code> instead of <code>JDBC2x</code>. Also, remove the option of "-target 1.5".</p></li>
+<li><p>Go to <code>db\lang\sql\jdbc\SQLite</code>, and replace <code>JDBCDriver.java</code> with <code>JDBCDriver.java17</code>, and replace <code>JDBCDataSource.java</code> with <code>JDBCDataSource.java17</code>.</p></li>
+</ul></li>
+<li><p>Build the <code>db_sql_jdbc</code> project in Visual Studio.</p></li>
+</ol>
+<p>You can test the build by entering the following commands from the <code>db\build_windows\Win32\Debug</code> directory:</p>
+<table>
+<tbody>
+<tr>
+<td>javac -cp ".;jdbc.jar" -d . ..\.\.\sql\jdbc\test3.java</td>
+</tr>
+<tr>
+<td>java -cp ".;jdbc.jar" test3</td>
+</tr>
+</tbody>
+</table>
+<h3 id="using-the-jdbc-driver">Using the JDBC Driver</h3>
+<p>This section describes the steps to download, build, and run sample programs using the built JDBC driver.</p>
+<h4 id="downloading-jdbc-sample-code">Downloading JDBC Sample Code</h4>
+<p>The download link for JDBC sample code is available on the <a href="http://www.oracle.com/technetwork/java/index-139949.html" class="ulink" target="_top">Oracle Technology Network (OTN)</a> . You can identify the link by the "JDBC programming examples from all three editions (ZIP format)" text beside it.</p>
+<h4 id="modifying-sample-code">Modifying Sample Code</h4>
+<p>Before running the sample code, do the following:</p>
+<ol type="1">
+<li><p>Unzip the file containing the sample code to a new directory (for example, jdbc_ex).</p></li>
+<li><p>Substitute <code>jdbc:sqlite:/&lt;db-file-name&gt;</code> for the generic JDBC URL that appears in the code. That is, put <code>jdbc:sqlite:/&lt;db-file-name&gt;</code> between the quotation marks in the line:</p>
+<p><code> String url = "jdbc:mySubprotocol:myDataSource";</code></p>
+<p>Note: The &lt;db-file-name&gt; can either be an absolute path name like <code>"D:\\jdbc_ex_db\\myDataSource"</code>, or a relative path-file-name like <code>"..\\jdbc_ex_db\myDataSource"</code>, or a file name, like <code>"myDataSource"</code>, in which the database file will be stored at the current directory.</p></li>
+<li><p>Substitute <code>SQLite.JDBCDriver</code> for <code>myDriver.ClassName</code> in the line: <code>Class.forName("myDriver.ClassName");</code></p></li>
+<li><p>Substitute the username and password you use for your database in the following: <code>"myLogin", "myPassword"</code>.</p>
+<p>This is optional.</p></li>
+<li><p>If your JDK version is above 1.5, change the variable name <code>enum</code> in <code>OutputApplet.java</code> to some other variable name because, as of JDK release 5 <code>enum</code> is a keyword and can not be used as an identifier.</p></li>
+</ol>
+<h4 id="building-and-running-the-jdbc-sample-code">Building and Running the JDBC Sample code</h4>
+<p>See <a href="build_win_sql.html#build_jdbc" class="xref" title="Building the JDBC Driver">Building the JDBC Driver</a> for instructions about building JDBC driver.</p>
+<p>To build and run the JDBC examples do the following:</p>
+<ol type="1">
+<li><p>In the <code>db\build_windows\Win32\Debug</code> directory, run following commands:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>    $ javac <span class="op">-</span>classpath <span class="st">&quot;.;jdbc.jar&quot;</span> <span class="op">-</span>d <span class="op">.</span> \path\to\jdbc_ex\<span class="op">*.</span>java</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    $ java  <span class="op">-</span>classpath <span class="st">&quot;.;jdbc.jar&quot;</span> <span class="op">&lt;</span>ClassName<span class="op">,</span> eg<span class="op">.</span> CreateCoffees<span class="op">&gt;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    </span></code></pre></div></li>
+<li><p>After you run the CreateCoffees example, use the <code>dbsql</code> executable to open the <code>myDataSource</code> database file and check if the table <code>COFFEES</code> has been successfully created in the database.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>    $ dbsql myDataSourcedbsql<span class="op">&gt;</span> <span class="op">.</span>tables</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    COFFEES</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    dbsql<span class="op">&gt;</span> <span class="op">.</span>dump</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    PRAGMA foreign_keys<span class="op">=</span>OFF<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    BEGIN TRANSACTION<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    CREATE TABLE COFFEES <span class="op">(</span>COF_NAME varchar<span class="op">(</span><span class="dv">32</span><span class="op">),/</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    SUP_ID <span class="dt">int</span><span class="op">,</span> PRICE <span class="dt">float</span><span class="op">,</span> SALES <span class="dt">int</span><span class="op">,</span> TOTAL <span class="dt">int</span><span class="op">);</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    COMMIT<span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    dbsql<span class="op">&gt;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    </span></code></pre></div></li>
+<li><p>Repeat step 2 to run other examples.</p>
+<p>Note: Some examples like AutoGenKeys are not yet supported by BDB JDBC driver. The <code>SQLFeatureNotSupportedException</code> is displayed for those unsupported examples.</p></li>
+</ol>
+<h3 id="building-the-odbc-driver">Building the ODBC Driver</h3>
+<p>This section describes the steps required to build the ODBC driver.</p>
+<h4 id="configuring-your-system">Configuring Your System</h4>
+<p>To configure your system prior to building the ODBC driver, do the following:</p>
+<ol type="1">
+<li>Download and install the latest SQLite ODBC driver Windows installer package for <a href="http://www.ch-werner.de/sqliteodbc/sqliteodbc.exe" class="ulink" target="_top">32 bit Windows</a> or <a href="http://www.ch-werner.de/sqliteodbc/sqliteodbc_w64.exe" class="ulink" target="_top">64 bit Windows</a>.</li>
+<li>Download and install the latest <a href="http://www.microsoft.com/download/en/details.aspx?id=21995" class="ulink" target="_top">Microsoft Data Access Components (MDAC) SDK</a> . The MDAC SDK is only required for testing the installation.</li>
+</ol>
+<h4 id="building-the-library">Building the Library</h4>
+<ol type="1">
+<li>Build the SQL project in Release mode. See <a href="build_win_sql.html" class="xref" title="Building the SQL API">Building the SQL API</a>.</li>
+<li>Open Visual Studio.</li>
+<li>Load the Berkeley_DB solution file into Visual Studio.</li>
+<li>Set the build target to <span class="emphasis"><em>Release</em></span></li>
+<li>Build the solution.</li>
+<li>Select <span class="emphasis"><em>File</em></span> -&gt; <span class="emphasis"><em>Add</em></span> -&gt; <span class="emphasis"><em>Existing Project</em></span>.</li>
+<li>Select <code>build_windows</code>.</li>
+<li>Select the appropriate directory for your compiler: <code>VS8</code> or <code>VS10</code>.</li>
+<li>Select <code>db_sql_odbc.vcproj</code> and add it to the Berkeley_DB solution. This adds the <code>db_sql_odbc</code> Visual Studio project to the Berkeley_DB solution file.</li>
+<li>Build the <code>db_sql_odbc</code> project. This can be done by right-clicking the <code>db_sql_odbc</code> project in the project explorer panel, and selecting <code>build</code>.</li>
+</ol>
+<p>The <code>sqlite3odbc.dll</code>, <code>libdb_sql53.dll</code> and <code>libdb53.dll</code> files are now built.</p>
+<h4 id="installing-the-library">Installing the Library</h4>
+<p>Copy the dll files built in the <span class="emphasis"><em>Building the Library</em></span> section to the Windows system folder.</p>
+<p>The Windows system folder is different on different systems, but is often <code>C:\WINDOWS\System32</code>.</p>
+<h4 id="testing-the-odbc-install">Testing the ODBC Install</h4>
+<p>The steps to verify that the installed driver works are as follows:</p>
+<ol type="1">
+<li>Open the Unicode ODBCTest application. On Windows XP: <span class="emphasis"><em>Windows start</em></span> -&gt; <span class="emphasis"><em>Microsoft Data Access SDK 2.8</em></span> -&gt; <span class="emphasis"><em>ODBCTest (Unicode, x86).</em></span></li>
+<li>Select the <span class="emphasis"><em>Conn</em></span> -&gt; <span class="emphasis"><em>Full Connect...</em></span> menu item.</li>
+<li>Select <code>SQLite3 Datasource</code> and click <code>OK</code>.</li>
+<li>Select the <span class="emphasis"><em>Stmt</em></span> -&gt; <span class="emphasis"><em>SQLExecDirect...</em></span> menu item.</li>
+<li>Enter <code>CREATE TABLE t1(x);</code> in the <code>Statement</code> text box and click <code>OK</code>.</li>
+<li>Verify that no error messages were output to the error window.</li>
+</ol>
+<h3 id="using-the-adonet-driver">Using the ADO.NET Driver</h3>
+<p>Go to the <a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/index.html" class="ulink" target="_top">Oracle Berkeley DB download page</a>, and download the ADO.NET package. Build the package by following the <a href="../../guides/bdb-sql/buildinstall.html#ado_net" class="olink">instructions</a> included in the package.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

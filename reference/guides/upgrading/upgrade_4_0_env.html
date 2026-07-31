@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>db_env_set_XXX — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / upgrading</nav>
+  <main>
+<h2 id="db_env_set_xxx">db_env_set_XXX</h2>
+<p>The db_env_set_region_init function was removed in the 4.0 release and replaced with the <code>DB_REGION_INIT</code> flag to the <a href="../../api/c/envset_flags.html" class="olink">DB_ENV-&gt;set_flags()</a> method. This is an interface change: historically, the db_env_set_region_init function operated on the entire Berkeley DB library, not a single environment. The new method only operates on a single <a href="../../api/c/env.html" class="olink">DB_ENV class</a> handle (and any handles created in the scope of that handle). Applications calling the db_env_set_region_init function should update their calls: calls to the historic routine with an argument of 1 (0) are equivalent to calling <a href="../../api/c/envset_flags.html" class="olink">DB_ENV-&gt;set_flags()</a> with the <code>DB_REGION_INIT</code> flag and an argument of 1 (0).</p>
+<p>The db_env_set_tas_spins function was removed in the 4.0 release and replaced with the DB_ENV-&gt;set_tas_spins method. This is an interface change: historically, the db_env_set_tas_spins function operated on the entire Berkeley DB library, not a single environment. The new method only operates on a single <a href="../../api/c/env.html" class="olink">DB_ENV class</a> handle (and any handles created in the scope of that handle). Applications calling the db_env_set_tas_spins function should update their calls: calls to the historic routine are equivalent to calling DB_ENV-&gt;set_tas_spins with the same argument. In addition, for consistent behavior, all <a href="../../api/c/env.html" class="olink">DB_ENV class</a> handles opened by the application should make the same configuration call, or the value will need to be entered into the environment's <a href="../../guides/programmer_reference/env_db_config.html" class="olink">DB_CONFIG</a> file.</p>
+<p>Also, three of the standard Berkeley DB debugging interfaces changed in the 4.0 release. It is quite unlikely that Berkeley DB applications use these interfaces.</p>
+<p>The DB_ENV-&gt;set_mutexlocks method was removed in the 4.0 release and replaced with the <code>DB_NO_LOCKING</code> flag to the <a href="../../api/c/envset_flags.html" class="olink">DB_ENV-&gt;set_flags()</a> method. Applications calling the DB_ENV-&gt;set_mutexlocks method should update their calls: calls to the historic routine with an argument of 1 (0) are equivalent to calling <code>DB_NO_LOCKING</code> flag and an argument of 1 (0).</p>
+<p>The db_env_set_pageyield function was removed in the 4.0 release and replaced with the <code>DB_YIELDCPU</code> flag to the <a href="../../api/c/envset_flags.html" class="olink">DB_ENV-&gt;set_flags()</a> method. This is an interface change: historically, the db_env_set_pageyield function operated on the entire Berkeley DB library, not a single environment. The new method only operates on a single <a href="../../api/c/env.html" class="olink">DB_ENV class</a> handle (and any handles created in the scope of that handle). Applications calling the db_env_set_pageyield function should update their calls: calls to the historic routine with an argument of 1 (0) are equivalent to calling <a href="../../api/c/envset_flags.html" class="olink">DB_ENV-&gt;set_flags()</a> with the <code>DB_YIELDCPU</code> flag and an argument of 1 (0). In addition, all <a href="../../api/c/env.html" class="olink">DB_ENV class</a> handles opened by the application will need to make the same call, or the <code>DB_YIELDCPU</code> flag will need to be entered into the environment's <a href="../../guides/programmer_reference/env_db_config.html" class="olink">DB_CONFIG</a> file.</p>
+<p>The db_env_set_panicstate function was removed in the 4.0 release, replaced with the <code>DB_PANIC_ENVIRONMENT</code> flags to the <a href="../../api/c/envset_flags.html" class="olink">DB_ENV-&gt;set_flags()</a> method. (The <code>DB_PANIC_ENVIRONMENT</code> flag will cause an environment to panic, affecting all threads of control using that environment. The <a href="../../api/c/envset_flags.html" class="olink">DB_ENV-&gt;set_flags()</a> handle to ignore the current panic state of the environment.) This is an interface change: historically the db_env_set_panicstate function operated on the entire Berkeley DB library, not a single environment. Applications calling the db_env_set_panicstate function should update their calls, replacing the historic call with a call to <a href="../../api/c/envset_flags.html" class="olink">DB_ENV-&gt;set_flags()</a> and the appropriate flag, depending on their usage of the historic interface.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

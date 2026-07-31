@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 21.  Berkeley DB Extensions: Tcl — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-21--berkeley-db-extensions-tcl">Chapter 21.  Berkeley DB Extensions: Tcl</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="tcl.html#tcl_intro">Loading Berkeley DB with Tcl</a> </span></p>
+<p><span class="sect2"> <a href="tcl.html#idp53366464">Installing as a Tcl Package</a> </span></p>
+<p><span class="sect2"> <a href="tcl.html#idp53356912">Loading Berkeley DB with Tcl</a> </span></p>
+<p><span class="sect1"> <a href="tcl_using.html">Using Berkeley DB with Tcl</a> </span></p>
+<p><span class="sect1"> <a href="tcl_program.html">Tcl API programming notes</a> </span></p>
+<p><span class="sect1"> <a href="tcl_error.html">Tcl error handling</a> </span></p>
+<p><span class="sect1"> <a href="tcl_faq.html">Tcl FAQ</a> </span></p>
+<h2 id="loading-berkeley-db-with-tcl">Loading Berkeley DB with Tcl</h2>
+<p><span class="sect2"> <a href="tcl.html#idp53366464">Installing as a Tcl Package</a> </span></p>
+<p><span class="sect2"> <a href="tcl.html#idp53356912">Loading Berkeley DB with Tcl</a> </span></p>
+<p>Berkeley DB includes a dynamically loadable Tcl API, which requires that Tcl/Tk 8.5 or later already be installed on your system. You can download a copy of Tcl from the <a href="http://www.tcl.tk" class="ulink" target="_top">Tcl Developer Xchange</a> Web site.</p>
+<p>This document assumes that you already configured Berkeley DB for Tcl support, and you have built and installed everything where you want it to be. If you have not done so, see <a href="../../guides/installation/build_unix_conf.html" class="olink">Configuring Berkeley DB</a> or <a href="../../guides/installation/build_win_tcl.html" class="olink">Building the Tcl API</a> in the Berkeley DB Installation and Build Guide for more information.</p>
+<h3 id="installing-as-a-tcl-package">Installing as a Tcl Package</h3>
+<p>Once enabled, the Berkeley DB shared library for Tcl is automatically installed as part of the standard installation process. However, if you want to be able to dynamically load it as a Tcl package into your script, there are several steps that must be performed:</p>
+<ol type="1">
+<li>Run the Tcl shell in the install directory.</li>
+<li>Append this directory to your auto_path variable.</li>
+<li>Run the pkg_mkIndex proc, giving the name of the Berkeley DB Tcl library.</li>
+</ol>
+<p>For example:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">tclsh8.5</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> lappend auto_path <span class="op">/</span>usr<span class="op">/</span>local<span class="op">/</span>BerkeleyDB<span class="fl">.5</span><span class="er">.2</span><span class="op">/</span>lib</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> pkg_mkIndex <span class="op">/</span>usr<span class="op">/</span>local<span class="op">/</span>BerkeleyDB<span class="fl">.5</span><span class="er">.2</span><span class="op">/</span>lib libdb_tcl<span class="op">-</span><span class="fl">5.2</span><span class="er">.so</span></span></code></pre></div>
+<p>Note that your Tcl and Berkeley DB version numbers may differ from the example, and so your tclsh and library names may be different.</p>
+<h3 id="loading-berkeley-db-with-tcl-1">Loading Berkeley DB with Tcl</h3>
+<p>The Berkeley DB package may be loaded into the user's interactive Tcl script (or wish session) via the <strong>load</strong> command. For example:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>load <span class="op">/</span>usr<span class="op">/</span>local<span class="op">/</span>BerkeleyDB<span class="fl">.5</span><span class="er">.2</span><span class="op">/</span>lib<span class="op">/</span>libdb_tcl<span class="op">-</span><span class="fl">5.2</span><span class="er">.so</span></span></code></pre></div>
+<p>Note that your Berkeley DB version numbers may differ from the example, and so the library name may be different.</p>
+<p>If you installed your library to run as a Tcl package, Tcl application scripts should use the <strong>package</strong> command to indicate to the Tcl interpreter that it needs the Berkeley DB package and where to find it. For example:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>lappend auto_path <span class="st">&quot;/usr/local/BerkeleyDB.5.2/lib&quot;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>package require Db_tcl</span></code></pre></div>
+<p>No matter which way the library gets loaded, it creates a command named <strong>berkdb</strong>. All the Berkeley DB functionality is accessed via this command and additional commands it creates on behalf of the application. A simple test to determine whether everything is loaded and ready is to display the library version, as follows:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>berkdb version <span class="op">-</span>string</span></code></pre></div>
+<p>This should return you the Berkeley DB version in a string format.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

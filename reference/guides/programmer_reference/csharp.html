@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 6. C# API — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-6-c-api">Chapter 6. C# API</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="csharp.html#csharp_compat">Compatibility</a> </span></p>
+<p>You can use Berkeley DB in your application through the C# API. To understand the application concepts relating to Berkeley DB, see the first few chapters of this manual. For a general discussion on how to build Berkeley DB applications, see the Berkeley DB Getting Started Guides of C or C++. You can also review the example code of C and C++ from the examples_c and examples_cxx directories. For a description of all the classes, functions, and enumerations of Berkeley DB C# API, see the <a href="http://download.oracle.com/docs/cd/E17076_02/html/csharp/Index.html" class="ulink" target="_top">Berkeley DB C# API Reference Guide.</a></p>
+<p>A separate Visual Studio solution is provided to build the Berkeley DB C# classes, the examples, and the native support library. See <a href="../../guides/installation/build_win_csharp.html#build_win_csharp.title" class="olink">Building the C# API</a> in the Berkeley DB Installation and Build Guide for more information.</p>
+<p>The C# API requires .NET framework version 2.0 or above, and expects that it has already been installed on your system. For the sake of discussion, we assume that the Berkeley DB source is in a directory called db-<span class="emphasis"><em>VERSION</em></span>; for example, you downloaded a Berkeley DB archive, and you did not change the top-level directory name. The files related to C# are in four subdirectories of db-<span class="emphasis"><em>VERSION</em></span>: csharp (the C# source files), libdb_csharp (the C++ files that provide the "glue" between C# and Berkeley DB,) examples_csharp (containing all example code) and test\scr037 (containing NUnit tests for the API).</p>
+<p>Building the C# API produces a managed assembly <code>libdb_dotnet</code><span class="emphasis"><em><code>VERSION</code></em></span><code>.dll</code>, containing the API, and two native libraries: <code>libdb_csharp</code><span class="emphasis"><em><code>VERSION</code></em></span><code>.dll</code> and <code>libdb</code><span class="emphasis"><em><code>VERSION</code></em></span><code>.dll</code>. (For all three files, <span class="emphasis"><em>VERSION</em></span> is [MAJOR][MINOR], i.e. for version 4.8 the managed assembly is <code>libdb_dotnet48.dll</code>.) Following the existing convention, native libraries are placed in either <code>db-</code><span class="emphasis"><em><code>VERSION</code></em></span><code>\build_windows\Win32</code>or <code>db-</code><span class="emphasis"><em><code>VERSION</code></em></span><code>\build_windows\x64</code>, depending upon the platform being targeted. In all cases, the managed assembly will be placed in <code>db-</code><span class="emphasis"><em><code>VERSION</code></em></span><code>\build_windows\AnyCPU</code>.</p>
+<p>Because the C# API uses P/Invoke, for your application to use Berkeley DB successfully, the .NET framework needs to be able to locate the native libaries. This means the native libraries need to either be copied to your application's directory, the Windows or System directory, or the location of the libraries needs to be added to the <code>PATH</code> environment variable. See the MSDN documentation of the DllImport attribute and Dynamic-Link Library Search Order for further information.</p>
+<p>If you get the following exception when you run, the .NET platform probably is unable to locate the native libraries:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>System<span class="op">.</span>TypeInitializationException</span></code></pre></div>
+<p>To ensure that everything is running correctly, you may want to try a simple test from the example programs in the <code>db-</code><span class="emphasis"><em><code>VERSION</code></em></span><code>\examples_csharp</code> directory.</p>
+<p>For example, the ex_access sample program will prompt for text input lines, which are then stored in a Btree database named <code>access.db</code>. It is designed to be run from either the <code>db-</code><span class="emphasis"><em><code>VERSION</code></em></span><code>\build_windows\Debug</code> or <code>db-</code><span class="emphasis"><em><code>VERSION</code></em></span><code>\build_windows\Release</code> directory. Try giving it a few lines of input text and then a blank line. Before it exits, you should see a list of the lines you entered display with data items. This is a simple check to make sure the fundamental configuration is working correctly.</p>
+<h2 id="compatibility">Compatibility</h2>
+<p>The Berkeley DB C# API has been tested with the Microsoft .NET Framework versions 2.0, 3.0, 3.5, and 4.0.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>db_dump — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="db_dump">db_dump</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_dump <span class="op">[-</span>klNpRrV<span class="op">]</span> <span class="op">[-</span>b blob_dir<span class="op">]</span> <span class="op">[-</span>d ahr<span class="op">]</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>f output<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> <span class="op">[-</span>s database<span class="op">]</span> <span class="op">[-</span>D bytes<span class="op">]</span> file</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>db_dump <span class="op">[-</span>kNpV<span class="op">]</span> <span class="op">[-</span>d ahr<span class="op">]</span> <span class="op">[-</span>f output<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">-</span>m database</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>db_dump185 <span class="op">[-</span>p<span class="op">]</span> <span class="op">[-</span>f output<span class="op">]</span> file  </span></code></pre></div>
+<p>The <span class="command"><strong>db_dump</strong></span> utility reads the database file <strong>file</strong> and writes it to the standard output using a portable flat-text format understood by the <a href="db_load.html" class="xref" title="db_load">db_load</a> utility. The <strong>file</strong> argument must be a file produced using the Berkeley DB library functions.</p>
+<p>The <span class="command"><strong>db_dump185</strong></span> utility is similar to the <span class="command"><strong>db_dump</strong></span> utility, except that it reads databases in the format used by Berkeley DB versions 1.85 and 1.86.</p>
+<p>The options are as follows:</p>
+<ul>
+<li><p><strong>-b</strong></p>
+<p>Specifies the directory where BLOB data is stored for the database you are dumping.</p></li>
+<li><p><strong>-d</strong></p>
+<p>Dump the specified database in a format helpful for debugging the Berkeley DB library routines.</p>
+<ul>
+<li><p><strong>a</strong></p>
+<p>Display all information. See also the <strong>-D</strong> option.</p></li>
+<li><p><strong>h</strong></p>
+<p>Display only page headers.</p></li>
+<li><p><strong>r</strong></p>
+<p>Do not display the free-list or pages on the free list. This mode is used by the recovery tests.</p></li>
+</ul>
+<p><strong>The output format of the <strong><strong>-d</strong> option is not standard and may change, without notice, between releases of the Berkeley DB library.</strong></strong></p></li>
+<li><p><strong>-D</strong></p>
+<p>Specifies the maximum number of bytes to dump for each key/data item found in the specified database. This option is only valid when <strong>-da</strong> is also specified. This option overrides the value set for the "set_data_len" parameter in your DB_CONFIG file, if any.</p></li>
+<li><p><strong>-f</strong></p>
+<p>Write to the specified file instead of to the standard output.</p></li>
+<li><p><strong>-h</strong></p>
+<p>Specify a home directory for the database environment; by default, the current working directory is used.</p></li>
+<li><p><strong>-k</strong></p>
+<p>Dump record numbers from Queue and Recno databases as keys.</p></li>
+<li><p><strong>-l</strong></p>
+<p>List the databases stored in the file.</p></li>
+<li><p><strong>-m</strong></p>
+<p>Specify a named in-memory database to dump. In this case the <strong>file</strong> argument must be omitted.</p></li>
+<li><p><strong>-N</strong></p>
+<p>Do not acquire shared region mutexes while running. Other problems, such as potentially fatal errors in Berkeley DB, will be ignored as well. This option is intended only for debugging errors, and should not be used under any other circumstances.</p></li>
+<li><p><strong>-P</strong></p>
+<p>Specify an environment password. Although Berkeley DB utilities overwrite password strings as soon as possible, be aware there may be a window of vulnerability on systems where unprivileged users can see command-line arguments or where utilities are not able to overwrite the memory containing the command-line arguments.</p></li>
+<li><p><strong>-p</strong></p>
+<p>If characters in either the key or data items are printing characters (as defined by <strong>isprint</strong>(3)), use printing characters in <strong>file</strong> to represent them. This option permits users to use standard text editors and tools to modify the contents of databases.</p>
+<p>Note: different systems may have different notions about what characters are considered <span class="emphasis"><em>printing characters</em></span>, and databases dumped in this manner may be less portable to external systems.</p></li>
+<li><p><strong>-R</strong></p>
+<p>Aggressively salvage data from a possibly corrupt file. The <strong>-R</strong> flag differs from the <strong>-r</strong> option in that it will return all possible data from the file at the risk of also returning already deleted or otherwise nonsensical items. Data dumped in this fashion will almost certainly have to be edited by hand or other means before the data is ready for reload into another database</p>
+<p>Note that this option causes the utility to verify the integrity of the database before performing the database dump. If this verification fails, the utility will exit with error return <code>DB_VERIFY_BAD</code> even though the database is successfully dumped. If you are dumping a database known to be corrupt, you can safely ignore a <code>DB_VERIFY_BAD</code> error return.</p></li>
+<li><p><strong>-r</strong></p>
+<p>Salvage data from a possibly corrupt file. When used on a uncorrupted database, this option should return equivalent data to a normal dump, but most likely in a different order.</p>
+<p>Note that this option causes the utility to verify the integrity of the database before performing the database dump. If this verification fails, the utility will exit with error return <code>DB_VERIFY_BAD</code> even though the database is successfully dumped. If you are dumping a database known to be corrupt, you can safely ignore a <code>DB_VERIFY_BAD</code> error return.</p></li>
+<li><p><strong>-s</strong></p>
+<p>Specify a single database to dump. If no database is specified, all databases in the database file are dumped.</p></li>
+<li><p><strong>-V</strong></p>
+<p>Write the library version number to the standard output, and exit.</p></li>
+</ul>
+<p>Dumping and reloading Hash databases that use user-defined hash functions will result in new databases that use the default hash function. Although using the default hash function may not be optimal for the new database, it will continue to work correctly.</p>
+<p>Dumping and reloading Btree databases that use user-defined prefix or comparison functions will result in new databases that use the default prefix and comparison functions. <strong>In this case, it is quite likely that the database will be damaged beyond repair permitting neither record storage or retrieval.</strong></p>
+<p>The only available workaround for either case is to modify the sources for the <a href="db_load.html" class="xref" title="db_load">db_load</a> utility to load the database using the correct hash, prefix, and comparison functions.</p>
+<p>The <span class="command"><strong>db_dump185</strong></span> utility may not be available on your system because it is not always built when the Berkeley DB libraries and utilities are installed. If you are unable to find it, see your system administrator for further information.</p>
+<p>The <span class="command"><strong>db_dump</strong></span> and <span class="command"><strong>db_dump185</strong></span> utility output formats are documented in the <a href="../../guides/programmer_reference/dumpload_format.html" class="olink">Dump Output Formats</a> section of the Berkeley DB Reference Guide.</p>
+<p>The <span class="command"><strong>db_dump</strong></span> utility may be used with a Berkeley DB environment (as described for the <strong>-h</strong> option, the environment variable <strong>DB_HOME</strong>, or because the utility was run in a directory containing a Berkeley DB environment). In order to avoid environment corruption when using a Berkeley DB environment, <span class="command"><strong>db_dump</strong></span> should always be given the chance to detach from the environment and exit gracefully. To cause <span class="command"><strong>db_dump</strong></span> to release all environment resources and exit cleanly, send it an interrupt signal (SIGINT).</p>
+<p>Even when using a Berkeley DB database environment, the db_dump utility does not use any kind of database locking if it is invoked with the <strong>-d</strong>, <strong>-R</strong>, or <strong>-r</strong> arguments. If used with one of these arguments, the <span class="command"><strong>db_dump</strong></span> utility may only be safely run on databases that are not being modified by any other process; otherwise, the output may be corrupt.</p>
+<p>The <span class="command"><strong>db_dump</strong></span> utility exits 0 on success, and &gt;0 if an error occurs. Note that this utility might return <code>DB_VERIFY_BAD</code> if the <code>-R</code> or <code>-r</code> command line options are used. This indicates a corrupt database. However, the dump may still have been successful.</p>
+<p>The <span class="command"><strong>db_dump185</strong></span> utility exits 0 on success, and &gt;0 if an error occurs.</p>
+<h3 id="environment-variables">Environment Variables</h3>
+<h4 id="db_home">DB_HOME</h4>
+<p>If the <strong>-h</strong> option is not specified and the environment variable DB_HOME is set, it is used as the path of the database home, as described in the <a href="envopen.html" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> method.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

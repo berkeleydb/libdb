@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 5.  Java API — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-5--java-api">Chapter 5.  Java API</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="java.html#java_conf">Java configuration</a> </span></p>
+<p><span class="sect1"> <a href="java_compat.html">Compatibility</a> </span></p>
+<p><span class="sect1"> <a href="java_program.html">Java programming notes</a> </span></p>
+<p><span class="sect1"> <a href="java_faq.html">Java FAQ</a> </span></p>
+<h2 id="java-configuration">Java configuration</h2>
+<p>Building the Berkeley DB java classes, the examples and the native support library is integrated into the normal build process. See <a href="../../guides/installation/build_unix_conf.html" class="olink">Configuring Berkeley DB</a> and <a href="../../guides/installation/build_win_java.html" class="olink">Building the Java API</a> in the Berkeley DB Installation and Build Guide for more information.</p>
+<p>We expect that you already installed the Java JDK or equivalent on your system. For the sake of discussion, we assume that it is in a directory called db-VERSION; for example, you downloaded a Berkeley DB archive, and you did not change the top-level directory name. The files related to Java are in three subdirectories of db-VERSION: java (the java source files), libdb_java (the C++ files that provide the "glue" between java and Berkeley DB) and examples_java (containing all examples code). The directory tree looks like this:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db<span class="op">-</span>VERSION</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">|--</span> java</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>   `<span class="op">--</span> src</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>       `<span class="op">--</span> com</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>           `<span class="op">--</span> sleepycat</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>               <span class="op">|--</span> bind</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>               <span class="op">|--</span> db</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>               <span class="op">|</span>   `<span class="op">--</span> <span class="op">...</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>               `<span class="op">--</span> util</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="op">|--</span> examples_java</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>   `<span class="op">--</span> src</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>       `<span class="op">--</span> db</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="op">|</span>           `<span class="op">--</span> <span class="op">...</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>`<span class="op">--</span> libdb_java</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    `<span class="op">--</span> <span class="op">...</span></span></code></pre></div>
+<p>This naming conforms to the de facto standard for naming java packages. When the java code is built, it is placed into two jar files: <code>db.jar</code>, containing the db package, and <code>dbexamples.jar</code>, containing the examples.</p>
+<p>For your application to use Berkeley DB successfully, you must set your <code>CLASSPATH</code> environment variable to include the full pathname of the db jar files as well as the classes in your java distribution. On UNIX, <code>CLASSPATH</code> is a colon-separated list of directories and jar files; on Windows, it is separated by semicolons. On UNIX, the jar files are put in your build directory, and when you do the make install step, they are copied to the lib directory of your installation tree. On Windows, the jar files are placed in the Release or Debug subdirectory with your other objects.</p>
+<p>The Berkeley DB Java classes are mostly implemented in native methods. Before you can use them, you need to make sure that the DLL or shared library containing the native methods can be found by your Java runtime. On Windows, you should set your PATH variable to include:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>          db<span class="op">-</span>VERSION\build_windows\Release</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>        </span></code></pre></div>
+<p>On UNIX, you should set the <code>LD_LIBRARY_PATH</code> environment variable or local equivalent to include the Berkeley DB library installation directory. Of course, the standard install directory may have been changed for your site; see your system administrator for details.</p>
+<p>On other platforms, the path can be set on the command line as follows (assuming the shared library is in <code>/usr/local/BerkeleyDB/lib</code>:)</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> java <span class="op">-</span>Djava<span class="op">.</span>library<span class="op">.</span>path<span class="op">=/</span>usr<span class="op">/</span>local<span class="op">/</span>BerkeleyDB<span class="op">/</span>lib <span class="op">...</span></span></code></pre></div>
+<p>Regardless, if you get the following exception when you run, you probably do not have the library search path configured correctly:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>java<span class="op">.</span>lang<span class="op">.</span>UnsatisfiedLinkError</span></code></pre></div>
+<p>Different Java interpreters provide different error messages if the <code>CLASSPATH</code> value is incorrect, a typical error is the following:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>java<span class="op">.</span>lang<span class="op">.</span>NoClassDefFoundError</span></code></pre></div>
+<p>To ensure that everything is running correctly, you may want to try a simple test from the example programs in</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>          db<span class="op">-</span>VERSION<span class="op">/</span>examples_java<span class="op">/</span>src<span class="op">/</span>db</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>        </span></code></pre></div>
+<p>For example, the following sample program will prompt for text input lines, which are then stored in a Btree database named <code>access.db</code> in your current directory:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> java db<span class="op">.</span>AccessExample</span></code></pre></div>
+<p>Try giving it a few lines of input text and then end-of-file. Before it exits, you should see a list of the lines you entered display with data items. This is a simple check to make sure the fundamental configuration is working correctly.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

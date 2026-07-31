@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Berkeley DB 4.5.20 Change Log — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / upgrading</nav>
+  <main>
+<h2 id="berkeley-db-4520-change-log">Berkeley DB 4.5.20 Change Log</h2>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50532016">Database or Log File On-Disk Format Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50511048">New Features:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50513672">Database Environment Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50516704">Concurrent Data Store Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50520456">General Access Method Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50542544">Btree Access Method Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50536608">Hash Access Method Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50533200">Queue Access Method Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50539504">Recno Access Method Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50539760">C++-specific API Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50541672">Java-specific API Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50542632">Java collections and bind API Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50546176">Tcl-specific API Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50548752">RPC-specific Client/Server Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50547824">Replication Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50557816">XA Resource Manager Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50534496">Locking Subsystem Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50532216">Logging Subsystem Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50542056">Memory Pool Subsystem Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50543016">Transaction Subsystem Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50556608">Utility Changes:</a> </span></p>
+<p><span class="sect2"> <a href="changelog_4_5_20.html#idp50557880">Configuration, Documentation, Portability and Build Changes:</a> </span></p>
+<h3 id="database-or-log-file-on-disk-format-changes">Database or Log File On-Disk Format Changes:</h3>
+<ol type="1">
+<li>The on-disk log format has changed.</li>
+</ol>
+<h3 id="new-features">New Features:</h3>
+<ol type="1">
+<li>Multi-Version Concurrency Control for the Btree/Recno access methods.</li>
+<li>A new replication framework with a default TCP/IP setup.</li>
+<li>Online replication upgrades for high availability replicated 24/7 systems.</li>
+<li>A new event-style notification.</li>
+<li>Several enhancements to the Java Collections API including the implementation of the size() method.</li>
+</ol>
+<h3 id="database-environment-changes">Database Environment Changes:</h3>
+<ol type="1">
+<li>Update the DB_ENV-&gt;failchk method to garbage collect per-process mutexes stranded after unexpected process failure. [#13964]</li>
+<li>Fix a bug that could cause memory used to track threads for DB_ENV-&gt;failchk to not be reused when a thread no longer exists. [#14425]</li>
+<li>Add set_event_notify behavior as part of new event notification in Berkeley DB. [#14534]</li>
+<li>Fix a bug so that we no longer panic on DB_ENV-&gt;close() if a previous environment close failed to log. This condition will now return an error. [#14693]</li>
+<li>Created os_getenv, removed clib/getenv, implemented Windows specific behavior. [#14942]</li>
+<li>Fix a bug where it was possible to corrupt the DB_REGISTER information file, making it impossible for Berkeley DB applications to join database environments. [#14998]</li>
+</ol>
+<h3 id="concurrent-data-store-changes">Concurrent Data Store Changes:</h3>
+<ol type="1">
+<li>Fix a bug where renaming a subdatabase in a Concurrent Data Store environment could fail. [#14185]</li>
+</ol>
+<h3 id="general-access-method-changes">General Access Method Changes:</h3>
+<ol type="1">
+<li>Fix a bug that could leave extra unallocated pages at the end of a database file. [#14031]</li>
+<li>Optimize secondary updates when overwriting primary records. [#14075]</li>
+<li>Fix a bug to prevent a trap when creating a named in-memory database and there are already temporary files open. [#14133]</li>
+<li>Fix a bug which caused a trap if the key parameter to DBC-&gt;c_get was omitted with DB_CURRENT. [#14143]</li>
+<li>Fix a bug with secondary cursors when the secondary has off-page duplicates. This bug resulted in incorrect primary data being returned. [#14240]</li>
+<li>Improve performance when removing a subdatabase by not locking every page. [#14366]</li>
+<li>Fix a bug that would not properly upgrade database files from releases 3.2.9 (and earlier) to releases 4.0 (and greater). [#14461]</li>
+<li>Fix a bug that could cause a DB_READ_UNCOMMITTED get through a secondary index to return DB_SECONDARY_CORRUPT. [#14487]</li>
+<li>Fix a bug so that non-transactional cursor updates of a transactional database will generate an error. [#14519]</li>
+<li>Add a message when the system panics due to a page in the wrong state at its time of allocation. [#14527]</li>
+<li>Fix a remove failure when attempting to remove a file that is open in another thread of control. [#14780]</li>
+<li>Fix a bug where the key was not ignored when doing a cursor put with the DB_CURRENT flag. [#14988]</li>
+</ol>
+<h3 id="btree-access-method-changes">Btree Access Method Changes:</h3>
+<ol type="1">
+<li>When deleting a page don't check the next key in the parent if we are going to delete the parent too.</li>
+<li>Need to check that the tree has not collapsed between dropping a read lock and getting the write lock. If it has collapsed we will fetch the root of the tree.</li>
+<li>Fix a case where we fail to lock the next page before reading it.</li>
+</ol>
+<!-- -->
+
+<ol type="1">
+<li>Changed the implementation of internal nodes in btrees so that they no longer share references to overflow pages with leaf nodes. [#10717]</li>
+<li>Fix a bug that could cause a diagnostic assertion by setting the deleted bit on a record in an internal node. [#13944]</li>
+<li>Fix three problems in BTREE compaction: [#14238]</li>
+<li>Fix a bug that could cause the compaction of a Btree with sorted duplicates to fail when attempting to compact an off page duplicate tree if a key could not fit in an internal node. [#14771]</li>
+<li>Fix a bug that causes a loop if an empty Btree was compacted. [#14493]</li>
+</ol>
+<h3 id="hash-access-method-changes">Hash Access Method Changes:</h3>
+<ol type="1">
+<li>Fix a bug to allow creation of hash pages during truncate recovery. [#14247]</li>
+</ol>
+<h3 id="queue-access-method-changes">Queue Access Method Changes:</h3>
+<ol type="1">
+<li>Fix a bug where reads of data items outside the range of the queue were not kept locked to the end of the transaction, breaking serializability. [#13719]</li>
+<li>Fix a bug that could cause corruption in queue extent files if multiple processes tried to open the same extent at the same time. [#14438]</li>
+<li>Improve concurrency for in-place updates in queue databases. [#14918]</li>
+</ol>
+<h3 id="recno-access-method-changes">Recno Access Method Changes:</h3>
+<p>None.</p>
+<h3 id="c-specific-api-changes">C++-specific API Changes:</h3>
+<ol type="1">
+<li>C++ applications that check the error code in exceptions should note that DbMemoryException has been changed to have the error code DB_BUFFER_SMALL rather than ENOMEM, to match the error returned by the C API. DbMemoryException will be thrown when a Dbt is too small to contain data returned by Berkeley DB. When a call to malloc fails, or some other resource is exhausted, a plain DbException will be thrown with error code set to ENOMEM. [#13939]</li>
+</ol>
+<h3 id="java-specific-api-changes">Java-specific API Changes:</h3>
+<ol type="1">
+<li>Database.verify may now be called. This method is now static and takes a DatabaseConfig parameter. [#13971]</li>
+<li>Add DB_ENV-&gt;{fileid_reset, lsn_reset} to the public API. [#14076]</li>
+</ol>
+<h3 id="java-collections-and-bind-api-changes">Java collections and bind API Changes:</h3>
+<ol type="1">
+<li>The com.sleepycat.collections package is now fully compatible with the Java Collections framework. [#14732]</li>
+</ol>
+<h3 id="tcl-specific-api-changes">Tcl-specific API Changes:</h3>
+<ol type="1">
+<li>Fix a conflicting variable, sysscript.tcl. [#15051]</li>
+</ol>
+<h3 id="rpc-specific-clientserver-changes">RPC-specific Client/Server Changes:</h3>
+<p>None.</p>
+<h3 id="replication-changes">Replication Changes:</h3>
+<ol type="1">
+<li>Fix a bug when running with DEBUG_ROP or DEBUG_WOP. [#13394]</li>
+<li>Add live replication upgrade support [#13670]</li>
+<li>Fix a bug so that client databases are removed at the start of internal initialization. [#14147]</li>
+<li>Fix a bug in replication internal initialization so that data_dir will be handled correctly. Make internal initialization resilient to multiple data_dir calls with the same directory. [#14489]</li>
+<li>Fix a bug in the 4.2 sync-up algorithm that could result in no open files. [#14552]</li>
+<li>Fix a bug when clients decide to re-request. [#14642]</li>
+<li>Fix a bug where a PERM bulk buffer could have a zero LSN passed to the application callback. [#14675]</li>
+<li>Change names of some existing replication API methods as described in <a href="upgrade_4_5_rep_set.html" class="xref" title="Replication method naming">Replication method naming</a>. [#14723]</li>
+<li>Fix a bug which could cause an election to succeed only after waiting for the timeout to expire, even when all sites responded in a timely manner. The bug was most easily visible in an election between 2 sites. [#14752]</li>
+<li>Fix a bug where a process could have an old file handle to a log file. [#14797]</li>
+<li>Fix a bug where a "log_more" message could be on a log file boundary. [#15034]</li>
+<li>Fix a bug that could cause log corruption if a database open operation were attempted during a call to rep_start in another thread. [#15035]</li>
+<li>Fix a bug during elections where a vote2 arrives before its vote1. [#15055]</li>
+<li>Fix a bug to make sure we are a client if sending a REP_REREQUEST. [#15066]</li>
+</ol>
+<h3 id="xa-resource-manager-changes">XA Resource Manager Changes:</h3>
+<p>None.</p>
+<h3 id="locking-subsystem-changes">Locking Subsystem Changes:</h3>
+<ol type="1">
+<li>Fix a bug that could cause a write to hang if DB_READ_UNCOMMITTED is enabled and it tries to reacquire a write lock. [#14919]</li>
+</ol>
+<h3 id="logging-subsystem-changes">Logging Subsystem Changes:</h3>
+<ol type="1">
+<li>Fix a bug so that log headers are now included in the checksum. This avoids a possible race in doing hot backups. [#11636].</li>
+<li>Add a check so that some log sequence errors are diagnosed at run time rather than during recovery. [#13231]</li>
+<li>Fix a bug where recovery fails if there is no disk space for the forced checkpoint that occurs at the end of processing the log. [#13986]</li>
+<li>Fix a bug which could cause a page to be missing from the end of a database file if the page at the end of the file was freed while it contained data and the system was restarted before the log record for that free was flushed to disk. [#14090]</li>
+<li>Fix a bug that could cause log files to be incorrectly removed by log_archive if it was run immediately after recovery. [#14874]</li>
+</ol>
+<h3 id="memory-pool-subsystem-changes">Memory Pool Subsystem Changes:</h3>
+<ol type="1">
+<li>Fix a bug that could cause corruption to the buffer pool cache if a race condition was hit while using DB-&gt;compact. [#14360]</li>
+<li>Fix a bug where cache pages could be leaked in applications creating temporary files for which the DB_MPOOL_NOFILE flag was set. [#14544]</li>
+</ol>
+<h3 id="transaction-subsystem-changes">Transaction Subsystem Changes:</h3>
+<ol type="1">
+<li>Fix a bug that could cause extra empty pages to appear in a database file after recovery. [#11118]</li>
+<li>Fix a bug triggered when running recovery with a feedback function that could cause a NULL pointer dereference. [#13834]</li>
+<li>Fix a bug where running recovery could create duplicate entries in the data directory list. [#13884]</li>
+<li>Fix a bug to not trade locks if a write lock is already owned. [#13917]</li>
+<li>Fix a bug that could cause traps or hangs if the DB_TXN-&gt;set_name function is used in a multithreaded application. [#14033]</li>
+<li>Fix a bug so that a transaction can no longer be committed after it had deadlocked. [#14037]</li>
+<li>Fix a bug that could cause a trap during recovery if multiple operations that could remove the same extent are recovered. [#14061]</li>
+<li>Fix a bug that could cause an extent file to be deleted after the last record in the extent was consumed but the consuming transaction was aborted. [#14179]</li>
+<li>Fix a bug where the parent database would not use DB_READ_UNCOMMITTED in certain cases when calling DBC-&gt;c_pget. [#14361]</li>
+<li>Fix a bug so that it is no longer possible to do a non-transactional cursor update on a database that is opened transactionally. [#14519]</li>
+<li>Fix a bug that causes a sequence to ignore the DB_AUTO_COMMIT settings. [#14582]</li>
+<li>Fix a bug, change txn_recover so that multiple processes will recover prepared transactions without requiring that the first process stay active. [#14707]</li>
+<li>Fix a bug that could cause the wrong record to be deleted if a transaction had a cursor on a record with a pending delete and then replaced a record that contained overflow data or replaced a record with overflow data and that replace failed. [#14834]</li>
+</ol>
+<h3 id="utility-changes">Utility Changes:</h3>
+<ol type="1">
+<li>Fix a bug that caused db_verify to not check the order on leaf pages which were the leftmost children of an internal node. [#13004]</li>
+<li>Fix a bug that caused db_hotbackup to not backup queue extent files. [#13848]</li>
+<li>Fix a bug so that db_verify no longer reports that an unused hash page is not fully zeroed. [#14030]</li>
+<li>Fix a bug where db_stat ignored the -f option to return "fast statistics". [#14283]</li>
+<li>Fix a bug that prevented the db_stat utility from opening database files with write permission so that meta data statistics would be updated. [#14755]</li>
+<li>Fix a bug in db_hotbackup related to windows. Sub-directories are now ignored. [#14757]</li>
+</ol>
+<h3 id="configuration-documentation-portability-and-build-changes">Configuration, Documentation, Portability and Build Changes:</h3>
+<ol type="1">
+<li>The Berkeley DB 4.3 and 4.4 releases disallowed using the --with-uniquename configuration option with the C++, Java, or RPC --enable-XXX options. The 4.5 release returns to the 4.2 release behavior, allowing those combinations of configuration options. [#14067]</li>
+<li>Fix build issues when CONFIG_TEST is not enabled for Tcl. [#14507]</li>
+<li>There are updated build instructions for Berkeley DB PHP module on Linux. [#14249]</li>
+<li>Use libtool's "standard" environment variable names so that you can set "AR" to "ar -X64" for example, and modify both libtool and the Makefile commands. Remove the install-strip target from the Makefile, it is no longer used. [#14726]</li>
+<li>Fix a bug where, when a database is opened with the DB_THREAD flag (the default in Java), and an operation in one thread causes the database to be truncated (typically when the last page in the database is freed) concurrently with a read or write in another thread, there can be arbitrary data loss, as Windows zeros out pages from the read/write location to the end of the file. [#15063]</li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Retrieving Items by Index Key — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / collections</nav>
+  <main>
+<h2 id="retrieving-items-by-index-key">Retrieving Items by Index Key</h2>
+<p>Retrieving information via database index keys can be accomplished using the standard Java collections API, using a collection created from a <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" class="ulink" target="_top">SecondaryDatabase</a> rather than a <a href="../../java/com/sleepycat/db/Database.html" class="ulink" target="_top">Database</a>. However, the standard Java API does not support <span class="emphasis"><em>duplicate keys</em></span>: more than one element in a collection having the same key. All three indices created in the prior section have duplicate keys because of the nature of the city, part number and supplier number index keys. More than one supplier may be in the same city, and more than one shipment may have the same part number or supplier number. This section describes how to use extended methods for stored collections to return all values for a given key.</p>
+<p>Using the standard Java collections API, the <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Map.html#get(java.lang.Object)" class="ulink" target="_top">Map.get</a> method for a stored collection with duplicate keys will return only the first value for a given key. To obtain all values for a given key, the <a href="../../java/com/sleepycat/collections/StoredMap.html#duplicates(java.lang.Object)" class="ulink" target="_top">StoredMap.duplicates</a> method may be called. This returns a <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Collection.html" class="ulink" target="_top">Collection</a> of values for the given key. If duplicate keys are not allowed, the returned collection will have at most one value. If the key is not present in the map, an empty collection is returned.</p>
+<p>The <code>Sample</code> class is extended to retrieve duplicates for specific index keys that are present in the database.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>util<span class="op">.</span>Iterator<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>public class Sample</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    private SampleViews views<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    private class PrintDatabase implements TransactionWorker</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>        public <span class="dt">void</span> doWork<span class="op">()</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>            throws Exception</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>            printEntries<span class="op">(</span><span class="st">&quot;Parts&quot;</span><span class="op">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>                          views<span class="op">.</span>getPartEntrySet<span class="op">().</span>iterator<span class="op">());</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>            printEntries<span class="op">(</span><span class="st">&quot;Suppliers&quot;</span><span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>                          views<span class="op">.</span>getSupplierEntrySet<span class="op">().</span>iterator<span class="op">());</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>            printValues<span class="op">(</span><span class="st">&quot;Suppliers for City Paris&quot;</span><span class="op">,</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>                         views<span class="op">.</span>getSupplierByCityMap<span class="op">().</span>duplicates<span class="op">(</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>                                            <span class="st">&quot;Paris&quot;</span><span class="op">).</span>iterator<span class="op">());</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>            printEntries<span class="op">(</span><span class="st">&quot;Shipments&quot;</span><span class="op">,</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>                          views<span class="op">.</span>getShipmentEntrySet<span class="op">().</span>iterator<span class="op">());</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>            printValues<span class="op">(</span><span class="st">&quot;Shipments for Part P1&quot;</span><span class="op">,</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>                         views<span class="op">.</span>getShipmentByPartMap<span class="op">().</span>duplicates<span class="op">(</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>                                            new PartKey<span class="op">(</span><span class="st">&quot;P1&quot;</span><span class="op">)).</span>iterator<span class="op">());</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>            printValues<span class="op">(</span><span class="st">&quot;Shipments for Supplier S1&quot;</span><span class="op">,</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>                         views<span class="op">.</span>getShipmentBySupplierMap<span class="op">().</span>duplicates<span class="op">(</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>                                            new</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>                                            SupplierKey<span class="op">(</span><span class="st">&quot;S1&quot;</span><span class="op">)).</span>iterator<span class="op">());</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">void</span> printValues<span class="op">(</span>String label<span class="op">,</span> Iterator iterator<span class="op">)</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\n</span><span class="st">--- &quot;</span> <span class="op">+</span> label <span class="op">+</span> <span class="st">&quot; ---&quot;</span><span class="op">);</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> <span class="op">(</span>iterator<span class="op">.</span>hasNext<span class="op">())</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span>iterator<span class="op">.</span>next<span class="op">().</span>toString<span class="op">());</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>     <span class="op">}</span> </span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>The <a href="../../java/com/sleepycat/collections/StoredMap.html#duplicates(java.lang.Object)" class="ulink" target="_top">StoredMap.duplicates</a> method is called passing the desired key. The returned value is a standard Java <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Collection.html" class="ulink" target="_top">Collection</a> containing the values for the specified key. A standard Java <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Iterator.html" class="ulink" target="_top">Iterator</a> is then obtained for this collection and all values returned by that iterator are printed.</p>
+<p>Another technique for retrieving duplicates is to use the collection returned by <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Map.html#entrySet()" class="ulink" target="_top">Map.entrySet</a>. When duplicate keys are present, a <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Map.Entry.html" class="ulink" target="_top">Map.Entry</a> object will be present in this collection for each duplicate. This collection can then be iterated or a subset can be created from it, all using the standard Java collection API.</p>
+<p>Note that we did not discuss how duplicates keys can be explicitly added or removed in a collection. For index keys, the addition and deletion of duplicate keys happens automatically when records containing the index key are added, updated, or removed.</p>
+<p>While not shown in the example program, it is also possible to create a store with duplicate keys in the same way as an index with duplicate keys — by calling <code>DatabaseConfig.setSortedDuplicates()</code> method. In that case, calling <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Map.html#put(K,%20V)" class="ulink" target="_top">Map.put</a> will add duplicate keys. To remove all duplicate keys, call <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Map.html#remove(java.lang.Object)" class="ulink" target="_top">Map.remove</a>. To remove a specific duplicate key, call <a href="../../java/com/sleepycat/collections/StoredMap.html#duplicates(java.lang.Object)" class="ulink" target="_top">StoredMap.duplicates</a> and then call <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Collection.html#remove(java.lang.Object)" class="ulink" target="_top">Collection.remove</a> using the returned collection. Duplicate values may also be added to this collection using <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Collection.html#add(E)" class="ulink" target="_top">Collection.add</a>.</p>
+<p>The output of the example program is shown below.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>Adding Suppliers</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>Adding Parts</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>Adding Shipments</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="op">---</span> Parts <span class="op">---</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>PartKey<span class="op">:</span> number<span class="op">=</span>P1</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>PartData<span class="op">:</span> name<span class="op">=</span>Nut color<span class="op">=</span>Red weight<span class="op">=[</span><span class="fl">12.0</span> grams<span class="op">]</span> city<span class="op">=</span>London</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>PartKey<span class="op">:</span> number<span class="op">=</span>P2</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>PartData<span class="op">:</span> name<span class="op">=</span>Bolt color<span class="op">=</span>Green weight<span class="op">=[</span><span class="fl">17.0</span> grams<span class="op">]</span> city<span class="op">=</span>Paris</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>PartKey<span class="op">:</span> number<span class="op">=</span>P3</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>PartData<span class="op">:</span> name<span class="op">=</span>Screw color<span class="op">=</span>Blue weight<span class="op">=[</span><span class="fl">17.0</span> grams<span class="op">]</span> city<span class="op">=</span>Rome</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>PartKey<span class="op">:</span> number<span class="op">=</span>P4</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>PartData<span class="op">:</span> name<span class="op">=</span>Screw color<span class="op">=</span>Red weight<span class="op">=[</span><span class="fl">14.0</span> grams<span class="op">]</span> city<span class="op">=</span>London</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>PartKey<span class="op">:</span> number<span class="op">=</span>P5</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>PartData<span class="op">:</span> name<span class="op">=</span>Cam color<span class="op">=</span>Blue weight<span class="op">=[</span><span class="fl">12.0</span> grams<span class="op">]</span> city<span class="op">=</span>Paris</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>PartKey<span class="op">:</span> number<span class="op">=</span>P6</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>PartData<span class="op">:</span> name<span class="op">=</span>Cog color<span class="op">=</span>Red weight<span class="op">=[</span><span class="fl">19.0</span> grams<span class="op">]</span> city<span class="op">=</span>London</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="op">---</span> Suppliers <span class="op">---</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>SupplierKey<span class="op">:</span> number<span class="op">=</span>S1</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>SupplierData<span class="op">:</span> name<span class="op">=</span>Smith status<span class="op">=</span><span class="dv">20</span> city<span class="op">=</span>London</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>SupplierKey<span class="op">:</span> number<span class="op">=</span>S2</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>SupplierData<span class="op">:</span> name<span class="op">=</span>Jones status<span class="op">=</span><span class="dv">10</span> city<span class="op">=</span>Paris</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>SupplierKey<span class="op">:</span> number<span class="op">=</span>S3</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>SupplierData<span class="op">:</span> name<span class="op">=</span>Blake status<span class="op">=</span><span class="dv">30</span> city<span class="op">=</span>Paris</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>SupplierKey<span class="op">:</span> number<span class="op">=</span>S4</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>SupplierData<span class="op">:</span> name<span class="op">=</span>Clark status<span class="op">=</span><span class="dv">20</span> city<span class="op">=</span>London</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>SupplierKey<span class="op">:</span> number<span class="op">=</span>S5</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>SupplierData<span class="op">:</span> name<span class="op">=</span>Adams status<span class="op">=</span><span class="dv">30</span> city<span class="op">=</span>Athens</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a><span class="op">---</span> Suppliers <span class="cf">for</span> City Paris <span class="op">---</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>SupplierData<span class="op">:</span> name<span class="op">=</span>Jones status<span class="op">=</span><span class="dv">10</span> city<span class="op">=</span>Paris</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>SupplierData<span class="op">:</span> name<span class="op">=</span>Blake status<span class="op">=</span><span class="dv">30</span> city<span class="op">=</span>Paris</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a><span class="op">---</span> Shipments <span class="op">---</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S1 part<span class="op">=</span>P1</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">300</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S2 part<span class="op">=</span>P1</span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">300</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S1 part<span class="op">=</span>P2</span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">200</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S2 part<span class="op">=</span>P2</span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">400</span></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S3 part<span class="op">=</span>P2</span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">200</span></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S4 part<span class="op">=</span>P2</span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">200</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S1 part<span class="op">=</span>P3</span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">400</span></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S1 part<span class="op">=</span>P4</span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">200</span></span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S4 part<span class="op">=</span>P4</span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">300</span></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S1 part<span class="op">=</span>P5</span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">100</span></span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S4 part<span class="op">=</span>P5</span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">400</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>ShipmentKey<span class="op">:</span> supplier<span class="op">=</span>S1 part<span class="op">=</span>P6</span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">100</span> </span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a><span class="op">---</span> Shipments <span class="cf">for</span> Part P1 <span class="op">---</span></span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">300</span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">300</span></span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a><span class="op">---</span> Shipments <span class="cf">for</span> Supplier S1 <span class="op">---</span></span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">300</span></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">200</span></span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">400</span></span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">200</span></span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">100</span></span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a>ShipmentData<span class="op">:</span> quantity<span class="op">=</span><span class="dv">100</span> </span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

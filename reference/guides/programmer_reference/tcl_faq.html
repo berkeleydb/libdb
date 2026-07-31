@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tcl FAQ — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="tcl-faq">Tcl FAQ</h2>
+<ol type="1">
+<li><p><strong>I have several versions of Tcl installed. How do I configure Berkeley DB to use a particular version?</strong></p>
+<p>To compile the Tcl interface with a particular version of Tcl, use the --with-tcl option to specify the Tcl installation directory that contains the tclConfig.sh file. See the <a href="../../guides/installation/build_unix_flags.html" class="olink">Changing compile or load options</a> section in the Berkeley DB Installation and Build Guide for more information.</p></li>
+<li><p><strong>Berkeley DB was configured using --enable-tcl or --with-tcl and fails to build.</strong></p>
+<p>The Berkeley DB Tcl interface requires Tcl version 8.5 or greater.</p></li>
+<li><p><strong>Berkeley DB was configured using --enable-tcl or --with-tcl and fails to build.</strong></p>
+<p>If the Tcl installation was moved after it was configured and installed, try reconfiguring and reinstalling Tcl.</p>
+<p>Also, some systems do not search for shared libraries by default, or do not search for shared libraries named the way the Tcl installation names them, or are searching for a different kind of library than those in your Tcl installation. For example, Linux systems often require linking "libtcl.a" to "libtcl#.#.a", whereas AIX systems often require adding the "-brtl" flag to the linker. A simpler solution that almost always works on all systems is to create a link from "libtcl.#.#.a" or "libtcl.so" (or whatever you happen to have) to "libtcl.a" and reconfigure.</p></li>
+<li><p><strong>Loading the Berkeley DB library into Tcl on AIX causes a core dump.</strong></p>
+<p>In some versions of Tcl, the "tclConfig.sh" autoconfiguration script created by the Tcl installation does not work properly under AIX, and you may have to modify values in the tclConfig.sh file to in order to load the Berkeley DB library into Tcl. Specifically, the TCL_LIB_SPEC variable should contain sufficient linker flags to find and link against the installed libtcl library. In some circumstances, the tclConfig.sh file built by Tcl does not.</p></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

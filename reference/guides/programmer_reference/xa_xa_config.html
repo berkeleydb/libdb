@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configuring Berkeley DB with the Tuxedo System — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="configuring-berkeley-db-with-the-tuxedo-system">Configuring Berkeley DB with the Tuxedo System</h2>
+<p><span class="sect2"> <a href="xa_xa_config.html#idp52786896">Update the Resource Manager File in Tuxedo</a> </span></p>
+<p><span class="sect2"> <a href="xa_xa_config.html#idp52812512">Build the Transaction Manager Server</a> </span></p>
+<p><span class="sect2"> <a href="xa_xa_config.html#idp52759288">Update the UBBCONFIG File</a> </span></p>
+<p>To configure the Tuxedo system to use Berkeley DB resource managers, do the following:</p>
+<h3 id="update-the-resource-manager-file-in-tuxedo">Update the Resource Manager File in Tuxedo</h3>
+<p>For the purposes of this discussion, assume that the Tuxedo home directory is in</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">/</span>home<span class="op">/</span>tuxedo</span></code></pre></div>
+<p>In that case, the resource manager file will be located in</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">/</span>home<span class="op">/</span>tuxedo<span class="op">/</span>udataobj<span class="op">/</span>RM</span></code></pre></div>
+<p>Edit the resource manager file to identify the Berkeley DB resource manager, the name of the resource manager switch, and the name of the library for the resource manager.</p>
+<p>For example, on a RedHat Linux Enterprise (64-bit) installation of Oracle Tuxedo 11gR1, you can update the resource manager file by adding the following line:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>BERKELEY<span class="op">-</span>DB<span class="op">:</span>db_xa_switch<span class="op">:-</span>L$<span class="op">{</span>DB_INSTALL<span class="op">}/</span>lib <span class="op">-</span>ldb </span></code></pre></div>
+<p>where <code>${DB_INSTALL}</code> is the directory into which you installed the Berkeley DB library.</p>
+<p>Note that the load options may differ depending on the platform of your system.</p>
+<h3 id="build-the-transaction-manager-server">Build the Transaction Manager Server</h3>
+<p>To do this, use the Tuxedo <strong>buildtms(1)</strong> utility. The <strong>buildtms</strong> command will create the <code>Berkeley-DB</code> resource manager in the directory from which it was run. The parameters to the <strong>buildtms</strong> command should be:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>buildtms <span class="op">-</span>v <span class="op">-</span>o DBRM <span class="op">-</span>r BERKELEY<span class="op">-</span>DB</span></code></pre></div>
+<p>This will create an executable transaction manager server, <code>DBRM</code>, which is called by Tuxedo to process begins, commits, and aborts.</p>
+<h3 id="update-the-ubbconfig-file">Update the UBBCONFIG File</h3>
+<p>You must make sure that your TUXCONFIG environment variable identifies an UBBCONFIG file that properly identifies your resource managers. In the GROUPS section of the UBBCONFIG file, you should identify the group's LMID and GRPNO, as well as the transaction manager server name "TMSNAME=DBRM." You must also specify the OPENINFO parameter, setting it equal to the string</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>rm_name<span class="op">:</span>dir</span></code></pre></div>
+<p>where rm_name is the resource name specified in the RM file (that is, BERKELEY-DB) and dir is the directory for the Berkeley DB home environment (see <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> for a discussion of Berkeley DB environments).</p>
+<p>Because Tuxedo resource manager startup accepts only a single string for configuration, any environment customization that might have been done via the config parameter to <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> must instead be done by placing a <a href="env_db_config.html" class="xref" title="DB_CONFIG configuration file">DB_CONFIG configuration file</a> in the Berkeley DB environment directory. See <a href="env_naming.html" class="xref" title="File naming">File naming</a> for further information.</p>
+<p>Consider the following configuration. We have built a transaction manager server, as described previously. We want the Berkeley DB environment to be <code>/home/dbhome</code>, our database files to be maintained in <code>/home/datafiles</code>, our log files to be maintained in <code>/home/log</code>, and we want a duplexed server.</p>
+<p>The GROUPS section of the ubb file might look like the following:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>group_tm LMID<span class="op">=</span>myname GRPNO<span class="op">=</span><span class="dv">1</span> TMSNAME<span class="op">=</span>DBRM TMSCOUNT<span class="op">=</span><span class="dv">2</span> \</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    OPENINFO<span class="op">=</span><span class="st">&quot;BERKELEY-DB:/home/dbhome&quot;</span></span></code></pre></div>
+<p>There would be a <a href="env_db_config.html" class="xref" title="DB_CONFIG configuration file">DB_CONFIG configuration file</a> in the directory <code>/home/dbhome</code> that contained the following two lines:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>set_data_dir    <span class="op">/</span>home<span class="op">/</span>datafiles</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>set_lg_dir  <span class="op">/</span>home<span class="op">/</span>log</span></code></pre></div>
+<p>Finally, the UBBCONFIG file must be translated into a binary version using Tuxedo's <strong>tmloadcf</strong>(1) utility, and then the pathname of that binary file must be specified as your TUXCONFIG environment variable.</p>
+<p>At this point, your system is properly initialized to use the Berkeley DB resource manager.</p>
+<p>See <a href="../../api/c/db.html" class="olink">DB class</a> for further information on accessing data files using XA.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

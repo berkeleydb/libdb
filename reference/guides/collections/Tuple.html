@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 5.  Using Tuples — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / collections</nav>
+  <main>
+<h2 id="chapter-5--using-tuples">Chapter 5.  Using Tuples</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="Tuple.html#tupleformat">Using the Tuple Format</a> </span></p>
+<p><span class="sect1"> <a href="tupleswithkeycreators.html">Using Tuples with Key Creators</a> </span></p>
+<p><span class="sect1"> <a href="tuplekeybindings.html">Creating Tuple Key Bindings</a> </span></p>
+<p><span class="sect1"> <a href="tuple-serialentitybindings.html">Creating Tuple-Serial Entity Bindings</a> </span></p>
+<p><span class="sect1"> <a href="sortedcollections.html">Using Sorted Collections</a> </span></p>
+<p>DB Java Collections API <span class="emphasis"><em>tuples</em></span> are sequences of primitive Java data types, for example, integers and strings. The <span class="emphasis"><em>tuple format</em></span> is a binary format for tuples that can be used to store keys and/or values.</p>
+<p>Tuples are useful as keys because they have a meaningful sort order, while serialized objects do not. This is because the binary data for a tuple is written in such a way that its raw byte ordering provides a useful sort order. For example, strings in tuples are written with a null terminator rather than with a leading length.</p>
+<p>Tuples are useful as keys <span class="emphasis"><em>or</em></span> values when reducing the record size to a minimum is important. A tuple is significantly smaller than an equivalent serialized object. However, unlike serialized objects, tuples cannot contain complex data types and are not easily extended except by adding fields at the end of the tuple.</p>
+<p>Whenever a tuple format is used, except when the key or value class is a Java primitive wrapper class, a <span class="emphasis"><em>tuple binding</em></span> class must be implemented to map between the Java object and the tuple fields. Because of this extra requirement, and because tuples are not easily extended, a useful technique shown in this example is to use tuples for keys and serialized objects for values. This provides compact ordered keys but still allows arbitrary Java objects as values, and avoids implementing a tuple binding for each value class.</p>
+<p>Compare this example to the prior Entity example and you'll see that the <code>Sample</code> class has not changed. When changing a database format, while new bindings are needed to map key and value objects to the new format, the application using the objects often does not need to be modified.</p>
+<p>The complete source of the final version of the example program is included in the Berkeley DB distribution.</p>
+<h2 id="using-the-tuple-format">Using the Tuple Format</h2>
+<p>Tuples are sequences of primitive Java values that can be written to, and read from, the raw data bytes of a stored record. The primitive values are written or read one at a time in sequence, using the DB Java Collections API <a href="../../java/com/sleepycat/bind/tuple/TupleInput.html" class="ulink" target="_top">TupleInput</a> and <a href="../../java/com/sleepycat/bind/tuple/TupleOutput.html" class="ulink" target="_top">TupleOutput</a> classes. These classes are very similar to the standard Java <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/io/DataInput.html" class="ulink" target="_top">DataInput</a> and <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/io/DataOutput.html" class="ulink" target="_top">DataOutput</a> interfaces. The primary difference is the binary format of the data, which is designed for sorting in the case of tuples.</p>
+<p>For example, to read and write a tuple containing two string values, the following code snippets could be used.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleInput<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleOutput<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>TupleInput input<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>TupleOutput output<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>String partNumber <span class="op">=</span> input<span class="op">.</span>readString<span class="op">();</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>String supplierNumber <span class="op">=</span> input<span class="op">.</span>readString<span class="op">();</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>output<span class="op">.</span>writeString<span class="op">(</span>partNumber<span class="op">);</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>output<span class="op">.</span>writeString<span class="op">(</span>supplierNumber<span class="op">);</span>  </span></code></pre></div>
+<p>Since a tuple is defined as an ordered sequence, reading and writing order must match. If the wrong data type is read (an integer instead of string, for example), an exception may be thrown or at minimum invalid data will be read.</p>
+<p>When the tuple format is used, bindings and key creators must read and write tuples using the tuple API as shown above. This will be illustrated in the next two sections.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

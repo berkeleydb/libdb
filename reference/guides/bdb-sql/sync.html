@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Syncing with Oracle Databases — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / bdb-sql</nav>
+  <main>
+<h2 id="syncing-with-oracle-databases">Syncing with Oracle Databases</h2>
+<p><span class="sect2"> <a href="sync.html#syncunix">Syncing on Unix Platforms</a> </span></p>
+<p><span class="sect2"> <a href="sync.html#syncwin">Syncing on Windows Platforms</a> </span></p>
+<p><span class="sect2"> <a href="sync.html#syncwinmobile">Syncing on Windows Mobile Platforms</a> </span></p>
+<p>Oracle's SQLite Mobile Client product allows you to synchronize a SQLite database with a back-end Oracle database. Because the BDB SQL interface is a drop-in replacement for SQLite, this means you can synchronize a Berkeley DB database with an Oracle back-end as well.</p>
+<h3 id="note">Note</h3>
+<p>Berkeley DB SQL databases are not compatible with SQLite databases. In order for sync to work, you must remove any currently existing SQLite databases.</p>
+<h3 id="syncing-on-unix-platforms">Syncing on Unix Platforms</h3>
+<p>For Unix platforms, the easiest way to use Oracle's SQLite Mobile Client is to build the BDB SQL interface with the compatibility option. That is, specify both <code>--enable-sql</code> and <code>--enable-sql-compat</code> when you configure your Berkeley DB installation. This causes libraries with the exact same name as the SQLite libraries to be created when you build Berkeley DB.</p>
+<p>Having done that, you must then change your platform's library search path so that it finds the Berkeley DB libraries <span class="emphasis"><em>before</em></span> any installed SQLite libraries. On many (but not all) Unix platforms, you do this by modifying the <code>LD_LIBRARY_PATH</code> environment variable. See your operating system documentation for information on how to change your search path for dynamically linked libraries.</p>
+<p>Once you have properly configured and built your Berkeley DB installation, and you have properly configured your operating system, you can use the Oracle SQLite Mobile Client in exactly the same way as you would if you were using standard SQLite libraries and databases with it. See the <a href="http://download.oracle.com/docs/cd/E12095_01/nav/portal_booklist.htm" class="ulink" target="_top">Oracle Database Lite</a> documentation for information on using SQLite Mobile Client.</p>
+<p>For information on building the BDB SQL interface, see the <a href="../../guides/installation/build_unix_sql.html" class="olink">Configuring the SQL Interface</a> section in the <em>Berkeley DB Installation and Build Guide</em>.</p>
+<h3 id="syncing-on-windows-platforms">Syncing on Windows Platforms</h3>
+<p>For Windows platforms, you use Oracle's SQLite Mobile Client by building the BDB SQL interface in the same way as you normally do. See the <a href="../../guides/installation/build_win.html" class="olink">Building Berkeley DB for Windows</a> chapter in the <em>Berkeley DB Installation and Build Guide</em> for more information.</p>
+<p>Once you have built the product, rename the Berkeley DB SQL dlls so that they are named identically to the standard SQLite dlls (sqlite3.dll). Install the renamed Berkeley DB SQL dll along with the main Berkeley DB dll (libdb5x.dll) in the same directory as the SQLite dlls. See the <a href="../../guides/installation/build_win_sql.html" class="olink">Building the SQL API</a> section for details.</p>
+<p>Finally, configure your Windows PATH environment variable so that it finds your Berkeley DB dlls before it finds any standard SQLite dlls that might be installed on your system.</p>
+<p>Once you have built your Berkeley DB installation and renamed your dlls, and you have properly configured your operating system, you can use the Oracle SQLite Mobile Client in exactly the same way as you would if you were using standard SQLite libraries and databases with it. See the <a href="http://download.oracle.com/docs/cd/E12095_01/nav/portal_booklist.htm" class="ulink" target="_top">Oracle Database Lite</a> documentation for information on using SQLite Mobile Client.</p>
+<h3 id="syncing-on-windows-mobile-platforms">Syncing on Windows Mobile Platforms</h3>
+<p>For Windows Mobile platforms, you use Oracle's SQLite Mobile Client by building the BDB SQL interface in the same way as you normally do. See the <a href="../../guides/installation/build_wince.html" class="olink">Building Berkeley DB for Windows Mobile</a> chapter in the <em>Berkeley DB Installation and Build Guide</em> for more information.</p>
+<p>Once you have built the product, rename the Berkeley DB SQL dll to <code>sqlite3.dll</code>. Then, copy the dll to the <code>\Windows</code> path on the phone. Note that you only need the new <code>sqlite3.dll</code>; you do not need any of the other Berkeley DB dlls.</p>
+<p>Once you have built your Berkeley DB installation and renamed your dlls, and you have properly configured your operating system, you can use the Oracle SQLite Mobile Client in exactly the same way as you would if you were using standard SQLite libraries and databases with it. See the <a href="http://download.oracle.com/docs/cd/E12095_01/nav/portal_booklist.htm" class="ulink" target="_top">Oracle Database Lite</a> documentation for information on using SQLite Mobile Client.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

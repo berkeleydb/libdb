@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>repmgr_site — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="repmgr_site">repmgr_site</h2>
+<p>Identifies a Replication Manager site.</p>
+<p>The syntax of this parameter in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string <code>repmgr_site</code>, one or more whitespace characters, the host and port parameters specified as a string and an integer respectively. This can optionally be followed by one or more space-delimited keywords and <code>on</code>/<code>off</code>. For example:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>repmgr_site example<span class="op">.</span>com <span class="dv">49200</span> db_local_site on db_legacy off</span></code></pre></div>
+<p>Available keywords are:</p>
+<ul>
+<li><p><code>db_bootstrap_helper</code></p>
+<p>If turned <code>on</code>, the identified site may be used as a "helper" when the local site is first joining the replication group. Once the local site has been established as a member of the group, this setting is ignored.</p></li>
+<li><p><code>db_group_creator</code></p>
+<p>If turned <code>on</code>, this site should create the initial membership database contents, defining a "group" of just the one site, rather than trying to join an existing group when it starts for the first time. This setting is only used on the local site, and is ignored when configured on a remote site.</p></li>
+<li><p><code>db_legacy</code></p>
+<p>If turned <code>on</code>, specifies that the site is already part of an existing group. This setting causes the site to be upgraded from a previous version of BDB. All sites in the legacy group must specify this setting for themselves (the local site) and for all other sites currently existing in the group. Once the upgrade has been completed, this setting is no longer required.</p></li>
+<li><p><code>db_local_site</code></p>
+<p>If turned <code>on</code>, specifies that this site is the local site within the replication group. The application must identify exactly one site as the local site before replication is started.</p></li>
+<li><p><code>db_repmgr_peer</code></p>
+<p>If turned <code>on</code>, specifies that the site may be used as a target for "client-to-client" synchronization messages. This setting is ignored if it is turned <code>on</code> for the local site.</p></li>
+</ul>
+<p>For more information, see <a href="dbsite_set_config.html" class="xref" title="DB_SITE-&gt;set_config()">DB_SITE-&gt;set_config()</a>.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 11.  Berkeley DB Transactional Data Store Applications — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-11--berkeley-db-transactional-data-store-applications">Chapter 11.  Berkeley DB Transactional Data Store Applications</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="transapp.html#transapp_intro">Transactional Data Store introduction</a> </span></p>
+<p><span class="sect1"> <a href="transapp_why.html">Why transactions?</a> </span></p>
+<p><span class="sect1"> <a href="transapp_term.html">Terminology</a> </span></p>
+<p><span class="sect1"> <a href="transapp_fail.html">Handling failure in Transactional Data Store applications</a> </span></p>
+<p><span class="sect1"> <a href="transapp_app.html">Architecting Transactional Data Store applications</a> </span></p>
+<p><span class="sect1"> <a href="transapp_env_open.html">Opening the environment</a> </span></p>
+<p><span class="sect1"> <a href="transapp_data_open.html">Opening the databases</a> </span></p>
+<p><span class="sect1"> <a href="transapp_put.html">Recoverability and deadlock handling</a> </span></p>
+<p><span class="sect1"> <a href="transapp_atomicity.html">Atomicity</a> </span></p>
+<p><span class="sect1"> <a href="transapp_inc.html">Isolation</a> </span></p>
+<p><span class="sect1"> <a href="transapp_read.html">Degrees of isolation</a> </span></p>
+<p><span class="sect2"> <a href="transapp_read.html#snapshot_isolation">Snapshot Isolation</a> </span></p>
+<p><span class="sect1"> <a href="transapp_cursor.html">Transactional cursors</a> </span></p>
+<p><span class="sect1"> <a href="transapp_nested.html">Nested transactions</a> </span></p>
+<p><span class="sect1"> <a href="transapp_admin.html">Environment infrastructure</a> </span></p>
+<p><span class="sect1"> <a href="transapp_deadlock.html">Deadlock detection</a> </span></p>
+<p><span class="sect1"> <a href="transapp_checkpoint.html">Checkpoints</a> </span></p>
+<p><span class="sect1"> <a href="transapp_archival.html">Database and log file archival</a> </span></p>
+<p><span class="sect1"> <a href="transapp_logfile.html">Log file removal</a> </span></p>
+<p><span class="sect1"> <a href="transapp_recovery.html">Recovery procedures</a> </span></p>
+<p><span class="sect1"> <a href="transapp_hotfail.html">Hot failover</a> </span></p>
+<p><span class="sect1"> <a href="transapp_journal.html">Using Recovery on Journaling Filesystems</a> </span></p>
+<p><span class="sect1"> <a href="transapp_filesys.html">Recovery and filesystem operations</a> </span></p>
+<p><span class="sect1"> <a href="transapp_reclimit.html">Berkeley DB recoverability</a> </span></p>
+<p><span class="sect1"> <a href="transapp_tune.html">Transaction tuning</a> </span></p>
+<p><span class="sect1"> <a href="transapp_throughput.html">Transaction throughput</a> </span></p>
+<p><span class="sect1"> <a href="transapp_faq.html">Transaction FAQ</a> </span></p>
+<h2 id="transactional-data-store-introduction">Transactional Data Store introduction</h2>
+<p>It is difficult to write a useful transactional tutorial and still keep within reasonable bounds of documentation; that is, without writing a book on transactional programming. We have two goals in this section: to familiarize readers with the transactional interfaces of Berkeley DB and to provide code building blocks that will be useful for creating applications.</p>
+<p>We have not attempted to present this information using a real-world application. First, transactional applications are often complex and time-consuming to explain. Also, one of our goals is to give you an understanding of the wide variety of tools Berkeley DB makes available to you, and no single application would use most of the interfaces included in the Berkeley DB library. For these reasons, we have chosen to simply present the Berkeley DB data structures and programming solutions, using examples that differ from page to page. All the examples are included in a standalone program you can examine, modify, and run; and from which you will be able to extract code blocks for your own applications. Fragments of the program will be presented throughout this chapter, and the complete text of the <a href="transapp.cs" class="ulink" target="_top">example program</a> for IEEE/ANSI Std 1003.1 (POSIX) standard systems is included in the Berkeley DB distribution.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

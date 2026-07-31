@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Foreign key indexes — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="foreign-key-indexes">Foreign key indexes</h2>
+<p>Foreign keys are used to ensure a level of consistency between two different databases in terms of the keys that the databases use. In a foreign key relationship, one database is the <span class="emphasis"><em>constrained</em></span> database. This database is actually a secondary database which is associated with a primary database. The other database in this relationship is the <span class="emphasis"><em>foreign key</em></span> database. Once this relationship has been established between a constrained database and a foreign key database, then:</p>
+<ol type="1">
+<li><p>Key/data items cannot be added to the constrained database unless that same key already exists in the foreign key database.</p></li>
+<li><p>A key/data pair cannot be deleted from the foreign key database unless some action is also taken to keep the constrained database consistent with the foreign key database.</p></li>
+</ol>
+<p>Because the constrained database is a secondary database, by ensuring it's consistency with a foreign key database you are actually ensuring that a primary database (the one to which the secondary database is associated) is consistent with the foreign key database.</p>
+<p>Deletions of keys in the foreign key database affect the constrained database in one of three ways, as specified by the application:</p>
+<ul>
+<li><p><code>Abort</code></p>
+<p>The deletion of a record from the foreign database will not proceed if that key exists in the constrained primary database. Transactions must be used to prevent the aborted delete from corrupting either of the databases.</p></li>
+<li><p><code>Cascade</code></p>
+<p>The deletion of a record from the foreign database will also cause any records in the constrained primary database that use that key to also be automatically deleted.</p></li>
+<li><p><code>Nullify</code></p>
+<p>The deletion of a record from the foreign database will cause a user specified callback function to be called, in order to alter or nullify any records using that key in the constrained primary database.</p></li>
+</ul>
+<p>Note that it is possible to delete a key from the constrained database, but not from the foreign key database. For this reason, if you want the keys used in both databases to be 100% accurate, then you will have to write code to ensure that when a key is removed from the constrained database, it is also removed from the foreign key database.</p>
+<p>As an example of how foreign key indexes might be used, consider a database of customer information and a database of order information. A typical customer database would use a customer ID as the key and those keys would also appear in the order database. To ensure an order is not booked for a non-existent customer, the customer database can be associated with the order database as a foreign index.</p>
+<p>In order to do this, you create a secondary index of the order database, which uses customer IDs as the key for its key/data pairs. This secondary index is, then, the constrained database. But because the secondary index is constrained, so too is the order database because the contents of the secondary index are programmatically tied to the contents of the order database.</p>
+<p>The customer database, then, is the foreign key database. It is associated to the order database's secondary index using the <a href="../../api/c/dbassociate_foreign.html" class="olink">DB-&gt;associate_foreign()</a> method. In this way, an order cannot be added to the order database unless the customer ID already exists in the customer database.</p>
+<p>Note that this relationship can also be configured to delete any outstanding orders for a customer when that customer is deleted from the customer database.</p>
+<p>In SQL, this would be done by executing something like the following:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>CREATE TABLE customers<span class="op">(</span>cust_id CHAR<span class="op">(</span><span class="dv">4</span><span class="op">)</span> NOT NULL<span class="op">,</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>       lastname CHAR<span class="op">(</span><span class="dv">15</span><span class="op">),</span> firstname CHAR<span class="op">(</span><span class="dv">15</span><span class="op">),</span> PRIMARY KEY<span class="op">(</span>cust_id<span class="op">));</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>CREATE TABLE orders<span class="op">(</span>order_id CHAR<span class="op">(</span><span class="dv">4</span><span class="op">)</span> NOT NULL<span class="op">,</span> order_num <span class="dt">int</span> NOT NULL<span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>       cust_id CHAR<span class="op">(</span><span class="dv">4</span><span class="op">),</span> PRIMARY KEY <span class="op">(</span>order_id<span class="op">),</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>       FOREIGN KEY <span class="op">(</span>cust_id<span class="op">)</span> REFERENCES customers<span class="op">(</span>cust_id<span class="op">)</span> </span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>       ON DELETE CASCADE<span class="op">);</span></span></code></pre></div>
+<p>In Berkeley DB, this would work as follows:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> customer <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> cust_id<span class="op">[</span><span class="dv">4</span><span class="op">];</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> last_name<span class="op">[</span><span class="dv">15</span><span class="op">];</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> first_name<span class="op">[</span><span class="dv">15</span><span class="op">];</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> order <span class="op">{</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> order_id<span class="op">[</span><span class="dv">4</span><span class="op">];</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> order_number<span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>       <span class="dt">char</span> cust_id<span class="op">[</span><span class="dv">4</span><span class="op">];</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="op">....</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>foreign<span class="op">()</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>       DB <span class="op">*</span>dbp<span class="op">,</span> <span class="op">*</span>sdbp<span class="op">,</span> <span class="op">*</span>fdbp<span class="op">;</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>       <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>       <span class="co">/* Open/create order database */</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_create<span class="op">(&amp;</span>dbp<span class="op">,</span> dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>               handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>open<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>           <span class="st">&quot;orders.db&quot;</span><span class="op">,</span> NULL<span class="op">,</span> DB_BTREE<span class="op">,</span> DB_CREATE<span class="op">,</span> <span class="bn">0600</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>               handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>       <span class="co">/*</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a><span class="co">        * Open/create secondary index on customer id.  Note that it</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="co">        * supports duplicates because a customer may have multiple</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a><span class="co">        * orders.</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a><span class="co">        */</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_create<span class="op">(&amp;</span>sdbp<span class="op">,</span> dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>               handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> sdbp<span class="op">-&gt;</span>set_flags<span class="op">(</span>sdbp<span class="op">,</span> DB_DUP <span class="op">|</span> DB_DUPSORT<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>               handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> sdbp<span class="op">-&gt;</span>open<span class="op">(</span>sdbp<span class="op">,</span> NULL<span class="op">,</span> <span class="st">&quot;orders_cust_ids.db&quot;</span><span class="op">,</span></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>           NULL<span class="op">,</span> DB_BTREE<span class="op">,</span> DB_CREATE<span class="op">,</span> <span class="bn">0600</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>               handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>       <span class="co">/* Associate the secondary with the primary. */</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>associate<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> sdbp<span class="op">,</span> getcustid<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>               handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>       <span class="co">/* Open/create customer database */</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_create<span class="op">(&amp;</span>fdbp<span class="op">,</span> dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>               handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> fdbp<span class="op">-&gt;</span>open<span class="op">(</span>fdbp<span class="op">,</span> NULL<span class="op">,</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>           <span class="st">&quot;customers.db&quot;</span><span class="op">,</span> NULL<span class="op">,</span> DB_BTREE<span class="op">,</span> DB_CREATE<span class="op">,</span> <span class="bn">0600</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>               handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>       <span class="co">/* Associate the foreign with the secondary. */</span></span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>       <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> fdbp<span class="op">-&gt;</span>associate_foreign<span class="op">(</span></span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>           fdbp<span class="op">,</span> sdbp<span class="op">,</span> NULL<span class="op">,</span> DB_FOREIGN_CASCADE<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>               handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a><span class="co">/*</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a><span class="co">* getcustid -- extracts a secondary key (the customer id) from a primary</span></span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a><span class="co">*     key/data pair</span></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a><span class="co">*/</span></span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>getcustid<span class="op">(</span>secondary<span class="op">,</span> pkey<span class="op">,</span> pdata<span class="op">,</span> skey<span class="op">)</span></span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>       DB <span class="op">*</span>secondary<span class="op">;</span></span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a>       <span class="dt">const</span> DBT <span class="op">*</span>pkey<span class="op">,</span> <span class="op">*</span>pdata<span class="op">;</span></span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>       DBT <span class="op">*</span>skey<span class="op">;</span></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a>       <span class="co">/*</span></span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a><span class="co">        * Since the secondary key is a simple structure member of the</span></span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a><span class="co">        * record, we don&#39;t have to do anything fancy to return it.  If</span></span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a><span class="co">        * we have composite keys that need to be constructed from the</span></span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a><span class="co">        * record, rather than simply pointing into it, then the user&#39;s</span></span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a><span class="co">        * function might need to allocate space and copy data.  In</span></span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a><span class="co">        * this case, the DB_DBT_APPMALLOC flag should be set in the</span></span>
+<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a><span class="co">        * secondary key DBT.</span></span>
+<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a><span class="co">        */</span></span>
+<span id="cb2-77"><a href="#cb2-77" aria-hidden="true" tabindex="-1"></a>       memset<span class="op">(</span>skey<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb2-78"><a href="#cb2-78" aria-hidden="true" tabindex="-1"></a>       skey<span class="op">-&gt;</span>data <span class="op">=</span> <span class="op">((</span><span class="kw">struct</span> order <span class="op">*)</span>pdata<span class="op">-&gt;</span>data<span class="op">)-&gt;</span>cust_id<span class="op">;</span></span>
+<span id="cb2-79"><a href="#cb2-79" aria-hidden="true" tabindex="-1"></a>       skey<span class="op">-&gt;</span>size <span class="op">=</span> <span class="dv">4</span><span class="op">;</span></span>
+<span id="cb2-80"><a href="#cb2-80" aria-hidden="true" tabindex="-1"></a>       <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb2-81"><a href="#cb2-81" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

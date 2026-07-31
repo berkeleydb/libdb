@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Getting and Installing BDB SQL — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / bdb-sql</nav>
+  <main>
+<h2 id="getting-and-installing-bdb-sql">Getting and Installing BDB SQL</h2>
+<p><span class="sect2"> <a href="buildinstall.html#onwin">On Windows Systems</a> </span></p>
+<p><span class="sect2"> <a href="buildinstall.html#onunix">On Unix</a> </span></p>
+<p><span class="sect2"> <a href="buildinstall.html#ado_net">The BDB SQL ADO.NET Interface</a> </span></p>
+<p>The BDB SQL interface comes as a part of the Oracle Berkeley DB download. This can be downloaded from the <a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/index.html" class="ulink" target="_top">Oracle Berkeley DB download page</a>.</p>
+<h3 id="on-windows-systems">On Windows Systems</h3>
+<p>The BDB SQL interface is automatically built and installed whenever you build or install Berkeley DB for a Windows system. The BDB SQL interface <code>dll</code>s and the command line interpreter have names that differ from a standard SQLite distribution as follows:</p>
+<ul>
+<li><p><code>dbsql.exe</code></p>
+<p>This is the command line shell. It operates identically to the SQLite <span class="command"><strong>sqlite3.exe</strong></span> shell.</p></li>
+<li><p><code>libdb_sql50.dll</code></p>
+<p>This is the library that provides the BDB SQL interface. It is the equivalent of the SQLite <code>sqlite3.dll</code> library.</p></li>
+</ul>
+<h3 id="on-unix">On Unix</h3>
+<p>In order to build the BDB SQL interface, you download and build Berkeley DB, configuring it so that the BDB SQL interface is also built. Be aware that it is not built by default. Instead, you need to tell the Berkeley DB <code>configure</code> script to also build the BDB SQL interface. For instructions on building the BDB SQL interface, see <a href="../../guides/installation/build_unix.html#build_unix_sqlinter" class="olink">Building the DB SQL Interface</a> in the <em>Berkeley DB Installation and Build Guide</em>.</p>
+<p>The library and application names used when building the BDB SQL interface are different than those used by SQLite. If you want library and command shell names that are consistent with the names used by SQLite, configure the BDB SQL interface build using the compatibility (<code>--enable-sql_compat</code>) option.</p>
+<h3 id="warning">Warning</h3>
+<p>The compatibility option can break other applications on your platform that rely on standard SQLite. This is especially true of Mac OS X, which uses standard SQLite for a number of default applications.</p>
+<p><span class="emphasis"> <em>Use the compatibility option only if you know exactly what you are doing.</em> </span></p>
+<p>Unless you built the BDB SQL interface with the compatibility option, libraries and a command line shell are built with the following names:</p>
+<ul>
+<li><p><a href="../../api/c/dbsql.html" class="olink">dbsql</a></p>
+<p>This is the command line shell. It operates identically to the SQLite <span class="command"><strong>sqlite3</strong></span> shell.</p></li>
+<li><p><code>libdb_sql</code></p>
+<p>This is the library that provides the BDB SQL interface. It is the equivalent of the SQLite <code>libsqlite3</code> library.</p></li>
+</ul>
+<h3 id="the-bdb-sql-adonet-interface">The BDB SQL ADO.NET Interface</h3>
+<p>Download the ADO.NET package from the <a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/index.html" class="ulink" target="_top">Oracle Berkeley DB download page</a>.</p>
+<h4 id="prerequisites-for-building-the-adonet-package">Prerequisites For Building The ADO.NET Package</h4>
+<ul>
+<li>To build the Linq package, you will need to install <code>Microsoft .NET Framework 3.5 SP1</code>.</li>
+<li>To build SQLite.Designer, you will need to install the <code>Microsoft Visual Studio SDK</code>.</li>
+<li>To build on Windows Mobile you will need to install the <code>Microsoft Windows Mobile 6.5.3 Developer Tool Kit (DTK)</code>.</li>
+<li>To build on Windows Mobile you will need to use Visual Studio 2008.</li>
+</ul>
+<h4 id="building-bdb-sql-adonet-interface-for-windows">Building BDB SQL ADO.NET Interface For Windows</h4>
+<ul>
+<li><p>The package contains Visual Studio solution files:</p>
+<ul>
+<li><p><code>SQLite.NET.2008.sln</code> and <code>SQLite.NET.2010.sln</code></p>
+<p>For use by with Visual Studio 2008 or 2010. Note that these solution files do not build support for Linq or SQLite Designer.</p></li>
+<li><p><code>SQLite.NET.2008.MSBuild.sln</code> and <code>SQLite.NET.2010.MSBuild.sln</code></p>
+<p>For use with MSBuild (Microsoft Build Engine). These can also be used with Visual Studio. These solutions exclude SQLite Designer and CompactFramework. By default, these do not build support for Linq.</p></li>
+</ul></li>
+<li><p>Change the current platform target to <code>ReleaseNativeOnly</code> choose either <code>Win32</code> or <code>x64</code> depending on your target platform.</p></li>
+<li><p>Build the solution.</p></li>
+</ul>
+<h4 id="building-bdb-sql-adonet-interface-for-windows-mobile">Building BDB SQL ADO.NET Interface For Windows Mobile</h4>
+<p>Building BDB SQL ADO.NET for Windows Mobile requires Windows Mobile 6.5.3 Professional DTK. Typical requirements for installing this toolkit are:</p>
+<ul>
+<li><p>Visual Studio 2005 SP1 or Later</p></li>
+<li><p>ActiveSync 4.5</p></li>
+<li><p>.NET CompactFramework 2.0 SP1</p></li>
+<li><p>Windows Mobile 6 SDK</p></li>
+</ul>
+<p>To build BDB SQL ADO.NET for Windows Mobile, do the following:</p>
+<ul>
+<li>Open the <code>SQLite.NET.2008.WinCE.sln</code> solution file in Visual Studio 2008.</li>
+<li>Select <code>Load Project Normally</code></li>
+<li>Change the current platform to <code>ReleaseNativeOnly</code>.</li>
+<li>Select <code>Configuration Manager</code>-&gt;<code>new</code>, then type or select the platform <code>Windows Mobile 6.5.3 Professional DTK (ARMV4I)</code>. Choose to copy settings from <code>Pocket PC 2003 (ARMV4I)</code></li>
+<li>Build the solution.</li>
+</ul>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shared memory regions — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="shared-memory-regions">Shared memory regions</h2>
+<p>Each of the Berkeley DB subsystems within an environment is described by one or more regions, or chunks of memory. The regions contain all of the per-process and per-thread shared information (including mutexes), that comprise a Berkeley DB environment. These regions are created in one of three types of memory, depending on the flags specified to the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method:</p>
+<ol type="1">
+<li><p>If the <a href="../../api/c/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag is specified to the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method, regions are created in per-process heap memory; that is, memory returned by <code>malloc</code>(3).</p>
+<p>If this flag is specified, then you cannot open more than a single handle for the environment. For example, if both a server application and Berkeley DB utilities (for example, the <a href="../../api/c/db_archive.html" class="olink">db_archive</a> utility, the <a href="../../api/c/db_checkpoint.html" class="olink">db_checkpoint</a> utility or the <a href="../../api/c/db_stat.html" class="olink">db_stat</a> utility) are expected to access the environment, the <a href="../../api/c/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag should not be specified because the second attempt to open the environment will fail.</p></li>
+<li><p>If the <a href="../../api/c/envopen.html#envopen_DB_SYSTEM_MEM" class="olink">DB_SYSTEM_MEM</a> flag is specified to <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a>, shared regions are created in system memory rather than files. This is an alternative mechanism for sharing the Berkeley DB environment among multiple processes and multiple threads within processes.</p>
+<p>The system memory used by Berkeley DB is potentially useful past the lifetime of any particular process. Therefore, additional cleanup may be necessary after an application fails because there may be no way for Berkeley DB to ensure that system resources backing the shared memory regions are returned to the system.</p>
+<p>The system memory that is used is architecture-dependent. For example, on systems supporting X/Open-style shared memory interfaces, such as UNIX systems, the <code>shmget</code>(2) and related System V IPC interfaces are used. Additionally, VxWorks systems use system memory. In these cases, an initial segment ID must be specified by the application to ensure that applications do not overwrite each other's database environments, so that the number of segments created does not grow without bounds. See the <a href="../../api/c/envset_shm_key.html" class="olink">DB_ENV-&gt;set_shm_key()</a> method for more information.</p>
+<p>On Windows platforms, the use of the <a href="../../api/c/envopen.html#envopen_DB_SYSTEM_MEM" class="olink">DB_SYSTEM_MEM</a> flag is problematic because the operating system uses reference counting to clean up shared objects in the paging file automatically. In addition, the default access permissions for shared objects are different from files, which may cause problems when an environment is accessed by multiple processes running as different users. See the <a href="../../guides/installation/build_win_notes.html" class="olink">Windows Notes</a> section in the Berkeley DB Installation and Build Guide for more information.</p></li>
+<li><p>If no memory-related flags are specified to <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a>, memory backed by the filesystem is used to store the regions. On UNIX systems, the Berkeley DB library will use the POSIX mmap interface. If mmap is not available, the UNIX shmget interfaces may be used instead, if they are available.</p></li>
+</ol>
+<p>Any files created in the filesystem to back the regions are created in the environment home directory specified to the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> call. These files are named __db.### (for example, __db.001, __db.002 and so on). When region files are backed by the filesystem, one file per region is created. When region files are backed by system memory, a single file will still be created because there must be a well-known name in the filesystem so that multiple processes can locate the system shared memory that is being used by the environment.</p>
+<p>Statistics about the shared memory regions in the environment can be displayed using the <strong>-e</strong> option to the <a href="../../api/c/db_stat.html" class="olink">db_stat</a> utility.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

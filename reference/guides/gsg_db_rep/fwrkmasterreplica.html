@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 4. Replica versus Master Processes — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / gsg_db_rep</nav>
+  <main>
+<h2 id="chapter-4-replica-versus-master-processes">Chapter 4. Replica versus Master Processes</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="fwrkmasterreplica.html#determinestate">Determining State</a> </span></p>
+<p><span class="sect1"> <a href="processingloop.html">Processing Loop</a> </span></p>
+<p><span class="sect1"> <a href="exampledoloop.html">Example Processing Loop</a> </span></p>
+<p><span class="sect2"> <a href="exampledoloop.html#runningit">Running It</a> </span></p>
+<p>Every environment participating in a replicated application must know whether it is a <span class="emphasis"><em>master</em></span> or <span class="emphasis"><em>replica</em></span>. The reason for this is because, simply, the master can modify the database while replicas cannot. As a result, not only will you open databases differently depended on whether the environment is running as a master, but the environment will frequently behave quite a bit differently depending on whether it thinks it is operating as the read/write interface for your database.</p>
+<p>Moreover, an environment must also be capable of gracefully switching between master and replica states. This means that the environment must be able to detect when it has switched states.</p>
+<p>Not surprisingly, a large part of your application's code will be tied up in knowing which state a given environment is in and then in the logic of how to behave depending on its state.</p>
+<p>This chapter shows you how to determine your environment's state, and it then shows you some sample code on how an application might behave depending on whether it is a master or a replica in a replicated application.</p>
+<h2 id="determining-state">Determining State</h2>
+<p>In order to determine whether your code is running as a master or a replica, you implement a callback whose function it is to respond to events that happen within the DB library. Note that these events are raised whenever the state is established. For example, when the current environment becomes a client — including at application startup — the <code>DB_EVENT_REP_CLIENT</code> event is raised. Also, when an election is held and a replica is elected to be a master, the <code>DB_EVENT_REP_MASTER</code> event is raised on the newly elected master and the <code>DB_EVENT_REP_NEWMASTER</code> is raised on the other replicas.</p>
+<p>Note that this callback is usable for events beyond those required for replication purposes. In this section, however, we only discuss the replication-specific events.</p>
+<p>The callback is required to determine which event has been passed to it, and then take action depending on the event. For replication, the events that we care about are:</p>
+<p>Some of the more commonly handled events are described below. For a complete list of events, see the <code>DB_ENV-&gt;set_event_notify()</code> method in the <em>Berkeley DB C API Reference Guide</em>.</p>
+<ul>
+<li><p><code>DB_EVENT_REP_CLIENT</code></p>
+<p>The local environment is now a replica.</p></li>
+<li><p><code>DB_EVENT_REP_CONNECT_BROKEN</code></p>
+<p>A previously established connection between two sites in the replication group has been broken.</p></li>
+<li><p><code>DB_EVENT_REP_CONNECT_ESTD</code></p>
+<p>A connection has been established between two sites in the replication group.</p></li>
+<li><p><code>DB_EVENT_REP_CONNECT_RETRY_ESTABLISHED</code></p>
+<p>An attempt was made to establish a connection to a known remote site, but the connection attempt failed.</p></li>
+<li><p><code>DB_EVENT_REP_DUPMASTER</code></p>
+<p>A duplicate master has been discovered in the replication group.</p></li>
+<li><p><code>DB_EVENT_REP_ELECTED</code></p>
+<p>The local site has just won an election and is now the master. Your code should now reconfigure itself to operation as a master site.</p></li>
+<li><p><code>DB_EVENT_REP_ELECTION_FAILED</code></p>
+<p>The local site's attempt to initiate or participate in a replication master election failed, due to the lack of timely message response from a sufficient number of remote sites.</p></li>
+<li><p><code>DB_EVENT_REP_ELECTION_STARTED</code></p>
+<p>Replication Manager has started an election to choose a master site.</p></li>
+<li><p><code>DB_EVENT_REP_LOCAL_SITE_REMOVED</code></p>
+<p>The local site has been removed from the group.</p></li>
+<li><p><code>DB_EVENT_REP_NEWMASTER</code></p>
+<p>An election was held and a new environment was made a master. However, the current environment <span class="emphasis"><em>is not</em></span> the master. This event exists so that you can cause your code to take some unique action in the event that the replication groups switches masters.</p></li>
+<li><p><code>DB_EVENT_REP_MASTER</code></p>
+<p>The local environment is now a master.</p></li>
+<li><p><code>DB_EVENT_REP_MASTER_FAILURE</code></p>
+<p>The connection to the remote master replication site has failed.</p></li>
+<li><p><code>DB_EVENT_REP_PERM_FAILED</code></p>
+<p>The Replication Manager did not receive enough acknowledgements to ensure the transaction's durability within the replicationg group. The Replication Manager has therefore flushed the transaction to the master's local disk for storage.</p>
+<p>How the Replication Manager knows whether the acknowledgements it has received is determined by the ack policy you have set for your applicaton. See <a href="fwrkpermmessage.html#fmwrkpermpolicy" class="xref" title="Identifying Permanent Message Policies">Identifying Permanent Message Policies</a> for more information.</p></li>
+<li><p><code>DB_EVENT_REP_SITE_ADDED</code></p>
+<p>A new site has joined the replication group.</p></li>
+<li><p><code>DB_EVENT_REP_SITE_REMOVED</code></p>
+<p>An existing site has been removed from the replication group.</p></li>
+<li><p><code>DB_EVENT_REP_STARTUPDONE</code></p>
+<p>The replica has completed startup synchronization and is now processing log records received from the master.</p></li>
+<li><p><code>DB_EVENT_WRITE_FAILED</code></p>
+<p>A Berkeley DB write to stable storage failed.</p></li>
+</ul>
+<p>Note that these events are raised whenever the state is established. That is, when the current environment becomes a replica, and that includes at application startup, the event is raised. Also, when an election is held and a replica is elected to be a master, then the event occurs.</p>
+<p>The implementation of this callback is fairly simple. First you pass a structure to the environment handle that you can use to record the environment's state, and then you implement a switch statement within the callback that you use to record the current state, depending on the arriving event.</p>
+<p>For example:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db.h&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">/* Forward declaration */</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="op">*</span>event_callback<span class="op">(</span>DB_ENV <span class="op">*,</span> u_int32_t<span class="op">,</span> <span class="dt">void</span> <span class="op">*);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">/* The structure we use to track our environment&#39;s state */</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> is_master<span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> APP_DATA<span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">/*</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co"> * Inside our main() function, we declare an APP_DATA variable.</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>APP_DATA my_app_data<span class="op">;</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>my_app_data<span class="op">.</span>is_master <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> <span class="co">/* Assume we start as a replica */</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">/*</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co"> * Now we create our environment handle and set the APP_DATA structure</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co"> * to it&#39;s app_private member.</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_env_create<span class="op">(&amp;</span>dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span> <span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    fprintf<span class="op">(</span>stderr<span class="op">,</span> <span class="st">&quot;Error creating handles: </span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>        db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>dbenv<span class="op">-&gt;</span>app_private <span class="op">=</span> <span class="op">&amp;</span>my_app_data<span class="op">;</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">/* Having done that, register the callback with the</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co"> * Berkeley DB library</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>dbenv<span class="op">-&gt;</span>set_event_notify<span class="op">(</span>dbenv<span class="op">,</span> event_callback<span class="op">);</span> </span></code></pre></div>
+<p>That done, we still need to implement the callback itself. This implementation can be fairly trivial.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">/*</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"> * A callback used to determine whether the local environment is a </span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"> * replica or a master. This is called by the Replication Manager</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"> * when the local environment changes state.</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> <span class="op">*</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>event_callback<span class="op">(</span>DB_ENV <span class="op">*</span>dbenv<span class="op">,</span> u_int32_t which<span class="op">,</span> <span class="dt">void</span> <span class="op">*</span>info<span class="op">)</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    APP_DATA <span class="op">*</span>app <span class="op">=</span> dbenv<span class="op">-&gt;</span>app_private<span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    info <span class="op">=</span> NULL<span class="op">;</span>                <span class="co">/* Currently unused. */</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> <span class="op">(</span>which<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> DB_EVENT_REP_MASTER<span class="op">:</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        app<span class="op">-&gt;</span>is_master <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> DB_EVENT_REP_CLIENT<span class="op">:</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>        app<span class="op">-&gt;</span>is_master <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> DB_EVENT_REP_STARTUPDONE<span class="op">:</span> <span class="co">/* fallthrough */</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> DB_EVENT_REP_NEWMASTER<span class="op">:</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>        <span class="co">/* Ignore. */</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">default</span><span class="op">:</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">-&gt;</span>errx<span class="op">(</span>dbenv<span class="op">,</span> <span class="st">&quot;ignoring event </span><span class="sc">%d</span><span class="st">&quot;</span><span class="op">,</span> which<span class="op">);</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>Notice how we access the <code>APP_DATA</code> information using the environment handle's <code>app_private</code> data member. We also ignore the <code>DB_EVENT_REP_NEWMASTER</code> and <code>DB_EVENT_REP_STARTUPDONE</code> cases since these are not relevant for simple replicated applications.</p>
+<p>Of course, this only gives us the current state of the environment. We still need the code that determines what to do when the environment changes state and how to behave depending on the state (described in the next section).</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

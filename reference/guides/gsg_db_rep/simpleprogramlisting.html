@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Program Listing — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / gsg_db_rep</nav>
+  <main>
+<h2 id="program-listing">Program Listing</h2>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#main_c">Function: main()</a> </span></p>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#create_env_c">Function: create_env()</a> </span></p>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#env_init_c">Function: env_init()</a> </span></p>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#doloop_c">Function: doloop()</a> </span></p>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#printstocks_c">Function: print_stocks()</a> </span></p>
+<p>Our example program is a fairly simple transactional application. At this early stage of its development, the application contains no hint that it must be network-aware so the only command line argument that it takes is one that allows us to specify the environment home directory. (Eventually, we will specify things like host names and ports from the command line).</p>
+<p>Note that the application performs all writes under the protection of a transaction; however, multiple database operations are not performed per transaction. Consequently, we simplify things a bit by using autocommit for our database writes.</p>
+<p>Also, this application is single-threaded. It is possible to write a multi-threaded or multi-process application that performs replication. That said, the concepts described in this book are applicable to both single threaded and multi-threaded applications so nothing is gained by multi-threading this application other than distracting complexity. This manual does, however, identify where care must be taken when performing replication with a non-single threaded application.</p>
+<p>Finally, remember that transaction processing is not described in this manual. Rather, see the <em>Berkeley DB Getting Started with Transaction Processing</em> guide for details on that topic.</p>
+<h3 id="function-main">Function: main()</h3>
+<p>Our program begins with the usual assortment of include statements.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">/*</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"> * File: ex_rep_gsg_simple.c</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;stdio.h&gt;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;stdlib.h&gt;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;string.h&gt;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifndef _WIN32</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;unistd.h&gt;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db.h&gt;</span><span class="pp"> </span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="pp">#ifdef _WIN32</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="kw">extern</span> <span class="dt">int</span> getopt<span class="op">(</span><span class="dt">int</span><span class="op">,</span> <span class="dt">char</span> <span class="op">*</span> <span class="dt">const</span> <span class="op">*,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">*);</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="pp">#endif  </span></span></code></pre></div>
+<p>We then define a few values. One is the size of our cache, which we keep deliberately small for this example, and the other is the name of our database. We also provide a global variable that is the name of our program; this is used for error reporting later on.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define CACHESIZE   </span><span class="op">(</span><span class="dv">10</span><span class="pp"> </span><span class="op">*</span><span class="pp"> </span><span class="dv">1024</span><span class="pp"> </span><span class="op">*</span><span class="pp"> </span><span class="dv">1024</span><span class="op">)</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define DATABASE    </span><span class="st">&quot;quote.db&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>progname <span class="op">=</span> <span class="st">&quot;ex_rep_gsg_simple&quot;</span><span class="op">;</span>  </span></code></pre></div>
+<p>Then we perform a couple of forward declarations. The first of these, <code>create_env()</code> and <code>env_init()</code> are used to open and initialize our environment.</p>
+<p>Next we declare <code>doloop()</code>, which is the function that we use to add data to the database and then display its contents. This is essentially a big <code>do</code> loop, hence the function's name.</p>
+<p>Finally, we have <code>print_stocks</code>, which is used to display a database record once it has been retrieved from the database.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> create_env<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*,</span> DB_ENV <span class="op">**);</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> env_init<span class="op">(</span>DB_ENV <span class="op">*,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">*);</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> doloop <span class="op">(</span>DB_ENV <span class="op">*);</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> print_stocks<span class="op">(</span>DB <span class="op">*);</span>  </span></code></pre></div>
+<p>Next we need our <code>usage()</code> function, which is fairly trivial at this point:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">/* Usage function */</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="dt">static</span> <span class="dt">void</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>usage<span class="op">()</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    fprintf<span class="op">(</span>stderr<span class="op">,</span> <span class="st">&quot;usage: </span><span class="sc">%s</span><span class="st"> &quot;</span><span class="op">,</span> progname<span class="op">);</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    fprintf<span class="op">(</span>stderr<span class="op">,</span> <span class="st">&quot;-h home</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    exit<span class="op">(</span>EXIT_FAILURE<span class="op">);</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>  </span></code></pre></div>
+<p>That completed, we can jump into our application's <code>main()</code> function. If you are familiar with DB transactional applications, you will not find any surprises here. We begin by declaring and initializing the usual set of variables:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>main<span class="op">(</span><span class="dt">int</span> argc<span class="op">,</span> <span class="dt">char</span> <span class="op">*</span>argv<span class="op">[])</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">extern</span> <span class="dt">char</span> <span class="op">*</span>optarg<span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    DB_ENV <span class="op">*</span>dbenv<span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>home<span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> ch<span class="op">;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    dbenv <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    home <span class="op">=</span> NULL<span class="op">;</span>  </span></code></pre></div>
+<p>Now we create and configure our environment handle. We do this with our <code>create_env()</code> function, which we will show a little later in this example.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> create_env<span class="op">(</span>progname<span class="op">,</span> <span class="op">&amp;</span>dbenv<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>            <span class="cf">goto</span> err<span class="op">;</span> </span></code></pre></div>
+<p>Then we parse the command line arguments:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="op">((</span>ch <span class="op">=</span> getopt<span class="op">(</span>argc<span class="op">,</span> argv<span class="op">,</span> <span class="st">&quot;h:&quot;</span><span class="op">))</span> <span class="op">!=</span> EOF<span class="op">)</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>        <span class="cf">switch</span> <span class="op">(</span>ch<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">case</span> <span class="ch">&#39;h&#39;</span><span class="op">:</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>            home <span class="op">=</span> optarg<span class="op">;</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>            <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">case</span> <span class="ch">&#39;?&#39;</span><span class="op">:</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">default</span><span class="op">:</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>            usage<span class="op">();</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Error check command line. */</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>home <span class="op">==</span> NULL<span class="op">)</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        usage<span class="op">();</span>  </span></code></pre></div>
+<p>Now we can open our environment. We do this with our <code>env_init()</code> function which we will describe a little later in this chapter.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> env_init<span class="op">(</span>dbenv<span class="op">,</span> home<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>            <span class="cf">goto</span> err<span class="op">;</span> </span></code></pre></div>
+<p>Now that we have opened the environment, we can call our <code>doloop()</code> function. This function performs the basic database interaction. Notice that we have not yet opened any databases. In a traditional transactional application we would probably open the databases before calling our our main data processing function. However, the eventual replicated application will want to handle database open and close in the main processing loop, so in a nod to what this application will eventually become we do a slightly unusual thing here.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> doloop<span class="op">(</span>dbenv<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">-&gt;</span>err<span class="op">(</span>dbenv<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;Application failed&quot;</span><span class="op">);</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>  </span></code></pre></div>
+<p>Finally, we provide our application shutdown code. Note, again, that in a traditional transactional application all databases would also be closed here. But, again, due to the way this application will eventually behave, we cause the database close to occur in the <code>doloop()</code> function.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>err<span class="op">:</span> <span class="cf">if</span> <span class="op">(</span>dbenv <span class="op">!=</span> NULL<span class="op">)</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>        <span class="op">(</span><span class="dt">void</span><span class="op">)</span>dbenv<span class="op">-&gt;</span>close<span class="op">(</span>dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>  </span></code></pre></div>
+<h3 id="function-create_env">Function: create_env()</h3>
+<p>Having written our <code>main()</code> function, we now implement the first of our utility functions that we use to manage our environments. This function exists only to make our code easier to manage, and all it does is create an environment handle for us.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>create_env<span class="op">(</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>progname<span class="op">,</span> DB_ENV <span class="op">**</span>dbenvp<span class="op">)</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    DB_ENV <span class="op">*</span>dbenv<span class="op">;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_env_create<span class="op">(&amp;</span>dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        fprintf<span class="op">(</span>stderr<span class="op">,</span> <span class="st">&quot;can&#39;t create env handle: </span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>            db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    dbenv<span class="op">-&gt;</span>set_errfile<span class="op">(</span>dbenv<span class="op">,</span> stderr<span class="op">);</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    dbenv<span class="op">-&gt;</span>set_errpfx<span class="op">(</span>dbenv<span class="op">,</span> progname<span class="op">);</span></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>dbenvp <span class="op">=</span> dbenv<span class="op">;</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>  </span></code></pre></div>
+<h3 id="function-env_init">Function: env_init()</h3>
+<p>Having written the function that initializes an environment handle, we now implement the function that opens the handle. Again, there should be no surprises here for anyone familiar with DB applications. The open flags that we use are those normally used for a transactional application.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>env_init<span class="op">(</span>DB_ENV <span class="op">*</span>dbenv<span class="op">,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>home<span class="op">)</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    u_int32_t flags<span class="op">;</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">(</span><span class="dt">void</span><span class="op">)</span>dbenv<span class="op">-&gt;</span>set_cachesize<span class="op">(</span>dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> CACHESIZE<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">(</span><span class="dt">void</span><span class="op">)</span>dbenv<span class="op">-&gt;</span>set_flags<span class="op">(</span>dbenv<span class="op">,</span> DB_TXN_NOSYNC<span class="op">,</span> <span class="dv">1</span><span class="op">);</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    flags <span class="op">=</span> DB_CREATE <span class="op">|</span> </span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>            DB_INIT_LOCK <span class="op">|</span> </span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>            DB_INIT_LOG <span class="op">|</span> </span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>            DB_INIT_MPOOL <span class="op">|</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>            DB_INIT_TXN <span class="op">|</span> </span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>            DB_RECOVER<span class="op">;</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbenv<span class="op">-&gt;</span>open<span class="op">(</span>dbenv<span class="op">,</span> home<span class="op">,</span> flags<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">-&gt;</span>err<span class="op">(</span>dbenv<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;can&#39;t open environment&quot;</span><span class="op">);</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>  </span></code></pre></div>
+<h3 id="function-doloop">Function: doloop()</h3>
+<p>Having written our <code>main()</code> function and utility functions, we now implement our application's primary data processing function. This function provides a command prompt at which the user can enter a stock ticker value and a price for that value. This information is then entered to the database.</p>
+<p>To display the database, simply enter <code>return</code> at the prompt.</p>
+<p>To begin, we declare a database pointer, several <code>DBT</code> variables, and the usual assortment of variables used for buffers and return codes. We also initialize all of this.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define BUFSIZE </span><span class="dv">1024</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>doloop<span class="op">(</span>DB_ENV <span class="op">*</span>dbenv<span class="op">)</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    DB <span class="op">*</span>dbp<span class="op">;</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    DBT key<span class="op">,</span> data<span class="op">;</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> buf<span class="op">[</span>BUFSIZE<span class="op">],</span> <span class="op">*</span>rbuf<span class="op">;</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    u_int32_t db_flags<span class="op">;</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    dbp <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>key<span class="op">));</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>data<span class="op">));</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> <span class="dv">0</span><span class="op">;</span>  </span></code></pre></div>
+<p>Next, we begin the loop and we immediately open our database if it has not already been opened. Notice that we specify autocommit when we open the database. In this case, autocommit is important because we will only ever write to our database using it. There is no need for explicit transaction handles and commit/abort code in this application, because we are not combining multiple database operations together under a single transaction.</p>
+<p>Autocommit is described in greater detail in the <em>Berkeley DB Getting Started with Transaction Processing</em> guide.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> <span class="op">(;;)</span> <span class="op">{</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>dbp <span class="op">==</span> NULL<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_create<span class="op">(&amp;</span>dbp<span class="op">,</span> dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>            db_flags <span class="op">=</span> DB_AUTO_COMMIT <span class="op">|</span> DB_CREATE<span class="op">;</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>open<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> DATABASE<span class="op">,</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>                NULL<span class="op">,</span> DB_BTREE<span class="op">,</span> db_flags<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>                dbenv<span class="op">-&gt;</span>err<span class="op">(</span>dbenv<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DB-&gt;open&quot;</span><span class="op">);</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>                <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span>  </span></code></pre></div>
+<p>Now we implement our command prompt. This is a simple and not very robust implementation of a command prompt. If the user enters the keywords <code>exit</code> or <code>quit</code>, the loop is exited and the application ends. If the user enters nothing and instead simply presses <code>return</code>, the entire contents of the database is displayed. We use our <code>print_stocks()</code> function to display the database. (That implementation is shown next in this chapter.)</p>
+<p>Notice that very little error checking is performed on the data entered at this prompt. If the user fails to enter at least one space in the value string, a simple help message is printed and the prompt is returned to the user. That is the only error checking performed here. In a real-world application, at a minimum the application would probably check to ensure that the price was in fact an integer or float value. However, in order to keep this example code as simple as possible, we refrain from implementing a thorough user interface.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>        printf<span class="op">(</span><span class="st">&quot;QUOTESERVER &gt; &quot;</span><span class="op">);</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>        fflush<span class="op">(</span>stdout<span class="op">);</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>fgets<span class="op">(</span>buf<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>buf<span class="op">),</span> stdin<span class="op">)</span> <span class="op">==</span> NULL<span class="op">)</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>            <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>strtok<span class="op">(&amp;</span>buf<span class="op">[</span><span class="dv">0</span><span class="op">],</span> <span class="st">&quot; </span><span class="sc">\t\n</span><span class="st">&quot;</span><span class="op">)</span> <span class="op">==</span> NULL<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>            <span class="cf">switch</span> <span class="op">((</span>ret <span class="op">=</span> print_stocks<span class="op">(</span>dbp<span class="op">)))</span> <span class="op">{</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">case</span> <span class="dv">0</span><span class="op">:</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>                <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>            <span class="cf">default</span><span class="op">:</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>                dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;Error traversing data&quot;</span><span class="op">);</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>                <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>        rbuf <span class="op">=</span> strtok<span class="op">(</span>NULL<span class="op">,</span> <span class="st">&quot; </span><span class="sc">\t\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>rbuf <span class="op">==</span> NULL <span class="op">||</span> rbuf<span class="op">[</span><span class="dv">0</span><span class="op">]</span> <span class="op">==</span> <span class="ch">&#39;</span><span class="sc">\0</span><span class="ch">&#39;</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>strncmp<span class="op">(</span>buf<span class="op">,</span> <span class="st">&quot;exit&quot;</span><span class="op">,</span> <span class="dv">4</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span> <span class="op">||</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>                strncmp<span class="op">(</span>buf<span class="op">,</span> <span class="st">&quot;quit&quot;</span><span class="op">,</span> <span class="dv">4</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>            dbenv<span class="op">-&gt;</span>errx<span class="op">(</span>dbenv<span class="op">,</span> <span class="st">&quot;Format: TICKER VALUE&quot;</span><span class="op">);</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>            <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span>  </span></code></pre></div>
+<p>Now we assign data to the <code>DBT</code>s that we will use to write the new information to the database.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>        key<span class="op">.</span>data <span class="op">=</span> buf<span class="op">;</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>        key<span class="op">.</span>size <span class="op">=</span> <span class="op">(</span>u_int32_t<span class="op">)</span>strlen<span class="op">(</span>buf<span class="op">);</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>        data<span class="op">.</span>data <span class="op">=</span> rbuf<span class="op">;</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>        data<span class="op">.</span>size <span class="op">=</span> <span class="op">(</span>u_int32_t<span class="op">)</span>strlen<span class="op">(</span>rbuf<span class="op">);</span>  </span></code></pre></div>
+<p>Having done that, we can write the new information to the database. Remember that this application uses autocommit, so no explicit transaction management is required. Also, the database is not configured for duplicate records, so the data portion of a record is overwritten if the provided key already exists in the database. However, in this case DB returns <code>DB_KEYEXIST</code> — which we ignore.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>put<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>            dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DB-&gt;put&quot;</span><span class="op">);</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> DB_KEYEXIST<span class="op">)</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>                <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> </span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>  </span></code></pre></div>
+<p>Finally, we close our database before returning from the function.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>err<span class="op">:</span>    <span class="cf">if</span> <span class="op">(</span>dbp <span class="op">!=</span> NULL<span class="op">)</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>        <span class="op">(</span><span class="dt">void</span><span class="op">)</span>dbp<span class="op">-&gt;</span>close<span class="op">(</span>dbp<span class="op">,</span> DB_NOSYNC<span class="op">);</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>  </span></code></pre></div>
+<h3 id="function-print_stocks">Function: print_stocks()</h3>
+<p>The <code>print_stocks()</code> function simply takes a database handle, opens a cursor, and uses it to display all the information it finds in a database. This is trivial cursor operation that should hold no surprises for you. We simply provide it here for the sake of completeness.</p>
+<p>If you are unfamiliar with basic cursor operations, please see the <em>Getting Started with Berkeley DB</em> guide.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co">/* Displays all stock quote information in the database. */</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>print_stocks<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">)</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    DBC <span class="op">*</span>dbc<span class="op">;</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    DBT key<span class="op">,</span> data<span class="op">;</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="pp">#define MAXKEYSIZE  </span><span class="dv">10</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="pp">#define MAXDATASIZE </span><span class="dv">20</span></span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> keybuf<span class="op">[</span>MAXKEYSIZE <span class="op">+</span> <span class="dv">1</span><span class="op">],</span> databuf<span class="op">[</span>MAXDATASIZE <span class="op">+</span> <span class="dv">1</span><span class="op">];</span></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">,</span> t_ret<span class="op">;</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    u_int32_t keysize<span class="op">,</span> datasize<span class="op">;</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>cursor<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="op">&amp;</span>dbc<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;can&#39;t open cursor&quot;</span><span class="op">);</span></span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>key<span class="op">));</span></span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>data<span class="op">));</span></span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st">Symbol</span><span class="sc">\t</span><span class="st">Price</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st">======</span><span class="sc">\t</span><span class="st">=====</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> <span class="op">(</span>ret <span class="op">=</span> dbc<span class="op">-&gt;</span>get<span class="op">(</span>dbc<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_FIRST<span class="op">);</span></span>
+<span id="cb19-25"><a href="#cb19-25" aria-hidden="true" tabindex="-1"></a>        ret <span class="op">==</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb19-26"><a href="#cb19-26" aria-hidden="true" tabindex="-1"></a>        ret <span class="op">=</span> dbc<span class="op">-&gt;</span>get<span class="op">(</span>dbc<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_NEXT<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb19-27"><a href="#cb19-27" aria-hidden="true" tabindex="-1"></a>        keysize <span class="op">=</span> key<span class="op">.</span>size <span class="op">&gt;</span> MAXKEYSIZE <span class="op">?</span> MAXKEYSIZE <span class="op">:</span> key<span class="op">.</span>size<span class="op">;</span></span>
+<span id="cb19-28"><a href="#cb19-28" aria-hidden="true" tabindex="-1"></a>        memcpy<span class="op">(</span>keybuf<span class="op">,</span> key<span class="op">.</span>data<span class="op">,</span> keysize<span class="op">);</span></span>
+<span id="cb19-29"><a href="#cb19-29" aria-hidden="true" tabindex="-1"></a>        keybuf<span class="op">[</span>keysize<span class="op">]</span> <span class="op">=</span> <span class="ch">&#39;</span><span class="sc">\0</span><span class="ch">&#39;</span><span class="op">;</span></span>
+<span id="cb19-30"><a href="#cb19-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-31"><a href="#cb19-31" aria-hidden="true" tabindex="-1"></a>        datasize <span class="op">=</span> data<span class="op">.</span>size <span class="op">&gt;=</span> MAXDATASIZE <span class="op">?</span> MAXDATASIZE <span class="op">:</span> data<span class="op">.</span>size<span class="op">;</span></span>
+<span id="cb19-32"><a href="#cb19-32" aria-hidden="true" tabindex="-1"></a>        memcpy<span class="op">(</span>databuf<span class="op">,</span> data<span class="op">.</span>data<span class="op">,</span> datasize<span class="op">);</span></span>
+<span id="cb19-33"><a href="#cb19-33" aria-hidden="true" tabindex="-1"></a>        databuf<span class="op">[</span>datasize<span class="op">]</span> <span class="op">=</span> <span class="ch">&#39;</span><span class="sc">\0</span><span class="ch">&#39;</span><span class="op">;</span></span>
+<span id="cb19-34"><a href="#cb19-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-35"><a href="#cb19-35" aria-hidden="true" tabindex="-1"></a>        printf<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t%s\t%s\n</span><span class="st">&quot;</span><span class="op">,</span> keybuf<span class="op">,</span> databuf<span class="op">);</span></span>
+<span id="cb19-36"><a href="#cb19-36" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb19-37"><a href="#cb19-37" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb19-38"><a href="#cb19-38" aria-hidden="true" tabindex="-1"></a>    fflush<span class="op">(</span>stdout<span class="op">);</span></span>
+<span id="cb19-39"><a href="#cb19-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-40"><a href="#cb19-40" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>t_ret <span class="op">=</span> dbc<span class="op">-&gt;</span>close<span class="op">(</span>dbc<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span> <span class="op">&amp;&amp;</span> ret <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb19-41"><a href="#cb19-41" aria-hidden="true" tabindex="-1"></a>        ret <span class="op">=</span> t_ret<span class="op">;</span></span>
+<span id="cb19-42"><a href="#cb19-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-43"><a href="#cb19-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> <span class="op">(</span>ret<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb19-44"><a href="#cb19-44" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> <span class="dv">0</span><span class="op">:</span></span>
+<span id="cb19-45"><a href="#cb19-45" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> DB_NOTFOUND<span class="op">:</span></span>
+<span id="cb19-46"><a href="#cb19-46" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb19-47"><a href="#cb19-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">default</span><span class="op">:</span></span>
+<span id="cb19-48"><a href="#cb19-48" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb19-49"><a href="#cb19-49" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb19-50"><a href="#cb19-50" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>  </span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

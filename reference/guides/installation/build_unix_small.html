@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Building a small memory footprint library — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="building-a-small-memory-footprint-library">Building a small memory footprint library</h2>
+<p>There are a set of configuration options to assist you in building a small memory footprint library. These configuration options turn off specific functionality in the Berkeley DB library, reducing the code size. These configuration options include:</p>
+<p><span class="term"> <code>--enable-smallbuild</code> </span><br />
+Equivalent to individually specifying all of the following configuration options. In addition, when compiling building with the GNU gcc compiler, this option uses the <code>-Os</code> compiler build flag instead of the default <code>-O3</code>.</p>
+<p><span class="term"> <code>--with-cryptography=no</code> </span><br />
+Builds Berkeley DB without support for cryptography.</p>
+<p><span class="term"> <code>--disable-hash</code> </span><br />
+Builds Berkeley DB without support for the Hash access method.</p>
+<p><span class="term"> <code>--disable-heap</code> </span><br />
+Builds Berkeley DB without support for the Heap access method.</p>
+<p><span class="term"> <code>--disable-queue</code> </span><br />
+Builds Berkeley DB without support for the Queue access method.</p>
+<p><span class="term"> <code>--disable-replication</code> </span><br />
+Builds Berkeley DB without support for the database environment replication.</p>
+<p><span class="term"> <code>--disable-statistics</code> </span><br />
+Builds Berkeley DB without support for the statistics interfaces.</p>
+<p><span class="term"> <code>--disable-verify</code> </span><br />
+Builds Berkeley DB without support for database verification.</p>
+<p><span class="term"> <code>--enable-stripped_messages</code> </span><br />
+Strips message text from the error messages issued by Berkeley DB. This can reduce the size of the library by roughly another 22KB.</p>
+<p>If your library has stripped messages, you can get an idea of what text should be issued for a given error message by using the <a href="../articles/mssgtxt/index.html" class="olink">Message Reference for Stripped Libraries</a> guide.</p>
+<h3 id="note">Note</h3>
+<p><code>--disable-cryptography</code> and <code>--enable-cryptography</code> are deprecated in the Berkeley DB 11gR2 release. Use <code>--with-cryptography=no</code> and <code>--with-cryptography=yes</code> instead.</p>
+<p>The following configuration options will increase the size of the Berkeley DB library dramatically and are only useful when debugging applications:</p>
+<p><span class="term"> <a href="build_unix_conf.html#build_unix_conf.--enable-debug" class="link">--enable-debug</a> </span><br />
+Build Berkeley DB with symbols for debugging.</p>
+<p><span class="term"> <a href="build_unix_conf.html#build_unix_conf.--enable-debug_rop" class="link">--enable-debug_rop</a> </span><br />
+Build Berkeley DB with read-operation logging.</p>
+<p><span class="term"> <a href="build_unix_conf.html#build_unix_conf.--enable-debug_wop" class="link">--enable-debug_wop</a> </span><br />
+Build Berkeley DB with write-operation logging.</p>
+<p><span class="term"> <a href="build_unix_conf.html#build_unix_conf.--enable-diagnostic" class="link">--enable-diagnostic</a> </span><br />
+Build Berkeley DB with run-time debugging checks.</p>
+<p>In addition, static libraries are usually smaller than shared libraries. By default Berkeley DB will build both shared and static libraries. To build only a static library, configure Berkeley DB with the <a href="build_unix_conf.html" class="xref" title="Configuring Berkeley DB">Configuring Berkeley DB</a> option.</p>
+<p>The size of the Berkeley DB library varies depending on the compiler, machine architecture, and configuration options. As an estimate, production Berkeley DB libraries built with GNU gcc version 4.X compilers have footprints in the range of 600KB to 1.4MB on 32-bit x86 architectures, and in the range of 700KB to 1.6MB on 64-bit x86 architectures.</p>
+<p>For assistance in further reducing the size of the Berkeley DB library, or in building small memory footprint libraries on other systems, please contact Berkeley DB support.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

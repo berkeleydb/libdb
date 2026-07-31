@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cursor operations — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="cursor-operations">Cursor operations</h2>
+<p><span class="sect2"> <a href="am_cursor.html#am_curget">Retrieving records with a cursor</a> </span></p>
+<p><span class="sect2"> <a href="am_cursor.html#am_curput">Storing records with a cursor</a> </span></p>
+<p><span class="sect2"> <a href="am_cursor.html#am_curdel">Deleting records with a cursor</a> </span></p>
+<p><span class="sect2"> <a href="am_cursor.html#am_curdup">Duplicating a cursor</a> </span></p>
+<p><span class="sect2"> <a href="am_cursor.html#am_join">Equality Join</a> </span></p>
+<p><span class="sect2"> <a href="am_cursor.html#am_count">Data item count</a> </span></p>
+<p><span class="sect2"> <a href="am_cursor.html#am_curclose">Cursor close</a> </span></p>
+<p>A database cursor refers to a single key/data pair in the database. It supports traversal of the database and is the only way to access individual duplicate data items. Cursors are used for operating on collections of records, for iterating over a database, and for saving handles to individual records, so that they can be modified after they have been read.</p>
+<p>The <a href="../../api/c/dbcursor.html" class="olink">DB-&gt;cursor()</a> method opens a cursor into a database. Upon return the cursor is uninitialized, cursor positioning occurs as part of the first cursor operation.</p>
+<p>Once a database cursor has been opened, records may be retrieved (<a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a>), stored (<a href="../../api/c/dbcput.html" class="olink">DBC-&gt;put()</a>), and deleted (<a href="../../api/c/dbcdel.html" class="olink">DBC-&gt;del()</a>).</p>
+<p>Additional operations supported by the cursor handle include duplication (<a href="../../api/c/dbcdup.html" class="olink">DBC-&gt;dup()</a>), equality join (<a href="../../api/c/dbjoin.html" class="olink">DB-&gt;join()</a>), and a count of duplicate data items (<a href="../../api/c/dbccount.html" class="olink">DBC-&gt;count()</a>). Cursors are eventually closed using <a href="../../api/c/dbcclose.html" class="olink">DBC-&gt;close()</a>.</p>
+<p>For more information on the operations supported by the cursor handle, see the <a href="../../api/c/dbc.html#dbclist" class="olink">Database Cursors and Related Methods</a> section in the <em>Berkeley DB C API Reference Guide.</em></p>
+<h3 id="retrieving-records-with-a-cursor">Retrieving records with a cursor</h3>
+<p>The <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a> method retrieves records from the database using a cursor. The <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a> method takes a flag which controls how the cursor is positioned within the database and returns the key/data item associated with that positioning. Similar to <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a>, <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a> may also take a supplied key and retrieve the data associated with that key from the database. There are several flags that you can set to customize retrieval.</p>
+<h4 id="cursor-position-flags">Cursor position flags</h4>
+<p><span class="term"><a href="../../api/c/dbcget.html#dbcget_DB_FIRST" class="olink">DB_FIRST</a>, <a href="../../api/c/dbcget.html#dbcget_DB_LAST" class="olink">DB_LAST</a></span><br />
+Return the first (last) record in the database.</p>
+<p><span class="term"><a href="../../api/c/dbcget.html#dbcget_DB_NEXT" class="olink">DB_NEXT</a>, <a href="../../api/c/dbcget.html#dbcget_DB_PREV" class="olink">DB_PREV</a></span><br />
+Return the next (previous) record in the database.</p>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_NEXT_DUP" class="olink">DB_NEXT_DUP</a> </span><br />
+Return the next record in the database, if it is a duplicate data item for the current key. For Heap databases, this flag always results in the cursor returning the <code>DB_NOTFOUND</code> error.</p>
+<p><span class="term"><a href="../../api/c/dbcget.html#dbcget_DB_NEXT_NODUP" class="olink">DB_NEXT_NODUP</a>, <a href="../../api/c/dbcget.html#dbcget_DB_PREV_NODUP" class="olink">DB_PREV_NODUP</a></span><br />
+Return the next (previous) record in the database that is not a duplicate data item for the current key.</p>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_CURRENT" class="olink">DB_CURRENT</a> </span><br />
+Return the record from the database to which the cursor currently refers.</p>
+<h4 id="retrieving-specific-keydata-pairs">Retrieving specific key/data pairs</h4>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_SET" class="olink">DB_SET</a> </span><br />
+Return the record from the database that matches the supplied key. In the case of duplicates the first duplicate is returned and the cursor is positioned at the beginning of the duplicate list. The user can then traverse the duplicate entries for the key.</p>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_SET_RANGE" class="olink">DB_SET_RANGE</a> </span><br />
+Return the smallest record in the database greater than or equal to the supplied key. This functionality permits partial key matches and range searches in the Btree access method.</p>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_GET_BOTH" class="olink">DB_GET_BOTH</a> </span><br />
+Return the record from the database that matches both the supplied key and data items. This is particularly useful when there are large numbers of duplicate records for a key, as it allows the cursor to easily be positioned at the correct place for traversal of some part of a large set of duplicate records.</p>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_GET_BOTH_RANGE" class="olink">DB_GET_BOTH_RANGE</a> </span><br />
+If used on a database configured for sorted duplicates, this returns the smallest record in the database greater than or equal to the supplied key and data items. If used on a database that is <span class="emphasis"><em>not</em></span> configured for sorted duplicates, this flag behaves identically to <code>DB_GET_BOTH</code>.</p>
+<h4 id="retrieving-based-on-record-numbers">Retrieving based on record numbers</h4>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_SET_RECNO" class="olink">DB_SET_RECNO</a> </span><br />
+If the underlying database is a Btree, and was configured so that it is possible to search it by logical record number, retrieve a specific record based on a record number argument.</p>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_GET_RECNO" class="olink">DB_GET_RECNO</a> </span><br />
+If the underlying database is a Btree, and was configured so that it is possible to search it by logical record number, return the record number for the record to which the cursor refers.</p>
+<h4 id="special-purpose-flags">Special-purpose flags</h4>
+<p><span class="term"> <a href="../../api/c/dbget.html#dbget_DB_CONSUME" class="olink">DB_CONSUME</a> </span><br />
+Read-and-delete: the first record (the head) of the queue is returned and deleted. The underlying database must be a Queue.</p>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_RMW" class="olink">DB_RMW</a> </span><br />
+Read-modify-write: acquire write locks instead of read locks during retrieval. This can enhance performance in threaded applications by reducing the chance of deadlock.</p>
+<p>In all cases, the cursor is repositioned by a <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a> operation to point to the newly-returned key/data pair in the database.</p>
+<p>The following is a code example showing a cursor walking through a database and displaying the records it contains to the standard output:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>display<span class="op">(</span><span class="dt">char</span> <span class="op">*</span>database<span class="op">)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    DB <span class="op">*</span>dbp<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    DBC <span class="op">*</span>dbcp<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    DBT key<span class="op">,</span> data<span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> close_db<span class="op">,</span> close_dbc<span class="op">,</span> ret<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    close_db <span class="op">=</span> close_dbc <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Open the database. */</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_create<span class="op">(&amp;</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        fprintf<span class="op">(</span>stderr<span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;</span><span class="sc">%s</span><span class="st">: db_create: </span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span> progname<span class="op">,</span> db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    close_db <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Turn on additional error output. */</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    dbp<span class="op">-&gt;</span>set_errfile<span class="op">(</span>dbp<span class="op">,</span> stderr<span class="op">);</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    dbp<span class="op">-&gt;</span>set_errpfx<span class="op">(</span>dbp<span class="op">,</span> progname<span class="op">);</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Open the database. */</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>open<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> database<span class="op">,</span> NULL<span class="op">,</span> </span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>            DB_UNKNOWN<span class="op">,</span> DB_RDONLY<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;</span><span class="sc">%s</span><span class="st">: DB-&gt;open&quot;</span><span class="op">,</span> database<span class="op">);</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Acquire a cursor for the database. */</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>cursor<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="op">&amp;</span>dbcp<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DB-&gt;cursor&quot;</span><span class="op">);</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    close_dbc <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Initialize the key/data return pair. */</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>key<span class="op">));</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>data<span class="op">));</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Walk through the database and print out the key/data pairs. */</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="op">((</span>ret <span class="op">=</span> dbcp<span class="op">-&gt;</span>get<span class="op">(</span>dbcp<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_NEXT<span class="op">))</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>        printf<span class="op">(</span><span class="st">&quot;</span><span class="sc">%.*s</span><span class="st"> : </span><span class="sc">%.*s\n</span><span class="st">&quot;</span><span class="op">,</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>            <span class="op">(</span><span class="dt">int</span><span class="op">)</span>key<span class="op">.</span>size<span class="op">,</span> <span class="op">(</span><span class="dt">char</span> <span class="op">*)</span>key<span class="op">.</span>data<span class="op">,</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>            <span class="op">(</span><span class="dt">int</span><span class="op">)</span>data<span class="op">.</span>size<span class="op">,</span> <span class="op">(</span><span class="dt">char</span> <span class="op">*)</span>data<span class="op">.</span>data<span class="op">);</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> DB_NOTFOUND<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DBcursor-&gt;get&quot;</span><span class="op">);</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>err<span class="op">:</span>    <span class="cf">if</span> <span class="op">(</span>close_dbc <span class="op">&amp;&amp;</span> <span class="op">(</span>ret <span class="op">=</span> dbcp<span class="op">-&gt;</span>close<span class="op">(</span>dbcp<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DBcursor-&gt;close&quot;</span><span class="op">);</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>close_db <span class="op">&amp;&amp;</span> <span class="op">(</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>close<span class="op">(</span>dbp<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>        fprintf<span class="op">(</span>stderr<span class="op">,</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;</span><span class="sc">%s</span><span class="st">: DB-&gt;close: </span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span> progname<span class="op">,</span> db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="storing-records-with-a-cursor">Storing records with a cursor</h3>
+<p>The <a href="../../api/c/dbcput.html" class="olink">DBC-&gt;put()</a> method stores records into the database using a cursor. In general, <a href="../../api/c/dbcput.html" class="olink">DBC-&gt;put()</a> takes a key and inserts the associated data into the database, at a location controlled by a specified flag.</p>
+<p>There are several flags that you can set to customize storage:</p>
+<p><span class="term"> <a href="../../api/c/dbcput.html#dbcput_DB_AFTER" class="olink">DB_AFTER</a> </span><br />
+Create a new record, immediately after the record to which the cursor refers.</p>
+<p><span class="term"> <a href="../../api/c/dbcput.html#dbcput_DB_BEFORE" class="olink">DB_BEFORE</a> </span><br />
+Create a new record, immediately before the record to which the cursor refers.</p>
+<p><span class="term"> <a href="../../api/c/dbcget.html#dbcget_DB_CURRENT" class="olink">DB_CURRENT</a> </span><br />
+Replace the data part of the record to which the cursor refers.</p>
+<p><span class="term"> <a href="../../api/c/dbcput.html#dbcput_DB_KEYFIRST" class="olink">DB_KEYFIRST</a> </span><br />
+Create a new record as the first of the duplicate records for the supplied key.</p>
+<p><span class="term"> <a href="../../api/c/dbcput.html#dbcput_DB_KEYLAST" class="olink">DB_KEYLAST</a> </span><br />
+Create a new record, as the last of the duplicate records for the supplied key.</p>
+<p>In all cases, the cursor is repositioned by a <a href="../../api/c/dbcput.html" class="olink">DBC-&gt;put()</a> operation to point to the newly inserted key/data pair in the database.</p>
+<p>The following is a code example showing a cursor storing two data items in a database that supports duplicate data items:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>store<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">)</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    DBC <span class="op">*</span>dbcp<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    DBT key<span class="op">,</span> data<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co">     * The DB handle for a Btree database supporting duplicate data</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">     * items is the argument; acquire a cursor for the database.</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>cursor<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="op">&amp;</span>dbcp<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DB-&gt;cursor&quot;</span><span class="op">);</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Initialize the key. */</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>key<span class="op">));</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    key<span class="op">.</span>data <span class="op">=</span> <span class="st">&quot;new key&quot;</span><span class="op">;</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    key<span class="op">.</span>size <span class="op">=</span> strlen<span class="op">(</span>key<span class="op">.</span>data<span class="op">)</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Initialize the data to be the first of two duplicate records. */</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>data<span class="op">));</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    data<span class="op">.</span>data <span class="op">=</span> <span class="st">&quot;new key&#39;s data: entry #1&quot;</span><span class="op">;</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    data<span class="op">.</span>size <span class="op">=</span> strlen<span class="op">(</span>data<span class="op">.</span>data<span class="op">)</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Store the first of the two duplicate records. */</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbcp<span class="op">-&gt;</span>put<span class="op">(</span>dbcp<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_KEYFIRST<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DB-&gt;cursor&quot;</span><span class="op">);</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Initialize the data to be the second of two duplicate records. */</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    data<span class="op">.</span>data <span class="op">=</span> <span class="st">&quot;new key&#39;s data: entry #2&quot;</span><span class="op">;</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    data<span class="op">.</span>size <span class="op">=</span> strlen<span class="op">(</span>data<span class="op">.</span>data<span class="op">)</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a><span class="co">     * Store the second of the two duplicate records.  No duplicate</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a><span class="co">     * record sort function has been specified, so we explicitly</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="co">     * store the record as the last of the duplicate set.</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbcp<span class="op">-&gt;</span>put<span class="op">(</span>dbcp<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_KEYLAST<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DB-&gt;cursor&quot;</span><span class="op">);</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>err<span class="op">:</span>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbcp<span class="op">-&gt;</span>close<span class="op">(</span>dbcp<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DBcursor-&gt;close&quot;</span><span class="op">);</span></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="note">Note</h3>
+<p>If you are using the Heap access method and you are creating a new record in the database, then the key that you provide to the <a href="../../api/c/dbcput.html" class="olink">DBC-&gt;put()</a> method should be empty. The <a href="../../api/c/dbcput.html" class="olink">DBC-&gt;put()</a> method will return the record's ID (RID) in the key. The RID is automatically created for you when Heap database records are created.</p>
+<h3 id="deleting-records-with-a-cursor">Deleting records with a cursor</h3>
+<p>The <a href="../../api/c/dbcdel.html" class="olink">DBC-&gt;del()</a> method deletes records from the database using a cursor. The <a href="../../api/c/dbcdel.html" class="olink">DBC-&gt;del()</a> method deletes the record to which the cursor currently refers. In all cases, the cursor position is unchanged after a delete.</p>
+<h3 id="duplicating-a-cursor">Duplicating a cursor</h3>
+<p>Once a cursor has been initialized (for example, by a call to <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a>), it can be thought of as identifying a particular location in a database. The <a href="../../api/c/dbcdup.html" class="olink">DBC-&gt;dup()</a> method permits an application to create a new cursor that has the same locking and transactional information as the cursor from which it is copied, and which optionally refers to the same position in the database.</p>
+<p>In order to maintain a cursor position when an application is using locking, locks are maintained on behalf of the cursor until the cursor is closed. In cases when an application is using locking without transactions, cursor duplication is often required to avoid self-deadlocks. For further details, refer to <a href="lock_am_conv.html" class="xref" title="Berkeley DB Transactional Data Store locking conventions">Berkeley DB Transactional Data Store locking conventions</a>.</p>
+<h3 id="equality-join">Equality Join</h3>
+<p>Berkeley DB supports "equality" (also known as "natural"), joins on secondary indices. An equality join is a method of retrieving data from a primary database using criteria stored in a set of secondary indices. It requires the data be organized as a primary database which contains the primary key and primary data field, and a set of secondary indices. Each of the secondary indices is indexed by a different secondary key, and, for each key in a secondary index, there is a set of duplicate data items that match the primary keys in the primary database.</p>
+<p>For example, let's assume the need for an application that will return the names of stores in which one can buy fruit of a given color. We would first construct a primary database that lists types of fruit as the key item, and the store where you can buy them as the data item:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Primary key:</th>
+<th style="text-align: left;">Primary data:</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">apple</td>
+<td style="text-align: left;">Convenience Store</td>
+</tr>
+<tr>
+<td style="text-align: left;">blueberry</td>
+<td style="text-align: left;">Farmer's Market</td>
+</tr>
+<tr>
+<td style="text-align: left;">peach</td>
+<td style="text-align: left;">Shopway</td>
+</tr>
+<tr>
+<td style="text-align: left;">pear</td>
+<td style="text-align: left;">Farmer's Market</td>
+</tr>
+<tr>
+<td style="text-align: left;">raspberry</td>
+<td style="text-align: left;">Shopway</td>
+</tr>
+<tr>
+<td style="text-align: left;">strawberry</td>
+<td style="text-align: left;">Farmer's Market</td>
+</tr>
+</tbody>
+</table>
+<p>We would then create a secondary index with the key <strong>color</strong>, and, as the data items, the names of fruits of different colors.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Secondary key:</th>
+<th style="text-align: left;">Secondary data:</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">blue</td>
+<td style="text-align: left;">blueberry</td>
+</tr>
+<tr>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">apple</td>
+</tr>
+<tr>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">raspberry</td>
+</tr>
+<tr>
+<td style="text-align: left;">red</td>
+<td style="text-align: left;">strawberry</td>
+</tr>
+<tr>
+<td style="text-align: left;">yellow</td>
+<td style="text-align: left;">peach</td>
+</tr>
+<tr>
+<td style="text-align: left;">yellow</td>
+<td style="text-align: left;">pear</td>
+</tr>
+</tbody>
+</table>
+<p>This secondary index would allow an application to look up a color, and then use the data items to look up the stores where the colored fruit could be purchased. For example, by first looking up <strong>blue</strong>, the data item <strong>blueberry</strong> could be used as the lookup key in the primary database, returning <strong>Farmer's Market</strong>.</p>
+<p>Your data must be organized in the following manner in order to use the <a href="../../api/c/dbjoin.html" class="olink">DB-&gt;join()</a> method:</p>
+<ol type="1">
+<li><p>The actual data should be stored in the database represented by the <a href="../../api/c/db.html" class="olink">DB</a> object used to invoke this method. Generally, this <a href="../../api/c/db.html" class="olink">DB</a> object is called the <span class="emphasis"><em>primary</em></span>.</p></li>
+<li><p>Secondary indices should be stored in separate databases, whose keys are the values of the secondary indices and whose data items are the primary keys corresponding to the records having the designated secondary key value. It is acceptable (and expected) that there may be duplicate entries in the secondary indices.</p>
+<p>These duplicate entries should be sorted for performance reasons, although it is not required. For more information see the <a href="../../api/c/dbset_flags.html#dbset_flags_DB_DUPSORT" class="olink">DB_DUPSORT</a> flag to the <a href="../../api/c/dbset_flags.html" class="olink">DB-&gt;set_flags()</a> method.</p></li>
+</ol>
+<p>What the <a href="../../api/c/dbjoin.html" class="olink">DB-&gt;join()</a> method does is review a list of secondary keys, and, when it finds a data item that appears as a data item for all of the secondary keys, it uses that data item as a lookup into the primary database, and returns the associated data item.</p>
+<p>If there were another secondary index that had as its key the <strong>cost</strong> of the fruit, a similar lookup could be done on stores where inexpensive fruit could be purchased:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Secondary key:</th>
+<th style="text-align: left;">Secondary data:</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">expensive</td>
+<td style="text-align: left;">blueberry</td>
+</tr>
+<tr>
+<td style="text-align: left;">expensive</td>
+<td style="text-align: left;">peach</td>
+</tr>
+<tr>
+<td style="text-align: left;">expensive</td>
+<td style="text-align: left;">pear</td>
+</tr>
+<tr>
+<td style="text-align: left;">expensive</td>
+<td style="text-align: left;">strawberry</td>
+</tr>
+<tr>
+<td style="text-align: left;">inexpensive</td>
+<td style="text-align: left;">apple</td>
+</tr>
+<tr>
+<td style="text-align: left;">inexpensive</td>
+<td style="text-align: left;">pear</td>
+</tr>
+<tr>
+<td style="text-align: left;">inexpensive</td>
+<td style="text-align: left;">raspberry</td>
+</tr>
+</tbody>
+</table>
+<p>The <a href="../../api/c/dbjoin.html" class="olink">DB-&gt;join()</a> method provides equality join functionality. While not strictly cursor functionality, in that it is not a method off a cursor handle, it is more closely related to the cursor operations than to the standard <a href="../../api/c/db.html" class="olink">DB</a> operations.</p>
+<p>It is also possible to do lookups based on multiple criteria in a single operation. For example, it is possible to look up fruits that are both red and expensive in a single operation. If the same fruit appeared as a data item in both the color and expense indices, then that fruit name would be used as the key for retrieval from the primary index, and would then return the store where expensive, red fruit could be purchased.</p>
+<h4 id="example">Example</h4>
+<p>Consider the following three databases:</p>
+<p><span class="term">personnel</span></p>
+<ul>
+<li>key = SSN</li>
+<li>data = record containing name, address, phone number, job title</li>
+</ul>
+<p><span class="term">lastname</span></p>
+<ul>
+<li>key = lastname</li>
+<li>data = SSN</li>
+</ul>
+<p><span class="term">jobs</span></p>
+<ul>
+<li>key = job title</li>
+<li>data = SSN</li>
+</ul>
+<p>Consider the following query:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>Return the personnel records of all people named smith with the job</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>title manager<span class="op">.</span></span></code></pre></div>
+<p>This query finds are all the records in the primary database (personnel) for whom the criteria <strong>lastname=smith and job title=manager</strong> is true.</p>
+<p>Assume that all databases have been properly opened and have the handles: pers_db, name_db, job_db. We also assume that we have an active transaction to which the handle txn refers.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>DBC <span class="op">*</span>name_curs<span class="op">,</span> <span class="op">*</span>job_curs<span class="op">,</span> <span class="op">*</span>join_curs<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>DBC <span class="op">*</span>carray<span class="op">[</span><span class="dv">3</span><span class="op">];</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>DBT key<span class="op">,</span> data<span class="op">;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> ret<span class="op">,</span> tret<span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>name_curs <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>job_curs <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>key<span class="op">));</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>data<span class="op">));</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    name_db<span class="op">-&gt;</span>cursor<span class="op">(</span>name_db<span class="op">,</span> txn<span class="op">,</span> <span class="op">&amp;</span>name_curs<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>key<span class="op">.</span>data <span class="op">=</span> <span class="st">&quot;smith&quot;</span><span class="op">;</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>key<span class="op">.</span>size <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span><span class="st">&quot;smith&quot;</span><span class="op">);</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    name_curs<span class="op">-&gt;</span>get<span class="op">(</span>name_curs<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_SET<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> job_db<span class="op">-&gt;</span>cursor<span class="op">(</span>job_db<span class="op">,</span> txn<span class="op">,</span> <span class="op">&amp;</span>job_curs<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>key<span class="op">.</span>data <span class="op">=</span> <span class="st">&quot;manager&quot;</span><span class="op">;</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>key<span class="op">.</span>size <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span><span class="st">&quot;manager&quot;</span><span class="op">);</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    job_curs<span class="op">-&gt;</span>get<span class="op">(</span>job_curs<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_SET<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>carray<span class="op">[</span><span class="dv">0</span><span class="op">]</span> <span class="op">=</span> name_curs<span class="op">;</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>carray<span class="op">[</span><span class="dv">1</span><span class="op">]</span> <span class="op">=</span> job_curs<span class="op">;</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>carray<span class="op">[</span><span class="dv">2</span><span class="op">]</span> <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    pers_db<span class="op">-&gt;</span>join<span class="op">(</span>pers_db<span class="op">,</span> carray<span class="op">,</span> <span class="op">&amp;</span>join_curs<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> <span class="op">((</span>ret <span class="op">=</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    join_curs<span class="op">-&gt;</span>get<span class="op">(</span>join_curs<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Process record returned in key/data. */</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a><span class="co">/*</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a><span class="co"> * If we exited the loop because we ran out of records,</span></span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a><span class="co"> * then it has completed successfully.</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>ret <span class="op">==</span> DB_NOTFOUND<span class="op">)</span></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a>err<span class="op">:</span></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>join_curs <span class="op">!=</span> NULL <span class="op">&amp;&amp;</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>    <span class="op">(</span>tret <span class="op">=</span> join_curs<span class="op">-&gt;</span>close<span class="op">(</span>join_curs<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span> <span class="op">&amp;&amp;</span> ret <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> tret<span class="op">;</span></span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>name_curs <span class="op">!=</span> NULL <span class="op">&amp;&amp;</span></span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a>    <span class="op">(</span>tret <span class="op">=</span> name_curs<span class="op">-&gt;</span>close<span class="op">(</span>name_curs<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span> <span class="op">&amp;&amp;</span> ret <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> tret<span class="op">;</span></span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>job_curs <span class="op">!=</span> NULL <span class="op">&amp;&amp;</span></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a>    <span class="op">(</span>tret <span class="op">=</span> job_curs<span class="op">-&gt;</span>close<span class="op">(</span>job_curs<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span> <span class="op">&amp;&amp;</span> ret <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> tret<span class="op">;</span></span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a><span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span></code></pre></div>
+<p>The name cursor is positioned at the beginning of the duplicate list for <strong>smith</strong> and the job cursor is placed at the beginning of the duplicate list for <strong>manager</strong>. The join cursor is returned from the join method. This code then loops over the join cursor getting the personnel records of each one until there are no more.</p>
+<h3 id="data-item-count">Data item count</h3>
+<p>Once a cursor has been initialized to refer to a particular key in the database, it can be used to determine the number of data items that are stored for any particular key. The <a href="../../api/c/dbccount.html" class="olink">DBC-&gt;count()</a> method returns this number of data items. The returned value is always one, unless the database supports duplicate data items, in which case it may be any number of items.</p>
+<h3 id="cursor-close">Cursor close</h3>
+<p>The <a href="../../api/c/dbcclose.html" class="olink">DBC-&gt;close()</a> method closes the <a href="../../api/c/dbc.html" class="olink">DBC</a> cursor, after which the cursor may no longer be used. Although cursors are implicitly closed when the database they point to are closed, it is good programming practice to explicitly close cursors. In addition, in transactional systems, cursors may not exist outside of a transaction and so must be explicitly closed.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

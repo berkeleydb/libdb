@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 22.  Berkeley DB Extensions — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-22--berkeley-db-extensions">Chapter 22.  Berkeley DB Extensions</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="ext.html#ext_mod">Using Berkeley DB with Apache</a> </span></p>
+<p><span class="sect1"> <a href="ext_perl.html">Using Berkeley DB with Perl</a> </span></p>
+<p><span class="sect1"> <a href="ext_php.html">Using Berkeley DB with PHP</a> </span></p>
+<h2 id="using-berkeley-db-with-apache">Using Berkeley DB with Apache</h2>
+<p>A mod_db4 Apache module is included in the Berkeley DB distribution, providing a safe framework for running Berkeley DB applications in an Apache 1.3 environment. Apache natively provides no interface for communication between threads or processes, so the mod_db4 module exists to provide this communication.</p>
+<p>In general, it is dangerous to run Berkeley DB in a multiprocess system without some facility to coordinate database recovery between processes sharing the database environment after application or system failure. Failure to run recovery after failure can include process hangs and an inability to access the database environment. The mod_db4 Apache module oversees the proper management of Berkeley DB database environment resources. Developers building applications using Berkeley DB as the storage manager within an Apache module should employ this technique for proper resource management.</p>
+<p>Specifically, mod_db4 provides the following facilities:</p>
+<ol type="1">
+<li>New constructors for <a href="../../api/c/env.html" class="olink">DB_ENV</a> and <a href="../../api/c/db.html" class="olink">DB</a> handles, which install replacement open/close methods.</li>
+<li>Transparent caching of open <a href="../../api/c/env.html" class="olink">DB_ENV</a> and <a href="../../api/c/db.html" class="olink">DB</a> handles.</li>
+<li>Reference counting on all structures, allowing the module to detect the initial opening of any managed database and automatically perform recovery.</li>
+<li>Automatic detection of unexpected failures (segfaults, or a module actually calling exit() and avoiding shut down phases), and automatic termination of all child processes with open database resources to attempt consistency.</li>
+</ol>
+<p>mod_db4 is designed to be used as an alternative interface to Berkeley DB. To have another Apache module (for example, mod_foo) use mod_db4, do not link mod_foo against the Berkeley DB library. In your mod_foo makefile, you should:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;mod_db4_export.h&quot;</span></span></code></pre></div>
+<p>and add your Apache include directory to your CPPFLAGS.</p>
+<p>In mod_foo, to create a mod_db4 managed <a href="../../api/c/env.html" class="olink">DB_ENV</a> handle, use the following:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> mod_db4_db_env_create<span class="op">(</span>DB_ENV <span class="op">**</span>dbenvp<span class="op">,</span> u_int32_t flags<span class="op">);</span></span></code></pre></div>
+<p>which takes identical arguments to <a href="../../api/c/envcreate.html" class="olink">db_env_create()</a>.</p>
+<p>To create a mod_db4 managed <a href="../../api/c/db.html" class="olink">DB</a> handle, use the following:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> mod_db4_db_create<span class="op">(</span>DB <span class="op">**</span>dbp<span class="op">,</span> DB_ENV <span class="op">*</span>dbenv<span class="op">,</span> u_int32_t flags<span class="op">);</span></span></code></pre></div>
+<p>which takes identical arguments to <a href="../../api/c/dbcreate.html" class="olink">db_create()</a>.</p>
+<p>Otherwise the API is completely consistent with the standard Berkeley DB API.</p>
+<p>The mod_db4 module requires the Berkeley DB library be compiled with C++ extensions and the MM library. (The MM library provides an abstraction layer which allows related processes to share data easily. On systems where shared memory or other inter-process communication mechanisms are not available, the MM library emulates them using temporary files. MM is used in several operating systems to provide shared memory pools to Apache modules.)</p>
+<p>To build this apache module, perform the following steps:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> <span class="op">./</span>configure <span class="op">--</span>with<span class="op">-</span>apxs<span class="op">=[</span>path to the apxs utility<span class="op">]</span> \</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">--</span>with<span class="op">-</span>db4<span class="op">=[</span>Berkeley DB library installation directory<span class="op">]</span> \</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">--</span>with<span class="op">-</span>mm<span class="op">=[</span>libmm installation directory<span class="op">]</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> make</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> make install</span></code></pre></div>
+<p>Post-installation, modules can use this extension via the functions documented in $APACHE_INCLUDEDIR/mod_db4_export.h.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

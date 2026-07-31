@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>db_stat — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="db_stat">db_stat</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_stat <span class="op">-</span>d file <span class="op">[-</span>fN<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> <span class="op">[-</span>s database<span class="op">]</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>db_stat <span class="op">[-</span>cEelmNrtVxZ<span class="op">]</span> <span class="op">[-</span>C Aclop<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>L A<span class="op">]</span> <span class="op">[-</span>M Ah<span class="op">]</span> <span class="op">[-</span>R A<span class="op">]</span> </span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">[-</span>P password<span class="op">]</span>  </span></code></pre></div>
+<p>The <span class="command"><strong>db_stat</strong></span> utility displays statistics for Berkeley DB environments.</p>
+<p>The options are as follows:</p>
+<ul>
+<li><p><strong>-C</strong></p>
+<p>Display detailed information about the locking subsystem.</p>
+<ul>
+<li><p><strong>A</strong></p>
+<p>Display all information.</p></li>
+<li><p><strong>c</strong></p>
+<p>Display lock conflict matrix.</p></li>
+<li><p><strong>l</strong></p>
+<p>Display lockers within hash chains.</p></li>
+<li><p><strong>o</strong></p>
+<p>Display lock objects within hash chains.</p></li>
+<li><p><strong>p</strong></p>
+<p>Display locking subsystem parameters.</p></li>
+</ul></li>
+<li><p><strong>-c</strong></p>
+<p>Display locking subsystem statistics, as described in the <a href="lockstat.html" class="xref" title="DB_ENV-&gt;lock_stat()">DB_ENV-&gt;lock_stat()</a> method.</p></li>
+<li><p><strong>-d</strong></p>
+<p>Display database statistics for the specified file, as described in the <a href="dbstat.html" class="xref" title="DB-&gt;stat()">DB-&gt;stat()</a> method.</p>
+<p>If the database contains multiple databases and the <strong>-s</strong> flag is not specified, the statistics are for the internal database that describes the other databases the file contains, and not for the file as a whole.</p></li>
+<li><p><strong>-E</strong></p>
+<p>Display detailed information about the database environment.</p></li>
+<li><p><strong>-e</strong></p>
+<p>Display information about the database environment, including all configured subsystems of the database environment.</p></li>
+<li><p><strong>-f</strong></p>
+<p>Display only those database statistics that can be acquired without traversing the database.</p></li>
+<li><p><strong>-h</strong></p>
+<p>Specify a home directory for the database environment; by default, the current working directory is used.</p></li>
+<li><p><strong>-l</strong></p>
+<p>Display logging subsystem statistics, as described in the <a href="logstat.html" class="xref" title="DB_ENV-&gt;log_stat()">DB_ENV-&gt;log_stat()</a> method.</p></li>
+<li><p><strong>-L</strong></p>
+<p>Display all logging subsystem statistics.</p>
+<ul>
+<li><p><strong>A</strong></p>
+<p>Display all information.</p></li>
+</ul></li>
+<li><p><strong>-M</strong></p>
+<p>Display detailed information about the cache.</p>
+<ul>
+<li><p><strong>A</strong></p>
+<p>Display all information.</p></li>
+<li><p><strong>h</strong></p>
+<p>Display buffers within hash chains.</p></li>
+</ul></li>
+<li><p><strong>-m</strong></p>
+<p>Display cache statistics, as described in the <a href="mempstat.html" class="xref" title="DB_ENV-&gt;memp_stat()">DB_ENV-&gt;memp_stat()</a> method.</p></li>
+<li><p><strong>-N</strong></p>
+<p>Do not acquire shared region mutexes while running. Other problems, such as potentially fatal errors in Berkeley DB, will be ignored as well. This option is intended only for debugging errors, and should not be used under any other circumstances.</p></li>
+<li><p><strong>-P</strong></p>
+<p>Specify an environment password. Although Berkeley DB utilities overwrite password strings as soon as possible, be aware there may be a window of vulnerability on systems where unprivileged users can see command-line arguments or where utilities are not able to overwrite the memory containing the command-line arguments.</p></li>
+<li><p><strong>-R</strong></p>
+<p>Display detailed information about the replication subsystem.</p>
+<ul>
+<li><p><strong>A</strong></p>
+<p>Display all information.</p></li>
+</ul></li>
+<li><p><strong>-r</strong></p>
+<p>Display replication statistics, as described in in the <a href="repstat.html" class="xref" title="DB_ENV-&gt;rep_stat()">DB_ENV-&gt;rep_stat()</a> method.</p></li>
+<li><p><strong>-s</strong></p>
+<p>Display statistics for the specified database contained in the file specified with the <strong>-d</strong> flag.</p></li>
+<li><p><strong>-t</strong></p>
+<p>Display transaction subsystem statistics, as described in the <a href="txnstat.html" class="xref" title="DB_ENV-&gt;txn_stat()">DB_ENV-&gt;txn_stat()</a> method.</p></li>
+<li><p><strong>-V</strong></p>
+<p>Write the library version number to the standard output, and exit.</p></li>
+<li><p><strong>-x</strong></p>
+<p>Display mutex subsystem statistics, as described in the <a href="mutexstat.html" class="xref" title="DB_ENV-&gt;mutex_stat()">DB_ENV-&gt;mutex_stat()</a> method.</p></li>
+<li><p><strong>-Z</strong></p>
+<p>Reset the statistics after reporting them; valid only with the <strong>-C</strong>, <strong>-c</strong>, <strong>-E</strong>, <strong>-e</strong>, <strong>-L</strong>, <strong>-l</strong>, <strong>-M</strong>, <strong>-m</strong>, <strong>-R</strong>, <strong>-r</strong>, and <strong>-t</strong> options.</p></li>
+</ul>
+<p>Values normally displayed in quantities of bytes are displayed as a combination of gigabytes (GB), megabytes (MB), kilobytes (KB), and bytes (B). Otherwise, values smaller than 10 million are displayed without any special notation, and values larger than 10 million are displayed as a number followed by "M".</p>
+<p>The <span class="command"><strong>db_stat</strong></span> utility may be used with a Berkeley DB environment (as described for the <strong>-h</strong> option, the environment variable <strong>DB_HOME</strong>, or because the utility was run in a directory containing a Berkeley DB environment). In order to avoid environment corruption when using a Berkeley DB environment, <span class="command"><strong>db_stat</strong></span> should always be given the chance to detach from the environment and exit gracefully. To cause <span class="command"><strong>db_stat</strong></span> to release all environment resources and exit cleanly, send it an interrupt signal (SIGINT).</p>
+<p>The <span class="command"><strong>db_stat</strong></span> utility exits 0 on success, and &gt;0 if an error occurs.</p>
+<p>For information on the statistics feature for Berkeley DB SQL interface, see <a href="dbsql.html#dbsql_command_feature" class="xref" title="Command Line Features Unique to dbsql">Command Line Features Unique to dbsql</a>.</p>
+<h3 id="environment-variables">Environment Variables</h3>
+<h4 id="db_home">DB_HOME</h4>
+<p>If the <strong>-h</strong> option is not specified and the environment variable DB_HOME is set, it is used as the path of the database home, as described in the <a href="envopen.html" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> method.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

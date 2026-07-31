@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 5.  Building Berkeley DB for Windows — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="chapter-5--building-berkeley-db-for-windows">Chapter 5.  Building Berkeley DB for Windows</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="build_win.html#win_build32">Building Berkeley DB for 32 bit Windows</a> </span></p>
+<p><span class="sect2"> <a href="build_win.html#idp242512">Visual C++ .NET 2010</a> </span></p>
+<p><span class="sect2"> <a href="build_win.html#idp249264">Visual C++ .NET 2008</a> </span></p>
+<p><span class="sect2"> <a href="build_win.html#idp220616">Visual C++ .NET 2005</a> </span></p>
+<p><span class="sect2"> <a href="build_win.html#idp205672">Build results</a> </span></p>
+<p><span class="sect1"> <a href="win_build64.html">Building Berkeley DB for 64-bit Windows</a> </span></p>
+<p><span class="sect2"> <a href="win_build64.html#idp259672">x64 build with Visual Studio 2005 or newer</a> </span></p>
+<p><span class="sect1"> <a href="win_build_cygwin.html">Building Berkeley DB with Cygwin</a> </span></p>
+<p><span class="sect1"> <a href="win_build_cxx.html">Building the C++ API</a> </span></p>
+<p><span class="sect1"> <a href="win_build_stl.html">Building the C++ STL API</a> </span></p>
+<p><span class="sect1"> <a href="build_win_java.html">Building the Java API</a> </span></p>
+<p><span class="sect1"> <a href="build_win_csharp.html">Building the C# API</a> </span></p>
+<p><span class="sect1"> <a href="build_win_sql.html">Building the SQL API</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp290248">Binary Compatibility With SQLite</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp276576">Setting Preprocessor Flags</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp288280">Enabling Extensions</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#win-disablechecksums">Disabling Log Checksums</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#build_jdbc">Building the JDBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp266616">Using the JDBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp305704">Building the ODBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_win_sql.html#idp320888">Using the ADO.NET Driver</a> </span></p>
+<p><span class="sect1"> <a href="build_win_tcl.html">Building the Tcl API</a> </span></p>
+<p><span class="sect1"> <a href="win_build_dist_dll.html">Distributing DLLs</a> </span></p>
+<p><span class="sect1"> <a href="win_additional_options.html">Additional build options</a> </span></p>
+<p><span class="sect1"> <a href="build_win_small.html">Building a small memory footprint library</a> </span></p>
+<p><span class="sect1"> <a href="build_win_test.html">Running the test suite under Windows</a> </span></p>
+<p><span class="sect2"> <a href="build_win_test.html#idp368040">Building the software needed by the tests</a> </span></p>
+<p><span class="sect2"> <a href="build_win_test.html#idp379184">Running the test suite under Windows</a> </span></p>
+<p><span class="sect2"> <a href="build_win_test.html#build_win_test_sql">Building the software needed by the SQL tests</a> </span></p>
+<p><span class="sect1"> <a href="build_win_notes.html">Windows notes</a> </span></p>
+<p><span class="sect1"> <a href="build_win_faq.html">Windows FAQ</a> </span></p>
+<p>This chapter contains general instructions on building Berkeley DB for specific windows platforms using specific compilers. The <a href="build_win_faq.html" class="xref" title="Windows FAQ">Windows FAQ</a> also contains helpful information.</p>
+<p>The <code>build_windows</code> directory in the Berkeley DB distribution contains project files for Microsoft Visual Studio:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Project File</th>
+<th style="text-align: center;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">Berkeley_DB.sln</td>
+<td style="text-align: center;">Visual Studio 2005 (8.0) workspace</td>
+</tr>
+<tr>
+<td style="text-align: center;">*.vcproj</td>
+<td style="text-align: center;">Visual Studio 2005 (8.0) projects</td>
+</tr>
+<tr>
+<td style="text-align: center;">Berkeley_DB_vs2010.sln</td>
+<td style="text-align: center;">Visual Studio 2010 workspace</td>
+</tr>
+<tr>
+<td style="text-align: center;">*.vcxproj</td>
+<td style="text-align: center;">Visual Studio 2010 projects</td>
+</tr>
+</tbody>
+</table>
+<p>These project files can be used to build Berkeley DB for the following platforms: Windows NT/2K/XP/2003/Vista and Windows7; and 64-bit Windows XP/2003/Vista and Windows7.</p>
+<h2 id="building-berkeley-db-for-32-bit-windows">Building Berkeley DB for 32 bit Windows</h2>
+<p><span class="sect2"> <a href="build_win.html#idp242512">Visual C++ .NET 2010</a> </span></p>
+<p><span class="sect2"> <a href="build_win.html#idp249264">Visual C++ .NET 2008</a> </span></p>
+<p><span class="sect2"> <a href="build_win.html#idp220616">Visual C++ .NET 2005</a> </span></p>
+<p><span class="sect2"> <a href="build_win.html#idp205672">Build results</a> </span></p>
+<h3 id="visual-c-net-2010">Visual C++ .NET 2010</h3>
+<ol type="1">
+<li>Choose <span class="emphasis"><em>File -&gt; Open -&gt; Project/Solution...</em></span>. In the <code>build_windows</code> directory, select <code>Berkeley_DB_vs2010.sln</code> and click Open.</li>
+<li>Choose the desired project configuration from the drop-down menu on the tool bar (either Debug or Release).</li>
+<li>Choose the desired platform configuration from the drop-down menu on the tool bar (usually Win32 or x64).</li>
+<li>To build, right-click on the <code>Berkeley_DB_vs2010</code> solution and select Build Solution.</li>
+</ol>
+<h3 id="visual-c-net-2008">Visual C++ .NET 2008</h3>
+<ol type="1">
+<li>Choose <span class="emphasis"><em>File -&gt; Open -&gt; Project/Solution...</em></span>. In the <code>build_windows</code> directory, select <code>Berkeley_DB.sln</code> and click Open.</li>
+<li>The <span class="emphasis"><em>Visual Studio Conversion Wizard</em></span> will open automatically. Click the <span class="emphasis"><em>Finish</em></span> button.</li>
+<li>On the next screen click the <span class="emphasis"><em>Close</em></span> button.</li>
+<li>Choose the desired project configuration from the drop-down menu on the tool bar (either Debug or Release).</li>
+<li>Choose the desired platform configuration from the drop-down menu on the tool bar (usually Win32 or x64).</li>
+<li>To build, right-click on the Berkeley_DB solution and select Build Solution.</li>
+</ol>
+<h3 id="visual-c-net-2005">Visual C++ .NET 2005</h3>
+<ol type="1">
+<li>Choose <span class="emphasis"><em>File -&gt; Open -&gt; Project/Solution...</em></span>. In the <code>build_windows</code> directory, select <code>Berkeley_DB.sln</code> and click Open</li>
+<li>Choose the desired project configuration from the drop-down menu on the tool bar (either Debug or Release).</li>
+<li>Choose the desired platform configuration from the drop-down menu on the tool bar (usually Win32 or x64).</li>
+<li>To build, right-click on the Berkeley_DB solution and select Build Solution.</li>
+</ol>
+<h3 id="build-results">Build results</h3>
+<p>The results of your build will be placed in one of the following Berkeley DB subdirectories, depending on the configuration that you chose:</p>
+<table>
+<tbody>
+<tr>
+<td><code>build_windows\Win32\Debug</code></td>
+</tr>
+<tr>
+<td><code>build_windows\Win32\Release</code></td>
+</tr>
+<tr>
+<td><code>build_windows\Win32\Debug_static</code></td>
+</tr>
+<tr>
+<td><code>build_windows\Win32\Release_static</code></td>
+</tr>
+</tbody>
+</table>
+<p>When building your application during development, you should normally use compile options "Debug Multithreaded DLL" and link against <code>build_windows\Debug\libdb53d.lib</code>. You can also build using a release version of the Berkeley DB libraries and tools, which will be placed in <code>build_windows\Win32\Release\libdb53.lib</code>. When linking against the release build, you should compile your code with the "Release Multithreaded DLL" compile option. You will also need to add the <code>build_windows</code> directory to the list of include directories of your application's project, or copy the Berkeley DB include files to another location.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

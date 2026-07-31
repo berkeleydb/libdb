@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lock Handling — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / bdb-sql</nav>
+  <main>
+<h2 id="lock-handling">Lock Handling</h2>
+<p><span class="sect2"> <a href="lockhandling.html#sqllockmodel">SQLite Lock Usage</a> </span></p>
+<p><span class="sect2"> <a href="lockhandling.html#bdblockusage">Lock Usage with the BDB SQL Interface</a> </span></p>
+<p>There is a difference in how applications written for the BDB SQL interface handle deadlocks as opposed to how deadlocks are handled for SQLite applications. For the SQLite developer, the following information is a necessary review in order to understand how the BDB SQL interface behaves differently.</p>
+<p>From a usage point of view, the BDB SQL interface behaves in the same way as SQLite in shared cache mode. The implications of this are explained below.</p>
+<h3 id="sqlite-lock-usage">SQLite Lock Usage</h3>
+<p>As mentioned previously in this chapter, SQLite locks the entire database while performing a transaction. It also has a locking model that is different from the BDB SQL interface, one that supports multiple readers, but only a single writer. In SQLite, transactions can start as follows:</p>
+<ul>
+<li><p><code>BEGIN</code></p>
+<p>Begins the transaction, locking the entire database for reading. Use this if you only want to read from the database.</p></li>
+<li><p><code>BEGIN IMMEDIATE</code></p>
+<p>Begins the transaction, acquiring a "modify" lock. This is also known as a RESERVED lock. Use this if you are modifying the database (that is, performing <code>INSERT</code>, <code>UPDATE</code>, or <code>DELETE</code>). RESERVED locks and read locks can co-exist.</p></li>
+<li><p><code>BEGIN EXCLUSIVE</code></p>
+<p>Begins the transaction, acquiring a write lock. Transactions begun this way will be written to the disk upon commit. No other lock can co-exist with an exclusive lock.</p></li>
+</ul>
+<p>The last two statements are a kind of a contract. If you can get them to complete (that is, not return <code>SQLITE_LOCKED</code>), then you can start modifying the database (that is, change data in the in-memory cache), and you will eventually be able to commit (write) your modifications to the database.</p>
+<p>In order to avoid deadlocks in SQLite, programmers who want to modify a SQLite database start the transaction with <code>BEGIN IMMEDIATE</code>. If the transaction cannot acquire the necessary locks, it will fail, returning <code>SQLITE_BUSY</code>. At that point, the transaction falls back to an unlocked state whereby it holds no locks against the database. This means that any existing transactions in a RESERVED state can safely wait for the necessary EXCLUSIVE lock in order to finally write their modifications from the in-memory cache to the on-disk database.</p>
+<p>The important point here is that so long as the programmer uses these locks correctly, he can assume that he can proceed with his work without encountering a deadlock. (Assuming that all database readers and writers are also using these locks correctly.)</p>
+<h3 id="lock-usage-with-the-bdb-sql-interface">Lock Usage with the BDB SQL Interface</h3>
+<p>When you use the BDB SQL interface, you can begin your transaction with <code>BEGIN</code> or <code>BEGIN EXCLUSIVE</code>.</p>
+<p>Note that the <code>IMMEDIATE</code> keyword is ignored in the BDB SQL interface (<code>BEGIN IMMEDIATE</code> behaves like <code>BEGIN</code>).</p>
+<p>When you begin your transaction with <code>BEGIN</code>, Berkeley DB decides what kind of a lock you need based on what you are doing to the database. If you perform an action that is read-only, it acquires a read lock. If you perform a write action, it acquires a write lock.</p>
+<p>Also, the BDB SQL interface supports multiple readers <span class="emphasis"><em>and</em></span> multiple writers. This means that multiple transactions can acquire locks as long as they are not trying to modify the same page. For example:</p>
+<p><strong>Session 1:</strong></p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> create table a<span class="op">(</span>x <span class="dt">int</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> begin<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> insert into a values <span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> commit<span class="op">;</span> </span></code></pre></div>
+<p><strong>Session 2:</strong></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> create table b<span class="op">(</span>x <span class="dt">int</span><span class="op">);</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> begin<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> insert into b values <span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> commit<span class="op">;</span> </span></code></pre></div>
+<p>Because these two sessions are operating on different pages in the Berkeley DB cache, this example will work. If you tried this with SQLite, you could not start the second transaction until the first had completed.</p>
+<p>However, if you do this using the BDB SQL interface:</p>
+<p><strong>Session 1:</strong></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> begin<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> insert into a values <span class="op">(</span><span class="dv">2</span><span class="op">);</span></span></code></pre></div>
+<p><strong>Session 2:</strong></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> begin<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> insert into a values <span class="op">(</span><span class="dv">2</span><span class="op">);</span> </span></code></pre></div>
+<p>The second session blocks until the first session commits the transaction. Again, this is because both sessions are operating on the same database page(s). However, if you simultaneously attempt to write pages in reverse order, you can deadlock. For example:</p>
+<p><strong>Session 1:</strong></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> begin<span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> insert into a values <span class="op">(</span><span class="dv">3</span><span class="op">);</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> insert into b values <span class="op">(</span><span class="dv">3</span><span class="op">);</span></span></code></pre></div>
+<p><strong>Session 2:</strong></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> begin<span class="op">;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> insert into b values <span class="op">(</span><span class="dv">3</span><span class="op">);</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> insert into a values <span class="op">(</span><span class="dv">3</span><span class="op">);</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>Error<span class="op">:</span> database table is locked</span></code></pre></div>
+<p>What happens here is that Session 1 is blocked waiting for a lock on table b, while Session 2 is blocked waiting for a lock on table a. The application can make no forward progress, and so it is deadlocked.</p>
+<p>When such a deadlock is detected one session loses the lock it got when executing its last statement, and that statement is automatically rolled back. The rest of the statements in the session will still be valid, and you can continue to execute statements in that session. The session that does not lose its lock to deadlock detection will continue to execute as if nothing happened.</p>
+<p>Assume Session 2 was sacrificed to deadlock detection, no value would be inserted into a and an error will be returned. But the insertion of value 3 into b would still be valid. Session 1 would continue to wait while inserting into table b until Session 2 either commits or aborts, thus freeing the lock it has on table b.</p>
+<p>When you begin your transaction with <code>BEGIN EXCLUSIVE</code>, the session is never aborted due to deadlock or lock contention with another transaction. Non-exclusive transactions are allowed to execute concurrently with the exclusive transaction, but the non-exclusive transactions will have their locks released if deadlock with the exclusive transaction occurs. If two or more exclusive transactions are running at the same time, they will be forced to execute in serial.</p>
+<p>If Session 1 was using an exclusive transaction, then Session 2 would lose its locks when deadlock is detected between the two. If both Session 1 and Session 2 start an exclusive transaction, then the last one to start the exclusive transaction would be blocked after executing <code>BEGIN EXCLUSIVE</code> until the first one is committed or aborted.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

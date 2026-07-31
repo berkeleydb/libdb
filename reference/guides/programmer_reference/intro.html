@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 1.  Introduction — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-1--introduction">Chapter 1.  Introduction</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="intro.html#intro_data">An introduction to data management</a> </span></p>
+<p><span class="sect1"> <a href="intro_terrain.html">Mapping the terrain: theory and practice</a> </span></p>
+<p><span class="sect2"> <a href="intro_terrain.html#idp50584200">Data access and data management</a> </span></p>
+<p><span class="sect2"> <a href="intro_terrain.html#idp50577368">Relational databases</a> </span></p>
+<p><span class="sect2"> <a href="intro_terrain.html#idp50621160">Object-oriented databases</a> </span></p>
+<p><span class="sect2"> <a href="intro_terrain.html#idp50574144">Network databases</a> </span></p>
+<p><span class="sect2"> <a href="intro_terrain.html#idp50647776">Clients and servers</a> </span></p>
+<p><span class="sect1"> <a href="intro_dbis.html">What is Berkeley DB?</a> </span></p>
+<p><span class="sect2"> <a href="intro_dbis.html#idp50588152">Data Access Services</a> </span></p>
+<p><span class="sect2"> <a href="intro_dbis.html#idm1374112">Data management services</a> </span></p>
+<p><span class="sect2"> <a href="intro_dbis.html#idp50659944">Design</a> </span></p>
+<p><span class="sect1"> <a href="intro_dbisnot.html">What Berkeley DB is not</a> </span></p>
+<p><span class="sect2"> <a href="intro_dbisnot.html#idp50596256">Berkeley DB is not a relational database</a> </span></p>
+<p><span class="sect2"> <a href="intro_dbisnot.html#idp50675392">Berkeley DB is not an object-oriented database</a> </span></p>
+<p><span class="sect2"> <a href="intro_dbisnot.html#idp50621304">Berkeley DB is not a network database</a> </span></p>
+<p><span class="sect2"> <a href="intro_dbisnot.html#idp50657008">Berkeley DB is not a database server</a> </span></p>
+<p><span class="sect1"> <a href="intro_need.html">Do you need Berkeley DB?</a> </span></p>
+<p><span class="sect1"> <a href="intro_what.html">What other services does Berkeley DB provide?</a> </span></p>
+<p><span class="sect1"> <a href="intro_distrib.html">What does the Berkeley DB distribution include?</a> </span></p>
+<p><span class="sect1"> <a href="intro_where.html">Where does Berkeley DB run?</a> </span></p>
+<p><span class="sect1"> <a href="intro_products.html">The Berkeley DB products</a> </span></p>
+<p><span class="sect2"> <a href="intro_products.html#idp50715960">Berkeley DB Data Store</a> </span></p>
+<p><span class="sect2"> <a href="intro_products.html#idp50715552">Berkeley DB Concurrent Data Store</a> </span></p>
+<p><span class="sect2"> <a href="intro_products.html#idp50708368">Berkeley DB Transactional Data Store</a> </span></p>
+<p><span class="sect2"> <a href="intro_products.html#idp50712672">Berkeley DB High Availability</a> </span></p>
+<h2 id="an-introduction-to-data-management">An introduction to data management</h2>
+<p>Cheap, powerful computing and networking have created countless new applications that could not have existed a decade ago. The advent of the World-Wide Web, and its influence in driving the Internet into homes and businesses, is one obvious example. Equally important, though, is the shift from large, general-purpose desktop and server computers toward smaller, special-purpose devices with built-in processing and communications services.</p>
+<p>As computer hardware has spread into virtually every corner of our lives, of course, software has followed. Software developers today are building applications not just for conventional desktop and server environments, but also for handheld computers, home appliances, networking hardware, cars and trucks, factory floor automation systems, cellphones, and more.</p>
+<p>While these operating environments are diverse, the problems that software engineers must solve in them are often strikingly similar. Most systems must deal with the outside world, whether that means communicating with users or controlling machinery. As a result, most need some sort of I/O system. Even a simple, single-function system generally needs to handle multiple tasks, and so needs some kind of operating system to schedule and manage control threads. Also, many computer systems must store and retrieve data to track history, record configuration settings, or manage access.</p>
+<p>Data management can be very simple. In some cases, just recording configuration in a flat text file is enough. More often, though, programs need to store and search a large amount of data, or structurally complex data. Database management systems are tools that programmers can use to do this work quickly and efficiently using off-the-shelf software.</p>
+<p>Of course, database management systems have been around for a long time. Data storage is a problem dating back to the earliest days of computing. Software developers can choose from hundreds of good, commercially-available database systems. The problem is selecting the one that best solves the problems that their applications face.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

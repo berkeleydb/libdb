@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dbstl memory management — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="dbstl-memory-management">Dbstl memory management</h2>
+<p><span class="sect2"> <a href="stl_memory_mgmt.html#idp51564672">Freeing memory</a> </span></p>
+<p><span class="sect2"> <a href="stl_memory_mgmt.html#idp51569240">Type specific notes</a> </span></p>
+<h3 id="freeing-memory">Freeing memory</h3>
+<p>When using dbstl, make sure memory allocated in the heap is released after use. The rules for this are:</p>
+<ul>
+<li><p>dbstl will free/delete any memory allocated by dbstl itself.</p></li>
+<li><p>You are responsible for freeing/deleting any memory allocated by your code outside of dbstl.</p></li>
+</ul>
+<h3 id="type-specific-notes">Type specific notes</h3>
+<h4 id="dbenvdb">DbEnv/Db</h4>
+<p>When you open a <code>DbEnv</code> or <code>Db</code> object using <code>dbstl::open_env()</code> or <code>dbstl::open_db()</code>, you do not need to delete that object. However, if you new'd that object and then opened it without using the <code>dbstl::open_env()</code> or <code>dbstl::open_db()</code> methods, you are responsible for deleting the object.</p>
+<p>Note that you must <code>new</code> the <code>Db</code> or <code>DbEnv</code> object, which allocates it on the heap. You can not allocate it on the stack. If you do, the order of destruction is uncontrollable, which makes dbstl unable to work properly.</p>
+<p>You can call <code>dbstl_exit()</code> before the process exits, to release any memory allocated by dbstl that has to live during the entire process lifetime. Releasing the memory explicitly will not make much difference, because the process is about to exit and so all memory allocated on the heap is going to be returned to the operating system anyway. The only real difference is that your memory leak checker will not report false memory leaks.</p>
+<p><code>dbstl_exit()</code> releases any memory allocated by dbstl on the heap. It also performs other required shutdown operations, such as closing any databases and environments registered to dbstl and shared across the process.</p>
+<p>If you are calling the <code>dbstl_exit()</code> function, and your <code>DbEnv</code> or <code>Db</code> objects are new'd by your code, the <code>dbstl_exit()</code> function should be called before deleting the <code>DbEnv</code> or <code>Db</code> objects, because they need to be closed before being deleted. Alternatively, you can call the <code>dbstl::close_env()</code> or <code>dbstl::close_db()</code> functions before deleting the <code>DbEnv</code> or <code>Db</code> objects in order to explicitly close the databases or environments. If you do this, can then delete these objects, and then call <code>dbstl_exit()</code>.</p>
+<p>In addition, before exiting a thread that uses dbstl API, you can call the <code>dbstl_thread_exit() </code>function to release any Berkeley DB handles if they are not used by other threads. If you do not call the <code>dbstl_thread_exit() </code>function or call this function only in some threads, all open Berkeley DB handles will be closed by the <code>dbstl_exit()</code>function. You must call the <code>dbstl_exit() </code>function before the process exits, to avoid memory leak and database update loss, if you do not have transactions and persistent log files.</p>
+<h4 id="dbstldbt">DbstlDbt</h4>
+<p>Only when you are storing raw bytes (such as a bitmap) do you have to store and retrieve data by using the <code>DbstlDbt</code> helper class. Although you also can do so simply by using the Berkeley DB <code>Dbt</code> class, the <code>DbstlDbt</code> class offers more convenient memory management behavior.</p>
+<p>When you are storing <code>DbstlDbt</code> objects (such as <code>db_vector&lt;DbstlDbt&gt;</code>), you <span class="emphasis"><em>must</em></span> allocate heap memory explicitly using the <code>malloc()</code> function for the <code>DbstlDbt</code> object to reference, but you do not need to free the memory – it is automatically freed by the <code>DbstlDbt</code> object that owns it by calling the standard C library <code>free()</code> function.</p>
+<p>However, because dbstl supports storing any type of object or primitive data, it is rare that you would have to store data using <code>DbstlDbt</code> objects while using dbstl. Examples of storing <code>DbstlDbt</code> objects can be found in the <code>StlAdvancedFeaturesExample::arbitrary_object_storage()</code> and <code>StlAdvancedFeaturesExample::char_star_string_storage()</code> methods.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

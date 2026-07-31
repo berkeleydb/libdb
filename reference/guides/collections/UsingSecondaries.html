@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 3.  Using Secondary Indices — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / collections</nav>
+  <main>
+<h2 id="chapter-3--using-secondary-indices">Chapter 3.  Using Secondary Indices</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="UsingSecondaries.html#opensecondaryindices">Opening Secondary Key Indices</a> </span></p>
+<p><span class="sect1"> <a href="openingforeignkeys.html">More Secondary Key Indices</a> </span></p>
+<p><span class="sect1"> <a href="indexedcollections.html">Creating Indexed Collections</a> </span></p>
+<p><span class="sect1"> <a href="retrievingbyindexkey.html">Retrieving Items by Index Key</a> </span></p>
+<p>In the Basic example, each store has a single <span class="emphasis"><em>primary key</em></span>. The Index example extends the Basic example to add the use of <span class="emphasis"><em>secondary keys</em></span>.</p>
+<p>The complete source of the final version of the example program is included in the Berkeley DB distribution.</p>
+<h2 id="opening-secondary-key-indices">Opening Secondary Key Indices</h2>
+<p><span class="emphasis"><em>Secondary indices</em></span> or <span class="emphasis"><em>secondary databases</em></span> are used to access a primary database by a key other than the primary key. Recall that the Supplier Number field is the primary key of the Supplier database. In this section, the Supplier City field will be used as a secondary lookup key. Given a city value, we would like to be able to find the Suppliers in that city. Note that more than one Supplier may be in the same city.</p>
+<p>Both primary and secondary databases contain key-value records. The key of an index record is the secondary key, and its value is the key of the associated record in the primary database. When lookups by secondary key are performed, the associated record in the primary database is transparently retrieved by its primary key and returned to the caller.</p>
+<p>Secondary indices are maintained automatically when index key fields (the City field in this case) are added, modified or removed in the records of the primary database. However, the application must implement a <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" class="ulink" target="_top">SecondaryKeyCreator</a> that extracts the index key from the database record.</p>
+<p>It is useful to contrast opening an secondary index with opening a primary database (as described earlier in <a href="opendatabases.html" class="xref" title="Opening and Closing Databases">Opening and Closing Databases</a> .</p>
+<ul>
+<li><p>A primary database may be associated with one or more secondary indices. A secondary index is always associated with exactly one primary database.</p></li>
+<li><p>For a secondary index, a <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" class="ulink" target="_top">SecondaryKeyCreator</a> must be implemented by the application to extract the index key from the record of its associated primary database.</p></li>
+<li><p>A primary database is represented by a <a href="../../java/com/sleepycat/db/Database.html" class="ulink" target="_top">Database</a> object and a secondary index is represented by a <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" class="ulink" target="_top">SecondaryDatabase</a> object. The <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" class="ulink" target="_top">SecondaryDatabase</a> class extends the <a href="../../java/com/sleepycat/db/Database.html" class="ulink" target="_top">Database</a> class.</p></li>
+<li><p>When a <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" class="ulink" target="_top">SecondaryDatabase</a> is created it is associated with a primary <a href="../../java/com/sleepycat/db/Database.html" class="ulink" target="_top">Database</a> object and a <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" class="ulink" target="_top">SecondaryKeyCreator</a>.</p></li>
+</ul>
+<p>The <code>SampleDatabase</code> class is extended to open the Supplier-by-City secondary key index.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>serial<span class="op">.</span>SerialSerialKeyCreator<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>SecondaryConfig<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>SecondaryDatabase<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>public class SampleDatabase</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> final String SUPPLIER_CITY_INDEX <span class="op">=</span> </span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;supplier_city_index&quot;</span><span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    private SecondaryDatabase supplierByCityDb<span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    public SampleDatabase<span class="op">(</span>String homeDirectory<span class="op">)</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException<span class="op">,</span> FileNotFoundException</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">...</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        SecondaryConfig secConfig <span class="op">=</span> new SecondaryConfig<span class="op">();</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>        secConfig<span class="op">.</span>setTransactional<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        secConfig<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        secConfig<span class="op">.</span>setType<span class="op">(</span>DatabaseType<span class="op">.</span>BTREE<span class="op">);</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        secConfig<span class="op">.</span>setSortedDuplicates<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>        secConfig<span class="op">.</span>setKeyCreator<span class="op">(</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>            new SupplierByCityKeyCreator<span class="op">(</span>javaCatalog<span class="op">,</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>                                         SupplierKey<span class="op">.</span>class<span class="op">,</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>                                         SupplierData<span class="op">.</span>class<span class="op">,</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>                                         String<span class="op">.</span>class<span class="op">));</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>        supplierByCityDb <span class="op">=</span> env<span class="op">.</span>openSecondaryDatabase<span class="op">(</span>null<span class="op">,</span> </span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>                                                     SUPPLIER_CITY_INDEX<span class="op">,</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>                                                     null<span class="op">,</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>                                                     supplierDb<span class="op">,</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>                                                     secConfig<span class="op">);</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>A <a href="../../java/com/sleepycat/db/SecondaryConfig.html" class="ulink" target="_top">SecondaryConfig</a> object is used to configure the secondary database. The <a href="../../java/com/sleepycat/db/SecondaryConfig.html" class="ulink" target="_top">SecondaryConfig</a> class extends the <a href="../../java/com/sleepycat/db/DatabaseConfig.html" class="ulink" target="_top">DatabaseConfig</a> class, and most steps for configuring a secondary database are the same as for configuring a primary database. The main difference in the example above is that the <code>SecondaryConfig.setSortedDuplicates()</code> method is called to allow duplicate index keys. This is how more than one Supplier may be in the same City. If this property is not specified, the default is that the index keys of all records must be unique.</p>
+<p>For a primary database, duplicate keys are not normally used since a primary database with duplicate keys may not have any associated secondary indices. If primary database keys are not unique, there is no way for a secondary key to reference a specific record in the primary database.</p>
+<p>Note that <code>setSortedDuplicates()</code> and not <code>setUnsortedDuplicates()</code> was called. Sorted duplicates are always used for indices rather than unsorted duplicates, since sorting enables optimized equality joins.</p>
+<p>Opening a secondary key index requires creating a <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" class="ulink" target="_top">SecondaryKeyCreator</a>. The <code>SupplierByCityKeyCreator</code> class implements the <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" class="ulink" target="_top">SecondaryKeyCreator</a> interface and will be defined below.</p>
+<p>The <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" class="ulink" target="_top">SecondaryDatabase</a> object is opened last. If you compare the <code>openSecondaryDatabase()</code> and <code>openDatabase()</code> methods you'll notice only two differences:</p>
+<ul>
+<li><p><code>openSecondaryDatabase()</code> has an extra parameter for specifying the associated primary database. The primary database is <code>supplierDb</code> in this case.</p></li>
+<li><p>The last parameter of <code>openSecondaryDatabase()</code> is a <code>SecondaryConfig</code> instead of a <code>DatabaseConfig</code>.</p></li>
+</ul>
+<p>How to use the secondary index to access records will be shown in a later section.</p>
+<p>The application-defined <code>SupplierByCityKeyCreator</code> class is shown below. It was used above to configure the secondary database.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>public class SampleDatabase</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> class SupplierByCityKeyCreator</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        extends SerialSerialKeyCreator</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        private SupplierByCityKeyCreator<span class="op">(</span>ClassCatalog catalog<span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>                                      Class primaryKeyClass<span class="op">,</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>                                      Class valueClass<span class="op">,</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>                                      Class indexKeyClass<span class="op">)</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>            super<span class="op">(</span>catalog<span class="op">,</span> primaryKeyClass<span class="op">,</span> valueClass<span class="op">,</span> indexKeyClass<span class="op">);</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        public Object createSecondaryKey<span class="op">(</span>Object primaryKeyInput<span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>                                         Object valueInput<span class="op">)</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>            SupplierData supplierData <span class="op">=</span> <span class="op">(</span>SupplierData<span class="op">)</span> valueInput<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> supplierData<span class="op">.</span>getCity<span class="op">();</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>In general, a key creator class must implement the <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" class="ulink" target="_top">SecondaryKeyCreator</a> interface. This interface has methods that operate on the record data as raw bytes. In practice, it is easiest to use an abstract base class that performs the conversion of record data to and from the format defined for the database's key and value. The base class implements the <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" class="ulink" target="_top">SecondaryKeyCreator</a> interface and has abstract methods that must be implemented in turn by the application.</p>
+<p>In this example the <a href="../../java/com/sleepycat/bind/serial/SerialSerialKeyCreator.html" class="ulink" target="_top">SerialSerialKeyCreator</a> base class is used because the database record uses the serial format for both its key and its value. The abstract methods of this class have key and value parameters of type <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/lang/Object.html" class="ulink" target="_top">Object</a> which are automatically converted to and from the raw record data by the base class.</p>
+<p>To perform the conversions properly, the key creator must be aware of all three formats involved: the key format of the primary database record, the value format of the primary database record, and the key format of the index record. The <a href="../../java/com/sleepycat/bind/serial/SerialSerialKeyCreator.html" class="ulink" target="_top">SerialSerialKeyCreator</a> constructor is given the base classes for these three formats as parameters.</p>
+<p>The <code>SerialSerialKeyCreator.createSecondaryKey</code> method is given the key and value of the primary database record as parameters, and it returns the key of the index record. In this example, the index key is a field in the primary database record value. Since the record value is known to be a <code>SupplierData</code> object, it is cast to that class and the city field is returned.</p>
+<p>Note that the <code>primaryKeyInput</code> parameter is not used in the example. This parameter is needed only when an index key is derived from the key of the primary database record. Normally an index key is derived only from the primary database record value, but it may be derived from the key, value or both.</p>
+<p>The following getter methods return the secondary database object for use by other classes in the example program. The secondary database object is used to create Java collections for accessing records via their secondary keys.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>public class SampleDatabase</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    public final SecondaryDatabase getSupplierByCityDatabase<span class="op">()</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> supplierByCityDb<span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>The following statement closes the secondary database.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>public class SampleDatabase</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> close<span class="op">()</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException <span class="op">{</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>        supplierByCityDb<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        partDb<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        supplierDb<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        shipmentDb<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        javaCatalog<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>        env<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>Secondary databases must be closed before closing their associated primary database.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

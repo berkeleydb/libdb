@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 18.  The Memory Pool Subsystem — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-18--the-memory-pool-subsystem">Chapter 18.  The Memory Pool Subsystem</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="mp.html#mp_intro">Introduction to the memory pool subsystem</a> </span></p>
+<p><span class="sect1"> <a href="mp_config.html">Configuring the memory pool</a> </span></p>
+<p><span class="sect1"> <a href="mp_warm.html">Warming the memory pool</a> </span></p>
+<p><span class="sect2"> <a href="mp_warm.html#warm_cache">The warm_cache() function</a> </span></p>
+<h2 id="introduction-to-the-memory-pool-subsystem">Introduction to the memory pool subsystem</h2>
+<p>The Memory Pool subsystem is the general-purpose shared memory buffer pool used by Berkeley DB. This module is useful outside of the Berkeley DB package for processes that require page-oriented, shared and cached file access. (However, such "use outside of Berkeley DB" is not supported in replicated environments.)</p>
+<p>A <span class="emphasis"><em>memory pool</em></span> is a memory cache shared among any number of threads of control. The <a href="../../api/c/envopen.html#envopen_DB_INIT_MPOOL" class="olink">DB_INIT_MPOOL</a> flag to the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method opens and optionally creates a memory pool. When that pool is no longer in use, it should be closed using the <a href="../../api/c/envclose.html" class="olink">DB_ENV-&gt;close()</a> method.</p>
+<p>The <a href="../../api/c/mempfcreate.html" class="olink">DB_ENV-&gt;memp_fcreate()</a> method returns a <a href="../../api/c/memp.html" class="olink">DB_MPOOLFILE</a> handle on an underlying file within the memory pool. The file may be opened using the <a href="../../api/c/mempfopen.html" class="olink">DB_MPOOLFILE-&gt;open()</a> method. The <a href="../../api/c/mempfget.html" class="olink">DB_MPOOLFILE-&gt;get()</a> method is used to retrieve pages from files in the pool. All retrieved pages must be subsequently returned using the <a href="../../api/c/mempput.html" class="olink">DB_MPOOLFILE-&gt;put()</a> method. At the time pages are returned, they may be marked <strong>dirty</strong>, which causes them to be written to the underlying file before being discarded from the pool. If there is insufficient room to bring a new page in the pool, a page is selected to be discarded from the pool using a least-recently-used algorithm. All dirty pages in the pool from the file may be flushed using the <a href="../../api/c/mempfsync.html" class="olink">DB_MPOOLFILE-&gt;sync()</a> method. When the file handle is no longer in use, it should be closed using the <a href="../../api/c/mempfclose.html" class="olink">DB_MPOOLFILE-&gt;close()</a> method.</p>
+<p>There are additional configuration interfaces that apply when opening a new file in the memory pool:</p>
+<ul>
+<li>The <a href="../../api/c/mempset_clear_len.html" class="olink">DB_MPOOLFILE-&gt;set_clear_len()</a> method specifies the number of bytes to clear when creating a new page in the memory pool.</li>
+<li>The <a href="../../api/c/mempset_fileid.html" class="olink">DB_MPOOLFILE-&gt;set_fileid()</a> method specifies a unique ID associated with the file.</li>
+<li>The <a href="../../api/c/mempset_ftype.html" class="olink">DB_MPOOLFILE-&gt;set_ftype()</a> method specifies the type of file for the purposes of page input and output processing.</li>
+<li>The <a href="../../api/c/mempset_lsn_offset.html" class="olink">DB_MPOOLFILE-&gt;set_lsn_offset()</a> method specifies the byte offset of each page's log sequence number (<a href="../../api/c/lsn.html" class="olink">DB_LSN</a>) for the purposes of transaction checkpoints.</li>
+<li>The <a href="../../api/c/mempset_pgcookie.html" class="olink">DB_MPOOLFILE-&gt;set_pgcookie()</a> method specifies an application provided argument for the purposes of page input and output processing.</li>
+</ul>
+<p>There are additional interfaces for the memory pool as a whole:</p>
+<ul>
+<li>It is possible to gradually flush buffers from the pool in order to maintain a consistent percentage of clean buffers in the pool using the <a href="../../api/c/memptrickle.html" class="olink">DB_ENV-&gt;memp_trickle()</a> method.</li>
+<li>Because special-purpose processing may be necessary when pages are read or written (for example, endian conversion, or page checksums), the <a href="../../api/c/mempregister.html" class="olink">DB_ENV-&gt;memp_register()</a> function allows applications to specify automatic input and output processing in these cases.</li>
+<li>The <a href="../../api/c/db_stat.html" class="olink">db_stat</a> utility uses the <a href="../../api/c/mempstat.html" class="olink">DB_ENV-&gt;memp_stat()</a> method to display statistics about the efficiency of the pool.</li>
+<li>All dirty pages in the pool may be flushed using the <a href="../../api/c/mempsync.html" class="olink">DB_ENV-&gt;memp_sync()</a> method. In addition, <a href="../../api/c/mempsync.html" class="olink">DB_ENV-&gt;memp_sync()</a> takes an argument that is specific to database systems, and which allows the memory pool to be flushed up to a specified log sequence number (<a href="../../api/c/lsn.html" class="olink">DB_LSN</a>).</li>
+<li>The entire pool may be discarded using the <a href="../../api/c/envremove.html" class="olink">DB_ENV-&gt;remove()</a> method.</li>
+</ul>
+<p>For more information on the memory pool subsystem methods, see the <a href="../../api/c/memp.html#memplist" class="olink">Memory Pools and Related Methods</a> section in the <em>Berkeley DB C API Reference Guide.</em></p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

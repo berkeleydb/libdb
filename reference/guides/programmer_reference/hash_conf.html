@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hash access method specific configuration — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="hash-access-method-specific-configuration">Hash access method specific configuration</h2>
+<p><span class="sect2"> <a href="hash_conf.html#am_conf_h_ffactor">Page fill factor</a> </span></p>
+<p><span class="sect2"> <a href="hash_conf.html#am_conf_h_hash">Specifying a database hash</a> </span></p>
+<p><span class="sect2"> <a href="hash_conf.html#am_conf_h_nelem">Hash table size</a> </span></p>
+<p>There are a series of configuration tasks which you can perform when using the Hash access method. They are described in the following sections.</p>
+<h3 id="page-fill-factor">Page fill factor</h3>
+<p>The density, or page fill factor, is an approximation of the number of keys allowed to accumulate in any one bucket, determining when the hash table grows or shrinks. If you know the average sizes of the keys and data in your data set, setting the fill factor can enhance performance. A reasonable rule to use to compute fill factor is:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">(</span>pagesize <span class="op">-</span> <span class="dv">32</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span>average_key_size <span class="op">+</span> average_data_size <span class="op">+</span> <span class="dv">8</span><span class="op">)</span></span></code></pre></div>
+<p>The desired density within the hash table can be specified by calling the <a href="../../api/c/dbset_h_ffactor.html" class="olink">DB-&gt;set_h_ffactor()</a> method. If no density is specified, one will be selected dynamically as pages are filled.</p>
+<h3 id="specifying-a-database-hash">Specifying a database hash</h3>
+<p>The database hash determines in which bucket a particular key will reside. The goal of hashing keys is to distribute keys equally across the database pages, therefore it is important that the hash function work well with the specified keys so that the resulting bucket usage is relatively uniform. A hash function that does not work well can effectively turn into a sequential list.</p>
+<p>No hash performs equally well on all possible data sets. It is possible that applications may find that the default hash function performs poorly with a particular set of keys. The distribution resulting from the hash function can be checked using the <a href="../../api/c/db_stat.html" class="olink">db_stat</a> utility. By comparing the number of hash buckets and the number of keys, one can decide if the entries are hashing in a well-distributed manner.</p>
+<p>The hash function for the hash table can be specified by calling the <a href="../../api/c/dbset_h_hash.html" class="olink">DB-&gt;set_h_hash()</a> method. If no hash function is specified, a default function will be used. Any application-specified hash function must take a reference to a <a href="../../api/c/db.html" class="olink">DB</a> object, a pointer to a byte string and its length, as arguments and return an unsigned, 32-bit hash value.</p>
+<h3 id="hash-table-size">Hash table size</h3>
+<p>When setting up the hash database, knowing the expected number of elements that will be stored in the hash table is useful. This value can be used by the Hash access method implementation to more accurately construct the necessary number of buckets that the database will eventually require.</p>
+<p>The anticipated number of elements in the hash table can be specified by calling the <a href="../../api/c/dbset_h_nelem.html" class="olink">DB-&gt;set_h_nelem()</a> method. If not specified, or set too low, hash tables will expand gracefully as keys are entered, although a slight performance degradation may be noticed. In order for the estimated number of elements to be a useful value to Berkeley DB, the <a href="../../api/c/dbset_h_ffactor.html" class="olink">DB-&gt;set_h_ffactor()</a> method must also be called to set the page fill factor.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

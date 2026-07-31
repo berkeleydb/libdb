@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dbstl container specific notes — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="dbstl-container-specific-notes">Dbstl container specific notes</h2>
+<p><span class="sect2"> <a href="stl_container_specific.html#idp51492808">db_vector specific notes</a> </span></p>
+<p><span class="sect2"> <a href="stl_container_specific.html#idp51561456">Associative container specific notes</a> </span></p>
+<h3 id="db_vector-specific-notes">db_vector specific notes</h3>
+<ul>
+<li><p>Set the <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RENUMBER" class="olink">DB_RENUMBER</a> flag in the database handle if you want <code>db_vector&lt;&gt;</code> to work like <code>std::vector</code> or <code>std::deque</code>. Do not set <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RENUMBER" class="olink">DB_RENUMBER</a> if you want <code>db_vector&lt;&gt;</code> to work like <code>std::list</code>. Note that without <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RENUMBER" class="olink">DB_RENUMBER</a> set, <code>db_vector&lt;&gt;</code> can work faster.</p>
+<p>For example, to construct a fast std::queue/std::stack object, you only need a <code>db_vector&lt;&gt;</code> object whose database handle does not have <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RENUMBER" class="olink">DB_RENUMBER</a> set. Of course, if the database handle has <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RENUMBER" class="olink">DB_RENUMBER</a> set, it still works for this kind of scenario, just not as fast.</p>
+<p><code>db_vector</code> does not check whether <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RENUMBER" class="olink">DB_RENUMBER</a> is set. If you do not set it, <code>db_vector&lt;&gt;</code> will not work like std::vector&lt;&gt;/std::deque&lt;&gt; with regard to operator[], because the indices are not maintained in that case.</p>
+<p>You can find example code showing how to use this feature in the <code>StlAdvancedFeaturesExample::queue_stack()</code> method.</p></li>
+<li><p>Just as is the case with <code>std::vector</code>, inserting/deleting in the middle of a <code>db_vector</code> is slower than doing the same action at the end of the sequence. This is because the underlying DB_RECNO DB (with the <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RENUMBER" class="olink">DB_RENUMBER</a> flag set) is relatively slow when inserting/deleting in the middle or the head — it has to update the index numbers of all the records following the one that was inserted/deleted. If you do not need to keep the index ordered on insert/delete, you can use <code>db_map</code> instead.</p>
+<p><code>db_vector</code> also contains methods inherited from <code>std::list</code> and <code>std::deque</code>, including <code>std::list&lt;&gt;'s</code> unique methods <code>remove()</code>, <code>remove_if()</code>, <code>unique()</code>, <code>merge()</code>, <code>sort()</code>, <code>reverse()</code>, and <code>splice()</code>. These use the identical semantics/behaviors of the <code>std::list&lt;&gt;</code> methods, although pushing/deleting at the head is slower than the <code>std::deque</code> and <code>std::list</code> equivalent when there are quite a lot of elements in the database.</p></li>
+<li><p>You can use <code>std::queue</code>, <code>std::priority_queue</code> and <code>std::stack</code> container adapters with <code>db_vector</code>; they work with db_vector even without <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RENUMBER" class="olink">DB_RENUMBER</a> set.</p></li>
+</ul>
+<h3 id="associative-container-specific-notes">Associative container specific notes</h3>
+<p><code>db_map</code> contains the union of method set from <code>std::map</code> and <code>hash_map</code>, but there are some methods that can only be called on containers backed by <code>DB_BTREE</code> or <code>DB_HASH</code> databases. You can call <code>db_map&lt;&gt;::is_hash()</code> to figure out the type of the backing database. If you call unsupported methods then an InvalidFunctionCall exception is thrown.</p>
+<p>These are the <code>DB_BTREE</code> specific methods: <code>upper_bound()</code>, <code>lower_bound()</code>, <code>key_comp()</code>, and <code>value_comp()</code>. The <code>DB_HASH</code> specific methods are <code>key_eq()</code>, <code>hash_funct()</code>.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

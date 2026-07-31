@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DB_LOCK_NOTGRANTED — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / upgrading</nav>
+  <main>
+<h2 id="db_lock_notgranted">DB_LOCK_NOTGRANTED</h2>
+<p>In previous releases, configuring lock or transaction timeout values or calling the <a href="../../api/c/txnbegin.html" class="olink">DB_ENV-&gt;txn_begin()</a> method with the <a href="../../api/c/txnbegin.html#txnbegin_DB_TXN_NOWAIT" class="olink">DB_TXN_NOWAIT</a> flag caused database operation methods to return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>, or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception. This required applications to unnecessarily handle multiple errors or exception types.</p>
+<p>In the Berkeley DB 4.2 release, with one exception, database operations will no longer return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception. Instead, database operations will return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a> or throw a <a href="../api_reference/CXX/dbdeadlock.html" class="olink">DbDeadlockException</a> exception. This change should require no application changes, as applications must already be dealing with the possible <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a> error return or <a href="../api_reference/CXX/dbdeadlock.html" class="olink">DbDeadlockException</a> exception from database operations.</p>
+<p>The one exception to this rule is the <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a> method using the <a href="../../api/c/dbget.html#dbget_DB_CONSUME_WAIT" class="olink">DB_CONSUME_WAIT</a> flag to consume records from a Queue. If lock or transaction timeouts are set, this method and flag combination may return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception.</p>
+<p>Applications wanting to distinguish between true deadlocks and timeouts can configure database operation methods to return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception using the <a href="../../api/c/envset_flags.html#envset_flags_DB_TIME_NOTGRANTED" class="olink">DB_TIME_NOTGRANTED</a> flag.</p>
+<p>The <a href="../../api/c/lockget.html" class="olink">DB_ENV-&gt;lock_get()</a> and <a href="../../api/c/lockvec.html" class="olink">DB_ENV-&gt;lock_vec()</a> methods will continue to return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a>, or throw a <a href="../api_reference/CXX/dblocknotgranted.html" class="olink">DbLockNotGrantedException</a> exception as they have previously done.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

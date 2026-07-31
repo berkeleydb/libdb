@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Network partitions — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="network-partitions">Network partitions</h2>
+<p>The Berkeley DB replication implementation can be affected by network partitioning problems.</p>
+<p>For example, consider a replication group with N members. The network partitions with the master on one side and more than N/2 of the sites on the other side. The sites on the side with the master will continue forward, and the master will continue to accept write queries for the databases. Unfortunately, the sites on the other side of the partition, realizing they no longer have a master, will hold an election. The election will succeed as there are more than N/2 of the total sites participating, and there will then be two masters for the replication group. Since both masters are potentially accepting write queries, the databases could diverge in incompatible ways.</p>
+<p>If multiple masters are ever found to exist in a replication group, a master detecting the problem will return <a href="../../api/c/repmessage.html#repmsg_DB_REP_DUPMASTER" class="olink">DB_REP_DUPMASTER</a>. If the application sees this return, it should reconfigure itself as a client (by calling <a href="../../api/c/repstart.html" class="olink">DB_ENV-&gt;rep_start()</a>), and then call for an election (by calling <a href="../../api/c/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a>). The site that wins the election may be one of the two previous masters, or it may be another site entirely. Regardless, the winning system will bring all of the other systems into conformance.</p>
+<p>As another example, consider a replication group with a master environment and two clients A and B, where client A may upgrade to master status and client B cannot. Then, assume client A is partitioned from the other two database environments, and it becomes out-of-date with respect to the master. Then, assume the master crashes and does not come back on-line. Subsequently, the network partition is restored, and clients A and B hold an election. As client B cannot win the election, client A will win by default, and in order to get back into sync with client B, possibly committed transactions on client B will be unrolled until the two sites can once again move forward together.</p>
+<p>In both of these examples, there is a phase where a newly elected master brings the members of a replication group into conformance with itself so that it can start sending new information to them. This can result in the loss of information as previously committed transactions are unrolled.</p>
+<p>In architectures where network partitions are an issue, applications may want to implement a heart-beat protocol to minimize the consequences of a bad network partition. As long as a master is able to contact at least half of the sites in the replication group, it is impossible for there to be two masters. If the master can no longer contact a sufficient number of systems, it should reconfigure itself as a client, and hold an election. Replication Manager does not currently implement such a feature, so this technique is only available to Base API applications.</p>
+<p>There is another tool applications can use to minimize the damage in the case of a network partition. By specifying an <strong>nsites</strong> argument to <a href="../../api/c/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> that is larger than the actual number of database environments in the replication group, Base API applications can keep systems from declaring themselves the master unless they can talk to a large percentage of the sites in the system. For example, if there are 20 database environments in the replication group, and an argument of 30 is specified to the <a href="../../api/c/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> method, then a system will have to be able to talk to at least 16 of the sites to declare itself the master.</p>
+<p>Replication Manager uses the value of <strong>nsites</strong> (configured by the <a href="../../api/c/repnsites.html" class="olink">DB_ENV-&gt;rep_set_nsites()</a> method) for elections as well as in calculating how many acknowledgements to wait for when sending a <a href="../../api/c/reptransport.html#transport_DB_REP_PERMANENT" class="olink">DB_REP_PERMANENT</a> message. So this technique may be useful here as well, unless the application uses the <a href="../../api/c/repmgrset_ack_policy.html#ackspolicy_DB_REPMGR_ACKS_ALL" class="olink">DB_REPMGR_ACKS_ALL</a> or <a href="../../api/c/repmgrset_ack_policy.html#ackspolicy_DB_REPMGR_ACKS_ALL_PEERS" class="olink">DB_REPMGR_ACKS_ALL_PEERS</a> acknowledgement policies.</p>
+<p>Specifying a <strong>nsites</strong> argument to <a href="../../api/c/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> that is smaller than the actual number of database environments in the replication group has its uses as well. For example, consider a replication group with 2 environments. If they are partitioned from each other, neither of the sites could ever get enough votes to become the master. A reasonable alternative would be to specify a <strong>nsites</strong> argument of 2 to one of the systems and a <strong>nsites</strong> argument of 1 to the other. That way, one of the systems could win elections even when partitioned, while the other one could not. This would allow one of the systems to continue accepting write queries after the partition.</p>
+<p>In a 2-site group, Replication Manager by default reacts to the loss of communication with the master by observing a strict majority rule that prevents the survivor from taking over. Thus it avoids multiple masters and the need to unroll some transactions if both sites are running but cannot communicate. But it does leave the group in a read-only state until both sites are available. If application availability while one site is down is a priority and it is acceptable to risk unrolling some transactions, there is a configuration option to turn off the strict majority rule and allow the surviving client to declare itself to be master. See the <a href="../../api/c/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method <a href="../../api/c/repconfig.html#config_DB_REPMGR_CONF_2SITE_STRICT" class="olink">DB_REPMGR_CONF_2SITE_STRICT</a> flag for more information.</p>
+<p>These scenarios stress the importance of good network infrastructure in Berkeley DB replicated environments. When replicating database environments over sufficiently lossy networking, the best solution may well be to pick a single master, and only hold elections when human intervention has determined the selected master is unable to recover at all.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

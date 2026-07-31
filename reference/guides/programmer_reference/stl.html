@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 7. Standard Template Library API — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-7-standard-template-library-api">Chapter 7. Standard Template Library API</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="stl.html#stl_intro">Dbstl introduction</a> </span></p>
+<p><span class="sect2"> <a href="stl.html#stl_intro_stdcompat">Standards compatible</a> </span></p>
+<p><span class="sect2"> <a href="stl.html#stl_intro_performance">Performance overhead</a> </span></p>
+<p><span class="sect2"> <a href="stl.html#stl_intro_portability">Portability</a> </span></p>
+<p><span class="sect1"> <a href="stl_usecase.html">Dbstl typical use cases</a> </span></p>
+<p><span class="sect1"> <a href="stl_examples.html">Dbstl examples</a> </span></p>
+<p><span class="sect1"> <a href="stl_db_usage.html">Berkeley DB configuration</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_usage.html#idp51381760">Registering database and environment handles</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_usage.html#idp51405208">Truncate requirements</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_usage.html#idp51416888">Auto commit support</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_usage.html#idp51379224">Database and environment identity checks</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_usage.html#idp51415360">Products, constructors and configurations</a> </span></p>
+<p><span class="sect1"> <a href="stl_db_advanced_usage.html">Using advanced Berkeley DB features with dbstl</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_advanced_usage.html#idp51421384">Using bulk retrieval iterators</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_advanced_usage.html#idp51410312">Using the DB_RMW flag</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_advanced_usage.html#idp51398048">Using secondary index database and secondary containers</a> </span></p>
+<p><span class="sect1"> <a href="stl_txn_usage.html">Using transactions in dbstl</a> </span></p>
+<p><span class="sect1"> <a href="stl_mt_usage.html">Using dbstl in multithreaded applications</a> </span></p>
+<p><span class="sect1"> <a href="stl_primitive_rw.html">Working with primitive types</a> </span></p>
+<p><span class="sect2"> <a href="stl_primitive_rw.html#idp51467888">Storing strings</a> </span></p>
+<p><span class="sect1"> <a href="stl_complex_rw.html">Store and Retrieve data or objects of complex types</a> </span></p>
+<p><span class="sect2"> <a href="stl_complex_rw.html#idp51458752">Storing varying length objects</a> </span></p>
+<p><span class="sect2"> <a href="stl_complex_rw.html#idp51477944">Storing arbitrary sequences</a> </span></p>
+<p><span class="sect2"> <a href="stl_complex_rw.html#idp51524696">Notes</a> </span></p>
+<p><span class="sect1"> <a href="stl_persistence.html">Dbstl persistence</a> </span></p>
+<p><span class="sect2"> <a href="stl_persistence.html#directdbget">Direct database get</a> </span></p>
+<p><span class="sect2"> <a href="stl_persistence.html#chg_persistence">Change persistence</a> </span></p>
+<p><span class="sect2"> <a href="stl_persistence.html#obj_life_persistence">Object life time and persistence</a> </span></p>
+<p><span class="sect1"> <a href="stl_container_specific.html">Dbstl container specific notes</a> </span></p>
+<p><span class="sect2"> <a href="stl_container_specific.html#idp51492808">db_vector specific notes</a> </span></p>
+<p><span class="sect2"> <a href="stl_container_specific.html#idp51561456">Associative container specific notes</a> </span></p>
+<p><span class="sect1"> <a href="stl_efficienct_use.html">Using dbstl efficiently</a> </span></p>
+<p><span class="sect2"> <a href="stl_efficienct_use.html#idp51530568">Using iterators efficiently</a> </span></p>
+<p><span class="sect2"> <a href="stl_efficienct_use.html#idp51530352">Using containers efficiently</a> </span></p>
+<p><span class="sect1"> <a href="stl_memory_mgmt.html">Dbstl memory management</a> </span></p>
+<p><span class="sect2"> <a href="stl_memory_mgmt.html#idp51564672">Freeing memory</a> </span></p>
+<p><span class="sect2"> <a href="stl_memory_mgmt.html#idp51569240">Type specific notes</a> </span></p>
+<p><span class="sect1"> <a href="stl_misc.html">Dbstl miscellaneous notes</a> </span></p>
+<p><span class="sect2"> <a href="stl_misc.html#idp51587208">Special notes about trivial methods</a> </span></p>
+<p><span class="sect2"> <a href="stl_misc.html#idp51603304">Using correct container and iterator public types</a> </span></p>
+<p><span class="sect1"> <a href="stl_known_issues.html">Dbstl known issues</a> </span></p>
+<h2 id="dbstl-introduction">Dbstl introduction</h2>
+<p><span class="sect2"> <a href="stl.html#stl_intro_stdcompat">Standards compatible</a> </span></p>
+<p><span class="sect2"> <a href="stl.html#stl_intro_performance">Performance overhead</a> </span></p>
+<p><span class="sect2"> <a href="stl.html#stl_intro_portability">Portability</a> </span></p>
+<p>Dbstl is a C++ STL style API that provides for Berkeley DB usage. It allows for the storage and retrieval of data/objects of any type using Berkeley DB databases, but with an interface that mimics that of C++ STL containers. Dbstl provides access to all of the functionality of Berkeley DB available via this STL-style API.</p>
+<p>With proper configuration, dbstl is able to store/retrieve any complex data types. There is no need to perform repetitive marshalling and unmarshalling of data. Dbstl also properly manages the life-cycle of all Berkeley DB structures and objects. All example methods referred to in this chapter can be found in the StlAdvancedFeaturesExample class in the $DbSrc/examples_stl/StlAdvancedFeatures.cpp file, and you can build the example in $DbSrc/build_unix directory like this: make exstl_advancedfeatures, where DbSrc is the source directory for Berkeley DB.</p>
+<h3 id="standards-compatible">Standards compatible</h3>
+<p>Dbstl is composed of many container and iterator class templates. These containers and iterators correspond exactly to each container and iterator available in the C++ STL API, including identical sets of methods. This allows existing algorithms, functions and container-adapters for C++ STL to use dbstl containers through its standard iterators. This means that existing STL code can manipulate Berkeley DB databases. As a result, existing C++ STL code can very easily use dbstl to gain persistence and transaction guarantees.</p>
+<h3 id="performance-overhead">Performance overhead</h3>
+<p>Because dbstl uses C++ template technologies, its performance overhead is minimal.</p>
+<p>The dbstl API performs almost equally to the C API, as measured by two different implementations of the TPC-B benchmark: <code>ex_tpcb</code> and <code>exstl_tpcb</code>.</p>
+<h3 id="portability">Portability</h3>
+<p>The degree to which dbstl is portable to a new platform is determined by whether Berkeley DB is available on the platform, as well as whether an appropriate C++ compiler is available on the platform.</p>
+<p>For information on porting Berkeley DB to new platforms, see the <em>Berkeley DB Porting Guide</em>.</p>
+<p>Almost all the advanced C++ template features are used in dbstl, including:</p>
+<ul>
+<li><p>member function templates</p></li>
+<li><p>member function template overloads</p></li>
+<li><p>partial specialization</p></li>
+<li><p>default template parameters.</p></li>
+</ul>
+<p>For this reason, you need a standards-compatible C++ compiler to build dbstl. As of this writing, the following compilers are known to build dbstl successfully:</p>
+<ul>
+<li><p>MSVC8</p></li>
+<li><p>gcc3.4.4 and above</p></li>
+<li><p>Intel C++ 9 and above</p></li>
+</ul>
+<p>For *nix platforms, if you can successfully configure your Berkeley DB build script with <code>--enable-stl</code>, then you should be able to successfully build dbstl library and application code using it.</p>
+<p>Besides its own test suite, dbstl has also been tested against, and passes, the following test suites:</p>
+<ul>
+<li><p>MS STL test suite</p></li>
+<li><p>SGI STL test suite</p></li>
+</ul>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

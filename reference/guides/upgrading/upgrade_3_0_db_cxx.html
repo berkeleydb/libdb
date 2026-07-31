@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Db class for C++ and Java — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / upgrading</nav>
+  <main>
+<h2 id="db-class-for-c-and-java">Db class for C++ and Java</h2>
+<p>The static Db::open method and the DbInfo class have been removed in the Berkeley DB 3.0 release. The way to open a database file is to use the new Db constructor with two arguments, followed by set_XXX methods to configure the Db object, and finally a call to the new (nonstatic) Db::open(). In comparing the Berkeley DB 3.0 release open method with the 2.X static open method, the second argument is new. It is a database name, which can be null. The DbEnv argument has been removed, as the environment is now specified in the constructor. The open method no longer returns a Db, since it operates on one.</p>
+<p>Here's a C++ example opening a Berkeley DB database using the 2.X interface:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Note: by default, errors are thrown as exceptions</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>Db <span class="op">*</span>table<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>Db<span class="op">::</span>open<span class="op">(</span><span class="st">&quot;lookup.db&quot;</span><span class="op">,</span> DB_BTREE<span class="op">,</span> DB_CREATE<span class="op">,</span> <span class="bn">0644</span><span class="op">,</span> dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="op">&amp;</span>table<span class="op">);</span></span></code></pre></div>
+<p>In the Berkeley DB 3.0 release, this code would be written as:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Note: by default, errors are thrown as exceptions</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>Db <span class="op">*</span>table <span class="op">=</span> new Db<span class="op">(</span>dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>table<span class="op">-&gt;</span>open<span class="op">(</span><span class="st">&quot;lookup.db&quot;</span><span class="op">,</span> NULL<span class="op">,</span> DB_BTREE<span class="op">,</span> DB_CREATE<span class="op">,</span> <span class="bn">0644</span><span class="op">);</span></span></code></pre></div>
+<p>Here's a Java example opening a Berkeley DB database using the 2.X interface:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Note: errors are thrown as exceptions</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>Db table <span class="op">=</span> Db<span class="op">.</span>open<span class="op">(</span><span class="st">&quot;lookup.db&quot;</span><span class="op">,</span> Db<span class="op">.</span>DB_BTREE<span class="op">,</span> Db<span class="op">.</span>DB_CREATE<span class="op">,</span> <span class="bn">0644</span><span class="op">,</span> dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span></code></pre></div>
+<p>In the Berkeley DB 3.0 release, this code would be written as:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Note: errors are thrown as exceptions</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>Db table <span class="op">=</span> new Db<span class="op">(</span>dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>table<span class="op">.</span>open<span class="op">(</span><span class="st">&quot;lookup.db&quot;</span><span class="op">,</span> null<span class="op">,</span> Db<span class="op">.</span>DB_BTREE<span class="op">,</span> Db<span class="op">.</span>DB_CREATE<span class="op">,</span> <span class="bn">0644</span><span class="op">);</span></span></code></pre></div>
+<p>Note that if the dbenv argument is null, the database will not exist within an environment.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

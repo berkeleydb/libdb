@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>environment configuration — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / upgrading</nav>
+  <main>
+<h2 id="environment-configuration">environment configuration</h2>
+<p>A set of <a href="../../api/c/env.html" class="olink">DB_ENV</a> configuration methods which were not environment specific, but which instead affected the entire application space, have been removed from the <a href="../../api/c/env.html" class="olink">DB_ENV</a> object and replaced by static functions. The following table lists the <a href="../../api/c/env.html" class="olink">DB_ENV</a> methods previously available to applications and the static functions that should now be used instead.</p>
+<table>
+<thead>
+<tr>
+<th><a href="../../api/c/env.html" class="olink">DB_ENV</a> method</th>
+<th>Berkeley DB 3.1 function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DB_ENV-&gt;set_func_close</td>
+<td><a href="../../api/c/db_env_set_func_close.html" class="olink">db_env_set_func_close</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_dirfree</td>
+<td><a href="../../api/c/db_env_set_func_dirfree.html" class="olink">db_env_set_func_dirfree</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_dirlist</td>
+<td><a href="../../api/c/db_env_set_func_dirlist.html" class="olink">db_env_set_func_dirlist</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_exists</td>
+<td><a href="../../api/c/db_env_set_func_exists.html" class="olink">db_env_set_func_exists</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_free</td>
+<td><a href="../../api/c/db_env_set_func_free.html" class="olink">db_env_set_func_free</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_fsync</td>
+<td><a href="../../api/c/db_env_set_func_fsync.html" class="olink">db_env_set_func_fsync</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_ioinfo</td>
+<td><a href="../../api/c/db_env_set_func_ioinfo.html" class="olink">db_env_set_func_ioinfo</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_malloc</td>
+<td><a href="../../api/c/db_env_set_func_malloc.html" class="olink">db_env_set_func_malloc</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_map</td>
+<td>dbenv_set_func_map</td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_open</td>
+<td><a href="../../api/c/db_env_set_func_open.html" class="olink">db_env_set_func_open</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_read</td>
+<td><a href="../../api/c/db_env_set_func_read.html" class="olink">db_env_set_func_read</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_realloc</td>
+<td><a href="../../api/c/db_env_set_func_realloc.html" class="olink">db_env_set_func_realloc</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_rename</td>
+<td><a href="../../api/c/db_env_set_func_rename.html" class="olink">db_env_set_func_rename</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_seek</td>
+<td><a href="../../api/c/db_env_set_func_seek.html" class="olink">db_env_set_func_seek</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_sleep</td>
+<td>db_env_set_func_sleep</td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_unlink</td>
+<td><a href="../../api/c/db_env_set_func_unlink.html" class="olink">db_env_set_func_unlink</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_unmap</td>
+<td>dbenv_set_func_unmap</td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_write</td>
+<td><a href="../../api/c/db_env_set_func_write.html" class="olink">db_env_set_func_write</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_func_yield</td>
+<td><a href="../../api/c/db_env_set_func_yield.html" class="olink">db_env_set_func_yield</a></td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_pageyield</td>
+<td>dbenv_set_pageyield</td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_region_init</td>
+<td>dbenv_set_region_init</td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_mutexlocks</td>
+<td>dbenv_set_mutexlocks</td>
+</tr>
+<tr>
+<td>DB_ENV-&gt;set_tas_spins</td>
+<td>dbenv_set_tas_spins</td>
+</tr>
+</tbody>
+</table>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Locks, Blocks, and Deadlocks — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / gsg_txn</nav>
+  <main>
+<h2 id="locks-blocks-and-deadlocks">Locks, Blocks, and Deadlocks</h2>
+<p><span class="sect2"> <a href="blocking_deadlocks.html#locks">Locks</a> </span></p>
+<p><span class="sect2"> <a href="blocking_deadlocks.html#blocks">Blocks</a> </span></p>
+<p><span class="sect2"> <a href="blocking_deadlocks.html#deadlocks">Deadlocks</a> </span></p>
+<p>It is important to understand how locking works in a concurrent application before continuing with a description of the concurrency mechanisms DB makes available to you. Blocking and deadlocking have important performance implications for your application. Consequently, this section provides a fundamental description of these concepts, and how they affect DB operations.</p>
+<h3 id="locks">Locks</h3>
+<p>When one thread of control wants to obtain access to an object, it requests a <span class="emphasis"><em>lock</em></span> for that object. This lock is what allows DB to provide your application with its transactional isolation guarantees by ensuring that:</p>
+<ul>
+<li><p>no other thread of control can read that object (in the case of an exclusive lock), and</p></li>
+<li><p>no other thread of control can modify that object (in the case of an exclusive or non-exclusive lock).</p></li>
+</ul>
+<h4 id="lock-resources">Lock Resources</h4>
+<p>When locking occurs, there are conceptually three resources in use:</p>
+<ol type="1">
+<li><p>The locker.</p>
+<p>This is the thing that holds the lock. In a transactional application, the locker is a transaction handle. For non-transactional operations, the locker is a cursor or a DB handle.</p></li>
+<li><p>The lock.</p>
+<p>This is the actual data structure that locks the object. In DB, a locked object structure in the lock manager is representative of the object that is locked.</p></li>
+<li><p>The locked object.</p>
+<p>The thing that your application actually wants to lock. In a DB application, the locked object is usually a database page, which in turn contains multiple database entries (key and data). However, for Queue databases, individual database records are locked.</p></li>
+</ol>
+<p>You can configure how many total lockers, locks, and locked objects your application is allowed to support. See <a href="lockingsubsystem.html#configuringlock" class="xref" title="Configuring the Locking Subsystem">Configuring the Locking Subsystem</a> for details.</p>
+<p>The following figure shows a transaction handle, <code>Txn A</code>, that is holding a lock on database page <code>002</code>. In this graphic, <code>Txn A</code> is the locker, and the locked object is page <code>002</code>. Only a single lock is in use in this operation.</p>
+<p><img src="simplelock.jpg" /></p>
+<h4 id="types-of-locks">Types of Locks</h4>
+<p>DB applications support both exclusive and non-exclusive locks. <span class="emphasis"><em>Exclusive locks</em></span> are granted when a locker wants to write to an object. For this reason, exclusive locks are also sometimes called <span class="emphasis"><em>write locks</em></span>.</p>
+<p>An exclusive lock prevents any other locker from obtaining any sort of a lock on the object. This provides isolation by ensuring that no other locker can observe or modify an exclusively locked object until the locker is done writing to that object.</p>
+<p><span class="emphasis"><em>Non-exclusive locks</em></span> are granted for read-only access. For this reason, non-exclusive locks are also sometimes called <span class="emphasis"><em>read locks</em></span>. Since multiple lockers can simultaneously hold read locks on the same object, read locks are also sometimes called <span class="emphasis"><em>shared locks</em></span>.</p>
+<p>A non-exclusive lock prevents any other locker from modifying the locked object while the locker is still reading the object. This is how transactional cursors are able to achieve repeatable reads; by default, the cursor's transaction holds a read lock on any object that the cursor has examined until such a time as the transaction is committed or aborted. You can avoid these read locks by using snapshot isolation. See <a href="isolation.html#snapshot_isolation" class="xref" title="Using Snapshot Isolation">Using Snapshot Isolation</a> for details.</p>
+<p>In the following figure, <code>Txn A</code> and <code>Txn B</code> are both holding read locks on page <code>002</code>, while <code>Txn C</code> is holding a write lock on page <code>003</code>:</p>
+<p><img src="rwlocks1.jpg" /></p>
+<h4 id="lock-lifetime">Lock Lifetime</h4>
+<p>A locker holds its locks until such a time as it does not need the lock any more. What this means is:</p>
+<ol type="1">
+<li><p>A transaction holds any locks that it obtains until the transaction is committed or aborted.</p></li>
+<li><p>All non-transaction operations hold locks until such a time as the operation is completed. For cursor operations, the lock is held until the cursor is moved to a new position or closed.</p></li>
+</ol>
+<h3 id="blocks">Blocks</h3>
+<p>Simply put, a thread of control is blocked when it attempts to obtain a lock, but that attempt is denied because some other thread of control holds a conflicting lock. Once blocked, the thread of control is temporarily unable to make any forward progress until the requested lock is obtained or the operation requesting the lock is abandoned.</p>
+<p>Be aware that when we talk about blocking, strictly speaking the thread is not what is attempting to obtain the lock. Rather, some object within the thread (such as a cursor) is attempting to obtain the lock. However, once a locker attempts to obtain a lock, the entire thread of control must pause until the lock request is in some way resolved.</p>
+<p>For example, if <code>Txn A</code> holds a write lock (an exclusive lock) on object 002, then if <code>Txn B</code> tries to obtain a read <span class="emphasis"><em>or</em></span> write lock on that object, the thread of control in which <code>Txn B</code> is running is blocked:</p>
+<p><img src="writeblock.jpg" /></p>
+<p>However, if <code>Txn A</code> only holds a read lock (a shared lock) on object <code>002</code>, then only those handles that attempt to obtain a write lock on that object will block.</p>
+<p><img src="readblock.jpg" /></p>
+<h3 id="note">Note</h3>
+<p>The previous description describes DB's default behavior when it cannot obtain a lock. It is possible to configure DB transactions so that they will not block. Instead, if a lock is unavailable, the application is immediately notified of a deadlock situation. See <a href="txnnowait.html" class="xref" title="No Wait on Blocks">No Wait on Blocks</a> for more information.</p>
+<h4 id="blocking-and-application-performance">Blocking and Application Performance</h4>
+<p>Multi-threaded and multi-process applications typically perform better than simple single-threaded applications because the application can perform one part of its workload (updating a database record, for example) while it is waiting for some other lengthy operation to complete (performing disk or network I/O, for example). This performance improvement is particularly noticeable if you use hardware that offers multiple CPUs, because the threads and processes can run simultaneously.</p>
+<p>That said, concurrent applications can see reduced workload throughput if their threads of control are seeing a large amount of lock contention. That is, if threads are blocking on lock requests, then that represents a performance penalty for your application.</p>
+<p>Consider once again the previous diagram of a blocked write lock request. In that diagram, <code>Txn C</code> cannot obtain its requested write lock because <code>Txn A</code> and <code>Txn B</code> are both already holding read locks on the requested object. In this case, the thread in which <code>Txn C</code> is running will pause until such a time as <code>Txn C</code> either obtains its write lock, or the operation that is requesting the lock is abandoned. The fact that <code>Txn C</code>'s thread has temporarily halted all forward progress represents a performance penalty for your application.</p>
+<p>Moreover, any read locks that are requested while <code>Txn C</code> is waiting for its write lock will also block until such a time as <code>Txn C</code> has obtained and subsequently released its write lock.</p>
+<h4 id="avoiding-blocks">Avoiding Blocks</h4>
+<p>Reducing lock contention is an important part of performance tuning your concurrent DB application. Applications that have multiple threads of control obtaining exclusive (write) locks are prone to contention issues. Moreover, as you increase the numbers of lockers and as you increase the time that a lock is held, you increase the chances of your application seeing lock contention.</p>
+<p>As you are designing your application, try to do the following in order to reduce lock contention:</p>
+<ul>
+<li><p>Reduce the length of time your application holds locks.</p>
+<p>Shorter lived transactions will result in shorter lock lifetimes, which will in turn help to reduce lock contention.</p>
+<p>In addition, by default transactional cursors hold read locks until such a time as the transaction is completed. For this reason, try to minimize the time you keep transactional cursors opened, or reduce your isolation levels – see below.</p></li>
+<li><p>If possible, access heavily accessed (read or write) items toward the end of the transaction. This reduces the amount of time that a heavily used page is locked by the transaction.</p></li>
+<li><p>Reduce your application's isolation guarantees.</p>
+<p>By reducing your isolation guarantees, you reduce the situations in which a lock can block another lock. Try using uncommitted reads for your read operations in order to prevent a read lock being blocked by a write lock.</p>
+<p>In addition, for cursors you can use degree 2 (read committed) isolation, which causes the cursor to release its read locks as soon as it is done reading the record (as opposed to holding its read locks until the transaction ends).</p>
+<p>Be aware that reducing your isolation guarantees can have adverse consequences for your application. Before deciding to reduce your isolation, take care to examine your application's isolation requirements. For information on isolation levels, see <a href="isolation.html" class="xref" title="Isolation">Isolation</a>.</p></li>
+<li><p>Use snapshot isolation for read-only threads.</p>
+<p>Snapshot isolation causes the transaction to make a copy of the page on which it is holding a lock. When a reader makes a copy of a page, write locks can still be obtained for the original page. This eliminates entirely read-write contention.</p>
+<p>Snapshot isolation is described in <a href="isolation.html#snapshot_isolation" class="xref" title="Using Snapshot Isolation">Using Snapshot Isolation</a>.</p></li>
+<li><p>Consider your data access patterns.</p>
+<p>Depending on the nature of your application, this may be something that you can not do anything about. However, if it is possible to create your threads such that they operate only on non-overlapping portions of your database, then you can reduce lock contention because your threads will rarely (if ever) block on one another's locks.</p></li>
+</ul>
+<h3 id="note-1">Note</h3>
+<p>It is possible to configure DB's transactions so that they never wait on blocked lock requests. Instead, if they are blocked on a lock request, they will notify the application of a deadlock (see the next section).</p>
+<p>You configure this behavior on a transaction by transaction basis. See <a href="txnnowait.html" class="xref" title="No Wait on Blocks">No Wait on Blocks</a> for more information.</p>
+<h3 id="deadlocks">Deadlocks</h3>
+<p>A deadlock occurs when two or more threads of control are blocked, each waiting on a resource held by the other thread. When this happens, there is no possibility of the threads ever making forward progress unless some outside agent takes action to break the deadlock.</p>
+<p>For example, if <code>Txn A</code> is blocked by <code>Txn B</code> at the same time <code>Txn B</code> is blocked by <code>Txn A</code> then the threads of control containing <code>Txn A</code> and <code>Txn B</code> are deadlocked; neither thread can make any forward progress because neither thread will ever release the lock that is blocking the other thread.</p>
+<p><img src="deadlock.jpg" /></p>
+<p>When two threads of control deadlock, the only solution is to have a mechanism external to the two threads capable of recognizing the deadlock and notifying at least one thread that it is in a deadlock situation. Once notified, a thread of control must abandon the attempted operation in order to resolve the deadlock. DB's locking subsystem offers a deadlock notification mechanism. See <a href="lockingsubsystem.html#configdeadlkdetect" class="xref" title="Configuring Deadlock Detection">Configuring Deadlock Detection</a> for more information.</p>
+<p>Note that when one locker in a thread of control is blocked waiting on a lock held by another locker in that same thread of the control, the thread is said to be <span class="emphasis"><em>self-deadlocked</em></span>.</p>
+<h4 id="deadlock-avoidance">Deadlock Avoidance</h4>
+<p>The things that you do to avoid lock contention also help to reduce deadlocks (see <a href="blocking_deadlocks.html#blockavoidance" class="xref" title="Avoiding Blocks">Avoiding Blocks</a>). Beyond that, you can also do the following in order to avoid deadlocks:</p>
+<ul>
+<li><p>Never have more than one active transaction at a time in a thread. A common cause of this is for a thread to be using auto-commit for one operation while an explicit transaction is in use in that thread at the same time.</p></li>
+<li><p>Make sure all threads access data in the same order as all other threads. So long as threads lock database pages in the same basic order, there is no possibility of a deadlock (threads can still block, however).</p>
+<p>Be aware that if you are using secondary databases (indexes), it is not possible to obtain locks in a consistent order because you cannot predict the order in which locks are obtained in secondary databases. If you are writing a concurrent application and you are using secondary databases, you must be prepared to handle deadlocks.</p></li>
+<li><p>If you are using BTrees in which you are constantly adding and then deleting data, turn Btree reverse split off. See <a href="reversesplit.html" class="xref" title="Reverse BTree Splits">Reverse BTree Splits</a> for more information.</p></li>
+<li><p>Declare a read/modify/write lock for those situations where you are reading a record in preparation of modifying and then writing the record. Doing this causes DB to give your read operation a write lock. This means that no other thread of control can share a read lock (which might cause contention), but it also means that the writer thread will not have to wait to obtain a write lock when it is ready to write the modified data back to the database.</p>
+<p>For information on declaring read/modify/write locks, see <a href="readmodifywrite.html" class="xref" title="Read/Modify/Write">Read/Modify/Write</a>.</p></li>
+</ul>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

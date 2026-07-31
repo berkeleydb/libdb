@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Building Berkeley DB for 64-bit Windows — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="building-berkeley-db-for-64-bit-windows">Building Berkeley DB for 64-bit Windows</h2>
+<p><span class="sect2"> <a href="win_build64.html#idp259672">x64 build with Visual Studio 2005 or newer</a> </span></p>
+<p>The following procedure can be used to build natively on a 64-bit system or to cross-compile from a 32-bit system.</p>
+<p>When building 64-bit binaries, the output directory will be one of the following Berkeley DB subdirectories, depending upon the configuration that you chose:</p>
+<table>
+<tbody>
+<tr>
+<td><code>build_windows\x64\Debug</code></td>
+</tr>
+<tr>
+<td><code>build_windows\x64\Release</code></td>
+</tr>
+<tr>
+<td><code>build_windows\x64\Debug_static</code></td>
+</tr>
+<tr>
+<td><code>build_windows\x64\Release_static</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="x64-build-with-visual-studio-2005-or-newer">x64 build with Visual Studio 2005 or newer</h3>
+<ol type="1">
+<li>Follow the build instructions for your version of Visual Studio, as described in <a href="build_win.html#win_build32" class="xref" title="Building Berkeley DB for 32 bit Windows">Building Berkeley DB for 32 bit Windows</a>.</li>
+<li>Select <span class="emphasis"><em>x64</em></span> from the <span class="emphasis"><em>Platform Configuration</em></span> dropdown.</li>
+<li>Right click on <span class="emphasis"><em>Solution 'Berkeley_DB'</em></span> in the Solution Explorer, and select <span class="emphasis"><em>Build Solution</em></span></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Btree access method specific configuration — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="btree-access-method-specific-configuration">Btree access method specific configuration</h2>
+<p><span class="sect2"> <a href="bt_conf.html#am_conf_bt_compare">Btree comparison</a> </span></p>
+<p><span class="sect2"> <a href="bt_conf.html#am_conf_bt_prefix">Btree prefix comparison</a> </span></p>
+<p><span class="sect2"> <a href="bt_conf.html#am_conf_bt_minkey">Minimum keys per page</a> </span></p>
+<p><span class="sect2"> <a href="bt_conf.html#am_conf_bt_recnum">Retrieving Btree records by logical record number</a> </span></p>
+<p><span class="sect2"> <a href="bt_conf.html#am_conf_bt_compress">Compression</a> </span></p>
+<p>There are a series of configuration tasks which you can perform when using the Btree access method. They are described in the following sections.</p>
+<h3 id="btree-comparison">Btree comparison</h3>
+<p>The Btree data structure is a sorted, balanced tree structure storing associated key/data pairs. By default, the sort order is lexicographical, with shorter keys collating before longer keys. The user can specify the sort order for the Btree by using the <a href="../../api/c/dbset_bt_compare.html" class="olink">DB-&gt;set_bt_compare()</a> method.</p>
+<p>Sort routines are passed pointers to keys as arguments. The keys are represented as <a href="../../api/c/dbt.html" class="olink">DBT</a> structures. The routine must return an integer less than, equal to, or greater than zero if the first argument is considered to be respectively less than, equal to, or greater than the second argument. The only fields that the routines may examine in the <a href="../../api/c/dbt.html" class="olink">DBT</a> structures are <strong>data</strong> and <strong>size</strong> fields.</p>
+<p>An example routine that might be used to sort integer keys in the database is as follows:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>compare_int<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>a<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>b<span class="op">)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ai<span class="op">,</span> bi<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">     * Returns:</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">     *    &lt; 0 if a &lt; b</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">     *    = 0 if a = b</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">     *    &gt; 0 if a &gt; b</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(&amp;</span>ai<span class="op">,</span> a<span class="op">-&gt;</span>data<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">int</span><span class="op">));</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(&amp;</span>bi<span class="op">,</span> b<span class="op">-&gt;</span>data<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">int</span><span class="op">));</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>ai <span class="op">-</span> bi<span class="op">);</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Note that the data must first be copied into memory that is appropriately aligned, as Berkeley DB does not guarantee any kind of alignment of the underlying data, including for comparison routines. When writing comparison routines, remember that databases created on machines of different architectures may have different integer byte orders, for which your code may need to compensate.</p>
+<p>An example routine that might be used to sort keys based on the first five bytes of the key (ignoring any subsequent bytes) is as follows:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>compare_dbt<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>a<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>b<span class="op">)</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> len<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    u_char <span class="op">*</span>p1<span class="op">,</span> <span class="op">*</span>p2<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co">     * Returns:</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co">     *    &lt; 0 if a &lt; b</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">     *    = 0 if a = b</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co">     *    &gt; 0 if a &gt; b</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> <span class="op">(</span>p1 <span class="op">=</span> a<span class="op">-&gt;</span>data<span class="op">,</span> p2 <span class="op">=</span> b<span class="op">-&gt;</span>data<span class="op">,</span> len <span class="op">=</span> <span class="dv">5</span><span class="op">;</span> len<span class="op">--;</span> <span class="op">++</span>p1<span class="op">,</span> <span class="op">++</span>p2<span class="op">)</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(*</span>p1 <span class="op">!=</span> <span class="op">*</span>p2<span class="op">)</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> <span class="op">((</span><span class="dt">long</span><span class="op">)*</span>p1 <span class="op">-</span> <span class="op">(</span><span class="dt">long</span><span class="op">)*</span>p2<span class="op">);</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>All comparison functions must cause the keys in the database to be well-ordered. The most important implication of being well-ordered is that the key relations must be transitive, that is, if key A is less than key B, and key B is less than key C, then the comparison routine must also return that key A is less than key C.</p>
+<p>It is reasonable for a comparison function to not examine an entire key in some applications, which implies partial keys may be specified to the Berkeley DB interfaces. When partial keys are specified to Berkeley DB, interfaces which retrieve data items based on a user-specified key (for example, <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a> and <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a> with the <a href="../../api/c/dbcget.html#dbcget_DB_SET" class="olink">DB_SET</a> flag), will modify the user-specified key by returning the actual key stored in the database.</p>
+<h3 id="btree-prefix-comparison">Btree prefix comparison</h3>
+<p>The Berkeley DB Btree implementation maximizes the number of keys that can be stored on an internal page by storing only as many bytes of each key as are necessary to distinguish it from adjacent keys. The prefix comparison routine is what determines this minimum number of bytes (that is, the length of the unique prefix), that must be stored. A prefix comparison function for the Btree can be specified by calling <a href="../../api/c/dbset_bt_prefix.html" class="olink">DB-&gt;set_bt_prefix()</a>.</p>
+<p>The prefix comparison routine must be compatible with the overall comparison function of the Btree, since what distinguishes any two keys depends entirely on the function used to compare them. This means that if a prefix comparison routine is specified by the application, a compatible overall comparison routine must also have been specified.</p>
+<p>Prefix comparison routines are passed pointers to keys as arguments. The keys are represented as <a href="../../api/c/dbt.html" class="olink">DBT</a> structures. The only fields the routines may examine in the <a href="../../api/c/dbt.html" class="olink">DBT</a> structures are <strong>data</strong> and <strong>size</strong> fields.</p>
+<p>The prefix comparison function must return the number of bytes necessary to distinguish the two keys. If the keys are identical (equal and equal in length), the length should be returned. If the keys are equal up to the smaller of the two lengths, then the length of the smaller key plus 1 should be returned.</p>
+<p>An example prefix comparison routine follows:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>compare_prefix<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>a<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>b<span class="op">)</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>   </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">size_t</span> cnt<span class="op">,</span> len<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    u_int8_t <span class="op">*</span>p1<span class="op">,</span> <span class="op">*</span>p2<span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    cnt <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    len <span class="op">=</span> a<span class="op">-&gt;</span>size <span class="op">&gt;</span> b<span class="op">-&gt;</span>size <span class="op">?</span> b<span class="op">-&gt;</span>size <span class="op">:</span> a<span class="op">-&gt;</span>size<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> <span class="op">(</span>p1 <span class="op">=</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        a<span class="op">-&gt;</span>data<span class="op">,</span> p2 <span class="op">=</span> b<span class="op">-&gt;</span>data<span class="op">;</span> len<span class="op">--;</span> <span class="op">++</span>p1<span class="op">,</span> <span class="op">++</span>p2<span class="op">,</span> <span class="op">++</span>cnt<span class="op">)</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(*</span>p1 <span class="op">!=</span> <span class="op">*</span>p2<span class="op">)</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>                <span class="cf">return</span> <span class="op">(</span>cnt<span class="op">);</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="co">     * They match up to the smaller of the two sizes.</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co">     * Collate the longer after the shorter.</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>a<span class="op">-&gt;</span>size <span class="op">&lt;</span> b<span class="op">-&gt;</span>size<span class="op">)</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>a<span class="op">-&gt;</span>size <span class="op">+</span> <span class="dv">1</span><span class="op">);</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>b<span class="op">-&gt;</span>size <span class="op">&lt;</span> a<span class="op">-&gt;</span>size<span class="op">)</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>b<span class="op">-&gt;</span>size <span class="op">+</span> <span class="dv">1</span><span class="op">);</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>b<span class="op">-&gt;</span>size<span class="op">);</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The usefulness of this functionality is data-dependent, but in some data sets can produce significantly reduced tree sizes and faster search times.</p>
+<h3 id="minimum-keys-per-page">Minimum keys per page</h3>
+<p>The number of keys stored on each page affects the size of a Btree and how it is maintained. Therefore, it also affects the retrieval and search performance of the tree. For each Btree, Berkeley DB computes a maximum key and data size. This size is a function of the page size and the fact that at least two key/data pairs must fit on any Btree page. Whenever key or data items exceed the calculated size, they are stored on overflow pages instead of in the standard Btree leaf pages.</p>
+<p>Applications may use the <a href="../../api/c/dbset_bt_minkey.html" class="olink">DB-&gt;set_bt_minkey()</a> method to change the minimum number of keys that must fit on a Btree page from two to another value. Altering this value in turn alters the on-page maximum size, and can be used to force key and data items which would normally be stored in the Btree leaf pages onto overflow pages.</p>
+<p>Some data sets can benefit from this tuning. For example, consider an application using large page sizes, with a data set almost entirely consisting of small key and data items, but with a few large items. By setting the minimum number of keys that must fit on a page, the application can force the outsized items to be stored on overflow pages. That in turn can potentially keep the tree more compact, that is, with fewer internal levels to traverse during searches.</p>
+<p>The following calculation is similar to the one performed by the Btree implementation. (The <strong>minimum_keys</strong> value is multiplied by 2 because each key/data pair requires 2 slots on a Btree page.)</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>maximum_size <span class="op">=</span> page_size <span class="op">/</span> <span class="op">(</span>minimum_keys <span class="op">*</span> <span class="dv">2</span><span class="op">)</span></span></code></pre></div>
+<p>Using this calculation, if the page size is 8KB and the default <strong>minimum_keys</strong> value of 2 is used, then any key or data items larger than 2KB will be forced to an overflow page. If an application were to specify a <strong>minimum_key</strong> value of 100, then any key or data items larger than roughly 40 bytes would be forced to overflow pages.</p>
+<p>It is important to remember that accesses to overflow pages do not perform as well as accesses to the standard Btree leaf pages, and so setting the value incorrectly can result in overusing overflow pages and decreasing the application's overall performance.</p>
+<h3 id="retrieving-btree-records-by-logical-record-number">Retrieving Btree records by logical record number</h3>
+<p>The Btree access method optionally supports retrieval by logical record numbers. To configure a Btree to support record numbers, call the <a href="../../api/c/dbset_flags.html" class="olink">DB-&gt;set_flags()</a> method with the <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RECNUM" class="olink">DB_RECNUM</a> flag.</p>
+<p>Configuring a Btree for record numbers should not be done lightly. While often useful, it may significantly slow down the speed at which items can be stored into the database, and can severely impact application throughput. Generally it should be avoided in trees with a need for high write concurrency.</p>
+<p>To retrieve by record number, use the <a href="../../api/c/dbget.html#dbget_DB_SET_RECNO" class="olink">DB_SET_RECNO</a> flag to the <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a> and <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a> methods. The following is an example of a routine that displays the data item for a Btree database created with the <a href="../../api/c/dbset_flags.html#dbset_flags_DB_RECNUM" class="olink">DB_RECNUM</a> option.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>rec_display<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> db_recno_t recno<span class="op">)</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    DBT key<span class="op">,</span> data<span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>key<span class="op">));</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    key<span class="op">.</span>data <span class="op">=</span> <span class="op">&amp;</span>recno<span class="op">;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    key<span class="op">.</span>size <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span>recno<span class="op">);</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>data<span class="op">));</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>get<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_SET_RECNO<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;data for </span><span class="sc">%lu</span><span class="st">: </span><span class="sc">%.*s\n</span><span class="st">&quot;</span><span class="op">,</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">(</span>u_long<span class="op">)</span>recno<span class="op">,</span> <span class="op">(</span><span class="dt">int</span><span class="op">)</span>data<span class="op">.</span>size<span class="op">,</span> <span class="op">(</span><span class="dt">char</span> <span class="op">*)</span>data<span class="op">.</span>data<span class="op">);</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>To determine a key's record number, use the <a href="../../api/c/dbcget.html#dbcget_DB_GET_RECNO" class="olink">DB_GET_RECNO</a> flag to the <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a> method. The following is an example of a routine that displays the record number associated with a specific key.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>recno_display<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">char</span> <span class="op">*</span>keyvalue<span class="op">)</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    DBC <span class="op">*</span>dbcp<span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    DBT key<span class="op">,</span> data<span class="op">;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    db_recno_t recno<span class="op">;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">,</span> t_ret<span class="op">;</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Acquire a cursor for the database. */</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>cursor<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="op">&amp;</span>dbcp<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DB-&gt;cursor&quot;</span><span class="op">);</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Position the cursor. */</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>key<span class="op">));</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    key<span class="op">.</span>data <span class="op">=</span> keyvalue<span class="op">;</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    key<span class="op">.</span>size <span class="op">=</span> strlen<span class="op">(</span>keyvalue<span class="op">);</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>data<span class="op">));</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbcp<span class="op">-&gt;</span>get<span class="op">(</span>dbcp<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_SET<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DBC-&gt;get(DB_SET): </span><span class="sc">%s</span><span class="st">&quot;</span><span class="op">,</span> keyvalue<span class="op">);</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a><span class="co">     * Request the record number, and store it into appropriately</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a><span class="co">     * sized and aligned local memory.</span></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>data<span class="op">));</span></span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>    data<span class="op">.</span>data <span class="op">=</span> <span class="op">&amp;</span>recno<span class="op">;</span></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>    data<span class="op">.</span>ulen <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span>recno<span class="op">);</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>    data<span class="op">.</span>flags <span class="op">=</span> DB_DBT_USERMEM<span class="op">;</span></span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbcp<span class="op">-&gt;</span>get<span class="op">(</span>dbcp<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_GET_RECNO<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DBC-&gt;get(DB_GET_RECNO)&quot;</span><span class="op">);</span></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;key for requested key was </span><span class="sc">%lu\n</span><span class="st">&quot;</span><span class="op">,</span> <span class="op">(</span>u_long<span class="op">)</span>recno<span class="op">);</span></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>err<span class="op">:</span>    <span class="co">/* Close the cursor. */</span></span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>t_ret <span class="op">=</span> dbcp<span class="op">-&gt;</span>close<span class="op">(</span>dbcp<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>ret <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>            ret <span class="op">=</span> t_ret<span class="op">;</span></span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DBC-&gt;close&quot;</span><span class="op">);</span></span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="compression">Compression</h3>
+<p>The Btree access method supports the automatic compression of key/data pairs upon their insertion into the database. The key/data pairs are decompressed before they are returned to the application, making an application's interaction with a compressed database identical to that for a non-compressed database. To configure Berkeley DB for compression, call the <a href="../../api/c/dbset_bt_compress.html" class="olink">DB-&gt;set_bt_compress()</a> method and specify custom compression and decompression functions. If <a href="../../api/c/dbset_bt_compress.html" class="olink">DB-&gt;set_bt_compress()</a> is called with NULL compression and decompression functions, Berkeley DB will use its default compression functions.</p>
+<h3 id="note">Note</h3>
+<p>Compression only works with the Btree access method, and then only so long as your database is not configured for unsorted duplicates.</p>
+<h3 id="note-1">Note</h3>
+<p>The default compression function is not guaranteed to reduce the size of the on-disk database in every case. It has been tested and shown to work well with English-language text. Of course, in order to determine if the default compression algorithm is beneficial for your application, it is important to test both the final size and the performance using a representative set of data and access patterns.</p>
+<p>The default compression function performs prefix compression on each key added to the database. This means that, for a key <span class="emphasis"><em>n</em></span> bytes in length, the first <span class="emphasis"><em>i</em></span> bytes that match the first <span class="emphasis"><em>i</em></span> bytes of the previous key exactly are omitted and only the final <span class="emphasis"><em>n-i</em></span> bytes are stored in the database. If the bytes of key being stored match the bytes of the previous key exactly, then the same prefix compression algorithm is applied to the data value being stored. To use Berkeley DB's default compression behavior, both the default compression and decompression functions must be used.</p>
+<p>For example, to configure your database for default compression:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>    DB <span class="op">*</span>dbp <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    DB_ENV <span class="op">*</span>envp <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>     u_int32_t db_flags<span class="op">;</span> </span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>file_name <span class="op">=</span> <span class="st">&quot;mydb.db&quot;</span><span class="op">;</span> </span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Skipping environment open to shorten this example */</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Initialize the DB handle */</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> db_create<span class="op">(&amp;</span>dbp<span class="op">,</span> envp<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        fprintf<span class="op">(</span>stderr<span class="op">,</span> <span class="st">&quot;</span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span> db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EXIT_FAILURE<span class="op">);</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Turn on default data compression */</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    dbp<span class="op">-&gt;</span>set_bt_compress<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> NULL<span class="op">);</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Now open the database */</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>    db_flags <span class="op">=</span> DB_CREATE<span class="op">;</span>       <span class="co">/* Allow database creation */</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> dbp<span class="op">-&gt;</span>open<span class="op">(</span>dbp<span class="op">,</span>        <span class="co">/* Pointer to the database */</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>                    NULL<span class="op">,</span>       <span class="co">/* Txn pointer */</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>                    file_name<span class="op">,</span>  <span class="co">/* File name */</span></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>                    NULL<span class="op">,</span>       <span class="co">/* Logical db name */</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>                    DB_BTREE<span class="op">,</span>   <span class="co">/* Database type (using btree) */</span></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>                    db_flags<span class="op">,</span>   <span class="co">/* Open flags */</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>                    <span class="dv">0</span><span class="op">);</span>         <span class="co">/* File mode. Using defaults */</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;Database &#39;</span><span class="sc">%s</span><span class="st">&#39; open failed&quot;</span><span class="op">,</span></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>            file_name<span class="op">);</span></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EXIT_FAILURE<span class="op">);</span></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span></code></pre></div>
+<h4 id="custom-compression">Custom compression</h4>
+<p>An application wishing to perform its own compression may supply a compression and decompression function which will be called instead of Berkeley DB's default functions. The compression function is passed five <a href="../../api/c/dbt.html" class="olink">DBT</a> structures:</p>
+<ul>
+<li><p>The key and data immediately preceeding the key/data pair that is being stored.</p></li>
+<li><p>The key and data being stored in the tree.</p></li>
+<li><p>The buffer where the compressed data should be written.</p></li>
+</ul>
+<p>The total size of the buffer used to store the compressed data is identified in the <a href="../../api/c/dbt.html" class="olink">DBT</a>'s <code>ulen</code> field. If the compressed data cannot fit in the buffer, the compression function should store the amount of space needed in <a href="../../api/c/dbt.html" class="olink">DBT</a>'s <code>size</code> field and then return <code>DB_BUFFER_SMALL</code>. Berkeley DB will subsequently re-call the compression function with the required amount of space allocated in the compression data buffer.</p>
+<p>Multiple compressed key/data pairs will likely be written to the same buffer and the compression function should take steps to ensure it does not overwrite data.</p>
+<p>For example, the following code fragments illustrate the use of a custom compression routine. This code is actually a much simplified example of the default compression provided by Berkeley DB. It does simple prefix compression on the key part of the data.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> compress<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>prevKey<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>prevData<span class="op">,</span> </span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>        <span class="dt">const</span> DBT <span class="op">*</span>key<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>data<span class="op">,</span> DBT <span class="op">*</span>dest<span class="op">)</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    u_int8_t <span class="op">*</span>dest_data_ptr<span class="op">;</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">const</span> u_int8_t <span class="op">*</span>key_data<span class="op">,</span> <span class="op">*</span>prevKey_data<span class="op">;</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">size_t</span> len<span class="op">,</span> prefix<span class="op">,</span> suffix<span class="op">;</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    key_data <span class="op">=</span> <span class="op">(</span><span class="dt">const</span> u_int8_t<span class="op">*)</span>key<span class="op">-&gt;</span>data<span class="op">;</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>    prevKey_data <span class="op">=</span> <span class="op">(</span><span class="dt">const</span> u_int8_t<span class="op">*)</span>prevKey<span class="op">-&gt;</span>data<span class="op">;</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    len <span class="op">=</span> key<span class="op">-&gt;</span>size <span class="op">&gt;</span> prevKey<span class="op">-&gt;</span>size <span class="op">?</span> prevKey<span class="op">-&gt;</span>size <span class="op">:</span> key<span class="op">-&gt;</span>size<span class="op">;</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> <span class="op">(;</span> len<span class="op">--</span> <span class="op">&amp;&amp;</span> <span class="op">*</span>key_data <span class="op">==</span> <span class="op">*</span>prevKey_data<span class="op">;</span> <span class="op">++</span>key_data<span class="op">,</span> </span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>                                                <span class="op">++</span>prevKey_data<span class="op">)</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>    prefix <span class="op">=</span> <span class="op">(</span><span class="dt">size_t</span><span class="op">)(</span>key_data <span class="op">-</span> <span class="op">(</span>u_int8_t<span class="op">*)</span>key<span class="op">-&gt;</span>data<span class="op">);</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>    suffix <span class="op">=</span> key<span class="op">-&gt;</span>size <span class="op">-</span> prefix<span class="op">;</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Check that we have enough space in dest */</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>    dest<span class="op">-&gt;</span>size <span class="op">=</span> <span class="op">(</span>u_int32_t<span class="op">)(</span>__db_compress_count_int<span class="op">(</span>prefix<span class="op">)</span> <span class="op">+</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>        __db_compress_count_int<span class="op">(</span>suffix<span class="op">)</span> <span class="op">+</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>        __db_compress_count_int<span class="op">(</span>data<span class="op">-&gt;</span>size<span class="op">)</span> <span class="op">+</span> suffix <span class="op">+</span> data<span class="op">-&gt;</span>size<span class="op">);</span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>dest<span class="op">-&gt;</span>size <span class="op">&gt;</span> dest<span class="op">-&gt;</span>ulen<span class="op">)</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>DB_BUFFER_SMALL<span class="op">);</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* prefix length */</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>    dest_data_ptr <span class="op">=</span> <span class="op">(</span>u_int8_t<span class="op">*)</span>dest<span class="op">-&gt;</span>data<span class="op">;</span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>    dest_data_ptr <span class="op">+=</span> __db_compress_int<span class="op">(</span>dest_data_ptr<span class="op">,</span> prefix<span class="op">);</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* suffix length */</span></span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>    dest_data_ptr <span class="op">+=</span> __db_compress_int<span class="op">(</span>dest_data_ptr<span class="op">,</span> suffix<span class="op">);</span></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* data length */</span></span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>    dest_data_ptr <span class="op">+=</span> __db_compress_int<span class="op">(</span>dest_data_ptr<span class="op">,</span> data<span class="op">-&gt;</span>size<span class="op">);</span></span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* suffix */</span></span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(</span>dest_data_ptr<span class="op">,</span> key_data<span class="op">,</span> suffix<span class="op">);</span></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>    dest_data_ptr <span class="op">+=</span> suffix<span class="op">;</span></span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* data */</span></span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(</span>dest_data_ptr<span class="op">,</span> data<span class="op">-&gt;</span>data<span class="op">,</span> data<span class="op">-&gt;</span>size<span class="op">);</span></span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>The corresponding decompression function is likewise passed five <a href="../../api/c/dbt.html" class="olink">DBT</a> structures:</p>
+<ul>
+<li><p>The key and data <a href="../../api/c/dbt.html" class="olink">DBT</a>s immediately preceding the decompressed key and data.</p></li>
+<li><p>The compressed data from the database.</p></li>
+<li><p>One to store the decompressed key and another one for the decompressed data.</p></li>
+</ul>
+<p>Because the compression of <code>record X</code> relies upon <code>record X-1</code>, the decompression function can be called repeatedly to linearally decompress a set of records stored in the compressed buffer.</p>
+<p>The total size of the buffer available to store the decompressed data is identified in the destination <a href="../../api/c/dbt.html" class="olink">DBT</a>'s <code>ulen</code> field. If the decompressed data cannot fit in the buffer, the decompression function should store the amount of space needed in the destination <a href="../../api/c/dbt.html" class="olink">DBT</a>'s <code>size</code> field and then return <code>DB_BUFFER_SMALL</code>. Berkeley DB will subsequently re-call the decompression function with the required amount of space allocated in the decompression data buffer.</p>
+<p>For example, the decompression routine that corresponds to the example compression routine provided above is:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> decompress<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>prevKey<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>prevData<span class="op">,</span> </span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    DBT <span class="op">*</span>compressed<span class="op">,</span> DBT <span class="op">*</span>destKey<span class="op">,</span> DBT <span class="op">*</span>destData<span class="op">)</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    u_int8_t <span class="op">*</span>comp_data<span class="op">,</span> <span class="op">*</span>dest_data<span class="op">;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    u_int32_t prefix<span class="op">,</span> suffix<span class="op">,</span> size<span class="op">;</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Unmarshal prefix, suffix and data length */</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    comp_data <span class="op">=</span> <span class="op">(</span>u_int8_t<span class="op">*)</span>compressed<span class="op">-&gt;</span>data<span class="op">;</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    size <span class="op">=</span> __db_decompress_count_int<span class="op">(</span>comp_data<span class="op">);</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>size <span class="op">&gt;</span> compressed<span class="op">-&gt;</span>size<span class="op">)</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EINVAL<span class="op">);</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>    comp_data <span class="op">+=</span> __db_decompress_int32<span class="op">(</span>comp_data<span class="op">,</span> <span class="op">&amp;</span>prefix<span class="op">);</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>    size <span class="op">+=</span> __db_decompress_count_int<span class="op">(</span>comp_data<span class="op">);</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>size <span class="op">&gt;</span> compressed<span class="op">-&gt;</span>size<span class="op">)</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EINVAL<span class="op">);</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>    comp_data <span class="op">+=</span> __db_decompress_int32<span class="op">(</span>comp_data<span class="op">,</span> <span class="op">&amp;</span>suffix<span class="op">);</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>    size <span class="op">+=</span> __db_decompress_count_int<span class="op">(</span>comp_data<span class="op">);</span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>size <span class="op">&gt;</span> compressed<span class="op">-&gt;</span>size<span class="op">)</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EINVAL<span class="op">);</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>    comp_data <span class="op">+=</span> __db_decompress_int32<span class="op">(</span>comp_data<span class="op">,</span> <span class="op">&amp;</span>destData<span class="op">-&gt;</span>size<span class="op">);</span></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Check destination lengths */</span></span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>    destKey<span class="op">-&gt;</span>size <span class="op">=</span> prefix <span class="op">+</span> suffix<span class="op">;</span></span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>destKey<span class="op">-&gt;</span>size <span class="op">&gt;</span> destKey<span class="op">-&gt;</span>ulen <span class="op">||</span> </span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>            destData<span class="op">-&gt;</span>size <span class="op">&gt;</span> destData<span class="op">-&gt;</span>ulen<span class="op">)</span></span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>DB_BUFFER_SMALL<span class="op">);</span></span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Write the prefix */</span></span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>prefix <span class="op">&gt;</span> prevKey<span class="op">-&gt;</span>size<span class="op">)</span></span>
+<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EINVAL<span class="op">);</span></span>
+<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a>    dest_data <span class="op">=</span> <span class="op">(</span>u_int8_t<span class="op">*)</span>destKey<span class="op">-&gt;</span>data<span class="op">;</span></span>
+<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(</span>dest_data<span class="op">,</span> prevKey<span class="op">-&gt;</span>data<span class="op">,</span> prefix<span class="op">);</span></span>
+<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a>    dest_data <span class="op">+=</span> prefix<span class="op">;</span></span>
+<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Write the suffix */</span></span>
+<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a>    size <span class="op">+=</span> suffix<span class="op">;</span></span>
+<span id="cb9-39"><a href="#cb9-39" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>size <span class="op">&gt;</span> compressed<span class="op">-&gt;</span>size<span class="op">)</span></span>
+<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EINVAL<span class="op">);</span></span>
+<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(</span>dest_data<span class="op">,</span> comp_data<span class="op">,</span> suffix<span class="op">);</span></span>
+<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a>    comp_data <span class="op">+=</span> suffix<span class="op">;</span></span>
+<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-44"><a href="#cb9-44" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Write the data */</span></span>
+<span id="cb9-45"><a href="#cb9-45" aria-hidden="true" tabindex="-1"></a>    size <span class="op">+=</span> destData<span class="op">-&gt;</span>size<span class="op">;</span></span>
+<span id="cb9-46"><a href="#cb9-46" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>size <span class="op">&gt;</span> compressed<span class="op">-&gt;</span>size<span class="op">)</span></span>
+<span id="cb9-47"><a href="#cb9-47" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EINVAL<span class="op">);</span></span>
+<span id="cb9-48"><a href="#cb9-48" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(</span>destData<span class="op">-&gt;</span>data<span class="op">,</span> comp_data<span class="op">,</span> destData<span class="op">-&gt;</span>size<span class="op">);</span></span>
+<span id="cb9-49"><a href="#cb9-49" aria-hidden="true" tabindex="-1"></a>    comp_data <span class="op">+=</span> destData<span class="op">-&gt;</span>size<span class="op">;</span></span>
+<span id="cb9-50"><a href="#cb9-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-51"><a href="#cb9-51" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Return bytes read */</span></span>
+<span id="cb9-52"><a href="#cb9-52" aria-hidden="true" tabindex="-1"></a>    compressed<span class="op">-&gt;</span>size <span class="op">=</span> </span>
+<span id="cb9-53"><a href="#cb9-53" aria-hidden="true" tabindex="-1"></a>        <span class="op">(</span>u_int32_t<span class="op">)(</span>comp_data <span class="op">-</span> <span class="op">(</span>u_int8_t<span class="op">*)</span>compressed<span class="op">-&gt;</span>data<span class="op">);</span></span>
+<span id="cb9-54"><a href="#cb9-54" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb9-55"><a href="#cb9-55" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<h4 id="programmer-notes">Programmer Notes</h4>
+<p>As you use compression with your databases, be aware of the following:</p>
+<ul>
+<li><p>Compression works by placing key/data pairs from a single database page into a single block of compressed data. This is true whether you use DB's default compression, or you write your own compression. Because all of key/data data is placed in a single block of memory, you cannot decompress data unless you have decompressed everything that came before it in the block. That is, you cannot decompress item <span class="emphasis"><em>n</em></span> in the data block, unless you also decompress items <span class="emphasis"><em>0</em></span> through <span class="emphasis"><em>n-1</em></span>.</p></li>
+<li><p>If you increase the minimum number of key/data pairs placed on a Btree leaf page (using <a href="../../api/c/dbset_bt_minkey.html" class="olink">DB-&gt;set_bt_minkey()</a>), you will decrease your seek times on a compressed database. However, this will also decrease the effectiveness of the compression.</p></li>
+<li><p>Compressed databases are fastest if bulk load is used to add data to them. See <a href="am_misc_bulk.html" class="xref" title="Retrieving and updating records in bulk">Retrieving and updating records in bulk</a> for information on using bulk load.</p></li>
+</ul>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

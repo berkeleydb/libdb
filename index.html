@@ -78,18 +78,34 @@ cd libdb/build_unix
 
 <section id="docs">
   <h2>Documentation</h2>
-  <p>The full Berkeley DB manuals — API reference, Getting Started guides, and
-     the programmer's reference — ship in the repository under
-     <a href="https://github.com/berkeleydb/libdb/tree/master/docs"><code>docs/</code></a>
-     and are the authoritative reference for the current release.</p>
-  <h3>Archived manuals (hosted here)</h3>
+  <p>The <strong><a href="reference/">Berkeley DB Reference</a></strong> is the
+     modernized, single-sourced manual for the current release &mdash; the C and
+     C++/STL API reference, the Programmer's Reference, the Getting Started
+     guides (data storage, transactions, replication), installation, upgrading,
+     porting, and Berkeley DB SQL. Generated from Markdown, it is also available
+     as <a href="reference/#pdf">PDF</a> and
+     <a href="reference/libdb-man-5.3.33.tar.gz">man pages</a>
+     (<code>man libdb</code>, <code>man db_get</code>, &hellip;).</p>
   <ul class="docs">
-    <li><a href="docs/db/5.3.28/">Berkeley DB 5.3.28</a> — API reference, Getting Started (C, C++, Java), Reference Guide</li>
-    <li><a href="docs/db/5.3.21/">Berkeley DB 5.3.21 (11gR2)</a> — API reference and guides</li>
-    <li><a href="docs/dbxml/2.5.16/">Berkeley DB XML 2.5.16</a> — the XML/XQuery layer (historical)</li>
+    <li><a href="reference/api/c/index.html">C API Reference</a> &middot;
+        <a href="reference/api/stl/index.html">C++ / STL API</a></li>
+    <li><a href="reference/guides/programmer_reference/index.html">Programmer's Reference</a></li>
+    <li>Getting Started:
+        <a href="reference/guides/gsg/index.html">Data Storage</a> &middot;
+        <a href="reference/guides/gsg_txn/index.html">Transactions</a> &middot;
+        <a href="reference/guides/gsg_db_rep/index.html">Replication</a></li>
+    <li><a href="reference/guides/installation/index.html">Installation &amp; Build</a> &middot;
+        <a href="reference/guides/upgrading/index.html">Upgrading</a> &middot;
+        <a href="reference/guides/bdb-sql/index.html">Berkeley DB SQL</a></li>
   </ul>
-  <p class="note">The 5.3.x manuals apply to the current 5.3.33 release; the on-disk,
-     log, and API formats are stable across the 5.3 line.</p>
+  <p class="note">The manuals apply to the current <strong>5.3.33</strong> release;
+     the on-disk, log, and API formats are stable across the 5.3 line.</p>
+  <h3>Historical archive</h3>
+  <p class="note">The original Oracle DocBook manuals are kept for reference:
+     <a href="docs/db/5.3.28/">Berkeley DB 5.3.28</a> &middot;
+     <a href="docs/db/5.3.21/">5.3.21 (11gR2)</a> &middot;
+     <a href="docs/dbxml/2.5.16/">Berkeley DB XML 2.5.16</a>. The C#/Java
+     language-binding docs are archived separately.</p>
 </section>
 
 <section id="status">

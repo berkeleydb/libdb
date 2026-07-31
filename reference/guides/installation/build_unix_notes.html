@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture independent FAQ — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="architecture-independent-faq">Architecture independent FAQ</h2>
+<ol type="1">
+<li><p><strong>I have gcc installed, but configure fails to find it.</strong></p>
+<p>Berkeley DB defaults to using the native C compiler if none is specified. That is usually "cc", but some platforms require a different compiler to build multithreaded code. To configure Berkeley DB to build with gcc, run configure as follows:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>env CC<span class="op">=</span>gcc <span class="op">../</span>dist<span class="op">/</span>configure <span class="op">...</span></span></code></pre></div></li>
+<li><p><strong>When compiling with gcc, I get unreferenced symbols; for example the following:</strong></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>symbol __muldi3<span class="op">:</span> referenced symbol not found</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>symbol __cmpdi2<span class="op">:</span> referenced symbol not found</span></code></pre></div>
+<p>Berkeley DB often uses 64-bit integral types on systems supporting large files, and gcc performs operations on those types by calling library functions. These unreferenced symbol errors are usually caused by linking an application by calling "ld" rather than by calling "gcc": gcc will link in libgcc.a and will resolve the symbols. If that does not help, another possible workaround is to reconfigure Berkeley DB using the <a href="build_unix_conf.html#build_unix_conf.--disable-largefile" class="link">--disable-largefile</a> configuration option and then rebuild.</p></li>
+<li><p><strong>My C++ program traps during a failure in a DB call on my gcc-based system.</strong></p>
+<p>We believe there are some severe bugs in the implementation of exceptions for some gcc compilers. Exceptions require some interaction between compiler, assembler, and runtime libraries. We're not sure exactly what is at fault, but one failing combination is gcc 2.7.2.3 running on SuSE Linux 6.0. The problem on this system can be seen with a rather simple test case of an exception thrown from a shared library and caught in the main program.</p>
+<p>A variation of this problem seems to occur on AIX, although we believe it does not necessarily involve shared libraries on that platform.</p>
+<p>If you see a trap that occurs when an exception might be thrown by the Berkeley DB runtime, we suggest that you use static libraries instead of shared libraries. See the documentation for configuration. If this doesn't work and you have a choice of compilers, try using a more recent gcc- or a non-gcc based compiler to build Berkeley DB.</p>
+<p>Finally, you can disable the use of exceptions in the C++ runtime for Berkeley DB by using the <a href="../api_reference/CXX/envcreate.html#env_DB_CXX_NO_EXCEPTIONS" class="olink">DB_CXX_NO_EXCEPTIONS</a> flag with the <a href="../api_reference/CXX/env.html" class="olink">DbEnv</a> or <a href="../api_reference/CXX/db.html" class="olink">Db</a> constructors. When this flag is on, all C++ methods fail by returning an error code rather than throwing an exception.</p></li>
+<li><p><strong>I get unexpected results and database corruption when running threaded programs.</strong></p>
+<p><strong>I get error messages that mutex (for example, pthread_mutex_XXX or mutex_XXX) functions are undefined when linking applications with Berkeley DB.</strong></p>
+<p>On some architectures, the Berkeley DB library uses the ISO POSIX standard pthreads and UNIX International (UI) threads interfaces for underlying mutex support; Solaris is an example. You can specify compilers or compiler flags, or link with the appropriate thread library when loading your application to resolve the undefined references:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>cc <span class="op">...</span> <span class="op">-</span>lpthread <span class="op">...</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>cc <span class="op">...</span> <span class="op">-</span>lthread <span class="op">...</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>xlc_r <span class="op">...</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>cc <span class="op">...</span> <span class="op">-</span>mt <span class="op">...</span></span></code></pre></div>
+<p>See the appropriate architecture-specific Reference Guide pages for more information.</p>
+<p>On systems where more than one type of mutex is available, it may be necessary for applications to use the same threads package from which Berkeley DB draws its mutexes. For example, if Berkeley DB was built to use the POSIX pthreads mutex calls for mutex support, the application may need to be written to use the POSIX pthreads interfaces for its threading model. This is only conjecture at this time, and although we know of no systems that actually have this requirement, it's not unlikely that some exist.</p>
+<p>In a few cases, Berkeley DB can be configured to use specific underlying mutex interfaces. You can use the <a href="build_unix_conf.html#build_unix_conf.--enable-posixmutexes" class="link">--enable-posixmutexes</a> and <a href="build_unix_conf.html#build_unix_conf.--enable-uimutexes" class="link">--enable-uimutexes</a> configuration options to specify the POSIX and Unix International (UI) threads packages. This should not, however, be necessary in most cases.</p>
+<p>In some cases, it is vitally important to make sure that you load the correct library. For example, on Solaris systems, there are POSIX pthread interfaces in the C library, so applications can link Berkeley DB using only C library and not see any undefined symbols. However, the C library POSIX pthread mutex support is insufficient for Berkeley DB, and Berkeley DB cannot detect that fact. Similar errors can arise when applications (for example, tclsh) use dlopen to dynamically load Berkeley DB as a library.</p>
+<p>If you are seeing problems in this area after you confirm that you're linking with the correct libraries, there are two other things you can try. First, if your platform supports interlibrary dependencies, we recommend that you change the Berkeley DB Makefile to specify the appropriate threads library when creating the Berkeley DB shared library, as an interlibrary dependency. Second, if your application is using dlopen to dynamically load Berkeley DB, specify the appropriate thread library on the link line when you load the application itself.</p></li>
+<li><p><strong>I get core dumps when running programs that fork children.</strong></p>
+<p>Berkeley DB handles should not be shared across process forks, each forked child should acquire its own Berkeley DB handles.</p></li>
+<li><p><strong>I get reports of uninitialized memory reads and writes when running software analysis tools (for example, Rational Software Corp.'s Purify tool).</strong></p>
+<p>For performance reasons, Berkeley DB does not write the unused portions of database pages or fill in unused structure fields. To turn off these errors when running software analysis tools, build with the <a href="build_unix_conf.html#build_unix_conf.--enable-umrw" class="link">--enable-umrw</a> configuration option.</p></li>
+<li><p><strong>Berkeley DB programs or the test suite fail unexpectedly.</strong></p>
+<p>The Berkeley DB architecture does not support placing the shared memory regions on remote filesystems -- for example, the Network File System (NFS) or the Andrew File System (AFS). For this reason, the shared memory regions (normally located in the database home directory) must reside on a local filesystem. See <a href="../../guides/programmer_reference/env_region.html" class="olink">Shared memory region</a> for more information.</p>
+<p>With respect to running the test suite, always check to make sure that TESTDIR is not on a remote mounted filesystem.</p></li>
+<li><p><strong>The <a href="../../api/c/db_dump.html" class="olink">db_dump</a> utility fails to build.</strong></p>
+<p>The <a href="../../api/c/db_dump.html" class="olink">db_dump185</a> utility is the utility that supports the conversion of Berkeley DB 1.85 and earlier databases to current database formats. If the build errors look something like the following, it means the db.h include file being loaded is not a Berkeley DB 1.85 version include file:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>db_dump185<span class="op">.</span>c<span class="op">:</span> In function `main<span class="ch">&#39;:</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>db_dump185<span class="op">.</span>c<span class="op">:</span><span class="dv">210</span><span class="op">:</span> warning<span class="op">:</span> assignment makes pointer from integer </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>without a cast</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>db_dump185<span class="op">.</span>c<span class="op">:</span><span class="dv">212</span><span class="op">:</span> warning<span class="op">:</span> assignment makes pointer from integer </span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>without a cast</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>db_dump185<span class="op">.</span>c<span class="op">:</span><span class="dv">227</span><span class="op">:</span> structure has no member named `seq<span class="ch">&#39;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>db_dump185<span class="op">.</span>c<span class="op">:</span><span class="dv">227</span><span class="op">:</span> `R_NEXT<span class="ch">&#39; </span><span class="er">undeclared (first use in this function)</span></span></code></pre></div>
+<p>If the build errors look something like the following, it means that the Berkeley DB 1.85 code was not found in the standard libraries:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>cc <span class="op">-</span>o db_dump185 db_dump185<span class="op">.</span>o</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>ld<span class="op">:</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>Unresolved<span class="op">:</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>dbopen</span></code></pre></div>
+<p>To build the <a href="../../api/c/db_dump.html" class="olink">db_dump185</a> utility, the Berkeley DB version 1.85 code must already been built and available on the system. If the Berkeley DB 1.85 header file is not found in a standard place, or if the library is not part of the standard libraries used for loading, you will need to edit your Makefile, and change the following lines:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>DB185INC<span class="op">=</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>DB185LIB<span class="op">=</span></span></code></pre></div>
+<p>So that the system Berkeley DB 1.85 header file and library are found; for example:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>DB185INC<span class="op">=/</span>usr<span class="op">/</span>local<span class="op">/</span>include</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>DB185LIB<span class="op">=-</span>ldb185</span></code></pre></div></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

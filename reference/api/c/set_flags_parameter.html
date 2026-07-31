@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>set_flags — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="set_flags">set_flags</h2>
+<p>Configures a database environment.</p>
+<p>The syntax of the entry in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string <code>set_flags</code>, one or more whitespace characters, the method flag parameter as a string, optionally one or more whitespace characters, and the string <code>on</code> or <code>off</code>. If the optional string is omitted, the default is <code>on</code>; for example, <code>set_flags DB_TXN_NOSYNC</code> or <code>set_flags DB_TXN_NOSYNC on</code>. Because the DB_CONFIG file is read when the database environment is opened, it will silently overrule configuration done before that time.</p>
+<p>The method flag parameters are as follows:</p>
+<ul>
+<li><p>DB_AUTO_COMMIT</p>
+<p>Enables/disables to automatically enclose those DB handle operations for which no explicit transaction handle was specified, and which modify databases in the database environment, within a transaction.</p></li>
+<li><p>DB_CDB_ALLDB</p>
+<p>Enables/disables Berkeley DB Concurrent Data Store applications to perform locking on an environment-wide basis rather than on a per-database basis.</p></li>
+<li><p>DB_DIRECT_DB</p>
+<p>Enables/disables turning off system buffering of Berkeley DB database files to avoid double caching.</p></li>
+<li><p>DB_DSYNC_DB</p>
+<p>Enables/disables configuring Berkeley DB to flush database writes to the backing disk before returning from the write system call, rather than flushing database writes explicitly in a separate system call, as necessary.</p></li>
+<li><p>DB_MULTIVERSION</p>
+<p>Enables/disables all databases in the environment from being opened as if DB_MULTIVERSION is passed to the DB-&gt;open method. This flag will be ignored for queue databases for which DB_MULTIVERSION is not supported.</p></li>
+<li><p>DB_NOMMAP</p>
+<p>Enables/disables Berkeley DB from copying read-only database files into the local cache instead of potentially mapping them into process memory.</p></li>
+<li><p>DB_REGION_INIT</p>
+<p>Enables/disables Berkeley DB to page-fault shared regions into memory when initially creating or joining a Berkeley DB environment. In addition, Berkeley DB will write the shared regions when creating an environment, forcing the underlying virtual memory and filesystems to instantiate both the necessary memory and the necessary disk space.</p></li>
+<li><p>DB_TIME_NOTGRANTED</p>
+<p>Enables/disables those database calls timing out based on lock or transaction timeout values to return DB_LOCK_NOTGRANTED instead of DB_LOCK_DEADLOCK. This allows applications to distinguish between operations which have deadlocked and operations which have exceeded their time limits.</p></li>
+<li><p>DB_TXN_NOSYNC</p>
+<p>Enables/disables Berkeley DB to not write or synchronously flush the log on transaction commit.</p></li>
+<li><p>DB_TXN_NOWAIT</p>
+<p>Enables/disables the operation to return DB_LOCK_DEADLOCK if a lock is unavailable for any Berkeley DB operation performed in the context of a transaction.</p></li>
+<li><p>DB_TXN_SNAPSHOT</p>
+<p>Enables/disables all transactions in the environment to be started as if DB_TXN_SNAPSHOT were passed to the DB_ENV-&gt;txn_begin method, and all non-transactional cursors to be opened as if DB_TXN_SNAPSHOT were passed to the DB-&gt;cursor method.</p></li>
+<li><p>DB_TXN_WRITE_NOSYNC</p>
+<p>Enables/disables Berkeley DB to write, but not synchronously flush, the log on transaction commit.</p></li>
+<li><p>DB_YIELDCPU</p>
+<p>Enables/disables Berkeley DB to yield the processor immediately after each page or mutex acquisition.</p></li>
+</ul>
+<p>For more information, see <a href="envset_flags.html" class="xref" title="DB_ENV-&gt;set_flags()">DB_ENV-&gt;set_flags()</a>.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

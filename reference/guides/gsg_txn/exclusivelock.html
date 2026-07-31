@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exclusive Database Handles — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / gsg_txn</nav>
+  <main>
+<h2 id="exclusive-database-handles">Exclusive Database Handles</h2>
+<p>In some cases, concurrent applications can benefit from occasionally granting exclusive access to the entire database to a single database handle. This is desirable when a thread will perform an operation that touches all or most of the pages in a database.</p>
+<p>To configure a handle to have exclusive access to a database, you give it a single write lock to the entire database. This causes all other threads to block when they attempt to gain a read or write lock to any part of that database.</p>
+<p>The exclusive lock allows for improved throughput because the handle will not attempt to acquire any further locks once it has the exclusive write lock. It will also never be blocked waiting for a lock, and there is no possibility of a deadlock/retry cycle.</p>
+<p>Note that an exclusive database handle can only have one transaction active for it at a time.</p>
+<p>To configure a database handle with an exclusive lock, you use the <code>DB-&gt;set_lk_exclusive()</code> method before you open the database handle. Setting a value of <code>0</code> to this method means that the handle open operation will block until it can obtain the exclusive lock. A non-zero value means that if the method cannot obtain the exclusive lock immediately when the handle is opened, the open operation will exit with a <code>DB_LOCK_NOTGRANTED</code> error return.</p>
+<p>Once configured and opened, a handled configured with an exclusive database lock will hold that lock until the handle is closed.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multithreaded applications — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="multithreaded-applications">Multithreaded applications</h2>
+<p>Berkeley DB fully supports multithreaded applications. The Berkeley DB library is not itself multithreaded, and was deliberately architected to not use threads internally because of the portability problems that would introduce. Database environment and database object handles returned from Berkeley DB library functions are free-threaded. No other object handles returned from the Berkeley DB library are free-threaded. The following rules should be observed when using threads to access the Berkeley DB library:</p>
+<ol type="1">
+<li><p>The <a href="../../api/c/dbopen.html#open_DB_THREAD" class="olink">DB_THREAD</a> flag must be specified to the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> and <a href="../../api/c/dbopen.html" class="olink">DB-&gt;open()</a> methods if the Berkeley DB handles returned by those interfaces will be used in the context of more than one thread. Setting the <a href="../../api/c/dbopen.html#open_DB_THREAD" class="olink">DB_THREAD</a> flag inconsistently may result in database corruption.</p>
+<p>Threading is assumed in the Java API, so no special flags are required; and Berkeley DB functions will always behave as if the <a href="../../api/c/dbopen.html#open_DB_THREAD" class="olink">DB_THREAD</a> flag was specified.</p>
+<p>Only a single thread may call the <a href="../../api/c/envclose.html" class="olink">DB_ENV-&gt;close()</a> or <a href="../../api/c/dbclose.html" class="olink">DB-&gt;close()</a> methods for a returned environment or database handle.</p>
+<p>No other Berkeley DB handles are free-threaded.</p></li>
+<li><p>When using the non-cursor Berkeley DB calls to retrieve key/data items (for example, <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a>), the memory to which the pointer stored into the Dbt refers is valid only until the next call using the <a href="../../api/c/db.html" class="olink">DB</a> handle returned by <a href="../../api/c/dbopen.html" class="olink">DB-&gt;open()</a>. This includes <strong>any</strong> use of the returned <a href="../../api/c/db.html" class="olink">DB</a> handle, including by another thread within the process.</p>
+<p>For this reason, if the <a href="../../api/c/dbopen.html#open_DB_THREAD" class="olink">DB_THREAD</a> handle was specified to the <a href="../../api/c/dbopen.html" class="olink">DB-&gt;open()</a> method, either <a href="../../api/c/dbt.html#dbt_DB_DBT_MALLOC" class="olink">DB_DBT_MALLOC</a>, <a href="../../api/c/dbt.html#dbt_DB_DBT_REALLOC" class="olink">DB_DBT_REALLOC</a> or <a href="../../api/c/dbt.html#dbt_DB_DBT_USERMEM" class="olink">DB_DBT_USERMEM</a> must be specified in the <a href="../../api/c/dbt.html" class="olink">DBT</a> when performing any non-cursor key or data retrieval.</p></li>
+<li><p>Cursors may not span transactions. Each cursor must be allocated and deallocated within the same transaction.</p>
+<p>Transactions and cursors may span threads, but only serially, that is, the application must serialize access to the <a href="../../api/c/txn.html" class="olink">TXN</a> and <a href="../../api/c/dbc.html" class="olink">DBC</a> handles. In the case of nested transactions, since all child transactions are part of the same parent transaction, they must observe the same constraints. That is, children may execute in different threads only if each child executes serially.</p></li>
+<li><p>User-level synchronization mutexes must have been implemented for the compiler/architecture combination. Attempting to specify the DB_THREAD flag will fail if fast mutexes are not available.</p>
+<p>If blocking mutexes are available (for example POSIX pthreads), they will be used. Otherwise, the Berkeley DB library will make a system call to pause for some amount of time when it is necessary to wait on a lock. This may not be optimal, especially in a thread-only environment, in which it is usually more efficient to explicitly yield the processor to another thread.</p>
+<p>It is possible to specify a yield function on an per-application basis. See <a href="../../api/c/db_env_set_func_yield.html" class="olink">db_env_set_func_yield</a> for more information.</p>
+<p>It is possible to specify the number of attempts that will be made to acquire the mutex before waiting. See <a href="../../api/c/mutexset_tas_spins.html" class="olink">DB_ENV-&gt;mutex_set_tas_spins()</a> for more information.</p></li>
+</ol>
+<p>When creating multiple databases in a single physical file, multithreaded programs may have additional requirements. For more information, see <a href="am_opensub.html" class="xref" title="Opening multiple databases in a single file">Opening multiple databases in a single file</a></p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

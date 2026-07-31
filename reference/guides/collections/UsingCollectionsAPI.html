@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Using the DB Java Collections API — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / collections</nav>
+  <main>
+<h2 id="using-the-db-java-collections-api">Using the DB Java Collections API</h2>
+<p><span class="sect2"> <a href="UsingCollectionsAPI.html#UsingTransactions">Using Transactions</a> </span></p>
+<p><span class="sect2"> <a href="UsingCollectionsAPI.html#TransactionRollback">Transaction Rollback</a> </span></p>
+<p><span class="sect2"> <a href="UsingCollectionsAPI.html#SelectingAccessMethods">Selecting Access Methods</a> </span></p>
+<p><span class="sect2"> <a href="UsingCollectionsAPI.html#AccessMethodRestrictions">Access Method Restrictions</a> </span></p>
+<p>An <a href="../../java/com/sleepycat/db/Environment.html" class="ulink" target="_top">Environment</a> manages the resources for one or more data stores. A <a href="../../java/com/sleepycat/db/Database.html" class="ulink" target="_top">Database</a> object represents a single database and is created via a method on the environment object. <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" class="ulink" target="_top">SecondaryDatabase</a> objects represent an index associated with a primary database. An access method must be chosen for each database and secondary database. Primary and secondary databases are then used to create stored collection objects, as described in <a href="UsingStoredCollections.html" class="xref" title="Using Stored Collections">Using Stored Collections</a> .</p>
+<h3 id="using-transactions">Using Transactions</h3>
+<p>Once you have an environment, one or more databases, and one or more stored collections, you are ready to access (read and write) stored data. For a transactional environment, a transaction must be started before accessing data, and must be committed or aborted after access is complete. The DB Java Collections API provides several ways of managing transactions.</p>
+<p>The recommended technique is to use the <a href="../../java/com/sleepycat/collections/TransactionRunner.html" class="ulink" target="_top">TransactionRunner</a> class along with your own implementation of the <a href="../../java/com/sleepycat/collections/TransactionWorker.html" class="ulink" target="_top">TransactionWorker</a> interface. <a href="../../java/com/sleepycat/collections/TransactionRunner.html" class="ulink" target="_top">TransactionRunner</a> will call your <a href="../../java/com/sleepycat/collections/TransactionWorker.html" class="ulink" target="_top">TransactionWorker</a> implementation class to perform the data access or work of the transaction. This technique has the following benefits:</p>
+<ul>
+<li><p>Transaction exceptions will be handled transparently and retries will be performed when deadlocks are detected.</p></li>
+<li><p>The transaction will automatically be committed if your <a href="../../java/com/sleepycat/collections/TransactionWorker.html#doWork()" class="ulink" target="_top">TransactionWorker.doWork()</a> method returns normally, or will be aborted if <code>doWork()</code> throws an exception.</p></li>
+<li><p><code>TransactionRunner</code> can be used for non-transactional environments as well, allowing you to write your application independently of the environment.</p></li>
+</ul>
+<p>If you don't want to use <a href="../../java/com/sleepycat/collections/TransactionRunner.html" class="ulink" target="_top">TransactionRunner</a>, the alternative is to use the <a href="../../java/com/sleepycat/collections/CurrentTransaction.html" class="ulink" target="_top">CurrentTransaction</a> class.</p>
+<ol type="1">
+<li><p>Obtain a CurrentTransaction instance by calling the <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#getInstance(com.sleepycat.db.Environment)" class="ulink" target="_top">CurrentTransaction.getInstance</a> method. The instance returned can be used by all threads in a program.</p></li>
+<li><p>Use <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#beginTransaction(com.sleepycat.db.TransactionConfig)" class="ulink" target="_top">CurrentTransaction.beginTransaction()</a>, <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#commitTransaction()" class="ulink" target="_top">CurrentTransaction.commitTransaction()</a> and <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#abortTransaction()" class="ulink" target="_top">CurrentTransaction.abortTransaction()</a> to directly begin, commit and abort transactions.</p></li>
+</ol>
+<p>If you choose to use CurrentTransaction directly you must handle the <a href="../../java/com/sleepycat/db/DeadlockException.html" class="ulink" target="_top">DeadlockException</a> exception and perform retries yourself. Also note that CurrentTransaction may only be used in a transactional environment.</p>
+<p>The DB Java Collections API supports nested transactions. If <a href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" class="ulink" target="_top">TransactionRunner.run(com.sleepycat.collections.TransactionWorker)</a> or <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#beginTransaction(com.sleepycat.db.TransactionConfig)" class="ulink" target="_top">CurrentTransaction.beginTransaction()</a> , is called while another transaction is active, a child transaction is created. When <a href="../../java/com/sleepycat/collections/TransactionRunner.html#run(com.sleepycat.collections.TransactionWorker)" class="ulink" target="_top">TransactionRunner.run(com.sleepycat.collections.TransactionWorker)</a> returns, or when <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#commitTransaction()" class="ulink" target="_top">CurrentTransaction.commitTransaction()</a> or <a href="../../java/com/sleepycat/collections/CurrentTransaction.html#abortTransaction()" class="ulink" target="_top">CurrentTransaction.abortTransaction()</a> is called, the parent transaction becomes active again. Note that because only one transaction is active per-thread, it is impossible to accidentally use a parent transaction while a child transaction is active.</p>
+<p>The DB Java Collections API supports transaction auto-commit. If no transaction is active and a write operation is requested for a transactional database, auto-commit is used automatically.</p>
+<p>The DB Java Collections API also supports transaction dirty-read via the <a href="../../java/com/sleepycat/collections/StoredCollections.html" class="ulink" target="_top">StoredCollections</a> class. When dirty-read is enabled for a collection, data will be read that has been modified by another transaction but not committed. Using dirty-read can improve concurrency since reading will not wait for other transactions to complete. For a non-transactional container, dirty-read has no effect. See <a href="../../java/com/sleepycat/collections/StoredCollections.html" class="ulink" target="_top">StoredCollections</a> for how to create a dirty-read collection.</p>
+<h3 id="transaction-rollback">Transaction Rollback</h3>
+<p>When a transaction is aborted (or rolled back) the application is responsible for discarding references to any data objects that were modified during the transaction. Since the DB Java Collections API treats data by value, not by reference, neither the data objects nor the DB Java Collections API objects contain status information indicating whether the data objects are 1- in sync with the database, 2- dirty (contain changes that have not been written to the database), 3- stale (were read previously but have become out of sync with changes made to the database), or 4- contain changes that cannot be committed because of an aborted transaction.</p>
+<p>For example, a given data object will reflect the current state of the database after reading it within a transaction. If the object is then modified it will be out of sync with the database. When the modified object is written to the database it will then be in sync again. But if the transaction is aborted the object will then be out of sync with the database. References to objects for aborted transactions should no longer be used. When these objects are needed later they should be read fresh from the database.</p>
+<p>When an existing stored object is to be updated, special care should be taken to read the data, then modify it, and then write it to the database, all within a single transaction. If a stale data object (an object that was read previously but has since been changed in the database) is modified and then written to the database, database changes may be overwritten unintentionally.</p>
+<p>When an application enforces rules about concurrent access to specific data objects or all data objects, the rules described here can be relaxed. For example, if the application knows that a certain object is only modified in one place, it may be able to reliably keep a current copy of that object. In that case, it is not necessary to reread the object before updating it. That said, if arbitrary concurrent access is to be supported, the safest approach is to always read data before modifying it within a single transaction.</p>
+<p>Similar concerns apply to using data that may have become stale. If the application depends on current data, it should be read fresh from the database just before it is used.</p>
+<h3 id="selecting-access-methods">Selecting Access Methods</h3>
+<p>For each data store and secondary index, you must choose from one of the access methods in the table below. The access method determines not only whether sorted keys or duplicate keys are supported, but also what types of collection views may be used and what restrictions are imposed on the collection views.</p>
+<table>
+<thead>
+<tr>
+<th>Access Method</th>
+<th>Ordered</th>
+<th>Duplicates</th>
+<th>Record Numbers</th>
+<th>Database Type</th>
+<th><code>DatabaseConfig</code> Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BTREE-UNIQUE</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" class="ulink" target="_top">BTREE</a></td>
+<td>None</td>
+</tr>
+<tr>
+<td>BTREE-DUP</td>
+<td>Yes</td>
+<td>Yes, Unsorted</td>
+<td>No</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" class="ulink" target="_top">BTREE</a></td>
+<td><a href="../../java/com/sleepycat/db/DatabaseConfig.html#setUnsortedDuplicates(boolean)" class="ulink" target="_top">setUnsortedDuplicates</a></td>
+</tr>
+<tr>
+<td>BTREE-DUPSORT</td>
+<td>Yes</td>
+<td>Yes, Sorted</td>
+<td>No</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" class="ulink" target="_top">BTREE</a></td>
+<td><a href="../../java/com/sleepycat/db/DatabaseConfig.html#setSortedDuplicates(boolean)" class="ulink" target="_top">setSortedDuplicates</a></td>
+</tr>
+<tr>
+<td>BTREE-RECNUM</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes, Renumbered</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" class="ulink" target="_top">BTREE</a></td>
+<td><a href="../../java/com/sleepycat/db/DatabaseConfig.html#setBtreeRecordNumbers(boolean)" class="ulink" target="_top">setBtreeRecordNumbers</a></td>
+</tr>
+<tr>
+<td>HASH-UNIQUE</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#HASH" class="ulink" target="_top">HASH</a></td>
+<td>None</td>
+</tr>
+<tr>
+<td>HASH-DUP</td>
+<td>No</td>
+<td>Yes, Unsorted</td>
+<td>No</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#HASH" class="ulink" target="_top">HASH</a></td>
+<td><a href="../../java/com/sleepycat/db/DatabaseConfig.html#setUnsortedDuplicates(boolean)" class="ulink" target="_top">setUnsortedDuplicates</a></td>
+</tr>
+<tr>
+<td>HASH-DUPSORT</td>
+<td>No</td>
+<td>Yes, Sorted</td>
+<td>No</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#HASH" class="ulink" target="_top">HASH</a></td>
+<td><a href="../../java/com/sleepycat/db/DatabaseConfig.html#setSortedDuplicates(boolean)" class="ulink" target="_top">setSortedDuplicates</a></td>
+</tr>
+<tr>
+<td>QUEUE</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes, Fixed</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#QUEUE" class="ulink" target="_top">QUEUE</a></td>
+<td>None</td>
+</tr>
+<tr>
+<td>RECNO</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes, Fixed</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#RECNO" class="ulink" target="_top">RECNO</a></td>
+<td>None</td>
+</tr>
+<tr>
+<td>RECNO-RENUMBER</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes, Renumbered</td>
+<td><a href="../../java/com/sleepycat/db/DatabaseType.html#RECNO" class="ulink" target="_top">RECNO</a></td>
+<td><a href="../../java/com/sleepycat/db/DatabaseConfig.html#setRenumbering(boolean)" class="ulink" target="_top">setRenumbering</a></td>
+</tr>
+</tbody>
+</table>
+<p>Please see <span class="html"><a href="../../guides/programmer_reference/am_conf.html#am_conf_intro" class="ulink" target="_top">Available Access Methods</a> in</span> the <em>Berkeley DB Programmer's Reference Guide</em> for more information on access method configuration.</p>
+<h3 id="access-method-restrictions">Access Method Restrictions</h3>
+<p>The restrictions imposed by the access method on the database model are:</p>
+<ul>
+<li><p>If keys are ordered then data may be enumerated in key order and key ranges may be used to form subsets of a data store. The <code>SortedMap</code> and <code>SortedSet</code> interfaces are supported for collections with ordered keys.</p></li>
+<li><p>If duplicates are allowed then more than one value may be associated with the same key. This means that the data store cannot be strictly considered a map — it is really a multi-map. See <a href="UsingStoredCollections.html" class="xref" title="Using Stored Collections">Using Stored Collections</a> for implications on the use of the collection interfaces.</p></li>
+<li><p>If duplicate keys are allowed for a data store then the data store may not have secondary indices.</p></li>
+<li><p>For secondary indices with duplicates, the duplicates must be sorted. This restriction is imposed by the DB Java Collections API.</p></li>
+<li><p>With sorted duplicates, all values for the same key must be distinct.</p></li>
+<li><p>If duplicates are unsorted, then values for the same key must be distinct.</p></li>
+<li><p>If record number keys are used, the the number of records is limited to the maximum value of an unsigned 32-bit integer.</p></li>
+<li><p>If record number keys are renumbered, then standard List add/remove behavior is supported but concurrency/performance is reduced.</p></li>
+</ul>
+<p>See <a href="UsingStoredCollections.html" class="xref" title="Using Stored Collections">Using Stored Collections</a> for more information on how access methods impact the use of stored collections.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

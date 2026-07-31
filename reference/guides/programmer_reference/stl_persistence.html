@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dbstl persistence — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="dbstl-persistence">Dbstl persistence</h2>
+<p><span class="sect2"> <a href="stl_persistence.html#directdbget">Direct database get</a> </span></p>
+<p><span class="sect2"> <a href="stl_persistence.html#chg_persistence">Change persistence</a> </span></p>
+<p><span class="sect2"> <a href="stl_persistence.html#obj_life_persistence">Object life time and persistence</a> </span></p>
+<p>The following sections provide information on how to achieve persistence using dbstl.</p>
+<h3 id="direct-database-get">Direct database get</h3>
+<p>Each container has a <strong>begin()</strong> method which produces an iterator. These <strong>begin</strong> methods take a boolean parameter, <strong>directdb_get</strong>, which controls the caching behavior of the iterator. The default value of this parameter is <code>true</code>.</p>
+<p>If <strong>directdb_get</strong> is <code>true</code>, then the persistent object is fetched anew from the database each time the iterator is dereferenced as a pointer by use of the star-operator (<strong>*iterator</strong>) or by use of the arrow-operator (<strong>iterator-&gt;member</strong>). If <strong>directdb_get</strong> is <code>false</code>, then the first dereferencing of the iterator fetches the object from the database, but later dereferences can return cached data.</p>
+<p>With <strong>directdb_get</strong> set to <code>true</code>, if you call:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">(*</span>iterator<span class="op">).</span>datamember1<span class="op">=</span>new<span class="op">-</span>value1<span class="op">;</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">(*</span>iterator<span class="op">).</span>datamember2<span class="op">=</span>new<span class="op">-</span>value2<span class="op">;</span>  </span></code></pre></div>
+<p>then the assignment to <code>datamember1</code> will be lost, because the second dereferencing of the iterator would cause the cached copy of the object to be overwritten by the object's persistent data from the database.</p>
+<p>You also can use the arrow operator like this:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>iterator<span class="op">-&gt;</span>datamember1<span class="op">=</span>new<span class="op">-</span>value1<span class="op">;</span> </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>iterator<span class="op">-&gt;</span>datamember2<span class="op">=</span>new<span class="op">-</span>value2<span class="op">;</span>  </span></code></pre></div>
+<p>This works exactly the same way as <strong>iterator::operator*</strong>. For this reason, the same caching rules apply to arrow operators as they do for star operators.</p>
+<p>One way to avoid this problem is to create a reference to the object, and use it to access the object:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>container<span class="op">::</span>value_type <span class="op">&amp;</span>ref <span class="op">=</span> <span class="op">*</span>iterator<span class="op">;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>ref<span class="op">.</span>datamember1<span class="op">=</span>new<span class="op">-</span>value1<span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>ref<span class="op">.</span>datamember2<span class="op">=</span>new<span class="op">-</span>value2<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="op">...</span><span class="co">// more member function calls and datamember assignments</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>ref<span class="op">.</span>_DB_STL_StoreElement<span class="op">();</span>  </span></code></pre></div>
+<p>The above code will not lose the newly assigned value of <code>ref.datamember1</code> in the way that the previous example did.</p>
+<p>In order to avoid these complications, you can assign to the object referenced by an iterator with another object of the same type like this:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>container<span class="op">::</span>value_type obj2<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>obj2<span class="op">.</span>datamember1 <span class="op">=</span> new<span class="op">-</span>value1<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>obj2<span class="op">.</span>datamember2 <span class="op">=</span> new<span class="op">-</span>value2<span class="op">;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="op">*</span>itr <span class="op">=</span> obj2<span class="op">;</span> </span></code></pre></div>
+<p>This code snippet causes the new values in <code>obj2</code> to be stored into the underlying database.</p>
+<p>If you have two iterators going through the same container like this:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span>iterator1 <span class="op">=</span> v<span class="op">.</span>begin<span class="op">(),</span> iterator2 <span class="op">=</span> v<span class="op">.</span>begin<span class="op">();</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>     iterator1 <span class="op">!=</span> v<span class="op">.</span>end<span class="op">();</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>     <span class="op">++</span>iterator1<span class="op">,</span> <span class="op">++</span>iterator2<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">*</span>iterator1 <span class="op">=</span> new_value<span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>        print<span class="op">(*</span>iterator2<span class="op">);</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>  </span></code></pre></div>
+<p>then the printed value will depend on the value of <strong>directdb_get</strong> with which the iterator had been created. If <strong>directdb_get</strong> is <code>false</code>, then the original, persistent value is printed; otherwise the newly assigned value is returned from the cache when <code>iterator2</code> is dereferenced. This happens because each iterator has its own cached copy of the persistent object, and the dereferencing of <code>iterator2</code> refreshes <code>iterator2</code>'s copy from the database, retrieving the value stored by the assignment to <code>*iterator1</code>.</p>
+<p>Alternatively, you can set <strong>directdb_get</strong> to <code>false</code> and call <code>iterator2-&gt;refresh()</code> immediately before the dereferencing of <code>iterator2</code>, so that <code>iterator2</code>'s cached value is refreshed.</p>
+<p>If <strong>directdb_get</strong> is <code>false</code>, a few of the tests in dbstl's test kit will fail. This is because the above contrived case appears in several of C++ STL tests. Consequently, the default value of the <strong>directdb_get</strong> parameter in the <code>container::begin()</code> methods is <code>true</code>. If your use cases avoid such bizarre usage of iterators, you can set it to <code>false</code>, which makes the iterator read operation faster.</p>
+<h3 id="change-persistence">Change persistence</h3>
+<p>If you modify the object to which an iterator refers by using one of the following:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="op">(*</span>iterator<span class="op">).</span>member_function_call<span class="op">()</span></span></code></pre></div>
+<p>or</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="op">(*</span>iterator<span class="op">).</span>data_member <span class="op">=</span> new_value</span></code></pre></div>
+<p>then you should call <code>iterator-&gt;_DB_STL_StoreElement()</code> to store the change. Otherwise the change is lost after the iterator moves on to other elements.</p>
+<p>If you are storing a sequence, and you modified some part of it, you should also call <code>iterator-&gt;_DB_STL_StoreElement()</code> before moving the iterator.</p>
+<p>And in both cases, if <strong>directdb_get</strong> is <code>true</code> (this is the default value), you should call <code>_DB_STL_StoreElement()</code> after the change and before the next iterator movement OR the next dereferencing of the iterator by the star or arrow operators (<code>iterator::operator*</code> or <code>iterator::operator-&gt;</code>). Otherwise, you will lose the change.</p>
+<p>If you update the element by assigning to a dereferenced iterator like this:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="op">*</span>iterator <span class="op">=</span> new_element<span class="op">;</span></span></code></pre></div>
+<p>then you never have to call <code>_DB_STL_StoreElement()</code> because the change is stored in the database automatically.</p>
+<h3 id="object-life-time-and-persistence">Object life time and persistence</h3>
+<p>Dbstl is an interface to Berkeley DB, so it is used to store data persistently. This is really a different purpose from that of regular C++ STL. This difference in their goals has implications on expected object lifetime: In standard STL, when you store an object A of type ID into C++ stl vector V using V.push_back(A), if a proper copy constructor is provided in A's class type, then the copy of A (call it B) and everything in B, such as another object C pointed to by B's data member B.c_ptr, will be stored in V and will live as long as B is still in V and V is alive. B will be destroyed when V is destroyed or B is erased from V.</p>
+<p>This is not true for dbstl, which will copy A's data and store it in the underlying database. The copy is by default a shallow copy, but users can register their object marshalling and unmarshalling functions using the <code>DbstlElemTraits</code> class template. So if A is passed to a <code>db_vector</code> container, <code>dv</code>, by using <code>dv.push_back(A)</code>, then dbstl copies A's data using the registered functions, and stores data into the underlying database. Consequently, A will be valid, even if the container is destroyed, because it is stored into the database.</p>
+<p>If the copy is simply a shallow copy, and A is later destroyed, then the pointer stored in the database will become invalid. The next time we use the retrieved object, we will be using an invalid pointer, which probably will result in errors. To avoid this, store the referred object C rather than the pointer member A.c_ptr itself, by registering the right marshalling/unmarshalling function with <code>DbstlElemTraits</code>.</p>
+<p>For example, consider the following example class declaration:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>class ID</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>public<span class="op">:</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    string Name<span class="op">;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> Score<span class="op">;</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="op">};</span>  </span></code></pre></div>
+<p>Here, the class ID has a data member <strong>Name</strong>, which refers to a memory address of the actual characters in the string. If we simply shallow copy an object, <code>id</code>, of class ID to store it, then the stored data, <code>idd</code>, is invalid when <code>id</code> is destroyed. This is because <code>idd</code> and <code>id</code> refer to a common memory address which is the base address of the memory space storing all characters in the string, and this memory space is released when <code>id</code> is destroyed. So <code>idd</code> will be referring to an invalid address. The next time we retrieve <code>idd</code> and use it, there will probably be memory corruption.</p>
+<p>The way to store <code>id</code> is to write a marshal/unmarshal function pair like this:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> copy_id<span class="op">(</span><span class="dt">void</span> <span class="op">*</span>dest<span class="op">,</span> <span class="dt">const</span> ID<span class="op">&amp;</span>elem<span class="op">)</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(</span>dest<span class="op">,</span> <span class="op">&amp;</span>elem<span class="op">.</span>Score<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>elem<span class="op">.</span>Score<span class="op">));</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> <span class="op">*</span>p <span class="op">=</span> <span class="op">((</span><span class="dt">char</span> <span class="op">*)</span>dest<span class="op">)</span> <span class="op">+</span> <span class="kw">sizeof</span><span class="op">(</span>elem<span class="op">.</span>Score<span class="op">);</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    strcpy<span class="op">(</span>p<span class="op">,</span> elem<span class="op">.</span>Name<span class="op">.</span>c_str<span class="op">());</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> restore_id<span class="op">(</span>ID<span class="op">&amp;</span> dest<span class="op">,</span> <span class="dt">const</span> <span class="dt">void</span> <span class="op">*</span>srcdata<span class="op">)</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(&amp;</span>dest<span class="op">.</span>Score<span class="op">,</span> srcdata<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>dest<span class="op">.</span>Score<span class="op">));</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>p <span class="op">=</span> <span class="op">((</span><span class="dt">char</span> <span class="op">*)</span>srcdata<span class="op">)</span> <span class="op">+</span> <span class="kw">sizeof</span><span class="op">(</span>dest<span class="op">.</span>Score<span class="op">);</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    dest<span class="op">.</span>Name <span class="op">=</span> p<span class="op">;</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a><span class="dt">size_t</span> size_id<span class="op">(</span><span class="dt">const</span> ID<span class="op">&amp;</span> elem<span class="op">)</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="kw">sizeof</span><span class="op">(</span>elem<span class="op">.</span>Score<span class="op">)</span> <span class="op">+</span> elem<span class="op">.</span>Name<span class="op">.</span>size<span class="op">()</span> <span class="op">+</span> </span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>        <span class="dv">1</span><span class="op">;</span><span class="co">// store the &#39;\0&#39; char.</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>  </span></code></pre></div>
+<p>Then register the above functions before storing any instance of <code>ID</code>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>DbstlElemTraits<span class="op">&lt;</span>ID<span class="op">&gt;::</span>instance<span class="op">()-&gt;</span>set_copy_function<span class="op">(</span>copy_id<span class="op">);</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>DbstlElemTraits<span class="op">&lt;</span>ID<span class="op">&gt;::</span>instance<span class="op">()-&gt;</span>set_size_function<span class="op">(</span>size_id<span class="op">);</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>DbstlElemTraits<span class="op">&lt;</span>ID<span class="op">&gt;::</span>instance<span class="op">()-&gt;</span>set_restore_function<span class="op">(</span>restore_id<span class="op">);</span>  </span></code></pre></div>
+<p>This way, the actual data of instances of ID are stored, and so the data will persist even if the container itself is destroyed.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

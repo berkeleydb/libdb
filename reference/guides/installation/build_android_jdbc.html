@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Building the Android JDBC Driver — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="building-the-android-jdbc-driver">Building the Android JDBC Driver</h2>
+<p>This section describes how to build and use the BDB JDBC driver for Android. Note that the BDB JDBC driver cannot currently be built on a Windows platform.</p>
+<ol type="1">
+<li><p>Download and install the Android SDK. The installation instructions can be found here:</p>
+<p><a href="http://developer.android.com/sdk/installing.html" class="ulink" target="_top"><a href="http://developer.android.com/sdk/installing.html">http://developer.android.com/sdk/installing.html</a></a></p></li>
+<li><p>Download and install the Android NDK. It can be found here:</p>
+<p><a href="http://developer.android.com/sdk/ndk/index.html" class="ulink" target="_top"><a href="http://developer.android.com/sdk/ndk/index.html">http://developer.android.com/sdk/ndk/index.html</a></a></p></li>
+<li><p>Build the BDB JDBC libraries.</p>
+<ol type="1">
+<li><p>If you do not already have it, download the Berkeley DB package from here:</p>
+<p><a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/index.html" class="ulink" target="_top"><a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/index.html">http://www.oracle.com/technetwork/database/berkeleydb/downloads/index.html</a></a></p>
+<p>Note that you must be using a 5.3.x or higher version of the product in order for these instructions to work. Once you have the package, unpack it:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>$ tar zxvf db<span class="op">-</span>x<span class="op">.</span>y<span class="op">.</span>z<span class="op">.</span>tar<span class="op">.</span>gz</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>$ cd db<span class="op">-</span>x<span class="op">.</span>y<span class="op">.</span>z</span></code></pre></div>
+<p>Where <code>x.y.z</code> the major, minor, and point release version of the Berkeley DB distribution which you are using.</p>
+<p>Also, note that in the following instructions, the directory denoted by <code>db-x.y.z</code>, above, is referred to as <code>&lt;db&gt;</code>.</p></li>
+<li><p>Build an x86/x64 JDBC package. This is required because the building process will generate target files which are required to build Android NDK. Also, the built JAR file can be imported by eclipse, which will then convert it to the Android Dalvik JAR format.</p>
+<p>To do this, edit <code>&lt;db&gt;/lang/sql/jdbc/SQLit/Database.java</code> and replace all instances of <code>System.loadLibrary("sqlite_jni")</code> with <code>System.loadLibrary("oracle-jdbc")</code>.</p>
+<p>Once you have done this, configure and make the library. The following example shows the minimum configuration options that you need to use in order to configure the Berkeley DB JDBC driver. For your particular installation, other configuration options might be interesting to you. See <a href="build_unix_conf.html" class="xref" title="Configuring Berkeley DB">Configuring Berkeley DB</a> and <a href="build_android_config.html" class="xref" title="Android Configuration Options">Android Configuration Options</a> for more information.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>cd <span class="op">&lt;</span>db<span class="op">&gt;/</span>build_unix</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">../</span>dist<span class="op">/</span>configure <span class="op">--</span>enable<span class="op">-</span>jdbc <span class="op">&amp;&amp;</span> make</span></code></pre></div></li>
+</ol></li>
+<li><p>Build the Android NDK:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>$ cd <span class="op">&lt;</span>db<span class="op">&gt;/</span>build_android<span class="op">/</span>jdbc<span class="op">/</span>jni</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>$ <span class="op">&lt;</span>ndk<span class="op">-</span>install<span class="op">-</span>directory<span class="op">&gt;/</span>ndk<span class="op">-</span>build </span></code></pre></div>
+<p>This results in the following required files:</p>
+<table>
+<tbody>
+<tr>
+<td>&lt;db&gt;/build_android/jdbc/libs/armeabi/liboracle-jdbc.so</td>
+</tr>
+<tr>
+<td>&lt;db&gt;/build_android/jdbc/libs/armeabi/dbsql</td>
+</tr>
+<tr>
+<td>&lt;db&gt;/build_unix/jdbc/sqlite.jar</td>
+</tr>
+</tbody>
+</table></li>
+</ol>
+<p>Having built the JDBC driver, you can now use it with your project. You can do this using Eclipse and the ADT plugin, which you can get from here:</p>
+<p><a href="http://developer.android.com/sdk/eclipse-adt.html" class="ulink" target="_top"><a href="http://developer.android.com/sdk/eclipse-adt.html">http://developer.android.com/sdk/eclipse-adt.html</a></a></p>
+<p>To make sure everything is working:</p>
+<ol type="1">
+<li><p>Start Eclipse and create an Android project. Use:</p>
+<ul>
+<li><p><code>test_jdbc</code> as the Android project name.</p></li>
+<li><p>Create it as an Android 3.2 project.</p></li>
+<li><p>For the package name, use <code>example.jdbc</code>.</p></li>
+</ul></li>
+<li><p>This results in an empty code file. Copy and paste the following example code into that file:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>package example<span class="op">.</span>testjdbc<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>import SQLite<span class="op">.*;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.*;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>import android<span class="op">.</span>app<span class="op">.</span>Activity<span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>import android<span class="op">.</span>os<span class="op">.</span>Bundle<span class="op">;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>import android<span class="op">.</span>widget<span class="op">.</span>TextView<span class="op">;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>sql<span class="op">.*;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>public class Test_jdbcActivity extends Activity <span class="op">{</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="co">     * This is the main entrance/body of our sample program. This</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="co">     * example illustrates all of the major API usages.</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> onCreate<span class="op">(</span>Bundle savedInstanceState<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>        super<span class="op">.</span>onCreate<span class="op">(</span>savedInstanceState<span class="op">);</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        TextView tv <span class="op">=</span> new TextView<span class="op">(</span>this<span class="op">);</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>        tv<span class="op">.</span>setText<span class="op">(</span><span class="st">&quot;App Started&quot;</span><span class="op">);</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>        setContentView<span class="op">(</span>tv<span class="op">);</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Appstart: &quot;</span><span class="op">);</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>        String url <span class="op">=</span> </span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;jdbc:sqlite://data/data/example.testjdbc/example.db&quot;</span><span class="op">;</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>        Connection con<span class="op">;</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>        String dropString <span class="op">=</span> <span class="st">&quot;drop table if exists COFFEES&quot;</span><span class="op">;</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>        String createString<span class="op">;</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>        createString <span class="op">=</span> <span class="st">&quot;create table COFFEES &quot;</span> </span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>            <span class="op">+</span> <span class="st">&quot;(COF_NAME varchar(32), &quot;</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>            <span class="op">+</span> <span class="st">&quot;SUP_ID int, &quot;</span> <span class="op">+</span> <span class="st">&quot;PRICE float, &quot;</span> <span class="op">+</span> <span class="st">&quot;SALES int, &quot;</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>            <span class="op">+</span> <span class="st">&quot;TOTAL int)&quot;</span><span class="op">;</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>        String insertString <span class="op">=</span> <span class="st">&quot;drop table COFFEES if exisits&quot;</span><span class="op">;</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>        String query <span class="op">=</span> <span class="st">&quot;select COF_NAME, PRICE from COFFEES&quot;</span><span class="op">;</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>        Statement stmt<span class="op">;</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>            Class<span class="op">.</span>forName<span class="op">(</span><span class="st">&quot;SQLite.JDBCDriver&quot;</span><span class="op">);</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch <span class="op">(</span>java<span class="op">.</span>lang<span class="op">.</span>ClassNotFoundException e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>print<span class="op">(</span><span class="st">&quot;ClassNotFoundException: &quot;</span><span class="op">);</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span>e<span class="op">.</span>getMessage<span class="op">());</span></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>            con <span class="op">=</span> </span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>                DriverManager<span class="op">.</span>getConnection<span class="op">(</span>url<span class="op">,</span> <span class="st">&quot;myLogin&quot;</span><span class="op">,</span> <span class="st">&quot;myPW&quot;</span><span class="op">);</span></span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a>            stmt <span class="op">=</span> con<span class="op">.</span>createStatement<span class="op">();</span></span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a>            stmt<span class="op">.</span>executeUpdate<span class="op">(</span>dropString<span class="op">);</span></span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>            stmt<span class="op">.</span>executeUpdate<span class="op">(</span>createString<span class="op">);</span></span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a>            stmt<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a>            stmt <span class="op">=</span> con<span class="op">.</span>createStatement<span class="op">();</span></span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>            stmt<span class="op">.</span>executeUpdate<span class="op">(</span><span class="st">&quot;insert into COFFEES &quot;</span></span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a>                <span class="op">+</span> <span class="st">&quot;values(&#39;Colombian&#39;, 00101, 7.99, 0, 0)&quot;</span><span class="op">);</span></span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a>            stmt<span class="op">.</span>executeUpdate<span class="op">(</span><span class="st">&quot;insert into COFFEES &quot;</span></span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a>                <span class="op">+</span> <span class="st">&quot;values(&#39;French_Roast&#39;, 00049, 8.99, 0, 0)&quot;</span><span class="op">);</span></span>
+<span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-63"><a href="#cb4-63" aria-hidden="true" tabindex="-1"></a>            stmt<span class="op">.</span>executeUpdate<span class="op">(</span><span class="st">&quot;insert into COFFEES &quot;</span></span>
+<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a>                <span class="op">+</span> <span class="st">&quot;values(&#39;Espresso&#39;, 00150, 9.99, 0, 0)&quot;</span><span class="op">);</span></span>
+<span id="cb4-65"><a href="#cb4-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-66"><a href="#cb4-66" aria-hidden="true" tabindex="-1"></a>            stmt<span class="op">.</span>executeUpdate<span class="op">(</span><span class="st">&quot;insert into COFFEES &quot;</span></span>
+<span id="cb4-67"><a href="#cb4-67" aria-hidden="true" tabindex="-1"></a>                <span class="op">+</span> <span class="st">&quot;values(&#39;Colombian_Decaf&#39;, 00101, 8.99, 0, 0)&quot;</span><span class="op">);</span></span>
+<span id="cb4-68"><a href="#cb4-68" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-69"><a href="#cb4-69" aria-hidden="true" tabindex="-1"></a>            stmt<span class="op">.</span>executeUpdate<span class="op">(</span><span class="st">&quot;insert into COFFEES &quot;</span></span>
+<span id="cb4-70"><a href="#cb4-70" aria-hidden="true" tabindex="-1"></a>                <span class="op">+</span> <span class="st">&quot;values(&#39;French_Roast_Decaf&#39;, 00049, 9.99, 0, 0)&quot;</span><span class="op">);</span></span>
+<span id="cb4-71"><a href="#cb4-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-72"><a href="#cb4-72" aria-hidden="true" tabindex="-1"></a>            ResultSet rs <span class="op">=</span> stmt<span class="op">.</span>executeQuery<span class="op">(</span>query<span class="op">);</span></span>
+<span id="cb4-73"><a href="#cb4-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-74"><a href="#cb4-74" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Coffee Break Coffees and Prices:&quot;</span><span class="op">);</span></span>
+<span id="cb4-75"><a href="#cb4-75" aria-hidden="true" tabindex="-1"></a>            <span class="cf">while</span> <span class="op">(</span>rs<span class="op">.</span>next<span class="op">())</span> <span class="op">{</span></span>
+<span id="cb4-76"><a href="#cb4-76" aria-hidden="true" tabindex="-1"></a>                String s <span class="op">=</span> rs<span class="op">.</span>getString<span class="op">(</span><span class="st">&quot;COF_NAME&quot;</span><span class="op">);</span></span>
+<span id="cb4-77"><a href="#cb4-77" aria-hidden="true" tabindex="-1"></a>                <span class="dt">float</span> f <span class="op">=</span> rs<span class="op">.</span>getFloat<span class="op">(</span><span class="st">&quot;PRICE&quot;</span><span class="op">);</span></span>
+<span id="cb4-78"><a href="#cb4-78" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span>s <span class="op">+</span> <span class="st">&quot;   &quot;</span> <span class="op">+</span> f<span class="op">);</span></span>
+<span id="cb4-79"><a href="#cb4-79" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb4-80"><a href="#cb4-80" aria-hidden="true" tabindex="-1"></a>            stmt<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb4-81"><a href="#cb4-81" aria-hidden="true" tabindex="-1"></a>            con<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb4-82"><a href="#cb4-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-83"><a href="#cb4-83" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch <span class="op">(</span>SQLException ex<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-84"><a href="#cb4-84" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;SQLException: &quot;</span> <span class="op">+</span> ex<span class="op">.</span>getMessage<span class="op">());</span></span>
+<span id="cb4-85"><a href="#cb4-85" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-86"><a href="#cb4-86" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-87"><a href="#cb4-87" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div></li>
+<li><p>Copy the following files into place:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>$ cd <span class="op">&lt;</span>workspace<span class="op">&gt;/</span>test_jdbc</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>$ mkdir <span class="op">-</span>p libs<span class="op">/</span>armeabi</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>$ cp <span class="op">-</span>r <span class="op">&lt;</span>db<span class="op">&gt;/</span>build_android<span class="op">/</span>jdbc<span class="op">/</span>libs<span class="op">/</span>armeabi<span class="op">/</span>liboracle<span class="op">-</span>jdbc<span class="op">.</span>so \</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>libs<span class="op">/</span>armeabi</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>$ cp <span class="op">-</span>r <span class="op">&lt;</span>db<span class="op">&gt;/</span>build_unix<span class="op">/</span>jdbc<span class="op">/</span>sqlite<span class="op">.</span>jar libs</span></code></pre></div></li>
+<li><p>Back in Eclipse, right click the project name, and select the <code>refresh</code> option to reload the project from the directory. The two new files that were copied into place in the previous step are now included in the project view.</p></li>
+<li><p>Convert the JAR file to the Android Dalvik format:</p>
+<ol type="1">
+<li><p>Right-click on your project.</p></li>
+<li><p>Choose <code>Build Path -&gt; Configure Build Path</code></p></li>
+<li><p>Click the <code>Libraries</code> tab.</p></li>
+<li><p>Click <code>Add JARS</code>.</p></li>
+</ol></li>
+<li><p>Run the project:</p>
+<ol type="1">
+<li><p>Choose <code>Property -&gt; Android</code> and select any one of the usable build targets.</p></li>
+<li><p>Right click the project. Choose <code>Run As -&gt; Android</code></p></li>
+</ol></li>
+<li><p>Verify your installation. After a short pause (depending on the speed of your system), the application logo is displayed. Use the Android adb command line application to make sure the application is running as expected:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>$ cd <span class="op">&lt;</span>android<span class="op">-</span>sdk<span class="op">&gt;/</span>platform<span class="op">-</span>tools</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>$ <span class="op">./</span>adb logcat</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>I<span class="op">/</span>System<span class="op">.</span>out<span class="op">(</span>  <span class="dv">539</span><span class="op">):</span> Appstart<span class="op">:</span> </span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>I<span class="op">/</span>System<span class="op">.</span>out<span class="op">(</span>  <span class="dv">539</span><span class="op">):</span> Coffee Break Coffees and Prices<span class="op">:</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>I<span class="op">/</span>System<span class="op">.</span>out<span class="op">(</span>  <span class="dv">539</span><span class="op">):</span> Colombian   <span class="fl">7.99</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>I<span class="op">/</span>System<span class="op">.</span>out<span class="op">(</span>  <span class="dv">539</span><span class="op">):</span> French_Roast   <span class="fl">8.99</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>I<span class="op">/</span>System<span class="op">.</span>out<span class="op">(</span>  <span class="dv">539</span><span class="op">):</span> Espresso   <span class="fl">9.99</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>I<span class="op">/</span>System<span class="op">.</span>out<span class="op">(</span>  <span class="dv">539</span><span class="op">):</span> Colombian_Decaf   <span class="fl">8.99</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>I<span class="op">/</span>System<span class="op">.</span>out<span class="op">(</span>  <span class="dv">539</span><span class="op">):</span> French_Roast_Decaf   <span class="fl">9.99</span></span></code></pre></div>
+<p>You can also check if the database (<code>example.db</code>) exists in the emulator:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>$ <span class="op">./</span>adb shell ls <span class="op">/</span>data<span class="op">/</span>data<span class="op">/</span>example<span class="op">.</span>testjdbc</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>example<span class="op">.</span>db</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>example<span class="op">.</span>db<span class="op">-</span>journal</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>lib </span></code></pre></div>
+<p>Finally, check the database using the BDB SQL shell:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>$ <span class="op">./</span>adb push <span class="op">&lt;</span>db<span class="op">&gt;/</span>build_android<span class="op">/</span>jdbc<span class="op">/</span>libs<span class="op">/</span>armeabi<span class="op">/</span>dbsql \</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="op">/</span>data<span class="op">/</span>data<span class="op">/</span>example<span class="op">.</span>testjdbc</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="dv">326</span> KB<span class="op">/</span>s <span class="op">(</span><span class="dv">1293760</span> bytes in <span class="fl">3.865</span><span class="er">s</span><span class="op">)</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>$ <span class="op">./</span>adb shell</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>root@android<span class="op">:/</span> # cd <span class="op">/</span>data<span class="op">/</span>data<span class="op">/</span>example<span class="op">.</span>testjdbc</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>root@android<span class="op">:/</span>data<span class="op">/</span>data<span class="op">/</span>example<span class="op">.</span>testjdbc # <span class="op">./</span>dbsql example<span class="op">.</span>db</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>Berkeley DB <span class="dv">11</span><span class="er">g</span> Release <span class="dv">2</span><span class="op">,</span> library version <span class="fl">11.2</span><span class="er">.5.2.36</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>Enter <span class="st">&quot;.help&quot;</span> <span class="cf">for</span> instructions</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>Enter SQL statements terminated with a <span class="st">&quot;;&quot;</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> <span class="op">.</span>tables</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>COFFEES</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> select <span class="op">*</span> from COFFEES<span class="op">;</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>Colombian<span class="op">|</span><span class="dv">101</span><span class="op">|</span><span class="fl">7.99</span><span class="op">|</span><span class="dv">0</span><span class="op">|</span><span class="dv">0</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>French_Roast<span class="op">|</span><span class="dv">49</span><span class="op">|</span><span class="fl">8.99</span><span class="op">|</span><span class="dv">0</span><span class="op">|</span><span class="dv">0</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>Espresso<span class="op">|</span><span class="dv">150</span><span class="op">|</span><span class="fl">9.99</span><span class="op">|</span><span class="dv">0</span><span class="op">|</span><span class="dv">0</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>Colombian_Decaf<span class="op">|</span><span class="dv">101</span><span class="op">|</span><span class="fl">8.99</span><span class="op">|</span><span class="dv">0</span><span class="op">|</span><span class="dv">0</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>French_Roast_Decaf<span class="op">|</span><span class="dv">49</span><span class="op">|</span><span class="fl">9.99</span><span class="op">|</span><span class="dv">0</span><span class="op">|</span><span class="dv">0</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> <span class="op">.</span>quit </span></code></pre></div></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

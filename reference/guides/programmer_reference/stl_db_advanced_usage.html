@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Using advanced Berkeley DB features with dbstl — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="using-advanced-berkeley-db-features-with-dbstl">Using advanced Berkeley DB features with dbstl</h2>
+<p><span class="sect2"> <a href="stl_db_advanced_usage.html#idp51421384">Using bulk retrieval iterators</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_advanced_usage.html#idp51410312">Using the DB_RMW flag</a> </span></p>
+<p><span class="sect2"> <a href="stl_db_advanced_usage.html#idp51398048">Using secondary index database and secondary containers</a> </span></p>
+<p>This section describes advanced Berkeley DB features that are available through dbstl.</p>
+<h3 id="using-bulk-retrieval-iterators">Using bulk retrieval iterators</h3>
+<p>Bulk retrieval is an optimization option for const iterators and nonconst but read-only iterators. Bulk retrieval can minimize the number of database accesses performed by your application. It does this by reading multiple entries at a time, which reduces read overhead. Note that non-sequential reads will benefit less from, or even be hurt by, this behavior, because it might result in unneeded data being read from the database. Also, non-serializable reads may read obsolete data, because part of the data read from the bulk read buffer may have been updated since the retrieval.</p>
+<p>When using the default transaction isolation, iterators will perform serializable reads. In this situation, the bulk-retrieved data cannot be updated until the iterator's cursor is closed.</p>
+<p>Iterators using a different isolation levels, such as <a href="../../api/c/dbcget.html#dbcget_DB_READ_COMMITTED" class="olink">DB_READ_COMMITTED</a> or <a href="../../api/c/dbopen.html#dbopen_DB_READ_UNCOMMITTED" class="olink">DB_READ_UNCOMMITTED</a> will not perform serializable reads. The same is true for any iterators that do not use transactions.</p>
+<p>A bulk retrieval iterator can only move in a singled direction, from beginning to end. This means that iterators only support operator++, and reverse iterators only support operator--.</p>
+<p>Iterator objects that use bulk retrieval might contain hundreds of kilobytes of data, which makes copying the iterator object an expensive operation. If possible, use ++iterator rather than iterator++. This can save a useless copy construction of the iterator, as well as an unnecessary dup/close of the cursor.</p>
+<p>You can configure bulk retrieval for each container using both in the const and non-const version of the <code>begin()</code> method. The non-const version of <code>begin()</code> will return a read-only cursor. Note that read-only means something different in C++ than it does when referring to an iterator. The latter only means that it cannot be used to update the database.</p>
+<p>To configure the bulk retrieval buffer for an iterator when calling the <code>begin()</code> method, use the <code>BulkRetrievelItrOpt::bulk_retrieval(u_int32_t bulk_buffer_size)</code> function.</p>
+<p>If you move a <code>db_vector_iterator</code> randomly rather than sequentially, then dbstl will not perform bulk retrieval because there is little performance gain from bulk retrieval in such an access pattern.</p>
+<p>You can call <code>iterator::set_bulk_buffer()</code> to modify the iterator's bulk buffer size. Note that once bulk read is enabled, only the bulk buffer size can be modified. This means that bulk read cannot be disabled. Also, if bulk read was not enabled when you created the iterator, you can't enable it after creation.</p>
+<p>Example code using this feature can be found in the <code>StlAdvancedFeaturesExample::bulk_retrieval_read()</code> method.</p>
+<h3 id="using-the-db_rmw-flag">Using the DB_RMW flag</h3>
+<p>The <a href="../../api/c/dbcget.html#dbcget_DB_RMW" class="olink">DB_RMW</a> flag is an optimization for non-const (read-write) iterators. This flag causes the underlying cursor to acquire a write lock when reading so as to avoid deadlocks. Passing <code>ReadModifyWriteOption::read_modify_write()</code> to a container's <code>begin()</code> method creates an iterator whose cursor has this behavior.</p>
+<h3 id="using-secondary-index-database-and-secondary-containers">Using secondary index database and secondary containers</h3>
+<p>Because duplicate keys are forbidden in primary databases, only <code>db_map</code>, <code>db_set</code> and <code>db_vector</code> are allowed to use primary databases. For this reason, they are called <strong>primary containers</strong>. A secondary database that supports duplicate keys can be used with <code>db_multimap</code> containers. These are called <strong>secondary containers</strong>. Finally, a secondary database that forbids duplicate keys can back a <code>db_map</code> container.</p>
+<p>The <strong>data_type</strong> of this <code>db_multimap</code> secondary container is the <strong>data_type</strong> for the primary container. For example, a <code>db_map&lt;int, Person&gt;</code> object where the <code>Person</code> class has an <code>age</code> property of type <code>size_t</code>, a <code>db_multimap&lt;size_t, Person&gt;</code> using a secondary database allows access to a person by age.</p>
+<p>A container created from a secondary database can only be used to iterate, search or delete. It can not be used to update or insert. While dbstl does expose the update and insert operations, Berkeley DB does not, and an exception will be thrown if attempts are made to insert objects into or update objects of a secondary container.</p>
+<p>Example code demonstrating this feature is available in the <code>StlAdvancedFeaturesExample::secondary_containers()</code> method.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

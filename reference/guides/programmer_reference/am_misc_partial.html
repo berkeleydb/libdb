@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Partial record storage and retrieval — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="partial-record-storage-and-retrieval">Partial record storage and retrieval</h2>
+<p>It is possible to both store and retrieve parts of data items in all Berkeley DB access methods. This is done by setting the <a href="../../api/c/dbt.html#dbt_DB_DBT_PARTIAL" class="olink">DB_DBT_PARTIAL</a> flag <a href="../../api/c/dbt.html" class="olink">DBT</a> structure passed to the Berkeley DB method.</p>
+<p>The <a href="../../api/c/dbt.html#dbt_DB_DBT_PARTIAL" class="olink">DB_DBT_PARTIAL</a> flag is based on the values of two fields of the <a href="../../api/c/dbt.html" class="olink">DBT</a> structure: <strong>dlen</strong> and <strong>doff</strong>. The value of <strong>dlen</strong> is the number of bytes of the record in which the application is interested. The value of <strong>doff</strong> is the offset from the beginning of the data item where those bytes start.</p>
+<p>For example, if the data item were <strong>ABCDEFGHIJKL</strong>, a <strong>doff</strong> value of 3 would indicate that the bytes of interest started at <strong>D</strong>, and a <strong>dlen</strong> value of 4 would indicate that the bytes of interest were <strong>DEFG</strong>.</p>
+<p>When retrieving a data item from a database, the <strong>dlen</strong> bytes starting <strong>doff</strong> bytes from the beginning of the record are returned, as if they comprised the entire record. If any or all of the specified bytes do not exist in the record, the retrieval is still successful and any existing bytes are returned.</p>
+<p>When storing a data item into the database, the <strong>dlen</strong> bytes starting <strong>doff</strong> bytes from the beginning of the specified key's data record are replaced by the data specified by the <strong>data</strong> and <strong>size</strong> fields. If <strong>dlen</strong> is smaller than <strong>size</strong>, the record will grow, and if <strong>dlen</strong> is larger than <strong>size</strong>, the record will shrink. If the specified bytes do not exist, the record will be extended using nul bytes as necessary, and the store call will still succeed.</p>
+<p>The following are various examples of the put case for the <a href="../../api/c/dbt.html#dbt_DB_DBT_PARTIAL" class="olink">DB_DBT_PARTIAL</a> flag. In all examples, the initial data item is 20 bytes in length:</p>
+<p><strong>ABCDEFGHIJ0123456789</strong></p>
+<ol type="1">
+<li><div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>size <span class="op">=</span> <span class="dv">20</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>doff <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>dlen <span class="op">=</span> <span class="dv">20</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> abcdefghijabcdefghij</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>Result<span class="op">:</span> The <span class="dv">20</span> bytes at offset <span class="dv">0</span> are replaced by the <span class="dv">20</span> bytes of </span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>data<span class="op">;</span> that is<span class="op">,</span> the entire record is replaced<span class="op">.</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>ABCDEFGHIJ0123456789 <span class="op">-&gt;</span> abcdefghijabcdefghij </span></code></pre></div></li>
+<li><div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>size <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>doff <span class="op">=</span> <span class="dv">20</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>dlen <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> abcdefghij</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>Result<span class="op">:</span> The <span class="dv">0</span> bytes at offset <span class="dv">20</span> are replaced by the <span class="dv">10</span> bytes of </span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>data<span class="op">;</span> that is<span class="op">,</span> the record is extended by <span class="dv">10</span> bytes<span class="op">.</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>ABCDEFGHIJ0123456789 <span class="op">-&gt;</span> ABCDEFGHIJ0123456789abcdefghij </span></code></pre></div></li>
+<li><div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>size <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>doff <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>dlen <span class="op">=</span> <span class="dv">5</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> abcdefghij</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>Result<span class="op">:</span> The <span class="dv">5</span> bytes at offset <span class="dv">10</span> are replaced by the <span class="dv">10</span> bytes of </span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>data<span class="op">.</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>ABCDEFGHIJ0123456789 <span class="op">-&gt;</span> ABCDEFGHIJabcdefghij56789 </span></code></pre></div></li>
+<li><div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>size <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>doff <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>dlen <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> abcdefghij</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>Result<span class="op">:</span> The <span class="dv">0</span> bytes at offset <span class="dv">10</span> are replaced by the <span class="dv">10</span> bytes of </span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>data<span class="op">;</span> that is<span class="op">,</span> <span class="dv">10</span> bytes are inserted into the record<span class="op">.</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>ABCDEFGHIJ0123456789 <span class="op">-&gt;</span> ABCDEFGHIJabcdefghij0123456789 </span></code></pre></div></li>
+<li><div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>size <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>doff <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>dlen <span class="op">=</span> <span class="dv">15</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> abcdefghij</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>Result<span class="op">:</span> The <span class="dv">15</span> bytes at offset <span class="dv">2</span> are replaced by the <span class="dv">10</span> bytes of </span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>data<span class="op">.</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>ABCDEFGHIJ0123456789 <span class="op">-&gt;</span> ABabcdefghij789 </span></code></pre></div></li>
+<li><div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>size <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>doff <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>dlen <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> abcdefghij</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>Result<span class="op">:</span> The <span class="dv">0</span> bytes at offset <span class="dv">0</span> are replaced by the <span class="dv">10</span> bytes of </span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>data<span class="op">;</span> that is<span class="op">,</span> the <span class="dv">10</span> bytes are inserted at the beginning of the </span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>record<span class="op">.</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>ABCDEFGHIJ0123456789 <span class="op">-&gt;</span> abcdefghijABCDEFGHIJ0123456789 </span></code></pre></div></li>
+<li><div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>size <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>doff <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>dlen <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> <span class="st">&quot;&quot;</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>Result<span class="op">:</span> The <span class="dv">10</span> bytes at offset <span class="dv">0</span> are replaced by the <span class="dv">0</span> bytes of </span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>data<span class="op">;</span> that is<span class="op">,</span> the first <span class="dv">10</span> bytes of the record are discarded<span class="op">.</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>ABCDEFGHIJ0123456789 <span class="op">-&gt;</span> <span class="bn">01234567</span><span class="er">89</span> </span></code></pre></div></li>
+<li><div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>size <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>doff <span class="op">=</span> <span class="dv">25</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>dlen <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> abcdefghij</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>Result<span class="op">:</span> The <span class="dv">0</span> bytes at offset <span class="dv">25</span> are replaced by the <span class="dv">10</span> bytes of </span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>data<span class="op">;</span> that is<span class="op">,</span> <span class="dv">10</span> bytes are inserted into the record past the end </span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>of the current data <span class="op">(</span>\<span class="dv">0</span> represents a nul byte<span class="op">).</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>ABCDEFGHIJ0123456789 <span class="op">-&gt;</span> ABCDEFGHIJ0123456789\<span class="dv">0</span>\<span class="dv">0</span>\<span class="dv">0</span>\<span class="dv">0</span>\<span class="dv">0</span><span class="er">abcdefghij</span> </span></code></pre></div></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

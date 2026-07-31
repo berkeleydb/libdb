@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Building a Global Transaction Manager — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="building-a-global-transaction-manager">Building a Global Transaction Manager</h2>
+<p><span class="sect2"> <a href="xa_build.html#idp52778488">Communicating with multiple Berkeley DB environments</a> </span></p>
+<p><span class="sect2"> <a href="xa_build.html#idp52779432">Recovering from GTM failure</a> </span></p>
+<p><span class="sect2"> <a href="xa_build.html#idp52703176">Managing the Global Transaction ID (GID) name space</a> </span></p>
+<p><span class="sect2"> <a href="xa_build.html#idp52758336">Maintaining state for each distributed transaction.</a> </span></p>
+<p><span class="sect2"> <a href="xa_build.html#idp52777008">Recovering from the failure of a single environment</a> </span></p>
+<p><span class="sect2"> <a href="xa_build.html#idp52779896">Recovering from GTM failure</a> </span></p>
+<p>Managing distributed transactions and using the two-phase commit protocol of Berkeley DB from an application requires the application to provide the functionality of a global transaction manager (GTM). The GTM is responsible for the following:</p>
+<ul>
+<li>Communicating with the multiple environments (potentially on separate systems).</li>
+<li>Managing the global transaction ID name space.</li>
+<li>Maintaining state information about each distributed transaction.</li>
+<li>Recovering from failures of individual environments.</li>
+<li>Recovering the global transaction state after failure of the global transaction manager.</li>
+</ul>
+<h3 id="communicating-with-multiple-berkeley-db-environments">Communicating with multiple Berkeley DB environments</h3>
+<p>Two-phase commit is required if a transaction spans operations in multiple Berkeley DB environments or across operations in Berkeley DB and some other database systems. If the environments reside on the same machine, the application can communicate with each environment through its own address space with no additional complexity. If the environments reside on separate machines, the application may use its own messaging capability, translating messages on the remote machine into calls into the Berkeley DB library (including the recovery calls).</p>
+<h3 id="recovering-from-gtm-failure">Recovering from GTM failure</h3>
+<p>If the GTM fails, it must first recover its local state. Assuming the GTM uses Berkeley DB tables to maintain state, it should run the <a href="../../api/c/db_recover.html" class="olink">db_recover</a> utility (or the DB_RECOVER option to <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a>) upon startup. Once the GTM is back up and running, it needs to review all its outstanding global transactions, that is, all transactions that are recorded but not yet completed.</p>
+<p>The global transactions that have not yet reached the prepare phase should be aborted. For each global transaction that has not yet prepared, the GTM should send a message to each participant telling it to abort its transaction.</p>
+<p>Next the GTM should review its log to identify all participating environments that have transactions in the preparing, aborting, or committing states. For each such participant, the GTM should issue a <a href="../../api/c/txnrecover.html" class="olink">DB_ENV-&gt;txn_recover()</a> call. Upon receiving responses from each participant, the GTM must decide the fate of each transaction and issue appropriate calls. The correct behavior is defined as follows:</p>
+<p><span class="term">preparing</span><br />
+if all participating environments return the transaction in the list of prepared but not yet completed transactions, then the GTM should commit the transaction. If any participating environment fails to return the transaction in this list, then the GTM must issue an abort to all environments participating in that global transaction.</p>
+<p><span class="term">committing</span><br />
+the GTM should send a commit to any environment that returned this transaction in its list of prepared but not yet completed transactions.</p>
+<p><span class="term">aborting</span><br />
+the GTM should send an abort to any environment that returned this transaction in its list of prepared but not yet completed transactions.</p>
+<h3 id="managing-the-global-transaction-id-gid-name-space">Managing the Global Transaction ID (GID) name space</h3>
+<p>A global transaction is a transaction that spans multiple environments. Each global transaction must have a unique transaction ID. This unique ID is the global transaction ID (GID). In Berkeley DB, global transaction IDs must be represented by the character array, <code>DB_GID_SIZE</code> (currently 128 bytes). It is the responsibility of the global transaction manager to assign GIDs, guarantee their uniqueness, and manage the mapping of local transactions to GID. That is, for each GID, the GTM should know which local transaction managers participated. The Berkeley DB logging system or a Berkeley DB table could be used to record this information.</p>
+<h3 id="maintaining-state-for-each-distributed-transaction">Maintaining state for each distributed transaction.</h3>
+<p>In addition to knowing which local environments participate in each global transaction, the GTM must also know the state of each active global transaction. As soon as a transaction becomes distributed (that is, a second environment participates), the GTM must record the existence of the global transaction and all participants (whether this must reside on stable storage or not depends on the exact configuration of the system). As new environments participate, the GTM must keep this information up to date.</p>
+<p>When the GTM is ready to begin commit processing, it should issue <a href="../../api/c/txnprepare.html" class="olink">DB_TXN-&gt;prepare()</a> calls to each participating environment, indicating the GID of the global transaction. Once all the participants have successfully prepared, then the GTM must record that the global transaction will be committed. This record should go to stable storage. Once written to stable storage, the GTM can send <a href="../../api/c/txncommit.html" class="olink">DB_TXN-&gt;commit()</a> requests to each participating environment. Once all environments have successfully completed the commit, the GTM can either record the successful commit or can somehow "forget" the global transaction.</p>
+<p>If an application uses nested transactions (that is, the parent parameter is non-NULL in a call to <a href="../../api/c/txnbegin.html" class="olink">DB_ENV-&gt;txn_begin()</a>) then, only the parent transaction should call <a href="../../api/c/txnprepare.html" class="olink">DB_TXN-&gt;prepare()</a>, not any of the child transactions.</p>
+<p>Should any participant fail to prepare, then the GTM must abort the global transaction. The fact that the transaction is going to be aborted should be written to stable storage. Once written, the GTM can then issue <a href="../../api/c/txnabort.html" class="olink">DB_TXN-&gt;abort()</a> requests to each environment. When all aborts have returned successfully, the GTM can either record the successful abort or "forget" the global transaction.</p>
+<p>In summary, for each transaction, the GTM must maintain the following:</p>
+<ul>
+<li>A list of participating environments</li>
+<li>The current state of each transaction (pre-prepare, preparing, committing, aborting, done)</li>
+</ul>
+<h3 id="recovering-from-the-failure-of-a-single-environment">Recovering from the failure of a single environment</h3>
+<p>If a single environment fails, there is no need to bring down or recover other environments (the only exception to this is if all environments are managed in the same application address space and there is a risk that the failure of the environment corrupted other environments). Instead, once the failing environment comes back up, it should be recovered (that is, conventional recovery, via the <a href="../../api/c/db_recover.html" class="olink">db_recover</a> utility or by specifying the <a href="../../api/c/envopen.html#envopen_DB_RECOVER" class="olink">DB_RECOVER</a> flag to <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> should be run). If the <a href="../../api/c/db_recover.html" class="olink">db_recover</a> utility is used, then the -e option must be specified. In this case, the application will almost certainly want to specify environmental parameters via a <a href="env_db_config.html" class="xref" title="DB_CONFIG configuration file">DB_CONFIG configuration file</a> in the environment's home directory, so that the <a href="../../api/c/db_recover.html" class="olink">db_recover</a> utility can create an appropriately configured environment. If the <a href="../../api/c/db_recover.html" class="olink">db_recover</a> utility is not used, then the GTM should call <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> specifying the <a href="../../api/c/envopen.html#envopen_DB_RECOVER" class="olink">DB_RECOVER</a> flag. It should then call <a href="../../api/c/txnrecover.html" class="olink">DB_ENV-&gt;txn_recover()</a>, which will return an array of DB_TXN handles for the set of prepared, but not yet completed transactions. For each transaction, the GTM should combine this knowledge with its transaction state table and call either <a href="../../api/c/txncommit.html" class="olink">DB_TXN-&gt;commit()</a> or <a href="../../api/c/txnabort.html" class="olink">DB_TXN-&gt;abort()</a>. After that process is complete, the environment is ready to participate in new transactions.</p>
+<p>If the GTM is running in a system with multiple GTMs, it is possible that some of the transactions returned via <a href="../../api/c/txnrecover.html" class="olink">DB_ENV-&gt;txn_recover()</a> do not belong to the current environment. The GTM should detect this and call <a href="../../api/c/txndiscard.html" class="olink">DB_TXN-&gt;discard()</a> on each such transaction handle. Furthermore, it is important to note the environment does not retain information about which GTM has issued <a href="../../api/c/txnrecover.html" class="olink">DB_ENV-&gt;txn_recover()</a> operations. Therefore, each GTM should issue all its <a href="../../api/c/txnrecover.html" class="olink">DB_ENV-&gt;txn_recover()</a> calls before another GTM issues its calls. If the calls are interleaved, each GTM may not get a complete and consistent set of transactions. The simplest way to enforce this is for each GTM to make sure it can receive all its outstanding transactions in a single <a href="../../api/c/txnrecover.html" class="olink">DB_ENV-&gt;txn_recover()</a> call. The maximum number of possible outstanding transactions is roughly the maximum number of active transactions in the environment (whose value can be obtained using the <a href="../../api/c/db_stat.html" class="olink">db_stat</a> utility). To simplify this procedure, the caller should allocate an array large enough to hold the list of transactions (for example, allocate an array able to hold three times the maximum number of transactions). If that is not possible, callers should check that the array was not completely filled in when <a href="../../api/c/txnrecover.html" class="olink">DB_ENV-&gt;txn_recover()</a> returns. If the array was completely filled in, each transaction should be explicitly discarded, and the call repeated with a larger array.</p>
+<p>The newly recovered environment will forbid any new transactions from being started until the prepared but not yet completed transactions have been resolved. In the multiple GTM case, this means that all GTMs must recover before any GTM can begin issuing new transactions.</p>
+<p>The GTM must determine how long it needs to retain global transaction commit and abort records. If the participating environments are following a DB_TXN_SYNC policy, that is, they are forcing commit and abort records to disk before replying to the GTM, then once the GTM has heard from all participants, it need not retain its persistent log records. However, if participating environments are running at weaker durability levels, such as <a href="../../api/c/envset_flags.html#set_flags_DB_TXN_WRITE_NOSYNC" class="olink">DB_TXN_WRITE_NOSYNC</a> or <a href="../../api/c/envset_flags.html#envset_flags_DB_TXN_NOSYNC" class="olink">DB_TXN_NOSYNC</a>, then the GTM must retain all commit and abort records until all participants have completed a checkpoint following the completion of a transaction.</p>
+<h3 id="recovering-from-gtm-failure-1">Recovering from GTM failure</h3>
+<p>If the GTM fails, it must first recover its local state. Assuming the GTM uses Berkeley DB tables to maintain state, it should run the <a href="../../api/c/db_recover.html" class="olink">db_recover</a> utility (or the DB_RECOVER option to <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a>) upon startup. Once the GTM is back up and running, it needs to review all its outstanding global transactions, that is, all transactions that are recorded but not yet completed.</p>
+<p>The global transactions that have not yet reached the prepare phase should be aborted. For each global transaction that has not yet prepared, the GTM should send a message to each participant telling it to abort its transaction.</p>
+<p>Next the GTM should review its log to identify all participating environments that have transactions in the preparing, aborting, or committing states. For each such participant, the GTM should issue a <a href="../../api/c/txnrecover.html" class="olink">DB_ENV-&gt;txn_recover()</a> call. Upon receiving responses from each participant, the GTM must decide the fate of each transaction and issue appropriate calls. The correct behavior is defined as follows:</p>
+<p><span class="term">preparing</span><br />
+if all participating environments return the transaction in the list of prepared but not yet completed transactions, then the GTM should commit the transaction. If any participating environment fails to return the transaction in this list, then the GTM must issue an abort to all environments participating in that global transaction.</p>
+<p><span class="term">committing</span><br />
+the GTM should send a commit to any environment that returned this transaction in its list of prepared but not yet completed transactions.</p>
+<p><span class="term">aborting</span><br />
+the GTM should send an abort to any environment that returned this transaction in its list of prepared but not yet completed transactions.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

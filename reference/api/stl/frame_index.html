@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Berkeley DB C++ Standard Template Library API Reference — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / stl</nav>
+  <main>
+<p><span class="nav"> <a href="../../index.html" target="_top">Home</a> </span></p>
+<p><span class="nav"> <a href="index.html" target="method">Legal Notice</a> </span></p>
+<p><span class="nav"> <a href="../../guides/programmer_reference/index.html" target="_top">Reference Guide</a> </span></p>
+<p><span class="chapter"> <a href="dbstl_global_functions.html" target="method">DB STL Global Functions</a> </span></p>
+<p><span class="chapter"> <a href="dbstl_containers.html" target="method">DB STL Containers</a> </span></p>
+<p><span class="chapter"> <a href="db_container.html" target="method">db_container</a> </span></p>
+<p><span class="chapter"> <a href="db_vector.html" target="method">db_vector</a> </span></p>
+<p><span class="chapter"> <a href="db_map.html" target="method">db_map</a> </span></p>
+<p><span class="chapter"> <a href="db_multimap.html" target="method">db_multimap</a> </span></p>
+<p><span class="chapter"> <a href="db_set.html" target="method">db_set</a> </span></p>
+<p><span class="chapter"> <a href="db_multiset.html" target="method">db_multiset</a> </span></p>
+<p><span class="chapter"> <a href="dbstl_iterators.html" target="method">DB STL Iterators</a> </span></p>
+<p><span class="chapter"> <a href="db_base_iterator.html" target="method">db_base_iterator</a> </span></p>
+<p><span class="chapter"> <a href="db_vector_iterators.html" target="method">DB STL Vector Iterators</a> </span></p>
+<p><span class="chapter"> <a href="db_vector_base_iterator.html" target="method">db_vector_base_iterator</a> </span></p>
+<p><span class="chapter"> <a href="db_vector_iterator.html" target="method">db_vector_iterator</a> </span></p>
+<p><span class="chapter"> <a href="db_map_iterators.html" target="method">DB STL Map Iterators</a> </span></p>
+<p><span class="chapter"> <a href="db_map_base_iterator.html" target="method">db_map_base_iterator</a> </span></p>
+<p><span class="chapter"> <a href="db_map_iterator.html" target="method">db_map_iterator</a> </span></p>
+<p><span class="chapter"> <a href="dbset_iterators.html" target="method">DB STL Set Iterators</a> </span></p>
+<p><span class="chapter"> <a href="db_set_base_iterator.html" target="method">db_set_base_iterator</a> </span></p>
+<p><span class="chapter"> <a href="db_set_iterator.html" target="method">db_set_iterator</a> </span></p>
+<p><span class="chapter"> <a href="db_reverse_iterator.html" target="method">db_reverse_iterator</a> </span></p>
+<p><span class="chapter"> <a href="dbstl_helper_classes.html" target="method">DB STL Helper Classes</a> </span></p>
+<p><span class="chapter"> <a href="Element_wrappers.html" target="method">DB STL Element Wrappers</a> </span></p>
+<p><span class="chapter"> <a href="ElementHolder.html" target="method">ElementHolder</a> </span></p>
+<p><span class="chapter"> <a href="ElementRef.html" target="method">ElementRef</a> </span></p>
+<p><span class="chapter"> <a href="DbstlDbt.html" target="method">DbstlDbt</a> </span></p>
+<p><span class="chapter"> <a href="DbstlElemTraits.html" target="method">DbstlElemTraits</a> </span></p>
+<p><span class="chapter"> <a href="BulkRetrievalOption.html" target="method">BulkRetrievalOption</a> </span></p>
+<p><span class="chapter"> <a href="ReadModifyWriteOption.html" target="method">ReadModifyWriteOption</a> </span></p>
+<p><span class="chapter"> <a href="Exception_classes_group.html" target="method">DB STL Exception Classes</a> </span></p>
+<p><span class="chapter"> <a href="DbstlException.html" target="method">DbstlException</a> </span></p>
+<p><span class="chapter"> <a href="InvalidDbtException.html" target="method">InvalidDbtException</a> </span></p>
+<p><span class="chapter"> <a href="FailedAssertionException.html" target="method">FailedAssertionException</a> </span></p>
+<p><span class="chapter"> <a href="InvalidCursorException.html" target="method">InvalidCursorException</a> </span></p>
+<p><span class="chapter"> <a href="NoSuchKeyException.html" target="method">NoSuchKeyException</a> </span></p>
+<p><span class="chapter"> <a href="NotEnoughMemoryException.html" target="method">NotEnoughMemoryException</a> </span></p>
+<p><span class="chapter"> <a href="NotSupportedException.html" target="method">NotSupportedException</a> </span></p>
+<p><span class="chapter"> <a href="InvalidIteratorException.html" target="method">InvalidIteratorException</a> </span></p>
+<p><span class="chapter"> <a href="InvalidFunctionCall.html" target="method">InvalidFunctionCall</a> </span></p>
+<p><span class="chapter"> <a href="InvalidArgumentException.html" target="method">InvalidArgumentException</a> </span></p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

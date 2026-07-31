@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>db_sql_codegen — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="db_sql_codegen">db_sql_codegen</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_sql_codegen <span class="op">[-</span>i <span class="op">&lt;</span>ddl input file<span class="op">&gt;]</span> <span class="op">[-</span>o <span class="op">&lt;</span>output C code file<span class="op">&gt;]</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>h <span class="op">&lt;</span>output header file<span class="op">&gt;]</span> <span class="op">[-</span>t <span class="op">&lt;</span>test output file<span class="op">&gt;]</span>  </span></code></pre></div>
+<p><span class="command"><strong>Db_sql_codegen</strong></span> is a utility program that translates a schema description written in a SQL Data Definition Language dialect into C code that implements the schema using Berkeley DB. It is intended to provide a quick and easy means of getting started with Berkeley DB for users who are already conversant with SQL. It also introduces a convenient way to express a Berkeley DB schema in a format that is both external to the program that uses it and compatible with relational databases.</p>
+<p>The <span class="command"><strong>db_sql_codegen</strong></span> command reads DDL from an input stream, and writes C code to an output stream. With no command line options, it will read from stdin and write to stdout. A more common usage mode would be to supply the DDL in a named input file (-i option). With only the -i option, <span class="command"><strong>db_sql_codegen</strong></span> will produce two files: a C-language source code (.c) file and a C-language header (.h) file, with names that are derived from the name of the input file. You can also control the names of these output files with the -o and -h options. The -x option causes the generated code to be transaction-aware. Finally, the -t option will produce a simple application that invokes the generated function API. This is a C-language source file that includes a main function, and serves the dual purposes of providing a simple test for the generated C code, and of being an example of how to use the generated API.</p>
+<p>The options are as follows:</p>
+<ul>
+<li><p><strong>-i</strong>&lt;ddl input file&gt;</p>
+<p>Names the input file containing SQL DDL.</p></li>
+<li><p><strong>-o</strong> &lt;output C code file&gt;</p>
+<p>Names the output C-language source code file.</p></li>
+<li><p><strong>-h</strong> &lt;output header file&gt;</p>
+<p>Names the output C-language header file.</p></li>
+<li><p><strong>-t</strong> &lt;test output file&gt;</p>
+<p>Names the output C-langage test file.</p></li>
+<li><p><strong>-x</strong></p>
+<p>Sets the default transaction mode to TRANSACTIONAL.</p></li>
+</ul>
+<p>The <span class="command"><strong>db_sql_codegen</strong></span> utility exits 0 on success, and &gt;0 if an error occurs.</p>
+<p>Note that the <span class="command"><strong>db_sql_codegen</strong></span> utility is built only when --enable-sql_codegen option is passed as an argument when you are configuring Berkeley DB. For more information, see <a href="../../guides/installation/build_unix_conf.html" class="olink">"Configuring Berkeley DB"</a></p>
+<h3 id="input-syntax">Input Syntax</h3>
+<p>The input file can contain the following SQL DDL statements.</p>
+<ul>
+<li><p><strong>CREATE DATABASE</strong></p>
+<p>The DDL must contain a CREATE DATABASE statement. The syntax is simply</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>CREATE DATABASE name<span class="op">;</span></span></code></pre></div>
+<p>. The name given here is used as the name of the Berkeley DB environment in which the Berkeley DB databases are created.</p></li>
+<li><p><strong>CREATE TABLE</strong></p>
+<p>Each CREATE TABLE statement produces functions to create and delete a primary Berkeley DB database. Also produced are functions to perform record insertion, retrieval and deletion on this database.</p>
+<p>CREATE TABLE establishes the field set of records that can be stored in the Berkeley DB database. Every CREATE TABLE statement must identify a primary key to be used as the lookup key in the Berkeley DB database.</p>
+<p>Here is an example to illustrate the syntax of CREATE TABLE that is accepted by <span class="command"><strong>db_sql_codegen</strong></span>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>CREATE TABLE person <span class="op">(</span>person_id INTEGER PRIMARY KEY<span class="op">,</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>                        name VARCHAR<span class="op">(</span><span class="dv">64</span><span class="op">),</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                        age INTEGER<span class="op">);</span></span></code></pre></div>
+<p>This results in the creation of functions to manage a database in which every record is an instance of the following C language data structure:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> _person_data <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> person_id<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> name<span class="op">[</span>PERSON_DATA_NAME_LENGTH<span class="op">];</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> age<span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> person_data<span class="op">;</span> </span></code></pre></div></li>
+<li><p><strong>CREATE INDEX</strong> You can create secondary Berkeley DB databases to be used as indexes into a primary database. For example, to make an index on the "name" field of the "person" table mentioned above, the SQL DDL would be:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>CREATE INDEX name_index ON person<span class="op">(</span>name<span class="op">);</span></span></code></pre></div>
+<p>This causes <span class="command"><strong>db_sql_codegen</strong></span> to emit functions to manage creation and deletion of a secondary database called "name_index," which is associated with the "person" database and is set up to perform lookups on the "name" field.</p></li>
+</ul>
+<h3 id="hint-comments">Hint Comments</h3>
+<p>The SQL DDL input may contain comments. Two types of comments are recognized. C-style comments begin with "/*" and end with "*/". These comments may extend over multiple lines.</p>
+<p>Single line comments begin with "--" and run to the end of the line.</p>
+<p>If the first character of a comment is "+" then the comment is interpreted as a "hint comment." Hint comments can be used to configure Berkeley DB features that cannot be represented in SQL DDL.</p>
+<p>Hint comments are comma-separated lists of property assignments of the form "property=value." Hint comments apply to the SQL DDL statement that immediately precedes their appearance in the input. For example:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>CREATE DATABASE peopledb<span class="op">;</span> <span class="co">/*+ CACHESIZE = 16m */</span></span></code></pre></div>
+<p>This causes the generated environment creation function to set the cache size to sixteen megabytes.</p>
+<p>In addition to the CACHESIZE example above, two other hint comment keywords are recognized: DBTYPE and MODE.</p>
+<p>After a CREATE TABLE or CREATE INDEX statement, you may set the database type by assigning the DBTYPE property in a hint comment. Possible values for DBTYPE are BTREE and HASH.</p>
+<p>After a CREATE DATABASE or CREATE TABLE statement, you may tell <span class="command"><strong>db_sql_codegen</strong></span> whether to generate transaction-aware code by assigning the MODE property in a hint comment. The possible values for MODE are TRANSACTIONAL and NONTRANSACTIONAL. By default, generated code is not transaction-aware. If MODE=TRANSACTIONAL appears on a CREATE DATABASE statement, then the default for every CREATE TABLE statement becomes TRANSACTIONAL. Individual CREATE TABLE statements may have MODE=TRANSACTIONAL or MODE=NONTRANSACTIONAL, to control whether the code generated for accessing and updating the associated Berkeley DB database is transaction aware.</p>
+<h3 id="transactions">Transactions</h3>
+<p>By default, the code generated by <span class="command"><strong>db_sql_codegen</strong></span> is not transaction-aware. This means that the generated API for reading and updating BDB databases operates in nontransactional mode. When transactional mode is enabled, either through the command-line option <strong>-x</strong> or by the inclusion of MODE-setting hint comments in the DDL source, the generated data access functions take an extra argument which is a pointer to DB_TXN. To use transactions, application code must acquire a DB_TXN from a call to DB_ENV-&gt;txn_begin, and supply a pointer to this object when invoking the db_sql_codegen-generated functions that requre such an argument.</p>
+<p>Transaction-aware APIs that were generated by db_sql_codegen can be used in nontransactional mode by passing NULL for the DB_TXN pointer arguments.</p>
+<p>For more information about using BDB transactions, please consult the documentation for <a href="txn.html#txnlist" class="xref" title="Transaction Subsystem and Related Methods">Transaction Subsystem and Related Methods</a> .</p>
+<h3 id="type-mapping">Type Mapping</h3>
+<p><span class="command"><strong>db_sql_codegen</strong></span> must map the schema expressed as SQL types into C language types. It implements the following mappings:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>BIN     <span class="dt">char</span><span class="op">[]</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>VARBIN      <span class="dt">char</span><span class="op">[]</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>CHAR        <span class="dt">char</span><span class="op">[]</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>VARCHAR     <span class="dt">char</span><span class="op">[]</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>VARCHAR2    <span class="dt">char</span><span class="op">[]</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>BIT         <span class="dt">char</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>TINYINT     <span class="dt">char</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>SMALLINT    <span class="dt">short</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>INTEGER     <span class="dt">int</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>INT         <span class="dt">int</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>BIGINT      <span class="dt">long</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>REAL        <span class="dt">float</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>DOUBLE      <span class="dt">double</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>FLOAT       <span class="dt">double</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>DECIMAL     <span class="dt">double</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>NUMERIC     <span class="dt">double</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>NUMBER<span class="op">(</span>p<span class="op">,</span>s<span class="op">)</span> <span class="dt">int</span><span class="op">,</span> <span class="dt">long</span><span class="op">,</span> <span class="dt">float</span><span class="op">,</span> or <span class="dt">double</span> </span></code></pre></div>
+<p>While BIN/VARBIN and CHAR/VARCHAR are both represented as char arrays, the latter are treated as null-terminated C strings, while the former are treated as binary data.</p>
+<p>The Oracle type NUMBER is mapped to different C types, depending on its precision and scale values. If scale is 0, then it is mapped to an integer type (long if precision is greater than 9). Otherwise it is mapped to a floating point type (float if precision is less than 7, otherwise double).</p>
+<h3 id="output">Output</h3>
+<p>Depending on the options given on the command line, <span class="command"><strong>db_sql_codegen</strong></span> can produce three separate files: a .c file containing function definitions that implement the generated API; a .h file containing constants, data structures and prototypes of the generated functions; and a second .c file that contains a sample program that invokes the generated API. The latter program is usually referred to as a smoke test.</p>
+<p>Given the following sample input in a file named "people.sql":</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>CREATE DATABASE peopledb<span class="op">;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>CREATE TABLE person <span class="op">(</span>person_id INTEGER PRIMARY KEY<span class="op">,</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                  name VARCHAR<span class="op">(</span><span class="dv">64</span><span class="op">),</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                  age INTEGER<span class="op">);</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>CREATE INDEX name_index ON person<span class="op">(</span>name<span class="op">);</span></span></code></pre></div>
+<p>The command</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>db_sql_codegen <span class="op">-</span>i people<span class="op">.</span>sql <span class="op">-</span>t test_people<span class="op">.</span>c</span></code></pre></div>
+<p>Will produce files named people.h, people.c, and test_people.c.</p>
+<p>The file people.h will contain the information needed to use the generated API. Among other things, an examination of the generated .h file will reveal:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define PERSON_DATA_NAME_LENGTH </span><span class="dv">63</span></span></code></pre></div>
+<p>This is just a constant for the length of the string mapped from the VARCHAR field.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> _person_data <span class="op">{</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>   <span class="dt">int</span>   person_id<span class="op">;</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>   <span class="dt">char</span>  name<span class="op">[</span>PERSON_DATA_NAME_LENGTH<span class="op">];</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>   <span class="dt">int</span>   age<span class="op">;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> person_data<span class="op">;</span> </span></code></pre></div>
+<p>This is the data structure that represents the record type that is stored in the person database. There's that constant being used.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> create_peopledb_env<span class="op">(</span>DB_ENV <span class="op">**</span>envpp<span class="op">);</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> create_person_database<span class="op">(</span>DB_ENV <span class="op">*</span>envp<span class="op">,</span> DB <span class="op">**</span>dbpp<span class="op">);</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> create_name_index_secondary<span class="op">(</span>DB_ENV <span class="op">*</span>envp<span class="op">,</span> DB <span class="op">*</span>primary_dbp<span class="op">,</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>                            DB <span class="op">**</span>secondary_dbpp<span class="op">);</span> </span></code></pre></div>
+<p>These functions must be invoked to initialize the Berkeley DB environment. However, see the next bit:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">extern</span> DB_ENV <span class="op">*</span> peopledb_envp<span class="op">;</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="kw">extern</span> DB <span class="op">*</span>person_dbp<span class="op">;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="kw">extern</span> DB <span class="op">*</span>name_index_dbp<span class="op">;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> initialize_peopledb_environment<span class="op">();</span> </span></code></pre></div>
+<p>For convenience, <span class="command"><strong>db_sql_codegen</strong></span> provides global variables for the environment and database, and a single initialization function that sets up the environment for you. You may choose to use the globals and the single initialization function, or you may declare your own DB_ENV and DB pointers, and invoke the individual create_* functions yourself.</p>
+<p>The word "create" in these function names might be confusing. It means "create the environment/database if it doesn't already exist; otherwise open it."</p>
+<p>All of the functions in the generated API return Berkeley DB error codes. If the return value is non-zero, there was an error of some kind, and an explanatory message should have been printed on stderr.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> person_insert_struct<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> person_data <span class="op">*</span>personp<span class="op">);</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> person_insert_fields<span class="op">(</span>DB <span class="op">*</span> dbp<span class="op">,</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> person_id<span class="op">,</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">char</span> <span class="op">*</span>name<span class="op">,</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> age<span class="op">);</span> </span></code></pre></div>
+<p>These are the functions that you'd use to store a record in the database. The first form takes a pointer to the data structure that represents this record. The second form takes each field as a separate argument.</p>
+<p>If two records with the same primary key value are stored, the first one is lost.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> get_person_data<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">int</span> person_key<span class="op">,</span> person_data <span class="op">*</span>data<span class="op">);</span></span></code></pre></div>
+<p>This function retrieves a record from the database. It seeks the record with the supplied key, and populates the supplied structure with the contents of the record. If no matching record is found, the function returns DB_NOTFOUND.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> delete_person_key<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">int</span> person_key<span class="op">);</span></span></code></pre></div>
+<p>This function removes the record matching the given key.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="dt">void</span> <span class="op">(*</span>person_iteration_callback<span class="op">)(</span><span class="dt">void</span> <span class="op">*</span>user_data<span class="op">,</span> </span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>                                         person_data <span class="op">*</span>personp<span class="op">);</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> person_full_iteration<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    person_iteration_callback user_func<span class="op">,</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">*</span>user_data<span class="op">);</span> </span></code></pre></div>
+<p>This function performs a complete iteration over every record in the person table. The user must provide a callback function which is invoked once for every record found. The user's callback function must match the prototype provided in the typedef "person_iteration_callback." In the callback, the "user_data" argument is passed unchanged from the "user_data" argument given to person_full_iteration. This is provided so that the caller of person_full_iteration can communicate some context information to the callback function. The "personp" argument to the callback is a pointer to the record that was retrieved from the database. Personp points to data that is valid only for the duration of the callback invocation.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> name_index_query_iteration<span class="op">(</span>DB <span class="op">*</span>secondary_dbp<span class="op">,</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> <span class="op">*</span>name_index_key<span class="op">,</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    person_iteration_callback user_func<span class="op">,</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> <span class="op">*</span>user_data<span class="op">);</span> </span></code></pre></div>
+<p>This function performs lookups through the secondary index database. Because duplicate keys are allowed in secondary indexes, this query might return multiple instances. This function takes as an argument a pointer to a user-written callback function, which must match the function prototype typedef mentioned above (person_iteration_callback). The callback is invoked once for each record that matches the secondary key.</p>
+<h3 id="test-output">Test output</h3>
+<p>The test output file is useful as an example of how to invoke the generated API. It will contain calls to the functions mentioned above, to store a single record and retrieve it by primary key and through the secondary index.</p>
+<p>To compile the test, you would issue a command such as</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a> cc <span class="op">-</span>I$BDB_INSTALL<span class="op">/</span>include <span class="op">-</span>L$BDB_INSTALL<span class="op">/</span>lib <span class="op">-</span>o test_people people<span class="op">.</span>c \</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>     test_people<span class="op">.</span>c <span class="op">-</span>ldb<span class="op">-</span><span class="fl">4.8</span></span></code></pre></div>
+<p>This will produce the executable file test_people, which can be run to exercise the generated API. The program generated from people.sql will create a database environment in a directory named "peopledb." This directory must be created before the program is run.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

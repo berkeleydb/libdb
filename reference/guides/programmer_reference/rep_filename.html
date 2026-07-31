@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Managing Replication Files — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="managing-replication-files">Managing Replication Files</h2>
+<p>Whether you use the Base API or the Replication Manager, replication creates a set of internal files that are normally stored on-disk in your environment home directory. These files contain metadata which is necessary for replication operations, and so you should never delete these files.</p>
+<p>You can cause these files to not be stored on disk, but instead to be held entirely in-memory, by specifying the <a href="../../api/c/repconfig.html#config_DB_REP_CONF_INMEM" class="olink">DB_REP_CONF_INMEM</a> flag to the <a href="../../api/c/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method. Doing this can improve your application's data throughput by avoiding the disk I/O associated with these metadata files. However, in the event that your application is shut down, the contents of these files are lost. This results in some loss of functionality, including an increased chance that elections will fail, or that the wrong site will win an election. See the <a href="../../api/c/repconfig.html#config_DB_REP_CONF_INMEM" class="olink">DB_REP_CONF_INMEM</a> flag description for more information.</p>
+<p>Note that turning on <a href="../../api/c/repconfig.html#config_DB_REP_CONF_INMEM" class="olink">DB_REP_CONF_INMEM</a> means that Replication Manager cannot store group membership changes persistently. This is because Replication Manager stores group membership information in an internal database, which is held in memory when <a href="../../api/c/repconfig.html#config_DB_REP_CONF_INMEM" class="olink">DB_REP_CONF_INMEM</a> is turned on. For this reason, if your Replication Manager application requires replication metadata to be stored in memory, then you must manually identify all the sites in your replication group using the <code>DB_LEGACY</code> site configuration attribute. Be aware that this configuration needs to be made permanent. (Normally, <code>DB_LEGACY</code> is used only on a temporary basis for the purpose of upgrading old Replication Manager applications.)</p>
+<p>Do the following:</p>
+<ol type="1">
+<li><p>Shut down all the sites in your replication group.</p></li>
+<li><p>For every site in your replication group:</p>
+<ol type="1">
+<li><p>Configure a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle for the local site. Use <a href="../../api/c/dbsite_set_config.html" class="olink">DB_SITE-&gt;set_config()</a> to indicate that this is a legacy site by setting the <code>DB_LEGACY</code> parameter.</p></li>
+<li><p>Configure a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle for <span class="emphasis"><em>every other site</em></span> in the replication group. Set the <code>DB_LEGACY</code> parameter for each of these handles.</p>
+<p>Please pay careful attention to this step. To repeat: a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle MUST be configured for EVERY site in the replication group.</p></li>
+</ol></li>
+<li><p>Restart all the sites in the replication group.</p></li>
+</ol>
+<p>Alternatively, you can store persistent environment metadata files, including those required by replication, in a location other than your environment home directory. Doing so can help improve I/O throughput by placing these files on a spindle that is not being used for other environment data I/O. You do this using the <a href="../../api/c/envset_metadata_dir.html" class="olink">DB_ENV-&gt;set_metadata_dir()</a> method.</p>
+<p>Note that you must configure the handling of your environment metadata consistently across your entire replication group. That is, if you place your replication metadata in-memory on one site, then it must be placed in-memory on all the sites in the group. Similarly, if you place your replication metadata files in a non-standard directory location on one site, then they must be placed in the exact same directory location on all the sites in your group.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

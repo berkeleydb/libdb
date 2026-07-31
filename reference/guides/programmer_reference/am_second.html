@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Secondary indexes — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="secondary-indexes">Secondary indexes</h2>
+<p><span class="sect2"> <a href="am_second.html#idp51040080">Error Handling With Secondary Indexes</a> </span></p>
+<p>A secondary index, put simply, is a way to efficiently access records in a database (the primary) by means of some piece of information other than the usual (primary) key. In Berkeley DB, this index is simply another database whose keys are these pieces of information (the secondary keys), and whose data are the primary keys. Secondary indexes can be created manually by the application; there is no disadvantage, other than complexity, to doing so. However, when the secondary key can be mechanically derived from the primary key and datum that it points to, as is frequently the case, Berkeley DB can automatically and transparently manage secondary indexes.</p>
+<p>As an example of how secondary indexes might be used, consider a database containing a list of students at a college, each of whom has a unique student ID number. A typical database would use the student ID number as the key; however, one might also reasonably want to be able to look up students by last name. To do this, one would construct a secondary index in which the secondary key was this last name.</p>
+<p>In SQL, this would be done by executing something like the following:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>CREATE TABLE students<span class="op">(</span>student_id CHAR<span class="op">(</span><span class="dv">4</span><span class="op">)</span> NOT NULL<span class="op">,</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    lastname CHAR<span class="op">(</span><span class="dv">15</span><span class="op">),</span> firstname CHAR<span class="op">(</span><span class="dv">15</span><span class="op">),</span> PRIMARY KEY<span class="op">(</span>student_id<span class="op">));</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>CREATE INDEX lname ON students<span class="op">(</span>lastname<span class="op">);</span></span></code></pre></div>
+<p>In Berkeley DB, this would work as follows (a <a href="second.javas" class="ulink" target="_top">Java API example is also available</a>):</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> student_record <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> student_id<span class="op">[</span><span class="dv">4</span><span class="op">];</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> last_name<span class="op">[</span><span class="dv">15</span><span class="op">];</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> first_name<span class="op">[</span><span class="dv">15</span><span class="op">];</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="op">....</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>second<span class="op">()</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    DB <span class="op">*</span>dbp<span class="op">,</span> <span class="op">*</span>sdbp<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Open/create primary */</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_create<span class="op">(&amp;</span>dbp<span class="op">,</span> dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>open<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;students.db&quot;</span><span class="op">,</span> NULL<span class="op">,</span> DB_BTREE<span class="op">,</span> DB_CREATE<span class="op">,</span> <span class="bn">0600</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="co">     * Open/create secondary.  Note that it supports duplicate data</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="co">     * items, since last names might not be unique.</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_create<span class="op">(&amp;</span>sdbp<span class="op">,</span> dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>        handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> sdbp<span class="op">-&gt;</span>set_flags<span class="op">(</span>sdbp<span class="op">,</span> DB_DUP <span class="op">|</span> DB_DUPSORT<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>        handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> sdbp<span class="op">-&gt;</span>open<span class="op">(</span>sdbp<span class="op">,</span> NULL<span class="op">,</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;lastname.db&quot;</span><span class="op">,</span> NULL<span class="op">,</span> DB_BTREE<span class="op">,</span> DB_CREATE<span class="op">,</span> <span class="bn">0600</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>        handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Associate the secondary with the primary. */</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>associate<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> sdbp<span class="op">,</span> getname<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>        handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="co">/*</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a><span class="co"> * getname -- extracts a secondary key (the last name) from a primary</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a><span class="co"> *     key/data pair</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>getname<span class="op">(</span>DB <span class="op">*</span>secondary<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>pkey<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>pdata<span class="op">,</span> DBT <span class="op">*</span>skey<span class="op">)</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a><span class="co">     * Since the secondary key is a simple structure member of the</span></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a><span class="co">     * record, we don&#39;t have to do anything fancy to return it.  If</span></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a><span class="co">     * we have composite keys that need to be constructed from the</span></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a><span class="co">     * record, rather than simply pointing into it, then the user&#39;s</span></span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a><span class="co">     * function might need to allocate space and copy data.  In</span></span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a><span class="co">     * this case, the DB_DBT_APPMALLOC flag should be set in the</span></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a><span class="co">     * secondary key DBT.</span></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>    memset<span class="op">(</span>skey<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>    skey<span class="op">-&gt;</span>data <span class="op">=</span> <span class="op">((</span><span class="kw">struct</span> student_record <span class="op">*)</span>pdata<span class="op">-&gt;</span>data<span class="op">)-&gt;</span>last_name<span class="op">;</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>    skey<span class="op">-&gt;</span>size <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(((</span><span class="kw">struct</span> student_record <span class="op">*)</span>pdata<span class="op">-&gt;</span>data<span class="op">)-&gt;</span>last_name<span class="op">);</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>From the application's perspective, putting things into the database works exactly as it does without a secondary index; one can simply insert records into the primary database. In SQL one would do the following:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>INSERT INTO student</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    VALUES <span class="op">(</span><span class="st">&quot;WC42&quot;</span><span class="op">,</span> <span class="st">&quot;Churchill      &quot;</span><span class="op">,</span> <span class="st">&quot;Winston        &quot;</span><span class="op">);</span></span></code></pre></div>
+<p>and in Berkeley DB, one does:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> student_record s<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>DBT data<span class="op">,</span> key<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>s<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span><span class="kw">struct</span> student_record<span class="op">));</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>key<span class="op">.</span>data <span class="op">=</span> <span class="st">&quot;WC42&quot;</span><span class="op">;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>key<span class="op">.</span>size <span class="op">=</span> <span class="dv">4</span><span class="op">;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>memcpy<span class="op">(&amp;</span>s<span class="op">.</span>student_id<span class="op">,</span> <span class="st">&quot;WC42&quot;</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>s<span class="op">.</span>student_id<span class="op">));</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>memcpy<span class="op">(&amp;</span>s<span class="op">.</span>last_name<span class="op">,</span> <span class="st">&quot;Churchill      &quot;</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>s<span class="op">.</span>last_name<span class="op">));</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>memcpy<span class="op">(&amp;</span>s<span class="op">.</span>first_name<span class="op">,</span> <span class="st">&quot;Winston        &quot;</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>s<span class="op">.</span>first_name<span class="op">));</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>data<span class="op">.</span>data <span class="op">=</span> <span class="op">&amp;</span>s<span class="op">;</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>data<span class="op">.</span>size <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span>s<span class="op">);</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>put<span class="op">(</span>dbp<span class="op">,</span> txn<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    </span></code></pre></div>
+<p>Internally, a record with secondary key "Churchill" is inserted into the secondary database (in addition to the insertion of "WC42" into the primary, of course).</p>
+<p>Deletes are similar. The SQL clause:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>DELETE FROM student WHERE <span class="op">(</span>student_id <span class="op">=</span> <span class="st">&quot;WC42&quot;</span><span class="op">);</span></span></code></pre></div>
+<p>looks like:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>DBT key<span class="op">;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>key<span class="op">.</span>data <span class="op">=</span> <span class="st">&quot;WC42&quot;</span><span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>key<span class="op">.</span>size <span class="op">=</span> <span class="dv">4</span><span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>del<span class="op">(</span>dbp<span class="op">,</span> txn<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    handle_error<span class="op">(</span>ret<span class="op">);</span></span></code></pre></div>
+<p>Deletes can also be performed on the secondary index directly; a delete done this way will delete the "real" record in the primary as well. If the secondary supports duplicates and there are duplicate occurrences of the secondary key, then all records with that secondary key are removed from both the secondary index and the primary database. In SQL:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>DELETE FROM lname WHERE <span class="op">(</span>lastname <span class="op">=</span> <span class="st">&quot;Churchill      &quot;</span><span class="op">);</span></span></code></pre></div>
+<p>In Berkeley DB:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>DBT skey<span class="op">;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>skey<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>skey<span class="op">.</span>data <span class="op">=</span> <span class="st">&quot;Churchill      &quot;</span><span class="op">;</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>skey<span class="op">.</span>size <span class="op">=</span> <span class="dv">15</span><span class="op">;</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> sdbp<span class="op">-&gt;</span>del<span class="op">(</span>sdbp<span class="op">,</span> txn<span class="op">,</span> <span class="op">&amp;</span>skey<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    handle_error<span class="op">(</span>ret<span class="op">);</span></span></code></pre></div>
+<p>Gets on a secondary automatically return the primary datum. If <a href="../../api/c/dbget.html" class="olink">DB-&gt;pget()</a> or <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;pget()</a> is used in lieu of <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a> or <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a>, the primary key is returned as well. Thus, the equivalent of:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>SELECT <span class="op">*</span> from lname WHERE <span class="op">(</span>lastname <span class="op">=</span> <span class="st">&quot;Churchill      &quot;</span><span class="op">);</span></span></code></pre></div>
+<p>would be:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>DBT data<span class="op">,</span> pkey<span class="op">,</span> skey<span class="op">;</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>skey<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>pkey<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>memset<span class="op">(&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>skey<span class="op">.</span>data <span class="op">=</span> <span class="st">&quot;Churchill      &quot;</span><span class="op">;</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>skey<span class="op">.</span>size <span class="op">=</span> <span class="dv">15</span><span class="op">;</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> sdbp<span class="op">-&gt;</span>pget<span class="op">(</span>sdbp<span class="op">,</span> txn<span class="op">,</span> <span class="op">&amp;</span>skey<span class="op">,</span> <span class="op">&amp;</span>pkey<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    handle_error<span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="co">/*</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="co"> * Now pkey contains &quot;WC42&quot; and data contains Winston&#39;s record.</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span></code></pre></div>
+<p>To create a secondary index to a Berkeley DB database, open the database that is to become a secondary index normally, then pass it as the "secondary" argument to the <a href="../../api/c/dbassociate.html" class="olink">DB-&gt;associate()</a> method for some primary database.</p>
+<p>After a <a href="../../api/c/dbassociate.html" class="olink">DB-&gt;associate()</a> call is made, the secondary indexes become alternate interfaces to the primary database. All updates to the primary will be automatically reflected in each secondary index that has been associated with it. All get operations using the <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a> or <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a> methods on the secondary index return the primary datum associated with the specified (or otherwise current, in the case of cursor operations) secondary key. The <a href="../../api/c/dbget.html" class="olink">DB-&gt;pget()</a> and <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;pget()</a> methods also become usable; these behave just like <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a> and <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a>, but return the primary key in addition to the primary datum, for those applications that need it as well.</p>
+<p>Cursor get operations on a secondary index perform as expected; although the data returned will by default be those of the primary database, a position in the secondary index is maintained normally, and records will appear in the order determined by the secondary key and the comparison function or other structure of the secondary database.</p>
+<p>Delete operations on a secondary index delete the item from the primary database and all relevant secondaries, including the current one.</p>
+<p>Put operations of any kind are forbidden on secondary indexes, as there is no way to specify a primary key for a newly put item. Instead, the application should use the <a href="../../api/c/dbput.html" class="olink">DB-&gt;put()</a> or <a href="../../api/c/dbcput.html" class="olink">DBC-&gt;put()</a> methods on the primary database.</p>
+<p>Any number of secondary indexes may be associated with a given primary database, up to limitations on available memory and the number of open file descriptors.</p>
+<p>Note that although Berkeley DB guarantees that updates made using any <a href="../../api/c/db.html" class="olink">DB</a> handle with an associated secondary will be reflected in the that secondary, associating each primary handle with all the appropriate secondaries is the responsibility of the application and is not enforced by Berkeley DB. It is generally unsafe, but not forbidden by Berkeley DB, to modify a database that has secondary indexes without having those indexes open and associated. Similarly, it is generally unsafe, but not forbidden, to modify a secondary index directly. Applications that violate these rules face the possibility of outdated or incorrect results if the secondary indexes are later used.</p>
+<p>If a secondary index becomes outdated for any reason, it should be discarded using the <a href="../../api/c/dbremove.html" class="olink">DB-&gt;remove()</a> method and a new one created using the <a href="../../api/c/dbassociate.html" class="olink">DB-&gt;associate()</a> method. If a secondary index is no longer needed, all of its handles should be closed using the <a href="../../api/c/dbclose.html" class="olink">DB-&gt;close()</a> method, and then the database should be removed using a new database handle and the <a href="../../api/c/dbremove.html" class="olink">DB-&gt;remove()</a> method.</p>
+<p>Closing a primary database handle automatically dis-associates all secondary database handles associated with it.</p>
+<h3 id="error-handling-with-secondary-indexes">Error Handling With Secondary Indexes</h3>
+<p>An error return during a secondary update in CDS or DS (which requires an abort in TDS) may leave a secondary index inconsistent in CDS or DS. There are a few non-error returns:</p>
+<ul>
+<li>0</li>
+<li>DB_BUFFER_SMALL</li>
+<li>DB_NOTFOUND</li>
+<li>DB_KEYEMPTY</li>
+<li>DB_KEYEXIST</li>
+</ul>
+<p>In the case of any other error return during a secondary update in CDS or DS, delete the secondary indices, recreate them and set the <code>DB_CREATE flag</code> to the <code>DB-&gt;associate</code> method. Some examples of error returns that need to be handled this way are:</p>
+<ul>
+<li>ENOMEM - indicating there is insufficient memory to return the requested item</li>
+<li>EINVAL - indicating that an invalid flag value or parameter is specified</li>
+</ul>
+<p>Note that <code>DB_RUNRECOVERY</code> and <code>DB_PAGE_NOTFOUND</code> are fatal errors which should never occur during normal use of CDS or DS. If those errors are returned by Berkeley DB when running without transactions, check the database integrity with the <code>DB-&gt;verify</code> method before rebuilding the secondary indices.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

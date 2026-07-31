@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Read your writes consistency — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="read-your-writes-consistency">Read your writes consistency</h2>
+<p><span class="sect2"> <a href="rep_ryw.html#gettoken">Getting a token</a> </span></p>
+<p><span class="sect2"> <a href="rep_ryw.html#tokenhandling">Token handling</a> </span></p>
+<p><span class="sect2"> <a href="rep_ryw.html#usingtoken">Using a token to check or wait for a transaction</a> </span></p>
+<p>Some applications require the ability to read replicated data at a client site, and determine whether it is consistent with data that has been written previously at the master site.</p>
+<p>For example, a web application may be backed by multiple database environments, linked to form a replication group, in order to share the workload. Web requests that update data must be served by the replication master, but any site in the group may serve a read-only request. Consider a work flow of a series of web requests from one specific user at a web browser: the first request generates a database update, but the second request merely reads data. If the read-only request is served by a replication client database environment, it may be important to make sure that the updated data has been replicated to the client before performing the read (or to wait until it has been replicated) in order to show this user a consistent view of the data.</p>
+<p>Berkeley DB supports this requirement through the use of transaction "tokens". A token is a form of identification for a transaction within the scope of the replication group. The application may request a copy of the transaction's token at the master site during the execution of the transaction. Later, the application running on a client site can use a copy of the token to determine whether the transaction has been applied at that site.</p>
+<p>It is the application's responsibility to keep track of the token during the interim. In the web example, the token might be sent to the browser as a "cookie", or stored on the application server in the user's session context.</p>
+<p>The operations described here are supported both for Replication Manager applications and for applications that use the replication Base API.</p>
+<h3 id="getting-a-token">Getting a token</h3>
+<p>In order to get a token, the application must supply a small memory buffer, using the <a href="../../api/c/txnset_commit_token.html" class="olink">DB_TXN-&gt;set_commit_token()</a> method.</p>
+<p>Note that a token is generated only upon a successful commit operation, and therefore the token buffer content is valid only after a successful commit. Also, if a transaction does not perform any update operations it does not generate a useful token.</p>
+<p>In the Berkeley DB Java and C# API, getting a token is simpler. The application need only invoke the <a href="../java/com/sleepycat/db/Transaction.html#getCommitToken()" class="ulink" target="_top">Transaction.getCommitToken()</a> method, after the transaction has committed.</p>
+<h3 id="token-handling">Token handling</h3>
+<p>The application should not try to interpret the content of the token buffer, but may store and/or transmit it freely between systems. However, since the buffer contains binary data it may be necessary to apply some encoding for transmission (e.g., base 64).</p>
+<p>The data is resilient to differences in byte order between different systems. It does not expire: it may be retained indefinitely for later use, even across Berkeley DB version upgrades.</p>
+<h3 id="using-a-token-to-check-or-wait-for-a-transaction">Using a token to check or wait for a transaction</h3>
+<p>The <a href="../../api/c/envtxn_applied.html" class="olink">DB_ENV-&gt;txn_applied()</a> method takes a copy of a token, and determines whether the corresponding transaction is currently applied at the local site. The timeout argument allows the application to block for a bounded amount of time for cases where the transaction has not yet been applied.</p>
+<p>Depending on the transaction durability levels implemented or configured by the application, it is sometimes possible for a transaction to disappear from a replication group if an original master site fails and a different site becomes the new master without having received the transaction. When the <a href="../../api/c/envtxn_applied.html" class="olink">DB_ENV-&gt;txn_applied()</a> method discovers this, it produces the <code>DB_NOTFOUND</code> return code.</p>
+<p>This means that the results of <a href="../../api/c/envtxn_applied.html" class="olink">DB_ENV-&gt;txn_applied()</a> are not guaranteed forever. Even after a successful call to <a href="../../api/c/envtxn_applied.html" class="olink">DB_ENV-&gt;txn_applied()</a>, it is possible that by the time the application tries to read the data, the transaction and its data could have disappeared.</p>
+<p>To avoid this problem the application should do the read operations in the context of a transaction, and hold the transaction handle open during the <a href="../../api/c/envtxn_applied.html" class="olink">DB_ENV-&gt;txn_applied()</a> call. The <a href="../../api/c/envtxn_applied.html" class="olink">DB_ENV-&gt;txn_applied()</a> method itself does not actually execute in the context of the transaction; but no rollbacks due to new master synchronization ever occur while a transaction is active, even a read-only transaction at a client site.</p>
+<p>Note that the <a href="../../api/c/envtxn_applied.html" class="olink">DB_ENV-&gt;txn_applied()</a> method can return <code>DB_LOCK_DEADLOCK</code>. The application should respond to this situation just as it does for any other normal operation: abort any existing transaction, and then pause briefly before retrying.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

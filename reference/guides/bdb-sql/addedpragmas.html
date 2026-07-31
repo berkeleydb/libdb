@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Added PRAGMAs — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / bdb-sql</nav>
+  <main>
+<h2 id="added-pragmas">Added PRAGMAs</h2>
+<p><span class="sect2"> <a href="addedpragmas.html#bdbsql_error_file">PRAGMA bdbsql_error_file</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#bdbsql_lock_tablesize">PRAGMA bdbsql_lock_tablesize</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#bdbsql_shared_resources">PRAGMA bdbsql_shared_resources</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#bdbsql_single_process">PRAGMA bdbsql_single_process</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#bdbsql_system_memory">PRAGMA bdbsql_system_memory</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#bdbsql_vacuum_fillpercent">PRAGMA bdbsql_vacuum_fillpercent</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#bdbsql_vacuum_pages">PRAGMA bdbsql_vacuum_pages</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#multiversion">PRAGMA multiversion</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#snapshot_isolation">PRAGMA snapshot_isolation</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#trickle">PRAGMA trickle</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#txn_bulk">PRAGMA txn_bulk</a> </span></p>
+<p><span class="sect2"> <a href="addedpragmas.html#replication_pragmas">Replication PRAGMAs</a> </span></p>
+<p>The following PRAGMAs are added in the Berkeley DB SQL interface.</p>
+<h3 id="pragma-bdbsql_error_file">PRAGMA bdbsql_error_file</h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>PRAGMA bdbsql_error_file <span class="op">[</span>filename<span class="op">]</span></span></code></pre></div>
+<p>Redirects internal Berkeley DB error messages to the named file. If a relative path is specified to <code>[filename]</code>, then the path is interpreted as being relative to the current working directory.</p>
+<p>If this PRAGMA is issued with no filename, then the current target for Berkeley DB error output is returned. By default, error messages are sent to <code>STDERR</code>.</p>
+<p>This PRAGMA can be issued at any time; initial database access does not have to occur before this PRAGMA can be used.</p>
+<h3 id="pragma-bdbsql_lock_tablesize">PRAGMA bdbsql_lock_tablesize</h3>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>PRAGMA bdbsql_lock_tablesize <span class="op">[=</span> N<span class="op">]</span></span></code></pre></div>
+<p>Sets or reports the number of buckets in the Berkeley DB environment's lock object hash table.</p>
+<p>This pragma must be called prior to opening/creating the database environment.</p>
+<p>For more details, see <a href="../../api/c/envget_lk_tablesize.html" class="olink">get_lk_tablesize</a> and <a href="../../api/c/envset_lk_tablesize.html" class="olink">set_lk_tablesize</a>.</p>
+<h3 id="pragma-bdbsql_shared_resources">PRAGMA bdbsql_shared_resources</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>PRAGMA bdbsql_shared_resources <span class="op">[=</span> N<span class="op">]</span></span></code></pre></div>
+<p>Sets or reports the maximum amount of memory (bytes) to be used by shared structures in the main environment region.</p>
+<p>This pragma must be called prior to opening/creating the database environment.</p>
+<p>For more details, see <a href="../../api/c/envget_memory_max.html" class="olink">get_memory_max</a> and <a href="../../api/c/envset_memory_max.html" class="olink">set_memory_max</a>.</p>
+<h3 id="pragma-bdbsql_single_process">PRAGMA bdbsql_single_process</h3>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>PRAGMA bdbsql_single_process <span class="op">=</span> boolean</span></code></pre></div>
+<p>To create a private environment rather than a shared environment, enable this pragma. The cache and other region files will be created in memory rather than using file backed shared memory.</p>
+<p>In Berkeley DB SQL the default behavior is to allow a database to be opened and operated on by multiple processes simultaneously. When this pragma is enabled, accessing the same database from multiple processes simultaneously can lead to data corruption. Either option supports accessing a database using a single process multi-threaded application.</p>
+<p>By default omit sharing is disabled. This pragma must be called prior to opening/creating the database environment. Because the setting is not persistent, you may need to invoke it before every database open, or define compile option <code>BDBSQL_OMIT_SHARING</code> instead.</p>
+<p>For more information, see <a href="../../guides/programmer_reference/env_region.html" class="olink">Shared memory region</a>. Note that this pragma causes the <a href="../../api/c/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a> flag to be specified in the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method.</p>
+<h3 id="pragma-bdbsql_system_memory">PRAGMA bdbsql_system_memory</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>PRAGMA bdbsql_system_memory <span class="op">[</span>base segment ID<span class="op">]</span></span></code></pre></div>
+<p>Queries or sets a flag that causes the database's shared resources to be created in system shared memory. By default the database's shared resources are created in file-backed shared memory.</p>
+<p>If a [base segment ID] is specified, the shared resources will be created using X/Open style shared memory interfaces. The [base segment ID] will be used as the starting ID for shared resources used by the database. Use different [base segment ID] values for different databases. It is possible for multi-process applications to use a single database by specifying the same [base segment ID] to this PRAGMA. Each connection needs to set this PRAGMA.</p>
+<p>This PRAGMA may be used to set a [base segment ID] only before the first table is created in the database.</p>
+<h3 id="pragma-bdbsql_vacuum_fillpercent">PRAGMA bdbsql_vacuum_fillpercent</h3>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>PRAGMA bdbsql_vacuum_fillpercent <span class="op">[=</span> N<span class="op">]</span></span></code></pre></div>
+<p>Sets or reports the page full threshold. Any page in the database that is at or below this percentage full is considered for vacuuming when <code>PRAGMA incremental_vacuum</code> is enabled. The value is specified as a percentage between 1 and 100. By default, pages 85% full and below are considered for vacuuming.</p>
+<h3 id="pragma-bdbsql_vacuum_pages">PRAGMA bdbsql_vacuum_pages</h3>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>PRAGMA bdbsql_vacuum_pages <span class="op">[=</span> N<span class="op">]</span></span></code></pre></div>
+<p>Sets or reports the maximum number of pages to be returned to the file system from the free page list when incremental vacuuming is enabled. By default, up to 128 pages are removed from the free list.</p>
+<p>Page vacuuming is controlled using <a href="changedpragmas.html#auto_vacuum" class="xref" title="PRAGMA auto_vacuum">PRAGMA auto_vacuum</a>.</p>
+<h3 id="pragma-multiversion">PRAGMA multiversion</h3>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>PRAGMA multiversion</span></code></pre></div>
+<p>Controls whether Multiversion Concurrency Control (MVCC) is on or off. You can not use this PRAGMA at any time during your application's runtime after your database tables have been accessed.</p>
+<p>For more information on MVCC and snapshot isolation, see <a href="mvcc.html" class="xref" title="Using Multiversion Concurrency Control">Using Multiversion Concurrency Control</a></p>
+<h3 id="pragma-snapshot_isolation">PRAGMA snapshot_isolation</h3>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>PRAGMA snapshot_isolation</span></code></pre></div>
+<p>Controls whether snapshot isolation is turned on. This PRAGMA can be used at any time during your application's runtime <span class="emphasis"><em>after</em></span> Multiversion Concurrency Control (MVCC) has been turned on.</p>
+<p>For more information on MVCC and snapshot isolation, see <a href="mvcc.html" class="xref" title="Using Multiversion Concurrency Control">Using Multiversion Concurrency Control</a></p>
+<h3 id="pragma-trickle">PRAGMA trickle</h3>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>PRAGMA trickle <span class="op">[</span>percent<span class="op">]</span></span></code></pre></div>
+<p>Ensures that at least the specified percentage of pages in the shared cache are clean. This can cause pages that have been modified to be flushed to disk.</p>
+<p>The trickle functionality enables an application to ensure that a page is available for reading new information into the shared cache without waiting for a write operation to complete.</p>
+<p>Specifying this PRAGMA without a percentage value causes the current trickle value to be displayed. Specify <code>0</code> to turn the trickle functionality off.</p>
+<h3 id="pragma-txn_bulk">PRAGMA txn_bulk</h3>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>PRAGMA TXN_BULK</span></code></pre></div>
+<p>Enables transactional bulk loading optimization. For more information, see <a href="dbfeatures.html#bulkloading" class="xref" title="Using Bulk Loading">Using Bulk Loading</a>.</p>
+<h3 id="replication-pragmas">Replication PRAGMAs</h3>
+<p>Seven PRAGMAs were added to control replication. They are described in <a href="sqlrep.html" class="xref" title="Chapter 4. Using Replication with the SQL API">Using Replication with the SQL API</a>:</p>
+<h3 id="note">Note</h3>
+<p>If you are using these replication PRAGMAs and you want to perform a backup, there is an additional backup step for the pragma file. See <a href="admin.html#backup" class="xref" title="Backing Up Berkeley DB SQL Databases">Backing Up Berkeley DB SQL Databases</a> for more information.</p>
+<ul>
+<li><p><strong>PRAGMA replication</strong></p></li>
+<li><p><strong>PRAGMA replication_initial_master</strong></p></li>
+<li><p><strong>PRAGMA replication_local_site</strong></p></li>
+<li><p><strong>PRAGMA replication_remote_site</strong></p></li>
+<li><p><strong>PRAGMA replication_remove_site</strong></p></li>
+<li><p><strong>PRAGMA replication_verbose_output</strong></p></li>
+<li><p><strong>PRAGMA replication_verbose_file</strong></p></li>
+</ul>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

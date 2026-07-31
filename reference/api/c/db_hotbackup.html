@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>db_hotbackup — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="db_hotbackup">db_hotbackup</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_hotbackup <span class="op">[-</span>cDEguVv<span class="op">]</span> <span class="op">[-</span>d data_dir <span class="op">...]</span> <span class="op">[-</span>h home<span class="op">]</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>        <span class="op">[-</span>l log_dir<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> <span class="op">-</span>b backup_dir  </span></code></pre></div>
+<p>The <span class="command"><strong>db_hotbackup</strong></span> utility creates "hot backup" or "hot failover" snapshots of Berkeley DB database environments. Hot backups can also be performed using the <a href="envbackup.html" class="xref" title="DB_ENV-&gt;backup()">DB_ENV-&gt;backup()</a> or <a href="envdbbackup.html" class="xref" title="DB_ENV-&gt;dbbackup()">DB_ENV-&gt;dbbackup()</a> methods.</p>
+<p>The <span class="command"><strong>db_hotbackup</strong></span> utility performs the following steps:</p>
+<ol type="1">
+<li><p>Sets the <a href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS" class="xref"><code class="literal">DB_HOTBACKUP_IN_PROGRESS</code></a> flag in the home database environment.</p></li>
+<li><p>If the <strong>-c</strong> option is specified, checkpoint the source home database environment, and remove any unnecessary log files.</p></li>
+<li><p>If the target directory for the backup does not exist, it is created with mode read-write-execute for the owner.</p>
+<p>If the target directory for the backup does exist and the <strong>-u</strong> option was specified, all log files in the target directory are removed; if the <strong>-u</strong> option was not specified, all files in the target directory are removed.</p></li>
+<li><p>If the <strong>-u</strong> option was not specified, copy application-specific files found in the database environment home directory, and any directories specified using the <strong>-d</strong> option, into the target directory for the backup.</p></li>
+<li><p>Copy all log files found in the directory specified by the <strong>-l</strong> option (or in the database environment home directory, if no <strong>-l</strong> option was specified), into the target directory for the backup.</p></li>
+<li><p>Perform catastrophic recovery in the target directory for the backup.</p></li>
+<li><p>Remove any unnecessary log files from the target directory for the backup.</p></li>
+<li><p>Reset the <a href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS" class="xref"><code class="literal">DB_HOTBACKUP_IN_PROGRESS</code></a> flag in the environment.</p></li>
+</ol>
+<p>The <span class="command"><strong>db_hotbackup</strong></span> utility does not resolve pending transactions that are in the prepared state. Applications that use <a href="txnprepare.html" class="xref" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a> must specify <a href="envopen.html#envopen_DB_RECOVER_FATAL" class="link">DB_RECOVER_FATAL</a> when opening the environment, and run <a href="txnrecover.html" class="xref" title="DB_ENV-&gt;txn_recover()">DB_ENV-&gt;txn_recover()</a> to resolve any pending transactions, when failing over to the backup.</p>
+<p>The options are as follows:</p>
+<ul>
+<li><p><strong>-b</strong></p>
+<p>Specify the target directory for the backup.</p></li>
+<li><p><strong>-c</strong></p>
+<p>Before performing the backup, checkpoint the source database environment and remove any log files that are no longer required in that environment. <strong>To avoid making catastrophic recovery impossible, log file removal must be integrated with log file archival.</strong></p></li>
+<li><p><strong>-D</strong></p>
+<p>Use the data and log directories listed in a <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file in the source directory. This option has four effects:</p>
+<ul>
+<li><p>The specified data and log directories will be created relative to the target directory, with mode read-write-execute owner, if they do not already exist.</p></li>
+<li><p>In step #3 above, all files in any source data directories specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file will be copied to the target data directories.</p></li>
+<li><p>In step #4 above, log files will be copied from any log directory specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file, instead of from the default locations.</p></li>
+<li><p>The <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file will be copied from the source directory to the target directory, and subsequently used for configuration if recovery is run in the target directory.</p></li>
+</ul>
+<p>Care should be taken with the <strong>-D</strong> option where data and log directories are named relative to the source directory but are not subdirectories (that is, the name includes the element "..") Specifically, the constructed target directory names must be meaningful and distinct from the source directory names, otherwise running recovery in the target directory might corrupt the source data files.</p>
+<p><strong>It is an error to use absolute pathnames for data or log directories in this mode, as the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file copied into the target directory would then point at the source directories and running recovery would corrupt the source data files.</strong></p></li>
+<li><p><strong>-d</strong></p>
+<p>Specify one or more directories that contain data files to be copied to the target directory.</p>
+<p><strong>As all database files are copied into a single target directory, files named the same, stored in different source directories, would overwrite each other when copied to the target directory.</strong></p>
+<p>Please note the database environment recovery log references database files as they are named by the application program. <strong>If the application uses absolute or relative pathnames to name database files, (rather than filenames and the <a href="envset_data_dir.html" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> method or the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file to specify filenames), running recovery in the target directory may not properly find the copies of the files or might even find the source files, potentially resulting in corruption.</strong></p></li>
+<li><p><strong>-F</strong></p>
+<p>Directly copy from the filesystem. This option can <strong>CORRUPT</strong> the backup if used while the environment is active and the operating system does not support atomic file system reads. This option is known to be safe only on UNIX systems, not Linux or Windows systems.</p></li>
+<li><p><strong>-g</strong></p>
+<p>Turn on debugging options. In particular this will leave the log files in the backup directory after running recovery.</p></li>
+<li><p><strong>-h</strong></p>
+<p>Specify the source directory for the backup. That is, the database environment home directory.</p></li>
+<li><p><strong>-l</strong></p>
+<p>Specify a source directory that contains log files; if none is specified, the database environment home directory will be searched for log files. If a relative path is specified, the path is evaluated relative to the home directory.</p></li>
+<li><p><strong>-P</strong></p>
+<p>Specify an environment password. Although Berkeley DB utilities overwrite password strings as soon as possible, be aware there may be a window of vulnerability on systems where unprivileged users can see command-line arguments or where utilities are not able to overwrite the memory containing the command-line arguments.</p></li>
+<li><p><strong>-u</strong></p>
+<p>Update a pre-existing hot backup snapshot by copying in new log files. If the <strong>-u</strong> option is specified, no databases will be copied into the target directory. If applications that update the environment are using the transactional bulk insert optimization, this option must be used with special care. For more information, see the section on Hot Backup in the <span class="emphasis"><em>Getting Started With Transaction Processing Guide</em></span>.</p></li>
+<li><p><strong>-V</strong></p>
+<p>Write the library version number to the standard output, and exit.</p></li>
+<li><p><strong>-v</strong></p>
+<p>Run in verbose mode, listing operations as they are done.</p></li>
+</ul>
+<p>The <span class="command"><strong>db_hotbackup</strong></span> utility uses a Berkeley DB environment (as described for the <strong>-h</strong> option, the environment variable <strong>DB_HOME</strong>, or because the utility was run in a directory containing a Berkeley DB environment). In order to avoid environment corruption when using a Berkeley DB environment, <span class="command"><strong>db_hotbackup</strong></span> should always be given the chance to detach from the environment and exit gracefully. To cause <span class="command"><strong>db_hotbackup</strong></span> to release all environment resources and exit cleanly, send it an interrupt signal (SIGINT).</p>
+<p>The <span class="command"><strong>db_hotbackup</strong></span> utility exits 0 on success, and &gt;0 if an error occurs.</p>
+<h3 id="environment-variables">Environment Variables</h3>
+<h4 id="db_home">DB_HOME</h4>
+<p>If the <strong>-h</strong> option is not specified and the environment variable DB_HOME is set, it is used as the path of the database home, as described in the <a href="envopen.html" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> method.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

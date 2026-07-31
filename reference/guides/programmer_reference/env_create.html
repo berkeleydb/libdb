@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Creating a database environment — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="creating-a-database-environment">Creating a database environment</h2>
+<p>The Berkeley DB environment is created and described by the <a href="../../api/c/envcreate.html" class="olink">db_env_create()</a> and <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> interfaces. In situations where customization is desired, such as storing log files on a separate disk drive or selection of a particular cache size, applications must describe the customization by either creating an environment configuration file in the environment home directory or by arguments passed to other <a href="../../api/c/env.html" class="olink">DB_ENV</a> handle methods.</p>
+<p>Once an environment has been created, database files specified using relative pathnames will be named relative to the home directory. Using pathnames relative to the home directory allows the entire environment to be easily moved, simplifying restoration and recovery of a database in a different directory or on a different system.</p>
+<p>Applications first obtain an environment handle using the <a href="../../api/c/envcreate.html" class="olink">db_env_create()</a> method, then call the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method which creates or joins the database environment. There are a number of options you can set to customize <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> for your environment. These options fall into four broad categories:</p>
+<p><span class="term">Subsystem Initialization:</span><br />
+These flags indicate which Berkeley DB subsystems will be initialized for the environment, and what operations will happen automatically when databases are accessed within the environment. The flags include <a href="../../api/c/envopen.html#envopen_DB_INIT_CDB" class="olink">DB_INIT_CDB</a>, <a href="../../api/c/envopen.html#envopen_DB_INIT_LOCK" class="olink">DB_INIT_LOCK</a>, <a href="../../api/c/envopen.html#envopen_DB_INIT_LOG" class="olink">DB_INIT_LOG</a>, <a href="../../api/c/envopen.html#envopen_DB_INIT_MPOOL" class="olink">DB_INIT_MPOOL</a>, and <a href="../../api/c/envopen.html#envopen_DB_INIT_TXN" class="olink">DB_INIT_TXN</a>. The <a href="../../api/c/envopen.html#envopen_DB_INIT_CDB" class="olink">DB_INIT_CDB</a> flag does initialization for Berkeley DB Concurrent Data Store applications. (See <a href="cam.html#cam_intro" class="xref" title="Concurrent Data Store introduction">Concurrent Data Store introduction</a> for more information.) The rest of the flags initialize a single subsystem; that is, when <a href="../../api/c/envopen.html#envopen_DB_INIT_LOCK" class="olink">DB_INIT_LOCK</a> is specified, applications reading and writing databases opened in this environment will be using locking to ensure that they do not overwrite each other's changes.</p>
+<p><span class="term">Recovery options:</span><br />
+These flags, which include <a href="../../api/c/envopen.html#envopen_DB_RECOVER" class="olink">DB_RECOVER</a> and <a href="../../api/c/envopen.html#envopen_DB_RECOVER_FATAL" class="olink">DB_RECOVER_FATAL</a>, indicate what recovery is to be performed on the environment before it is opened for normal use.</p>
+<p><span class="term">Naming options:</span><br />
+These flags, which include <a href="../../api/c/envopen.html#envopen_DB_USE_ENVIRON" class="olink">DB_USE_ENVIRON</a> and <a href="../../api/c/envopen.html#envopen_DB_USE_ENVIRON_ROOT" class="olink">DB_USE_ENVIRON_ROOT</a>, modify how file naming happens in the environment.</p>
+<p><span class="term">Miscellaneous:</span><br />
+Finally, there are a number of miscellaneous flags, for example, <a href="../../api/c/dbopen.html#open_DB_CREATE" class="olink">DB_CREATE</a> which causes underlying files to be created as necessary. See the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> manual pages for further information.</p>
+<p>Most applications either specify only the <a href="../../api/c/envopen.html#envopen_DB_INIT_MPOOL" class="olink">DB_INIT_MPOOL</a> flag or they specify all four subsystem initialization flags (<a href="../../api/c/envopen.html#envopen_DB_INIT_MPOOL" class="olink">DB_INIT_MPOOL</a>, <a href="../../api/c/envopen.html#envopen_DB_INIT_LOCK" class="olink">DB_INIT_LOCK</a>, <a href="../../api/c/envopen.html#envopen_DB_INIT_LOG" class="olink">DB_INIT_LOG</a>, and <a href="../../api/c/envopen.html#envopen_DB_INIT_TXN" class="olink">DB_INIT_TXN</a>). The former configuration is for applications that simply want to use the basic Access Method interfaces with a shared underlying buffer pool, but don't care about recoverability after application or system failure. The latter is for applications that need recoverability. There are situations in which other combinations of the initialization flags make sense, but they are rare.</p>
+<p>The <a href="../../api/c/envopen.html#envopen_DB_RECOVER" class="olink">DB_RECOVER</a> flag is specified by applications that want to perform any necessary database recovery when they start running. That is, if there was a system or application failure the last time they ran, they want the databases to be made consistent before they start running again. It is not an error to specify this flag when no recovery needs to be done.</p>
+<p>The <a href="../../api/c/envopen.html#envopen_DB_RECOVER_FATAL" class="olink">DB_RECOVER_FATAL</a> flag is more special-purpose. It performs catastrophic database recovery, and normally requires that some initial arrangements be made; that is, archived log files be brought back into the filesystem. Applications should not normally specify this flag. Instead, under these rare conditions, the <a href="../../api/c/db_recover.html" class="olink">db_recover</a> utility should be used.</p>
+<p>The following is a simple example of a function that opens a database environment for a transactional program.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>DB_ENV <span class="op">*</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>db_setup<span class="op">(</span><span class="dt">char</span> <span class="op">*</span>home<span class="op">,</span> <span class="dt">char</span> <span class="op">*</span>data_dir<span class="op">,</span> <span class="dt">FILE</span> <span class="op">*</span>errfp<span class="op">,</span> <span class="dt">char</span> <span class="op">*</span>progname<span class="op">)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    DB_ENV <span class="op">*</span>dbenv<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">     * Create an environment and initialize it for additional error</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">     * reporting.</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> db_env_create<span class="op">(&amp;</span>dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        fprintf<span class="op">(</span>errfp<span class="op">,</span> <span class="st">&quot;</span><span class="sc">%s</span><span class="st">: </span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span> progname<span class="op">,</span> db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>NULL<span class="op">);</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    dbenv<span class="op">-&gt;</span>set_errfile<span class="op">(</span>dbenv<span class="op">,</span> errfp<span class="op">);</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    dbenv<span class="op">-&gt;</span>set_errpfx<span class="op">(</span>dbenv<span class="op">,</span> progname<span class="op">);</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">     * Specify the shared memory buffer pool cachesize: 5MB.</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">     * Databases are in a subdirectory of the environment home.</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbenv<span class="op">-&gt;</span>set_cachesize<span class="op">(</span>dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> </span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>                                     <span class="dv">5</span> <span class="op">*</span> <span class="dv">1024</span> <span class="op">*</span> <span class="dv">1024</span><span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">-&gt;</span>err<span class="op">(</span>dbenv<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;set_cachesize&quot;</span><span class="op">);</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbenv<span class="op">-&gt;</span>set_data_dir<span class="op">(</span>dbenv<span class="op">,</span> data_dir<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">-&gt;</span>err<span class="op">(</span>dbenv<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;set_data_dir: </span><span class="sc">%s</span><span class="st">&quot;</span><span class="op">,</span> data_dir<span class="op">);</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Open the environment with full transactional support. */</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbenv<span class="op">-&gt;</span>open<span class="op">(</span>dbenv<span class="op">,</span> home<span class="op">,</span> DB_CREATE <span class="op">|</span> DB_INIT_LOG <span class="op">|</span> </span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>                DB_INIT_LOCK <span class="op">|</span> DB_INIT_MPOOL <span class="op">|</span> </span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>                DB_INIT_TXN<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">-&gt;</span>err<span class="op">(</span>dbenv<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;environment open: </span><span class="sc">%s</span><span class="st">&quot;</span><span class="op">,</span> home<span class="op">);</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>        <span class="cf">goto</span> err<span class="op">;</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>dbenv<span class="op">);</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>err<span class="op">:</span>    <span class="op">(</span><span class="dt">void</span><span class="op">)</span>dbenv<span class="op">-&gt;</span>close<span class="op">(</span>dbenv<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>NULL<span class="op">);</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

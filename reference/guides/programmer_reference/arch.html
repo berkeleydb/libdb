@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 8.  Berkeley DB Architecture — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-8--berkeley-db-architecture">Chapter 8.  Berkeley DB Architecture</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="arch.html#arch_bigpic">The big picture</a> </span></p>
+<p><span class="sect1"> <a href="arch_progmodel.html">Programming model</a> </span></p>
+<p><span class="sect1"> <a href="arch_apis.html">Programmatic APIs</a> </span></p>
+<p><span class="sect2"> <a href="arch_apis.html#idp51640232">C</a> </span></p>
+<p><span class="sect2"> <a href="arch_apis.html#idp51656168">C++</a> </span></p>
+<p><span class="sect2"> <a href="arch_apis.html#idp51646944">STL</a> </span></p>
+<p><span class="sect2"> <a href="arch_apis.html#idp51647760">Java</a> </span></p>
+<p><span class="sect2"> <a href="arch_apis.html#idp51664896">Dbm/Ndbm, Hsearch</a> </span></p>
+<p><span class="sect1"> <a href="arch_script.html">Scripting languages</a> </span></p>
+<p><span class="sect2"> <a href="arch_script.html#idp51640920">Perl</a> </span></p>
+<p><span class="sect2"> <a href="arch_script.html#idp51639128">PHP</a> </span></p>
+<p><span class="sect2"> <a href="arch_script.html#idp51657264">Tcl</a> </span></p>
+<p><span class="sect1"> <a href="arch_utilities.html">Supporting utilities</a> </span></p>
+<h2 id="the-big-picture">The big picture</h2>
+<p>The previous chapters in this Reference Guide have described applications that use the Berkeley DB access methods for fast data storage and retrieval. The applications described in the following chapters are similar in nature to the access method applications, but they are also threaded and/or recoverable in the face of application or system failure.</p>
+<p>Application code that uses only the Berkeley DB access methods might appear as follows:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">switch</span> <span class="op">(</span>ret <span class="op">=</span> dbp<span class="op">-&gt;/</span>put<span class="op">(</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="cf">case</span> <span class="dv">0</span><span class="op">:</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    printf<span class="op">(</span><span class="st">&quot;db: </span><span class="sc">%s</span><span class="st">: key stored.</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> <span class="op">(</span><span class="dt">char</span> <span class="op">*)</span>key<span class="op">.</span>data<span class="op">);</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="cf">default</span><span class="op">:</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    dbp<span class="op">-&gt;/</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;dbp-&gt;/put&quot;</span><span class="op">);</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    exit <span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>The underlying Berkeley DB architecture that supports this is</p>
+<p><img src="arch_smallpic.gif" /></p>
+<p>As you can see from this diagram, the application makes calls into the access methods, and the access methods use the underlying shared memory buffer cache to hold recently used file pages in main memory.</p>
+<p>When applications require recoverability, their calls to the Access Methods must be wrapped in calls to the transaction subsystem. The application must inform Berkeley DB where to begin and end transactions, and must be prepared for the possibility that an operation may fail at any particular time, causing the transaction to abort.</p>
+<p>An example of transaction-protected code might appear as follows:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span>fail <span class="op">=</span> <span class="dv">0</span><span class="op">;;)</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Begin the transaction. */</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> dbenv<span class="op">-&gt;/</span>txn_begin<span class="op">(</span>dbenv<span class="op">,</span> NULL<span class="op">,</span> <span class="op">&amp;</span>tid<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">-&gt;/</span>err<span class="op">(</span>dbenv<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;dbenv-&gt;/txn_begin&quot;</span><span class="op">);</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        exit <span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Store the key. */</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">switch</span> <span class="op">(</span>ret <span class="op">=</span> dbp<span class="op">-&gt;/</span>put<span class="op">(</span>dbp<span class="op">,</span> tid<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> <span class="dv">0</span><span class="op">:</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">/* Success: commit the change. */</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>        printf<span class="op">(</span><span class="st">&quot;db: </span><span class="sc">%s</span><span class="st">: key stored.</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span> <span class="op">(</span><span class="dt">char</span> <span class="op">*)</span>key<span class="op">.</span>data<span class="op">);</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">((</span>ret <span class="op">=</span> tid<span class="op">-&gt;/</span>commit<span class="op">(</span>tid<span class="op">,</span> <span class="dv">0</span><span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>            dbenv<span class="op">-&gt;/</span>err<span class="op">(</span>dbenv<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;DB_TXN-&gt;/commit&quot;</span><span class="op">);</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>            exit <span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> DB_LOCK_DEADLOCK<span class="op">:</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">default</span><span class="op">:</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        <span class="co">/* Failure: retry the operation. */</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">((</span>t_ret <span class="op">=</span> tid<span class="op">-&gt;/</span>abort<span class="op">(</span>tid<span class="op">))</span> <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>            dbenv<span class="op">-&gt;/</span>err<span class="op">(</span>dbenv<span class="op">,</span> t_ret<span class="op">,</span> <span class="st">&quot;DB_TXN-&gt;/abort&quot;</span><span class="op">);</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>            exit <span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>fail<span class="op">++</span> <span class="op">==</span> MAXIMUM_RETRY<span class="op">)</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> <span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>        <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>In this example, the same operation is being done as before; however, it is wrapped in transaction calls. The transaction is started with <a href="../../api/c/txnbegin.html" class="olink">DB_ENV-&gt;txn_begin()</a> and finished with <a href="../../api/c/txncommit.html" class="olink">DB_TXN-&gt;commit()</a>. If the operation fails due to a deadlock, the transaction is aborted using <a href="../../api/c/txnabort.html" class="olink">DB_TXN-&gt;abort()</a>, after which the operation may be retried.</p>
+<p>There are actually five major subsystems in Berkeley DB, as follows:</p>
+<p><span class="term">Access Methods</span><br />
+The access methods subsystem provides general-purpose support for creating and accessing database files formatted as Btrees, Hashed files, and Fixed- and Variable-length records. These modules are useful in the absence of transactions for applications that need fast formatted file support. See <a href="../../api/c/dbopen.html" class="olink">DB-&gt;open()</a> and <a href="../../api/c/dbcursor.html" class="olink">DB-&gt;cursor()</a> for more information. These functions were already discussed in detail in the previous chapters.</p>
+<p><span class="term">Memory Pool</span><br />
+The Memory Pool subsystem is the general-purpose shared memory buffer pool used by Berkeley DB. This is the shared memory cache that allows multiple processes and threads within processes to share access to databases. This module is useful outside of the Berkeley DB package for processes that require portable, page-oriented, cached, shared file access.</p>
+<p><span class="term">Transaction</span><br />
+The Transaction subsystem allows a group of database changes to be treated as an atomic unit so that either all of the changes are done, or none of the changes are done. The transaction subsystem implements the Berkeley DB transaction model. This module is useful outside of the Berkeley DB package for processes that want to transaction-protect their own data modifications.</p>
+<p><span class="term">Locking</span><br />
+The Locking subsystem is the general-purpose lock manager used by Berkeley DB. This module is useful outside of the Berkeley DB package for processes that require a portable, fast, configurable lock manager.</p>
+<p><span class="term">Logging</span><br />
+The Logging subsystem is the write-ahead logging used to support the Berkeley DB transaction model. It is largely specific to the Berkeley DB package, and unlikely to be useful elsewhere except as a supporting module for the Berkeley DB transaction subsystem.</p>
+<p>Here is a more complete picture of the Berkeley DB library:</p>
+<p><img src="arch_bigpic.gif" /></p>
+<p>In this model, the application makes calls to the access methods and to the Transaction subsystem. The access methods and Transaction subsystems in turn make calls into the Memory Pool, Locking and Logging subsystems on behalf of the application.</p>
+<p>The underlying subsystems can be used independently by applications. For example, the Memory Pool subsystem can be used apart from the rest of Berkeley DB by applications simply wanting a shared memory buffer pool, or the Locking subsystem may be called directly by applications that are doing their own locking outside of Berkeley DB. However, this usage is not common, and most applications will either use only the access methods subsystem, or the access methods subsystem wrapped in calls to the Berkeley DB transaction interfaces.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

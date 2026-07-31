@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Defining application-specific log records — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="defining-application-specific-log-records">Defining application-specific log records</h2>
+<p>By convention, log records are described in files named <code>XXX.src</code>, where "XXX" is typically a descriptive name for a subsystem or other logical group of logging functions. These files contain interface definition language descriptions for each type of log record that is used by the subsystem.</p>
+<p>All blank lines and lines beginning with a hash ("#") character in the XXX.src files are ignored.</p>
+<p>The first non-comment line in the file should begin with the keyword PREFIX, followed by a string that will be prepended to every generated function name. Frequently, the PREFIX is either identical or similar to the name of the <code>XXX.src</code> file. For example, the Berkeley DB application-specific recovery example uses the file <code>ex_apprec.src</code>, which begins with the following PREFIX line:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>PREFIX ex_apprec</span></code></pre></div>
+<p>Following the PREFIX line are the include files required by the automatically generated functions. The include files should be listed in order, prefixed by the keyword INCLUDE. For example, the Berkeley DB application-specific recovery example lists the following include files:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>INCLUDE #include <span class="st">&quot;ex_apprec.h&quot;</span></span></code></pre></div>
+<p>The rest of the XXX.src file consists of log record descriptions. Each log record description begins with one of the following lines:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>BEGIN RECORD_NAME DB_VERSION_NUMBER RECORD_NUMBER</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>BEGIN_COMPAT RECORD_NAME DB_VERSION_NUMBER RECORD_NUMBER</span></code></pre></div>
+<p>and ends with the line:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>END</span></code></pre></div>
+<p>The <span class="emphasis"><em>BEGIN</em></span> line should be used for most record types.</p>
+<p>The <span class="emphasis"><em>BEGIN_COMPAT</em></span> is used for log record compatibility to facilitate online upgrades of replication groups. Records created with this keyword will produce reading and printing routines, but no logging routines. The recovery routines are retrieved from older releases, so no recovery templates will be generated for these records.</p>
+<p>The <span class="emphasis"><em>DB_VERSION_NUMBER</em></span> variable should be replaced with the current major and minor version of Berkeley DB, with all punctuation removed. For example, Berkeley DB version 4.2 should be 42, version 4.5 should be 45.</p>
+<p>The <span class="emphasis"><em>RECORD_NAME</em></span> variable should be replaced with a record name for this log record. The <span class="emphasis"><em>RECORD_NUMBER</em></span> variable should be replaced with a record number.</p>
+<p>The combination of PREFIX name and <span class="emphasis"><em>RECORD_NAME</em></span>, and the <span class="emphasis"><em>RECORD_NUMBER</em></span> must be unique for the application, that is, values for application-specific and Berkeley DB log records may not overlap. Further, because record numbers are stored in log files, which are usually portable across application and Berkeley DB releases, any change to the record numbers or log record format or should be handled as described in the section on log format changes in the <a href="../../guides/upgrading/upgrade_process.html" class="olink">Upgrading Berkeley DB installations</a> chapter of the Berkeley DB Installation and Build Guide. The record number space below 10,000 is reserved for Berkeley DB itself; applications should choose record number values equal to or greater than 10,000.</p>
+<p>Between the BEGIN and END keywords there should be one optional <span class="emphasis"><em>DUPLICATE</em></span> line and one line for each data item logged as part of this log record.</p>
+<p>The <span class="emphasis"><em>DUPLICATE</em></span> line is of the form:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>DUPLICATE RECORD_NAME DB_VERSION_NUMBER RECORD_NUMBER</span></code></pre></div>
+<p>The <span class="emphasis"><em>DUPLICATE</em></span> specifier should be used when creating a record that requires its own record number but can use the argument structure, reading and printing routines from another record. In this case, we will create a new log record type, but use the enclosing log record type for the argument structure and the log reading and printing routines.</p>
+<p>The format of lines for each data item logged is as follows:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>ARG <span class="op">|</span> DBT <span class="op">|</span> POINTER   variable_name    variable_type    printf_format</span></code></pre></div>
+<p>The keyword ARG indicates that the argument is a simple parameter of the type specified. For example, a file ID might be logged as:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>ARG   fileID  <span class="dt">int</span> d</span></code></pre></div>
+<p>The keyword DBT indicates that the argument is a Berkeley DB DBT structure, containing a length and pointer to a byte string. The keyword POINTER indicates that the argument is a pointer to the data type specified (of course the data type, not the pointer, is what is logged).</p>
+<p>The <span class="emphasis"><em>variable_name</em></span> is the field name within the structure that will be used to refer to this item. The <span class="emphasis"><em>variable_type</em></span> is the C-language type of the variable, and the printf format is the C-language format string, without the leading percent ("%") character, that should be used to display the contents of the field (for example, "s" for string, "d" for signed integral type, "u" for unsigned integral type, "ld" for signed long integral type, "lu" for long unsigned integral type, and so on).</p>
+<p>For example, ex_apprec.src defines a single log record type, used to log a directory name that has been stored in a DBT:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>BEGIN mkdir       <span class="dv">10000</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>DBT dirname     DBT     s</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>END</span></code></pre></div>
+<p>As the name suggests, this example of an application-defined log record will be used to log the creation of a directory. There are many more examples of XXX.src files in the Berkeley DB distribution. For example, the file btree/btree.src contains the definitions for the log records supported by the Berkeley DB Btree access method.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

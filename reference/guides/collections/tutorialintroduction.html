@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tutorial Introduction — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / collections</nav>
+  <main>
+<h2 id="tutorial-introduction">Tutorial Introduction</h2>
+<p>Most of the remainder of this document illustrates the use of the DB Java Collections API by presenting a tutorial that describes usage of the API. This tutorial builds a shipment database, a familiar example from classic database texts.</p>
+<p>The examples illustrate the following concepts of the DB Java Collections API:</p>
+<ul>
+<li><p>Object-to-data <span class="emphasis"><em>bindings</em></span></p></li>
+<li><p>The database <span class="emphasis"><em>environment</em></span></p></li>
+<li><p><span class="emphasis"><em>Databases</em></span> that contain key/value records</p></li>
+<li><p><span class="emphasis"><em>Secondary index</em></span> databases that contain index keys</p></li>
+<li><p>Java <span class="emphasis"><em>collections</em></span> for accessing databases and indices</p></li>
+<li><p><span class="emphasis"><em>Transactions</em></span> used to commit or undo database changes</p></li>
+</ul>
+<p>The examples build on each other, but at the same time the source code for each example stands alone.</p>
+<ul>
+<li><p><a href="BasicProgram.html" class="xref" title="Chapter 2.  The Basic Program">The Basic Program</a></p></li>
+<li><p><a href="UsingSecondaries.html" class="xref" title="Chapter 3.  Using Secondary Indices">Using Secondary Indices</a></p></li>
+<li><p><a href="Entity.html" class="xref" title="Chapter 4.  Using Entity Classes">Using Entity Classes</a></p></li>
+<li><p><a href="Tuple.html" class="xref" title="Chapter 5.  Using Tuples">Using Tuples</a></p></li>
+<li><p><a href="SerializableEntity.html" class="xref" title="Chapter 6.  Using Serializable Entities">Using Serializable Entities</a></p></li>
+</ul>
+<p>The shipment database consists of three database stores: the part store, the supplier store, and the shipment store. Each store contains a number of records, and each record consists of a key and a value.</p>
+<table>
+<thead>
+<tr>
+<th>Store</th>
+<th>Key</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Part</td>
+<td>Part Number</td>
+<td>Name, Color, Weight, City</td>
+</tr>
+<tr>
+<td>Supplier</td>
+<td>Supplier Number</td>
+<td>Name, Status, City</td>
+</tr>
+<tr>
+<td>Shipment</td>
+<td>Part Number, Supplier Number</td>
+<td>Quantity</td>
+</tr>
+</tbody>
+</table>
+<p>In the example programs, Java classes containing the fields above are defined for the key and value of each store: <code>PartKey</code>, <code>PartData</code>, <code>SupplierKey</code>, <code>SupplierData</code>, <code>ShipmentKey</code> and <code>ShipmentData</code>. In addition, because the Part's Weight field is itself composed of two fields — the weight value and the unit of measure — it is represented by a separate <code>Weight</code> class. These classes will be defined in the first example program.</p>
+<p>In general the DB Java Collections API uses bindings to describe how Java objects are stored. A binding defines the stored data syntax and the mapping between a Java object and the stored data. The example programs show how to create different types of bindings, and explains the characteristics of each type.</p>
+<p>The following tables show the record values that are used in all the example programs in the tutorial.</p>
+<table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Name</th>
+<th>Color</th>
+<th>Weight</th>
+<th>City</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P1</td>
+<td>Nut</td>
+<td>Red</td>
+<td>12.0 grams</td>
+<td>London</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>Bolt</td>
+<td>Green</td>
+<td>17.0 grams</td>
+<td>Paris</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>Screw</td>
+<td>Blue</td>
+<td>17.0 grams</td>
+<td>Rome</td>
+</tr>
+<tr>
+<td>P4</td>
+<td>Screw</td>
+<td>Red</td>
+<td>14.0 grams</td>
+<td>London</td>
+</tr>
+<tr>
+<td>P5</td>
+<td>Cam</td>
+<td>Blue</td>
+<td>12.0 grams</td>
+<td>Paris</td>
+</tr>
+<tr>
+<td>P6</td>
+<td>Cog</td>
+<td>Red</td>
+<td>19.0 grams</td>
+<td>London</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Number</th>
+<th>Name</th>
+<th>Status</th>
+<th>City</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S1</td>
+<td>Smith</td>
+<td>20</td>
+<td>London</td>
+</tr>
+<tr>
+<td>S2</td>
+<td>Jones</td>
+<td>10</td>
+<td>Paris</td>
+</tr>
+<tr>
+<td>S3</td>
+<td>Blake</td>
+<td>30</td>
+<td>Paris</td>
+</tr>
+<tr>
+<td>S4</td>
+<td>Clark</td>
+<td>20</td>
+<td>London</td>
+</tr>
+<tr>
+<td>S5</td>
+<td>Adams</td>
+<td>30</td>
+<td>Athens</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Part Number</th>
+<th>Supplier Number</th>
+<th>Quantity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P1</td>
+<td>S1</td>
+<td>300</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>S2</td>
+<td>300</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>S1</td>
+<td>200</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>S2</td>
+<td>400</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>S3</td>
+<td>200</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>S4</td>
+<td>200</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>S1</td>
+<td>400</td>
+</tr>
+<tr>
+<td>P4</td>
+<td>S1</td>
+<td>200</td>
+</tr>
+<tr>
+<td>P4</td>
+<td>S4</td>
+<td>300</td>
+</tr>
+<tr>
+<td>P5</td>
+<td>S1</td>
+<td>100</td>
+</tr>
+<tr>
+<td>P5</td>
+<td>S4</td>
+<td>400</td>
+</tr>
+<tr>
+<td>P6</td>
+<td>S1</td>
+<td>100</td>
+</tr>
+</tbody>
+</table>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

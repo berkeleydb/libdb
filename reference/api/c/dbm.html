@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dbm/ndbm — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="dbmndbm">dbm/ndbm</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define DB_DBM_HSEARCH    </span><span class="dv">1</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db.h&gt;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> <span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> <span class="op">*</span>dptr<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> dsize<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> datum<span class="op">;</span>  </span></code></pre></div>
+<p><strong>Dbm Functions</strong></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>dbminit<span class="op">(</span><span class="dt">char</span> <span class="op">*</span>file<span class="op">);</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>dbmclose<span class="op">();</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>datum</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>fetch<span class="op">(</span>datum key<span class="op">);</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>store<span class="op">(</span>datum key<span class="op">,</span> datum content<span class="op">);</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>delete<span class="op">(</span>datum key<span class="op">);</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>datum</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>firstkey<span class="op">(</span><span class="dt">void</span><span class="op">);</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>datum</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>nextkey<span class="op">(</span>datum key<span class="op">);</span></span></code></pre></div>
+<p><strong>Ndbm Functions</strong></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>DBM <span class="op">*</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>dbm_open<span class="op">(</span><span class="dt">char</span> <span class="op">*</span>file<span class="op">,</span> <span class="dt">int</span> flags<span class="op">,</span> <span class="dt">int</span> mode<span class="op">);</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>dbm_close<span class="op">(</span>DBM <span class="op">*</span>db<span class="op">);</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>datum</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>dbm_fetch<span class="op">(</span>DBM <span class="op">*</span>db<span class="op">,</span> datum key<span class="op">);</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>dbm_store<span class="op">(</span>DBM <span class="op">*</span>db<span class="op">,</span> datum key<span class="op">,</span> datum content<span class="op">,</span> <span class="dt">int</span> flags<span class="op">);</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>dbm_delete<span class="op">(</span>DBM <span class="op">*</span>db<span class="op">,</span> datum key<span class="op">);</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>datum</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>dbm_firstkey<span class="op">(</span>DBM <span class="op">*</span>db<span class="op">);</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>datum</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>dbm_nextkey<span class="op">(</span>DBM <span class="op">*</span>db<span class="op">);</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>dbm_error<span class="op">(</span>DBM <span class="op">*</span>db<span class="op">);</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>dbm_clearerr<span class="op">(</span>DBM <span class="op">*</span>db<span class="op">);</span> </span></code></pre></div>
+<p>The dbm functions are intended to provide high-performance implementations and source code compatibility for applications written to historic interfaces. They are not recommended for any other purpose. The historic dbm database format <strong>is not supported</strong>, and databases previously built using the real dbm libraries cannot be read by the Berkeley DB functions.</p>
+<p>To compile dbm applications, replace the application's <strong>#include</strong> of the dbm or ndbm include file (for example, <strong>#include &lt;dbm.h&gt;</strong> or <strong>#include &lt;ndbm.h&gt;</strong>) with the following two lines:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#define DB_DBM_HSEARCH    </span><span class="dv">1</span><span class="pp"> </span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db.h&gt;</span></span></code></pre></div>
+<p>and recompile. If the application attempts to load against a dbm library (for example, <strong>-ldbm</strong>), remove the library from the load line.</p>
+<p><strong>Key</strong> and <strong>content</strong> parameters are objects described by the <strong>datum</strong> typedef. A <strong>datum</strong> specifies a string of <strong>dsize</strong> bytes pointed to by <strong>dptr</strong>. Arbitrary binary data, as well as normal text strings, are allowed.</p>
+<h3 id="dbm-functions">Dbm Functions</h3>
+<p>Before a database can be accessed, it must be opened by dbminit. This will open and/or create the database <strong>file.db</strong>. If created, the database file is created read/write by owner only (as described in <strong>chmod</strong>(2)) and modified by the process' umask value at the time of creation (see <strong>umask</strong>(2)). The group ownership of created files is based on the system and directory defaults, and is not further specified by Berkeley DB.</p>
+<p>A database may be closed, and any held resources released, by calling dbmclose.</p>
+<p>Once open, the data stored under a key is accessed by fetch, and data is placed under a key by store. A key (and its associated contents) are deleted by delete. A linear pass through all keys in a database may be made, in an (apparently) random order, by using firstkey and nextkey. The firstkey method will return the first key in the databaseThe nextkey method will return the next key in satabase.</p>
+<p>The following code will traverse the database:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span>key <span class="op">=</span> firstkey<span class="op">(</span>key<span class="op">);</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    key<span class="op">.</span>dptr <span class="op">!=</span> NULL<span class="op">;</span> key <span class="op">=</span> nextkey<span class="op">(</span>key<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>        <span class="op">...</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<h3 id="ndbm-functions">Ndbm Functions</h3>
+<p>Before a database can be accessed, it must be opened by dbm_open. This will open and/or create the database file <strong>file.db</strong>, depending on the flags parameter (see <strong>open</strong>(2)). If created, the database file is created with mode <strong>mode</strong> (as described in <strong>chmod</strong>(2)) and modified by the process' umask value at the time of creation (see <strong>umask</strong>(2)). The group ownership of created files is based on the system and directory defaults, and is not further specified by Berkeley DB.</p>
+<p>Once open, the data stored under a key is accessed by dbm_fetch, and data is placed under a key by dbm_store. The <strong>flags</strong> field can be either <strong>DBM_INSERT</strong> or <strong>DBM_REPLACE</strong>. <strong>DBM_INSERT</strong> will only insert new entries into the database, and will not change an existing entry with the same key. <strong>DBM_REPLACE</strong> will replace an existing entry if it has the same key. A key (and its associated contents) are deleted by dbm_delete. A linear pass through all keys in a database may be made, in an (apparently) random order, by using dbm_firstkey and dbm_nextkey. The dbm_firstkey method will return the first key in the database. The dbm_nextkey method will return the next key in the database.</p>
+<p>The following code will traverse the database:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span>key <span class="op">=</span> dbm_firstkey<span class="op">(</span>db<span class="op">);</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    key<span class="op">.</span>dptr <span class="op">!=</span> NULL<span class="op">;</span> key <span class="op">=</span> dbm_nextkey<span class="op">(</span>db<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>        <span class="op">...</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<h3 id="compatibility-notes">Compatibility Notes</h3>
+<p>The historic dbm library created two underlying database files, traditionally named <strong>file.dir</strong> and <strong>file.pag</strong>. The Berkeley DB library creates a single database file named <strong>file.db</strong>. Applications that are aware of the underlying database filenames may require additional source code modifications.</p>
+<p>The historic dbminit function required that the underlying <strong>.dir</strong> and <strong>.pag</strong> files already exist (empty databases were created by first manually creating zero-length <strong>.dir</strong> and <strong>.pag</strong> files). Applications that expect to create databases using this method may require additional source code modifications.</p>
+<p>The historic dbm_dirfno and dbm_pagfno macros are supported, but will return identical file descriptors because there is only a single underlying file used by the Berkeley DB hashing access method. Applications using both file descriptors for locking may require additional source code modifications.</p>
+<p>If applications using the dbm function exits without first closing the database, it may lose updates because the Berkeley DB library buffers writes to underlying databases. Such applications will require additional source code modifications to work correctly with the Berkeley DB library.</p>
+<h3 id="dbm-diagnostics">Dbm Diagnostics</h3>
+<p>The dbminit function returns -1 on failure, setting <strong>errno</strong>, and 0 on success.</p>
+<p>The fetch function sets the <strong>dptr</strong> field of the returned <strong>datum</strong> to NULL on failure, setting <strong>errno</strong>, and returns a non-NULL <strong>dptr</strong> on success.</p>
+<p>The store function returns -1 on failure, setting <strong>errno</strong>, and 0 on success.</p>
+<p>The delete function returns -1 on failure, setting <strong>errno</strong>, and 0 on success.</p>
+<p>The firstkey function sets the <strong>dptr</strong> field of the returned <strong>datum</strong> to NULL on failure, setting <strong>errno</strong>, and returns a non-NULL <strong>dptr</strong> on success.</p>
+<p>The nextkey function sets the <strong>dptr</strong> field of the returned <strong>datum</strong> to NULL on failure, setting <strong>errno</strong>, and returns a non-NULL <strong>dptr</strong> on success.</p>
+<h3 id="dbm-errors">Dbm Errors</h3>
+<p>The dbminit, fetch, store, delete, firstkey, and nextkey functions may fail and return an error for errors specified for other Berkeley DB and C library or system functions.</p>
+<h3 id="ndbm-diagnostics">Ndbm Diagnostics</h3>
+<p>The dbm_close method returns non-zero when an error has occurred reading or writing the database.</p>
+<p>The dbm_close method resets the error condition on the named database.</p>
+<p>The dbm_open function returns NULL on failure, setting <strong>errno</strong>, and a DBM reference on success.</p>
+<p>The dbm_fetch function sets the <strong>dptr</strong> field of the returned <strong>datum</strong> to NULL on failure, setting <strong>errno</strong>, and returns a non-NULL <strong>dptr</strong> on success.</p>
+<p>The dbm_store function returns -1 on failure, setting <strong>errno</strong>, 0 on success, and 1 if DBM_INSERT was set and the specified key already existed in the database.</p>
+<p>The dbm_delete function returns -1 on failure, setting <strong>errno</strong>, and 0 on success.</p>
+<p>The dbm_firstkey function sets the <strong>dptr</strong> field of the returned <strong>datum</strong> to NULL on failure, setting <strong>errno</strong>, and returns a non-NULL <strong>dptr</strong> on success.</p>
+<p>The dbm_nextkey function sets the <strong>dptr</strong> field of the returned <strong>datum</strong> to NULL on failure, setting <strong>errno</strong>, and returns a non-NULL <strong>dptr</strong> on success.</p>
+<p>The dbm_close function returns -1 on failure, setting <strong>errno</strong>, and 0 on success.</p>
+<p>The dbm_close function returns -1 on failure, setting <strong>errno</strong>, and 0 on success.</p>
+<h3 id="ndbm-errors">Ndbm Errors</h3>
+<p>The dbm_open, dbm_close, dbm_fetch, dbm_store, dbm_delete, dbm_firstkey, and dbm_nextkey functions may fail and return an error for errors specified for other Berkeley DB and C library or system functions.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

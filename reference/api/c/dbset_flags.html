@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DB-&gt;set_flags() — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="db-set_flags">DB-&gt;set_flags()</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db.h&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>DB<span class="op">-&gt;</span>set_flags<span class="op">(</span>DB <span class="op">*</span>db<span class="op">,</span> u_int32_t flags<span class="op">);</span>  </span></code></pre></div>
+<p>Configure a database. Calling <code>DB-&gt;set_flags()</code> is additive; there is no way to clear flags.</p>
+<p>The <code>DB-&gt;set_flags()</code> method may not be called after the <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> method is called.</p>
+<p>The <code>DB-&gt;set_flags()</code> method returns a non-zero error value on failure and 0 on success.</p>
+<h3 id="parameters">Parameters</h3>
+<h4 id="flags">flags</h4>
+<p>The <strong>flags</strong> parameter must be set to 0 or by bitwise inclusively <strong>OR</strong>'ing together one or more of the following values:</p>
+<p><strong>General</strong></p>
+<p>The following flags may be specified for any Berkeley DB access method:</p>
+<ul>
+<li><p><code>DB_CHKSUM</code></p>
+<p>Do checksum verification of pages read into the cache from the backing filestore. Berkeley DB uses the SHA1 Secure Hash Algorithm if encryption is configured and a general hash algorithm if it is not.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_CHKSUM flag only affects the specified <a href="db.html" class="link" title="Chapter 2.  The DB Handle">DB</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p>
+<p>If the database already exists when <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> is called, the DB_CHKSUM flag will be ignored.</p></li>
+<li><p><code>DB_ENCRYPT</code></p>
+<p>Encrypt the database using the cryptographic password specified to the <a href="envset_encrypt.html" class="xref" title="DB_ENV-&gt;set_encrypt()">DB_ENV-&gt;set_encrypt()</a> or <a href="dbset_encrypt.html" class="xref" title="DB-&gt;set_encrypt()">DB-&gt;set_encrypt()</a> methods.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_ENCRYPT flag only affects the specified <a href="db.html" class="link" title="Chapter 2.  The DB Handle">DB</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p>
+<p>If the database already exists when <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> is called, the DB_ENCRYPT flag must be the same as the existing database or an error will be returned.</p>
+<p>Encrypted databases are not portable between machines of different byte orders, that is, encrypted databases created on big-endian machines cannot be read on little-endian machines, and vice versa.</p></li>
+<li><p><code>DB_TXN_NOT_DURABLE</code></p>
+<p>If set, Berkeley DB will not write log records for this database. This means that updates of this database exhibit the ACI (atomicity, consistency, and isolation) properties, but not D (durability); that is, database integrity will be maintained, but if the application or system fails, integrity will not persist. The database file must be verified and/or restored from backup after a failure. In order to ensure integrity after application shut down, the database handles must be closed without specifying <a href="dbclose.html#dbclose_DB_NOSYNC" class="link">DB_NOSYNC</a>, or all database changes must be flushed from the database environment cache using either the <a href="txncheckpoint.html" class="xref" title="DB_ENV-&gt;txn_checkpoint()">DB_ENV-&gt;txn_checkpoint()</a> or <a href="mempsync.html" class="xref" title="DB_ENV-&gt;memp_sync()">DB_ENV-&gt;memp_sync()</a> methods. All database handles for a single physical file must set DB_TXN_NOT_DURABLE, including database handles for different databases in a physical file.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_TXN_NOT_DURABLE flag only affects the specified <a href="db.html" class="link" title="Chapter 2.  The DB Handle">DB</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p></li>
+</ul>
+<p><strong>Btree</strong></p>
+<p>The following flags may be specified for the Btree access method:</p>
+<ul>
+<li><p><code>DB_DUP</code></p>
+<p>Permit duplicate data items in the database; that is, insertion when the key of the key/data pair being inserted already exists in the database will be successful. The ordering of duplicates in the database is determined by the order of insertion, unless the ordering is otherwise specified by use of a cursor operation or a duplicate sort function.</p>
+<p>The DB_DUPSORT flag is preferred to DB_DUP for performance reasons. The DB_DUP flag should only be used by applications wanting to order duplicate data items manually.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_DUP flag affects the database, including all threads of control accessing the database.</p>
+<p>If the database already exists when <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> is called, the DB_DUP flag must be the same as the existing database or an error will be returned.</p>
+<p>It is an error to specify both DB_DUP and DB_RECNUM.</p></li>
+<li><p><code>DB_DUPSORT</code></p>
+<p>Permit duplicate data items in the database; that is, insertion when the key of the key/data pair being inserted already exists in the database will be successful. The ordering of duplicates in the database is determined by the duplicate comparison function. If the application does not specify a comparison function using the <a href="dbset_dup_compare.html" class="xref" title="DB-&gt;set_dup_compare()">DB-&gt;set_dup_compare()</a> method, a default lexical comparison will be used. It is an error to specify both DB_DUPSORT and DB_RECNUM.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_DUPSORT flag affects the database, including all threads of control accessing the database.</p>
+<p>If the database already exists when <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> is called, the DB_DUPSORT flag must be the same as the existing database or an error will be returned.</p></li>
+<li><p><code>DB_RECNUM</code></p>
+<p>Support retrieval from the Btree using record numbers. For more information, see the <a href="dbget.html#dbget_DB_SET_RECNO" class="link">DB_SET_RECNO</a> flag to the <a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a> and <a href="dbcget.html" class="xref" title="DBcursor-&gt;get()">DBcursor-&gt;get()</a> methods.</p>
+<p>Logical record numbers in Btree databases are mutable in the face of record insertion or deletion. See the DB_RENUMBER flag in the Recno access method information for further discussion.</p>
+<p>Maintaining record counts within a Btree introduces a serious point of contention, namely the page locations where the record counts are stored. In addition, the entire database must be locked during both insertions and deletions, effectively single-threading the database for those operations. Specifying DB_RECNUM can result in serious performance degradation for some applications and data sets.</p>
+<p>It is an error to specify both DB_DUP and DB_RECNUM.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_RECNUM flag affects the database, including all threads of control accessing the database.</p>
+<p>If the database already exists when <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> is called, the DB_RECNUM flag must be the same as the existing database or an error will be returned.</p></li>
+<li><p><code>DB_REVSPLITOFF</code></p>
+<p>Turn off reverse splitting in the Btree. As pages are emptied in a database, the Berkeley DB Btree implementation attempts to coalesce empty pages into higher-level pages in order to keep the database as small as possible and minimize search time. This can hurt performance in applications with cyclical data demands; that is, applications where the database grows and shrinks repeatedly. For example, because Berkeley DB does page-level locking, the maximum level of concurrency in a database of two pages is far smaller than that in a database of 100 pages, so a database that has shrunk to a minimal size can cause severe deadlocking when a new cycle of data insertion begins.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_REVSPLITOFF flag only affects the specified <a href="db.html" class="link" title="Chapter 2.  The DB Handle">DB</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p></li>
+</ul>
+<p><strong>Hash</strong></p>
+<p>The following flags may be specified for the Hash access method:</p>
+<ul>
+<li><p><code>DB_DUP</code></p>
+<p>Permit duplicate data items in the database; that is, insertion when the key of the key/data pair being inserted already exists in the database will be successful. The ordering of duplicates in the database is determined by the order of insertion, unless the ordering is otherwise specified by use of a cursor operation.</p>
+<p>The DB_DUPSORT flag is preferred to DB_DUP for performance reasons. The DB_DUP flag should only be used by applications wanting to order duplicate data items manually.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_DUP flag affects the database, including all threads of control accessing the database.</p>
+<p>If the database already exists when <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> is called, the DB_DUP flag must be the same as the existing database or an error will be returned.</p></li>
+<li><p><code>DB_DUPSORT</code></p>
+<p>Permit duplicate data items in the database; that is, insertion when the key of the key/data pair being inserted already exists in the database will be successful. The ordering of duplicates in the database is determined by the duplicate comparison function. If the application does not specify a comparison function using the <a href="dbset_dup_compare.html" class="xref" title="DB-&gt;set_dup_compare()">DB-&gt;set_dup_compare()</a> method, a default lexical comparison will be used.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_DUPSORT flag affects the database, including all threads of control accessing the database.</p>
+<p>If the database already exists when <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> is called, the DB_DUPSORT flag must be the same as the existing database or an error will be returned.</p></li>
+<li><p><code>DB_REVSPLITOFF</code></p>
+<p>Turns off hash bucket compaction. When a hash bucket is emptied, the Berkeley DB Hash implementation will decrease the hash table size, coalescing buckets. This will decrease the number of pages in the database. This can hurt performance in applications with cyclical data demands — that is, applications where the database grows and shrinks repeatedly — because of the cost of resplitting buckets when they grow again.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_REVSPLITOFF flag only affects the specified <a href="db.html" class="link" title="Chapter 2.  The DB Handle">DB</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p></li>
+</ul>
+<p><strong>Queue</strong></p>
+<p>The following flags may be specified for the Queue access method:</p>
+<ul>
+<li><p><code>DB_INORDER</code></p>
+<p>The DB_INORDER flag modifies the operation of the <a href="dbget.html#dbget_DB_CONSUME" class="link">DB_CONSUME</a> or <a href="dbget.html#dbget_DB_CONSUME_WAIT" class="link">DB_CONSUME_WAIT</a> flags to <a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a> to return key/data pairs in order. That is, they will always return the key/data item from the head of the queue.</p>
+<p>The default behavior of queue databases is optimized for multiple readers, and does not guarantee that record will be retrieved in the order they are added to the queue. Specifically, if a writing thread adds multiple records to an empty queue, reading threads may skip some of the initial records when the next <a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a> call returns.</p>
+<p>This flag modifies the <a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a> call to verify that the record being returned is in fact the head of the queue. This will increase contention and reduce concurrency when there are many reading threads.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_INORDER flag only affects the specified <a href="db.html" class="link" title="Chapter 2.  The DB Handle">DB</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p></li>
+</ul>
+<p><strong>Recno</strong></p>
+<p>The following flags may be specified for the Recno access method:</p>
+<ul>
+<li><p><code>DB_RENUMBER</code></p>
+<p>Specifying the DB_RENUMBER flag causes the logical record numbers to be mutable, and change as records are added to and deleted from the database.</p>
+<p>Using the <a href="dbput.html" class="xref" title="DB-&gt;put()">DB-&gt;put()</a> or <a href="dbcput.html" class="xref" title="DBcursor-&gt;put()">DBcursor-&gt;put()</a> interfaces to create new records will cause the creation of multiple records if the record number is more than one greater than the largest record currently in the database. For example, creating record 28, when record 25 was previously the last record in the database, will create records 26 and 27 as well as 28. Attempts to retrieve records that were created in this manner will result in an error return of <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a>.</p>
+<p>If a created record is not at the end of the database, all records following the new record will be automatically renumbered upward by one. For example, the creation of a new record numbered 8 causes records numbered 8 and greater to be renumbered upward by one. If a cursor was positioned to record number 8 or greater before the insertion, it will be shifted upward one logical record, continuing to refer to the same record as it did before.</p>
+<p>If a deleted record is not at the end of the database, all records following the removed record will be automatically renumbered downward by one. For example, deleting the record numbered 8 causes records numbered 9 and greater to be renumbered downward by one. If a cursor was positioned to record number 9 or greater before the removal, it will be shifted downward one logical record, continuing to refer to the same record as it did before.</p>
+<p>If a record is deleted, all cursors that were positioned on that record prior to the removal will no longer be positioned on a valid entry. This includes cursors used to delete an item. For example, if a cursor was positioned to record number 8 before the removal of that record, subsequent calls to <a href="dbcget.html" class="xref" title="DBcursor-&gt;get()">DBcursor-&gt;get()</a> with flags of DB_CURRENT will result in an error return of <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> until the cursor is moved to another record. A call to <a href="dbcget.html" class="xref" title="DBcursor-&gt;get()">DBcursor-&gt;get()</a> with flags of DB_NEXT will return the new record numbered 8 - which is the record that was numbered 9 prior to the delete (if such a record existed).</p>
+<p>For these reasons, concurrent access to a Recno database with the DB_RENUMBER flag specified may be largely meaningless, although it is supported.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_RENUMBER flag affects the database, including all threads of control accessing the database.</p>
+<p>If the database already exists when <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> is called, the DB_RENUMBER flag must be the same as the existing database or an error will be returned.</p></li>
+<li><p><code>DB_SNAPSHOT</code></p>
+<p>This flag specifies that any specified <strong>re_source</strong> file be read in its entirety when <a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> is called. If this flag is not specified, the <strong>re_source</strong> file may be read lazily.</p>
+<p>See the <a href="dbset_re_source.html" class="xref" title="DB-&gt;set_re_source()">DB-&gt;set_re_source()</a> method for information on the <strong>re_source</strong> file.</p>
+<p>Calling <code>DB-&gt;set_flags()</code> with the DB_SNAPSHOT flag only affects the specified <a href="db.html" class="link" title="Chapter 2.  The DB Handle">DB</a> handle (and any other Berkeley DB handles opened within the scope of that handle).</p></li>
+</ul>
+<h3 id="errors">Errors</h3>
+<p>The <code>DB-&gt;set_flags()</code> method may fail and return one of the following non-zero errors:</p>
+<h4 id="einval">EINVAL</h4>
+<p>An invalid flag value or parameter was specified.</p>
+<h3 id="class">Class</h3>
+<p><a href="db.html" class="link" title="Chapter 2.  The DB Handle">DB</a></p>
+<h3 id="see-also">See Also</h3>
+<p><a href="db.html#dblist" class="xref" title="Database and Related Methods">Database and Related Methods</a></p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

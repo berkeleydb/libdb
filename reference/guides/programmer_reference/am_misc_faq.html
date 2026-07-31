@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Access method FAQ — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="access-method-faq">Access method FAQ</h2>
+<ol type="1">
+<li><p><strong>Is a Berkeley DB database the same as a "table"?</strong></p>
+<p>Yes; "tables" are databases, "rows" are key/data pairs, and "columns" are application-encapsulated fields within a data item (to which Berkeley DB does not directly provide access).</p></li>
+<li><p><strong>I'm getting an error return in my application, but I can't figure out what the library is complaining about.</strong></p>
+<p>See <a href="../../api/c/envset_errcall.html" class="olink">DB_ENV-&gt;set_errcall()</a>, <a href="../../api/c/envset_errfile.html" class="olink">DB_ENV-&gt;set_errfile()</a> and <a href="../../api/c/dbset_errfile.html" class="olink">DB-&gt;set_errfile()</a> for ways to get additional information about error returns from Berkeley DB.</p></li>
+<li><p><strong>Are Berkeley DB databases portable between architectures with different integer sizes and different byte orders ?</strong></p>
+<p>Yes. Specifically, databases can be moved between 32- and 64-bit machines, as well as between little- and big-endian machines. See <a href="general_am_conf.html#am_conf_byteorder" class="xref" title="Selecting a byte order">Selecting a byte order</a> for more information.</p></li>
+<li><p><strong>I'm seeing database corruption when creating multiple databases in a single physical file.</strong></p>
+<p>This problem is usually the result of <a href="../../api/c/db.html" class="olink">DB</a> handles not sharing an underlying database environment. See <a href="am_opensub.html" class="xref" title="Opening multiple databases in a single file">Opening multiple databases in a single file</a> for more information.</p></li>
+<li><p><strong>I'm using integers as keys for a Btree database, and even though the key/data pairs are entered in sorted order, the page-fill factor is low.</strong></p>
+<p>This is usually the result of using integer keys on little-endian architectures such as the x86. Berkeley DB sorts keys as byte strings, and little-endian integers don't sort well when viewed as byte strings. For example, take the numbers 254 through 257. Their byte patterns on a little-endian system are:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dv">254</span> fe <span class="dv">0</span> <span class="dv">0</span> <span class="dv">0</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dv">255</span> ff <span class="dv">0</span> <span class="dv">0</span> <span class="dv">0</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dv">256</span>  <span class="dv">0</span> <span class="dv">1</span> <span class="dv">0</span> <span class="dv">0</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="dv">257</span>  <span class="dv">1</span> <span class="dv">1</span> <span class="dv">0</span> <span class="dv">0</span></span></code></pre></div>
+<p>If you treat them as strings, then they sort badly:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dv">256</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dv">257</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dv">254</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="dv">255</span></span></code></pre></div>
+<p>On a big-endian system, their byte patterns are:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dv">254</span> <span class="dv">0</span> <span class="dv">0</span> <span class="dv">0</span> fe</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="dv">255</span> <span class="dv">0</span> <span class="dv">0</span> <span class="dv">0</span> ff</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="dv">256</span> <span class="dv">0</span> <span class="dv">0</span> <span class="dv">1</span> <span class="dv">0</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="dv">257</span> <span class="dv">0</span> <span class="dv">0</span> <span class="dv">1</span> <span class="dv">1</span></span></code></pre></div>
+<p>and so, if you treat them as strings they sort nicely. Which means, if you use steadily increasing integers as keys on a big-endian system Berkeley DB behaves well and you get compact trees, but on a little-endian system Berkeley DB produces much less compact trees. To avoid this problem, you may want to convert the keys to flat text or big-endian representations, or provide your own <a href="bt_conf.html#am_conf_bt_compare" class="xref" title="Btree comparison">Btree comparison</a></p></li>
+<li><p><strong>Is there any way to avoid double buffering in the Berkeley DB system?</strong></p>
+<p>While you cannot avoid double buffering entirely, there are a few things you can do to address this issue:</p>
+<p>First, the Berkeley DB cache size can be explicitly set. Rather than allocate additional space in the Berkeley DB cache to cover unexpectedly heavy load or large table sizes, double buffering may suggest you size the cache to function well under normal conditions, and then depend on the file buffer cache to cover abnormal conditions. Obviously, this is a trade-off, as Berkeley DB may not then perform as well as usual under abnormal conditions.</p>
+<p>Second, depending on the underlying operating system you're using, you may be able to alter the amount of physical memory devoted to the system's file buffer cache. Altering this type of resource configuration may require appropriate privileges, or even operating system reboots and/or rebuilds, on some systems.</p>
+<p>Third, changing the size of the Berkeley DB environment regions can change the amount of space the operating system makes available for the file buffer cache, and it's often worth considering exactly how the operating system is dividing up its available memory. Further, moving the Berkeley DB database environment regions from filesystem backed memory into system memory (or heap memory), can often make additional system memory available for the file buffer cache, especially on systems without a unified buffer cache and VM system.</p>
+<p>Finally, for operating systems that allow buffering to be turned off, specifying the <a href="../../api/c/envset_flags.html#set_flags_DB_DIRECT_DB" class="olink">DB_DIRECT_DB</a> and <a href="../../api/c/envlog_set_config.html#log_set_config_DB_LOG_DIRECT" class="olink">DB_LOG_DIRECT</a> flags will attempt to do so.</p></li>
+<li><p><strong>I'm seeing database corruption when I run out of disk space.</strong></p>
+<p>Berkeley DB can continue to run when when out-of-disk-space errors occur, but it requires the application to be transaction protected. Applications which do not enclose update operations in transactions cannot recover from out-of-disk-space errors, and the result of running out of disk space may be database corruption.</p></li>
+<li><p><strong>How can I associate application information with a <a href="../../api/c/db.html" class="olink">DB</a> or <a href="../../api/c/env.html" class="olink">DB_ENV</a> handle?</strong></p>
+<p>In the C API, the <a href="../../api/c/db.html" class="olink">DB</a> and <a href="../../api/c/env.html" class="olink">DB_ENV</a> structures each contain an "app_private" field intended to be used to reference application-specific information. See the <a href="../../api/c/dbcreate.html" class="olink">db_create()</a> and <a href="../../api/c/envcreate.html" class="olink">db_env_create()</a> documentation for more information.</p>
+<p>In the C++ or Java APIs, the easiest way to associate application-specific data with a handle is to subclass the <a href="../api_reference/CXX/db.html" class="olink">Db</a> or <a href="../api_reference/CXX/env.html" class="olink">DbEnv</a>, for example subclassing <a href="../api_reference/CXX/db.html" class="olink">Db</a> to get MyDb. Objects of type MyDb will still have the Berkeley DB API methods available on them, and you can put any extra data or methods you want into the MyDb class. If you are using "callback" APIs that take <a href="../api_reference/CXX/db.html" class="olink">Db</a> or <a href="../api_reference/CXX/env.html" class="olink">DbEnv</a> arguments (for example, <a href="../../api/c/dbset_bt_compare.html" class="olink">DB-&gt;set_bt_compare()</a>) these will always be called with the <a href="../api_reference/CXX/db.html" class="olink">Db</a> or <a href="../api_reference/CXX/env.html" class="olink">DbEnv</a> objects you create. So if you always use MyDb objects, you will be able to take the first argument to the callback function and cast it to a MyDb (in C++, cast it to (MyDb*)). That will allow you to access your data members or methods.</p></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Partitioning databases — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="partitioning-databases">Partitioning databases</h2>
+<p><span class="sect2"> <a href="am_partition.html#am_partition_keys">Specifying partition keys</a> </span></p>
+<p><span class="sect2"> <a href="am_partition.html#am_partition_function">Partitioning callback</a> </span></p>
+<p><span class="sect2"> <a href="am_partition.html#partition_file_placement">Placing partition files</a> </span></p>
+<p>You can improve concurrency on your database reads and writes by splitting access to a single database into multiple databases. This helps to avoid contention for internal database pages, as well as allowing you to spread your databases across multiple disks, which can help to improve disk I/O.</p>
+<h3 id="note">Note</h3>
+<p>Database partitions are not supported by the C# and Java APIs at this time.</p>
+<p>While you can manually do this by creating and using more than one database for your data, DB is capable of partitioning your database for you. When you use DB's built-in database partitioning feature, your access to your data is performed in exactly the same way as if you were only using one database; all the work of knowing which database to use to access a particular record is handled for you under the hood.</p>
+<p>Only the BTree and Hash access methods are supported for partitioned databases.</p>
+<p>You indicate that you want your database to be partitioned by calling <a href="../../api/c/dbset_partition.html" class="olink">DB-&gt;set_partition()</a> before opening your database the first time. You can indicate the directory in which each partition is contained using the <a href="../../api/c/dbset_partition_dirs.html" class="olink">DB-&gt;set_partition_dirs()</a> method.</p>
+<p>Once you have partitioned a database, you cannot change your partitioning scheme.</p>
+<p>There are two ways to indicate what key/data pairs should go on which partition. The first is by specifying an array of <a href="../../api/c/dbt.html" class="olink">DBT</a>s that indicate the minimum key value for a given partition. The second is by providing a callback that returns the number of the partition on which a specified key is placed.</p>
+<h3 id="specifying-partition-keys">Specifying partition keys</h3>
+<p>For simple cases, you can partition your database by providing an array of <a href="../../api/c/dbt.html" class="olink">DBT</a>s, each element of which provides the minimum key value to be placed on a partition. There must be one fewer elements in this array than you have partitions. The first element of the array indicates the minimum key value for the second partition in your database. Key values that are less than the first key value provided in this array are placed on the first partition (partition 0).</p>
+<h3 id="note-1">Note</h3>
+<p>You can use partition keys only if you are using the Btree access method.</p>
+<p>For example, suppose you had a database of fruit, and you want three partitions for your database. Then you need a <a href="../../api/c/dbt.html" class="olink">DBT</a> array of size two. The first element in this array indicates the minimum keys that should be placed on partition 1. The second element in this array indicates the minimum key value placed on partition 2. Keys that compare less than the first <a href="../../api/c/dbt.html" class="olink">DBT</a> in the array are placed on partition 0.</p>
+<p>All comparisons are performed according to the lexicographic comparison used by your platform.</p>
+<p>For example, suppose you want all fruits whose names begin with:</p>
+<ul>
+<li><p>'a' - 'f' to go on partition 0</p></li>
+<li><p>'g' - 'p' to go on partition 1</p></li>
+<li><p>'q' - 'z' to go on partition 2.</p></li>
+</ul>
+<p>Then you would accomplish this with the following code fragment:</p>
+<h3 id="note-2">Note</h3>
+<p>The <a href="../../api/c/dbset_partition.html" class="olink">DB-&gt;set_partition()</a> partition callback parameter must be <code>NULL</code> if you are using an array of <a href="../../api/c/dbt.html" class="olink">DBT</a>s to partition your database.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>DB <span class="op">*</span>dbp <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    DB_ENV <span class="op">*</span>envp <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    DBT partKeys<span class="op">[</span><span class="dv">2</span><span class="op">];</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    u_int32_t db_flags<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>file_name <span class="op">=</span> <span class="st">&quot;mydb.db&quot;</span><span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Skipping environment open to shorten this example */</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Initialize the DB handle */</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> db_create<span class="op">(&amp;</span>dbp<span class="op">,</span> envp<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        fprintf<span class="op">(</span>stderr<span class="op">,</span> <span class="st">&quot;</span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span> db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EXIT_FAILURE<span class="op">);</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Setup the partition keys */</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>     memset<span class="op">(&amp;</span>partKeys<span class="op">[</span><span class="dv">0</span><span class="op">],</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>     partKeys<span class="op">[</span><span class="dv">0</span><span class="op">].</span>data <span class="op">=</span> <span class="st">&quot;g&quot;</span><span class="op">;</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>     partKeys<span class="op">[</span><span class="dv">0</span><span class="op">].</span>size <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span><span class="st">&quot;g&quot;</span><span class="op">)</span> <span class="op">-</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>     memset<span class="op">(&amp;</span>partKeys<span class="op">[</span><span class="dv">1</span><span class="op">],</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>DBT<span class="op">));</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>     partKeys<span class="op">[</span><span class="dv">1</span><span class="op">].</span>data <span class="op">=</span> <span class="st">&quot;q&quot;</span><span class="op">;</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>     partKeys<span class="op">[</span><span class="dv">1</span><span class="op">].</span>size <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span><span class="st">&quot;q&quot;</span><span class="op">)</span> <span class="op">-</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>     dbp<span class="op">-&gt;</span>set_partition<span class="op">(</span>dbp<span class="op">,</span> <span class="dv">3</span><span class="op">,</span> partKeys<span class="op">,</span> NULL<span class="op">);</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Now open the database */</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    db_flags <span class="op">=</span> DB_CREATE<span class="op">;</span>       <span class="co">/* Allow database creation */</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> dbp<span class="op">-&gt;</span>open<span class="op">(</span>dbp<span class="op">,</span>        <span class="co">/* Pointer to the database */</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>                    NULL<span class="op">,</span>       <span class="co">/* Txn pointer */</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>                    file_name<span class="op">,</span>  <span class="co">/* File name */</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>                    NULL<span class="op">,</span>       <span class="co">/* Logical db name */</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>                    DB_BTREE<span class="op">,</span>   <span class="co">/* Database type (using btree) */</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>                    db_flags<span class="op">,</span>   <span class="co">/* Open flags */</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>                    <span class="dv">0</span><span class="op">);</span>         <span class="co">/* File mode. Using defaults */</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;Database &#39;</span><span class="sc">%s</span><span class="st">&#39; open failed&quot;</span><span class="op">,</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>            file_name<span class="op">);</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EXIT_FAILURE<span class="op">);</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<h3 id="partitioning-callback">Partitioning callback</h3>
+<p>In some cases, a simple lexicographical comparison of key data will not sufficiently support a partitioning scheme. For those situations, you should write a partitioning function. This function accepts a pointer to the <a href="../../api/c/db.html" class="olink">DB</a> and the <a href="../../api/c/dbt.html" class="olink">DBT</a>, and it returns the number of the partition on which the key belongs.</p>
+<p>Note that <a href="../../api/c/db.html" class="olink">DB</a> actually places the key on the partition calculated by:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>returned_partition modulo number_of_partitions</span></code></pre></div>
+<p>Also, remember that if you use a partitioning function when you create your database, then you must use the same partitioning function every time you open that database in the future.</p>
+<p>The following code fragment illustrates a partition callback:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>u_int32_t db_partition_fn<span class="op">(</span>DB <span class="op">*</span>db<span class="op">,</span> DBT <span class="op">*</span>key<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> <span class="op">*</span>key_data<span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    u_int32_t ret_number<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Obtain your key data, unpacking it as necessary</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="co">     * Here, we do the very simple thing just for illustrative purposes.</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    key_data <span class="op">=</span> <span class="op">(</span><span class="dt">char</span> <span class="op">*)</span>key<span class="op">-&gt;</span>data<span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Here you would perform whatever comparison you require to determine</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co">     * what partition the key belongs on. If you return either 0 or the</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="co">     * number of partitions in the database, the key is placed in the first</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co">     * database partition. Else, it is placed on:</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="co">     *</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="co">     *       returned_number mod number_of_partitions</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    ret_number <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ret_number<span class="op">;</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>You then cause your partition callback to be used by providing it to the <a href="../../api/c/dbset_partition.html" class="olink">DB-&gt;set_partition()</a> method, as illustrated by the following code fragment.</p>
+<h3 id="note-3">Note</h3>
+<p>The <a href="../../api/c/dbset_partition.html" class="olink">DB-&gt;set_partition()</a> <a href="../../api/c/dbt.html" class="olink">DBT</a> array parameter must be <code>NULL</code> if you are using a partition call back to partition your database.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>DB <span class="op">*</span>dbp <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    DB_ENV <span class="op">*</span>envp <span class="op">=</span> NULL<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    u_int32_t db_flags<span class="op">;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>file_name <span class="op">=</span> <span class="st">&quot;mydb.db&quot;</span><span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Skipping environment open to shorten this example */</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Initialize the DB handle */</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> db_create<span class="op">(&amp;</span>dbp<span class="op">,</span> envp<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        fprintf<span class="op">(</span>stderr<span class="op">,</span> <span class="st">&quot;</span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span> db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EXIT_FAILURE<span class="op">);</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>     dbp<span class="op">-&gt;</span>set_partition<span class="op">(</span>dbp<span class="op">,</span> <span class="dv">3</span><span class="op">,</span> NULL<span class="op">,</span> db_partition_fn<span class="op">);</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* Now open the database */</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    db_flags <span class="op">=</span> DB_CREATE<span class="op">;</span>       <span class="co">/* Allow database creation */</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    ret <span class="op">=</span> dbp<span class="op">-&gt;</span>open<span class="op">(</span>dbp<span class="op">,</span>        <span class="co">/* Pointer to the database */</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>                    NULL<span class="op">,</span>       <span class="co">/* Txn pointer */</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>                    file_name<span class="op">,</span>  <span class="co">/* File name */</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>                    NULL<span class="op">,</span>       <span class="co">/* Logical db name */</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>                    DB_BTREE<span class="op">,</span>   <span class="co">/* Database type (using btree) */</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>                    db_flags<span class="op">,</span>   <span class="co">/* Open flags */</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>                    <span class="dv">0</span><span class="op">);</span>         <span class="co">/* File mode. Using defaults */</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;Database &#39;</span><span class="sc">%s</span><span class="st">&#39; open failed&quot;</span><span class="op">,</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>            file_name<span class="op">);</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>EXIT_FAILURE<span class="op">);</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<h3 id="placing-partition-files">Placing partition files</h3>
+<p>When you partition a database, a database file is created on disk in the same way as if you were not partitioning the database. That is, this file uses the name you provide to the <a href="../../api/c/dbopen.html" class="olink">DB-&gt;open()</a> <code>file</code> parameter.</p>
+<p>However, DB then also creates a series of database files on disk, one for each partition that you want to use. These partition files share the same name as the database file name, but are also number sequentially. So if you create a database named <code>mydb.db</code>, and you create 3 partitions for it, then you will see the following database files on disk:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>            mydb<span class="op">.</span>db</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>            __dbp<span class="op">.</span>mydb<span class="op">.</span>db<span class="fl">.000</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>            __dbp<span class="op">.</span>mydb<span class="op">.</span>db<span class="fl">.001</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>            __dbp<span class="op">.</span>mydb<span class="op">.</span>db<span class="fl">.002</span> </span></code></pre></div>
+<p>All of the database's contents go into the numbered database files. You can cause these files to be placed in different directories (and, hence, different disk partitions or even disks) by using the <a href="../../api/c/dbset_partition_dirs.html" class="olink">DB-&gt;set_partition_dirs()</a> method.</p>
+<p><a href="../../api/c/dbset_partition_dirs.html" class="olink">DB-&gt;set_partition_dirs()</a> takes a NULL-terminated array of strings, each one of which should represent an existing filesystem directory.</p>
+<p>If you are using an environment, the directories specified using <a href="../../api/c/dbset_partition_dirs.html" class="olink">DB-&gt;set_partition_dirs()</a> must also be included in the environment list specified by <a href="../../api/c/envadd_data_dir.html" class="olink">DB_ENV-&gt;add_data_dir()</a>.</p>
+<p>If you are not using an environment, then the the directories specified to <a href="../../api/c/dbset_partition_dirs.html" class="olink">DB-&gt;set_partition_dirs()</a> can be either complete paths to currently existing directories, or paths relative to the application's current working directory.</p>
+<p>Ideally, you will provide <a href="../../api/c/dbset_partition_dirs.html" class="olink">DB-&gt;set_partition_dirs()</a> with an array that is the same size as the number of partitions you are creating for your database. Partition files are then placed according to the order that directories are contained in the array; partition 0 is placed in directory_array[0], partition 1 in directory_array[1], and so forth. However, if you provide an array of directories that is smaller than the number of database partitions, then the directories are used on a round-robin fashion.</p>
+<p>You must call <a href="../../api/c/dbset_partition_dirs.html" class="olink">DB-&gt;set_partition_dirs()</a> before you create your database, and before you open your database each time thereafter. The array provided to <a href="../../api/c/dbset_partition_dirs.html" class="olink">DB-&gt;set_partition_dirs()</a> must not change after the database has been created.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

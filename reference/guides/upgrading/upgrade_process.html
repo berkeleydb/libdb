@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 2.  Upgrading from previous versions of Berkeley DB — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / upgrading</nav>
+  <main>
+<h2 id="chapter-2--upgrading-from-previous-versions-of-berkeley-db">Chapter 2.  Upgrading from previous versions of Berkeley DB</h2>
+<p>The following information describes the general process of upgrading Berkeley DB installations. There are four areas to be considered when upgrading Berkeley DB applications and database environments: the application API, the database environment's region files, the underlying database formats, and, in the case of transactional database environments, the log files. The upgrade procedures required depend on whether or not the release is a major or minor release (in which either the major or minor number of the version changed), or a patch release (in which only the patch number in the version changed). Berkeley DB major and minor releases may optionally include changes in all four areas, that is, the application API, region files, database formats, and log files may not be backward-compatible with previous releases.</p>
+<p>Each Berkeley DB major or minor release described in this book has a chapter indicating how to upgrade to the new release. The chapter describes any API changes made in the release. Application maintainers should review the API changes and update their applications as necessary before recompiling with the new release. In addition, each chapter includes a section specifying whether the log file format or database formats changed in non-backward-compatible ways as part of the release. Because there are several underlying Berkeley DB database formats, and they do not all necessarily change in the same release, changes to a database format in a release may not affect any particular application. Further, database and log file formats may have changed but be entirely backward-compatible, in which case no upgrade will be necessary.</p>
+<p>A Berkeley DB patch release will never modify the API, regions, log files, or database formats in incompatible ways, and so applications need only be relinked (or, in the case of a shared library, pointed at the new version of the shared library) to upgrade to a new release. Note that internal Berkeley DB interfaces may change at any time and in any release (including patch releases) without warning. This means the library must be entirely recompiled and reinstalled when upgrading to new releases of the library because there is no guarantee that modules from one version of the library will interact correctly with modules from another release. We recommend using the same compiler release when building patch releases as was used to build the original release; in the default configuration, the Berkeley DB library shares data structures from underlying shared memory between threads of control, and should the compiler re-order fields or otherwise change those data structures between the two builds, errors may result.</p>
+<p>If the release is a patch release, do the following:</p>
+<ol type="1">
+<li><p>Shut down the old version of the application.</p></li>
+<li><p>Install the new version of the application by relinking or installing a new version of the Berkeley DB shared library.</p></li>
+<li><p>Restart the application.</p></li>
+</ol>
+<p>Otherwise, if the application <strong>does not</strong> have a Berkeley DB transactional environment, the application may be installed in the field using the following steps:</p>
+<ol type="1">
+<li><p>Shut down the old version of the application.</p></li>
+<li><p>Remove any Berkeley DB environment using the <a href="../../api/c/envremove.html" class="olink">DB_ENV-&gt;remove()</a> method or an appropriate system utility.</p></li>
+<li><p>Recompile and install the new version of the application.</p></li>
+<li><p>If necessary, upgrade the application's databases. See <a href="../../guides/programmer_reference/am_upgrade.html" class="olink">Database upgrade</a> for more information.</p></li>
+<li><p>Restart the application.</p></li>
+</ol>
+<p>Otherwise, if the application has a Berkeley DB transactional environment, but neither the log file nor database formats need upgrading, the application may be installed in the field using the following steps:</p>
+<ol type="1">
+<li><p>Shut down the old version of the application.</p></li>
+<li><p>Run recovery on the database environment using the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method or the <a href="../../api/c/db_recover.html" class="olink">db_recover utility</a>.</p></li>
+<li><p>Remove any Berkeley DB environment using the <a href="../../api/c/envremove.html" class="olink">DB_ENV-&gt;remove()</a> method or an appropriate system utility.</p></li>
+<li><p>Recompile and install the new version of the application.</p></li>
+<li><p>Restart the application.</p></li>
+</ol>
+<p>If the application has a Berkeley DB transactional environment, and the log files need upgrading but the databases do not, the application may be installed in the field using the following steps:</p>
+<ol type="1">
+<li><p>Shut down the old version of the application.</p></li>
+<li><p>Still using the old version of Berkeley DB, run recovery on the database environment using the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method, or the <a href="../../api/c/db_recover.html" class="olink">db_recover utility</a>.</p></li>
+<li><p>If you used the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method to run recovery, make sure that the Berkeley DB environment is removed using the <a href="../../api/c/envremove.html" class="olink">DB_ENV-&gt;remove()</a> method or an appropriate system utility.</p></li>
+<li><p>Archive the database environment for catastrophic recovery using the <code>db_archive</code> utility as described in the <a href="../../guides/programmer_reference/transapp_archival.html" class="olink">Database and log file archival</a> section in the <em>Berkeley DB Programmer's Reference Guide</em>.</p></li>
+<li><p>Recompile and install the new version of the application.</p></li>
+<li><p>Force a checkpoint using the <a href="../../api/c/txncheckpoint.html" class="olink">DB_ENV-&gt;txn_checkpoint()</a> method or the <a href="../../api/c/db_checkpoint.html" class="olink">db_checkpoint utility</a>. If you use the <a href="../../api/c/db_checkpoint.html" class="olink">db_checkpoint utility</a>, make sure to use the new version of the utility; that is, the version that came with the release of Berkeley DB to which you are upgrading.</p>
+<p>Note that forcing a checkpoint might result in warning messages about log files that are being skipped. This is normal, and can be safely ignored.</p></li>
+<li><p>Remove unnecessary log files from the environment using the <code>-d</code> option on the <a href="../../api/c/db_archive.html" class="olink">db_archive utility</a>, or from an application which calls the <a href="../../api/c/logarchive.html" class="olink">DB_ENV-&gt;log_archive()</a> method with the <a href="../../api/c/logarchive.html#archive_DB_ARCH_REMOVE" class="olink">DB_ARCH_REMOVE</a> flag.</p>
+<p>Note that removing log files in this way might result in warning messages about log files that are being skipped. This is normal, and can be safely ignored.</p>
+<p>Note that if you are upgrading a replicated application, then you should <span class="emphasis"><em>not</em></span> perform this step until all of the replication sites have been upgraded to the current release level. If you run this site before all your sites are upgraded, then errors can occur in your replication activities because important version information might be lost.</p></li>
+<li><p>Restart the application.</p></li>
+</ol>
+<p>Otherwise, if the application has a Berkeley DB transactional environment and the databases need upgrading, the application may be installed in the field using the following steps:</p>
+<ol type="1">
+<li><p>Shut down the old version of the application.</p></li>
+<li><p>Still using the old version of Berkeley DB, run recovery on the database environment using the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method, or the <a href="../../api/c/db_recover.html" class="olink">db_recover utility</a>.</p></li>
+<li><p>If you used the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method to run recovery, make sure that the Berkeley DB environment is removed using the <a href="../../api/c/envremove.html" class="olink">DB_ENV-&gt;remove()</a> method or an appropriate system utility.</p></li>
+<li><p>Archive the database environment for catastrophic recovery using the <code>db_archive</code> utility as described in the <a href="../../guides/programmer_reference/transapp_archival.html" class="olink">Database and log file archival</a> section in the <em>Berkeley DB Programmer's Reference Guide</em>.</p></li>
+<li><p>Recompile and install the new version of the application.</p></li>
+<li><p>Upgrade the application's databases. See <a href="../../guides/programmer_reference/am_upgrade.html" class="olink">Database upgrade</a> for more information.</p></li>
+<li><p>Archive the database for catastrophic recovery again (using different media than before, of course). Note: This archival is not strictly necessary. However, if you have to perform catastrophic recovery after restarting the application, that recovery must be done based on the last archive you have made. If you make this second archive, you can use it as the basis of that catastrophic recovery. If you do not make this second archive, you have to use the archive you made in step 4 as the basis of your recovery, and you have to do a full upgrade on it before you can apply log files created after the upgrade to it.</p></li>
+<li><p>Force a checkpoint using the <a href="../../api/c/txncheckpoint.html" class="olink">DB_ENV-&gt;txn_checkpoint()</a> method or the <a href="../../api/c/db_checkpoint.html" class="olink">db_checkpoint utility</a>. If you use the <a href="../../api/c/db_checkpoint.html" class="olink">db_checkpoint utility</a>, make sure to use the new version of the utility; that is, the version that came with the release of Berkeley DB to which you are upgrading.</p>
+<p>Note that forcing a checkpoint might result in warning messages about log files that are being skipped. This is normal, and can be safely ignored.</p></li>
+<li><p>Remove unnecessary log files from the environment using the <code>-d</code> option on the <a href="../../api/c/db_archive.html" class="olink">db_archive utility</a>, or from an application which calls the <a href="../../api/c/logarchive.html" class="olink">DB_ENV-&gt;log_archive()</a> method with the <a href="../../api/c/logarchive.html#archive_DB_ARCH_REMOVE" class="olink">DB_ARCH_REMOVE</a> flag.</p>
+<p>Note that removing log files in this way might result in warning messages about log files that are being skipped. This is normal, and can be safely ignored.</p>
+<p>Note that if you are upgrading a replicated application, then you should <span class="emphasis"><em>not</em></span> perform this step until all of the replication sites have been upgraded to the current release level. If you run this site before all your sites are upgraded, then errors can occur in your replication activities because important version information might be lost.</p></li>
+<li><p>Restart the application.</p></li>
+</ol>
+<p>Finally, Berkeley DB supports the live upgrade of a replication group, by allowing mixed version operation (replication sites running at the newer software version can inter-operate with older version sites). All client sites must be upgraded first; the master site must be upgraded last. In other words, at all times the master must be running the lowest version of Berkeley DB. To upgrade a replication group, you must:</p>
+<ol type="1">
+<li><p>Bring all clients up to date with the master (that is, all clients must be brought up to the most current log record as measured by the master's log sequence number (LSN)).</p></li>
+<li><p>Perform the upgrade procedures described previously on each of the individual database environments that are part of the replication group. Each individual client may be upgraded and restarted to join the replication group.</p></li>
+<li><p>Shut down the master site and upgrade that site last.</p></li>
+</ol>
+<p>During live replication upgrade, while sites are running at different versions, adding new (empty) clients to the replication group is not allowed. Those empty client environments must be added after the entire group is upgraded.</p>
+<p>Also, all removal of log files must be suspended throughout this entire procedure, so that there is no chance of a client needing internal initialization.</p>
+<p>Alternatively, it may be simpler to discard the contents of all of the client database environments, upgrade the master database environment, and then re-add all of the clients to the replication group using the standard replication procedures for new sites.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

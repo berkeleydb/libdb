@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 14.  Application Specific Logging and Recovery — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="chapter-14--application-specific-logging-and-recovery">Chapter 14.  Application Specific Logging and Recovery</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="apprec.html#apprec_intro">Introduction to application specific logging and recovery</a> </span></p>
+<p><span class="sect1"> <a href="apprec_def.html">Defining application-specific log records</a> </span></p>
+<p><span class="sect1"> <a href="apprec_auto.html">Automatically generated functions</a> </span></p>
+<p><span class="sect1"> <a href="apprec_config.html">Application configuration</a> </span></p>
+<h2 id="introduction-to-application-specific-logging-and-recovery">Introduction to application specific logging and recovery</h2>
+<p>It is possible to use the Locking, Logging and Transaction subsystems of Berkeley DB to provide transaction semantics on objects other than those described by the Berkeley DB access methods. In these cases, the application will need application-specific logging and recovery functions.</p>
+<p>For example, consider an application that provides transaction semantics on data stored in plain text files accessed using the POSIX read and write system calls. The read and write operations for which transaction protection is desired will be bracketed by calls to the standard Berkeley DB transactional interfaces, <a href="../../api/c/txnbegin.html" class="olink">DB_ENV-&gt;txn_begin()</a> and <a href="../../api/c/txncommit.html" class="olink">DB_TXN-&gt;commit()</a>, and the transaction's locker ID will be used to acquire relevant read and write locks.</p>
+<p>Before data is accessed, the application must make a call to the lock manager, <a href="../../api/c/lockget.html" class="olink">DB_ENV-&gt;lock_get()</a>, for a lock of the appropriate type (for example, read) on the object being locked. The object might be a page in the file, a byte, a range of bytes, or some key. It is up to the application to ensure that appropriate locks are acquired. Before a write is performed, the application should acquire a write lock on the object by making an appropriate call to the lock manager, <a href="../../api/c/lockget.html" class="olink">DB_ENV-&gt;lock_get()</a>. Then, the application should make a call to the log manager, via the automatically-generated log-writing function described as follows. This record should contain enough information to redo the operation in case of failure after commit and to undo the operation in case of abort.</p>
+<p>When designing applications that will use the log subsystem, it is important to remember that the application is responsible for providing any necessary structure to the log record. For example, the application must understand what part of the log record is an operation code, what part identifies the file being modified, what part is redo information, and what part is undo information.</p>
+<p>After the log message is written, the application may issue the write system call. After all requests are issued, the application may call <a href="../../api/c/txncommit.html" class="olink">DB_TXN-&gt;commit()</a>. When <a href="../../api/c/txncommit.html" class="olink">DB_TXN-&gt;commit()</a> returns, the caller is guaranteed that all necessary log writes have been written to disk.</p>
+<p>At any time before issuing a <a href="../../api/c/txncommit.html" class="olink">DB_TXN-&gt;commit()</a>, the application may call <a href="../../api/c/txnabort.html" class="olink">DB_TXN-&gt;abort()</a>, which will result in restoration of the database to a consistent pretransaction state. (The application may specify its own recovery function for this purpose using the <a href="../../api/c/envset_app_dispatch.html" class="olink">DB_ENV-&gt;set_app_dispatch()</a> method. The recovery function must be able to either reapply or undo the update depending on the context, for each different type of log record. The recovery functions must not use Berkeley DB methods to access data in the environment as there is no way to coordinate these accesses with either the aborting transaction or the updates done by recovery or replication.)</p>
+<p>If the application crashes, the recovery process uses the log to restore the database to a consistent state.</p>
+<p>Berkeley DB includes tools to assist in the development of application-specific logging and recovery. Specifically, given a description of information to be logged in a family of log records, these tools will automatically create log-writing functions (functions that marshall their arguments into a single log record), log-reading functions (functions that read a log record and unmarshall it into a structure containing fields that map into the arguments written to the log), log-printing functions (functions that print the contents of a log record for debugging), and templates for recovery functions (functions that review log records during transaction abort or recovery). The tools and generated code are C-language and POSIX-system based, but the generated code should be usable on any system, not just POSIX systems.</p>
+<p>A sample application that does application-specific recovery is included in the Berkeley DB distribution, in the directory <code>examples_c/ex_apprec</code>.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

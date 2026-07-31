@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Managing Replication Manager Group Membership — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="managing-replication-manager-group-membership">Managing Replication Manager Group Membership</h2>
+<p><span class="sect2"> <a href="group_membership.html#group_mem_add">Adding Sites to a Replication Group</a> </span></p>
+<p><span class="sect2"> <a href="group_membership.html#group_mem_remove">Removing Sites from a Replication Group</a> </span></p>
+<p><span class="sect2"> <a href="group_membership.html#group_mem_primordialstartup">Primordial Startups</a> </span></p>
+<p><span class="sect2"> <a href="group_membership.html#group_mem_upgrade">Upgrading Groups</a> </span></p>
+<p>A replication group is a collection of two or more database environments which are configured to replicate with one another. When operating normally, a replication group consists of a master site and one or more read-only sites.</p>
+<p>For Replication Manager applications, the sites comprising the replication group are recorded in an internal database, so even if a group member is not available, it counts towards the group's total site count. This matters for certain replication activities, such as holding elections and acknowledging replication messages that require some number of sites to participate in these activities. Replicated applications will often require all sites, or a majority of sites, to participate before the activity can be completed.</p>
+<h3 id="note">Note</h3>
+<p>If you are configuring your application to keep replication metadata in-memory by specifying the <a href="../../api/c/repconfig.html#config_DB_REP_CONF_INMEM" class="olink">DB_REP_CONF_INMEM</a> flag to the <a href="../../api/c/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method, then the internal database containing group site information is not stored persistently on disk. This severely limits Replication Manager's ability to automatically manage group membership. For more information, including some work-arounds, see <a href="rep_filename.html" class="xref" title="Managing Replication Files">Managing Replication Files</a>.</p>
+<p>Because Replication Manager tracks group members, there are some administrative activities that you should know about when using BDB replication.</p>
+<h3 id="adding-sites-to-a-replication-group">Adding Sites to a Replication Group</h3>
+<p>To add a site to a replication group, you merely start up the site such that it knows where at least one site in the group is located. The site new site then joins the group. When this happens, the new site is recorded in the Replication Manager's group member database.</p>
+<p>Note that when you are starting the very first site in the group for the very first time (called <span class="emphasis"><em>the primordial start up</em></span>), there are no other existing sites to help the new site join the group. In fact, a primordial start up actually creates the group. For this reason, there are some slight differences on how to perform a primordial start up. For a description of this, see <a href="group_membership.html#group_mem_primordialstartup" class="xref" title="Primordial Startups">Primordial Startups</a>.</p>
+<p>When you add a site to a replication group, you use the following general procedure:</p>
+<ul>
+<li><p>Make sure your replication group is operating well enough that write activity can occur.</p></li>
+<li><p>Create and open the environment such that it is configured to use replication.</p></li>
+<li><p>Use <a href="../../api/c/repmgr_site.html" class="olink">DB_ENV-&gt;repmgr_site()</a> to obtain a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle. Configure this handle for the local site's host and port information when you create the handle. Then, use <a href="../../api/c/dbsite_set_config.html" class="olink">DB_SITE-&gt;set_config()</a> to indicate that this is the local site by setting the <code>DB_LOCAL_SITE</code> parameter.</p></li>
+<li><p>Use <a href="../../api/c/repmgr_site.html" class="olink">DB_ENV-&gt;repmgr_site()</a> to obtain a second <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle. Configure this handle with the host and port information for a site that already belongs to the replication group. Then, use <a href="../../api/c/dbsite_set_config.html" class="olink">DB_SITE-&gt;set_config()</a> to indicate this site is a "helper" site by setting the <code>DB_BOOTSTRAP_HELPER</code> parameter. By configuring a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle in this way, your new site will know how to contact the replication group so that it can join the group.</p></li>
+<li><p>Start replication as normal by configuring an acknowledgement policy, setting the site's replication priority, and then calling <a href="../../api/c/repmgrstart.html" class="olink">DB_ENV-&gt;repmgr_start()</a>.</p></li>
+</ul>
+<p>Note that on subsequent start-ups of your replication code, any helper site information you might provide is ignored because the Replication Manager reads the group membership database in order to obtain this information.</p>
+<p>Also, be aware that if the new site cannot be added to the group for some reason (because a master site is not available, or because insufficient replicas are running to acknowledge the new site), the attempt to start the new site via <a href="../../api/c/repmgrstart.html" class="olink">DB_ENV-&gt;repmgr_start()</a> will fail and return <code>DB_REP_UNAVAIL</code>. You can then pause and retry the start up attempt until it completes successfully.</p>
+<p>You must use the exact same host string and port number to refer to a given site throughout your application and on each of its sites.</p>
+<h3 id="removing-sites-from-a-replication-group">Removing Sites from a Replication Group</h3>
+<p>Elections and message acknowledgements require knowledge of the total number of sites in the group. If a site is shut down, or is otherwise unable to communicate with the rest of the group, it still counts towards the total number of sites in the group. In most cases, this is the desirable behavior.</p>
+<p>However, if you are shutting down a site permanently, then you should remove that site from the group. You might also want to remove a site from the group if you are shutting it down temporarily, but nevertheless for a very long period of time (days or weeks). In either case, you remove a site from the group by:</p>
+<ul>
+<li><p>Make sure your replication group is operating well enough that write activity can occur.</p></li>
+<li><p>On one of the sites in your replication group (this does not have to be the master site), use <a href="../../api/c/repmgr_site.html" class="olink">DB_ENV-&gt;repmgr_site()</a> to obtain a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle. Configure this handle with the host and port information of the site that you want to remove.</p>
+<p>Note that this step can occur at any site — including the site that you are removing from the group.</p></li>
+<li><p>Call the <a href="../../api/c/dbsite_remove.html" class="olink">DB_SITE-&gt;remove()</a> method. This removes the identified site from the replication group database. If this action is not performed on the master site, the client sends a request to the master to perform the operation and awaits confirmation.</p></li>
+</ul>
+<h3 id="note-1">Note</h3>
+<p>Upon completing the above procedure, DO NOT call the <a href="../../api/c/dbsite_close.html" class="olink">DB_SITE-&gt;close()</a> method. After removing (or even attempting to remove) a site from the group using a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle, the handle must never be accessed again.</p>
+<h3 id="primordial-startups">Primordial Startups</h3>
+<p>If you have never started a site in a replication group before, then the replication group membership database does not exist. In this situation, you must start the site and declare it to be the group creator. This causes the site to become the master, create the group membership database, and create a replication group of size 1. After that, subsequent sites can add themselves to the group as described in <a href="group_membership.html#group_mem_add" class="xref" title="Adding Sites to a Replication Group">Adding Sites to a Replication Group</a>.</p>
+<h3 id="note-2">Note</h3>
+<p>It is never incorrect to declare a site the group creator. This is true even well-after the replication group has been established. This is because group creator information is ignored on any site start-up, except for the primoridial start-up; that is, a start-up where the group membership database does not exist.</p>
+<p>To declare a site as the group creator:</p>
+<ul>
+<li><p>Create and open the environment such that it is configured to use replication.</p></li>
+<li><p>Use <a href="../../api/c/repmgr_site.html" class="olink">DB_ENV-&gt;repmgr_site()</a> to obtain a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle. Configure this handle for the local site's host and port information when you create the handle. Then, use <a href="../../api/c/dbsite_set_config.html" class="olink">DB_SITE-&gt;set_config()</a> to indicate that this is the group creator site by setting the <code>DB_GROUP_CREATOR</code> parameter.</p></li>
+<li><p>Start replication as normal by configuring acknowledgement policies, setting replication priorities for the site, and then calling <a href="../../api/c/repmgrstart.html" class="olink">DB_ENV-&gt;repmgr_start()</a>.</p></li>
+</ul>
+<h3 id="upgrading-groups">Upgrading Groups</h3>
+<p>Prior to the Berkeley DB 11.2.5.2 release, replication group membership was managed differently than in the way it is described in the previous sections. For this reason, when you upgrade from older releases of Berkeley DB to 11.2.5.2 or later, the upgrade procedure is different than when upgrading between other releases.</p>
+<p>To perform an upgrade that takes you from the old way of managing group membership to the new way of managing group membership (pre-11.2.5.2 to 11.2.5.2 and later), do the following:</p>
+<ul>
+<li><p>Update your replication code to use the new <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle and related methods. Recompile and thoroughly test your code to make sure it is production-ready.</p></li>
+<li><p>Do the following one production machine at a time. Make sure to do this at the master site LAST.</p>
+<ol type="1">
+<li><p>Shut down the old replication code.</p></li>
+<li><p>Install the new replication code.</p></li>
+<li><p>Configure a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle for the local site. Use <a href="../../api/c/dbsite_set_config.html" class="olink">DB_SITE-&gt;set_config()</a> to indicate that this is a legacy site by setting the <code>DB_LEGACY</code> parameter.</p></li>
+<li><p>Configure a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle for <span class="emphasis"><em>every other site</em></span> in the replication group. Set the <code>DB_LEGACY</code> parameter for each of these handles.</p>
+<p>Please pay careful attention to this step. To repeat: a <a href="../../api/c/db_site.html" class="olink">DB_SITE</a> handle MUST be configured for EVERY site in the replication group.</p></li>
+<li><p>Start replication. The site is upgraded at this point.</p></li>
+</ol>
+<p>Once you have performed this procedure for each production site, making sure to upgrade the master only after every other site has been upgraded, you are done upgrading your replicated application to use the current group membership mechanism.</p></li>
+</ul>
+<p>On subsequent restarts of your replication code, you do not need to specify the <code>DB_LEGACY</code> parameter, nor do you need to identify all of the replication group members. However, it is not an error if you do specify this information on subsequent start ups.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

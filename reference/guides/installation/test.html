@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 14.  Test Suite — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="chapter-14--test-suite">Chapter 14.  Test Suite</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="test.html#test_run">Running the test suite</a> </span></p>
+<p><span class="sect2"> <a href="test.html#idp1298736">Running SQL Test Suite on Unix</a> </span></p>
+<p><span class="sect2"> <a href="test.html#idp1289848">Running SQL Test Suite on Windows</a> </span></p>
+<p><span class="sect1"> <a href="test_faq.html">Test suite FAQ</a> </span></p>
+<h2 id="running-the-test-suite">Running the test suite</h2>
+<p><span class="sect2"> <a href="test.html#idp1298736">Running SQL Test Suite on Unix</a> </span></p>
+<p><span class="sect2"> <a href="test.html#idp1289848">Running SQL Test Suite on Windows</a> </span></p>
+<p>Once you have started tclsh and have loaded the test.tcl source file (see <a href="build_unix_test.html" class="xref" title="Running the test suite under UNIX">Running the test suite under UNIX</a> and <a href="build_win_test.html" class="xref" title="Running the test suite under Windows">Running the test suite under Windows</a> for more information), you are ready to run the test suite. At the tclsh prompt, to run the standard test suite, enter the following:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> run_std</span></code></pre></div>
+<p>A more exhaustive version of the test suite runs all the tests several more times, testing encryption, replication, and different page sizes. After you have a clean run for run_std, you may choose to run this lengthier set of tests. At the tclsh prompt, enter:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> run_all</span></code></pre></div>
+<p>Running the standard tests can take from several hours to a few days to complete, depending on your hardware, and running all the tests will take at least twice as long. For this reason, the output from these commands are redirected to a file in the current directory named <code>ALL.OUT</code>. Periodically, a line will be written to the standard output, indicating what test is being run. When the test suite has finished, a final message will be written indicating the test suite has completed successfully or that it has failed. If the run failed, you should review the <code>ALL.OUT</code> file to determine which tests failed. Errors will appear in that file as output lines, beginning with the string "FAIL".</p>
+<p>Tests are run in the directory <code>TESTDIR</code>, by default. However, the test files are often large, and you should use a filesystem with at least several hundred megabytes of free space. To use a different directory for the test directory, edit the file include.tcl in your build directory, and change the following line to a more appropriate value for your system:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>set testdir <span class="op">./</span>TESTDIR</span></code></pre></div>
+<p>For example, you might change it to the following:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>set testdir <span class="op">/</span>var<span class="op">/</span>tmp<span class="op">/</span>db<span class="op">.</span>test</span></code></pre></div>
+<p>Alternatively, you can create a symbolic link named TESTDIR in your build directory to an appropriate location for running the tests. Regardless of where you run the tests, the TESTDIR directory should be on a local filesystem. Using a remote filesystem (for example, an NFS mounted filesystem) will almost certainly cause spurious test failures.</p>
+<h3 id="running-sql-test-suite-on-unix">Running SQL Test Suite on Unix</h3>
+<p>Once the test suite is built (see <a href="build_unix_test.html#build_unix_test_sql" class="xref" title="Building SQL Test Suite on Unix">Building SQL Test Suite on Unix</a> for more information), run the entire test suite by executing the following command in the <code>../build_unix/sql</code> directory:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>sh <span class="op">../../</span>test<span class="op">/</span>sql<span class="op">/</span>bdb<span class="op">-</span>test<span class="op">.</span>sh</span></code></pre></div>
+<p>This runs a set of tests and lists the errors each test encountered, if any. A detailed list of the test results is written to <code>test.log</code>.</p>
+<p>To run an individual test, such as insert.test, execute the following command in the <code>../build_unix/sql</code> directory:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="op">./</span>testfixture <span class="op">../../</span>lang<span class="op">/</span>sql<span class="op">/</span>sqlite<span class="op">/</span>test<span class="op">/</span>insert<span class="op">.</span>test </span></code></pre></div>
+<h3 id="running-sql-test-suite-on-windows">Running SQL Test Suite on Windows</h3>
+<p>After the test suite is built (see <a href="build_win_test.html#build_win_test_sql" class="xref" title="Building the software needed by the SQL tests">Building the software needed by the SQL tests</a> for more information) and before running the entire test suite, go to <code>../sql/adapter/bdb-test.sh</code> and edit the line:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>echo $t<span class="op">:</span> `alarm $TIMEOUT <span class="op">./</span>testfixture<span class="op">.</span>exe </span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>$tpath <span class="dv">2</span><span class="op">&gt;&amp;</span><span class="dv">1</span> <span class="op">|</span> tee <span class="op">-</span>a test<span class="op">.</span>log <span class="op">|</span> grep <span class="st">&quot;errors out of&quot;</span> </span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="op">||</span> echo <span class="st">&quot;failed&quot;</span>`</span></code></pre></div>
+<p>to</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>echo $t<span class="op">:</span> `alarm $TIMEOUT Win32<span class="op">/</span>Debug<span class="op">/</span>testfixture<span class="op">.</span>exe </span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>$tpath <span class="dv">2</span><span class="op">&gt;&amp;</span><span class="dv">1</span> <span class="op">|</span> tee <span class="op">-</span>a test<span class="op">.</span>log <span class="op">|</span> grep <span class="st">&quot;errors out of&quot;</span> </span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="op">||</span> echo <span class="st">&quot;failed&quot;</span>`</span></code></pre></div>
+<p>Running the test suite requires an Unix emulator, such as Cygwin. In a Cygwin window go to the <code>../build_windows</code> directory and execute the command:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>sh <span class="op">../</span>sql<span class="op">/</span>adapter<span class="op">/</span>bdb<span class="op">-</span>test<span class="op">.</span>sh</span></code></pre></div>
+<p>This runs a set of tests and lists errors that each test encountered, if any. A detailed list of the test results is written to <code>test.log</code>.</p>
+<p>To run an individual test, such as insert.test, execute the following command in the <code>../build_windows</code> directory:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>Win32<span class="op">/</span>Debug<span class="op">/</span>testfixture<span class="op">.</span>exe <span class="op">../</span>sql<span class="op">/</span>sqlite<span class="op">/</span>test<span class="op">/</span>insert<span class="op">.</span>test </span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

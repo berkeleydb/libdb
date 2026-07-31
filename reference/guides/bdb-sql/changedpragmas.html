@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Changed PRAGMAs — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / bdb-sql</nav>
+  <main>
+<h2 id="changed-pragmas">Changed PRAGMAs</h2>
+<p><span class="sect2"> <a href="changedpragmas.html#auto_vacuum">PRAGMA auto_vacuum</a> </span></p>
+<p><span class="sect2"> <a href="changedpragmas.html#incremental_vacuum">PRAGMA incremental_vacuum</a> </span></p>
+<p><span class="sect2"> <a href="changedpragmas.html#journal_size_limit">PRAGMA journal_size_limit</a> </span></p>
+<p>The following PRAGMAs are available in the BDB SQL interface, but they behave differently in some way from standard SQLite.</p>
+<h3 id="pragma-auto_vacuum">PRAGMA auto_vacuum</h3>
+<p>The syntax for this PRAGMA is:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>PRAGMA auto_vacuum</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>PRAGMA auto_vacuum <span class="op">=</span> <span class="dv">0</span> <span class="op">|</span> NONE <span class="op">|</span> <span class="dv">1</span> <span class="op">|</span> FULL <span class="op">|</span> <span class="dv">2</span> <span class="op">|</span> INCREMENTAL </span></code></pre></div>
+<p>Standard SQLite does not allow you to enable or disable auto-vacuum after a table has been created. Berkeley DB, however, allows you to change this at any time.</p>
+<p>In the previous syntax, <code>0</code> and <code>NONE</code> both turn off auto vacuuming.</p>
+<p><code>1</code> or <code>FULL</code> causes full vacuuming to occur. That is, the BDB SQL interface will vacuum the entire database at each commit using a very low fill percentage (1%) in order to return emptied pages to the file system. Because Berkeley DB allows you to call this PRAGMA at any time, it is recommended that you do not turn on FULL vacuuming because doing so can result in a great deal of overhead to your transaction commits.</p>
+<p>If <code>2</code> or <code>INCREMENTAL</code> is used, then incremental vacuuming is enabled. The amount of vacuuming that is performed for incremental vacuum is controlled using the following PRAGMAs:</p>
+<table>
+<tbody>
+<tr>
+<td><a href="addedpragmas.html#bdbsql_vacuum_fillpercent" class="xref" title="PRAGMA bdbsql_vacuum_fillpercent">PRAGMA bdbsql_vacuum_fillpercent</a></td>
+</tr>
+<tr>
+<td><a href="addedpragmas.html#bdbsql_vacuum_pages" class="xref" title="PRAGMA bdbsql_vacuum_pages">PRAGMA bdbsql_vacuum_pages</a></td>
+</tr>
+</tbody>
+</table>
+<p>Note that you can call <a href="changedpragmas.html#incremental_vacuum" class="xref" title="PRAGMA incremental_vacuum">PRAGMA incremental_vacuum</a> to perform an incremental vacuum operation on demand.</p>
+<p>When performing vacuum operations, Berkeley DB defragments and repacks individual database pages, while SQLite only truncates the freelist pages from the database file.</p>
+<p>For more information on auto vacuum, see <a href="http://www.sqlite.org/pragma.html#pragma_auto_vacuum" class="ulink" target="_top">PRAGMA auto_vacuum</a> in the SQLite documentation.</p>
+<h3 id="pragma-incremental_vacuum">PRAGMA incremental_vacuum</h3>
+<p>Performs incremental vacuum operations on demand. You can cause incremental vacuum operations to be performed automatically using <a href="changedpragmas.html#auto_vacuum" class="xref" title="PRAGMA auto_vacuum">PRAGMA auto_vacuum</a>.</p>
+<p>Note that for SQLite, this PRAGMA is used to specify the maximum number of pages to be freed during vacuuming. For Berkeley DB, you use <code>PRAGMA bdbsql_vacuum_pages</code> instead.</p>
+<h3 id="pragma-journal_size_limit">PRAGMA journal_size_limit</h3>
+<p>For standard SQLite, this pragma identifies the maximum size that the journal file is allowed to be.</p>
+<p>Berkeley DB uses multiple journal files, Berkeley DB journal files are different to a SQLite journal file in that they contain information about multiple transactions, rather than a single transaction (similar to the SQLite WAL journal file). Over the course of the database's lifetime, Berkeley DB will probably create multiple journal files. A new journal file is created when the current journal file has reached the maximum size configured using the journal_size_limit pragma.</p>
+<p>Note that a BDB SQL interface journal file is referred to as a log file in the Berkeley DB documentation.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

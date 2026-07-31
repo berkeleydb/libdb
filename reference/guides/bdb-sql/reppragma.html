@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Replication PRAGMAs — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / bdb-sql</nav>
+  <main>
+<h2 id="replication-pragmas">Replication PRAGMAs</h2>
+<p><span class="sect2"> <a href="reppragma.html#pragma_replication">PRAGMA replication</a> </span></p>
+<p><span class="sect2"> <a href="reppragma.html#pragma_replication_initial_master">PRAGMA replication_initial_master</a> </span></p>
+<p><span class="sect2"> <a href="reppragma.html#pragma_replication_local_site">PRAGMA replication_local_site</a> </span></p>
+<p><span class="sect2"> <a href="reppragma.html#pragma_replication_remote_site">PRAGMA replication_remote_site</a> </span></p>
+<p><span class="sect2"> <a href="reppragma.html#pragma_replication_remove_site">PRAGMA replication_remove_site</a> </span></p>
+<p><span class="sect2"> <a href="reppragma.html#pragma_replication_verbose_output">PRAGMA replication_verbose_output</a> </span></p>
+<p><span class="sect2"> <a href="reppragma.html#pragma_replication_verbose_file">PRAGMA replication_verbose_file</a> </span></p>
+<p>To control replication when using the Berkeley DB SQL interface, you use the following PRAGMAs. For an example of how to use these, see <a href="rep_usageexamples.html" class="xref" title="Replication Usage Examples">Replication Usage Examples</a>.</p>
+<h3 id="pragma-replication">PRAGMA replication</h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>PRAGMA replication<span class="op">=</span>ON<span class="op">|</span>OFF </span></code></pre></div>
+<p>Enables the local environment to participate in replication.</p>
+<p>Before invoking this PRAGMA for a brand new database (one that has never been opened), you must invoke the <code>replication_local_site</code> PRAGMA and then either the <code>replication_initial_master</code> or the <code>replication_remote_site</code> PRAGMA. These actions define the way this site fits into the replication group.</p>
+<p>If you are enabling replication for an existing database, it must become the initial master for a new replication group. You must invoke the <code>replication_local_site</code> PRAGMA followed by the <code>replication_initial_master</code> PRAGMA before enabling replication.</p>
+<p>If you use this PRAGMA to turn off replication, then replication is completely disabled for the environment. In order to enable replication again, you follow the procedure used to enable replication on an existing database; that is, invoke the <code>replication_local_site</code> PRAGMA followed by the <code>replication_initial_master</code> PRAGMA, followed by <code>PRAGMA replication=ON</code>.</p>
+<h3 id="pragma-replication_initial_master">PRAGMA replication_initial_master</h3>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>PRAGMA replication_initial_master<span class="op">=</span>ON<span class="op">|</span>OFF </span></code></pre></div>
+<p>Causes the local environment to start up as a master site. This PRAGMA must be used once and only once in the replicated lifetime of a BDB SQL environment.</p>
+<p>This PRAGMA is usually invoked for the first site in a new replication group before the <code>replication</code> PRAGMA is invoked and before BDB SQL initially creates the underlying BDB environment for a SQL database. Starting replication on the initial master site establishes the new replication group so that other sites can join it.</p>
+<p>However, you must call this PRAGMA when enabling replication for a database that already exists. Doing so causes the existing database to become the replication master for a new replication group.</p>
+<p>Note that subsequent election activity can cause other sites in the replication group to become master. Do not assume that the initial master site will remain master indefinitely, or that it will rejoin the replication group as master after a shutdown.</p>
+<h3 id="pragma-replication_local_site">PRAGMA replication_local_site</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>PRAGMA replication_local_site<span class="op">=</span><span class="st">&quot;hostname:port&quot;</span> </span></code></pre></div>
+<p>Sets the local site information for replication.</p>
+<h3 id="pragma-replication_remote_site">PRAGMA replication_remote_site</h3>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>PRAGMA replication_remote_site<span class="op">=</span><span class="st">&quot;hostname:port&quot;</span> </span></code></pre></div>
+<p>Sets information about a remote helper site in the replication group.</p>
+<p>This PRAGMA is needed when a site first joins an existing replication group to specify a site that is already in the replication group. It must be invoked before the <code>replication</code> PRAGMA is invoked. This PRAGMA is not needed on the initial master site or when restarting a site that is already a member of the replication group. However, supplying this PRAGMA in those situations does no harm.</p>
+<p>Note that the information provided to this PRAGMA can be superseded by normal replication activity over the course of the environment's lifetime.</p>
+<h3 id="pragma-replication_remove_site">PRAGMA replication_remove_site</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>PRAGMA replication_remove_site<span class="op">=</span><span class="st">&quot;hostname:port&quot;</span> </span></code></pre></div>
+<p>Removes the specified site from the replication group. Use this PRAGMA if you truly want to remove the site permanently from the group. It is not desirable to call this PRAGMA if a site has been temporarily shut down or disconnected from the rest of the replication group.</p>
+<p>Removing a site from the replication group means that the site is no longer counted towards the total number of sites belonging to the group. This is important when the replication group requires knowledge about whether a quorum has been reached (such as when, for example, elections are held).</p>
+<h3 id="pragma-replication_verbose_output">PRAGMA replication_verbose_output</h3>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>PRAGMA replication_verbose_output<span class="op">=</span>ON<span class="op">|</span>OFF </span></code></pre></div>
+<p>If set to TRUE, additional logging information specifically related to replication is created.</p>
+<h3 id="pragma-replication_verbose_file">PRAGMA replication_verbose_file</h3>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>PRAGMA replication_verbose_file<span class="op">=</span><span class="st">&quot;filename&quot;</span> </span></code></pre></div>
+<p>Indicates that verbose replication output should be sent to the specified file, as opposed to STDOUT.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

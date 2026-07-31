@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Developing a DB Collections Application — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / collections</nav>
+  <main>
+<h2 id="developing-a-db-collections-application">Developing a DB Collections Application</h2>
+<p>There are several important choices to make when developing an application using the DB Java Collections API.</p>
+<ol type="1">
+<li><p>Choose the Berkeley DB Environment</p>
+<p>Depending on your application's concurrency and transactional requirements, you may choose one of the three Berkeley DB Environments: Data Store, Concurrent Data Store, or Transactional Data Store. For details on creating and configuring the environment, see the <em>Berkeley DB Programmer's Reference Guide</em></p></li>
+<li><p>Choose the Berkeley DB Access Method</p>
+<p>For each Berkeley DB datastore, you may choose from any of the four Berkeley DB access methods — BTREE, HASH, RECNO, or QUEUE <span class="html"> (<a href="../../java/com/sleepycat/db/DatabaseType.html#BTREE" class="ulink" target="_top">DatabaseType.BTREE</a>, <a href="../../java/com/sleepycat/db/DatabaseType.html#HASH" class="ulink" target="_top">DatabaseType.HASH</a>, <a href="../../java/com/sleepycat/db/DatabaseType.html#RECNO" class="ulink" target="_top">DatabaseType.RECNO</a>, or <a href="../../java/com/sleepycat/db/DatabaseType.html#QUEUE" class="ulink" target="_top">DatabaseType.QUEUE</a>.) </span> — and a number of other database options. Your choice depends on several factors such as whether you need ordered keys, unique keys, record number access, and so forth. For more information on access methods, see the <em>Berkeley DB Programmer's Reference Guide</em>.</p></li>
+<li><p>Choose the Format for Keys and Values</p>
+<p>For each database you may choose a binding format for the keys and values. For example, the tuple format is useful for keys because it has a deterministic sort order. The serial format is useful for values if you want to store arbitrary Java objects. In some cases a custom format may be appropriate. For details on choosing a binding format see <a href="collectionOverview.html#UsingDataBindings" class="xref" title="Using Data Bindings">Using Data Bindings</a> .</p></li>
+<li><p>Choose the Binding for Keys and Values</p>
+<p>With the serial data format you do not have to create a binding for each Java class that is stored since Java serialization is used. But for other formats a binding must be defined that translates between stored byte arrays and Java objects. For details see <a href="collectionOverview.html#UsingDataBindings" class="xref" title="Using Data Bindings">Using Data Bindings</a> .</p></li>
+<li><p>Choose Secondary Indices</p>
+<p>Any database that has unique keys may have any number of secondary indices. A secondary index has keys that are derived from data values in the primary database. This allows lookup and iteration of objects in the database by its index keys. For each index you must define how the index keys are derived from the data values using a <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" class="ulink" target="_top">SecondaryKeyCreator</a>. For details see the <a href="../../java/com/sleepycat/db/SecondaryDatabase.html" class="ulink" target="_top">SecondaryDatabase</a>, <a href="../../java/com/sleepycat/db/SecondaryConfig.html" class="ulink" target="_top">SecondaryConfig</a> and <a href="../../java/com/sleepycat/db/SecondaryKeyCreator.html" class="ulink" target="_top">SecondaryKeyCreator</a> classes.</p></li>
+<li><p>Choose the Collection Interface for each Database</p>
+<p>The standard Java Collection interfaces are used for accessing databases and secondary indices. The Map and Set interfaces may be used for any type of database. The Iterator interface is used through the Set interfaces. For more information on the collection interfaces see <a href="UsingStoredCollections.html" class="xref" title="Using Stored Collections">Using Stored Collections</a> .</p></li>
+</ol>
+<p>Any number of bindings and collections may be created for the same database. This allows multiple views of the same stored data. For example, a data store may be viewed as a Map of keys to values, a Set of keys, or a Collection of values. String values, for example, may be used with the built-in binding to the String class, or with a custom binding to another class that represents the string values differently.</p>
+<p>It is sometimes desirable to use a Java class that encapsulates both a data key and a data value. For example, a Part object might contain both the part number (key) and the part name (value). Using the DB Java Collections API this type of object is called an "entity". An entity binding is used to translate between the Java object and the stored data key and value. Entity bindings may be used with all Collection types.</p>
+<p>Please be aware that the provided DB Java Collections API collection classes do not conform completely to the interface contracts defined in the <code>java.util</code> package. For example, all iterators must be explicitly closed and the <code>size()</code> method is not available. The differences between the DB Java Collections API collections and the standard Java collections are documented in <a href="UsingStoredCollections.html#StoredVersusStandardCollections" class="xref" title="Stored Collections Versus Standard Java Collections">Stored Collections Versus Standard Java Collections</a> .</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

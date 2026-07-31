@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Replication Usage Examples — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / bdb-sql</nav>
+  <main>
+<h2 id="replication-usage-examples">Replication Usage Examples</h2>
+<p><span class="sect2"> <a href="rep_usageexamples.html#rep_ex1">Example 1: Distributed Read at 3 Sites</a> </span></p>
+<p><span class="sect2"> <a href="rep_usageexamples.html#rep_ex2">Example 2: 2-Site Failover</a> </span></p>
+<p>In this section we provide two examples of using replication with BDB SQL. The first example shows a typical startup process. The second demonstrates master site failover.</p>
+<h3 id="example-1-distributed-read-at-3-sites">Example 1: Distributed Read at 3 Sites</h3>
+<p>This example shows how a typical replication group startup sequence is performed. It initially populates the master, then starts two replicas so that read operations can be distributed. Then it shows what happens when an attempt is made to write to a replica.</p>
+<p>Site 1:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">Start initial master.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">univ.db does not yet exist.</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>dbsql univ<span class="op">.</span>db</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>     pragma replication_local_site<span class="op">=</span><span class="st">&quot;site1:7000&quot;</span><span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>     pragma replication_initial_master<span class="op">=</span>ON<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>     pragma replication<span class="op">=</span>ON<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">Create and populate university and country tables.</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span>read university<span class="op">.</span>sql </span></code></pre></div>
+<p>Site 2:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">Start first replica.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">univ.db does not yet exist.</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>dbsql univ<span class="op">.</span>db  </span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>     pragma replication_local_site<span class="op">=</span><span class="st">&quot;site2:7001&quot;</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>     pragma replication_remote_site<span class="op">=</span><span class="st">&quot;site1:7000&quot;</span><span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>     pragma replication<span class="op">=</span>ON<span class="op">;</span> </span></code></pre></div>
+<p>Site 3:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">Start second replica.</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">univ.db does not yet exist.</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>dbsql univ<span class="op">.</span>db</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>     pragma replication_local_site<span class="op">=</span><span class="st">&quot;site3:7002&quot;</span><span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>     pragma replication_remote_site<span class="op">=</span><span class="st">&quot;site1:7000&quot;</span><span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>     pragma replication<span class="op">=</span>ON<span class="op">;</span> </span></code></pre></div>
+<p>Site 1:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">Perform some writes and reads on master.</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    insert into country values <span class="op">(</span><span class="st">&quot;Greenland&quot;</span><span class="op">,</span><span class="st">&quot;gl&quot;</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">2</span><span class="op">);</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    insert into university values <span class="op">(</span><span class="dv">26</span><span class="op">,</span> <span class="st">&quot;University College London&quot;</span><span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;ucl.edu&quot;</span><span class="op">,</span> <span class="st">&quot;uk&quot;</span><span class="op">,</span> <span class="st">&quot;Europe&quot;</span><span class="op">,</span> <span class="dv">18</span><span class="op">,</span> <span class="dv">39</span><span class="op">,</span> <span class="dv">47</span><span class="op">,</span> <span class="dv">30</span><span class="op">);</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    select <span class="op">*</span> from country where abbr <span class="op">=</span> <span class="st">&quot;gl&quot;</span><span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    update country set top_1000 <span class="op">=</span> <span class="dv">1</span> where abbr <span class="op">=</span> <span class="st">&quot;gl&quot;</span><span class="op">;</span> </span></code></pre></div>
+<p>Site 2:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a> <span class="pp"># </span><span class="er">Perform some reads on first replica.</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    select <span class="op">*</span> from university where region <span class="op">=</span> <span class="st">&quot;Europe&quot;</span><span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    select count<span class="op">(*)</span> from country where top_100 <span class="op">&gt;</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">Attempt to write on first replica. </span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    insert into country values <span class="op">(</span><span class="st">&quot;Antarctica&quot;</span><span class="op">,</span><span class="st">&quot;an&quot;</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">.../</span>univ<span class="op">.</span>db<span class="op">:</span> DBcursor<span class="op">-&gt;</span>put<span class="op">:</span> attempt to modify a read<span class="op">-</span>only database</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    Error<span class="op">:</span> attempt to write to a readonly database</span></code></pre></div>
+<h3 id="example-2-2-site-failover">Example 2: 2-Site Failover</h3>
+<p>This example demonstrates failover of the master from one site to another. It shows how a failed site can rejoin the replication group, and it shows that there is a window of time during which write operations cannot be performed for the replication group. Finally, it shows how to check the master's location.</p>
+<p>Site 1:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">Start initial master.</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">quote.db does not yet exist.</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>dbsql quote<span class="op">.</span>db</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>     pragma replication_local_site<span class="op">=</span><span class="st">&quot;site1:7000&quot;</span><span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>     pragma replication_initial_master<span class="op">=</span>ON<span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>     pragma replication<span class="op">=</span>ON<span class="op">;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">Create stock quote application table.</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    create table stock_quote <span class="op">(</span>company_name text<span class="op">(</span><span class="dv">40</span><span class="op">),</span> price real<span class="op">);</span></span></code></pre></div>
+<p>Site 2:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">Start replica.</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">quote.db does not yet exist.</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>dbsql quote<span class="op">.</span>db </span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>     pragma replication_local_site<span class="op">=</span><span class="st">&quot;site2:7001&quot;</span><span class="op">;</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>     pragma replication_remote_site<span class="op">=</span><span class="st">&quot;site1:7000&quot;</span><span class="op">;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>     pragma replication<span class="op">=</span>ON<span class="op">;</span> </span></code></pre></div>
+<p>Site 1:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">Perform some writes on master.</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    insert into stock_quote values <span class="op">(</span><span class="st">&quot;General Electric&quot;</span><span class="op">,</span> <span class="fl">20.25</span><span class="op">);</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    insert into stock_quote values <span class="op">(</span><span class="st">&quot;Nabisco&quot;</span><span class="op">,</span> <span class="fl">24.75</span><span class="op">);</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    insert into stock_quote values <span class="op">(</span><span class="st">&quot;United Healthcare&quot;</span><span class="op">,</span> <span class="fl">31.00</span><span class="op">);</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    update stock_quote set price<span class="op">=</span><span class="fl">25.25</span> where company_name <span class="op">=</span> <span class="st">&quot;Nabisco&quot;</span><span class="op">;</span></span></code></pre></div>
+<p>Site 2:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">Perform some reads on replica.</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    select <span class="op">*</span> from stock_quote where price <span class="op">&lt;</span> <span class="fl">30.00</span><span class="op">;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    select price from stock_quote where </span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>           company_name <span class="op">=</span> <span class="st">&quot;General Electric&quot;</span><span class="op">;</span></span></code></pre></div>
+<p>Site 1:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">Stop the initial master.</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span>exit </span></code></pre></div>
+<p>Site 2:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>    <span class="pp">#</span><span class="er">#########</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    <span class="pp">#</span><span class="er">## Now the remaining site does not accept write operations until</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="pp">#</span><span class="er">## the other site rejoins the replication group.</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="pp">#</span><span class="er">#########</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    insert into stock_quote values <span class="op">(</span><span class="st">&quot;Prudential&quot;</span><span class="op">,</span> <span class="fl">17.25</span><span class="op">);</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">.../</span>quote<span class="op">.</span>db<span class="op">:</span> DBcursor<span class="op">-&gt;</span>put<span class="op">:</span> attempt to modify a read<span class="op">-</span>only database</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    Error<span class="op">:</span> attempt to write to a readonly database</span></code></pre></div>
+<p>Site 1:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="pp"># </span><span class="er">Restart site, will rejoin replication group.</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>dbsql quote<span class="op">.</span>db</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">The earlier replication=ON causes replication to be </span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">automatically started.  This site may or may not become master</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">after rejoining replication group.  Check status of site&#39;s </span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">startup and determine whether it is a master or a replica.</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">.</span>stat <span class="op">:</span>rep<span class="op">:</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    Replication summary statistics</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    Environment configured as a replication master</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    <span class="dv">1</span><span class="op">/</span><span class="dv">49056</span> Maximum permanent LSN</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    <span class="dv">2</span>       Number of environments in the replication group</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="dv">0</span>       Number of failed message sends</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>    <span class="dv">0</span>       Number of messages ignored due to pending recovery</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>    <span class="dv">0</span>       Number of log records currently queued</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">Assuming this site became master, perform some writes.</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># If this site is not the master, these writes will not</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">succeed and must be performed at the other site.</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>    insert into stock_quote values <span class="op">(</span><span class="st">&quot;Raytheon&quot;</span><span class="op">,</span> <span class="fl">9.25</span><span class="op">);</span></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    insert into stock_quote values <span class="op">(</span><span class="st">&quot;Cadbury&quot;</span><span class="op">,</span> <span class="fl">7.75</span><span class="op">);</span> </span></code></pre></div>
+<p>Site 2:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">Read operations can be performed on master or replica </span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    <span class="pp"># </span><span class="er">site.</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    select <span class="op">*</span> from stock_quote where price <span class="op">&lt;</span> <span class="fl">21.00</span><span class="op">;</span> </span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

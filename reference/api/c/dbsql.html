@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dbsql — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="dbsql">dbsql</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>dbsql <span class="op">[</span>OPTIONS<span class="op">]</span> FILENAME SQL </span></code></pre></div>
+<p><code>dbsql</code> is a command line tool that provides access to the Berkeley DB SQL interface.</p>
+<p>To build this tool, run the configure script with the <code>--enable-sql </code>option when you are building the Berkeley DB SQL interface. For more information on building this tool, see <a href="../../guides/installation/build_unix.html#build_unix_intro" class="olink">"Building for UNIX/POSIX"</a>.</p>
+<p>FILENAME is the name of a Berkeley DB database file created with the SQL interface. A new database is created if the file does not exist. The options are as follows:</p>
+<ul>
+<li><p><strong>-init filename</strong></p>
+<p>Reads/processes named file.</p></li>
+<li><p><strong>-echo</strong></p>
+<p>Prints commands before execution.</p></li>
+<li><p><strong>-[no]header</strong></p>
+<p>Turns headers on or off.</p></li>
+<li><p><strong>-bail</strong></p>
+<p>Stops after hitting an error.</p></li>
+<li><p><strong>-interactive</strong></p>
+<p>Forces interactive I/O.</p></li>
+<li><p><strong>-batch</strong></p>
+<p>Forces batch I/O.</p></li>
+<li><p><strong>-column</strong></p>
+<p>Sets output mode to column.</p></li>
+<li><p><strong>-csv</strong></p>
+<p>Sets output mode to csv.</p></li>
+<li><p><strong>-html</strong></p>
+<p>Sets output mode to HTML.</p></li>
+<li><p><strong>-line</strong></p>
+<p>Sets output mode to line.</p></li>
+<li><p><strong>-list</strong></p>
+<p>Sets output mode to list.</p></li>
+<li><p><strong>-separator 'x'</strong></p>
+<p>Sets output field separator (|).</p></li>
+<li><p><strong>-nullvalue 'text'</strong></p>
+<p>Sets text string for NULL values.</p></li>
+<li><p><strong>-version</strong></p>
+<p>Shows SQLite version.</p></li>
+</ul>
+<p>The <code>dbsql</code> executable provides the same interface as the <code>sqlite3</code> executable that is part of SQLite. For more information on how to use dbsql see the <a href="http://www.sqlite.org/sqlite.html" class="ulink" target="_top">SQLite Documentation page.</a></p>
+<h3 id="command-line-features-unique-to-dbsql">Command Line Features Unique to dbsql</h3>
+<p>This section describes pre-defined query statements that can be executed from the <code>dbsql</code> command line. These queries take the form of:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a> <span class="op">.</span>stat ITEM</span></code></pre></div>
+<p>where <code>ITEM</code> is an optional parameter that indicates what statistics to print. If <code>ITEM</code> is not specified, then this command prints statistics for the Berkeley DB environment, followed by statistics for all tables and indexes within the database.</p>
+<p>If <code>ITEM</code> is the name of a table or index, then this command prints statistics for the table or index using the <a href="dbstat_print.html" class="xref" title="DB-&gt;stat_print()">DB-&gt;stat_print()</a> method.</p>
+<p>Otherwise, <code>ITEM</code> can be one of several keywords. They are:</p>
+<ul>
+<li><p><code>:env:</code></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> <span class="op">.</span>stat <span class="op">:</span>env<span class="op">:</span></span></code></pre></div>
+<p>Causes this command to print statistics for the Berkeley DB environment using the <a href="envstat.html" class="xref" title="DB_ENV-&gt;stat_print()">DB_ENV-&gt;stat_print()</a>. method.</p></li>
+<li><p><code>:rep:</code></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>dbsql<span class="op">&gt;</span> <span class="op">.</span>stat <span class="op">:</span>rep<span class="op">:</span></span></code></pre></div>
+<p>Causes this command to print a summary of replication statistics.</p></li>
+</ul>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

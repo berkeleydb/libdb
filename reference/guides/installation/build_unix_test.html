@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Running the test suite under UNIX — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="running-the-test-suite-under-unix">Running the test suite under UNIX</h2>
+<p><span class="sect2"> <a href="build_unix_test.html#build_unix_test_sql">Building SQL Test Suite on Unix</a> </span></p>
+<p>The Berkeley DB test suite is built if you specify <a href="build_unix_conf.html#build_unix_conf.--enable-test" class="link">--enable-test</a> as an argument when configuring Berkeley DB. The test suite also requires that you configure and build the Tcl interface to the library.</p>
+<p>Before running the tests for the first time, you may need to edit the <code>include.tcl</code> file in your build directory. The Berkeley DB configuration assumes that you intend to use the version of the tclsh utility included in the Tcl installation with which Berkeley DB was configured to run the test suite, and further assumes that the test suite will be run with the libraries prebuilt in the Berkeley DB build directory. If either of these assumptions are incorrect, you will need to edit the <code>include.tcl</code> file and change the following line to correctly specify the full path to the version of tclsh with which you are going to run the test suite:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>set tclsh_path <span class="op">...</span></span></code></pre></div>
+<p>You may also need to change the following line to correctly specify the path from the directory where you are running the test suite to the location of the Berkeley DB Tcl library you built:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>set test_path <span class="op">...</span></span></code></pre></div>
+<p>It may not be necessary that this be a full path if you have configured your system's shared library mechanisms to search the directory where you built or installed the Tcl library.</p>
+<p>All Berkeley DB tests are run from within <strong>tclsh</strong>. After starting tclsh, you must source the file <code>test.tcl</code> in the test directory. For example, if you built in the <code>build_unix</code> directory of the distribution, this would be done using the following command:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> source <span class="op">../</span>test<span class="op">/</span>tcl<span class="op">/</span>test<span class="op">.</span>tcl</span></code></pre></div>
+<p>If no errors occur, you should get a "%" prompt.</p>
+<p>You are now ready to run tests in the test suite; see Running the test suite for more information.</p>
+<h3 id="building-sql-test-suite-on-unix">Building SQL Test Suite on Unix</h3>
+<p>The Berkeley DB SQL interface test suite is built if you specify <a href="build_unix_conf.html#build_unix_conf.--enable-test" class="link">--enable-test</a> and <a href="build_unix_conf.html#build_unix_conf.--enable-sql" class="link">--enable-sql</a> as arguments, when configuring Berkeley DB. The test suite also requires that you build the Berkeley DB Tcl API.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">../</span>dist<span class="op">/</span>configure <span class="op">--</span>enable<span class="op">-</span>sql <span class="op">--</span>enable<span class="op">-</span>test <span class="op">--</span>with<span class="op">-</span>tcl<span class="op">=/</span>usr<span class="op">/</span>lib</span></code></pre></div>
+<p>This builds the <span class="emphasis"><em>testfixture</em></span> project in <code>../build_unix/sql</code>.</p>
+<p>To enable extensions like full text search layer and R-Tree layer in the SQL test suite, configure with --enable-amalgamation.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

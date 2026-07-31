@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configuring the SQL Interface — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="configuring-the-sql-interface">Configuring the SQL Interface</h2>
+<p><span class="sect2"> <a href="build_unix_sql.html#config_sql">Changing Compile Options</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#idp500824">Enabling Extensions</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#build_unix_jdbc">Building the JDBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#idp571856">Using the JDBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#idp593744">Building the ODBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#bfile">Building the BFILE extension</a> </span></p>
+<p>There are a set of options you can provide to <span class="command"><strong>configure</strong></span> in order to control how the Berkeley DB SQL interface is built. These configuration options include:</p>
+<p><span class="term">--disable-log-checksum</span><br />
+Disables checksums in log records. This provides a boost to performance at the risk of log files having undetectable corruption that could prevent proper data recovery in case of database corruption.</p>
+<p>Note that while this option is meant for use with the SQL interface, it will also disable checksum for the non-SQL interfaces.</p>
+<p><span class="term">--enable-sql</span><br />
+Causes the <span class="command"><strong>dbsql</strong></span> command line interpreter to be built. Along with <span class="command"><strong>dbsql</strong></span>, this argument also builds the libdb_sqlXX.{so|la} library, a C API library that mirrors the SQLite C API.</p>
+<p><span class="term">--enable-sql_compat</span><br />
+Causes the <span class="command"><strong>sqlite3</strong></span> command line tool to be built. This tool is identical to the <span class="command"><strong>dbsql</strong></span> command line tool, except that it has the same name as the command line tool that comes with standard SQLite.</p>
+<p>In addition, the libsqlite3.{so|la} C API library is built if this option is specified. This library is identical to the libdb_sqlXX.{so|la} library that is normally built for Berkeley DB's sql interface, except that it has the same name as the library which is built for standard SQLite.</p>
+<h3 id="warning">Warning</h3>
+<p>Use this compatibility option with <span class="emphasis"><em>extreme</em></span> care. Standard SQLite is used by many programs and utilities on many different platforms. Some platforms, such as Mac OS X, come with standard SQLite built in because default applications for the platform use that library.</p>
+<p><strong>Use of this option on platforms where standard SQLite is in production use can cause unexpected runtime errors either for your own application, or for applications and utilities commonly found on the platform, depending on which library is found first in the platform's library search path.</strong></p>
+<p>Use this option <span class="emphasis"><em>only</em></span> if you know exactly what you are doing.</p>
+<p>This option is provided so that there is an easy upgrade path for legacy SQLite tools and scripts that want to use BDB SQL without rewriting the tool or script. However, data contained in standard SQLite databases must be manually migrated from the old database to your BDB SQL database even if you use this option. See the <em>Berkeley DB Getting Started with the SQL APIs</em> guide for information on migrating data from standard SQLite to BDB SQL databases.</p>
+<p>Note that in addition to the renamed command line tool and library, this option also causes versions of the command line tool and library to be built that use the normal BDB SQLite names (<span class="command"><strong>dbsql</strong></span> and libdb_sqlXX.{so|la}).</p>
+<p><span class="term">--enable-test</span><br />
+Cause the Berkeley DB SQL interface test suite to be built. This argument can also be used with either <code>--enable-sql</code> or <code>--enable-sql_compat</code> to build the SQLite Tcl test runner.</p>
+<p><span class="term">--enable-jdbc</span><br />
+Causes the JDBC driver to be built. Setting this option implies that <code>--enable-sql</code> is set, which means that the Berkeley DB SQL API will be built too.</p>
+<p>The following configuration options are useful when debugging applications:</p>
+<p><span class="term"> <a href="build_unix_conf.html#build_unix_conf.--enable-debug" class="link">--enable-debug</a> </span><br />
+Builds the Berkeley DB SQL interface with debug symbols.</p>
+<p><span class="term"> <a href="build_unix_conf.html#build_unix_conf.--enable-diagnostic" class="link">--enable-diagnostic</a> </span><br />
+Builds the Berkeley DB SQL interface with run-time debugging checks.</p>
+<p>Any arguments that you can provide to the standard SQLite configure script can also be supplied when configuring Berkeley DB SQL interface.</p>
+<h3 id="changing-compile-options">Changing Compile Options</h3>
+<p>There are several configuration options you can specify as an argument to the configure script using the standard environment variable, CFLAGS.</p>
+<p><span class="term">BDBSQL_DEFAULT_PAGE_SIZE</span><br />
+To set the default page size when you create a database, specify the BDBSQL_DEFAULT_PAGE_SIZE flag. The value assigned must be a 0, 512, 1024, 2048, 4096, 8192 16384, 32768, or 65536. The default value is 4096. If the value is set to zero, Berkeley DB queries the file system to determine the best page size, and the value of SQLITE_DEFAULT_PAGE_SIZE is used to calculate the cache size, as the cache size is specified as a number of pages.</p>
+<p><span class="term">BDBSQL_FILE_PER_TABLE</span><br />
+To generate each table in a separate file, rather than as subdatabases in a single file, specify the BDBSQL_FILE_PER_TABLE flag. When this option is enabled, the SQL database name is used as a directory name. This directory contains one file for the metadata and one file each for every table created by the SQL API. Note that adding or deleting files from the database directory may corrupt your database. To backup the metadata (schema), make a copy of the <code>metadata</code> and <code>table00001</code> files from the database directory. Make a new copy whenever the schema is changed.</p>
+<p><span class="term">BDBSQL_LOG_REGIONMAX</span><br />
+To configure the log region size for the underlying storage engine, specify the BDBSQL_LOG_REGIONMAX flag. For more information, see <a href="../../api/c/envget_lg_regionmax.html" class="olink">DB_ENV-&gt;get_lg_regionmax()</a>.</p>
+<p><span class="term">BDBSQL_OMIT_LEAKCHECK </span><br />
+For Berkeley DB to use the default system allocation routines rather than the SQLite allocation routines, specify the BDBSQL_OMIT_LEAKCHECK flag.</p>
+<p><span class="term">BDBSQL_OMIT_LOG_REMOVE </span><br />
+Berkeley DB automatically removes log files that are not required any more, that is, files that are older than the most recent checkpoint. To disable this functionality, specify the BDBSQL_OMIT_LOG_REMOVE flag. It is necessary to provide this flag if you are using replication with Berkeley DB SQL.</p>
+<p><span class="term">BDBSQL_OMIT_SHARING </span><br />
+To create a private environment rather than a shared environment, specify the BDBSQL_OMIT_SHARING flag. That is, the cache and other region files will be created in memory rather than using file backed shared memory. For more information, see the DB_PRIVATE flag of <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a>.</p>
+<p><span class="term">BDBSQL_SINGLE_THREAD </span><br />
+To disable locking and thread safe connections, specify the BDBSQL_SINGLE_THREAD flag. If an application is going to use Berkeley DB from a single thread and a single process, enabling this flag can deliver significant performance advantages.</p>
+<p><span class="term">SQLITE_DEFAULT_CACHE_SIZE </span><br />
+SQLite provides an in-memory cache which you size according to the maximum number of database pages that you want to hold in memory at any given time. Berkeley DB's in-memory cache feature performs the same function as SQLite. To specify the suggested maximum number of pages of disk cache that will be allocated per open database file specify the SQLITE_DEFAULT_CACHE_SIZE flag. Default value is 2000 pages. For more information, see the SQLite documentation on <a href="http://www.sqlite.org/pragma.html#pragma_default_cache_size" class="ulink" target="_top">PRAGMA default_cache_size</a>.</p>
+<p><span class="term">SQLITE_DEFAULT_JOURNAL_SIZE_LIMIT </span><br />
+For SQLite, this pragma identifies the maximum size that the journal file is allowed to be. Berkeley DB does not have a journal file, but it writes and uses log files. A new log file is created when the current log file has reached the defined maximum size. To define this maximum size for a log file, specify the SQLITE_DEFAULT_JOURNAL_SIZE_LIMIT flag. Default value is 10 MB for the Berkeley DB SQL interface.</p>
+<h3 id="enabling-extensions">Enabling Extensions</h3>
+<p>The Berkeley DB SQL API provides extensions such as full text search and R-Tree index. By default, these extensions are disabled. To enable an extension in the Berkeley DB SQL interface, specify the related option as an argument to the configure script using the standard environment variable, CPPFLAGS.</p>
+<p><span class="term">SQLITE_ENABLE_FTS3</span><br />
+Enable building the Berkeley DB full text search layer</p>
+<p><span class="term">SQLITE_ENABLE_RTREE</span><br />
+Enables the Berkeley DB R-Tree layer.</p>
+<p>See the SQLite Documentation for more information on <a href="http://www.sqlite.org/fts3.html" class="ulink" target="_top">full text search</a> and <a href="http://www.sqlite.org/rtree.html" class="ulink" target="_top">R-Tree</a>.</p>
+<h3 id="building-the-jdbc-driver">Building the JDBC Driver</h3>
+<p>This section describes how to build the JDBC driver code using <code>autoconf</code>, which is the only method supported and tested by the Berkeley DB team.</p>
+<p>To build the JDBC driver, you must have Sun Java Development Kit 1.1 or above installed.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>cd build_unix</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">../</span>dist<span class="op">/</span>configure <span class="op">--</span>enable<span class="op">-</span>jdbc <span class="op">--</span>prefix<span class="op">=&lt;</span>install path<span class="op">&gt;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    make install</span></code></pre></div>
+<p>You can test the build by entering the following commands from the <code>build_unix/jdbc</code> directory:</p>
+<table>
+<tbody>
+<tr>
+<td>javac -classpath ./sqlite.jar test3.java</td>
+</tr>
+<tr>
+<td>java -Djava.library.path=./.libs -classpath ./sqlite.jar:. test3</td>
+</tr>
+</tbody>
+</table>
+<h3 id="using-the-jdbc-driver">Using the JDBC Driver</h3>
+<p>This section describes how to download, build, and run sample programs using the built JDBC driver.</p>
+<h4 id="downloading-jdbc-sample-code">Downloading JDBC Sample Code</h4>
+<p>The download link for JDBC sample code is available on the <a href="http://www.oracle.com/technetwork/java/index-139949.html" class="ulink" target="_top">Oracle Technology Network (OTN)</a> page. You can identify the link by the "JDBC programming examples from all three editions (ZIP format)" text beside it.</p>
+<h4 id="modifying-sample-code">Modifying Sample Code</h4>
+<p>Before running the example code, do the following:</p>
+<ol type="1">
+<li><p>Unzip the file containing the sample code to a new directory (for example, jdbc_ex).</p></li>
+<li><p>Substitute <code>jdbc:sqlite:/&lt;db-file-name&gt;</code> for the generic JDBC URL that appears in the code. That is, put <code>jdbc:sqlite:/&lt;db-file-name&gt;</code> between the quotation marks in the line:</p>
+<p><code>String url = "jdbc:mySubprotocol:myDataSource";</code></p>
+<p>Note: The &lt;db-file-name&gt; can either be an absolute path name like <code>"/jdbc_ex_db/myDataSource"</code>, or a relative path-file-name like <code>"../jdbc_ex_db/myDataSource"</code>, or a file name, like <code>"myDataSource"</code>, in which case the database file will be stored at the current directory.</p></li>
+<li><p>Substitute <code>SQLite.JDBCDriver</code> for <code>myDriver.ClassName</code> in the line: <code>Class.forName("myDriver.ClassName");</code></p></li>
+<li><p>Optionally substitute the username and password you use for your database in the following: <code>"myLogin", "myPassword"</code>.</p></li>
+<li><p>If your JDK version is above 1.5, change the variable name <code>enum</code> in <code>OutputApplet.java</code> to some other variable name because, as of JDK release 5 <code>enum</code> is a keyword and can not be used as an identifier.</p></li>
+</ol>
+<h4 id="building-and-running-the-jdbc-sample-code">Building and Running the JDBC Sample code</h4>
+<p>See <a href="build_unix_sql.html#build_unix_jdbc" class="xref" title="Building the JDBC Driver">Building the JDBC Driver</a> for instructions on building the JDBC driver.</p>
+<p>To build and run the JDBC examples do the following:</p>
+<ol type="1">
+<li><p>Copy <code>build_unix/jdbc/sqlite.jar</code> and <code>build_unix/jdbc/.libs/libsqlite_jni.so</code> to the <code>jdbc_ex</code> directory.</p></li>
+<li><p>In the <code>jdbc_ex</code> directory, run the following commands:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>    $ javac <span class="op">-</span>classpath <span class="op">./</span>sqlite<span class="op">.</span>jar <span class="op">*.</span>java</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    $ java <span class="op">-</span>classpath <span class="op">.:</span>sqlite<span class="op">.</span>jar <span class="op">-</span>Djava<span class="op">.</span>library<span class="op">.</span>path<span class="op">=.</span> \</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">&lt;</span>ClassName<span class="op">,</span> eg<span class="op">.</span> CreateCoffees<span class="op">&gt;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    </span></code></pre></div></li>
+<li><p>After you run the CreateCoffees example, use the <code>dbsql</code> executable to open the <code>myDataSource</code> database file and check if the table <code>COFFEES</code> has been successfully created in the database.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>    $ dbsql myDataSourcedbsql<span class="op">&gt;</span> <span class="op">.</span>tables</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    COFFEES</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    dbsql<span class="op">&gt;</span> <span class="op">.</span>dump</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    PRAGMA foreign_keys<span class="op">=</span>OFF<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    BEGIN TRANSACTION<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    CREATE TABLE COFFEES <span class="op">(</span>COF_NAME varchar<span class="op">(</span><span class="dv">32</span><span class="op">),</span>\</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    SUP_ID <span class="dt">int</span><span class="op">,</span> PRICE <span class="dt">float</span><span class="op">,</span> SALES <span class="dt">int</span><span class="op">,</span> TOTAL <span class="dt">int</span><span class="op">);</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    COMMIT<span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    dbsql<span class="op">&gt;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    </span></code></pre></div></li>
+<li><p>Repeat step 3 to run other examples.</p>
+<p>Note: Some examples, such as AutoGenKeys, are not yet supported by BDB JDBC driver. The <code>SQLFeatureNotSupportedException</code> is displayed for those unsupported examples.</p></li>
+</ol>
+<h3 id="building-the-odbc-driver">Building the ODBC Driver</h3>
+<p>This section describes how to build the ODBC driver.</p>
+<h4 id="configuring-your-system">Configuring Your System</h4>
+<p>To configure your system prior to building the ODBC driver, do the following:</p>
+<ol type="1">
+<li>Download and install the latest <a href="http://www.unixodbc.org" class="ulink" target="_top">unixODBC</a> if ODBC is not already installed on your system.</li>
+<li>Configure the ODBC server to work with SQLite databases. Follow <a href="http://www.ch-werner.de/sqliteodbc/html/index.html" class="ulink" target="_top">these instructions</a> from Christian Werner.</li>
+</ol>
+<h4 id="building-the-library">Building the Library</h4>
+<p>To build the library, do the following:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    $ cd db<span class="op">-</span><span class="fl">5.3</span><span class="er">.XX</span><span class="op">/</span>build_unix</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    $ CFLAGS<span class="op">=</span><span class="st">&quot;-fPIC&quot;</span> <span class="op">../</span>dist<span class="op">/</span>configure <span class="op">--</span>enable<span class="op">-</span>sql_compat <span class="op">--</span>disable<span class="op">-</span>shared</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    $ make</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    $ cd <span class="op">../</span>lang<span class="op">/</span>sql<span class="op">/</span>odbc</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    $ CFLAGS<span class="op">=</span><span class="st">&quot;-DHAVE_ERRNO_H -I../../../build_unix -I../../../src/dbinc </span><span class="op">\</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="st">             -I../sqlite/src&quot;</span> LDFLAGS<span class="op">=</span><span class="st">&quot;../../../build_unix/libdb-5.3.a&quot;</span> \ </span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>             <span class="op">./</span>configure <span class="op">--</span>with<span class="op">-</span>sqlite3<span class="op">=../</span>generated</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    $ make</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    </span></code></pre></div>
+<p>The <code>libsqlite3odbc.so</code> library containing a statically linked version of Berkeley DB SQL is now built.</p>
+<p>NOTE: The final <code>make</code> command above is known to generate a warning when using GCC. The warning states: <code>Warning: Linking the shared library libsqlite3odbc.la against the static library ../../build_unix/libdb-5.3.a is not portable!</code>. It is generally safe to ignore the warning when using the generated library.</p>
+<h4 id="testing-the-odbc-driver">Testing the ODBC Driver</h4>
+<p>The steps to verify that the installed driver works are as follows:</p>
+<ol type="1">
+<li><p>Alter the <code>/etc/odbcinst.ini</code> and <code>~/.odbc.ini</code> configuration files to refer to the libsqlite3odbc.so file built above.</p></li>
+<li><p>Create a data source, and launch a data source viewer application by doing the following:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>$ mkdir <span class="op">~/</span>databases</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    $ cd <span class="op">~/</span>databases</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    $ <span class="op">/</span>path<span class="op">/</span>to<span class="op">/</span>Berkeley DB<span class="op">/</span>build_unix<span class="op">/</span>sqlite3 mytest<span class="op">.</span>db</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    dbsql<span class="op">&gt;</span> CREATE TABLE t1<span class="op">(</span>x<span class="op">);</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    dbsql<span class="op">&gt;</span> <span class="op">.</span>quit<span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    $ DataManager </span></code></pre></div>
+<p>The final step opens a GUI application that displays ODBC data sources on a system. You should be able to find the <code>mytest.db</code> data source just created.</p></li>
+</ol>
+<h3 id="building-the-bfile-extension">Building the BFILE extension</h3>
+<p>The BFILE extension allows you to store binary files outside of the database, but still operate upon them as if they were stored within the database. To enable this extension, use the <code>--enable-load-extension</code> configuration flag. For example:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>$ cd <span class="op">&lt;</span>db<span class="op">&gt;/</span>build_unix</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>$ export DBSQL_DIR<span class="op">=</span>$PWD<span class="op">/../</span>install</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>$ <span class="op">../</span>dist<span class="op">/</span>configure <span class="op">--</span>enable<span class="op">-</span>sql <span class="op">--</span>enable<span class="op">-</span>load<span class="op">-</span>extension \</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>     <span class="op">--</span>prefix<span class="op">=</span>$DBSQL_DIR <span class="op">&amp;&amp;</span> make <span class="op">&amp;&amp;</span> make install</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>$ cd <span class="op">../</span>lang<span class="op">/</span>sql<span class="op">/</span>sqlite<span class="op">/</span>ext<span class="op">/</span>bfile<span class="op">/</span>build</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>$ make <span class="op">&amp;&amp;</span> make install</span></code></pre></div>
+<p>BFILE extensions are only supported for Unix platforms.</p>
+<p>Note that the extension support has two interfaces: SQL expressions and a C-functions API. By default, the SQL expressions are built when you use <code>--enable-load_extension</code>. To use the C-functions API, edit <code>&lt;db&gt;/lang/sql/ext/bfile/build/Makefile</code> and set <code>ENABLE_BFILE_CAPI</code> to <code>1</code>.</p>
+<p>Once you have enabled the extension and built the library, you can run the included example:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>$ cd lang<span class="op">/</span>sql<span class="op">/</span>sqlite<span class="op">/</span>ext<span class="op">/</span>bfile<span class="op">/</span>build</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>$ export LD_LIBRARY_PATH<span class="op">=</span>$PWD<span class="op">:</span>$DBSQL_DIR<span class="op">/</span>lib</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>$ <span class="op">./</span>bfile_example_sql     # <span class="cf">for</span> SQL expressions interface</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>$ <span class="op">./</span>bfile_example_capi    # <span class="cf">for</span> C<span class="op">-</span>functions API</span></code></pre></div>
+<p>For more information on using the BFILE extension, see the <em>Berkeley DB Getting Started with the SQL APIs</em> guide.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

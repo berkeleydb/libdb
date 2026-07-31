@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 7.  Building Berkeley DB for UNIX/POSIX — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="chapter-7--building-berkeley-db-for-unixposix">Chapter 7.  Building Berkeley DB for UNIX/POSIX</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="build_unix.html#build_unix_intro">Building for UNIX/POSIX</a> </span></p>
+<p><span class="sect2"> <a href="build_unix.html#build_unix_sqlinter">Building the Berkeley DB SQL Interface</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_conf.html">Configuring Berkeley DB</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_sql.html">Configuring the SQL Interface</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#config_sql">Changing Compile Options</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#idp500824">Enabling Extensions</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#build_unix_jdbc">Building the JDBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#idp571856">Using the JDBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#idp593744">Building the ODBC Driver</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_sql.html#bfile">Building the BFILE extension</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_small.html">Building a small memory footprint library</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_flags.html">Changing compile or load options</a> </span></p>
+<p><span class="sect1"> <a href="cross_compile_unix.html">Cross-Compiling on Unix</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_install.html">Installing Berkeley DB</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_shlib.html">Dynamic shared libraries</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_test.html">Running the test suite under UNIX</a> </span></p>
+<p><span class="sect2"> <a href="build_unix_test.html#build_unix_test_sql">Building SQL Test Suite on Unix</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_notes.html">Architecture independent FAQ</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_aix.html">AIX</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_freebsd.html">FreeBSD</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_iphone.html">Apple iOS (iPhone OS)</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_irix.html">IRIX</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_linux.html">Linux</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_macosx.html">Mac OS X</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_qnx.html">QNX</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_sco.html">SCO</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_solaris.html">Solaris</a> </span></p>
+<p><span class="sect1"> <a href="build_unix_sunos.html">SunOS</a> </span></p>
+<h2 id="building-for-unixposix">Building for UNIX/POSIX</h2>
+<p><span class="sect2"> <a href="build_unix.html#build_unix_sqlinter">Building the Berkeley DB SQL Interface</a> </span></p>
+<p>The Berkeley DB distribution builds up to four separate libraries: the base C API Berkeley DB library and the optional C++, Java, and Tcl API libraries. For portability reasons, each library is standalone and contains the full Berkeley DB support necessary to build applications; that is, the C++ API Berkeley DB library does not require any other Berkeley DB libraries to build and run C++ applications.</p>
+<p>Building for Linux, Apple iOS (known as iPhone OS previously), Mac OS X or the QNX Neutrino release is the same as building for a conventional UNIX platform.</p>
+<p>The Berkeley DB distribution uses the Free Software Foundation's <a href="http://www.gnu.org/software/autoconf/autoconf.html" class="ulink" target="_top">autoconf</a> and <a href="http://www.gnu.org/software/libtool/libtool.html" class="ulink" target="_top">libtool</a> tools to build on UNIX platforms. In general, the standard configuration and installation options for these tools apply to the Berkeley DB distribution.</p>
+<p>To perform a standard UNIX build of Berkeley DB, change to the <strong>build_unix</strong> directory and then enter the following two commands:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">../</span>dist<span class="op">/</span>configure</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>make</span></code></pre></div>
+<p>This will build the Berkeley DB library.</p>
+<p>To install the Berkeley DB library, enter the following command:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>make install</span></code></pre></div>
+<p>To rebuild Berkeley DB, enter:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>make clean</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>make</span></code></pre></div>
+<p>If you change your mind about how Berkeley DB is to be configured, you must start from scratch by entering the following command:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>make realclean</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="op">../</span>dist<span class="op">/</span>configure</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>make</span></code></pre></div>
+<p>To uninstall Berkeley DB, enter:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>make uninstall</span></code></pre></div>
+<p>To build multiple UNIX versions of Berkeley DB in the same source tree, create a new directory at the same level as the build_unix directory, and then configure and build in that directory as described previously.</p>
+<h3 id="building-the-berkeley-db-sql-interface">Building the Berkeley DB SQL Interface</h3>
+<p>To perform a standard UNIX build of the Berkeley DB SQL interface, go to the <strong>build_unix</strong> directory and then enter the following two commands:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="op">../</span>dist<span class="op">/</span>configure <span class="op">--</span>enable<span class="op">-</span>sql</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>make </span></code></pre></div>
+<p>This creates a library, <code>libdb_sql</code>, and a command line tool, <code>dbsql</code>. You can create and manipulate SQL databases using the <code>dbsql</code> shell.</p>
+<p>You can optionally provide the <code>--enable-sql_compat</code> argument to the <code>configure</code> script. In addition to creating <code>libdb_sql</code> and <code>dbsql</code> this causes a thin wrapper library called <code>libsqlite3</code> and a command line tool called <code>sqlite3</code> to be built. This library can be used as a drop-in replacement for SQLite. The <code>sqlite3</code> command line tool is identical to the <code>dbsql</code> executable but is named so that existing scripts for SQLite can easily work with Berkeley DB.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="op">../</span>dist<span class="op">/</span>configure <span class="op">--</span>enable<span class="op">-</span>sql_compat</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>make </span></code></pre></div>
+<p>There are several arguments you can specify when configuring the Berkeley DB SQL Interface. See <a href="build_unix_sql.html" class="xref" title="Configuring the SQL Interface">Configuring the SQL Interface</a> for more information.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

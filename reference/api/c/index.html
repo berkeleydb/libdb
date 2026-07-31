@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Berkeley DB C API Reference — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h1 id="berkeley-db-c-api-reference">Berkeley DB C API Reference</h1>
+<table>
+<thead>
+<tr>
+<th>DB C API</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="dbassociate.html" class="xref" title="DB-&gt;associate()">DB-&gt;associate()</a></td>
+<td>Associate a secondary index</td>
+</tr>
+<tr>
+<td><a href="dbassociate_foreign.html" class="xref" title="DB-&gt;associate_foreign()">DB-&gt;associate_foreign()</a></td>
+<td>Associate a foreign index</td>
+</tr>
+<tr>
+<td><a href="dbclose.html" class="xref" title="DB-&gt;close()">DB-&gt;close()</a></td>
+<td>Close a database</td>
+</tr>
+<tr>
+<td><a href="dbcompact.html" class="xref" title="DB-&gt;compact()">DB-&gt;compact()</a></td>
+<td>Compact a database</td>
+</tr>
+<tr>
+<td><a href="db_copy.html" class="xref" title="db_copy">db_copy</a></td>
+<td>Copy a named database to a target directory</td>
+</tr>
+<tr>
+<td><a href="dbcreate.html" class="xref" title="db_create">db_create</a></td>
+<td>Create a database handle</td>
+</tr>
+<tr>
+<td><a href="dbdel.html" class="xref" title="DB-&gt;del()">DB-&gt;del()</a></td>
+<td>Delete items from a database</td>
+</tr>
+<tr>
+<td><a href="dberr.html" class="xref" title="DB-&gt;err()">DB-&gt;err()</a></td>
+<td>Error message</td>
+</tr>
+<tr>
+<td><a href="dbexists.html" class="xref" title="DB-&gt;exists()">DB-&gt;exists()</a></td>
+<td>Return if an item appears in a database</td>
+</tr>
+<tr>
+<td><a href="dbfd.html" class="xref" title="DB-&gt;fd()">DB-&gt;fd()</a></td>
+<td>Return a file descriptor from a database</td>
+</tr>
+<tr>
+<td><a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a></td>
+<td>Get items from a database</td>
+</tr>
+<tr>
+<td><a href="dbget_byteswapped.html" class="xref" title="DB-&gt;get_byteswapped()">DB-&gt;get_byteswapped()</a></td>
+<td>Return if the underlying database is in host order</td>
+</tr>
+<tr>
+<td><a href="dbget_dbname.html" class="xref" title="DB-&gt;get_dbname()">DB-&gt;get_dbname()</a></td>
+<td>Return the file and database name</td>
+</tr>
+<tr>
+<td><a href="dbget_multiple.html" class="xref" title="DB-&gt;get_multiple()">DB-&gt;get_multiple()</a></td>
+<td>Return if the database handle references multiple databases</td>
+</tr>
+<tr>
+<td><a href="dbget_open_flags.html" class="xref" title="DB-&gt;get_open_flags()">DB-&gt;get_open_flags()</a></td>
+<td>Returns the flags specified to DB-&gt;open</td>
+</tr>
+<tr>
+<td><a href="dbget_type.html" class="xref" title="DB-&gt;get_type()">DB-&gt;get_type()</a></td>
+<td>Return the database type</td>
+</tr>
+<tr>
+<td><a href="dbjoin.html" class="xref" title="DB-&gt;join()">DB-&gt;join()</a></td>
+<td>Perform a database join on cursors</td>
+</tr>
+<tr>
+<td><a href="dbkey_range.html" class="xref" title="DB-&gt;key_range()">DB-&gt;key_range()</a></td>
+<td>Return estimate of key location</td>
+</tr>
+<tr>
+<td><a href="dbopen.html" class="xref" title="DB-&gt;open()">DB-&gt;open()</a></td>
+<td>Open a database</td>
+</tr>
+<tr>
+<td><a href="dbput.html" class="xref" title="DB-&gt;put()">DB-&gt;put()</a></td>
+<td>Store items into a database</td>
+</tr>
+<tr>
+<td><a href="dbremove.html" class="xref" title="DB-&gt;remove()">DB-&gt;remove()</a></td>
+<td>Remove a database</td>
+</tr>
+<tr>
+<td><a href="dbrename.html" class="xref" title="DB-&gt;rename()">DB-&gt;rename()</a></td>
+<td>Rename a database</td>
+</tr>
+<tr>
+<td><a href="dbset_alloc.html" class="xref" title="DB-&gt;set_alloc()">DB-&gt;set_alloc()</a></td>
+<td>Set local space allocation functions</td>
+</tr>
+<tr>
+<td><a href="dbset_append_recno.html" class="xref" title="DB-&gt;set_append_recno()">DB-&gt;set_append_recno()</a></td>
+<td>Set record append callback</td>
+</tr>
+<tr>
+<td><a href="dbset_bt_compare.html" class="xref" title="DB-&gt;set_bt_compare()">DB-&gt;set_bt_compare()</a></td>
+<td>Set a Btree comparison function</td>
+</tr>
+<tr>
+<td><a href="dbset_bt_compress.html" class="xref" title="DB-&gt;set_bt_compress()">DB-&gt;set_bt_compress()</a></td>
+<td>Set Btree compression functions</td>
+</tr>
+<tr>
+<td><a href="dbset_bt_minkey.html" class="xref" title="DB-&gt;set_bt_minkey()">DB-&gt;set_bt_minkey()</a>, <a href="dbget_bt_minkey.html" class="xref" title="DB-&gt;get_bt_minkey()">DB-&gt;get_bt_minkey()</a></td>
+<td>Set/get the minimum number of keys per Btree page</td>
+</tr>
+<tr>
+<td><a href="dbset_bt_prefix.html" class="xref" title="DB-&gt;set_bt_prefix()">DB-&gt;set_bt_prefix()</a></td>
+<td>Set a Btree prefix comparison function</td>
+</tr>
+<tr>
+<td><a href="dbset_cachesize.html" class="xref" title="DB-&gt;set_cachesize()">DB-&gt;set_cachesize()</a>, <a href="dbget_cachesize.html" class="xref" title="DB-&gt;get_cachesize()">DB-&gt;get_cachesize()</a></td>
+<td>Set/get the database cache size</td>
+</tr>
+<tr>
+<td><a href="dbset_create_dir.html" class="xref" title="DB-&gt;set_create_dir()">DB-&gt;set_create_dir()</a>, <a href="dbget_create_dir.html" class="xref" title="DB-&gt;get_create_dir()">DB-&gt;get_create_dir()</a></td>
+<td>Set/get the directory in which a database is placed</td>
+</tr>
+<tr>
+<td><a href="dbset_dup_compare.html" class="xref" title="DB-&gt;set_dup_compare()">DB-&gt;set_dup_compare()</a></td>
+<td>Set a duplicate comparison function</td>
+</tr>
+<tr>
+<td><a href="dbset_encrypt.html" class="xref" title="DB-&gt;set_encrypt()">DB-&gt;set_encrypt()</a>, <a href="dbget_encrypt_flags.html" class="xref" title="DB-&gt;get_encrypt_flags()">DB-&gt;get_encrypt_flags()</a></td>
+<td>Set/get the database cryptographic key</td>
+</tr>
+<tr>
+<td><a href="dbset_errcall.html" class="xref" title="DB-&gt;set_errcall()">DB-&gt;set_errcall()</a></td>
+<td>Set error message callback</td>
+</tr>
+<tr>
+<td><a href="dbset_errfile.html" class="xref" title="DB-&gt;set_errfile()">DB-&gt;set_errfile()</a>, <a href="dbget_errfile.html" class="xref" title="DB-&gt;get_errfile()">DB-&gt;get_errfile()</a></td>
+<td>Set/get error message FILE</td>
+</tr>
+<tr>
+<td><a href="dbset_errpfx.html" class="xref" title="DB-&gt;set_errpfx()">DB-&gt;set_errpfx()</a>, <a href="dbget_errpfx.html" class="xref" title="DB-&gt;get_errpfx()">DB-&gt;get_errpfx()</a></td>
+<td>Set/get error message prefix</td>
+</tr>
+<tr>
+<td><a href="dbset_feedback.html" class="xref" title="DB-&gt;set_feedback()">DB-&gt;set_feedback()</a></td>
+<td>Set feedback callback</td>
+</tr>
+<tr>
+<td><a href="dbset_flags.html" class="xref" title="DB-&gt;set_flags()">DB-&gt;set_flags()</a>, <a href="dbget_flags.html" class="xref" title="DB-&gt;get_flags()">DB-&gt;get_flags()</a></td>
+<td>Set/get general database configuration</td>
+</tr>
+<tr>
+<td><a href="dbset_h_compare.html" class="xref" title="DB-&gt;set_h_compare()">DB-&gt;set_h_compare()</a></td>
+<td>Set a Hash comparison function</td>
+</tr>
+<tr>
+<td><a href="dbset_h_ffactor.html" class="xref" title="DB-&gt;set_h_ffactor()">DB-&gt;set_h_ffactor()</a>, <a href="dbget_h_ffactor.html" class="xref" title="DB-&gt;get_h_ffactor()">DB-&gt;get_h_ffactor()</a></td>
+<td>Set/get the Hash table density</td>
+</tr>
+<tr>
+<td><a href="dbset_h_hash.html" class="xref" title="DB-&gt;set_h_hash()">DB-&gt;set_h_hash()</a></td>
+<td>Set a hashing function</td>
+</tr>
+<tr>
+<td><a href="dbset_h_nelem.html" class="xref" title="DB-&gt;set_h_nelem()">DB-&gt;set_h_nelem()</a>, <a href="dbget_h_nelem.html" class="xref" title="DB-&gt;get_h_nelem()">DB-&gt;get_h_nelem()</a></td>
+<td>Set/get the Hash table size</td>
+</tr>
+<tr>
+<td><a href="dbset_heapsize.html" class="xref" title="DB-&gt;set_heapsize()">DB-&gt;set_heapsize()</a>, <a href="dbget_heapsize.html" class="xref" title="DB-&gt;get_heapsize()">DB-&gt;get_heapsize()</a></td>
+<td>Set/get the database heap size</td>
+</tr>
+<tr>
+<td><a href="dbset_heap_regionsize.html" class="xref" title="DB-&gt;set_heap_regionsize()">DB-&gt;set_heap_regionsize()</a>, <a href="dbget_heap_regionsize.html" class="xref" title="DB-&gt;get_heap_regionsize()">DB-&gt;get_heap_regionsize()</a></td>
+<td>Set/get the database region size</td>
+</tr>
+<tr>
+<td><a href="dbset_lk_exclusive.html" class="xref" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a>, <a href="dbget_lk_exclusive.html" class="xref" title="DB-&gt;get_lk_exclusive()">DB-&gt;get_lk_exclusive()</a></td>
+<td>Set/get exclusive database locking</td>
+</tr>
+<tr>
+<td><a href="dbset_lorder.html" class="xref" title="DB-&gt;set_lorder()">DB-&gt;set_lorder()</a>, <a href="dbget_lorder.html" class="xref" title="DB-&gt;get_lorder()">DB-&gt;get_lorder()</a></td>
+<td>Set/get the database byte order</td>
+</tr>
+<tr>
+<td><a href="dbset_msgcall.html" class="xref" title="DB-&gt;set_msgcall()">DB-&gt;set_msgcall()</a></td>
+<td>Set informational message callback</td>
+</tr>
+<tr>
+<td><a href="dbset_msgfile.html" class="xref" title="DB-&gt;set_msgfile()">DB-&gt;set_msgfile()</a>, <a href="dbget_msgfile.html" class="xref" title="DB-&gt;get_msgfile()">DB-&gt;get_msgfile()</a></td>
+<td>Set/get informational message FILE</td>
+</tr>
+<tr>
+<td><a href="dbset_pagesize.html" class="xref" title="DB-&gt;set_pagesize()">DB-&gt;set_pagesize()</a>, <a href="dbget_pagesize.html" class="xref" title="DB-&gt;get_pagesize()">DB-&gt;get_pagesize()</a></td>
+<td>Set/get the underlying database page size</td>
+</tr>
+<tr>
+<td><a href="dbset_partition.html" class="xref" title="DB-&gt;set_partition()">DB-&gt;set_partition()</a></td>
+<td>Set database partitioning</td>
+</tr>
+<tr>
+<td><a href="dbset_partition_dirs.html" class="xref" title="DB-&gt;set_partition_dirs()">DB-&gt;set_partition_dirs()</a>, <a href="dbget_partition_dirs.html" class="xref" title="DB-&gt;get_partition_dirs()">DB-&gt;get_partition_dirs()</a></td>
+<td>Set/get the directories used for database partitions</td>
+</tr>
+<tr>
+<td><a href="dbset_priority.html" class="xref" title="DB-&gt;set_priority()">DB-&gt;set_priority()</a>, <a href="dbget_priority.html" class="xref" title="DB-&gt;get_priority()">DB-&gt;get_priority()</a></td>
+<td>Set/get cache page priority</td>
+</tr>
+<tr>
+<td><a href="dbset_q_extentsize.html" class="xref" title="DB-&gt;set_q_extentsize()">DB-&gt;set_q_extentsize()</a>, <a href="dbget_q_extentsize.html" class="xref" title="DB-&gt;get_q_extentsize()">DB-&gt;get_q_extentsize()</a></td>
+<td>Set/get Queue database extent size</td>
+</tr>
+<tr>
+<td><a href="dbset_re_delim.html" class="xref" title="DB-&gt;set_re_delim()">DB-&gt;set_re_delim()</a>, <a href="dbget_re_delim.html" class="xref" title="DB-&gt;get_re_delim()">DB-&gt;get_re_delim()</a></td>
+<td>Set/get the variable-length record delimiter</td>
+</tr>
+<tr>
+<td><a href="dbset_re_len.html" class="xref" title="DB-&gt;set_re_len()">DB-&gt;set_re_len()</a>, <a href="dbget_re_len.html" class="xref" title="DB-&gt;get_re_len()">DB-&gt;get_re_len()</a></td>
+<td>Set/get the fixed-length record length</td>
+</tr>
+<tr>
+<td><a href="dbset_re_pad.html" class="xref" title="DB-&gt;set_re_pad()">DB-&gt;set_re_pad()</a>, <a href="dbget_re_pad.html" class="xref" title="DB-&gt;get_re_pad()">DB-&gt;get_re_pad()</a></td>
+<td>Set/get the fixed-length record pad byte</td>
+</tr>
+<tr>
+<td><a href="dbset_re_source.html" class="xref" title="DB-&gt;set_re_source()">DB-&gt;set_re_source()</a>, <a href="dbget_re_source.html" class="xref" title="DB-&gt;get_re_source()">DB-&gt;get_re_source()</a></td>
+<td>Set/get the backing Recno text file</td>
+</tr>
+<tr>
+<td><a href="dbsort_multiple.html" class="xref" title="DB-&gt;sort_multiple()">DB-&gt;sort_multiple()</a></td>
+<td>Sort a set of DBTs</td>
+</tr>
+<tr>
+<td><a href="dbstat.html" class="xref" title="DB-&gt;stat()">DB-&gt;stat()</a></td>
+<td>Database statistics</td>
+</tr>
+<tr>
+<td><a href="dbstat_print.html" class="xref" title="DB-&gt;stat_print()">DB-&gt;stat_print()</a></td>
+<td>Display database statistics</td>
+</tr>
+<tr>
+<td><a href="dbsync.html" class="xref" title="DB-&gt;sync()">DB-&gt;sync()</a></td>
+<td>Flush a database to stable storage</td>
+</tr>
+<tr>
+<td><a href="dbtruncate.html" class="xref" title="DB-&gt;truncate()">DB-&gt;truncate()</a></td>
+<td>Empty a database</td>
+</tr>
+<tr>
+<td><a href="dbupgrade.html" class="xref" title="DB-&gt;upgrade()">DB-&gt;upgrade()</a></td>
+<td>Upgrade a database</td>
+</tr>
+<tr>
+<td><a href="dbverify.html" class="xref" title="DB-&gt;verify()">DB-&gt;verify()</a></td>
+<td>Verify/salvage a database</td>
+</tr>
+<tr>
+<td><a href="db_heap_rid.html" class="xref" title="DB_HEAP_RID">DB_HEAP_RID</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="dbcursor.html" class="xref" title="DB-&gt;cursor()">DB-&gt;cursor()</a></td>
+<td>Create a cursor handle</td>
+</tr>
+<tr>
+<td><a href="dbcclose.html" class="xref" title="DBcursor-&gt;close()">DBcursor-&gt;close()</a></td>
+<td>Close a cursor handle</td>
+</tr>
+<tr>
+<td><a href="dbccmp.html" class="xref" title="DBcursor-&gt;cmp()">DBcursor-&gt;cmp()</a></td>
+<td>Compare two cursors for equality.</td>
+</tr>
+<tr>
+<td><a href="dbccount.html" class="xref" title="DBcursor-&gt;count()">DBcursor-&gt;count()</a></td>
+<td>Return count of duplicates for current key</td>
+</tr>
+<tr>
+<td><a href="dbcdel.html" class="xref" title="DBcursor-&gt;del()">DBcursor-&gt;del()</a></td>
+<td>Delete current key/data pair</td>
+</tr>
+<tr>
+<td><a href="dbcdup.html" class="xref" title="DBcursor-&gt;dup()">DBcursor-&gt;dup()</a></td>
+<td>Duplicate the cursor handle</td>
+</tr>
+<tr>
+<td><a href="dbcget.html" class="xref" title="DBcursor-&gt;get()">DBcursor-&gt;get()</a></td>
+<td>Retrieve by cursor</td>
+</tr>
+<tr>
+<td><a href="dbcput.html" class="xref" title="DBcursor-&gt;put()">DBcursor-&gt;put()</a></td>
+<td>Store by cursor</td>
+</tr>
+<tr>
+<td><a href="dbcset_priority.html" class="xref" title="DBcursor-&gt;set_priority()">DBcursor-&gt;set_priority()</a>, <a href="dbcget_priority.html" class="xref" title="DBcursor-&gt;get_priority()">DBcursor-&gt;get_priority()</a></td>
+<td>Set/get the cursor's cache priority</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_INIT.html" class="xref" title="DB_MULTIPLE_INIT">DB_MULTIPLE_INIT</a></td>
+<td>Initialize bulk get retrieval</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_NEXT.html" class="xref" title="DB_MULTIPLE_NEXT">DB_MULTIPLE_NEXT</a></td>
+<td>Next bulk get retrieval</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_KEY_NEXT.html" class="xref" title="DB_MULTIPLE_KEY_NEXT">DB_MULTIPLE_KEY_NEXT</a></td>
+<td>Next bulk get retrieval</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_RECNO_NEXT.html" class="xref" title="DB_MULTIPLE_RECNO_NEXT">DB_MULTIPLE_RECNO_NEXT</a></td>
+<td>Next bulk get retrieval</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_WRITE_INIT.html" class="xref" title="DB_MULTIPLE_WRITE_INIT">DB_MULTIPLE_WRITE_INIT</a></td>
+<td>Initialize a bulk buffer to hold key/data pairs</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_WRITE_NEXT.html" class="xref" title="DB_MULTIPLE_WRITE_NEXT">DB_MULTIPLE_WRITE_NEXT</a></td>
+<td>Append a data item to a bulk buffer</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_RESERVE_NEXT.html" class="xref" title="DB_MULTIPLE_RESERVE_NEXT">DB_MULTIPLE_RESERVE_NEXT</a></td>
+<td>Reserve space for a data item in a bulk buffer</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_KEY_WRITE_NEXT.html" class="xref" title="DB_MULTIPLE_KEY_WRITE_NEXT">DB_MULTIPLE_KEY_WRITE_NEXT</a></td>
+<td>Append a key / data pair to a bulk buffer</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_KEY_RESERVE_NEXT.html" class="xref" title="DB_MULTIPLE_KEY_RESERVE_NEXT">DB_MULTIPLE_KEY_RESERVE_NEXT</a></td>
+<td>Reserve space for a key / data pair in a bulk buffer</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_RECNO_WRITE_INIT.html" class="xref" title="DB_MULTIPLE_RECNO_WRITE_INIT">DB_MULTIPLE_RECNO_WRITE_INIT</a></td>
+<td>Initialize a bulk buffer to hold recno/data pairs</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_RECNO_WRITE_NEXT.html" class="xref" title="DB_MULTIPLE_RECNO_WRITE_NEXT">DB_MULTIPLE_RECNO_WRITE_NEXT</a></td>
+<td>Append a record number / data pair to a bulk buffer</td>
+</tr>
+<tr>
+<td><a href="DB_MULTIPLE_RECNO_RESERVE_NEXT.html" class="xref" title="DB_MULTIPLE_RECNO_RESERVE_NEXT">DB_MULTIPLE_RECNO_RESERVE_NEXT</a></td>
+<td>Reserve space for a record number / data pair in a bulk buffer</td>
+</tr>
+<tr>
+<td><a href="envadd_data_dir.html" class="xref" title="DB_ENV-&gt;add_data_dir()">DB_ENV-&gt;add_data_dir()</a></td>
+<td>Add an environment data directory</td>
+</tr>
+<tr>
+<td><a href="envbackup.html" class="xref" title="DB_ENV-&gt;backup()">DB_ENV-&gt;backup()</a></td>
+<td>Hot back up an entire environment</td>
+</tr>
+<tr>
+<td><a href="envclose.html" class="xref" title="DB_ENV-&gt;close()">DB_ENV-&gt;close()</a></td>
+<td>Close an environment</td>
+</tr>
+<tr>
+<td><a href="envcreate.html" class="xref" title="db_env_create">db_env_create</a></td>
+<td>Create an environment handle</td>
+</tr>
+<tr>
+<td><a href="envdbbackup.html" class="xref" title="DB_ENV-&gt;dbbackup()">DB_ENV-&gt;dbbackup()</a></td>
+<td>Hot back up a single environment file</td>
+</tr>
+<tr>
+<td><a href="envdbremove.html" class="xref" title="DB_ENV-&gt;dbremove()">DB_ENV-&gt;dbremove()</a></td>
+<td>Remove a database</td>
+</tr>
+<tr>
+<td><a href="envdbrename.html" class="xref" title="DB_ENV-&gt;dbrename()">DB_ENV-&gt;dbrename()</a></td>
+<td>Rename a database</td>
+</tr>
+<tr>
+<td><a href="enverr.html" class="xref" title="DB_ENV-&gt;err()">DB_ENV-&gt;err()</a></td>
+<td>Error message</td>
+</tr>
+<tr>
+<td><a href="envfailchk.html" class="xref" title="DB_ENV-&gt;failchk()">DB_ENV-&gt;failchk()</a></td>
+<td>Check for thread failure</td>
+</tr>
+<tr>
+<td><a href="envfileid_reset.html" class="xref" title="DB_ENV-&gt;fileid_reset()">DB_ENV-&gt;fileid_reset()</a></td>
+<td>Reset database file IDs</td>
+</tr>
+<tr>
+<td><a href="envfullversion.html" class="xref" title="db_full_version">db_full_version</a></td>
+<td>Return full version information</td>
+</tr>
+<tr>
+<td><a href="dbgetenv.html" class="xref" title="DB-&gt;get_env()">DB-&gt;get_env()</a></td>
+<td>Return the DB's underlying DB_ENV handle</td>
+</tr>
+<tr>
+<td><a href="envget_home.html" class="xref" title="DB_ENV-&gt;get_home()">DB_ENV-&gt;get_home()</a></td>
+<td>Return environment's home directory</td>
+</tr>
+<tr>
+<td><a href="envget_open_flags.html" class="xref" title="DB_ENV-&gt;get_open_flags()">DB_ENV-&gt;get_open_flags()</a></td>
+<td>Return flags with which the environment was opened</td>
+</tr>
+<tr>
+<td><a href="envlog_verify.html" class="xref" title="DB_ENV-&gt;log_verify()">DB_ENV-&gt;log_verify()</a></td>
+<td>Verify log files of an environment.</td>
+</tr>
+<tr>
+<td><a href="envlsn_reset.html" class="xref" title="DB_ENV-&gt;lsn_reset()">DB_ENV-&gt;lsn_reset()</a></td>
+<td>Reset database file LSNs</td>
+</tr>
+<tr>
+<td><a href="envopen.html" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a></td>
+<td>Open an environment</td>
+</tr>
+<tr>
+<td><a href="envremove.html" class="xref" title="DB_ENV-&gt;remove()">DB_ENV-&gt;remove()</a></td>
+<td>Remove an environment</td>
+</tr>
+<tr>
+<td><a href="envset_alloc.html" class="xref" title="DB_ENV-&gt;set_alloc()">DB_ENV-&gt;set_alloc()</a></td>
+<td>Set local space allocation functions</td>
+</tr>
+<tr>
+<td><a href="envset_app_dispatch.html" class="xref" title="DB_ENV-&gt;set_app_dispatch()">DB_ENV-&gt;set_app_dispatch()</a></td>
+<td>Configure application recovery callback</td>
+</tr>
+<tr>
+<td><a href="envset_backup_callbacks.html" class="xref" title="DB_ENV-&gt;set_backup_callbacks()">DB_ENV-&gt;set_backup_callbacks()</a>, <a href="envget_backup_callbacks.html" class="xref" title="DB_ENV-&gt;get_backup_callbacks()">DB_ENV-&gt;get_backup_callbacks()</a></td>
+<td>Set/get callbacks used for environment hot backups</td>
+</tr>
+<tr>
+<td><a href="envset_backup_config.html" class="xref" title="DB_ENV-&gt;set_backup_config()">DB_ENV-&gt;set_backup_config()</a>, <a href="envget_backup_config.html" class="xref" title="DB_ENV-&gt;get_backup_config()">DB_ENV-&gt;get_backup_config()</a></td>
+<td>Set/get environment hot backup configuration options</td>
+</tr>
+<tr>
+<td><a href="envset_data_dir.html" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a>, <a href="envget_data_dirs.html" class="xref" title="DB_ENV-&gt;get_data_dirs()">DB_ENV-&gt;get_data_dirs()</a></td>
+<td>Set/get the environment data directory</td>
+</tr>
+<tr>
+<td><a href="envset_data_len.html" class="xref" title="DB_ENV-&gt;set_data_len()">DB_ENV-&gt;set_data_len()</a>, <a href="envget_data_len.html" class="xref" title="DB_ENV-&gt;get_data_len()">DB_ENV-&gt;get_data_len()</a></td>
+<td>Set/get the command line utility byte limit</td>
+</tr>
+<tr>
+<td><a href="envset_create_dir.html" class="xref" title="DB_ENV-&gt;set_create_dir()">DB_ENV-&gt;set_create_dir()</a>, <a href="envget_create_dir.html" class="xref" title="DB_ENV-&gt;get_create_dir()">DB_ENV-&gt;get_create_dir()</a></td>
+<td>Add an environment data directory</td>
+</tr>
+<tr>
+<td><a href="envset_encrypt.html" class="xref" title="DB_ENV-&gt;set_encrypt()">DB_ENV-&gt;set_encrypt()</a>, <a href="envget_encrypt_flags.html" class="xref" title="DB_ENV-&gt;get_encrypt_flags()">DB_ENV-&gt;get_encrypt_flags()</a></td>
+<td>Set/get the environment cryptographic key</td>
+</tr>
+<tr>
+<td><a href="envevent_notify.html" class="xref" title="DB_ENV-&gt;set_event_notify()">DB_ENV-&gt;set_event_notify()</a></td>
+<td>Set event notification callback</td>
+</tr>
+<tr>
+<td><a href="envset_errcall.html" class="xref" title="DB_ENV-&gt;set_errcall()">DB_ENV-&gt;set_errcall()</a></td>
+<td>Set error message callbacks</td>
+</tr>
+<tr>
+<td><a href="envset_errfile.html" class="xref" title="DB_ENV-&gt;set_errfile()">DB_ENV-&gt;set_errfile()</a>, <a href="envget_errfile.html" class="xref" title="DB_ENV-&gt;get_errfile()">DB_ENV-&gt;get_errfile()</a></td>
+<td>Set/get error message FILE</td>
+</tr>
+<tr>
+<td><a href="envset_errpfx.html" class="xref" title="DB_ENV-&gt;set_errpfx()">DB_ENV-&gt;set_errpfx()</a>, <a href="envget_errpfx.html" class="xref" title="DB_ENV-&gt;get_errpfx()">DB_ENV-&gt;get_errpfx()</a></td>
+<td>Set/get error message prefix</td>
+</tr>
+<tr>
+<td><a href="envset_feedback.html" class="xref" title="DB_ENV-&gt;set_feedback()">DB_ENV-&gt;set_feedback()</a></td>
+<td>Set feedback callback</td>
+</tr>
+<tr>
+<td><a href="envset_flags.html" class="xref" title="DB_ENV-&gt;set_flags()">DB_ENV-&gt;set_flags()</a>, <a href="envget_flags.html" class="xref" title="DB_ENV-&gt;get_flags()">DB_ENV-&gt;get_flags()</a></td>
+<td>Environment configuration</td>
+</tr>
+<tr>
+<td><a href="envset_intermediate_dir_mode.html" class="xref" title="DB_ENV-&gt;set_intermediate_dir_mode()">DB_ENV-&gt;set_intermediate_dir_mode()</a>, <a href="envget_intermediate_dir_mode.html" class="xref" title="DB_ENV-&gt;get_intermediate_dir_mode()">DB_ENV-&gt;get_intermediate_dir_mode()</a></td>
+<td>Set/get intermediate directory creation mode</td>
+</tr>
+<tr>
+<td><a href="envset_isalive.html" class="xref" title="DB_ENV-&gt;set_isalive()">DB_ENV-&gt;set_isalive()</a></td>
+<td>Set thread is-alive callback</td>
+</tr>
+<tr>
+<td><a href="envset_memory_init.html" class="xref" title="DB_ENV-&gt;set_memory_init()">DB_ENV-&gt;set_memory_init()</a>, <a href="envget_memory_init.html" class="xref" title="DB_ENV-&gt;get_memory_init()">DB_ENV-&gt;get_memory_init()</a></td>
+<td>Set/get initial memory allocation</td>
+</tr>
+<tr>
+<td><a href="envset_memory_max.html" class="xref" title="DB_ENV-&gt;set_memory_max()">DB_ENV-&gt;set_memory_max()</a>, <a href="envget_memory_max.html" class="xref" title="DB_ENV-&gt;get_memory_max()">DB_ENV-&gt;get_memory_max()</a></td>
+<td>Set/get maximum memory allocation</td>
+</tr>
+<tr>
+<td><a href="envset_metadata_dir.html" class="xref" title="DB_ENV-&gt;set_metadata_dir()">DB_ENV-&gt;set_metadata_dir()</a>, <a href="envget_metadata_dir.html" class="xref" title="DB_ENV-&gt;get_metadata_dir()">DB_ENV-&gt;get_metadata_dir()</a></td>
+<td>Set/get the directory containing environment metadata</td>
+</tr>
+<tr>
+<td><a href="envset_msgcall.html" class="xref" title="DB_ENV-&gt;set_msgcall()">DB_ENV-&gt;set_msgcall()</a></td>
+<td>Set informational message callback</td>
+</tr>
+<tr>
+<td><a href="envset_msgfile.html" class="xref" title="DB_ENV-&gt;set_msgfile()">DB_ENV-&gt;set_msgfile()</a>, <a href="envget_msgfile.html" class="xref" title="DB_ENV-&gt;get_msgfile()">DB_ENV-&gt;get_msgfile()</a></td>
+<td>Set/get informational message FILE</td>
+</tr>
+<tr>
+<td><a href="envset_shm_key.html" class="xref" title="DB_ENV-&gt;set_shm_key()">DB_ENV-&gt;set_shm_key()</a>, <a href="envget_shm_key.html" class="xref" title="DB_ENV-&gt;get_shm_key()">DB_ENV-&gt;get_shm_key()</a></td>
+<td>Set/get system memory shared segment ID</td>
+</tr>
+<tr>
+<td><a href="envset_thread_count.html" class="xref" title="DB_ENV-&gt;set_thread_count()">DB_ENV-&gt;set_thread_count()</a>, <a href="envget_thread_count.html" class="xref" title="DB_ENV-&gt;get_thread_count()">DB_ENV-&gt;get_thread_count()</a></td>
+<td>Set/get approximate thread count</td>
+</tr>
+<tr>
+<td><a href="envset_thread_id.html" class="xref" title="DB_ENV-&gt;set_thread_id()">DB_ENV-&gt;set_thread_id()</a></td>
+<td>Set thread of control ID function</td>
+</tr>
+<tr>
+<td><a href="envset_thread_id_string.html" class="xref" title="DB_ENV-&gt;set_thread_id_string()">DB_ENV-&gt;set_thread_id_string()</a></td>
+<td>Set thread of control ID format function</td>
+</tr>
+<tr>
+<td><a href="envset_timeout.html" class="xref" title="DB_ENV-&gt;set_timeout()">DB_ENV-&gt;set_timeout()</a>, <a href="envget_timeout.html" class="xref" title="DB_ENV-&gt;get_timeout()">DB_ENV-&gt;get_timeout()</a></td>
+<td>Set/get lock and transaction timeout</td>
+</tr>
+<tr>
+<td><a href="envset_tmp_dir.html" class="xref" title="DB_ENV-&gt;set_tmp_dir()">DB_ENV-&gt;set_tmp_dir()</a>, <a href="envget_tmp_dir.html" class="xref" title="DB_ENV-&gt;get_tmp_dir()">DB_ENV-&gt;get_tmp_dir()</a></td>
+<td>Set/get the environment temporary file directory</td>
+</tr>
+<tr>
+<td><a href="envset_verbose.html" class="xref" title="DB_ENV-&gt;set_verbose()">DB_ENV-&gt;set_verbose()</a>, <a href="envget_verbose.html" class="xref" title="DB_ENV-&gt;get_verbose()">DB_ENV-&gt;get_verbose()</a></td>
+<td>Set/get verbose messages</td>
+</tr>
+<tr>
+<td><a href="envstat.html" class="xref" title="DB_ENV-&gt;stat_print()">DB_ENV-&gt;stat_print()</a></td>
+<td>Environment statistics</td>
+</tr>
+<tr>
+<td><a href="envstrerror.html" class="xref" title="db_strerror">db_strerror</a></td>
+<td>Error strings</td>
+</tr>
+<tr>
+<td><a href="envversion.html" class="xref" title="db_version">db_version</a></td>
+<td>Return version information</td>
+</tr>
+<tr>
+<td><a href="envset_lk_conflicts.html" class="xref" title="DB_ENV-&gt;set_lk_conflicts()">DB_ENV-&gt;set_lk_conflicts()</a>, <a href="envget_lk_conflicts.html" class="xref" title="DB_ENV-&gt;get_lk_conflicts()">DB_ENV-&gt;get_lk_conflicts()</a></td>
+<td>Set/get lock conflicts matrix</td>
+</tr>
+<tr>
+<td><a href="envset_lk_detect.html" class="xref" title="DB_ENV-&gt;set_lk_detect()">DB_ENV-&gt;set_lk_detect()</a>, <a href="envget_lk_detect.html" class="xref" title="DB_ENV-&gt;get_lk_detect()">DB_ENV-&gt;get_lk_detect()</a></td>
+<td>Set/get automatic deadlock detection</td>
+</tr>
+<tr>
+<td><a href="envset_lk_max_lockers.html" class="xref" title="DB_ENV-&gt;set_lk_max_lockers()">DB_ENV-&gt;set_lk_max_lockers()</a>, <a href="envget_lk_max_lockers.html" class="xref" title="DB_ENV-&gt;get_lk_max_lockers()">DB_ENV-&gt;get_lk_max_lockers()</a></td>
+<td>Set/get maximum number of lockers</td>
+</tr>
+<tr>
+<td><a href="envset_lk_max_locks.html" class="xref" title="DB_ENV-&gt;set_lk_max_locks()">DB_ENV-&gt;set_lk_max_locks()</a>, <a href="envget_lk_max_locks.html" class="xref" title="DB_ENV-&gt;get_lk_max_locks()">DB_ENV-&gt;get_lk_max_locks()</a></td>
+<td>Set/get maximum number of locks</td>
+</tr>
+<tr>
+<td><a href="envset_lk_max_objects.html" class="xref" title="DB_ENV-&gt;set_lk_max_objects()">DB_ENV-&gt;set_lk_max_objects()</a>, <a href="envget_lk_max_objects.html" class="xref" title="DB_ENV-&gt;get_lk_max_objects()">DB_ENV-&gt;get_lk_max_objects()</a></td>
+<td>Set/get maximum number of lock objects</td>
+</tr>
+<tr>
+<td><a href="envset_lk_partitions.html" class="xref" title="DB_ENV-&gt;set_lk_partitions()">DB_ENV-&gt;set_lk_partitions()</a>, <a href="envget_lk_partitions.html" class="xref" title="DB_ENV-&gt;get_lk_partitions()">DB_ENV-&gt;get_lk_partitions()</a></td>
+<td>Set/get number of lock partitions</td>
+</tr>
+<tr>
+<td><a href="envset_lk_priority.html" class="xref" title="DB_ENV-&gt;set_lk_priority()">DB_ENV-&gt;set_lk_priority()</a>, <a href="envget_lk_priority.html" class="xref" title="DB_ENV-&gt;get_lk_priority()">DB_ENV-&gt;get_lk_priority()</a></td>
+<td>Set/get a locker's deadlock priority</td>
+</tr>
+<tr>
+<td><a href="envset_lk_tablesize.html" class="xref" title="DB_ENV-&gt;set_lk_tablesize()">DB_ENV-&gt;set_lk_tablesize()</a>, <a href="envget_lk_tablesize.html" class="xref" title="DB_ENV-&gt;get_lk_tablesize()">DB_ENV-&gt;get_lk_tablesize()</a></td>
+<td>Set/get size of the lock object hash table</td>
+</tr>
+<tr>
+<td><a href="lockdetect.html" class="xref" title="DB_ENV-&gt;lock_detect()">DB_ENV-&gt;lock_detect()</a></td>
+<td>Perform deadlock detection</td>
+</tr>
+<tr>
+<td><a href="lockget.html" class="xref" title="DB_ENV-&gt;lock_get()">DB_ENV-&gt;lock_get()</a></td>
+<td>Acquire a lock</td>
+</tr>
+<tr>
+<td><a href="lockid.html" class="xref" title="DB_ENV-&gt;lock_id()">DB_ENV-&gt;lock_id()</a></td>
+<td>Acquire a locker ID</td>
+</tr>
+<tr>
+<td><a href="lockid_free.html" class="xref" title="DB_ENV-&gt;lock_id_free()">DB_ENV-&gt;lock_id_free()</a></td>
+<td>Release a locker ID</td>
+</tr>
+<tr>
+<td><a href="lockput.html" class="xref" title="DB_ENV-&gt;lock_put()">DB_ENV-&gt;lock_put()</a></td>
+<td>Release a lock</td>
+</tr>
+<tr>
+<td><a href="lockstat.html" class="xref" title="DB_ENV-&gt;lock_stat()">DB_ENV-&gt;lock_stat()</a></td>
+<td>Return lock subsystem statistics</td>
+</tr>
+<tr>
+<td><a href="lockstat_print.html" class="xref" title="DB_ENV-&gt;lock_stat_print()">DB_ENV-&gt;lock_stat_print()</a></td>
+<td>Print lock subsystem statistics</td>
+</tr>
+<tr>
+<td><a href="lockvec.html" class="xref" title="DB_ENV-&gt;lock_vec()">DB_ENV-&gt;lock_vec()</a></td>
+<td>Acquire/release locks</td>
+</tr>
+<tr>
+<td><a href="logarchive.html" class="xref" title="DB_ENV-&gt;log_archive()">DB_ENV-&gt;log_archive()</a></td>
+<td>List log and database files</td>
+</tr>
+<tr>
+<td><a href="logcursor.html" class="xref" title="DB_ENV-&gt;log_cursor()">DB_ENV-&gt;log_cursor()</a></td>
+<td>Create a log cursor handle</td>
+</tr>
+<tr>
+<td><a href="logfile.html" class="xref" title="DB_ENV-&gt;log_file()">DB_ENV-&gt;log_file()</a></td>
+<td>Map Log Sequence Numbers to log files</td>
+</tr>
+<tr>
+<td><a href="logflush.html" class="xref" title="DB_ENV-&gt;log_flush()">DB_ENV-&gt;log_flush()</a></td>
+<td>Flush log records</td>
+</tr>
+<tr>
+<td><a href="logprintf.html" class="xref" title="DB_ENV-&gt;log_printf()">DB_ENV-&gt;log_printf()</a></td>
+<td>Append informational message to the log</td>
+</tr>
+<tr>
+<td><a href="logput.html" class="xref" title="DB_ENV-&gt;log_put()">DB_ENV-&gt;log_put()</a></td>
+<td>Write a log record</td>
+</tr>
+<tr>
+<td><a href="envlog_set_config.html" class="xref" title="DB_ENV-&gt;log_set_config()">DB_ENV-&gt;log_set_config()</a>, <a href="envlog_get_config.html" class="xref" title="DB_ENV-&gt;log_get_config()">DB_ENV-&gt;log_get_config()</a></td>
+<td>Configure the logging subsystem</td>
+</tr>
+<tr>
+<td><a href="logstat.html" class="xref" title="DB_ENV-&gt;log_stat()">DB_ENV-&gt;log_stat()</a></td>
+<td>Return log subsystem statistics</td>
+</tr>
+<tr>
+<td><a href="logstat_print.html" class="xref" title="DB_ENV-&gt;log_stat_print()">DB_ENV-&gt;log_stat_print()</a></td>
+<td>Print log subsystem statistics</td>
+</tr>
+<tr>
+<td><a href="envset_lg_bsize.html" class="xref" title="DB_ENV-&gt;set_lg_bsize()">DB_ENV-&gt;set_lg_bsize()</a>, <a href="envget_lg_bsize.html" class="xref" title="DB_ENV-&gt;get_lg_bsize()">DB_ENV-&gt;get_lg_bsize()</a></td>
+<td>Set/get log buffer size</td>
+</tr>
+<tr>
+<td><a href="envset_lg_dir.html" class="xref" title="DB_ENV-&gt;set_lg_dir()">DB_ENV-&gt;set_lg_dir()</a>, <a href="envget_lg_dir.html" class="xref" title="DB_ENV-&gt;get_lg_dir()">DB_ENV-&gt;get_lg_dir()</a></td>
+<td>Set/get the environment logging directory</td>
+</tr>
+<tr>
+<td><a href="envset_lg_filemode.html" class="xref" title="DB_ENV-&gt;set_lg_filemode()">DB_ENV-&gt;set_lg_filemode()</a>, <a href="envget_lg_filemode.html" class="xref" title="DB_ENV-&gt;get_lg_filemode()">DB_ENV-&gt;get_lg_filemode()</a></td>
+<td>Set/get log file mode</td>
+</tr>
+<tr>
+<td><a href="envset_lg_max.html" class="xref" title="DB_ENV-&gt;set_lg_max()">DB_ENV-&gt;set_lg_max()</a>, <a href="envget_lg_max.html" class="xref" title="DB_ENV-&gt;get_lg_max()">DB_ENV-&gt;get_lg_max()</a></td>
+<td>Set/get log file size</td>
+</tr>
+<tr>
+<td><a href="envset_lg_regionmax.html" class="xref" title="DB_ENV-&gt;set_lg_regionmax()">DB_ENV-&gt;set_lg_regionmax()</a>, <a href="envget_lg_regionmax.html" class="xref" title="DB_ENV-&gt;get_lg_regionmax()">DB_ENV-&gt;get_lg_regionmax()</a></td>
+<td>Set/get logging region size</td>
+</tr>
+<tr>
+<td><a href="logc.html" class="xref" title="The DB_LOGC Handle">The DB_LOGC Handle</a></td>
+<td>A log cursor handle</td>
+</tr>
+<tr>
+<td><a href="logcclose.html" class="xref" title="DB_LOGC-&gt;close()">DB_LOGC-&gt;close()</a></td>
+<td>Close a log cursor</td>
+</tr>
+<tr>
+<td><a href="logcget.html" class="xref" title="DB_LOGC-&gt;get()">DB_LOGC-&gt;get()</a></td>
+<td>Retrieve a log record</td>
+</tr>
+<tr>
+<td><a href="logcompare.html" class="xref" title="log_compare">log_compare</a></td>
+<td>Compare two Log Sequence Numbers</td>
+</tr>
+<tr>
+<td><a href="dbget_mpf.html" class="xref" title="DB-&gt;get_mpf()">DB-&gt;get_mpf()</a></td>
+<td>Return the DB_MPOOLFILE for a DB</td>
+</tr>
+<tr>
+<td><a href="mempfcreate.html" class="xref" title="DB_ENV-&gt;memp_fcreate()">DB_ENV-&gt;memp_fcreate()</a></td>
+<td>Create a memory pool file handle</td>
+</tr>
+<tr>
+<td><a href="mempregister.html" class="xref" title="DB_ENV-&gt;memp_register()">DB_ENV-&gt;memp_register()</a></td>
+<td>Register a custom file type</td>
+</tr>
+<tr>
+<td><a href="mempstat.html" class="xref" title="DB_ENV-&gt;memp_stat()">DB_ENV-&gt;memp_stat()</a></td>
+<td>Return cache statistics</td>
+</tr>
+<tr>
+<td><a href="mempstat_print.html" class="xref" title="DB_ENV-&gt;memp_stat_print()">DB_ENV-&gt;memp_stat_print()</a></td>
+<td>Print cache statistics</td>
+</tr>
+<tr>
+<td><a href="mempsync.html" class="xref" title="DB_ENV-&gt;memp_sync()">DB_ENV-&gt;memp_sync()</a></td>
+<td>Flush all pages from the cache</td>
+</tr>
+<tr>
+<td><a href="memptrickle.html" class="xref" title="DB_ENV-&gt;memp_trickle()">DB_ENV-&gt;memp_trickle()</a></td>
+<td>Flush some pages from the cache</td>
+</tr>
+<tr>
+<td><a href="envset_cache_max.html" class="xref" title="DB_ENV-&gt;set_cache_max()">DB_ENV-&gt;set_cache_max()</a>, <a href="envget_cache_max.html" class="xref" title="DB_ENV-&gt;get_cache_max()">DB_ENV-&gt;get_cache_max()</a></td>
+<td>Set/get the maximum cache size</td>
+</tr>
+<tr>
+<td><a href="envset_cachesize.html" class="xref" title="DB_ENV-&gt;set_cachesize()">DB_ENV-&gt;set_cachesize()</a>, <a href="envget_cachesize.html" class="xref" title="DB_ENV-&gt;get_cachesize()">DB_ENV-&gt;get_cachesize()</a></td>
+<td>Set/get the environment cache size</td>
+</tr>
+<tr>
+<td><a href="mempset_mp_max_openfd.html" class="xref" title="DB_ENV-&gt;set_mp_max_openfd()">DB_ENV-&gt;set_mp_max_openfd()</a>, <a href="mempget_mp_max_openfd.html" class="xref" title="DB_ENV-&gt;get_mp_max_openfd()">DB_ENV-&gt;get_mp_max_openfd()</a></td>
+<td>Set/get the maximum number of open file descriptors</td>
+</tr>
+<tr>
+<td><a href="mempset_mp_max_write.html" class="xref" title="DB_ENV-&gt;set_mp_max_write()">DB_ENV-&gt;set_mp_max_write()</a>, <a href="mempget_mp_max_write.html" class="xref" title="DB_ENV-&gt;get_mp_max_write()">DB_ENV-&gt;get_mp_max_write()</a></td>
+<td>Set/get the maximum number of sequential disk writes</td>
+</tr>
+<tr>
+<td><a href="envset_mp_mmapsize.html" class="xref" title="DB_ENV-&gt;set_mp_mmapsize()">DB_ENV-&gt;set_mp_mmapsize()</a>, <a href="envget_mp_mmapsize.html" class="xref" title="DB_ENV-&gt;get_mp_mmapsize()">DB_ENV-&gt;get_mp_mmapsize()</a></td>
+<td>Set/get maximum file size to memory map when opened read-only</td>
+</tr>
+<tr>
+<td><a href="envset_mp_mtxcount.html" class="xref" title="DB_ENV-&gt;set_mp_mtxcount()">DB_ENV-&gt;set_mp_mtxcount()</a>, <a href="envget_mp_mtxcount.html" class="xref" title="DB_ENV-&gt;get_mp_mtxcount()">DB_ENV-&gt;get_mp_mtxcount()</a></td>
+<td>Set/get the number of mutexes allocated to the hash table</td>
+</tr>
+<tr>
+<td><a href="envset_mp_pagesize.html" class="xref" title="DB_ENV-&gt;set_mp_pagesize()">DB_ENV-&gt;set_mp_pagesize()</a>, <a href="envget_mp_pagesize.html" class="xref" title="DB_ENV-&gt;get_mp_pagesize()">DB_ENV-&gt;get_mp_pagesize()</a></td>
+<td>Set/get page size to configure the buffer pool</td>
+</tr>
+<tr>
+<td><a href="envset_mp_tablesize.html" class="xref" title="DB_ENV-&gt;set_mp_tablesize()">DB_ENV-&gt;set_mp_tablesize()</a>, <a href="envget_mp_tablesize.html" class="xref" title="DB_ENV-&gt;get_mp_tablesize()">DB_ENV-&gt;get_mp_tablesize()</a></td>
+<td>Set/get the hash table size</td>
+</tr>
+<tr>
+<td><a href="mempfclose.html" class="xref" title="DB_MPOOLFILE-&gt;close()">DB_MPOOLFILE-&gt;close()</a></td>
+<td>Close a file in the cache</td>
+</tr>
+<tr>
+<td><a href="mempfget.html" class="xref" title="DB_MPOOLFILE-&gt;get()">DB_MPOOLFILE-&gt;get()</a></td>
+<td>Get page from a file in the cache</td>
+</tr>
+<tr>
+<td><a href="mempfopen.html" class="xref" title="DB_MPOOLFILE-&gt;open()">DB_MPOOLFILE-&gt;open()</a></td>
+<td>Open a file in the cache</td>
+</tr>
+<tr>
+<td><a href="mempput.html" class="xref" title="DB_MPOOLFILE-&gt;put()">DB_MPOOLFILE-&gt;put()</a></td>
+<td>Return a page to the cache</td>
+</tr>
+<tr>
+<td><a href="mempfsync.html" class="xref" title="DB_MPOOLFILE-&gt;sync()">DB_MPOOLFILE-&gt;sync()</a></td>
+<td>Flush pages from a file from the cache</td>
+</tr>
+<tr>
+<td><a href="mempset_clear_len.html" class="xref" title="DB_MPOOLFILE-&gt;set_clear_len()">DB_MPOOLFILE-&gt;set_clear_len()</a>, <a href="mempget_clear_len.html" class="xref" title="DB_MPOOLFILE-&gt;get_clear_len()">DB_MPOOLFILE-&gt;get_clear_len()</a></td>
+<td>Set/get number of bytes to clear when creating a new page</td>
+</tr>
+<tr>
+<td><a href="mempset_fileid.html" class="xref" title="DB_MPOOLFILE-&gt;set_fileid()">DB_MPOOLFILE-&gt;set_fileid()</a>, <a href="mempget_fileid.html" class="xref" title="DB_MPOOLFILE-&gt;get_fileid()">DB_MPOOLFILE-&gt;get_fileid()</a></td>
+<td>Set/get file unique identifier</td>
+</tr>
+<tr>
+<td><a href="mempset_flags.html" class="xref" title="DB_MPOOLFILE-&gt;set_flags()">DB_MPOOLFILE-&gt;set_flags()</a>, <a href="mempget_flags.html" class="xref" title="DB_MPOOLFILE-&gt;get_flags()">DB_MPOOLFILE-&gt;get_flags()</a></td>
+<td>Set/get file options</td>
+</tr>
+<tr>
+<td><a href="mempset_ftype.html" class="xref" title="DB_MPOOLFILE-&gt;set_ftype()">DB_MPOOLFILE-&gt;set_ftype()</a>, <a href="mempget_ftype.html" class="xref" title="DB_MPOOLFILE-&gt;get_ftype()">DB_MPOOLFILE-&gt;get_ftype()</a></td>
+<td>Set/get file type</td>
+</tr>
+<tr>
+<td><a href="mempset_lsn_offset.html" class="xref" title="DB_MPOOLFILE-&gt;set_lsn_offset()">DB_MPOOLFILE-&gt;set_lsn_offset()</a>, <a href="mempget_lsn_offset.html" class="xref" title="DB_MPOOLFILE-&gt;get_lsn_offset()">DB_MPOOLFILE-&gt;get_lsn_offset()</a></td>
+<td>Set/get file log-sequence-number offset</td>
+</tr>
+<tr>
+<td><a href="mempset_maxsize.html" class="xref" title="DB_MPOOLFILE-&gt;set_maxsize()">DB_MPOOLFILE-&gt;set_maxsize()</a>, <a href="mempget_maxsize.html" class="xref" title="DB_MPOOLFILE-&gt;get_maxsize()">DB_MPOOLFILE-&gt;get_maxsize()</a></td>
+<td>Set/get maximum file size</td>
+</tr>
+<tr>
+<td><a href="mempset_pgcookie.html" class="xref" title="DB_MPOOLFILE-&gt;set_pgcookie()">DB_MPOOLFILE-&gt;set_pgcookie()</a>, <a href="mempget_pgcookie.html" class="xref" title="DB_MPOOLFILE-&gt;get_pgcookie()">DB_MPOOLFILE-&gt;get_pgcookie()</a></td>
+<td>Set/get file cookie for pgin/pgout</td>
+</tr>
+<tr>
+<td><a href="mempset_priority.html" class="xref" title="DB_MPOOLFILE-&gt;set_priority()">DB_MPOOLFILE-&gt;set_priority()</a>, <a href="mempget_priority.html" class="xref" title="DB_MPOOLFILE-&gt;get_priority()">DB_MPOOLFILE-&gt;get_priority()</a></td>
+<td>Set/get cache file priority</td>
+</tr>
+<tr>
+<td><a href="mutexalloc.html" class="xref" title="DB_ENV-&gt;mutex_alloc()">DB_ENV-&gt;mutex_alloc()</a></td>
+<td>Allocate a mutex</td>
+</tr>
+<tr>
+<td><a href="mutexfree.html" class="xref" title="DB_ENV-&gt;mutex_free()">DB_ENV-&gt;mutex_free()</a></td>
+<td>Free a mutex</td>
+</tr>
+<tr>
+<td><a href="mutexlock.html" class="xref" title="DB_ENV-&gt;mutex_lock()">DB_ENV-&gt;mutex_lock()</a></td>
+<td>Lock a mutex</td>
+</tr>
+<tr>
+<td><a href="mutexset_align.html" class="xref" title="DB_ENV-&gt;mutex_set_align()">DB_ENV-&gt;mutex_set_align()</a>, <a href="mutexget_align.html" class="xref" title="DB_ENV-&gt;mutex_get_align()">DB_ENV-&gt;mutex_get_align()</a></td>
+<td>Configure mutex alignment</td>
+</tr>
+<tr>
+<td><a href="mutexset_increment.html" class="xref" title="DB_ENV-&gt;mutex_set_increment()">DB_ENV-&gt;mutex_set_increment()</a>, <a href="mutexget_increment.html" class="xref" title="DB_ENV-&gt;mutex_get_increment()">DB_ENV-&gt;mutex_get_increment()</a></td>
+<td>Configure number of additional mutexes</td>
+</tr>
+<tr>
+<td><a href="mutexset_init.html" class="xref" title="DB_ENV-&gt;mutex_set_init()">DB_ENV-&gt;mutex_set_init()</a>, <a href="mutexget_init.html" class="xref" title="DB_ENV-&gt;mutex_get_init()">DB_ENV-&gt;mutex_get_init()</a></td>
+<td>Configure initial number of mutexes</td>
+</tr>
+<tr>
+<td><a href="mutexset_max.html" class="xref" title="DB_ENV-&gt;mutex_set_max()">DB_ENV-&gt;mutex_set_max()</a>, <a href="mutexget_max.html" class="xref" title="DB_ENV-&gt;mutex_get_max()">DB_ENV-&gt;mutex_get_max()</a></td>
+<td>Configure total number of mutexes</td>
+</tr>
+<tr>
+<td><a href="mutexset_tas_spins.html" class="xref" title="DB_ENV-&gt;mutex_set_tas_spins()">DB_ENV-&gt;mutex_set_tas_spins()</a>, <a href="mutexget_tas_spins.html" class="xref" title="DB_ENV-&gt;mutex_get_tas_spins()">DB_ENV-&gt;mutex_get_tas_spins()</a></td>
+<td>Configure test-and-set mutex spin count</td>
+</tr>
+<tr>
+<td><a href="mutexstat.html" class="xref" title="DB_ENV-&gt;mutex_stat()">DB_ENV-&gt;mutex_stat()</a></td>
+<td>Mutex statistics</td>
+</tr>
+<tr>
+<td><a href="mutexstat_print.html" class="xref" title="DB_ENV-&gt;mutex_stat_print()">DB_ENV-&gt;mutex_stat_print()</a></td>
+<td>Print mutex statistics</td>
+</tr>
+<tr>
+<td><a href="mutexunlock.html" class="xref" title="DB_ENV-&gt;mutex_unlock()">DB_ENV-&gt;mutex_unlock()</a></td>
+<td>Unlock a mutex</td>
+</tr>
+<tr>
+<td><a href="dbchannel_close.html" class="xref" title="DB_CHANNEL-&gt;close()">DB_CHANNEL-&gt;close()</a></td>
+<td>Closes a DB_CHANNEL handle</td>
+</tr>
+<tr>
+<td><a href="dbchannel_send_msg.html" class="xref" title="DB_CHANNEL-&gt;send_msg()">DB_CHANNEL-&gt;send_msg()</a></td>
+<td>Sends an asynchronous message on a DB_CHANNEL</td>
+</tr>
+<tr>
+<td><a href="dbchannel_send_request.html" class="xref" title="DB_CHANNEL-&gt;send_request()">DB_CHANNEL-&gt;send_request()</a></td>
+<td>Sends a synchronous message on a DB_CHANNEL</td>
+</tr>
+<tr>
+<td><a href="dbchannel_set_timeout.html" class="xref" title="DB_CHANNEL-&gt;set_timeout()">DB_CHANNEL-&gt;set_timeout()</a></td>
+<td>Sets the default timeout for the DB_CHANNEL</td>
+</tr>
+<tr>
+<td><a href="dbsite_close.html" class="xref" title="DB_SITE-&gt;close()">DB_SITE-&gt;close()</a></td>
+<td>Closes the DB_SITE handle</td>
+</tr>
+<tr>
+<td><a href="dbsite_get_address.html" class="xref" title="DB_SITE-&gt;get_address()">DB_SITE-&gt;get_address()</a></td>
+<td>Returns a site's network address</td>
+</tr>
+<tr>
+<td><a href="dbsite_get_eid.html" class="xref" title="DB_SITE-&gt;get_eid()">DB_SITE-&gt;get_eid()</a></td>
+<td>Returns a site's Environment ID</td>
+</tr>
+<tr>
+<td><a href="dbsite_remove.html" class="xref" title="DB_SITE-&gt;remove()">DB_SITE-&gt;remove()</a></td>
+<td>Removes the site from the replication group</td>
+</tr>
+<tr>
+<td><a href="dbsite_set_config.html" class="xref" title="DB_SITE-&gt;set_config()">DB_SITE-&gt;set_config()</a>, <a href="dbsite_get_config.html" class="xref" title="DB_SITE-&gt;get_config()">DB_SITE-&gt;get_config()</a></td>
+<td>Configure a DB_SITE handle</td>
+</tr>
+<tr>
+<td><a href="repelect.html" class="xref" title="DB_ENV-&gt;rep_elect()">DB_ENV-&gt;rep_elect()</a></td>
+<td>Hold a replication election</td>
+</tr>
+<tr>
+<td><a href="repmessage.html" class="xref" title="DB_ENV-&gt;rep_process_message()">DB_ENV-&gt;rep_process_message()</a></td>
+<td>Process a replication message</td>
+</tr>
+<tr>
+<td><a href="repclockskew.html" class="xref" title="DB_ENV-&gt;rep_set_clockskew()">DB_ENV-&gt;rep_set_clockskew()</a>, <a href="repget_clockskew.html" class="xref" title="DB_ENV-&gt;rep_get_clockskew()">DB_ENV-&gt;rep_get_clockskew()</a></td>
+<td>Configure master lease clock adjustment</td>
+</tr>
+<tr>
+<td><a href="repconfig.html" class="xref" title="DB_ENV-&gt;rep_set_config()">DB_ENV-&gt;rep_set_config()</a>, <a href="repget_config.html" class="xref" title="DB_ENV-&gt;rep_get_config()">DB_ENV-&gt;rep_get_config()</a></td>
+<td>Configure the replication subsystem</td>
+</tr>
+<tr>
+<td><a href="repset_limit.html" class="xref" title="DB_ENV-&gt;rep_set_limit()">DB_ENV-&gt;rep_set_limit()</a>, <a href="repget_limit.html" class="xref" title="DB_ENV-&gt;rep_get_limit()">DB_ENV-&gt;rep_get_limit()</a></td>
+<td>Limit data sent in response to a single message</td>
+</tr>
+<tr>
+<td><a href="repnsites.html" class="xref" title="DB_ENV-&gt;rep_set_nsites()">DB_ENV-&gt;rep_set_nsites()</a>, <a href="repget_nsites.html" class="xref" title="DB_ENV-&gt;rep_get_nsites()">DB_ENV-&gt;rep_get_nsites()</a></td>
+<td>Configure replication group site count</td>
+</tr>
+<tr>
+<td><a href="reppriority.html" class="xref" title="DB_ENV-&gt;rep_set_priority()">DB_ENV-&gt;rep_set_priority()</a>, <a href="repget_priority.html" class="xref" title="DB_ENV-&gt;rep_get_priority()">DB_ENV-&gt;rep_get_priority()</a></td>
+<td>Configure replication site priority</td>
+</tr>
+<tr>
+<td><a href="repset_request.html" class="xref" title="DB_ENV-&gt;rep_set_request()">DB_ENV-&gt;rep_set_request()</a>, <a href="repget_request.html" class="xref" title="DB_ENV-&gt;rep_get_request()">DB_ENV-&gt;rep_get_request()</a></td>
+<td>Configure replication client retransmission requests</td>
+</tr>
+<tr>
+<td><a href="repset_timeout.html" class="xref" title="DB_ENV-&gt;rep_set_timeout()">DB_ENV-&gt;rep_set_timeout()</a>, <a href="repget_timeout.html" class="xref" title="DB_ENV-&gt;rep_get_timeout()">DB_ENV-&gt;rep_get_timeout()</a></td>
+<td>Configure replication timeouts</td>
+</tr>
+<tr>
+<td><a href="reptransport.html" class="xref" title="DB_ENV-&gt;rep_set_transport()">DB_ENV-&gt;rep_set_transport()</a></td>
+<td>Configure replication transport callback</td>
+</tr>
+<tr>
+<td><a href="repstart.html" class="xref" title="DB_ENV-&gt;rep_start()">DB_ENV-&gt;rep_start()</a></td>
+<td>Start replication</td>
+</tr>
+<tr>
+<td><a href="repstat.html" class="xref" title="DB_ENV-&gt;rep_stat()">DB_ENV-&gt;rep_stat()</a></td>
+<td>Replication statistics</td>
+</tr>
+<tr>
+<td><a href="repstat_print.html" class="xref" title="DB_ENV-&gt;rep_stat_print()">DB_ENV-&gt;rep_stat_print()</a></td>
+<td>Print replication statistics</td>
+</tr>
+<tr>
+<td><a href="repsync.html" class="xref" title="DB_ENV-&gt;rep_sync()">DB_ENV-&gt;rep_sync()</a></td>
+<td>Replication synchronization</td>
+</tr>
+<tr>
+<td><a href="repmgr_channel.html" class="xref" title="DB_ENV-&gt;repmgr_channel()">DB_ENV-&gt;repmgr_channel()</a></td>
+<td>Creates a DB_CHANNEL handle</td>
+</tr>
+<tr>
+<td><a href="repmgr_local_site.html" class="xref" title="DB_ENV-&gt;repmgr_local_site()">DB_ENV-&gt;repmgr_local_site()</a></td>
+<td>Returns a DB_SITE handle for the local site</td>
+</tr>
+<tr>
+<td><a href="repmgr_msg_dispatch.html" class="xref" title="DB_ENV-&gt;repmgr_msg_dispatch()">DB_ENV-&gt;repmgr_msg_dispatch()</a></td>
+<td>Creates a DB_CHANNEL handle</td>
+</tr>
+<tr>
+<td><a href="repmgrset_ack_policy.html" class="xref" title="DB_ENV-&gt;repmgr_set_ack_policy()">DB_ENV-&gt;repmgr_set_ack_policy()</a>, <a href="repmgrget_ack_policy.html" class="xref" title="DB_ENV-&gt;repmgr_get_ack_policy()">DB_ENV-&gt;repmgr_get_ack_policy()</a></td>
+<td>Specify the Replication Manager's client acknowledgement policy</td>
+</tr>
+<tr>
+<td><a href="repmgr_site.html" class="xref" title="DB_ENV-&gt;repmgr_site()">DB_ENV-&gt;repmgr_site()</a></td>
+<td>Creates a DB_SITE handle</td>
+</tr>
+<tr>
+<td><a href="repmgr_site_by_eid.html" class="xref" title="DB_ENV-&gt;repmgr_site_by_eid()">DB_ENV-&gt;repmgr_site_by_eid()</a></td>
+<td>Creates a DB_SITE handle given an EID value</td>
+</tr>
+<tr>
+<td><a href="repmgrsite_list.html" class="xref" title="DB_ENV-&gt;repmgr_site_list()">DB_ENV-&gt;repmgr_site_list()</a></td>
+<td>List the sites and their status</td>
+</tr>
+<tr>
+<td><a href="repmgrstart.html" class="xref" title="DB_ENV-&gt;repmgr_start()">DB_ENV-&gt;repmgr_start()</a></td>
+<td>Start the Replication Manager</td>
+</tr>
+<tr>
+<td><a href="repmgrstat.html" class="xref" title="DB_ENV-&gt;repmgr_stat()">DB_ENV-&gt;repmgr_stat()</a></td>
+<td>Replication Manager statistics</td>
+</tr>
+<tr>
+<td><a href="repmgrstat_print.html" class="xref" title="DB_ENV-&gt;repmgr_stat_print()">DB_ENV-&gt;repmgr_stat_print()</a></td>
+<td>Print Replication Manager statistics</td>
+</tr>
+<tr>
+<td><a href="envtxn_applied.html" class="xref" title="DB_ENV-&gt;txn_applied()">DB_ENV-&gt;txn_applied()</a></td>
+<td>Check if a transaction has been replicated</td>
+</tr>
+<tr>
+<td><a href="txnset_commit_token.html" class="xref" title="DB_TXN-&gt;set_commit_token()">DB_TXN-&gt;set_commit_token()</a></td>
+<td>Set a commit token</td>
+</tr>
+<tr>
+<td><a href="seqcreate.html" class="xref" title="db_sequence_create">db_sequence_create</a></td>
+<td>Create a sequence handle</td>
+</tr>
+<tr>
+<td><a href="seqclose.html" class="xref" title="DB_SEQUENCE-&gt;close()">DB_SEQUENCE-&gt;close()</a></td>
+<td>Close a sequence</td>
+</tr>
+<tr>
+<td><a href="seqget.html" class="xref" title="DB_SEQUENCE-&gt;get()">DB_SEQUENCE-&gt;get()</a></td>
+<td>Get the next sequence element(s)</td>
+</tr>
+<tr>
+<td><a href="seqget_dbp.html" class="xref" title="DB_SEQUENCE-&gt;get_dbp()">DB_SEQUENCE-&gt;get_dbp()</a></td>
+<td>Return a handle for the underlying sequence database</td>
+</tr>
+<tr>
+<td><a href="seqget_key.html" class="xref" title="DB_SEQUENCE-&gt;get_key()">DB_SEQUENCE-&gt;get_key()</a></td>
+<td>Return the key for a sequence</td>
+</tr>
+<tr>
+<td><a href="seqinitial_value.html" class="xref" title="DB_SEQUENCE-&gt;initial_value()">DB_SEQUENCE-&gt;initial_value()</a></td>
+<td>Set the initial value of a sequence</td>
+</tr>
+<tr>
+<td><a href="seqopen.html" class="xref" title="DB_SEQUENCE-&gt;open()">DB_SEQUENCE-&gt;open()</a></td>
+<td>Open a sequence</td>
+</tr>
+<tr>
+<td><a href="seqremove.html" class="xref" title="DB_SEQUENCE-&gt;remove()">DB_SEQUENCE-&gt;remove()</a></td>
+<td>Remove a sequence</td>
+</tr>
+<tr>
+<td><a href="seqset_cachesize.html" class="xref" title="DB_SEQUENCE-&gt;set_cachesize()">DB_SEQUENCE-&gt;set_cachesize()</a>, <a href="seqget_cachesize.html" class="xref" title="DB_SEQUENCE-&gt;get_cachesize()">DB_SEQUENCE-&gt;get_cachesize()</a></td>
+<td>Set/get the cache size of a sequence</td>
+</tr>
+<tr>
+<td><a href="seqset_flags.html" class="xref" title="DB_SEQUENCE-&gt;set_flags()">DB_SEQUENCE-&gt;set_flags()</a>, <a href="seqget_flags.html" class="xref" title="DB_SEQUENCE-&gt;get_flags()">DB_SEQUENCE-&gt;get_flags()</a></td>
+<td>Set/get the flags for a sequence</td>
+</tr>
+<tr>
+<td><a href="seqset_range.html" class="xref" title="DB_SEQUENCE-&gt;set_range()">DB_SEQUENCE-&gt;set_range()</a>, <a href="seqget_range.html" class="xref" title="DB_SEQUENCE-&gt;get_range()">DB_SEQUENCE-&gt;get_range()</a></td>
+<td>Set/get the range for a sequence</td>
+</tr>
+<tr>
+<td><a href="seqstat.html" class="xref" title="DB_SEQUENCE-&gt;stat()">DB_SEQUENCE-&gt;stat()</a></td>
+<td>Return sequence statistics</td>
+</tr>
+<tr>
+<td><a href="seqstat_print.html" class="xref" title="DB_SEQUENCE-&gt;stat_print()">DB_SEQUENCE-&gt;stat_print()</a></td>
+<td>Print sequence statistics</td>
+</tr>
+<tr>
+<td><a href="dbget_transactional.html" class="xref" title="DB-&gt;get_transactional()">DB-&gt;get_transactional()</a></td>
+<td>Does the DB have transaction support</td>
+</tr>
+<tr>
+<td><a href="envcdsgroup_begin.html" class="xref" title="DB_ENV-&gt;cdsgroup_begin()">DB_ENV-&gt;cdsgroup_begin()</a></td>
+<td>Get a locker ID in Berkeley DB Concurrent Data Store</td>
+</tr>
+<tr>
+<td><a href="envset_tx_max.html" class="xref" title="DB_ENV-&gt;set_tx_max()">DB_ENV-&gt;set_tx_max()</a>, <a href="envget_tx_max.html" class="xref" title="DB_ENV-&gt;get_tx_max()">DB_ENV-&gt;get_tx_max()</a></td>
+<td>Set/get maximum number of transactions</td>
+</tr>
+<tr>
+<td><a href="envset_tx_timestamp.html" class="xref" title="DB_ENV-&gt;set_tx_timestamp()">DB_ENV-&gt;set_tx_timestamp()</a>, <a href="envget_tx_timestamp.html" class="xref" title="DB_ENV-&gt;get_tx_timestamp()">DB_ENV-&gt;get_tx_timestamp()</a></td>
+<td>Set/get recovery timestamp</td>
+</tr>
+<tr>
+<td><a href="txnrecover.html" class="xref" title="DB_ENV-&gt;txn_recover()">DB_ENV-&gt;txn_recover()</a></td>
+<td>Distributed transaction recovery</td>
+</tr>
+<tr>
+<td><a href="txnbegin.html" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a></td>
+<td>Begin a transaction</td>
+</tr>
+<tr>
+<td><a href="txncheckpoint.html" class="xref" title="DB_ENV-&gt;txn_checkpoint()">DB_ENV-&gt;txn_checkpoint()</a></td>
+<td>Checkpoint the transaction subsystem</td>
+</tr>
+<tr>
+<td><a href="txnstat.html" class="xref" title="DB_ENV-&gt;txn_stat()">DB_ENV-&gt;txn_stat()</a></td>
+<td>Return transaction subsystem statistics</td>
+</tr>
+<tr>
+<td><a href="txnstat_print.html" class="xref" title="DB_ENV-&gt;txn_stat_print()">DB_ENV-&gt;txn_stat_print()</a></td>
+<td>Print transaction subsystem statistics</td>
+</tr>
+<tr>
+<td><a href="txnabort.html" class="xref" title="DB_TXN-&gt;abort()">DB_TXN-&gt;abort()</a></td>
+<td>Abort a transaction</td>
+</tr>
+<tr>
+<td><a href="txncommit.html" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a></td>
+<td>Commit a transaction</td>
+</tr>
+<tr>
+<td><a href="txndiscard.html" class="xref" title="DB_TXN-&gt;discard()">DB_TXN-&gt;discard()</a></td>
+<td>Discard a prepared but not resolved transaction handle</td>
+</tr>
+<tr>
+<td><a href="txnid.html" class="xref" title="DB_TXN-&gt;id()">DB_TXN-&gt;id()</a></td>
+<td>Return a transaction's ID</td>
+</tr>
+<tr>
+<td><a href="txnprepare.html" class="xref" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a></td>
+<td>Prepare a transaction for commit</td>
+</tr>
+<tr>
+<td><a href="txnset_name.html" class="xref" title="DB_TXN-&gt;set_name()">DB_TXN-&gt;set_name()</a>, <a href="txnget_name.html" class="xref" title="DB_TXN-&gt;get_name()">DB_TXN-&gt;get_name()</a></td>
+<td>Associate a string with a transaction</td>
+</tr>
+<tr>
+<td><a href="txnset_priority.html" class="xref" title="DB_TXN-&gt;set_priority()">DB_TXN-&gt;set_priority()</a>, <a href="txnget_priority.html" class="xref" title="DB_TXN-&gt;get_priority()">DB_TXN-&gt;get_priority()</a></td>
+<td>Set/get transaction's priority</td>
+</tr>
+<tr>
+<td><a href="txnset_timeout.html" class="xref" title="DB_TXN-&gt;set_timeout()">DB_TXN-&gt;set_timeout()</a></td>
+<td>Set transaction timeout</td>
+</tr>
+<tr>
+<td><a href="db_archive.html" class="xref" title="db_archive">db_archive</a></td>
+<td>Archival utility</td>
+</tr>
+<tr>
+<td><a href="db_checkpoint.html" class="xref" title="db_checkpoint">db_checkpoint</a></td>
+<td>Transaction checkpoint utility</td>
+</tr>
+<tr>
+<td><a href="db_deadlock.html" class="xref" title="db_deadlock">db_deadlock</a></td>
+<td>Deadlock detection utility</td>
+</tr>
+<tr>
+<td><a href="db_dump.html" class="xref" title="db_dump">db_dump</a></td>
+<td>Database dump utility</td>
+</tr>
+<tr>
+<td><a href="db_hotbackup.html" class="xref" title="db_hotbackup">db_hotbackup</a></td>
+<td>Hot backup utility</td>
+</tr>
+<tr>
+<td><a href="db_load.html" class="xref" title="db_load">db_load</a></td>
+<td>Database load utility</td>
+</tr>
+<tr>
+<td><a href="db_log_verify.html" class="xref" title="db_log_verify">db_log_verify</a></td>
+<td>Log verification utility</td>
+</tr>
+<tr>
+<td><a href="db_printlog.html" class="xref" title="db_printlog">db_printlog</a></td>
+<td>Transaction log display utility</td>
+</tr>
+<tr>
+<td><a href="db_recover.html" class="xref" title="db_recover">db_recover</a></td>
+<td>Recovery utility</td>
+</tr>
+<tr>
+<td><a href="db_replicate.html" class="xref" title="db_replicate">db_replicate</a></td>
+<td>Replication utility</td>
+</tr>
+<tr>
+<td><a href="db_sql_codegen.html" class="xref" title="db_sql_codegen">db_sql_codegen</a></td>
+<td>SQL schema to Berkeley DB code in C</td>
+</tr>
+<tr>
+<td><a href="dbsql.html" class="xref" title="dbsql">dbsql</a></td>
+<td>Command line interface to libdb_sql</td>
+</tr>
+<tr>
+<td><a href="db_stat.html" class="xref" title="db_stat">db_stat</a></td>
+<td>Statistics utility</td>
+</tr>
+<tr>
+<td><a href="db_tuner.html" class="xref" title="db_tuner">db_tuner</a></td>
+<td>Suggest a page size for optimal operation in a btree database</td>
+</tr>
+<tr>
+<td><a href="db_upgrade.html" class="xref" title="db_upgrade">db_upgrade</a></td>
+<td>Database upgrade utility</td>
+</tr>
+<tr>
+<td><a href="db_verify.html" class="xref" title="db_verify">db_verify</a></td>
+<td>Verification utility</td>
+</tr>
+<tr>
+<td><a href="sqlite3.html" class="xref" title="sqlite3">sqlite3</a></td>
+<td>Command line tool for wrapper library libsqlite3</td>
+</tr>
+<tr>
+<td><a href="dbm.html" class="xref" title="dbm/ndbm">dbm/ndbm</a></td>
+<td>Compatibility for applications written to the historic dbm or hdbm interfaces</td>
+</tr>
+<tr>
+<td><a href="hsearch.html" class="xref" title="hsearch">hsearch</a></td>
+<td>Compatibility for applications written to the historic hsearch interface</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_close.html" class="xref" title="db_env_set_func_close">db_env_set_func_close</a></td>
+<td>Replace Berkeley DB calls to close() with the identified function.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_dirfree.html" class="xref" title="db_env_set_func_dirfree">db_env_set_func_dirfree</a></td>
+<td>Specify function used to free memory obtained due to a directory walk.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_dirlist.html" class="xref" title="db_env_set_func_dirlist">db_env_set_func_dirlist</a></td>
+<td>Specify function used to free memory obtained due to a directory list.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_exists.html" class="xref" title="db_env_set_func_exists">db_env_set_func_exists</a></td>
+<td>Specify function used to determine whether a file exists.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_file_map.html" class="xref" title="db_env_set_func_file_map">db_env_set_func_file_map</a></td>
+<td>Specify function used to map a file into memory.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_free.html" class="xref" title="db_env_set_func_free">db_env_set_func_free</a></td>
+<td>Specify function used to free memory.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_fsync.html" class="xref" title="db_env_set_func_fsync">db_env_set_func_fsync</a></td>
+<td>Specify function used to sync a file to disk.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_ftruncate.html" class="xref" title="db_env_set_func_ftruncate">db_env_set_func_ftruncate</a></td>
+<td>Specify function used to truncate a file.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_ioinfo.html" class="xref" title="db_env_set_func_ioinfo">db_env_set_func_ioinfo</a></td>
+<td>Specify function used to determine file characteristics.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_malloc.html" class="xref" title="db_env_set_func_malloc">db_env_set_func_malloc</a></td>
+<td>Specify function used to allocate memory.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_open.html" class="xref" title="db_env_set_func_open">db_env_set_func_open</a></td>
+<td>Specify function used to open a file.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_pread.html" class="xref" title="db_env_set_func_pread">db_env_set_func_pread</a></td>
+<td>Specify function used to read data from an object.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_pwrite.html" class="xref" title="db_env_set_func_pwrite">db_env_set_func_pwrite</a></td>
+<td>Specify function used to write data to an object.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_read.html" class="xref" title="db_env_set_func_read">db_env_set_func_read</a></td>
+<td>Specify function used to read data from an object.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_realloc.html" class="xref" title="db_env_set_func_realloc">db_env_set_func_realloc</a></td>
+<td>Specify function used to change the size of memory pointed to by a pointer.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_region_map.html" class="xref" title="db_env_set_func_region_map">db_env_set_func_region_map</a></td>
+<td>Specify function used to created shared memory regions.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_rename.html" class="xref" title="db_env_set_func_rename">db_env_set_func_rename</a></td>
+<td>Specify function used to change the name of a file.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_seek.html" class="xref" title="db_env_set_func_seek">db_env_set_func_seek</a></td>
+<td>Specify function used to specify a location in a file.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_unlink.html" class="xref" title="db_env_set_func_unlink">db_env_set_func_unlink</a></td>
+<td>Specify function used to delete a file.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_write.html" class="xref" title="db_env_set_func_write">db_env_set_func_write</a></td>
+<td>Specify function used to write data to an object.</td>
+</tr>
+<tr>
+<td><a href="db_env_set_func_yield.html" class="xref" title="db_env_set_func_yield">db_env_set_func_yield</a></td>
+<td>Specify function used to yield the processor to another thread of control.</td>
+</tr>
+<tr>
+<td><a href="add_data_dir_parameter.html" class="xref" title="add_data_dir">add_data_dir</a></td>
+<td>Sets the mutex alignment.</td>
+</tr>
+<tr>
+<td><a href="mutex_set_align_parameter.html" class="xref" title="mutex_set_align">mutex_set_align</a></td>
+<td>Sets the mutex alignment.</td>
+</tr>
+<tr>
+<td><a href="mutex_set_increment_parameter.html" class="xref" title="mutex_set_increment">mutex_set_increment</a></td>
+<td>Configures the number of additional mutexes to allocate.</td>
+</tr>
+<tr>
+<td><a href="mutex_set_max_parameter.html" class="xref" title="mutex_set_max">mutex_set_max</a></td>
+<td>Configures the total number of mutexes to allocate.</td>
+</tr>
+<tr>
+<td><a href="mutex_set_tas_spins_parameter.html" class="xref" title="mutex_set_tas_spins">mutex_set_tas_spins</a></td>
+<td>Specifies the number of times the test-and-set mutexes should spin without blocking.</td>
+</tr>
+<tr>
+<td><a href="rep_set_clockskew_parameter.html" class="xref" title="rep_set_clockskew">rep_set_clockskew</a></td>
+<td>Sets the clock skew ratio.</td>
+</tr>
+<tr>
+<td><a href="rep_set_config_parameter.html" class="xref" title="rep_set_config">rep_set_config</a></td>
+<td>Configures the Berkeley DB replication subsystem.</td>
+</tr>
+<tr>
+<td><a href="rep_set_limit_parameter.html" class="xref" title="rep_set_limit">rep_set_limit</a></td>
+<td>Sets record transmission throttling.</td>
+</tr>
+<tr>
+<td><a href="rep_set_nsites_parameter.html" class="xref" title="rep_set_nsites">rep_set_nsites</a></td>
+<td>Specifies the total number of sites in a replication group.</td>
+</tr>
+<tr>
+<td><a href="rep_set_priority_parameter.html" class="xref" title="rep_set_priority">rep_set_priority</a></td>
+<td>Specifies the database environment's priority.</td>
+</tr>
+<tr>
+<td><a href="rep_set_request_parameter.html" class="xref" title="rep_set_request">rep_set_request</a></td>
+<td>Sets a threshold before requesting retransmission of a missing message.</td>
+</tr>
+<tr>
+<td><a href="rep_set_timeout_parameter.html" class="xref" title="rep_set_timeout">rep_set_timeout</a></td>
+<td>Specifies a variety of replication timeout values.</td>
+</tr>
+<tr>
+<td><a href="repmgr_set_ack_policy_parameter.html" class="xref" title="repmgr_set_ack_policy">repmgr_set_ack_policy</a></td>
+<td>Specifies how master and client sites will handle acknowledgment.</td>
+</tr>
+<tr>
+<td><a href="repmgr_site_parameter.html" class="xref" title="repmgr_site">repmgr_site</a></td>
+<td>Identifies a Replication Manager host.</td>
+</tr>
+<tr>
+<td><a href="set_cachesize_parameter.html" class="xref" title="set_cachesize">set_cachesize</a></td>
+<td>Sets the size of the shared memory buffer pool.</td>
+</tr>
+<tr>
+<td><a href="set_cache_max_parameter.html" class="xref" title="set_cache_max">set_cache_max</a></td>
+<td>Sets the maximum size for set_cachesize parameter.</td>
+</tr>
+<tr>
+<td><a href="set_create_dir_parameter.html" class="xref" title="set_create_dir">set_create_dir</a></td>
+<td>Sets the directory path to create the access method database files.</td>
+</tr>
+<tr>
+<td><a href="set_data_len_parameter.html" class="xref" title="set_data_len">set_data_len</a></td>
+<td>Sets the maximum number of bytes displayed by some utilities.</td>
+</tr>
+<tr>
+<td><a href="set_flags_parameter.html" class="xref" title="set_flags">set_flags</a></td>
+<td>Configures a database environment.</td>
+</tr>
+<tr>
+<td><a href="set_intermediate_dir_mode_parameter.html" class="xref" title="set_intermediate_dir_mode">set_intermediate_dir_mode</a></td>
+<td>Configures the directory permissions.</td>
+</tr>
+<tr>
+<td><a href="set_lg_bsize_parameter.html" class="xref" title="set_lg_bsize">set_lg_bsize</a></td>
+<td>Sets the size of the in-memory log buffer.</td>
+</tr>
+<tr>
+<td><a href="set_lg_dir_parameter.html" class="xref" title="set_lg_dir">set_lg_dir</a></td>
+<td>Sets the path of the directory for logging files.</td>
+</tr>
+<tr>
+<td><a href="set_lg_filemode_parameter.html" class="xref" title="set_lg_filemode">set_lg_filemode</a></td>
+<td>Sets the absolute file mode for created log files.</td>
+</tr>
+<tr>
+<td><a href="set_lg_max_parameter.html" class="xref" title="set_lg_max">set_lg_max</a></td>
+<td>Sets the maximum size of a single file in the log.</td>
+</tr>
+<tr>
+<td><a href="set_lg_regionmax_parameter.html" class="xref" title="set_lg_regionmax">set_lg_regionmax</a></td>
+<td>Sets the size of the underlying logging area.</td>
+</tr>
+<tr>
+<td><a href="set_lk_detect_parameter.html" class="xref" title="set_lk_detect">set_lk_detect</a></td>
+<td>Sets the maximum number of locking entities.</td>
+</tr>
+<tr>
+<td><a href="set_lk_max_lockers_parameter.html" class="xref" title="set_lk_max_lockers">set_lk_max_lockers</a></td>
+<td>Sets the maximum number of locking entities.</td>
+</tr>
+<tr>
+<td><a href="set_lk_max_locks_parameter.html" class="xref" title="set_lk_max_locks">set_lk_max_locks</a></td>
+<td>Sets the maximum number of locks supported by the Berkeley DB environment.</td>
+</tr>
+<tr>
+<td><a href="set_lk_max_objects_parameter.html" class="xref" title="set_lk_max_objects">set_lk_max_objects</a></td>
+<td>Sets the maximum number of locked objects.</td>
+</tr>
+<tr>
+<td><a href="set_lk_partitions_parameter.html" class="xref" title="set_lk_partitions">set_lk_partitions</a></td>
+<td>Sets the number of lock table partitions in the Berkeley DB environment.</td>
+</tr>
+<tr>
+<td><a href="log_set_config_parameter.html" class="xref" title="log_set_config">log_set_config</a></td>
+<td>Configures the Berkeley DB logging subsystem.</td>
+</tr>
+<tr>
+<td><a href="set_mp_max_openfd_parameter.html" class="xref" title="set_mp_max_openfd">set_mp_max_openfd</a></td>
+<td>Limits the number of file descriptors the library will open concurrently when flushing dirty pages from the cache.</td>
+</tr>
+<tr>
+<td><a href="set_mp_max_write_parameter.html" class="xref" title="set_mp_max_write">set_mp_max_write</a></td>
+<td>Limits the number of sequential write operations</td>
+</tr>
+<tr>
+<td><a href="set_mp_mmapsize_parameter.html" class="xref" title="set_mp_mmapsize">set_mp_mmapsize</a></td>
+<td>Sets the maximum file size.</td>
+</tr>
+<tr>
+<td><a href="set_open_flags_parameter.html" class="xref" title="set_open_flags">set_open_flags</a></td>
+<td>Initializes specific subsystems of the Berkeley DB environment.</td>
+</tr>
+<tr>
+<td><a href="set_shm_key_parameter.html" class="xref" title="set_shm_key">set_shm_key</a></td>
+<td>Configures the database environment's base segment ID.</td>
+</tr>
+<tr>
+<td><a href="set_thread_count_parameter.html" class="xref" title="set_thread_count">set_thread_count</a></td>
+<td>Declares an approximate number of threads in the database environment.</td>
+</tr>
+<tr>
+<td><a href="set_timeout_parameter.html" class="xref" title="set_timeout">set_timeout</a></td>
+<td>Sets timeout values for locks or transactions.</td>
+</tr>
+<tr>
+<td><a href="set_tmp_dir_parameter.html" class="xref" title="set_tmp_dir">set_tmp_dir</a></td>
+<td>Specifies the directory path of temporary files.</td>
+</tr>
+<tr>
+<td><a href="set_tx_max_parameter.html" class="xref" title="set_tx_max">set_tx_max</a></td>
+<td>Configures support of simultaneously active transactions.</td>
+</tr>
+<tr>
+<td><a href="set_verbose_parameter.html" class="xref" title="set_verbose">set_verbose</a></td>
+<td>Enables/disables the Berkeley DB message output.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Legal Notice</strong></p>
+<p>This documentation is distributed under an open source license. You may review the terms of this license at: <a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html" class="ulink" target="_top"><a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html">http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html</a></a></p>
+<p>Oracle, Berkeley DB, and Sleepycat are trademarks or registered trademarks of Oracle. All rights to these marks are reserved. No third-party use is permitted without the express prior written consent of Oracle.</p>
+<p>Other names may be trademarks of their respective owners.</p>
+<p>To obtain a copy of this document's original source code, please submit a request to the Oracle Technology Network forum at: <a href="http://forums.oracle.com/forums/forum.jspa?forumID=271" class="ulink" target="_top"><a href="http://forums.oracle.com/forums/forum.jspa?forumID=271">http://forums.oracle.com/forums/forum.jspa?forumID=271</a></a></p>
+<p>9/9/2013</p>
+<hr />
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

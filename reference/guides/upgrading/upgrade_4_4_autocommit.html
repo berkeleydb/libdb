@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DB_AUTO_COMMIT — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / upgrading</nav>
+  <main>
+<h2 id="db_auto_commit">DB_AUTO_COMMIT</h2>
+<p>In previous Berkeley DB releases, the <a href="../../api/c/envset_flags.html#envset_flags_DB_AUTO_COMMIT" class="olink">DB_AUTO_COMMIT</a> flag was used in the C and C++ Berkeley DB APIs to wrap operations within a transaction without explicitly creating a transaction and passing the <a href="../../api/c/txn.html" class="olink">TXN</a> handle as part of the operation method call. In the 4.4 release, the <a href="../../api/c/envset_flags.html#envset_flags_DB_AUTO_COMMIT" class="olink">DB_AUTO_COMMIT</a> flag no longer needs to be explicitly specified.</p>
+<p>In the 4.4 release, specifying the <a href="../../api/c/envset_flags.html#envset_flags_DB_AUTO_COMMIT" class="olink">DB_AUTO_COMMIT</a> flag to the <a href="../../api/c/envset_flags.html" class="olink">DB_ENV-&gt;set_flags()</a> method causes all database modifications in that environment to be transactional; specifying <a href="../../api/c/envset_flags.html#envset_flags_DB_AUTO_COMMIT" class="olink">DB_AUTO_COMMIT</a> to the <a href="../../api/c/dbopen.html" class="olink">DB-&gt;open()</a> method causes all modifications to that database to be transactional; specifying <a href="../../api/c/envset_flags.html#envset_flags_DB_AUTO_COMMIT" class="olink">DB_AUTO_COMMIT</a> to the <a href="../../api/c/envdbremove.html" class="olink">DB_ENV-&gt;dbremove()</a> methods causes those specific operations to be transactional.</p>
+<p>No related application changes are required for this release, as the <a href="../../api/c/envset_flags.html#envset_flags_DB_AUTO_COMMIT" class="olink">DB_AUTO_COMMIT</a> flag is ignored where it is no longer needed. However, application writers are encouraged to remove uses of the <a href="../../api/c/envset_flags.html#envset_flags_DB_AUTO_COMMIT" class="olink">DB_AUTO_COMMIT</a> flag in places where it is no longer needed.</p>
+<p>Similar changes have been made to the Berkeley DB Tcl API. These changes are not optional, and Tcl applications will need to remove the -auto_commit flag from methods where it is no longer needed.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

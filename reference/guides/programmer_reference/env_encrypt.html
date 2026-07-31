@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Encryption — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="encryption">Encryption</h2>
+<p>Berkeley DB optionally supports encryption using the Rijndael/AES (also known as the Advanced Encryption Standard and Federal Information Processing Standard (FIPS) 197) algorithm for encryption or decryption. The algorithm is configured to use a 128-bit key. Berkeley DB uses a 16-byte initialization vector generated using the Mersenne Twister. All encrypted information is additionally checksummed using the SHA1 Secure Hash Algorithm, using a 160-bit message digest.</p>
+<p>The encryption support provided with Berkeley DB is intended to protect applications from an attacker obtaining physical access to the media on which a Berkeley DB database is stored, or an attacker compromising a system on which Berkeley DB is running but who is unable to read system or process memory on that system. <strong>The encryption support provided with Berkeley DB will not protect applications from attackers able to read system memory on the system where Berkeley DB is running.</strong></p>
+<p>To encrypt a database, you must configure the database for encryption prior to creating it. If you are using a database environment, you must also configure the environment for encryption. In order to create an encrypted database within an environment, you:</p>
+<ol type="1">
+<li><p>Configure the environment for encryption using the <a href="../../api/c/envset_encrypt.html" class="olink">DB_ENV-&gt;set_encrypt()</a> method.</p></li>
+<li><p>Open the database environment.</p></li>
+<li><p>Specify the <a href="../../api/c/dbset_flags.html#dbset_flags_DB_ENCRYPT" class="olink">DB_ENCRYPT</a> flag to the database handle.</p></li>
+<li><p>Open the database.</p></li>
+</ol>
+<p>Once you have done that, all of the databases that you create in the environment are encrypted/decrypted by the password you specify using the <a href="../../api/c/envset_encrypt.html" class="olink">DB_ENV-&gt;set_encrypt()</a> method.</p>
+<p>For databases not created in an environment:</p>
+<ol type="1">
+<li><p>Specify the <a href="../../api/c/dbset_flags.html#dbset_flags_DB_ENCRYPT" class="olink">DB_ENCRYPT</a> flag to the database handle.</p></li>
+<li><p>Call the <a href="../../api/c/dbset_encrypt.html" class="olink">DB-&gt;set_encrypt()</a> method.</p></li>
+<li><p>Open the database.</p></li>
+</ol>
+<p>Note that databases cannot be converted to an encrypted format after they have been created without dumping and re-creating them. Finally, encrypted databases cannot be read on systems with a different endianness than the system that created the encrypted database.</p>
+<p>Each encrypted database environment (including all its encrypted databases) is encrypted using a single password and a single algorithm. Applications wanting to provide a finer granularity of database access must either use multiple database environments or implement additional access controls outside of Berkeley DB.</p>
+<p>The only encrypted parts of a database environment are its databases and its log files. Specifically, the <a href="env_region.html" class="xref" title="Shared memory regions">Shared memory regions</a> supporting the database environment are not encrypted. For this reason, it may be possible for an attacker to read some or all of an encrypted database by reading the on-disk files that back these shared memory regions. To prevent such attacks, applications may want to use in-memory filesystem support (on systems that support it), or the <a href="../../api/c/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a> or <a href="../../api/c/envopen.html#envopen_DB_SYSTEM_MEM" class="olink">DB_SYSTEM_MEM</a> flags to the <a href="../../api/c/envopen.html" class="olink">DB_ENV-&gt;open()</a> method, to place the shared memory regions in memory that is never written to a disk. As some systems page system memory to a backing disk, it is important to consider the specific operating system running on the machine as well. Finally, when backing database environment shared regions with the filesystem, Berkeley DB can be configured to overwrite the shared regions before removing them by specifying the <a href="../../api/c/envset_flags.html#set_flags_DB_OVERWRITE" class="olink">DB_OVERWRITE</a> flag. This option is only effective in the presence of fixed-block filesystems, journaling or logging filesystems will require operating system support and probably modification of the Berkeley DB sources.</p>
+<p>While all user data is encrypted, parts of the databases and log files in an encrypted environment are maintained in an unencrypted state. Specifically, log record headers are not encrypted, only the actual log records. Additionally, database internal page header fields are not encrypted. These page header fields includes information such as the page's <a href="../../api/c/lsn.html" class="olink">DB_LSN</a> number and position in the database's sort order.</p>
+<p>Log records distributed by a replication master to replicated clients are transmitted to the clients in unencrypted form. If encryption is desired in a replicated application, the use of a secure transport is strongly suggested.</p>
+<p>We gratefully acknowledge:</p>
+<ul>
+<li>Vincent Rijmen, Antoon Bosselaers and Paulo Barreto for writing the Rijndael/AES code used in Berkeley DB.</li>
+<li>Steve Reid and James H. Brown for writing the SHA1 checksum code used in Berkeley DB.</li>
+<li>Makoto Matsumoto and Takuji Nishimura for writing the Mersenne Twister code used in Berkeley DB.</li>
+<li>Adam Stubblefield for integrating the Rijndael/AES, SHA1 checksum and Mersenne Twister code into Berkeley DB.</li>
+</ul>
+<p>Berkeley DB 11g Release 2 supports encryption using Intel's Performance Primitive (IPP) on Linux. This works only on Intel processors. To use Berkeley DB with IPP encryption, you must have IPP installed along with the cryptography extension. The IPP performance is higher in most cases compared to the current AES implementation. See <a href="../../guides/installation/build_unix_conf.html#build_unix_conf.--with-cryptography" class="olink">--with-cryptography</a> for more information. See the <a href="http://software.intel.com/en-us/articles/intel-integrated-performance-primitives-documentation/" class="ulink" target="_top">Intel Documenation</a> for more information on IPP.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

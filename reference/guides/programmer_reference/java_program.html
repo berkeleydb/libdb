@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Java programming notes — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="java-programming-notes">Java programming notes</h2>
+<p>Although the Java API parallels the Berkeley DB C++/C interface in many ways, it differs where the Java language requires. For example, the handle method names are camel-cased and conform to Java naming patterns. (The C++/C method names are currently provided, but are deprecated.)</p>
+<ol type="1">
+<li><p>The Java runtime does not automatically close Berkeley DB objects on finalization. There are several reasons for this. One is that finalization is generally run only when garbage collection occurs, and there is no guarantee that this occurs at all, even on exit. Allowing specific Berkeley DB actions to occur in ways that cannot be replicated seems wrong. Second, finalization of objects may happen in an arbitrary order, so we would have to do extra bookkeeping to make sure that everything was closed in the proper order. The best word of advice is to always do a close() for any matching open() call. Specifically, the Berkeley DB package requires that you explicitly call close on each individual <a href="../java/com/sleepycat/db/Database.html" class="ulink" target="_top">Database</a> and <a href="../java/com/sleepycat/db/Cursor.html" class="ulink" target="_top">Cursor</a> object that you opened. Your database activity may not be synchronized to disk unless you do so.</p></li>
+<li><p>Some methods in the Java API have no return type, and throw a <a href="../java/com/sleepycat/db/DatabaseException.html" class="ulink" target="_top">DatabaseException</a> when an severe error arises. There are some notable methods that do have a return value, and can also throw an exception. The "get" methods in <a href="../java/com/sleepycat/db/Database.html" class="ulink" target="_top">Database</a> and <a href="../java/com/sleepycat/db/Cursor.html" class="ulink" target="_top">Cursor</a> both return 0 when a get succeeds, <a href="program_errorret.html#program_errorret.DB_NOTFOUND" class="link">DB_NOTFOUND</a> when the key is not found, and throw an error when there is a severe error. This approach allows the programmer to check for typical data-driven errors by watching return values without special casing exceptions.</p>
+<p>An object of type <a href="../java/com/sleepycat/db/MemoryException.html" class="ulink" target="_top">MemoryException</a> is thrown when a Dbt is too small to hold the corresponding key or data item.</p>
+<p>An object of type <a href="../java/com/sleepycat/db/DeadlockException.html" class="ulink" target="_top">DeadlockException</a> is thrown when a deadlock would occur.</p>
+<p>An object of type <a href="../java/com/sleepycat/db/RunRecoveryException.html" class="ulink" target="_top">RunRecoveryException</a>, a subclass of <a href="../java/com/sleepycat/db/DatabaseException.html" class="ulink" target="_top">DatabaseException</a>, is thrown when there is an error that requires a recovery of the database using <a href="../../api/c/db_recover.html" class="olink">db_recover</a> utility.</p>
+<p>An object of type <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/lang/IllegalArgumentException.html" class="ulink" target="_top">IllegalArgumentException</a> a standard Java Language exception, is thrown when there is an error in method arguments.</p>
+<p>An object of type <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/lang/OutOfMemoryError.html" class="ulink" target="_top">OutOfMemoryError</a> is thrown when the system cannot provide enough memory to complete the operation (the ENOMEM system error on UNIX).</p></li>
+<li><p>If there are embedded nulls in the <strong>curslist</strong> argument for <a href="../java/com/sleepycat/db/Database.html#join(com.sleepycat.db.Cursor%5B%5D,%20com.sleepycat.db.JoinConfig)" class="ulink" target="_top">Database.join(com.sleepycat.db.Cursor[], com.sleepycat.db.JoinConfig)</a>, they will be treated as the end of the list of cursors, even if you may have allocated a longer array. Fill in all the cursors in your array unless you intend to cut it short.</p></li>
+<li><p>If you are using custom class loaders in your application, make sure that the Berkeley DB classes are loaded by the system class loader, not a custom class loader. This is due to a JVM bug that can cause an access violation during finalization (see the bug 4238486 in Sun Microsystem's Java Bug Database).</p></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

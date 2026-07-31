@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Using Replication Manager message channels — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="using-replication-manager-message-channels">Using Replication Manager message channels</h2>
+<p><span class="sect2"> <a href="repmgr_channels.html#dbchannel_class">DB_CHANNEL</a> </span></p>
+<p><span class="sect2"> <a href="repmgr_channels.html#dbchannel_send">Sending messages over a message channel</a> </span></p>
+<p><span class="sect2"> <a href="repmgr_channels.html#dbchannel_receive">Receiving messages</a> </span></p>
+<p>The various sites comprising a replication group frequently need to communicate with one another. Mostly, these messages are handled for you internally by the Replication Manager. However, your application may have a requirement to pass messages beyond what the Replication Manager requires in order to satisfy its own internal workings.</p>
+<p>For this reason, you can access and use the Replication Manager's internal message channels. You do this by using the <code>DB_CHANNEL</code> class, and by implementing a message handling function on each of your sites.</p>
+<p>Note that an example of using Replication Manager message channels is available in the distribution. See <a href="rep_ex_chan.html" class="xref" title="Ex_rep_chan: a Replication Manager channel example">Ex_rep_chan: a Replication Manager channel example</a> for more information.</p>
+<h3 id="db_channel">DB_CHANNEL</h3>
+<p>The <code>DB_CHANNEL</code> class provides a series of methods which allow you to send messages to the other sites in your replication group. You create a <code>DB_CHANNEL</code> handle using the <a href="../../api/c/repmgr_channel.html" class="olink">DB_ENV-&gt;repmgr_channel()</a> method. When you are done with the handle, close it using the <a href="../../api/c/dbchannel_close.html" class="olink">DB_CHANNEL-&gt;close()</a> method. A closed handle must never be accessed again. Note that all channel handles should be closed before the associated environment handle is closed. Also, allow all message operations to complete on the channel before closing the handle.</p>
+<p>When you create a <code>DB_CHANNEL</code> handle, you indicate what channel you want to use. Possibilities are:</p>
+<ul>
+<li><p>The numerical env ID of a remote site in the replication group.</p></li>
+<li><p><code>DB_EID_MASTER</code></p>
+<p>Messages sent on this channel are sent only to the master site. Note that messages are always sent to the current master, even if the master has changed since the channel was opened.</p>
+<p>If the local site is the master, then sending messages on this channel will result in the local site receiving those messages echoed back to itself.</p></li>
+</ul>
+<h3 id="sending-messages-over-a-message-channel">Sending messages over a message channel</h3>
+<p>You can send any message you want over a message channel. The message can be as simple as a character string and as complex as a large data structure. However, before you can send the message, you must encapsulate it within one or more <a href="../../api/c/dbt.html" class="olink">DBT</a>s. This means <a href="am_misc_struct.html" class="link" title="Storing C/C++ structures/objects">marshaling the message</a> if it is contained within a complex data structure.</p>
+<p>The methods that you use to send messages all accept an array of <a href="../../api/c/dbt.html" class="olink">DBT</a>s. This means that in most circumstances it is perfectly acceptable to send multi-part messages.</p>
+<p>Messages may be sent either asynchronously or synchronously. To send a message asynchronously, use the <a href="../../api/c/dbchannel_send_msg.html" class="olink">DB_CHANNEL-&gt;send_msg()</a> method. This method sends its message and then immediately returns without waiting for any sort of a response.</p>
+<p>To send a message synchronously, use the <a href="../../api/c/dbchannel_send_request.html" class="olink">DB_CHANNEL-&gt;send_request()</a> method. This method blocks until it receives a response from the site to which it sent the message (or until a timeout threshold is reached).</p>
+<h4 id="message-responses">Message Responses</h4>
+<p>Message responses are required if a message is sent on a channel using the <a href="../../api/c/dbchannel_send_request.html" class="olink">DB_CHANNEL-&gt;send_request()</a> method. That method accepts the address of a single <a href="../../api/c/dbt.html" class="olink">DBT</a> which is used to receive the response from the remote site.</p>
+<p>Message responses are encapsulated in a single <a href="../../api/c/dbt.html" class="olink">DBT</a>. The response can be anything from a complex data structure, to a string, to a simple type, to no information at all. In the latter case, receipt of the <a href="../../api/c/dbt.html" class="olink">DBT</a> is sufficient to indicate that the request was received at the remote site.</p>
+<p>Responses are sent back from the remote system using its message handling function. Usually that function calls <a href="../../api/c/dbchannel_send_msg.html" class="olink">DB_CHANNEL-&gt;send_msg()</a> to send a single response.</p>
+<p>The response must be contained in a single <a href="../../api/c/dbt.html" class="olink">DBT</a>. If a multi-part response is required by the application, you can configure the response <a href="../../api/c/dbt.html" class="olink">DBT</a> that you provide to <a href="../../api/c/dbchannel_send_request.html" class="olink">DB_CHANNEL-&gt;send_request()</a> for <a href="am_misc_bulk.html" class="link" title="Retrieving and updating records in bulk">bulk operations</a>.</p>
+<h3 id="receiving-messages">Receiving messages</h3>
+<p>Messages received at a remote site are handled using a callback function. This function is configured for the local environment using the <a href="../../api/c/repmgr_msg_dispatch.html" class="olink">DB_ENV-&gt;repmgr_msg_dispatch()</a> method. For best results, the message dispatch function should be configured for the local environment before replication is started. In this way, you do not run the risk of missing messages sent after replication has started but before the message dispatch function is configured for the environment.</p>
+<p>The callback configured by <a href="../../api/c/repmgr_msg_dispatch.html" class="olink">DB_ENV-&gt;repmgr_msg_dispatch()</a> accepts four parameters of note:</p>
+<ul>
+<li><p>A response channel. This is the channel the function will use to response to the message, if a response is required. To respond to the message, the function uses the <a href="../../api/c/dbchannel_send_msg.html" class="olink">DB_CHANNEL-&gt;send_msg()</a> method.</p></li>
+<li><p>An array of <a href="../../api/c/dbt.html" class="olink">DBT</a>s. These hold the message that this function must handle.</p></li>
+<li><p>A numerical value that indicates how many elements the previously described array holds.</p></li>
+<li><p>A flag that indicates whether the message requires a response. If the flag is set to <code>DB_REPMGR_NEED_RESPONSE</code>, then the function should send a single <a href="../../api/c/dbt.html" class="olink">DBT</a> in response using the channel provided to this function, and the <a href="../../api/c/dbchannel_send_msg.html" class="olink">DB_CHANNEL-&gt;send_msg()</a> method.</p></li>
+</ul>
+<p>For an example of using this callback, see the <code>operation_dispatch()</code> function, which is available with the <a href="rep_ex_chan.html" class="link" title="Ex_rep_chan: a Replication Manager channel example">ex_rep_chan example</a> in your product distribution.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BTree Configuration — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / gsg</nav>
+  <main>
+<h2 id="btree-configuration">BTree Configuration</h2>
+<p><span class="sect2"> <a href="btree.html#duplicateRecords">Allowing Duplicate Records</a> </span></p>
+<p><span class="sect2"> <a href="btree.html#comparators">Setting Comparison Functions</a> </span></p>
+<p>In going through the previous chapters in this book, you may notice that we touch on some topics that are specific to BTree, but we do not cover those topics in any real detail. In this section, we will discuss configuration issues that are unique to BTree.</p>
+<p>Specifically, in this section we describe:</p>
+<ul>
+<li><p>Allowing duplicate records.</p></li>
+<li><p>Setting comparator callbacks.</p></li>
+</ul>
+<h3 id="allowing-duplicate-records">Allowing Duplicate Records</h3>
+<p>BTree databases can contain duplicate records. One record is considered to be a duplicate of another when both records use keys that compare as equal to one another.</p>
+<p>By default, keys are compared using a lexicographical comparison, with shorter keys collating higher than longer keys. You can override this default using the <code>DB-&gt;set_bt_compare()</code> method. See the next section for details.</p>
+<p>By default, DB databases do not allow duplicate records. As a result, any attempt to write a record that uses a key equal to a previously existing record results in the previously existing record being overwritten by the new record.</p>
+<p>Allowing duplicate records is useful if you have a database that contains records keyed by a commonly occurring piece of information. It is frequently necessary to allow duplicate records for secondary databases.</p>
+<p>For example, suppose your primary database contained records related to automobiles. You might in this case want to be able to find all the automobiles in the database that are of a particular color, so you would index on the color of the automobile. However, for any given color there will probably be multiple automobiles. Since the index is the secondary key, this means that multiple secondary database records will share the same key, and so the secondary database must support duplicate records.</p>
+<h4 id="sorted-duplicates">Sorted Duplicates</h4>
+<p>Duplicate records can be stored in sorted or unsorted order. You can cause DB to automatically sort your duplicate records by specifying the <code>DB_DUPSORT</code> flag at database creation time.</p>
+<p>If sorted duplicates are supported, then the sorting function specified on <code>DB-&gt;set_dup_compare()</code> is used to determine the location of the duplicate record in its duplicate set. If no such function is provided, then the default lexicographical comparison is used.</p>
+<h4 id="unsorted-duplicates">Unsorted Duplicates</h4>
+<p>For performance reasons, BTrees should always contain sorted records. (BTrees containing unsorted entries must potentially spend a great deal more time locating an entry than does a BTree that contains sorted entries). That said, DB provides support for suppressing automatic sorting of duplicate records because it may be that your application is inserting records that are already in a sorted order.</p>
+<p>That is, if the database is configured to support unsorted duplicates, then the assumption is that your application will manually perform the sorting. In this event, expect to pay a significant performance penalty. Any time you place records into the database in a sort order not know to DB, you will pay a performance penalty</p>
+<p>That said, this is how DB behaves when inserting records into a database that supports non-sorted duplicates:</p>
+<ul>
+<li><p>If your application simply adds a duplicate record using <code>DB-&gt;put()</code>, then the record is inserted at the end of its sorted duplicate set.</p></li>
+<li><p>If a cursor is used to put the duplicate record to the database, then the new record is placed in the duplicate set according to the flags that are provided on the <code>DBC-&gt;put()</code> method. The relevant flags are:</p>
+<ul>
+<li><p><code>DB_AFTER</code></p>
+<p>The data provided on the call to <code>DBC-&gt;put()</code> is placed into the database as a duplicate record. The key used for this operation is the key used for the record to which the cursor currently refers. Any key provided on the call to <code>DBC-&gt;put()</code> is therefore ignored.</p>
+<p>The duplicate record is inserted into the database immediately after the cursor's current position in the database.</p>
+<p>This flag is ignored if sorted duplicates are supported for the database.</p></li>
+<li><p><code>DB_BEFORE</code></p>
+<p>Behaves the same as <code>DB_AFTER</code> except that the new record is inserted immediately before the cursor's current location in the database.</p></li>
+<li><p><code>DB_KEYFIRST</code></p>
+<p>If the key provided on the call to <code>DBC-&gt;put()</code> already exists in the database, and the database is configured to use duplicates without sorting, then the new record is inserted as the first entry in the appropriate duplicates list.</p></li>
+<li><p><code>DB_KEYLAST</code></p>
+<p>Behaves identically to <code>DB_KEYFIRST</code> except that the new duplicate record is inserted as the last record in the duplicates list.</p></li>
+</ul></li>
+</ul>
+<h4 id="configuring-a-database-to-support-duplicates">Configuring a Database to Support Duplicates</h4>
+<p>Duplicates support can only be configured at database creation time. You do this by specifying the appropriate flags to <code>DB-&gt;set_flags()</code> before the database is opened for the first time.</p>
+<p>The flags that you can use are:</p>
+<ul>
+<li><p><code>DB_DUP</code></p>
+<p>The database supports non-sorted duplicate records.</p></li>
+<li><p><code>DB_DUPSORT</code></p>
+<p>The database supports sorted duplicate records. Note that this flag also sets the <code>DB_DUP</code> flag for you.</p></li>
+</ul>
+<p>The following code fragment illustrates how to configure a database to support sorted duplicate records:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db.h&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>DB <span class="op">*</span>dbp<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="dt">FILE</span> <span class="op">*</span>error_file_pointer<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="dt">char</span> <span class="op">*</span>program_name <span class="op">=</span> <span class="st">&quot;my_prog&quot;</span><span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="dt">char</span> <span class="op">*</span>file_name <span class="op">=</span> <span class="st">&quot;mydb.db&quot;</span><span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">/* Variable assignments omitted for brevity */</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">/* Initialize the DB handle */</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>ret <span class="op">=</span> db_create<span class="op">(&amp;</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    fprintf<span class="op">(</span>error_file_pointer<span class="op">,</span> <span class="st">&quot;</span><span class="sc">%s</span><span class="st">: </span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span> program_name<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span><span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">/* Set up error handling for this database */</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>dbp<span class="op">-&gt;</span>set_errfile<span class="op">(</span>dbp<span class="op">,</span> error_file_pointer<span class="op">);</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>dbp<span class="op">-&gt;</span>set_errpfx<span class="op">(</span>dbp<span class="op">,</span> program_name<span class="op">);</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">/*</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co"> * Configure the database for sorted duplicates</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co"> */</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>set_flags<span class="op">(</span>dbp<span class="op">,</span> DB_DUPSORT<span class="op">);</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>    dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;Attempt to set DUPSORT flag failed.&quot;</span><span class="op">);</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>    dbp<span class="op">-&gt;</span>close<span class="op">(</span>dbp<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span><span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">/* Now open the database */</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>ret <span class="op">=</span> dbp<span class="op">-&gt;</span>open<span class="op">(</span>dbp<span class="op">,</span>        <span class="co">/* Pointer to the database */</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>                NULL<span class="op">,</span>       <span class="co">/* Txn pointer */</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>                file_name<span class="op">,</span>  <span class="co">/* File name */</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>                NULL<span class="op">,</span>       <span class="co">/* Logical db name (unneeded) */</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>                DB_BTREE<span class="op">,</span>   <span class="co">/* Database type (using btree) */</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>                DB_CREATE<span class="op">,</span>  <span class="co">/* Open flags */</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>                <span class="dv">0</span><span class="op">);</span>         <span class="co">/* File mode. Using defaults */</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>    dbp<span class="op">-&gt;</span>err<span class="op">(</span>dbp<span class="op">,</span> ret<span class="op">,</span> <span class="st">&quot;Database &#39;</span><span class="sc">%s</span><span class="st">&#39; open failed.&quot;</span><span class="op">,</span> file_name<span class="op">);</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>    dbp<span class="op">-&gt;</span>close<span class="op">(</span>dbp<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span><span class="op">(</span>ret<span class="op">);</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<h3 id="setting-comparison-functions">Setting Comparison Functions</h3>
+<p>By default, DB uses a lexicographical comparison function where shorter records collate before longer records. For the majority of cases, this comparison works well and you do not need to manage it in any way.</p>
+<p>However, in some situations your application's performance can benefit from setting a custom comparison routine. You can do this either for database keys, or for the data if your database supports sorted duplicate records.</p>
+<p>Some of the reasons why you may want to provide a custom sorting function are:</p>
+<ul>
+<li><p>Your database is keyed using strings and you want to provide some sort of language-sensitive ordering to that data. Doing so can help increase the locality of reference that allows your database to perform at its best.</p></li>
+<li><p>You are using a little-endian system (such as x86) and you are using integers as your database's keys. Berkeley DB stores keys as byte strings and little-endian integers do not sort well when viewed as byte strings. There are several solutions to this problem, one being to provide a custom comparison function. See <a href="http://download.oracle.com/docs/cd/E17076_02/html/programmer_reference/am_misc_faq.html" class="ulink" target="_top"><a href="http://download.oracle.com/docs/cd/E17076_02/html/programmer_reference/am_misc_faq.html">http://download.oracle.com/docs/cd/E17076_02/html/programmer_reference/am_misc_faq.html</a></a> for more information.</p></li>
+<li><p>You you do not want the entire key to participate in the comparison, for whatever reason. In this case, you may want to provide a custom comparison function so that only the relevant bytes are examined.</p></li>
+</ul>
+<h4 id="creating-comparison-functions">Creating Comparison Functions</h4>
+<p>You set a BTree's key comparison function using <code>DB-&gt;set_bt_compare()</code>. You can also set a BTree's duplicate data comparison function using <code>DB-&gt;set_dup_compare()</code>.</p>
+<p>You cannot use these methods after the database has been opened. Also, if the database already exists when it is opened, the function provided to these methods must be the same as that historically used to create the database or corruption can occur.</p>
+<p>The value that you provide to the <code>set_bt_compare()</code> method is a pointer to a function that has the following signature:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> <span class="op">(*</span>function<span class="op">)(</span>DB <span class="op">*</span>db<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>key1<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>key2<span class="op">)</span></span></code></pre></div>
+<p>This function must return an integer value less than, equal to, or greater than 0. If key1 is considered to be greater than key2, then the function must return a value that is greater than 0. If the two are equal, then the function must return 0, and if the first key is less than the second then the function must return a negative value.</p>
+<p>The function that you provide to <code>set_dup_compare()</code> works in exactly the same way, except that the <code>DBT</code> parameters hold record data items instead of keys.</p>
+<p>For example, an example routine that is used to sort integer keys in the database is:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>compare_int<span class="op">(</span>DB <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>a<span class="op">,</span> <span class="dt">const</span> DBT <span class="op">*</span>b<span class="op">)</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> ai<span class="op">,</span> bi<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* </span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co">     * Returns: </span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co">     * &lt; 0 if a &lt; b </span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co">     * = 0 if a = b </span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co">     * &gt; 0 if a &gt; b </span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span> </span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(&amp;</span>ai<span class="op">,</span> a<span class="op">-&gt;</span>data<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">int</span><span class="op">));</span> </span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    memcpy<span class="op">(&amp;</span>bi<span class="op">,</span> b<span class="op">-&gt;</span>data<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">int</span><span class="op">));</span> </span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>ai <span class="op">-</span> bi<span class="op">);</span> </span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>Note that the data must first be copied into memory that is appropriately aligned, as Berkeley DB does not guarantee any kind of alignment of the underlying data, including for comparison routines. When writing comparison routines, remember that databases created on machines of different architectures may have different integer byte orders, for which your code may need to compensate.</p>
+<p>To cause DB to use this comparison function:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db.h&gt;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;string.h&gt;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>DB <span class="op">*</span>dbp<span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> ret<span class="op">;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co">/* Create a database */</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>ret <span class="op">=</span> db_create<span class="op">(&amp;</span>dbp<span class="op">,</span> NULL<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>ret <span class="op">!=</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>        fprintf<span class="op">(</span>stderr<span class="op">,</span> <span class="st">&quot;</span><span class="sc">%s</span><span class="st">: </span><span class="sc">%s\n</span><span class="st">&quot;</span><span class="op">,</span> <span class="st">&quot;my_program&quot;</span><span class="op">,</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>          db_strerror<span class="op">(</span>ret<span class="op">));</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span><span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="co">/* Set up the btree comparison function for this database */</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>dbp<span class="op">-&gt;</span>set_bt_compare<span class="op">(</span>dbp<span class="op">,</span> compare_int<span class="op">);</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="co">/* Database open call follows sometime after this. */</span> </span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

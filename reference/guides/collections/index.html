@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Berkeley DB Collections Tutorial — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / collections</nav>
+  <main>
+<h1 id="berkeley-db-collections-tutorial">Berkeley DB Collections Tutorial</h1>
+<p><strong>Legal Notice</strong></p>
+<p>This documentation is distributed under an open source license. You may review the terms of this license at: <a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html" class="ulink" target="_top"><a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html">http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html</a></a></p>
+<p>Oracle, Berkeley DB, and Sleepycat are trademarks or registered trademarks of Oracle. All rights to these marks are reserved. No third-party use is permitted without the express prior written consent of Oracle.</p>
+<p><span class="trademark">Java</span>™ and all Java-based marks are a trademark or registered trademark of Sun Microsystems, Inc, in the United States and other countries.</p>
+<p>Other names may be trademarks of their respective owners.</p>
+<p>To obtain a copy of this document's original source code, please submit a request to the Oracle Technology Network forum at: <a href="http://forums.oracle.com/forums/forum.jspa?forumID=271" class="ulink" target="_top"><a href="http://forums.oracle.com/forums/forum.jspa?forumID=271">http://forums.oracle.com/forums/forum.jspa?forumID=271</a></a></p>
+<p>9/9/2013</p>
+<hr />
+<p><strong>Table of Contents</strong></p>
+<p><span class="preface"> <a href="preface.html">Preface</a> </span></p>
+<p><span class="sect1"> <a href="preface.html#conventions">Conventions Used in this Book</a> </span></p>
+<p><span class="sect1"> <a href="moreinfo.html">For More Information</a> </span></p>
+<p><span class="sect2"> <a href="moreinfo.html#contact_us">Contact Us</a> </span></p>
+<p><span class="chapter"> <a href="intro.html">1. Introduction</a> </span></p>
+<p><span class="sect1"> <a href="intro.html#features">Features</a> </span></p>
+<p><span class="sect1"> <a href="developing.html">Developing a DB Collections Application</a> </span></p>
+<p><span class="sect1"> <a href="tutorialintroduction.html">Tutorial Introduction</a> </span></p>
+<p><span class="chapter"> <a href="BasicProgram.html">2. The Basic Program</a> </span></p>
+<p><span class="sect1"> <a href="BasicProgram.html#keyandvalueclasses">Defining Serialized Key and Value Classes</a> </span></p>
+<p><span class="sect1"> <a href="opendbenvironment.html">Opening and Closing the Database Environment</a> </span></p>
+<p><span class="sect1"> <a href="openclasscatalog.html">Opening and Closing the Class Catalog</a> </span></p>
+<p><span class="sect1"> <a href="opendatabases.html">Opening and Closing Databases</a> </span></p>
+<p><span class="sect1"> <a href="createbindingscollections.html">Creating Bindings and Collections</a> </span></p>
+<p><span class="sect1"> <a href="implementingmain.html">Implementing the Main Program</a> </span></p>
+<p><span class="sect1"> <a href="usingtransactions.html">Using Transactions</a> </span></p>
+<p><span class="sect1"> <a href="addingdatabaseitems.html">Adding Database Items</a> </span></p>
+<p><span class="sect1"> <a href="retrievingdatabaseitems.html">Retrieving Database Items</a> </span></p>
+<p><span class="sect1"> <a href="handlingexceptions.html">Handling Exceptions</a> </span></p>
+<p><span class="chapter"> <a href="UsingSecondaries.html">3. Using Secondary Indices</a> </span></p>
+<p><span class="sect1"> <a href="UsingSecondaries.html#opensecondaryindices">Opening Secondary Key Indices</a> </span></p>
+<p><span class="sect1"> <a href="openingforeignkeys.html">More Secondary Key Indices</a> </span></p>
+<p><span class="sect1"> <a href="indexedcollections.html">Creating Indexed Collections</a> </span></p>
+<p><span class="sect1"> <a href="retrievingbyindexkey.html">Retrieving Items by Index Key</a> </span></p>
+<p><span class="chapter"> <a href="Entity.html">4. Using Entity Classes</a> </span></p>
+<p><span class="sect1"> <a href="Entity.html#definingentityclasses">Defining Entity Classes</a> </span></p>
+<p><span class="sect1"> <a href="creatingentitybindings.html">Creating Entity Bindings</a> </span></p>
+<p><span class="sect1"> <a href="collectionswithentities.html">Creating Collections with Entity Bindings</a> </span></p>
+<p><span class="sect1"> <a href="entitieswithcollections.html">Using Entities with Collections</a> </span></p>
+<p><span class="chapter"> <a href="Tuple.html">5. Using Tuples</a> </span></p>
+<p><span class="sect1"> <a href="Tuple.html#tupleformat">Using the Tuple Format</a> </span></p>
+<p><span class="sect1"> <a href="tupleswithkeycreators.html">Using Tuples with Key Creators</a> </span></p>
+<p><span class="sect1"> <a href="tuplekeybindings.html">Creating Tuple Key Bindings</a> </span></p>
+<p><span class="sect1"> <a href="tuple-serialentitybindings.html">Creating Tuple-Serial Entity Bindings</a> </span></p>
+<p><span class="sect1"> <a href="sortedcollections.html">Using Sorted Collections</a> </span></p>
+<p><span class="chapter"> <a href="SerializableEntity.html">6. Using Serializable Entities</a> </span></p>
+<p><span class="sect1"> <a href="SerializableEntity.html#transientfieldsinclass">Using Transient Fields in an Entity Class</a> </span></p>
+<p><span class="sect1"> <a href="transientfieldsinbinding.html">Using Transient Fields in an Entity Binding</a> </span></p>
+<p><span class="sect1"> <a href="removingredundantvalueclasses.html">Removing the Redundant Value Classes</a> </span></p>
+<p><span class="chapter"> <a href="Summary.html">7. Summary</a> </span></p>
+<p><span class="appendix"> <a href="collectionOverview.html">A. API Notes and Details</a> </span></p>
+<p><span class="sect1"> <a href="collectionOverview.html#UsingDataBindings">Using Data Bindings</a> </span></p>
+<p><span class="sect2"> <a href="collectionOverview.html#SelectingBindingFormats">Selecting Binding Formats</a> </span></p>
+<p><span class="sect2"> <a href="collectionOverview.html#RecordNumberBindings">Record Number Bindings</a> </span></p>
+<p><span class="sect2"> <a href="collectionOverview.html#SelectingDataBindings">Selecting Data Bindings</a> </span></p>
+<p><span class="sect2"> <a href="collectionOverview.html#ImplementingBindings">Implementing Bindings</a> </span></p>
+<p><span class="sect2"> <a href="collectionOverview.html#UsingBindings">Using Bindings</a> </span></p>
+<p><span class="sect2"> <a href="collectionOverview.html#SecondaryKeyCreators">Secondary Key Creators</a> </span></p>
+<p><span class="sect1"> <a href="UsingCollectionsAPI.html">Using the DB Java Collections API</a> </span></p>
+<p><span class="sect2"> <a href="UsingCollectionsAPI.html#UsingTransactions">Using Transactions</a> </span></p>
+<p><span class="sect2"> <a href="UsingCollectionsAPI.html#TransactionRollback">Transaction Rollback</a> </span></p>
+<p><span class="sect2"> <a href="UsingCollectionsAPI.html#SelectingAccessMethods">Selecting Access Methods</a> </span></p>
+<p><span class="sect2"> <a href="UsingCollectionsAPI.html#AccessMethodRestrictions">Access Method Restrictions</a> </span></p>
+<p><span class="sect1"> <a href="UsingStoredCollections.html">Using Stored Collections</a> </span></p>
+<p><span class="sect2"> <a href="UsingStoredCollections.html#StoredCollectionAccessMethods">Stored Collection and Access Methods</a> </span></p>
+<p><span class="sect2"> <a href="UsingStoredCollections.html#StoredVersusStandardCollections">Stored Collections Versus Standard Java Collections</a> </span></p>
+<p><span class="sect2"> <a href="UsingStoredCollections.html#StoredCollectionCharacteristics">Other Stored Collection Characteristics</a> </span></p>
+<p><span class="sect2"> <a href="UsingStoredCollections.html#WhyJavaCollections">Why Java Collections for Berkeley DB</a> </span></p>
+<p><span class="sect1"> <a href="SerializedObjectStorage.html">Serialized Object Storage</a> </span></p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

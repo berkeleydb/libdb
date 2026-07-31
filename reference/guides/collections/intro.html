@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 1.  Introduction — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / collections</nav>
+  <main>
+<h2 id="chapter-1--introduction">Chapter 1.  Introduction</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="intro.html#features">Features</a> </span></p>
+<p><span class="sect1"> <a href="developing.html">Developing a DB Collections Application</a> </span></p>
+<p><span class="sect1"> <a href="tutorialintroduction.html">Tutorial Introduction</a> </span></p>
+<p>The DB Java Collections API is a Java framework that extends the well known <a href="http://download.oracle.com/javase/1.5.0/docs/guide/collections/" class="ulink" target="_top">Java Collections</a> design pattern such that collections can now be stored, updated and queried in a transactional manner. The DB Java Collections API is a layer on top of DB.</p>
+<p>Together the DB Java Collections API and Berkeley DB provide an embedded data management solution with all the benefits of a full transactional storage and the simplicity of a well known Java API. Java programmers who need fast, scalable, transactional data management for their projects can quickly adopt and deploy the DB Java Collections API with confidence.</p>
+<p>This framework was first known as <a href="http://greybird-db.sourceforge.net/" class="ulink" target="_top">Greybird DB</a> written by Mark Hayes. Mark collaborated with us to permanently incorporate his excellent work into our distribution and to support it as an ongoing part of Berkeley DB and Berkeley DB Java Edition. The repository of source code that remains at SourceForge at version 0.9.0 is considered the last version before incorporation and will remain intact but will not be updated to reflect changes made as part of Berkeley DB or Berkeley DB Java Edition.</p>
+<h2 id="features">Features</h2>
+<p>Berkeley DB has always provided a Java API which can be roughly described as a map and cursor interface, where the keys and values are represented as byte arrays. This API is a Java (JNI) interface to the C API and it closely modeled the Berkeley DB C API's interface. The DB Java Collections API is a layer on top of that thin JNI mapping of the C API to Berkeley DB. It adds significant new functionality in several ways.</p>
+<ul>
+<li><p>An implementation of the Java Collections interfaces (Map, SortedMap, Set, SortedSet, List and Iterator) is provided.</p></li>
+<li><p>Transactions are supported using the conventional Java transaction-per-thread model, where the current transaction is implicitly associated with the current thread.</p></li>
+<li><p>Transaction runner utilities are provided that automatically perform transaction retry and exception handling.</p></li>
+<li><p>Keys and values are represented as Java objects rather than byte arrays. Bindings are used to map between Java objects and the stored byte arrays.</p></li>
+<li><p>The tuple data format is provided as the simplest data representation, and is useful for keys as well as simple compact values.</p></li>
+<li><p>The serial data format is provided for storing arbitrary Java objects without writing custom binding code. Java serialization is extended to store the class descriptions separately, making the data records much more compact than with standard Java serialization.</p></li>
+<li><p>Custom data formats and bindings can be easily added. XML data format and XML bindings could easily be created using this feature, for example.</p></li>
+<li><p>The DB Java Collections API insulates the application from minor differences in the use of the Berkeley DB Data Store, Concurrent Data Store, and Transactional Data Store products. This allows for development with one and deployment with another without significant changes to code.</p></li>
+</ul>
+<p>Note that the DB Java Collections API does not support caching of programming language objects nor does it keep track of their stored status. This is in contrast to "persistent object" approaches such as those defined by <a href="http://www.odmg.org/odmg.html" class="ulink" target="_top">ODMG</a> and JDO (<a href="http://www.jcp.org/en/jsr/detail?id=12" class="ulink" target="_top">JSR 12</a>). Such approaches have benefits but also require sophisticated object caching. For simplicity the DB Java Collections API treats data objects by value, not by reference, and does not perform object caching of any kind. Since the DB Java Collections API is a thin layer, its reliability and performance characteristics are roughly equivalent to those of Berkeley DB, and database tuning is accomplished in the same way as for any Berkeley DB database.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

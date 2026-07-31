@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Berkeley DB Documentation — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="index.html">Home</a></nav>
+  <main>
+<h1 id="berkeley-db-documentation">Berkeley DB Documentation</h1>
+<p>The complete reference for <strong>libdb</strong> (Berkeley DB) — the embedded, transactional key/value storage engine. Generated from Markdown source by <code>docs-src/build.py</code>; available as HTML (here), <a href="#pdf">PDF</a>, and <a href="#man">man pages</a>. Version and copyright are single-sourced from <code>docs-src/_data/site.toml</code> + <code>dist/RELEASE</code>.</p>
+<h2 id="api-reference">API reference</h2>
+<ul>
+<li><a href="api/c/index.html">C API Reference</a> — the primary interface: <code>DB_ENV</code>, <code>DB</code>, <code>DBC</code> (cursor), <code>DBT</code>, transactions, locking, logging, replication, and the command-line utilities.</li>
+<li><a href="api/stl/index.html">C++ / STL API Reference</a> — the <code>dbstl</code> standard-template- library containers and iterators backed by Berkeley DB.</li>
+</ul>
+<h2 id="guides">Guides</h2>
+<ul>
+<li><a href="guides/programmer_reference/index.html">Programmer's Reference</a> — the conceptual manual: access methods, the environment, memory pool, locking, logging, transactions, replication, XA, and tuning.</li>
+<li><a href="guides/gsg/index.html">Getting Started with Data Storage</a> — databases, cursors, secondary indexes, the four access methods.</li>
+<li><a href="guides/gsg_txn/index.html">Getting Started with Transactions</a> — ACID, isolation, deadlocks, recovery, checkpoints.</li>
+<li><a href="guides/gsg_db_rep/index.html">Getting Started with Replication</a> — the replication framework and Replication Manager.</li>
+<li><a href="guides/collections/index.html">Collections (Bindings) Tutorial</a> — the Java-style collections/bindings API.</li>
+<li><a href="guides/bdb-sql/index.html">Berkeley DB SQL</a> — the SQLite-compatible SQL interface.</li>
+<li><a href="guides/installation/index.html">Installation &amp; Build</a> — building on Unix, Windows, Android; configuration flags; the test suite.</li>
+<li><a href="guides/upgrading/index.html">Upgrading</a> — release-to-release upgrade notes (2.0 through 4.7 and the 11gR2 line).</li>
+<li><a href="guides/porting/index.html">Porting</a> — porting Berkeley DB to a new platform.</li>
+<li>Articles: <a href="guides/articles/inmemory/index.html">In-Memory Databases</a> · <a href="guides/articles/mssgtxt/index.html">Message Text</a>.</li>
+</ul>
+<h2 id="man-pages"><a id="man"></a>Man pages</h2>
+<p>Every public API has a section-3 man page, plus a library overview (<strong><code>libdb(3)</code></strong>). They are built to <code>docs-build/man/man3/</code> (787 pages) and shipped in the release man-page tarball. Install and use like any system man page, e.g. <code>man libdb</code>, <code>man db_get</code>.</p>
+<h2 id="pdf-downloads"><a id="pdf"></a>PDF downloads</h2>
+<p>Each book is also available as a PDF (see the release assets / <code>docs-build/pdf/</code>): <code>api_c.pdf</code>, <code>api_stl.pdf</code>, <code>guides_programmer_reference.pdf</code>, <code>guides_gsg.pdf</code>, <code>guides_gsg_txn.pdf</code>, <code>guides_gsg_db_rep.pdf</code>, <code>guides_collections.pdf</code>, <code>guides_bdb-sql.pdf</code>, <code>guides_installation.pdf</code>, <code>guides_upgrading.pdf</code>, <code>guides_porting.pdf</code>, <code>guides_articles_inmemory.pdf</code>, <code>guides_articles_mssgtxt.pdf</code>.</p>
+<hr />
+<p><em>The C#/Java language-binding manuals (Sandcastle / Javadoc, not DocBook) are archived separately and are not part of this Markdown-sourced tree.</em></p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

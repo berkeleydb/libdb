@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Using Transactions — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / collections</nav>
+  <main>
+<h2 id="using-transactions">Using Transactions</h2>
+<p>DB transactional applications have standard transactional characteristics: recoverability, atomicity and integrity (this is sometimes also referred to generically as <span class="emphasis"><em>ACID properties</em></span>). The DB Java Collections API provides these transactional capabilities using a <span class="emphasis"><em>transaction-per-thread</em></span> model. Once a transaction is begun, it is implicitly associated with the current thread until it is committed or aborted. This model is used for the following reasons.</p>
+<ul>
+<li><p>The transaction-per-thread model is commonly used in other Java APIs such as J2EE.</p></li>
+<li><p>Since the Java collections API is used for data access, there is no way to pass a transaction object to methods such as <a href="http://download.oracle.com/javase/1.5.0/docs/api/java/util/Map.html#put(K,%20V)" class="ulink" target="_top">Map.put</a>.</p></li>
+</ul>
+<p>The DB Java Collections API provides two transaction APIs. The lower-level API is the <a href="../../java/com/sleepycat/collections/CurrentTransaction.html" class="ulink" target="_top">CurrentTransaction</a> class. It provides a way to get the transaction for the current thread, and to begin, commit and abort transactions. It also provides access to the Berkeley DB core API <a href="../../java/com/sleepycat/db/Transaction.html" class="ulink" target="_top">Transaction</a> object. With <a href="../../java/com/sleepycat/collections/CurrentTransaction.html" class="ulink" target="_top">CurrentTransaction</a>, just as in the com.sleepycat.db API, the application is responsible for beginning, committing and aborting transactions, and for handling deadlock exceptions and retrying operations. This API may be needed for some applications, but it is not used in the example.</p>
+<p>The example uses the higher-level <a href="../../java/com/sleepycat/collections/TransactionRunner.html" class="ulink" target="_top">TransactionRunner</a> and <a href="../../java/com/sleepycat/collections/TransactionWorker.html" class="ulink" target="_top">TransactionWorker</a> APIs, which are build on top of <a href="../../java/com/sleepycat/collections/CurrentTransaction.html" class="ulink" target="_top">CurrentTransaction</a>. <code>TransactionRunner.run()</code> automatically begins a transaction and then calls the <code>TransactionWorker.doWork()</code> method, which is implemented by the application.</p>
+<p>The <code>TransactionRunner.run()</code> method automatically detects deadlock exceptions and performs retries by repeatedly calling the <code>TransactionWorker.doWork()</code> method until the operation succeeds or the maximum retry count is reached. If the maximum retry count is reached or if another exception (other than <a href="../../java/com/sleepycat/db/DeadlockException.html" class="ulink" target="_top">DeadlockException</a>) is thrown by <code>TransactionWorker.doWork()</code>, then the transaction will be automatically aborted. Otherwise, the transaction will be automatically committed.</p>
+<p>Using this high-level API, if <code>TransactionRunner.run()</code> throws an exception, the application can assume that the operation failed and the transaction was aborted; otherwise, when an exception is not thrown, the application can assume the operation succeeded and the transaction was committed.</p>
+<p>The <code>Sample.run()</code> method creates a <code>TransactionRunner</code> object and calls its <code>run()</code> method.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>collections<span class="op">.</span>TransactionRunner<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>collections<span class="op">.</span>TransactionWorker<span class="op">;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>public class Sample</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    private SampleDatabase db<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">void</span> run<span class="op">()</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>        throws Exception</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        TransactionRunner runner <span class="op">=</span> </span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>            new TransactionRunner<span class="op">(</span>db<span class="op">.</span>getEnvironment<span class="op">());</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        runner<span class="op">.</span>run<span class="op">(</span>new PopulateDatabase<span class="op">());</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        runner<span class="op">.</span>run<span class="op">(</span>new PrintDatabase<span class="op">());</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    private class PopulateDatabase implements TransactionWorker</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>        public <span class="dt">void</span> doWork<span class="op">()</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>            throws Exception</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    private class PrintDatabase implements TransactionWorker</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>        public <span class="dt">void</span> doWork<span class="op">()</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>            throws Exception</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>The <code>run()</code> method is called by <code>main()</code> and was outlined in the previous section. It first creates a <code>TransactionRunner</code>, passing the database environment to its constructor.</p>
+<p>It then calls <code>TransactionRunner.run()</code> to execute two transactions, passing instances of the application-defined <code>PopulateDatabase</code> and <code>PrintDatabase</code> nested classes. These classes implement the <code>TransactionWorker.doWork()</code> method and will be fully described in the next two sections.</p>
+<p>For each call to <code>TransactionRunner.run()</code>, a separate transaction will be performed. The use of two transactions in the example — one for populating the database and another for printing its contents — is arbitrary. A real-life application should be designed to create transactions for each group of operations that should have ACID properties, while also taking into account the impact of transactions on performance.</p>
+<p>The advantage of using <code>TransactionRunner</code> is that deadlock retries and transaction begin, commit and abort are handled automatically. However, a <code>TransactionWorker</code> class must be implemented for each type of transaction. If desired, anonymous inner classes can be used to implement the <code>TransactionWorker</code> interface.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

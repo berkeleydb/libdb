@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dbstl examples — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="dbstl-examples">Dbstl examples</h2>
+<p>Because dbstl is so much like C++ STL, its usage exactly mirrors that of C++ STL, with the exception of a few optional Berkeley DB specific configurations. In fact, the only difference between a program using dbstl and one using C++ STL is the class names. That is, <code>vector</code> becomes <code>db_vector</code>, and <code>map</code> becomes <code>db_map</code>.</p>
+<p>The typical procedure for using dbstl is:</p>
+<ol type="1">
+<li><p>Optionally create and open your own Berkeley DB environment and database handles using the DB C++ API. If you perform these opens using the C++ API, make sure to perform necessary environment and database configurations at that time.</p></li>
+<li><p>Optionally pass environment and database handles to dbstl container constructors when you create dbstl container objects. Note that you can create a dbstl container without passing it an environment and database object. When you do this, an internal anonymous database is created for you. In this situation, dbstl provides no data persistence guarantees.</p></li>
+<li><p>Perform dbstl-specific configurations. For example, you can configure cursor open flags, as well as database access for autocommit. You can also configure callback functions.</p></li>
+<li><p>Interact with the data contained in your Berkeley DB databases using dbstl containers and iterators. This usage of dbstl is identical to C++ STL container and iterator usage.</p></li>
+<li><p>At this time, you can also use dbstl calls that are specific to Berkeley DB. For example, you can use Berkeley DB specific calls that manage transaction begin/commit/abort, handle registration, and so forth. While these calls are part of dbstl, they have no equivalence in the C++ STL APIs.</p></li>
+<li><p>When your application is done using Berkeley DB, you do not need to explicitly close any Berkeley DB handles (environments, database, cursors, and so forth). Dbstl automatically closes all such handles for you.</p></li>
+</ol>
+<p>For examples of dbstl usage, see the example programs in the <code>$db/examples_stl</code> directory.</p>
+<p>The following program listing provides two code fragments. You can find more example code in the <code>dbstl/examples/</code> and <code>dbstl/test</code> directories.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">//////////////// Code Snippet 1 ////////////////</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>db_vector<span class="op">&lt;</span><span class="dt">int</span><span class="op">,</span> ElementHolder<span class="op">&lt;</span><span class="dt">int</span><span class="op">&gt;</span> <span class="op">&gt;</span> vctr<span class="op">(</span><span class="dv">100</span><span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> <span class="dv">100</span><span class="op">;</span> i<span class="op">++)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    vctr<span class="op">[</span>i<span class="op">]</span> <span class="op">=</span> i<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> <span class="dv">100</span><span class="op">;</span> i<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    cout<span class="op">&lt;&lt;</span><span class="st">&quot;</span><span class="sc">\n</span><span class="st">vctr[&quot;</span><span class="op">&lt;&lt;</span>i<span class="op">&lt;&lt;</span><span class="st">&quot;] : &quot;</span><span class="op">&lt;&lt;</span>vctr<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    vctr<span class="op">[</span>i<span class="op">]</span> <span class="op">=</span> vctr<span class="op">[</span>i<span class="op">]</span> <span class="op">*</span> vctr<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    cout<span class="op">&lt;&lt;</span><span class="st">&quot;</span><span class="sc">\n</span><span class="st">vctr[&quot;</span><span class="op">&lt;&lt;</span>i<span class="op">&lt;&lt;</span><span class="st">&quot;] squre : &quot;</span><span class="op">&lt;&lt;</span>vctr<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">//////////////// Code Snippet 2 ////////////////</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> db_map<span class="op">&lt;</span><span class="dt">char</span> <span class="op">*,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">*,</span> ElementHolder<span class="op">&lt;</span><span class="dt">const</span> <span class="dt">char</span> <span class="op">*&gt;</span> <span class="op">&gt;</span> </span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>        strmap_t2<span class="op">;</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>strmap_t2 strmap<span class="op">;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="dt">char</span> str<span class="op">[</span><span class="dv">2</span><span class="op">],</span> str2<span class="op">[</span><span class="dv">2</span><span class="op">];</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>str<span class="op">[</span><span class="dv">1</span><span class="op">]</span> <span class="op">=</span> str2<span class="op">[</span><span class="dv">1</span><span class="op">]</span> <span class="op">=</span> <span class="ch">&#39;</span><span class="sc">\0</span><span class="ch">&#39;</span><span class="op">;</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="dt">char</span> c <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> c <span class="op">&lt;</span> <span class="dv">26</span><span class="op">;</span> c<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    str<span class="op">[</span><span class="dv">0</span><span class="op">]</span> <span class="op">=</span> c <span class="op">+</span> <span class="ch">&#39;a&#39;</span><span class="op">;</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    str2<span class="op">[</span><span class="dv">0</span><span class="op">]</span> <span class="op">=</span> <span class="ch">&#39;z&#39;</span> <span class="op">-</span> c<span class="op">;</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    strmap<span class="op">[</span>str<span class="op">]</span> <span class="op">=</span> str2<span class="op">;</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span>strmap_t2<span class="op">::</span>iterator itr <span class="op">=</span> strmap<span class="op">.</span>begin<span class="op">();</span> itr <span class="op">!=</span> strmap<span class="op">.</span>end<span class="op">();</span> <span class="op">++</span>itr<span class="op">)</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    cout<span class="op">&lt;&lt;</span>endl<span class="op">&lt;&lt;</span>itr<span class="op">-&gt;</span>first<span class="op">&lt;&lt;</span><span class="st">&quot; : &quot;</span><span class="op">&lt;&lt;</span>itr<span class="op">-&gt;</span>second<span class="op">;</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>using namespace dbstl<span class="op">;</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>dbstl<span class="op">::</span>db_map<span class="op">&lt;</span><span class="dt">char</span><span class="op">,</span> <span class="dt">int</span><span class="op">&gt;</span> v<span class="op">;</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>v<span class="op">[</span><span class="ch">&#39;i&#39;</span><span class="op">]</span> <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>cout<span class="op">&lt;&lt;</span>v<span class="op">[</span><span class="ch">&#39;i&#39;</span><span class="op">];</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>dbstl<span class="op">::</span>db_map<span class="op">&lt;</span><span class="dt">char</span> <span class="op">*,</span> <span class="dt">char</span> <span class="op">*&gt;</span> name_addr_map<span class="op">;</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">// The strings rather than the memory pointers are stored into DB.</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>name_addr_map<span class="op">[</span><span class="st">&quot;Alex&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="st">&quot;Sydney Australia&quot;</span><span class="op">;</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>name_addr_map<span class="op">[</span><span class="st">&quot;David&quot;</span><span class="op">]</span> <span class="op">=</span> <span class="st">&quot;Shenzhen China&quot;</span><span class="op">;</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>cout<span class="op">&lt;&lt;</span><span class="st">&quot;Alex&#39;s address:&quot;</span><span class="op">&lt;&lt;</span>name_addr_map<span class="op">[</span><span class="st">&quot;Alex&quot;</span><span class="op">];</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>dbstl<span class="op">::</span>db_vector<span class="op">&lt;</span>Person<span class="op">&gt;</span> vi<span class="op">;</span> </span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">// Some callback configurations follow here.</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">// The strings and objects rather than pointers are stored into DB.</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>Person obj<span class="op">(</span><span class="st">&quot;David Zhao&quot;</span><span class="op">,</span> <span class="st">&quot;Oracle&quot;</span><span class="op">,</span> new Office<span class="op">(</span><span class="st">&quot;Boston&quot;</span><span class="op">,</span> <span class="st">&quot;USA&quot;</span><span class="op">));</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>vi<span class="op">.</span>push_back<span class="op">(</span>obj<span class="op">);</span> <span class="co">// More person storage.</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> I <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> I <span class="op">&lt;</span> vi<span class="op">.</span>size<span class="op">();</span> I<span class="op">++)</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>    cout<span class="op">&lt;&lt;</span>vi<span class="op">[</span>I<span class="op">];</span>  </span></code></pre></div>
+<p>The first snippet initializes a db_vector container of 100 elements, with an in-memory anonymous database internally created by dbstl. The only difference between this and C++ STL is dbstl requires one more <code>type</code> parameter: <em><code>ElementHolder&lt;int&gt;</code></em>. The <code>ElementHolder</code> class template should be used for every type of dbstl container that will store C++ primitive data types, such as <code>int</code>, <code>float</code>, <code>char *</code>, <code>wchar_t *</code>, and so forth. But these class templates should not be used for class types for reasons that we explain in the following chapters.</p>
+<p>In the second code snippet, the assignment:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>strmap<span class="op">[</span>str<span class="op">]</span> <span class="op">=</span> str2<span class="op">;</span></span></code></pre></div>
+<p>is used to store a string pair (<code>(str, str2)</code>) instead of pointers to the underlying database.</p>
+<p>The rest of the code used in these snippets is identical to the code you would use for C++ STL containers. However, by using dbstl, you are storing data into a Berkeley DB database. If you create your own database with backing files on disk, your data or objects can persist and be restored when the program runs again.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

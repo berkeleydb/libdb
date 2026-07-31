@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 26.  DbstlElemTraits — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / stl</nav>
+  <main>
+<h2 id="chapter-26--dbstlelemtraits">Chapter 26.  DbstlElemTraits</h2>
+<p>This class is used to register callbacks to manipulate an object of a complex type.</p>
+<p>These callbacks are used by dbstl at runtime to manipulate the object.</p>
+<p>A complex type is a type whose members are not located in a contiguous chunk of memory. For example, the following class A is a complex type because for any instance a of class A, a.b_ points to another object of type B, and dbstl treats the object that a.b_ points to as part of the data of the instance a. Hence, if the user needs to store a.b_ into a dbstl container, the user needs to register an appropriate callback to de-reference and store the object referenced by a.b. Similarly, the user also needs to register callbacks to marshall an array as well as to count the number of elements in such an array.</p>
+<p>class A { int m; B *p_; }; class B { int n; };</p>
+<p>The user also needs to register callbacks for i). returning an object¡¯s size in bytes; ii). Marshalling and unmarshalling an object; iii). Copying a complex object and and assigning an object to another object of the same type; iv). Element comparison. v). Compare two sequences of any type of objects; Measuring the length of an object sequence and copy an object sequence.</p>
+<p>Several elements located in a contiguous chunk of memory form a sequence. An element of a sequence may be a simple object located at a contigous memory chunk, or a complex object, i.e. some of its members may contain references (pointers) to another region of memory. It is not necessary to store a special object to denote the end of the sequence. The callback to traverse the constituent elements of the sequence needs to able to determine the end of the sequence.</p>
+<p>Marshalling means packing the object's data members into a contiguous chunk of memory; unmarshalling is the opposite of marshalling. In other words, when you unmarshall an object, its data members are populated with values from a previously marshalled version of the object.</p>
+<p>The callbacks need not be set to every type explicitly. . dbstl will check if a needed callback function of this type is provided. If one is available, dbstl will use the registered callback. If the appropriate callback is not provided, dbstl will use reasonable defaults to do the job.</p>
+<p>For returning the size of an object, the default behavior is to use the sizeof() operator; For marshalling and unmarshalling, dbstl uses memcpy, so the default behavior is sufficient for simple types whose data reside in a contiguous chunk of memory; Dbstl uses uses &gt;, == and &lt; for comparison operations; For char* and wchar_t * strings, dbstl already provides the appropriate callbacks, so you do not need to register them. In general, if the default behavior is adequate, you don't need to register the corresponding callback.</p>
+<p>If you have registered proper callbacks, the DbstlElemTraits&lt;T&gt; can also be used as the char_traits&lt;T&gt; class for std::basic_string&lt;T, char_traits&lt;T&gt; &gt;, and you can enable your class T to form a basic_string&lt;T, DbstlElemTraits&lt;T&gt;&gt;, and use basic_string's functionality and the algorithms to manipulate it.</p>
+<h4 id="public-members">Public Members</h4>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="DbstlElemTraits.html#stlDbstlElemTraitsassign" class="xref" title="assign">assign</a></td>
+<td>Assignone object to another.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitseq.html" class="xref" title="eq">eq</a></td>
+<td>Check for equality of two objects.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitslt.html" class="xref" title="lt">lt</a></td>
+<td>Less than comparison.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitscompare.html" class="xref" title="compare">compare</a></td>
+<td>Sequence comparison.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitslength.html" class="xref" title="length">length</a></td>
+<td>Returns the number of elements in sequence seq1.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitscopy.html" class="xref" title="copy">copy</a></td>
+<td>Copy first cnt number of elements from seq2 to seq1.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsfind.html" class="xref" title="find">find</a></td>
+<td>Find within the first cnt elements of sequence seq the position of element equal to elem.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsmove.html" class="xref" title="move">move</a></td>
+<td>Sequence movement.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsto_char_type.html" class="xref" title="to_char_type">to_char_type</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsto_int_type.html" class="xref" title="to_int_type">to_int_type</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitseq_int_type.html" class="xref" title="eq_int_type">eq_int_type</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitseof.html" class="xref" title="eof">eof</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsnot_eof.html" class="xref" title="not_eof">not_eof</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_restore_function.html" class="xref" title="set_restore_function">set_restore_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_restore_function.html" class="xref" title="get_restore_function">get_restore_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_assign_function.html" class="xref" title="set_assign_function">set_assign_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_assign_function.html" class="xref" title="get_assign_function">get_assign_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_size_function.html" class="xref" title="get_size_function">get_size_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_size_function.html" class="xref" title="set_size_function">set_size_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_copy_function.html" class="xref" title="get_copy_function">get_copy_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_copy_function.html" class="xref" title="set_copy_function">set_copy_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_sequence_len_function.html" class="xref" title="set_sequence_len_function">set_sequence_len_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_sequence_len_function.html" class="xref" title="get_sequence_len_function">get_sequence_len_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_sequence_copy_function.html" class="xref" title="get_sequence_copy_function">get_sequence_copy_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_sequence_copy_function.html" class="xref" title="set_sequence_copy_function">set_sequence_copy_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_compare_function.html" class="xref" title="set_compare_function">set_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_compare_function.html" class="xref" title="get_compare_function">get_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_sequence_compare_function.html" class="xref" title="set_sequence_compare_function">set_sequence_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_sequence_compare_function.html" class="xref" title="get_sequence_compare_function">get_sequence_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_sequence_n_compare_function.html" class="xref" title="set_sequence_n_compare_function">set_sequence_n_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_sequence_n_compare_function.html" class="xref" title="get_sequence_n_compare_function">get_sequence_n_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsinstance.html" class="xref" title="instance">instance</a></td>
+<td>Factory method to create a singeleton instance of this class.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsdstr_DbstlElemTraits.html" class="xref" title="~DbstlElemTraits">~DbstlElemTraits</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsDbstlElemTraits.html" class="xref" title="DbstlElemTraits">DbstlElemTraits</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="group">Group</h4>
+<p><a href="dbstl_helper_classes.html" class="xref" title="Chapter 21.  Dbstl Helper Classes">Dbstl Helper Classes</a></p>
+<h2 id="assign">assign</h2>
+<h3 id="function-details">Function Details</h3>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dt">static</span> <span class="dt">void</span> assign<span class="op">(</span>T <span class="op">&amp;</span>left<span class="op">,</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">const</span> T <span class="op">&amp;</span>right<span class="op">)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a> </span></code></pre></div>
+<p>Assignone object to another.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="dt">static</span> T<span class="op">*</span> assign<span class="op">(</span>T <span class="op">*</span>seq<span class="op">,</span> <span class="dt">size_t</span> cnt<span class="op">,</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    T elem<span class="op">)</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a> </span></code></pre></div>
+<p>Assign first cnt number of elements of sequence seq with the value of elem.</p>
+<h3 id="group-interface-compatible-with-stdstrings-char_traits">Group: Interface compatible with std::string's char_traits.</h3>
+<p>Following are char_traits funcitons, which make this class char_traits compatiable, so that it can be used in std::basic_string template, and be manipulated by the c++ stl algorithms.</p>
+<h3 id="class">Class</h3>
+<p><a href="DbstlElemTraits.html" class="link" title="Chapter 26.  DbstlElemTraits">DbstlElemTraits</a></p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

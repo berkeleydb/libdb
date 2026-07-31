@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Migration — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / bdb-sql</nav>
+  <main>
+<h2 id="data-migration">Data Migration</h2>
+<p><span class="sect2"> <a href="datamigration.html#shellmigrate">Migration Using the Shells</a> </span></p>
+<p>If you have a database created by SQLite, you can migrate it to a Berkeley DB database for use with the BDB SQL interface. For production applications, you should do this only when your application is shutdown.</p>
+<p>All data and schema supported by SQLite can be migrated to a Berkeley DB database.</p>
+<h3 id="migration-using-the-shells">Migration Using the Shells</h3>
+<p>To migrate your data from SQLite to a Berkeley DB database:</p>
+<ol type="1">
+<li><p>Make sure your application is shutdown.</p></li>
+<li><p>Open the SQLite database within the <span class="command"><strong>sqlite3</strong></span> shell.</p></li>
+<li><p>Execute the <code>.output</code> command to specify the location where you want to dump data.</p></li>
+<li><p>Dump the database using the SQLite <code>.dump</code> command.</p></li>
+<li><p>Close the <span class="command"><strong>sqlite3</strong></span> shell and open the Berkeley DB <a href="../../api/c/dbsql.html" class="olink">dbsql</a> shell.</p></li>
+<li><p>Load the dumped data using the <code>.read</code> command.</p></li>
+</ol>
+<p>Note that you can migrate in the reverse direction as well. Dump the Berkeley DB database by calling <code>.dump</code> from within the Berkeley DB <a href="../../api/c/dbsql.html" class="olink">dbsql</a> shell, and load it into SQLite by <code>.read</code> from within SQLite's <span class="command"><strong>sqlite3</strong></span> shell.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

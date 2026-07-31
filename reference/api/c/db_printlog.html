@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>db_printlog — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="db_printlog">db_printlog</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_printlog <span class="op">[-</span>NrV<span class="op">]</span> <span class="op">[-</span>b start<span class="op">-</span>LSN<span class="op">]</span> <span class="op">[-</span>e stop<span class="op">-</span>LSN<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>D bytes<span class="op">]</span> </span></code></pre></div>
+<p>The <span class="command"><strong>db_printlog</strong></span> utility is a debugging utility that dumps Berkeley DB log files in a human-readable format.</p>
+<h3 id="note">Note</h3>
+<p>If the application(s) that use the environment make use of the <a href="envset_lg_dir.html" class="xref" title="DB_ENV-&gt;set_lg_dir()">DB_ENV-&gt;set_lg_dir()</a> method, then in order for this utility to run correctly, you need a <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file which sets the proper paths using the <a href="set_lg_dir_parameter.html" class="xref" title="set_lg_dir">set_lg_dir</a> configuration parameter.</p>
+<p>The options are as follows:</p>
+<ul>
+<li><p><strong>-b</strong></p>
+<p>Display log records starting at log sequence number (LSN) <strong>start-LSN</strong>; <strong>start-LSN</strong> is specified as a file number, followed by a slash (/) character, followed by an offset number, with no intervening whitespace.</p></li>
+<li><p><strong>-D</strong></p>
+<p>Specifies the maximum number of bytes to display for each key/data item found in the log. This option overrides the "set_data_len" parameter found in your DB_CONFIG file, if any.</p></li>
+<li><p><strong>-e</strong></p>
+<p>Stop displaying log records at log sequence number (LSN) <strong>stop-LSN</strong>; <strong>stop-LSN</strong> is specified as a file number, followed by a slash (/) character, followed by an offset number, with no intervening whitespace.</p></li>
+<li><p><strong>-h</strong></p>
+<p>Specify a home directory for the database environment; by default, the current working directory is used.</p></li>
+<li><p><strong>-N</strong></p>
+<p>Do not acquire shared region mutexes while running. Other problems, such as potentially fatal errors in Berkeley DB, will be ignored as well. This option is intended only for debugging errors, and should not be used under any other circumstances.</p></li>
+<li><p><strong>-P</strong></p>
+<p>Specify an environment password. Although Berkeley DB utilities overwrite password strings as soon as possible, be aware there may be a window of vulnerability on systems where unprivileged users can see command-line arguments or where utilities are not able to overwrite the memory containing the command-line arguments.</p></li>
+<li><p><strong>-r</strong></p>
+<p>Read the log files in reverse order.</p></li>
+<li><p><strong>-V</strong></p>
+<p>Write the library version number to the standard output, and exit.</p></li>
+</ul>
+<p>For more information on the <span class="command"><strong>db_printlog</strong></span> output and using it to debug applications, see <a href="../../guides/installation/debug_printlog.html" class="olink">Reviewing Berkeley DB log files</a>.</p>
+<p>The <span class="command"><strong>db_printlog</strong></span> utility uses a Berkeley DB environment (as described for the <strong>-h</strong> option, the environment variable <strong>DB_HOME</strong>, or because the utility was run in a directory containing a Berkeley DB environment). In order to avoid environment corruption when using a Berkeley DB environment, <span class="command"><strong>db_printlog</strong></span> should always be given the chance to detach from the environment and exit gracefully. To cause <span class="command"><strong>db_printlog</strong></span> to release all environment resources and exit cleanly, send it an interrupt signal (SIGINT).</p>
+<p>The <span class="command"><strong>db_printlog</strong></span> utility exits 0 on success, and &gt;0 if an error occurs.</p>
+<h3 id="environment-variables">Environment Variables</h3>
+<h4 id="db_home">DB_HOME</h4>
+<p>If the <strong>-h</strong> option is not specified and the environment variable DB_HOME is set, it is used as the path of the database home, as described in the <a href="envopen.html" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> method.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

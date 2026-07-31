@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solaris — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="solaris">Solaris</h2>
+<ol type="1">
+<li><p><strong>I can't compile and run multithreaded applications.</strong></p>
+<p>Special compile-time flags and additional libraries are required when compiling threaded applications on Solaris. If you are compiling a threaded application, you must compile with the D_REENTRANT flag and link with the libpthread.a or libthread.a libraries:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>cc <span class="op">-</span>mt <span class="op">...</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>cc <span class="op">-</span>D_REENTRANT <span class="op">...</span> <span class="op">-</span>lthread</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>cc <span class="op">-</span>D_REENTRANT <span class="op">...</span> <span class="op">-</span>lpthread</span></code></pre></div>
+<p>The Berkeley DB library will automatically build with the correct options.</p></li>
+<li><p><strong>I've installed gcc on my Solaris system, but configuration fails because the compiler doesn't work.</strong></p>
+<p>On some versions of Solaris, there is a cc executable in the user's path, but all it does is display an error message and fail:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> which cc</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="op">/</span>usr<span class="op">/</span>ucb<span class="op">/</span>cc</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">%</span> cc</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="op">/</span>usr<span class="op">/</span>ucb<span class="op">/</span>cc<span class="op">:</span> language optional software package not installed</span></code></pre></div>
+<p>Because Berkeley DB always uses the native compiler in preference to gcc, this is a fatal error. If the error message you are seeing is the following, then this may be the problem:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>checking whether the C compiler <span class="op">(</span>cc <span class="op">-</span>O<span class="op">)</span> works<span class="op">...</span> no</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>configure<span class="op">:</span> error<span class="op">:</span> installation or configuration problem<span class="op">:</span> C compiler </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>cannot create executables<span class="op">.</span></span></code></pre></div>
+<p>The simplest workaround is to set your CC environment variable to the system compiler and reconfigure; for example:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>env CC<span class="op">=</span>gcc <span class="op">../</span>dist<span class="op">/</span>configure</span></code></pre></div>
+<p>If you are using the --configure-cxx option, you may also want to specify a C++ compiler, for example the following:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>env CC<span class="op">=</span>gcc CCC<span class="op">=</span>g<span class="op">++</span> <span class="op">../</span>dist<span class="op">/</span>configure</span></code></pre></div></li>
+<li><p><strong>I see the error "libc internal error: _rmutex_unlock: rmutex not held", followed by a core dump when running threaded or JAVA programs.</strong></p>
+<p>This is a known bug in Solaris 2.5 and it is fixed by Sun patch 103187-25.</p></li>
+<li><p><strong>I see error reports of nonexistent files, corrupted metadata pages and core dumps.</strong></p>
+<p>Solaris 7 contains a bug in the threading libraries (-lpthread, -lthread), which causes the wrong version of the pwrite routine to be linked into the application if the thread library is linked in after the C library. The result will be that the pwrite function is called rather than the pwrite64. To work around the problem, use an explicit link order when creating your application.</p>
+<p>Sun Microsystems is tracking this problem with Bug Id's 4291109 and 4267207, and patch 106980-09 to Solaris 7 fixes the problem:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>Bug Id<span class="op">:</span> <span class="dv">4291109</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>Duplicate of<span class="op">:</span> <span class="dv">4267207</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>Category<span class="op">:</span> library</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>Subcategory<span class="op">:</span> libthread</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>State<span class="op">:</span> closed</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>Synopsis<span class="op">:</span> pwrite64 mapped to pwrite</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>Description<span class="op">:</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>When libthread is linked after libc<span class="op">,</span> there is a table of functions in</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>libthread that gets <span class="st">&quot;wired into&quot;</span> libc via _libc_threads_interface<span class="op">().</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>The table in libthread is wrong in both Solaris <span class="dv">7</span> and on28_35 <span class="cf">for</span> the</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>TI_PWRITE64 row <span class="op">(</span>see near the end<span class="op">).</span></span></code></pre></div></li>
+<li><p><strong>I see corrupted databases when doing hot backups or creating a hot failover archive.</strong></p>
+<p>The Solaris cp utility is implemented using the mmap system call, and so writes are not blocked when it reads database pages. See <a href="../../guides/programmer_reference/transapp_reclimit.html" class="olink">Berkeley DB recoverability</a> for more information.</p></li>
+<li><p><strong>Performance is slow and the application is doing a lot of I/O to the disk on which the database environment's files are stored.</strong></p>
+<p>By default, Solaris periodically flushes dirty blocks from memory-mapped files to the backing filesystem. This includes the Berkeley DB database environment's shared memory regions and can affect Berkeley DB performance. Workarounds include creating the shared regions in system shared memory (<a href="../../api/c/envopen.html#envopen_DB_SYSTEM_MEM" class="olink">DB_SYSTEM_MEM</a>) or application private memory (<a href="../../api/c/envopen.html#envopen_DB_PRIVATE" class="olink">DB_PRIVATE</a>), or configuring Solaris to not flush memory-mapped pages. For more information, see the "Solaris Tunable Parameters Reference Manual: fsflush and Related Tunables".</p></li>
+<li><p><strong>I see errors about "open64" when building Berkeley DB applications.</strong></p>
+<p>System include files (most commonly fcntl.h) in some releases of AIX and Solaris redefine "open" when large-file support is enabled for applications. This causes problems when compiling applications because "open" is a method in the Berkeley DB APIs. To work around this problem:</p>
+<ol type="1">
+<li>Avoid including the problematical system include files in source code files which also include Berkeley DB include files and call into the Berkeley DB API.</li>
+<li>Before building Berkeley DB, modify the generated include file db.h to itself include the problematical system include files.</li>
+<li>Turn off Berkeley DB large-file support by specifying the <a href="build_unix_conf.html#build_unix_conf.--disable-largefile" class="link">--disable-largefile</a> configuration option and rebuilding.</li>
+</ol></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

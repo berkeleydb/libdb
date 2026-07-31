@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Master Leases — Berkeley DB 5.3.33</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.33</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="master-leases">Master Leases</h2>
+<p><span class="sect2"> <a href="rep_lease.html#masterlease_change_groupsize">Changing Group Size</a> </span></p>
+<p>Some applications have strict requirements about the consistency of data read on a master site. Berkeley DB provides a mechanism called master leases to provide such consistency. Without master leases, it is sometimes possible for Berkeley DB to return old data to an application when newer data is available due to unfortunate scheduling as illustrated below:</p>
+<ol type="1">
+<li><strong>Application on master site</strong>: Read data item <span class="emphasis"><em>foo</em></span> via Berkeley DB <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a> or <a href="../../api/c/dbcget.html" class="olink">DBC-&gt;get()</a> call.</li>
+<li><strong>Application on master site</strong>: sleep, get descheduled, etc.</li>
+<li><strong>System</strong>: Master changes role, becomes a client.</li>
+<li><strong>System</strong>: New site is elected master.</li>
+<li><strong>System</strong>: New master modifies data item <span class="emphasis"><em>foo</em></span>.</li>
+<li><strong>Application</strong>: Berkeley DB returns old data for <span class="emphasis"><em>foo</em></span> to application.</li>
+</ol>
+<p>By using master leases, Berkeley DB can provide guarantees about the consistency of data read on a master site. The master site can be considered a recognized authority for the data and consequently can provide authoritative reads. Clients grant master leases to a master site. By doing so, clients acknowledge the right of that site to retain the role of master for a period of time. During that period of time, clients cannot elect a new master, become master, nor grant their lease to another site.</p>
+<p>By holding a collection of granted leases, a master site can guarantee to the application that the data returned is the current, authoritative value. As a master performs operations, it continually requests updated grants from the clients. When a read operation is required, the master guarantees that it holds a valid collection of lease grants from clients before returning data to the application. By holding leases, Berkeley DB provides several guarantees to the application:</p>
+<ol type="1">
+<li><p>Authoritative reads: A guarantee that the data being read by the application is the current value.</p></li>
+<li><p>Durability from rollback: A guarantee that the data being written or read by the application is permanent across a majority of client sites and will never be rolled back.</p>
+<p>The rollback guarantee also depends on the <a href="../../api/c/envset_flags.html#envset_flags_DB_TXN_NOSYNC" class="olink">DB_TXN_NOSYNC</a> flag. The guarantee is effective as long as there isn't total replication group failure while clients have granted leases but are holding the updates in their cache. The application must weigh the performance impact of synchronous transactions against the risk of total replication group failure. If clients grant a lease while holding updated data in cache, and total failure occurs, then the data is no longer present on the clients and rollback can occur if the master also crashes.</p>
+<p>The guarantee that data will not be rolled back applies only to data successfully committed on a master. Data read on a client, or read while ignoring leases can be rolled back.</p></li>
+<li><p>Freshness: A guarantee that the data being read by the application on the <span class="emphasis"><em>master</em></span> is up-to-date and has not been modified or removed during the read.</p>
+<p>The read authority is only on the master. Read operations on a client always ignore leases and consequently, these operations can return stale data.</p></li>
+<li><p>Master viability: A guarantee that a current master with valid leases cannot encounter a duplicate master situation.</p>
+<p>Leases remove the possibility of a duplicate master situation that forces the current master to downgrade to a client. However, it is still possible that old masters with expired leases can discover a later master and return <a href="../../api/c/repmessage.html#repmsg_DB_REP_DUPMASTER" class="olink">DB_REP_DUPMASTER</a> to the application.</p></li>
+</ol>
+<p>There are several requirements of the application using leases:</p>
+<ol type="1">
+<li>Replication Manager applications must configure a majority (or larger) acknowledgement policy via the <a href="../../api/c/repmgrset_ack_policy.html" class="olink">DB_ENV-&gt;repmgr_set_ack_policy()</a> method. Base API applications must implement and enforce such a policy on their own.</li>
+<li>Base API applications must return an error from the send callback function when the majority acknowledgement policy is not met for permanent records marked with <a href="../../api/c/reptransport.html#transport_DB_REP_PERMANENT" class="olink">DB_REP_PERMANENT</a>. Note that the Replication Manager automatically fulfills this requirement.</li>
+<li>Base API applications must set the number of sites in the group using the <a href="../../api/c/repnsites.html" class="olink">DB_ENV-&gt;rep_set_nsites()</a> method before starting replication and cannot change it during operation.</li>
+<li>Using leases in a replication group is all or none. Behavior is undefined when some sites configure leases and others do not. Use the <a href="../../api/c/repconfig.html" class="olink">DB_ENV-&gt;rep_set_config()</a> method to turn on leases.</li>
+<li>The configured lease timeout value must be the same on all sites in a replication group, set via the <a href="../../api/c/repset_timeout.html" class="olink">DB_ENV-&gt;rep_set_timeout()</a> method.</li>
+<li>The configured clock_scale_factor value must be the same on all sites in a replication group. This value defaults to no skew, but can be set via the <a href="../../api/c/repclockskew.html" class="olink">DB_ENV-&gt;rep_set_clockskew()</a> method.</li>
+<li>Applications that care about read guarantees must perform all read operations on the master. Reading on a client does not guarantee freshness.</li>
+<li>The application must use elections to choose a master site. It must never simply declare a master without having won an election (as is allowed without Master Leases).</li>
+</ol>
+<p>Master leases are based on timeouts. Berkeley DB assumes that time always runs forward. Users who change the system clock on either client or master sites when leases are in use void all guarantees and can get undefined behavior. See the <a href="../../api/c/repset_timeout.html" class="olink">DB_ENV-&gt;rep_set_timeout()</a> method for more information.</p>
+<p>Applications using master leases should be prepared to handle <code>DB_REP_LEASE_EXPIRED</code> errors from read operations on a master and from the <a href="../../api/c/txncommit.html" class="olink">DB_TXN-&gt;commit()</a> method.</p>
+<p>Read operations on a master that should not be subject to leases can use the <a href="../../api/c/dbget.html#get_DB_IGNORE_LEASE" class="olink">DB_IGNORE_LEASE</a> flag to the <a href="../../api/c/dbget.html" class="olink">DB-&gt;get()</a> method. Read operations on a client always imply leases are ignored.</p>
+<p>Master lease checks cannot succeed until a majority of sites have completed client synchronization. Read operations on a master performed before this condition is met can use the <a href="../../api/c/dbget.html#get_DB_IGNORE_LEASE" class="olink">DB_IGNORE_LEASE</a> flag to avoid errors.</p>
+<p>Clients are forbidden from participating in elections while they have an outstanding lease granted to a master. Therefore, if the <a href="../../api/c/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> method is called, then Berkeley DB will block, waiting until its lease grant expires before participating in any election. While it waits, the client attempts to contact the current master. If the client finds a current master, then it returns from the <a href="../../api/c/repelect.html" class="olink">DB_ENV-&gt;rep_elect()</a> method. When leases are configured and the lease has never yet been granted (on start-up), clients must wait a full lease timeout before participating in an election.</p>
+<h3 id="changing-group-size">Changing Group Size</h3>
+<p>If you are using master leases and you change the size of your replication group, there is a remote possibility that you can lose some data previously thought to be durable. This is only true for users of the Base API.</p>
+<p>The problem can arise if you are removing sites from your replication group. (You might be increasing the size of your site overall, but if you remove all of the wrong sites you can lose data.)</p>
+<p>Suppose you have a replication group with five sites; A, B, C, D and E; and you are using a quorum acknowledgement policy. Then:</p>
+<ol type="1">
+<li><p>Master A replicates a transaction to replicas B and C. Those sites acknowledge the write activity.</p></li>
+<li><p>Sites D and E do not receive the transaction. However, B and C have acknowledged the transaction, which means the acknowledgement policy is met and so the transaction is considered durable.</p></li>
+<li><p>You shutdown sites B and C. Now only A has the transaction.</p></li>
+<li><p>You increase the size of your replication group to 3 using <a href="../../api/c/repnsites.html" class="olink">DB_ENV-&gt;rep_set_nsites()</a>.</p></li>
+<li><p>You shutdown or otherwise lose site A.</p></li>
+<li><p>Sites D and E hold an election. Because the size of the replication group is 3, they have enough sites to successfully hold an election. However, neither site has the transaction in question. In this way, the transaction can become lost.</p></li>
+</ol>
+<p>An alternative scenario exists where you do not change the size of your replication group, or you actually increase the size of your replication group, but in the process you happen to remove the exact wrong sites:</p>
+<ol type="1">
+<li><p>Master A replicates a transaction to replicas B and C. Those sites acknowledge the write activity.</p></li>
+<li><p>Sites D and E do not receive the transaction. However, B and C have acknowledged the transaction, which means the acknowledgement policy is met and so the transaction is considered durable.</p></li>
+<li><p>You shutdown sites B and C. Now only A has the transaction.</p></li>
+<li><p>You add three new sites to your replication group: F, G and H, increasing the size of your replication group to 6 using <a href="../../api/c/repnsites.html" class="olink">DB_ENV-&gt;rep_set_nsites()</a>.</p></li>
+<li><p>You shutdown or otherwise lose site A before F, G and H can be fully populated with data.</p></li>
+<li><p>Sites D, E, F, G and H hold an election. Because the size of the replication group is 6, they have enough sites to successfully hold an election. However, none of these sites has the transaction in question. In this way, the transaction can become lost.</p></li>
+</ol>
+<p>This scenario represents a race condition that would be highly unlikely to be seen outside of a lab environment. To minimize the chance of this race condition occurring to the absolute minimum, do one or more of the following when using master leases with the Base API:</p>
+<ol type="1">
+<li><p>Require all sites to acknowledge transaction commits.</p></li>
+<li><p>Never change the size of your replication group unless all sites in the group are running and communicating normally with one another.</p></li>
+<li><p>Don't remove (or replace) a large percentage of your sites from your replication group unless all sites in the group are running and communicating normally with one another. If you are going to remove a large percentage of your sites from your replication group, try removing just one site at a time, pausing in between each removal to give the replication group a chance to fully distribute all writes before removing the next site.</p></li>
+</ol>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+  </footer>
+</body>
+</html>
