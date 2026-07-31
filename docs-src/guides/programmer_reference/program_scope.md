@@ -1,0 +1,28 @@
+---
+title: "Berkeley DB handles"
+api-name: "Berkeley DB handles"
+source: docs/programmer_reference/program_scope.html
+---
+## Berkeley DB handles
+
+The Berkeley DB library has a number of object handles. The following table lists those handles, their scope, and whether they are free-threaded (that is, whether multiple threads within a process can share them).
+
+<span class="term"> <a href="../../api/c/env.md" class="olink">DB_ENV</a> </span>  
+The <a href="../../api/c/env.md" class="olink">DB_ENV</a> handle, created by the <a href="../../api/c/envcreate.md" class="olink">db_env_create()</a> method, refers to a Berkeley DB database environment — a collection of Berkeley DB subsystems, log files and databases. <a href="../../api/c/env.md" class="olink">DB_ENV</a> handles are free-threaded if the <a href="../../api/c/envopen.md#envopen_DB_THREAD" class="olink">DB_THREAD</a> flag is specified to the <a href="../../api/c/envopen.md" class="olink">DB_ENV-&gt;open()</a> method when the environment is opened. The handle should not be closed while any other handle remains open that is using it as a reference (for example, <a href="../../api/c/db.md" class="olink">DB</a>, <a href="../../api/c/txn.md" class="olink">TXN</a>). Once either the <a href="../../api/c/envclose.md" class="olink">DB_ENV-&gt;close()</a> or <a href="../../api/c/envremove.md" class="olink">DB_ENV-&gt;remove()</a> methods are called, the handle may not be accessed again, regardless of the method's return.
+
+<span class="term"> <a href="../../api/c/txn.md" class="olink">TXN</a> </span>  
+The <a href="../../api/c/txn.md" class="olink">TXN</a> handle, created by the <a href="../../api/c/txnbegin.md" class="olink">DB_ENV-&gt;txn_begin()</a> method, refers to a single transaction. The handle is not free-threaded. Transactions may span threads, but only serially, that is, the application must serialize access to the <a href="../../api/c/txn.md" class="olink">TXN</a> handles. In the case of nested transactions, since all child transactions are part of the same parent transaction, they must observe the same constraints. That is, children may execute in different threads only if each child executes serially.
+
+Once the <a href="../../api/c/txnabort.md" class="olink">DB_TXN-&gt;abort()</a> or <a href="../../api/c/txncommit.md" class="olink">DB_TXN-&gt;commit()</a> methods are called, the handle may not be accessed again, regardless of the method's return. In addition, parent transactions may not issue any Berkeley DB operations while they have active child transactions (child transactions that have not yet been committed or aborted) except for <a href="../../api/c/txnbegin.md" class="olink">DB_ENV-&gt;txn_begin()</a>, <a href="../../api/c/txnabort.md" class="olink">DB_TXN-&gt;abort()</a> and <a href="../../api/c/txncommit.md" class="olink">DB_TXN-&gt;commit()</a>.
+
+<span class="term"> <a href="../../api/c/logc.md" class="olink">DB_LOGC</a> </span>  
+The <a href="../../api/c/logc.md" class="olink">DB_LOGC</a> handle refers to a cursor into the log files. The handle is not free-threaded. Once the <a href="../../api/c/logcclose.md" class="olink">DB_LOGC-&gt;close()</a> method is called, the handle may not be accessed again, regardless of the method's return.
+
+<span class="term"> <a href="../../api/c/memp.md" class="olink">DB_MPOOLFILE</a> </span>  
+The <a href="../../api/c/memp.md" class="olink">DB_MPOOLFILE</a> handle refers to an open file in the shared memory buffer pool of the database environment. The handle is not free-threaded. Once the <a href="../../api/c/mempfclose.md" class="olink">DB_MPOOLFILE-&gt;close()</a> method is called, the handle may not be accessed again, regardless of the method's return.
+
+<span class="term"> <a href="../../api/c/db.md" class="olink">DB</a> </span>  
+The <a href="../../api/c/db.md" class="olink">DB</a> handle, created by the <a href="../../api/c/dbcreate.md" class="olink">db_create()</a> method, refers to a single Berkeley DB database, which may or may not be part of a database environment. <a href="../../api/c/db.md" class="olink">DB</a> handles are free-threaded if the <a href="../../api/c/dbopen.md#open_DB_THREAD" class="olink">DB_THREAD</a> flag is specified to the <a href="../../api/c/dbopen.md" class="olink">DB-&gt;open()</a> method when the database is opened or if the database environment in which the database is opened is free-threaded. The handle should not be closed while any other handle that refers to the database is in use; for example, database handles should be left open while cursor handles into the database remain open, or transactions that include operations on the database have not yet been committed or aborted. Once the <a href="../../api/c/dbclose.md" class="olink">DB-&gt;close()</a>, <a href="../../api/c/dbremove.md" class="olink">DB-&gt;remove()</a> or <a href="../../api/c/dbrename.md" class="olink">DB-&gt;rename()</a> methods are called, the handle may not be accessed again, regardless of the method's return.
+
+<span class="term"> <a href="../../api/c/dbc.md" class="olink">DBC</a> </span>  
+The <a href="../../api/c/dbc.md" class="olink">DBC</a> handle refers to a cursor into a Berkeley DB database. The handle is not free-threaded. Cursors may span threads, but only serially, that is, the application must serialize access to the <a href="../../api/c/dbc.md" class="olink">DBC</a> handles. If the cursor is to be used to perform operations on behalf of a transaction, the cursor must be opened and closed within the context of that single transaction. Once <a href="../../api/c/dbcclose.md" class="olink">DBC-&gt;close()</a> has been called, the handle may not be accessed again, regardless of the method's return.

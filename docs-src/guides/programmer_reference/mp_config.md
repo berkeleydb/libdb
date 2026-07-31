@@ -1,0 +1,18 @@
+---
+title: "Configuring the memory pool"
+api-name: "Configuring the memory pool"
+source: docs/programmer_reference/mp_config.html
+---
+## Configuring the memory pool
+
+There are two issues to consider when configuring the memory pool.
+
+The first issue, the most important tuning parameter for Berkeley DB applications, is the size of the memory pool. There are two ways to specify the pool size. First, calling the <a href="../../api/c/envset_cachesize.md" class="olink">DB_ENV-&gt;set_cachesize()</a> method specifies the pool size for all of the applications sharing the Berkeley DB environment. Second, the <a href="../../api/c/dbset_cachesize.md" class="olink">DB-&gt;set_cachesize()</a> method only specifies a pool size for the specific database. Note: It is meaningless to call <a href="../../api/c/dbset_cachesize.md" class="olink">DB-&gt;set_cachesize()</a> for a database opened inside of a Berkeley DB environment because the environment pool size will override any pool size specified for a single database. For information on tuning the Berkeley DB cache size, see <a href="general_am_conf.md#am_conf_cachesize" class="xref" title="Selecting a cache size">Selecting a cache size</a>.
+
+Note the memory pool defaults to assuming that the average page size is 4k. This factor is used to determine the size of the hash table used to locate pages in the memory pool. The size of the hash table is calculated to so that on average 2.5 pages will be in each hash table entry. Each page requires a mutex be allocated to it and the average page size is used to determine the number of mutexes to allocate to the memory pool.
+
+Normally you should see good results by using the default values for the page size, but in some cases you may be able to achieve better performance by manually configuring the page size. The expected page size, hash table size and mutex count can be set via the methods: <a href="../../api/c/envset_mp_pagesize.md" class="olink">DB_ENV-&gt;set_mp_pagesize()</a>, <a href="../../api/c/envset_mp_tablesize.md" class="olink">DB_ENV-&gt;set_mp_tablesize()</a>, and <a href="../../api/c/envset_mp_mtxcount.md" class="olink">DB_ENV-&gt;set_mp_mtxcount()</a>.
+
+The second memory pool configuration issue is the maximum size an underlying file can be and still be mapped into the process address space (instead of reading the file's pages into the cache). Mapping files into the process address space can result in better performance because available virtual memory is often much larger than the local cache, and page faults are faster than page copying on many systems. However, in the presence of limited virtual memory, it can cause resource starvation; and in the presence of large databases, it can result in immense process sizes. In addition, because of the requirements of the Berkeley DB transactional implementation, only read-only files can be mapped into process memory.
+
+To specify that no files are to be mapped into the process address space, specify the <a href="../../api/c/dbopen.md#open_DB_NOMMAP" class="olink">DB_NOMMAP</a> flag to the <a href="../../api/c/envset_flags.md" class="olink">DB_ENV-&gt;set_flags()</a> method. To specify that any individual file should not be mapped into the process address space, specify the <a href="../../api/c/dbopen.md#open_DB_NOMMAP" class="olink">DB_NOMMAP</a> flag to the <a href="../../api/c/mempfopen.md" class="olink">DB_MPOOLFILE-&gt;open()</a> interface. To limit the size of files mapped into the process address space, use the <a href="../../api/c/envset_mp_mmapsize.md" class="olink">DB_ENV-&gt;set_mp_mmapsize()</a> method.
