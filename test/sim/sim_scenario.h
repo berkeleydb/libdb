@@ -5,8 +5,7 @@
  *	Shared helpers for the DST crash/recover scenarios so each
  *	test_sim_*.c is just its workload + invariant, not env boilerplate.
  *
- *	The crash discipline (see .agents/concurrent-btree-corruption.md and
- *	DESIGN.md): a child forks, runs a seeded workload, arms the
+ *	The crash discipline (see DESIGN.md): a child forks, runs a seeded workload, arms the
  *	write-back durable-frontier model, and at the crash boundary calls
  *	__db_sim_wb_crash() to drop every byte written-but-not-fsync'd (a
  *	real power loss) before an abrupt _exit.  The parent ALWAYS runs

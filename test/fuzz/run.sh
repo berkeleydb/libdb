@@ -90,7 +90,7 @@ smoke() {
 		# Leak detection is ON for all harnesses: the DB_PRIVATE
 		# region-teardown leak on the corrupt verify / recovery-cleanup
 		# path (which used to force the recover harness to run with
-		# leaks off) is now fixed -- see .agents/fuzz-found-bugs.md.
+		# leaks off) is now fixed.
 		# -artifact_prefix so any crashing input lands in a known dir.
 		if ASAN_OPTIONS="detect_leaks=1" \
 			"$OUT/fuzz_$h" "$OUT/work_$h" \

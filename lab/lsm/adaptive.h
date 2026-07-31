@@ -5,7 +5,7 @@
  * (see docs/design/lsm.md):
  *
  *   - STRUCTURE axis: how much LSM to run for the whole store
- *       SINGLE  <->  HYBRID  <->  MULTILEVEL        (aether-style)
+ *       SINGLE  <->  HYBRID  <->  MULTILEVEL        (structure-adaptive)
  *     decided by env-wide write/read/flush rates with hysteresis.
  *
  *   - POLICY axis: how to compact each segment
