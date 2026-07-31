@@ -1,0 +1,15 @@
+$-- libdb man-page template (pandoc -t man). Mirrors pandoc's default man
+$-- skeleton but pins the libdb footer/header and drops the AUTHORS block.
+$-- Section, title, date and footer are supplied by build.py via -M.
+$if(has-tables)$
+'\" t
+$endif$
+.\" Generated from Markdown source by docs-src/build.py (do not edit).
+.TH "$title/nowrap$" "$section/nowrap$" "$date/nowrap$" "$footer/nowrap$" "$header/nowrap$"
+$for(include-before)$
+$include-before$
+$endfor$
+$body$
+$for(include-after)$
+$include-after$
+$endfor$
