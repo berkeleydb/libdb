@@ -192,3 +192,45 @@ jobs:
             lychee --no-progress --scheme http --scheme https \
               --exclude "localhost" --max-concurrency 8 \
               "docs-build/html/**/*.html" || true'
+
+  # ----------------------------------------------------------------------------
+  # Publish (manual): regenerate HTML + PDF + man and push them to the gh-pages
+  # branch under /reference/ (Pages is legacy branch-based, served from
+  # gh-pages:/). workflow_dispatch only -- publishing is a deliberate act, not
+  # something every push should do. The landing page (gh-pages:/index.html) and
+  # the historical archive (gh-pages:/docs/) are left untouched.
+  # ----------------------------------------------------------------------------
+  publish:
+    name: publish to gh-pages (manual)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix (flakes enabled)
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Build the full site (HTML + PDF + man)
+        run: nix develop --command bash -c 'cd docs-src && python3 build.py'
+      - name: Deploy /reference/ to gh-pages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ver=$(sed -n 's/^DB_VERSION_PATCH=//p' dist/RELEASE)
+          full="5.3.$ver"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          tar czf "/tmp/libdb-man-$full.tar.gz" -C docs-build/man man3
+          git fetch origin gh-pages
+          git worktree add /tmp/ghp origin/gh-pages
+          rm -rf /tmp/ghp/reference
+          mkdir -p /tmp/ghp/reference/pdf
+          cp -r docs-build/html/* /tmp/ghp/reference/
+          cp docs-build/pdf/*.pdf /tmp/ghp/reference/pdf/
+          cp "/tmp/libdb-man-$full.tar.gz" "/tmp/ghp/reference/libdb-man-$full.tar.gz"
+          ( cd /tmp/ghp && git add -A && \
+            git commit -m "Publish documentation reference ($full) [ci]" && \
+            git push origin HEAD:gh-pages )
