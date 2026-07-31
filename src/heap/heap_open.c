@@ -172,6 +172,24 @@ __heap_read_meta(dbp, ip, txn, meta_pgno, flags)
 	 * metadata page will be created/initialized elsewhere.
 	 */
 	if (meta->dbmeta.magic == DB_HEAPMAGIC) {
+		/*
+		 * region_size comes from the (possibly corrupt) on-disk meta
+		 * page and is used as a divisor via HEAP_REGION_SIZE(dbp)+1 in
+		 * HEAP_REGION_PGNO / HEAP_REGION_NUM.  A region_size of 0 or of
+		 * UINT32_MAX (so the +1 wraps to 0) would divide by zero; any
+		 * value larger than the per-page region count is impossible for
+		 * this page size.  Reject it before it is trusted, mirroring the
+		 * bound __heap_new_file already enforces on creation.
+		 */
+		if (meta->region_size == 0 ||
+		    meta->region_size > HEAP_REGION_COUNT(dbp, dbp->pgsize)) {
+			__db_errx(dbp->env, DB_STR_A("1169",
+			    "region size may not be larger than %lu",
+			    "%lu"),
+			    (u_long)HEAP_REGION_COUNT(dbp, dbp->pgsize));
+			ret = EINVAL;
+			goto err;
+		}
 		h->curregion = meta->curregion;
 		h->curpgindx = 0;
 		h->gbytes = meta->gbytes;

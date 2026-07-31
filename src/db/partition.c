@@ -1822,16 +1822,32 @@ __part_verify(dbp, vdp, fname, handle, callback, flags)
 	dbc = NULL;
 	ip = vdp->thread_info;
 
-	if (dbp->type == DB_BTREE) {
+	if (dbp->type == DB_BTREE || dbp->type == DB_RECNO) {
 		if ((ret = __bam_open(dbp, ip,
 		    NULL, fname, PGNO_BASE_MD, flags)) != 0)
 			goto err;
 	}
 #ifdef HAVE_HASH
-	else if ((ret = __ham_open(dbp, ip,
-	    NULL, fname, PGNO_BASE_MD, flags)) != 0)
-		goto err;
+	else if (dbp->type == DB_HASH) {
+		if ((ret = __ham_open(dbp, ip,
+		    NULL, fname, PGNO_BASE_MD, flags)) != 0)
+			goto err;
+	}
 #endif
+	else {
+		/*
+		 * Only Btree/Recno and Hash databases can be partitioned.  A
+		 * corrupt/hostile file whose meta page claims another type (e.g.
+		 * Heap or Queue) while setting the partition flag must not be
+		 * opened with the Hash access method: __db_cursor would allocate
+		 * a cursor sized for dbp->type, which __ham_get_meta then casts
+		 * to HASH_CURSOR, writing its hlock field past the end of the
+		 * smaller allocation (a heap-buffer-overflow / type confusion).
+		 * Reject the unexpected type instead.
+		 */
+		ret = __db_unknown_type(env, "__part_verify", dbp->type);
+		goto err;
+	}
 
 	/*
 	 * Initalize partition db handles and get the names. Set DB_RDWRMASTER

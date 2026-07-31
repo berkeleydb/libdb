@@ -17,8 +17,18 @@
 # DB_ASSERT in __memp_fopen, or a recovery-failure panic), which is by-design
 # diagnostic behavior, not the OOB/FPE crash class this gate guards against.
 #
+# libdb ASan instrumentation:
+#   Some crash classes (a heap-buffer-overflow / use-after-free / double-free
+#   *inside* libdb's own allocations -- e.g. the __part_verify type-confusion
+#   OOB write) are only observable when libdb itself is compiled with
+#   AddressSanitizer; a harness-only ASan build (libdb.a plain) cannot see
+#   them.  If a build_unix built with `CFLAGS=-fsanitize=address` (ASan only,
+#   NOT undefined -- UBSan flags libdb's pervasive base+offset pointer idioms)
+#   is available, point LIBDB_BUILD at it to catch those.  This gate
+#   auto-builds one under build_asan_gate/ when LIBDB_ASAN=1 (default on).
+#
 # Usage:  ./check-crashes.sh
-# Env:    CC, LIBDB_BUILD (see run.sh)
+# Env:    CC, LIBDB_BUILD (see run.sh), LIBDB_ASAN (1=build+use an ASan libdb)
 #
 # Run from test/fuzz/ inside a `nix develop` shell.
 
@@ -26,6 +36,27 @@ set -eu
 
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$HERE"
+
+CC=${CC:-clang}
+LIBDB_ASAN=${LIBDB_ASAN:-1}
+
+# Build (once) an ASan-instrumented libdb so a memory fault *inside* libdb is
+# caught, then link the standalone harnesses against it.  ASan only -- UBSan
+# would fire on libdb's legitimate base+offset pointer arithmetic.  The
+# harness's own SAN flags in run.sh still add UBSan to the harness .c, so we
+# neutralise it for the lib by exporting an ASan-only LIBDB build here.
+if [ "$LIBDB_ASAN" = "1" ] && [ -z "${LIBDB_BUILD:-}" ]; then
+	GATE_BUILD="$HERE/../../build_asan_gate"
+	if [ ! -f "$GATE_BUILD/libdb.a" ]; then
+		mkdir -p "$GATE_BUILD"
+		( cd "$GATE_BUILD" &&
+		  ../dist/configure --enable-debug \
+		      CC="$CC" CFLAGS="-fsanitize=address -g -O1" >configure.log 2>&1 &&
+		  make -j4 >build.log 2>&1 ) ||
+		{ echo "warning: ASan libdb build failed; falling back to plain lib" >&2; }
+	fi
+	[ -f "$GATE_BUILD/libdb.a" ] && export LIBDB_BUILD="$GATE_BUILD"
+fi
 
 # Build the standalone (no-libFuzzer) drivers for every harness once.
 FUZZ_STANDALONE=1 ./run.sh build
