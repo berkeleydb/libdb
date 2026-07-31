@@ -61,9 +61,9 @@ extern "C" {
 #define	DB_VERSION_RELEASE	2
 #define	DB_VERSION_MAJOR	5
 #define	DB_VERSION_MINOR	3
-#define	DB_VERSION_PATCH	29
-#define	DB_VERSION_STRING	"Berkeley DB 5.3.29: (September  9, 2013)"
-#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.3.29: (September  9, 2013)"
+#define	DB_VERSION_PATCH	33
+#define	DB_VERSION_STRING	"Berkeley DB 5.3.33: (July 31, 2026)"
+#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.3.33: (July 31, 2026)"
 
 /*
  * !!!
@@ -2451,6 +2451,7 @@ struct __db_env {
 #define	DB_ENV_YIELDCPU		0x00020000 /* DB_YIELDCPU set */
 #define DB_ENV_HOTBACKUP	0x00040000 /* DB_HOTBACKUP_IN_PROGRESS set */
 #define DB_ENV_NOFLUSH		0x00080000 /* DB_NOFLUSH set */
+#define	DB_ENV_MPOOL_AIO	0x00100000 /* DB_MPOOL_AIO set */
 	u_int32_t flags;
 
 	/* DB_ENV PUBLIC HANDLE LIST BEGIN */
@@ -2933,6 +2934,7 @@ typedef struct entry {
 #define	DB_LOG_VERIFY_WARNING			0x00000080
 #define	DB_LOG_WRNOSYNC				0x00000020
 #define	DB_LOG_ZERO				0x00000010
+#define	DB_MPOOL_AIO				0x00100000
 #define	DB_MPOOL_CREATE				0x00000001
 #define	DB_MPOOL_DIRTY				0x00000002
 #define	DB_MPOOL_DISCARD			0x00000001
@@ -3043,9 +3045,9 @@ typedef struct entry {
 #define	DB_TXN_NOT_DURABLE			0x00000004
 #define	DB_TXN_NOWAIT				0x00000002
 #define	DB_TXN_SNAPSHOT				0x00000004
-#define	DB_TXN_SNAPSHOT_SAFE			0x00000080
+#define	DB_TXN_SNAPSHOT_SAFE			0x00000800
 #define	DB_TXN_SYNC				0x00000008
-#define	DB_TXN_WAIT				0x00000100
+#define	DB_TXN_WAIT				0x00000080
 #define	DB_TXN_WRITE_NOSYNC			0x00000020
 #define	DB_UNREF				0x00020000
 #define	DB_UPGRADE				0x00000001
@@ -3113,7 +3115,7 @@ int db_env_create __P((DB_ENV **, u_int32_t));
 char *db_version __P((int *, int *, int *));
 char *db_full_version __P((int *, int *, int *, int *, int *));
 int log_compare __P((const DB_LSN *, const DB_LSN *));
-#if defined(DB_WIN32) && !defined(DB_WINCE)
+#if defined(DB_WIN32)
 int db_env_set_win_security __P((SECURITY_ATTRIBUTES *sa));
 #endif
 int db_sequence_create __P((DB_SEQUENCE **, DB *, u_int32_t));
