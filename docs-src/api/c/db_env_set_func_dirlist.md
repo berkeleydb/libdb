@@ -33,4 +33,4 @@ The function must return a pointer to an array of nul-terminated file names into
 
 ### See Also
 
-<a href="../../programmer_reference/program_runtime.html" class="olink">Run-time configuration</a>
+<a href="../../guides/programmer_reference/program_runtime.md" class="olink">Run-time configuration</a>

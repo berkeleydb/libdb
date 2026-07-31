@@ -7,7 +7,7 @@ source: docs/api_reference/C/set_intermediate_dir_mode_parameter.html
 
 Configures the database environment's intermediate directory permissions.
 
-The syntax of this parameter in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `set_intermediate_dir_mode`, one or more whitespace characters, and the directory permissions.
+The syntax of this parameter in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is a single line with the string `set_intermediate_dir_mode`, one or more whitespace characters, and the directory permissions.
 
 Directory permissions are interpreted as a string of nine characters, using the character set **r** (read), **w** (write), **x** (execute or search), and **-** (none). The first character is the read permissions for the directory owner (set to either **r** or **-**). The second character is the write permissions for the directory owner (set to either **w** or **-**). The third character is the execute permissions for the directory owner (set to either **x** or **-**).
 

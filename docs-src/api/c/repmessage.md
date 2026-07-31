@@ -65,7 +65,7 @@ The **rec** parameter should reference a copy of the **rec** parameter specified
 
 #### envid
 
-The **envid** parameter should contain the local identifier that corresponds to the environment that sent the message to be processed (see <a href="../../programmer_reference/rep_id.html" class="olink">Replication environment IDs</a> for more information).
+The **envid** parameter should contain the local identifier that corresponds to the environment that sent the message to be processed (see <a href="../../guides/programmer_reference/rep_id.md" class="olink">Replication environment IDs</a> for more information).
 
 #### ret_lsnp
 

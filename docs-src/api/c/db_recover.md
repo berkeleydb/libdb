@@ -23,7 +23,7 @@ If the application(s) that use the environment make use of any of the following 
 | <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> |
 | <a href="envset_lg_dir.md" class="xref" title="DB_ENV-&gt;set_lg_dir()">DB_ENV-&gt;set_lg_dir()</a> |
 
-then in order for this utility to run correctly, you need a <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file which sets the proper paths using the <a href="add_data_dir_parameter.md" class="xref" title="add_data_dir">add_data_dir</a>, or <a href="set_lg_dir_parameter.md" class="xref" title="set_lg_dir">set_lg_dir</a> configuration parameters.
+then in order for this utility to run correctly, you need a <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file which sets the proper paths using the <a href="add_data_dir_parameter.md" class="xref" title="add_data_dir">add_data_dir</a>, or <a href="set_lg_dir_parameter.md" class="xref" title="set_lg_dir">set_lg_dir</a> configuration parameters.
 
 The options are as follows:
 
@@ -33,7 +33,7 @@ The options are as follows:
 
 - **-e**
 
-  Retain the environment after running recovery. This option will rarely be used unless a <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is present in the home directory. If a <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is not present, then the regions will be created with default parameter values.
+  Retain the environment after running recovery. This option will rarely be used unless a <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is present in the home directory. If a <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file is not present, then the regions will be created with default parameter values.
 
 - **-f**
 
@@ -89,7 +89,7 @@ The options are as follows:
 
   Run in verbose mode.
 
-In the case of catastrophic recovery, an archival copy — or <span class="emphasis">*snapshot*</span> — of all database files must be restored along with all of the log files written since the database file snapshot was made. (If disk space is a problem, log files may be referenced by symbolic links). For further information on creating a database snapshot, see <a href="../../programmer_reference/transapp_archival.html" class="olink">Archival Procedures</a>. For further information on performing recovery, see <a href="../../programmer_reference/transapp_recovery.html" class="olink">Recovery Procedures</a>.
+In the case of catastrophic recovery, an archival copy — or <span class="emphasis">*snapshot*</span> — of all database files must be restored along with all of the log files written since the database file snapshot was made. (If disk space is a problem, log files may be referenced by symbolic links). For further information on creating a database snapshot, see <a href="../../guides/programmer_reference/transapp_archival.md" class="olink">Archival Procedures</a>. For further information on performing recovery, see <a href="../../guides/programmer_reference/transapp_recovery.md" class="olink">Recovery Procedures</a>.
 
 If the failure was not catastrophic, the files present on the system at the time of failure are sufficient to perform recovery.
 

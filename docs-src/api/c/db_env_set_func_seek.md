@@ -36,4 +36,4 @@ The **func_seek** function must return the value of **errno** on failure and 0 o
 
 ### See Also
 
-<a href="../../programmer_reference/program_runtime.html" class="olink">Run-time configuration</a>
+<a href="../../guides/programmer_reference/program_runtime.md" class="olink">Run-time configuration</a>

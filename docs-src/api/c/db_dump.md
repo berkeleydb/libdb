@@ -108,7 +108,7 @@ The only available workaround for either case is to modify the sources for the <
 
 The <span class="command">**db_dump185**</span> utility may not be available on your system because it is not always built when the Berkeley DB libraries and utilities are installed. If you are unable to find it, see your system administrator for further information.
 
-The <span class="command">**db_dump**</span> and <span class="command">**db_dump185**</span> utility output formats are documented in the <a href="../../programmer_reference/dumpload_format.html" class="olink">Dump Output Formats</a> section of the Berkeley DB Reference Guide.
+The <span class="command">**db_dump**</span> and <span class="command">**db_dump185**</span> utility output formats are documented in the <a href="../../guides/programmer_reference/dumpload_format.md" class="olink">Dump Output Formats</a> section of the Berkeley DB Reference Guide.
 
 The <span class="command">**db_dump**</span> utility may be used with a Berkeley DB environment (as described for the **-h** option, the environment variable **DB_HOME**, or because the utility was run in a directory containing a Berkeley DB environment). In order to avoid environment corruption when using a Berkeley DB environment, <span class="command">**db_dump**</span> should always be given the chance to detach from the environment and exit gracefully. To cause <span class="command">**db_dump**</span> to release all environment resources and exit cleanly, send it an interrupt signal (SIGINT).
 

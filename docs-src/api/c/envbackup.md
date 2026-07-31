@@ -12,11 +12,11 @@ int
 DB_ENV->backup(DB_ENV *dbenv, const char *target, u_int32_t flags); 
 ```
 
-The `DB_ENV->backup()` method performs a hot backup of the open environment. All files used by the environment are backed up, so long as the normal rules for file placement are followed. For information on how files are normally placed relative to the environment directory, see <a href="../../programmer_reference/env_naming.html" class="olink">Berkeley DB File Naming</a> in the *Berkeley DB Programmer's Reference Guide*.
+The `DB_ENV->backup()` method performs a hot backup of the open environment. All files used by the environment are backed up, so long as the normal rules for file placement are followed. For information on how files are normally placed relative to the environment directory, see <a href="../../guides/programmer_reference/env_naming.md" class="olink">Berkeley DB File Naming</a> in the *Berkeley DB Programmer's Reference Guide*.
 
 By default, data directories and the log directory specified relative to the home directory will be recreated relative to the target directory. If absolute path names are used, then specify `DB_BACKUP_SINGLE_DIR` to the `flags` parameter.
 
-This method provides the same functionality as the <a href="db_hotbackup.md" class="xref" title="db_hotbackup">db_hotbackup</a> utility. However, this method does not perform the housekeeping actions performed by the `db_hotbackup` utility. In particular, you may want to run a checkpoint before calling this method. To run a checkpoint, use the <a href="txncheckpoint.md" class="xref" title="DB_ENV-&gt;txn_checkpoint()">DB_ENV-&gt;txn_checkpoint()</a> method. For more information on checkpoints, see <a href="../../programmer_reference/transapp_checkpoint.html" class="olink">Checkpoints</a> in the *Berkeley DB Programmer's Reference Guide*.
+This method provides the same functionality as the <a href="db_hotbackup.md" class="xref" title="db_hotbackup">db_hotbackup</a> utility. However, this method does not perform the housekeeping actions performed by the `db_hotbackup` utility. In particular, you may want to run a checkpoint before calling this method. To run a checkpoint, use the <a href="txncheckpoint.md" class="xref" title="DB_ENV-&gt;txn_checkpoint()">DB_ENV-&gt;txn_checkpoint()</a> method. For more information on checkpoints, see <a href="../../guides/programmer_reference/transapp_checkpoint.md" class="olink">Checkpoints</a> in the *Berkeley DB Programmer's Reference Guide*.
 
 To back up a single database file contained within the environment, use the <a href="envdbbackup.md" class="xref" title="DB_ENV-&gt;dbbackup()">DB_ENV-&gt;dbbackup()</a> method.
 

@@ -8,3 +8,7 @@ short_name = "libdb"
 base_url   = "https://libdb.org/docs/"
 copyright  = "Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved."
 tagline    = "The Berkeley DB reference documentation"
+# Man-page .TH date field (the DocBook source is dated 9/9/2013). Use the
+# `Month D, YYYY` form so mandoc parses it (hyphenated ISO gets roff-escaped by
+# pandoc into `2013\-09\-09`, which mandoc then can't read). Single source.
+man_date   = "September 9, 2013"

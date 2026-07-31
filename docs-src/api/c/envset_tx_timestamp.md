@@ -14,7 +14,7 @@ DB_ENV->set_tx_timestamp(DB_ENV *dbenv, time_t *timestamp);
 
 Recover to the time specified by **timestamp** rather than to the most current possible date.
 
-Once a database environment has been upgraded to a new version of Berkeley DB involving a log format change (see <a href="../../upgrading/upgrade_process.html" class="olink">Upgrading Berkeley DB installations</a>), it is no longer possible to recover to a specific time before that upgrade.
+Once a database environment has been upgraded to a new version of Berkeley DB involving a log format change (see <a href="../../guides/upgrading/upgrade_process.md" class="olink">Upgrading Berkeley DB installations</a>), it is no longer possible to recover to a specific time before that upgrade.
 
 The `DB_ENV->set_tx_timestamp()` method configures operations performed using the specified <a href="env.md" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle, not all operations performed on the underlying database environment.
 

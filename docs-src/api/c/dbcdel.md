@@ -18,7 +18,7 @@ When called on a cursor opened on a database that has been made into a secondary
 
 The cursor position is unchanged after a delete, and subsequent calls to cursor functions expecting the cursor to refer to an existing key will fail.
 
-The `DBcursor->del()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if the element has already been deleted. The `DBcursor->del()` method returns a non-zero error value on failure and 0 on success.
+The `DBcursor->del()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_KEYEMPTY" class="olink">DB_KEYEMPTY</a> if the element has already been deleted. The `DBcursor->del()` method returns a non-zero error value on failure and 0 on success.
 
 ### Parameters
 

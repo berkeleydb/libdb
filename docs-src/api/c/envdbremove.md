@@ -19,7 +19,7 @@ Applications should never remove databases with open <a href="db.md" class="link
 
 The `DB_ENV->dbremove()` method returns a non-zero error value on failure and 0 on success.
 
-`DB_ENV->dbremove()` is affected by any database directory specified using the <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> method, or by setting the `set_data_dir` string in the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.
+`DB_ENV->dbremove()` is affected by any database directory specified using the <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> method, or by setting the `set_data_dir` string in the environment's <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.
 
 ### Parameters
 

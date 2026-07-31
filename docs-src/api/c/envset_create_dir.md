@@ -14,9 +14,9 @@ DB_ENV->set_create_dir(DB_ENV *dbenv, const char *dir);
 
 Sets the path of a directory to be used as the location to create the access method database files. When the <a href="dbopen.md" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> function is used to create a file it will be created relative to this path.
 
-If no database directories are specified, database files will be created either by absolute paths or relative to the environment home directory. See <a href="../../programmer_reference/env_naming.html" class="olink">Berkeley DB File Naming</a> for more information.
+If no database directories are specified, database files will be created either by absolute paths or relative to the environment home directory. See <a href="../../guides/programmer_reference/env_naming.md" class="olink">Berkeley DB File Naming</a> for more information.
 
-The database environment's create directory may also be configured using the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. The syntax of the entry in that file is a single line with the string "set_create_dir", one or more whitespace characters, and the directory name.
+The database environment's create directory may also be configured using the environment's <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file. The syntax of the entry in that file is a single line with the string "set_create_dir", one or more whitespace characters, and the directory name.
 
 The `DB_ENV->set_create_dir()` method configures operations performed using the specified <a href="env.md" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle, not all operations performed on the underlying database environment.
 

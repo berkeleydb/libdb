@@ -39,7 +39,7 @@ The **flags** parameter must be set to zero or by bitwise inclusively **OR**'ing
 
 - `DB_MULTIVERSION`
 
-  Open the file with support for <a href="../../programmer_reference/transapp_read.html" class="olink">multiversion concurrency control</a>. Calls to <a href="mempfget.md" class="xref" title="DB_MPOOLFILE-&gt;get()">DB_MPOOLFILE-&gt;get()</a> with dirty pages will cause copies to be made in the cache.
+  Open the file with support for <a href="../../guides/programmer_reference/transapp_read.md" class="olink">multiversion concurrency control</a>. Calls to <a href="mempfget.md" class="xref" title="DB_MPOOLFILE-&gt;get()">DB_MPOOLFILE-&gt;get()</a> with dirty pages will cause copies to be made in the cache.
 
 - `DB_NOMMAP`
 

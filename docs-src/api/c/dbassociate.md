@@ -16,7 +16,7 @@ DB->associate(DB *primary, DB_TXN *txnid, DB *secondary,
 
 The `DB->associate()` function is used to declare one database a secondary index for a primary database. The <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle that you call the `associate()` method from is the primary database.
 
-After a secondary database has been "associated" with a primary database, all updates to the primary will be automatically reflected in the secondary and all reads from the secondary will return corresponding data from the primary. Note that as primary keys must be unique for secondary indices to work, the primary database must be configured without support for duplicate data items. See <a href="../../programmer_reference/am_second.html" class="olink">Secondary Indices</a> in the *Berkeley DB Programmer's Reference Guide* for more information.
+After a secondary database has been "associated" with a primary database, all updates to the primary will be automatically reflected in the secondary and all reads from the secondary will return corresponding data from the primary. Note that as primary keys must be unique for secondary indices to work, the primary database must be configured without support for duplicate data items. See <a href="../../guides/programmer_reference/am_second.md" class="olink">Secondary Indices</a> in the *Berkeley DB Programmer's Reference Guide* for more information.
 
 The `DB->associate()` method returns a non-zero error value on failure and 0 on success.
 

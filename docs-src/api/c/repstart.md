@@ -26,7 +26,7 @@ The `DB_ENV->rep_start()` method returns a non-zero error value on failure and 0
 
 #### cdata
 
-The **cdata** parameter is an opaque data item that is sent over the communication infrastructure when the client comes online (see <a href="../../programmer_reference/rep_newsite.html" class="olink">Connecting to a new site</a> for more information). If no such information is useful, **cdata** should be NULL.
+The **cdata** parameter is an opaque data item that is sent over the communication infrastructure when the client comes online (see <a href="../../guides/programmer_reference/rep_newsite.md" class="olink">Connecting to a new site</a> for more information). If no such information is useful, **cdata** should be NULL.
 
 #### flags
 

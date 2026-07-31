@@ -52,7 +52,7 @@ The **flags** parameter must be set to 0 or by bitwise inclusively **OR**'ing to
 
 - `DB_TXN_SNAPSHOT`
 
-  Configure a transactional cursor to operate with read-only <a href="../../programmer_reference/transapp_read.html" class="olink">snapshot isolation</a>. For databases with the <a href="dbopen.md#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> flag set, data values will be read as they are when the cursor is opened, without taking read locks.
+  Configure a transactional cursor to operate with read-only <a href="../../guides/programmer_reference/transapp_read.md" class="olink">snapshot isolation</a>. For databases with the <a href="dbopen.md#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> flag set, data values will be read as they are when the cursor is opened, without taking read locks.
 
   This flag implicitly begins a transaction that is committed when the cursor is closed.
 

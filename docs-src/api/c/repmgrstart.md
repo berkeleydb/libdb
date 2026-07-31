@@ -30,7 +30,7 @@ There are two ways to build Berkeley DB replication applications: the most commo
 
 For more information on building Replication Manager applications, please see the *Replication Getting Started Guide* included in the Berkeley DB documentation.
 
-Applications with special needs (for example, applications using network protocols not supported by the Berkeley DB Replication Manager), must perform additional configuration and call other Berkeley DB replication Base API methods. For more information on building Base API applications, please see the <a href="../../programmer_reference/rep_base_meth.html" class="olink">Base API Methods</a> section in the *Berkeley DB Programmer's Reference Guide*.
+Applications with special needs (for example, applications using network protocols not supported by the Berkeley DB Replication Manager), must perform additional configuration and call other Berkeley DB replication Base API methods. For more information on building Base API applications, please see the <a href="../../guides/programmer_reference/rep_base_meth.md" class="olink">Base API Methods</a> section in the *Berkeley DB Programmer's Reference Guide*.
 
 Starting the Replication Manager consists of opening the TCP/IP listening socket to accept incoming connections, and starting all necessary background threads. When multiple processes share a database environment, only one process can open the listening socket; the `DB_ENV->repmgr_start()` method automatically opens the socket in the first process to call it, and skips this step in the later calls from other processes.
 

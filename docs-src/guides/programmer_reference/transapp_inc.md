@@ -1,0 +1,140 @@
+---
+title: "Isolation"
+api-name: "Isolation"
+source: docs/programmer_reference/transapp_inc.html
+---
+## Isolation
+
+The third reason listed for using transactions was <span class="emphasis">*isolation*</span>. Consider an application suite in which multiple threads of control (multiple processes or threads in one or more processes) are changing the values associated with a key in one or more databases. Specifically, they are taking the current value, incrementing it, and then storing it back into the database.
+
+Such an application requires isolation. Because we want to change a value in the database, we must make sure that after we read it, no other thread of control modifies it. For example, assume that both thread \#1 and thread \#2 are doing similar operations in the database, where thread \#1 is incrementing records by 3, and thread \#2 is incrementing records by 5. We want to increment the record by a total of 8. If the operations interleave in the right (well, wrong) order, that is not what will happen:
+
+``` c
+thread #1  read record: the value is 2
+thread #2  read record: the value is 2
+thread #2  write record + 5 back into the database (new value 7)
+thread #1  write record + 3 back into the database (new value 5)
+```
+
+As you can see, instead of incrementing the record by a total of 8, we've incremented it only by 3 because thread \#1 overwrote thread \#2's change. By wrapping the operations in transactions, we ensure that this cannot happen. In a transaction, when the first thread reads the record, locks are acquired that will not be released until the transaction finishes, guaranteeing that all writers will block, waiting for the first thread's transaction to complete (or to be aborted).
+
+Here is an example function that does transaction-protected increments on database records to ensure isolation:
+
+``` c
+int
+main(int argc, char *argv)
+{
+    extern int optind;
+    DB *db_cats, *db_color, *db_fruit;
+    DB_ENV *dbenv;
+    int ch;
+
+    while ((ch = getopt(argc, argv, "")) != EOF)
+        switch (ch) {
+        case '?':
+        default:
+            usage();
+        }
+    argc -= optind;
+    argv += optind;
+
+    env_dir_create();
+    env_open(&dbenv);
+
+    /* Open database: Key is fruit class; Data is specific type. */
+    db_open(dbenv, &db_fruit, "fruit", 0);
+
+    /* Open database: Key is a color; Data is an integer. */
+    db_open(dbenv, &db_color, "color", 0);
+
+    /*
+     * Open database:
+     *    Key is a name; Data is: company name, cat breeds.
+     */
+    db_open(dbenv, &db_cats, "cats", 1);
+
+    add_fruit(dbenv, db_fruit, "apple", "yellow delicious");
+
+    add_color(dbenv, db_color, "blue", 0);
+    add_color(dbenv, db_color, "blue", 3);
+
+    return (0);
+}
+
+int
+add_color(DB_ENV *dbenv, DB *dbp, char *color, int increment)
+{
+    DBT key, data;
+    DB_TXN *tid;
+    int fail, original, ret, t_ret;
+    char buf64;
+
+    /* Initialization. */
+    memset(&key, 0, sizeof(key));
+    key.data = color;
+    key.size = strlen(color);
+    memset(&data, 0, sizeof(data));
+    data.flags = DB_DBT_MALLOC;
+
+    for (fail = 0;;) {
+        /* Begin the transaction. */
+        if ((ret = dbenv->txn_begin(dbenv, NULL, &tid, 0)) != 0) {
+            dbenv->err(dbenv, ret, "DB_ENV->txn_begin");
+            exit (1);
+        }
+
+        /*
+         * Get the key.  If it exists, we increment the value.  If it
+         * doesn't exist, we create it.
+         */
+        switch (ret = dbp->get(dbp, tid, &key, &data, DB_RMW)) {
+        case 0:
+            original = atoi(data.data);
+            break;
+        case DB_LOCK_DEADLOCK:
+        default:
+            /* Retry the operation. */
+            if ((t_ret = tid->abort(tid)) != 0) {
+                dbenv->err(dbenv, t_ret, "DB_TXN->abort");
+                exit (1);
+            }
+            if (fail++ == MAXIMUM_RETRY)
+                return (ret);
+            continue;
+        case DB_NOTFOUND:
+            original = 0;
+            break;
+        }
+        if (data.data != NULL)
+            free(data.data);
+
+        /* Create the new data item. */
+        (void)snprintf(buf, sizeof(buf), "%d", original + increment);
+        data.data = buf;
+        data.size = strlen(buf) + 1;
+
+        /* Store the new value. */
+        switch (ret = dbp->put(dbp, tid, &key, &data, 0)) {
+        case 0:
+            /* Success: commit the change. */
+            if ((ret = tid->commit(tid, 0)) != 0) {
+                dbenv->err(dbenv, ret, "DB_TXN->commit");
+                exit (1);
+            }
+            return (0);
+        case DB_LOCK_DEADLOCK:
+        default:
+            /* Retry the operation. */
+            if ((t_ret = tid->abort(tid)) != 0) {
+                dbenv->err(dbenv, t_ret, "DB_TXN->abort");
+                exit (1);
+            }
+            if (fail++ == MAXIMUM_RETRY)
+                return (ret);
+            break;
+        }
+    }
+}
+```
+
+The <a href="../../api/c/dbcget.md#dbcget_DB_RMW" class="olink">DB_RMW</a> flag in the <a href="../../api/c/dbget.md" class="olink">DB-&gt;get()</a> call specifies a write lock should be acquired on the key/data pair, instead of the more obvious read lock. We do this because the application expects to write the key/data pair in a subsequent operation, and the transaction is much more likely to deadlock if we first obtain a read lock and subsequently a write lock, than if we obtain the write lock initially.
