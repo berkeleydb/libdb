@@ -1,0 +1,33 @@
+# Nav/index metadata for the gsg_db_rep guide (auto-derived from the
+# source index.html TOC chain). `order` pins the reading order for nav
+# and later PDF assembly; `landing` is the tree's index page.
+
+title = "Getting Started with Replicated Berkeley DB Applications"
+landing = "index.md"
+order = [
+  "preface",
+  "moreinfo",
+  "introduction",
+  "repadvantage",
+  "apioverview",
+  "elections",
+  "permmessages",
+  "txnapp",
+  "simpleprogramlisting",
+  "repapp",
+  "rep_init_code",
+  "repmgr_init_example_c",
+  "fwrkpermmessage",
+  "electiontimes",
+  "fmwrkconnectretry",
+  "heartbeats",
+  "fwrkmasterreplica",
+  "processingloop",
+  "exampledoloop",
+  "addfeatures",
+  "manageblock",
+  "autoinit",
+  "rywc",
+  "c2ctransfer",
+  "bulk",
+]
