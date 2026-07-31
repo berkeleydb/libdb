@@ -1,0 +1,10 @@
+# Nav/index metadata for the C API reference tree.
+#
+# `index.md` is the tree landing page (migrated from the DocBook book index,
+# the big method table). build.py uses `title` for breadcrumbs/nav labels;
+# `order` (optional) can pin a reading order for PDF/man assembly in later
+# phases. Left mostly implicit this phase since index.md already carries the
+# full ordered method table recovered from the source.
+
+title = "C API Reference"
+landing = "index.md"
