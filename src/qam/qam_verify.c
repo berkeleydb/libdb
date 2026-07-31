@@ -81,9 +81,12 @@ __qam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 
 	/*
 	 * re_len:  If this is bad, we can't safely verify queue data pages, so
-	 * return DB_VERIFY_FATAL
+	 * return DB_VERIFY_FATAL.  rec_page (records per page) must be non-zero:
+	 * it is used as a divisor via QAM_RECNO_PAGE below and throughout the
+	 * queue AM, so a corrupt 0 would divide by zero (SIGFPE).
 	 */
-	if (DB_ALIGN(meta->re_len + sizeof(QAMDATA) - 1, sizeof(u_int32_t)) *
+	if (meta->rec_page == 0 ||
+	    DB_ALIGN(meta->re_len + sizeof(QAMDATA) - 1, sizeof(u_int32_t)) *
 	    meta->rec_page + QPAGE_SZ(dbp) > dbp->pgsize) {
 		EPRINT((env, DB_STR_A("1147",
     "Page %lu: queue record length %lu too high for page size and recs/page",

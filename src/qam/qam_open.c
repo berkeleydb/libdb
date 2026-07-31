@@ -106,6 +106,20 @@ __qam_open(dbp, ip, txn, name, base_pgno, mode, flags)
 	t->re_len = qmeta->re_len;
 	t->rec_page = qmeta->rec_page;
 
+	/*
+	 * rec_page (records per page) is trusted from the on-disk meta page
+	 * and used as a divisor throughout the queue access method via
+	 * QAM_RECNO_PAGE (records/page).  A corrupt 0 divides by zero (SIGFPE).
+	 * A valid queue always has at least one record per page.
+	 */
+	if (t->rec_page == 0) {
+		__db_errx(env, DB_STR_A("1136",
+		    "__qam_open: %s: unexpected file type or format", "%s"),
+		    name);
+		ret = EINVAL;
+		goto err;
+	}
+
 	t->q_meta = base_pgno;
 	t->q_root = base_pgno + 1;
 
