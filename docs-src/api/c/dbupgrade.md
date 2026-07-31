@@ -14,7 +14,7 @@ DB->upgrade(DB *db, const char *file, u_int32_t flags);
 
 The `DB->upgrade()` method upgrades all of the databases included in the file **file**, if necessary. If no upgrade is necessary, `DB->upgrade()` always returns success.
 
-**Database upgrades are done in place and are destructive. For example, if pages need to be allocated and no disk space is available, the database may be left corrupted. Backups should be made before databases are upgraded. See <a href="../../programmer_reference/am_upgrade.html" class="olink">Upgrading databases</a> for more information.**
+**Database upgrades are done in place and are destructive. For example, if pages need to be allocated and no disk space is available, the database may be left corrupted. Backups should be made before databases are upgraded. See <a href="../../guides/programmer_reference/am_upgrade.md" class="olink">Upgrading databases</a> for more information.**
 
 Unlike all other database operations, `DB->upgrade()` may only be done on a system with the same byte-order as the database.
 
@@ -44,7 +44,7 @@ The **flags** parameter must be set to 0 or the following value:
 
 If the database was opened within a database environment, the environment variable `DB_HOME` may be used as the path of the database environment home.
 
-`DB->upgrade()` is affected by any database directory specified using the <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> method, or by setting the "set_data_dir" string in the environment's <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.
+`DB->upgrade()` is affected by any database directory specified using the <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> method, or by setting the "set_data_dir" string in the environment's <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file.
 
 ### Errors
 

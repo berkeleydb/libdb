@@ -20,6 +20,14 @@ pandoc (html -> gfm), then a small cleanup pass that:
 Usage:  extract.py [SRC_HTML_DIR] [OUT_MD_DIR]
 Defaults: docs/api_reference/C  ->  docs-src/api/c
 Requires: pandoc on PATH (run under `nix shell nixpkgs#pandoc`).
+
+Works for both the flat `refentry` API trees (C, STL) and the chaptered
+`chapter`/`sect1` guide trees (programmer_reference, gsg, ...): every page has a
+single top-level content div in CONTENT_CLASSES. A few auxiliary guide pages
+(embedded.html, witold.html) put prose straight under <body> with no content
+div — for those a body-level fallback captures everything except the stable
+boilerplate divs. The C API tree never hits the fallback (its only div-less
+pages are frameset stubs with no prose), so it is regression-safe.
 """
 import html.parser
 import re
@@ -30,6 +38,11 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "docs/api_reference/C"
 OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else REPO / "docs-src/api/c"
+# source: path shown in front-matter; derived from SRC relative to the repo.
+try:
+    SRC_REL = str(SRC.resolve().relative_to(REPO))
+except ValueError:
+    SRC_REL = str(SRC)
 
 # DocBook classes whose top-level <div> IS the real content.
 CONTENT_CLASSES = {"sect1", "chapter", "book", "preface", "appendix",
@@ -114,6 +127,72 @@ class BodyExtractor(html.parser.HTMLParser):
     def _fmt_start(tag, attrs, self_closing=False):
         a = "".join(f' {k}="{v}"' if v is not None else f" {k}" for k, v in attrs)
         return f"<{tag}{a}{' /' if self_closing else ''}>"
+
+    def inner_html(self):
+        return "".join(self.buf)
+
+
+# Body-level fallback: for the handful of guide pages that carry prose directly
+# under <body> (no content div), capture everything except the stable
+# boilerplate divs (navheader/libver/navfooter). Only used when BodyExtractor
+# found no content div, so it cannot alter div-having pages.
+BOILERPLATE_CLASSES = {"navheader", "libver", "navfooter"}
+
+
+class BodyFallbackExtractor(html.parser.HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=False)
+        self.in_body = False
+        self.depth = 0
+        self.skip_depth = None    # depth at which we entered a boilerplate div
+        self.buf = []
+
+    def handle_starttag(self, tag, attrs):
+        ad = dict(attrs)
+        if tag == "body":
+            self.in_body = True
+            self.depth = 0
+            return
+        if not self.in_body:
+            return
+        if self.skip_depth is None and tag == "div":
+            cls = (ad.get("class") or "").split()
+            if any(c in BOILERPLATE_CLASSES for c in cls):
+                self.skip_depth = self.depth
+                self.depth += 1
+                return
+        if self.skip_depth is None:
+            self.buf.append(BodyExtractor._fmt_start(tag, attrs))
+        self.depth += 1
+
+    def handle_startendtag(self, tag, attrs):
+        if self.in_body and self.skip_depth is None:
+            self.buf.append(BodyExtractor._fmt_start(tag, attrs, self_closing=True))
+
+    def handle_endtag(self, tag):
+        if tag == "body":
+            self.in_body = False
+            return
+        if not self.in_body:
+            return
+        self.depth -= 1
+        if self.skip_depth is not None and self.depth == self.skip_depth:
+            self.skip_depth = None
+            return
+        if self.skip_depth is None:
+            self.buf.append(f"</{tag}>")
+
+    def handle_data(self, data):
+        if self.in_body and self.skip_depth is None:
+            self.buf.append(data)
+
+    def handle_entityref(self, name):
+        if self.in_body and self.skip_depth is None:
+            self.buf.append(f"&{name};")
+
+    def handle_charref(self, name):
+        if self.in_body and self.skip_depth is None:
+            self.buf.append(f"&#{name};")
 
     def inner_html(self):
         return "".join(self.buf)
@@ -205,10 +284,16 @@ def extract_one(path):
     raw = path.read_text(encoding="utf-8", errors="replace")
     ex = BodyExtractor()
     ex.feed(raw)
-    inner = preprocess_html(ex.inner_html())
+    inner = ex.inner_html()
     title = clean_title(ex.title or path.stem)
+    if not inner.strip():
+        # No content div: fall back to body-level capture (guide article pages).
+        fb = BodyFallbackExtractor()
+        fb.feed(raw)
+        inner = fb.inner_html()
+    inner = preprocess_html(inner)
     md = pandoc_html_to_gfm(inner)
-    md = cleanup(md, title, title, f"docs/api_reference/C/{path.name}")
+    md = cleanup(md, title, title, f"{SRC_REL}/{path.name}")
     return md, title
 
 

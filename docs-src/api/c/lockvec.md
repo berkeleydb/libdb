@@ -97,11 +97,11 @@ A DB_LOCKREQ structure has at least the following fields:
 
     intention to read and write (shared)
 
-  See <a href="envset_lk_conflicts.md" class="xref" title="DB_ENV-&gt;set_lk_conflicts()">DB_ENV-&gt;set_lk_conflicts()</a> and <a href="../../programmer_reference/lock_stdmode.html" class="olink">Standard Lock Modes</a> for more information on the lock conflict matrix.
+  See <a href="envset_lk_conflicts.md" class="xref" title="DB_ENV-&gt;set_lk_conflicts()">DB_ENV-&gt;set_lk_conflicts()</a> and <a href="../../guides/programmer_reference/lock_stdmode.md" class="olink">Standard Lock Modes</a> for more information on the lock conflict matrix.
 
 - ****const DBT obj;****
 
-  An untyped byte string that specifies the object to be locked or released. Applications using the locking subsystem directly while also doing locking via the Berkeley DB access methods must take care not to inadvertently lock objects that happen to be equal to the unique file IDs used to lock files. See <a href="../../programmer_reference/lock_am_conv.html" class="olink">Access method locking conventions</a> in the *Berkeley DB Programmer's Reference Guide* for more information.
+  An untyped byte string that specifies the object to be locked or released. Applications using the locking subsystem directly while also doing locking via the Berkeley DB access methods must take care not to inadvertently lock objects that happen to be equal to the unique file IDs used to lock files. See <a href="../../guides/programmer_reference/lock_am_conv.md" class="olink">Access method locking conventions</a> in the *Berkeley DB Programmer's Reference Guide* for more information.
 
 - **u_int32_t timeout;**
 

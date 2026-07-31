@@ -38,13 +38,13 @@ The **flags** parameter must be set to one of the following values:
 
   The first record from any of the log files found in the log directory is returned in the **data** parameter. The **lsn** parameter is overwritten with the <a href="lsn.md" class="link" title="Chapter 7.  The DB_LSN Handle">DB_LSN</a> of the record returned.
 
-  The `DB_LOGC->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_FIRST is set and the log is empty.
+  The `DB_LOGC->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_FIRST is set and the log is empty.
 
 - `DB_LAST`
 
   The last record in the log is returned in the **data** parameter. The **lsn** parameter is overwritten with the <a href="lsn.md" class="link" title="Chapter 7.  The DB_LSN Handle">DB_LSN</a> of the record returned.
 
-  The `DB_LOGC->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_LAST is set and the log is empty.
+  The `DB_LOGC->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_LAST is set and the log is empty.
 
 - `DB_NEXT`
 
@@ -52,7 +52,7 @@ The **flags** parameter must be set to one of the following values:
 
   If the cursor has not been initialized via DB_FIRST, DB_LAST, DB_SET, DB_NEXT, or DB_PREV, `DB_LOGC->get()` will return the first record in the log.
 
-  The `DB_LOGC->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_NEXT is set and the last log record has already been returned or the log is empty.
+  The `DB_LOGC->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_NEXT is set and the last log record has already been returned or the log is empty.
 
 - `DB_PREV`
 
@@ -60,7 +60,7 @@ The **flags** parameter must be set to one of the following values:
 
   If the cursor has not been initialized via DB_FIRST, DB_LAST, DB_SET, DB_NEXT, or DB_PREV, `DB_LOGC->get()` will return the last record in the log.
 
-  The `DB_LOGC->get()` method will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_PREV is set and the first log record has already been returned or the log is empty.
+  The `DB_LOGC->get()` method will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_NOTFOUND" class="olink">DB_NOTFOUND</a> if DB_PREV is set and the first log record has already been returned or the log is empty.
 
 - `DB_SET`
 

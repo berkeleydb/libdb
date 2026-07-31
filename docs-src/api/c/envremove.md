@@ -46,11 +46,11 @@ The **flags** parameter must be set to 0 or by bitwise inclusively **OR**'ing to
 
 - `DB_USE_ENVIRON`
 
-  The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see <a href="../../programmer_reference/env_naming.html" class="olink">Berkeley DB File Naming</a>. Because permitting users to specify which files are used can create security problems, environment information will be used in file naming for all users only if the `DB_USE_ENVIRON` flag is set.
+  The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see <a href="../../guides/programmer_reference/env_naming.md" class="olink">Berkeley DB File Naming</a>. Because permitting users to specify which files are used can create security problems, environment information will be used in file naming for all users only if the `DB_USE_ENVIRON` flag is set.
 
 - `DB_USE_ENVIRON_ROOT`
 
-  The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see <a href="../../programmer_reference/env_naming.html" class="olink">Berkeley DB File Naming</a>. Because permitting users to specify which files are used can create security problems, if the `DB_USE_ENVIRON_ROOT` flag is set, environment information will be used in file naming only for users with appropriate permissions (for example, users with a user-ID of 0 on `UNIX` systems).
+  The Berkeley DB process' environment may be permitted to specify information to be used when naming files; see <a href="../../guides/programmer_reference/env_naming.md" class="olink">Berkeley DB File Naming</a>. Because permitting users to specify which files are used can create security problems, if the `DB_USE_ENVIRON_ROOT` flag is set, environment information will be used in file naming only for users with appropriate permissions (for example, users with a user-ID of 0 on `UNIX` systems).
 
 ### Errors
 

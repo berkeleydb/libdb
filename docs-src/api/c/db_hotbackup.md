@@ -46,19 +46,19 @@ The options are as follows:
 
 - **-D**
 
-  Use the data and log directories listed in a <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file in the source directory. This option has four effects:
+  Use the data and log directories listed in a <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file in the source directory. This option has four effects:
 
   - The specified data and log directories will be created relative to the target directory, with mode read-write-execute owner, if they do not already exist.
 
-  - In step \#3 above, all files in any source data directories specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file will be copied to the target data directories.
+  - In step \#3 above, all files in any source data directories specified in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file will be copied to the target data directories.
 
-  - In step \#4 above, log files will be copied from any log directory specified in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file, instead of from the default locations.
+  - In step \#4 above, log files will be copied from any log directory specified in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> file, instead of from the default locations.
 
-  - The <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file will be copied from the source directory to the target directory, and subsequently used for configuration if recovery is run in the target directory.
+  - The <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file will be copied from the source directory to the target directory, and subsequently used for configuration if recovery is run in the target directory.
 
   Care should be taken with the **-D** option where data and log directories are named relative to the source directory but are not subdirectories (that is, the name includes the element "..") Specifically, the constructed target directory names must be meaningful and distinct from the source directory names, otherwise running recovery in the target directory might corrupt the source data files.
 
-  **It is an error to use absolute pathnames for data or log directories in this mode, as the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file copied into the target directory would then point at the source directories and running recovery would corrupt the source data files.**
+  **It is an error to use absolute pathnames for data or log directories in this mode, as the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file copied into the target directory would then point at the source directories and running recovery would corrupt the source data files.**
 
 - **-d**
 
@@ -66,7 +66,7 @@ The options are as follows:
 
   **As all database files are copied into a single target directory, files named the same, stored in different source directories, would overwrite each other when copied to the target directory.**
 
-  Please note the database environment recovery log references database files as they are named by the application program. **If the application uses absolute or relative pathnames to name database files, (rather than filenames and the <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> method or the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file to specify filenames), running recovery in the target directory may not properly find the copies of the files or might even find the source files, potentially resulting in corruption.**
+  Please note the database environment recovery log references database files as they are named by the application program. **If the application uses absolute or relative pathnames to name database files, (rather than filenames and the <a href="envset_data_dir.md" class="xref" title="DB_ENV-&gt;set_data_dir()">DB_ENV-&gt;set_data_dir()</a> method or the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file to specify filenames), running recovery in the target directory may not properly find the copies of the files or might even find the source files, potentially resulting in corruption.**
 
 - **-F**
 

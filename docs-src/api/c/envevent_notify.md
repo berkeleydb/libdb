@@ -42,7 +42,7 @@ The **db_event_fcn** parameter is the application's event notification function.
 
   - `DB_EVENT_PANIC`
 
-    Errors can occur in the Berkeley DB library where the only solution is to shut down the application and run recovery (for example, if Berkeley DB is unable to allocate heap memory). In such cases, the Berkeley DB methods will return <a href="../../programmer_reference/program_errorret.html#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a>. It is often easier to simply exit the application when such errors occur rather than gracefully return up the stack.
+    Errors can occur in the Berkeley DB library where the only solution is to shut down the application and run recovery (for example, if Berkeley DB is unable to allocate heap memory). In such cases, the Berkeley DB methods will return <a href="../../guides/programmer_reference/program_errorret.md#program_errorret.DB_RUNRECOVERY" class="olink">DB_RUNRECOVERY</a>. It is often easier to simply exit the application when such errors occur rather than gracefully return up the stack.
 
     When **event** is set to `DB_EVENT_PANIC`, the database environment has failed. All threads of control in the database environment should exit the environment, and recovery should be run.
 

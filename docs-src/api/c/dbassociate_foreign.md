@@ -19,7 +19,7 @@ The `DB->associate_foreign()` function is used to declare one database a foreign
 
 After a foreign database has been "associated" with a secondary database, all keys inserted into the secondary must exist in the foreign database. Attempting to add a record with a foreign key that does not exist in the foreign database will cause the put method to fail and return `DB_FOREIGN_CONFLICT`.
 
-Deletions in the foreign database affect the secondary in a manner defined by the flags parameter. See <a href="../../programmer_reference/am_foreign.html" class="olink">Foreign Indices</a> in the *Berkeley DB Programmer's Reference Guide* for more information.
+Deletions in the foreign database affect the secondary in a manner defined by the flags parameter. See <a href="../../guides/programmer_reference/am_foreign.md" class="olink">Foreign Indices</a> in the *Berkeley DB Programmer's Reference Guide* for more information.
 
 The `DB->associate_foreign()` method returns a non-zero error value on failure and 0 on success.
 

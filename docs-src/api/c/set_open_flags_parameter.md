@@ -7,7 +7,7 @@ source: docs/api_reference/C/set_open_flags_parameter.html
 
 Initializes specific subsystems of the Berkeley DB environment.
 
-The syntax of the entry in the <a href="../../programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> is a single line with the string `set_open_flags`, one or more whitespace characters, the method flag parameter as a string, optionally one or more whitespace characters, and the string `on` or `off`. If the optional string is omitted, the default is `on`; for example, `set_open_flags DB_INIT_REP` or `set_open_flags DB_INIT_REP on`. Because the DB_CONFIG file is read when the database environment is opened, it will silently overrule configuration done before that time.
+The syntax of the entry in the <a href="../../guides/programmer_reference/env_db_config.md#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> is a single line with the string `set_open_flags`, one or more whitespace characters, the method flag parameter as a string, optionally one or more whitespace characters, and the string `on` or `off`. If the optional string is omitted, the default is `on`; for example, `set_open_flags DB_INIT_REP` or `set_open_flags DB_INIT_REP on`. Because the DB_CONFIG file is read when the database environment is opened, it will silently overrule configuration done before that time.
 
 The method flag parameters are as follows:
 

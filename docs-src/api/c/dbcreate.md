@@ -37,7 +37,7 @@ The **flags** parameter must be set to 0 or the following value:
 
 - `DB_XA_CREATE`
 
-  Instead of creating a standalone database, create a database intended to be accessed via applications running under an X/Open conformant Transaction Manager. The database will be opened in the environment specified by the OPENINFO parameter of the GROUPS section of the ubbconfig file. See the <a href="../../programmer_reference/xa_xa_intro.html" class="olink">XA Introduction</a> section in the Berkeley DB Reference Guide for more information.
+  Instead of creating a standalone database, create a database intended to be accessed via applications running under an X/Open conformant Transaction Manager. The database will be opened in the environment specified by the OPENINFO parameter of the GROUPS section of the ubbconfig file. See the <a href="../../guides/programmer_reference/xa_xa_intro.md" class="olink">XA Introduction</a> section in the Berkeley DB Reference Guide for more information.
 
 ### Errors
 

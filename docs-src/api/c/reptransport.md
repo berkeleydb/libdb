@@ -33,7 +33,7 @@ Berkeley DB is not re-entrant. The callback function for this method should not 
 
 #### envid
 
-The **envid** parameter is the local environment's ID. It must be a non-negative integer and uniquely identify this Berkeley DB database environment (see <a href="../../programmer_reference/rep_id.html" class="olink">Replication environment IDs</a> for more information).
+The **envid** parameter is the local environment's ID. It must be a non-negative integer and uniquely identify this Berkeley DB database environment (see <a href="../../guides/programmer_reference/rep_id.md" class="olink">Replication environment IDs</a> for more information).
 
 #### send
 
@@ -57,11 +57,11 @@ The **send** callback function is used to transmit data using the replication ap
 
 - `envid`
 
-  The **envid** parameter is a positive integer identifier that specifies the replication environment to which the message should be sent (see <a href="../../programmer_reference/rep_id.html" class="olink">Replication environment IDs</a> for more information).
+  The **envid** parameter is a positive integer identifier that specifies the replication environment to which the message should be sent (see <a href="../../guides/programmer_reference/rep_id.md" class="olink">Replication environment IDs</a> for more information).
 
   The special identifier `DB_EID_BROADCAST` indicates that a message should be broadcast to every environment in the replication group. The application may use a true broadcast protocol or may send the message in sequence to each machine with which it is in communication. In both cases, the sending site should not be asked to process the message.
 
-  The special identifier <a href="../../programmer_reference/rep_id.html#rep_id.DB_EID_INVALID" class="olink">DB_EID_INVALID</a> indicates an invalid environment ID. This may be used to initialize values that are subsequently checked for validity.
+  The special identifier <a href="../../guides/programmer_reference/rep_id.md#rep_id.DB_EID_INVALID" class="olink">DB_EID_INVALID</a> indicates an invalid environment ID. This may be used to initialize values that are subsequently checked for validity.
 
 - `flags`
 
@@ -83,7 +83,7 @@ The **send** callback function is used to transmit data using the replication ap
 
     The message is a client request that has already been made and to which no response was received.
 
-It may sometimes be useful to pass application-specific data to the send function; see <a href="../../programmer_reference/env_faq.html" class="olink">Environment FAQ</a> for a discussion on how to do this.
+It may sometimes be useful to pass application-specific data to the send function; see <a href="../../guides/programmer_reference/env_faq.md" class="olink">Environment FAQ</a> for a discussion on how to do this.
 
 The **send** function must return 0 on success and non-zero on failure. If the send function fails, the message being sent is necessary to maintain database integrity, and the local log is not configured for synchronous flushing, the local log will be flushed; otherwise, any error from the **send** function will be ignored.
 

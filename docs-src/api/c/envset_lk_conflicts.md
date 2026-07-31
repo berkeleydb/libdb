@@ -15,7 +15,7 @@ DB_ENV->set_lk_conflicts(DB_ENV *dbenv,
 
 Set the locking conflicts matrix.
 
-If `DB_ENV->set_lk_conflicts()` is never called, a standard conflicts array is used; see <a href="../../programmer_reference/lock_stdmode.html" class="olink">Standard Lock Modes</a> for more information.
+If `DB_ENV->set_lk_conflicts()` is never called, a standard conflicts array is used; see <a href="../../guides/programmer_reference/lock_stdmode.md" class="olink">Standard Lock Modes</a> for more information.
 
 The `DB_ENV->set_lk_conflicts()` method configures a database environment, not only operations performed using the specified <a href="env.md" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle.
 
