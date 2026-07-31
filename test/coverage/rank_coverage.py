@@ -4,7 +4,7 @@
 Prints the least-covered files first (lowest line %, then largest), so future
 DST/PBT/unit test work can aim at the biggest uncovered surfaces. Files under
 50 lines are skipped as noise. This is the actionable output of Tier B3
-(coverage in CI) in .agents/test-suite-maturity-plan.md.
+(coverage in CI) in the test-suite maturity plan.
 
 Usage: rank_coverage.py <coverage.info> [min_lines]
 """

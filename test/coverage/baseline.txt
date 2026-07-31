@@ -1,4 +1,4 @@
-# libdb coverage baseline (Tier B3, .agents/test-suite-maturity-plan.md).
+# libdb coverage baseline (Tier B3 of the test-suite maturity plan).
 # src/-only, gcov/lcov, representative test subset (see test/coverage/README.md).
 # The Coverage workflow warns (advisory) if branch coverage drops >0.5% below this.
 # Update after landing new tests that raise coverage (ratchet upward, never down).

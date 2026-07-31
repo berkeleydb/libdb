@@ -1,7 +1,5 @@
 # libdb Deterministic Simulation Testing (DST) — design & roadmap
 
-> Canonical copy lives at `.agents/dst-design.md` (gitignored, per repo convention); this is the committed PR copy.
-
 Status: **v1 foundation landed + v1.x depth grown** (this branch). Seeded
 PRNG tree, determinism
 guard, buggify, simulated-I/O fault knobs, the write-back-cache durable-frontier
@@ -9,16 +7,16 @@ crash model, the `__os_*` I/O hooks, a `--enable-dst` build switch that is
 zero-overhead when off, and a **36-scenario** catalog plus a FoundationDB-style
 **swarm runner** with per-fault activation coverage (now with a hard
 coverage-gap guard) and **eight** planted-bug yardsticks. Modeled on
-FoundationDB / TigerBeetle and the xtc project's DST (`/home/gburd/ws/xtc`).
+FoundationDB / TigerBeetle and a prior cooperative-fiber DST runtime.
 
 This document is the PLAN. It records what shipped, the honest architectural
-gap vs xtc, and the full scenario catalog to grow into.
+gap vs a full fiber-scheduler DST, and the full scenario catalog to grow into.
 
 ---
 
-## 0. Why libdb DST looks different from xtc DST
+## 0. Why libdb DST looks different from a fiber-scheduler DST
 
-xtc is a **single-process cooperative-fiber actor runtime**: its DST can run N
+A cooperative-fiber actor runtime's DST can run N
 "loops" as N fibers on one thread under a seed-determined interleaving, with a
 virtual clock and a fully deterministic scheduler. Every source of
 nondeterminism (time, RNG, I/O completion order, message delivery) funnels
@@ -69,7 +67,7 @@ zero `__db_sim_*` symbols and builds with no undefined references.
 
 ### 1.1 Seeded PRNG tree (`sim_rng.c/.h`, in `sim_core.c`)
 
-Per-stream **splitmix64**, adapted from xtc. One root seed splits into
+Per-stream **splitmix64**. One root seed splits into
 independent sub-streams via the golden-ratio finalizer, so a draw added at one
 decision site never perturbs another site's sequence (stable replay under code
 change — the FoundationDB discipline).
@@ -319,8 +317,7 @@ across a multi-seed sweep and replay bit-identically per seed.
 | `test_sim_recovery_ckp_crash` | crash during the recovery checkpoint write, then recover: converges, committed intact | PASS |
 | `test_sim_swarm` | **swarm**: mixed-fault sweep, per-fault activation coverage + gap guard, replay | PASS (512 seeds, 0 violations) |
 
-**Recovery-before-verify discipline** (from
-`.agents/concurrent-btree-corruption.md`): a crashed txn env verified *without*
+**Recovery-before-verify discipline**: a crashed txn env verified *without*
 recovery falsely looks corrupt. `test_sim_crash_recover` **always** runs
 `DB_RECOVER` before `db->verify`.
 
@@ -516,17 +513,14 @@ scheduler / multi-process). ~34 scenarios across BDB subsystems.
     (non-`DB_PRIVATE`) region, one is killed mid-txn holding a write lock, the
     other runs `DB_ENV->failchk`; **found a real failchk EBUSY recovery defect**
     (DST-V2-DESIGN §3a).
-35. **network partition / replication** role change (repmgr) — *v2* (xtc models
-    partition at the message seam; BDB's real socket transport needs a v2 shim).
+35. **network partition / replication** role change (repmgr) — *v2* (a
+    fiber-scheduler DST models partition at the message seam; BDB's real socket
+    transport needs a v2 shim).
 
 ---
 
 ## 6. References
 
-- xtc DST core: `/home/gburd/ws/xtc/src/evt/sim.c`,
-  `src/io/io_sim.c`, `src/inc/xtc_sim.h`, `src/inc/xtc_dst_inject.h`,
-  `test/sim/test_sim_*.c`.
 - BDB OS seam: `src/os/os_rw.c`, `os_fsync.c`, `src/dbinc/os.h`,
   `src/dbinc_auto/os_ext.h`.
-- Recovery-before-verify lesson: `.agents/concurrent-btree-corruption.md`.
 - FoundationDB simulation testing; TigerBeetle VOPR.
