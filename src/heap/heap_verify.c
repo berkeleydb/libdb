@@ -71,6 +71,19 @@ __heap_vrfy_meta(dbp, vdp, meta, pgno, flags)
 	h = (HEAP *)dbp->heap_internal;
 	h->region_size = meta->region_size;
 	last_pgno = meta->dbmeta.last_pgno;
+	/*
+	 * region_size is used as a divisor (HEAP_REGION_SIZE(dbp)+1) below and
+	 * in the structure pass; a corrupt 0 or UINT32_MAX value would divide
+	 * by zero (the +1 wraps).  Reject it as bad rather than crash.
+	 */
+	if (meta->region_size == 0 ||
+	    meta->region_size > HEAP_REGION_COUNT(dbp, dbp->pgsize)) {
+		EPRINT((dbp->env, DB_STR_A("1174",
+		    "Page %lu: invalid heap region size %lu",
+		    "%lu %lu"), (u_long)pgno, (u_long)meta->region_size));
+		isbad = 1;
+		goto err;
+	}
 	if (meta->nregions != HEAP_REGION_NUM(dbp, last_pgno)) {
 		EPRINT((dbp->env, DB_STR_A("1157",
 		    "Page %lu: Number of heap regions incorrect",
@@ -123,6 +136,15 @@ __heap_vrfy(dbp, vdp, h, pgno, flags)
 	HEAPHDR *hdr;
 	int cnt, i, j, ret;
 	db_indx_t *offsets, *offtbl, end;
+
+	/*
+	 * offsets is freed unconditionally at the err label.  If
+	 * __db_vrfy_datapage below fails on a corrupt page we jump there
+	 * before offsets is assigned, so it must start NULL (a free of an
+	 * indeterminate pointer is otherwise undefined behavior / a wild
+	 * free on a hostile heap file).
+	 */
+	offsets = NULL;
 
 	if ((ret = __db_vrfy_datapage(dbp, vdp, h, pgno, flags)) != 0)
 		goto err;
