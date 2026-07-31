@@ -1066,6 +1066,24 @@ skip_lock:		stack = set_stack;
 		if ((ret = __memp_fget(mpf, &pg,
 		     dbc->thread_info, dbc->txn, get_mode, &h)) != 0)
 			goto err;
+		/*
+		 * On an untrusted/corrupt file a BINTERNAL child pointer can
+		 * point back up the tree (to itself, a sibling, or an ancestor)
+		 * at the same or a higher level.  The descent then never reaches
+		 * LEAFLEVEL and this loop spins forever (a denial of service).
+		 * A valid Btree always has strictly decreasing levels from root
+		 * to leaf, so a child whose level is not below its parent's is
+		 * corruption -- reject it as a clean page error rather than loop.
+		 * (The lock-retry path above already enforces LEVEL(h)==level-1;
+		 * this guards the common latch-coupling fast path.)
+		 */
+		if (LEVEL(h) >= level) {
+			(void)__memp_fput(mpf,
+			    dbc->thread_info, h, dbc->priority);
+			h = NULL;
+			ret = DB_PAGE_NOTFOUND;
+			goto err;
+		}
 		/* Release the parent. */
 		if (parent_h != NULL && (ret = __memp_fput(mpf,
 		    dbc->thread_info, parent_h, dbc->priority)) != 0)
