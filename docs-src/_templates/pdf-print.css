@@ -1,0 +1,57 @@
+/*
+ * Print stylesheet for the libdb PDF books (weasyprint HTML->PDF path).
+ *
+ * We render each book to PDF from HTML (the same pandoc html the site uses),
+ * NOT via LaTeX -- weasyprint needs no TeX toolchain, is deterministic, and
+ * reuses the pipeline we already have. This file supplies what a LaTeX header
+ * would: a title page, running header/footer, and page numbers, via CSS
+ * paged-media (@page). build.py injects the {{project}}/{{version}}/{{book}}/
+ * {{copyright}} placeholders into the title block below.
+ */
+
+@page {
+  size: letter;
+  margin: 2.2cm 2cm 2cm 2cm;
+  /* Running footer: book title (left) and page number (right). */
+  @bottom-left  { content: string(booktitle); font-size: 8pt; color: #666; }
+  @bottom-right { content: "Page " counter(page); font-size: 8pt; color: #666; }
+  @top-right    { content: "Berkeley DB {{version}}"; font-size: 8pt; color: #666; }
+}
+/* No header/footer on the title page. */
+@page :first {
+  @bottom-left { content: ""; }
+  @bottom-right { content: ""; }
+  @top-right { content: ""; }
+}
+
+html { font: 11pt/1.45 "DejaVu Serif", Georgia, serif; }
+body { margin: 0; }
+
+/* h1 (chapter titles from pandoc) carry the running-footer book title. */
+h1 { string-set: booktitle "{{book}}"; page-break-before: always; font-size: 18pt; }
+h1:first-of-type { page-break-before: avoid; }
+h2 { font-size: 14pt; margin-top: 1.4em; }
+h3 { font-size: 12pt; }
+h4 { font-size: 11pt; }
+
+pre, code { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; }
+pre { background: #f5f5f5; padding: .6em .8em; border: 1px solid #ddd;
+      border-radius: 3px; white-space: pre-wrap; word-wrap: break-word; }
+code { background: #f5f5f5; padding: 0 .2em; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
+td, th { border: 1px solid #ccc; padding: .25em .4em; text-align: left; }
+a { color: #06c; text-decoration: none; }
+img { max-width: 100%; }
+
+/* Title page: centered project + book + version + copyright. */
+.pdf-title-page {
+  page-break-after: always;
+  text-align: center;
+  /* push the block down the page a bit */
+  padding-top: 24%;
+}
+.pdf-title-page .project  { font-size: 30pt; font-weight: 700; margin: 0; }
+.pdf-title-page .book     { font-size: 20pt; margin: .6em 0 0; }
+.pdf-title-page .version  { font-size: 14pt; color: #555; margin: 1.2em 0 0; }
+.pdf-title-page .copyright{ font-size: 9pt; color: #777; margin: 3em 2cm 0; }

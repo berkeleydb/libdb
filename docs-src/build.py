@@ -6,12 +6,13 @@
   shared template + site.toml, replacing the old per-page duplication.
 - Nav/index come from per-directory _meta.toml (falls back to a flat listing).
 
-PDF and man outputs are Phase 3/4 — the seams are stubbed below (build_pdf,
-build_man) so a follow-up wires pandoc without reshaping this file.
+PDF and man outputs are Phase 3/4 — man is implemented; build_pdf renders
+one PDF per book via pandoc(html)->weasyprint (no TeX toolchain).
 
-Usage:  build.py            # build HTML into docs-build/html
-        build.py --serve    # (not implemented) placeholder for a preview seam
-Requires: pandoc on PATH (run under `nix shell nixpkgs#pandoc`).
+Usage:  build.py            # build HTML + man + PDF into docs-build/
+        build.py --no-pdf   # skip PDF (e.g. weasyprint not installed)
+Requires: pandoc on PATH; PDF also needs weasyprint
+(run under `nix shell nixpkgs#pandoc nixpkgs#python3Packages.weasyprint`).
 """
 import html
 import re
@@ -29,6 +30,8 @@ MAN_TEMPLATE = HERE / "_templates/man.tmpl"
 SITE_TOML = HERE / "_data/site.toml"
 RELEASE = REPO / "dist/RELEASE"
 MAN_OUT = REPO / "docs-build/man/man3"
+PDF_OUT = REPO / "docs-build/pdf"
+PDF_CSS = HERE / "_templates/pdf-print.css"
 # API .md trees whose refentry pages become section-3 man pages.
 API_DIRS = [HERE / "api/c", HERE / "api/stl"]
 
@@ -95,8 +98,11 @@ def pandoc_md_to_html(body):
     )
     if p.returncode != 0:
         raise RuntimeError(f"pandoc md->html failed: {p.stderr[:500]}")
-    # `.md` links point at source; the built site is HTML.
-    return re.sub(r'(href="[A-Za-z0-9_.\-]+)\.md(#[^"]*)?"',
+    # `.md` links point at source; the built site is HTML. Rewrite BOTH
+    # same-dir (`foo.md`) and cross-tree (`../../api/c/foo.md`) targets, so the
+    # path charset includes `/`. Skip absolute URLs (http:, //) -- only local
+    # relative .md links become .html.
+    return re.sub(r'(href="(?!\w+:|//)[A-Za-z0-9_./\-]+)\.md(#[^"]*)?"',
                   lambda m: f'{m.group(1)}.html{m.group(2) or ""}"', p.stdout)
 
 
@@ -138,7 +144,27 @@ def build_html(version, site, tmpl):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(render_page(tmpl, ctx), encoding="utf-8")
         n += 1
+    _copy_assets()
     return n
+
+
+def _copy_assets():
+    """Copy tree images to the built site. Pages reference figures bare
+    (`![](deadlock.jpg)`) but migrate stored them under `<tree>/img/`, so
+    flatten each `img/` into the page dir (docs-build/html/<tree>/deadlock.jpg).
+    Without this the <img>/asset links dangle -- the link-check gate catches it."""
+    import shutil
+    for img_dir in SRC.rglob("img"):
+        if not img_dir.is_dir():
+            continue
+        rel = img_dir.parent.relative_to(SRC)
+        if rel.parts and rel.parts[0] in SKIP_DIRS:
+            continue
+        out_dir = OUT / rel
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for asset in img_dir.iterdir():
+            if asset.is_file():
+                shutil.copy2(asset, out_dir / asset.name)
 
 
 # --- Phase 3 seam: man pages (implemented). Phase 4 (PDF) stays stubbed. ---
@@ -329,10 +355,132 @@ def _api_groups():
     return groups or fb
 
 
+# --- Phase 4 seam: per-book PDF (weasyprint HTML->PDF; no TeX toolchain). ---
+#
+# Each top-level "book" (the two API refs + each guide) becomes ONE PDF, its
+# chapters concatenated in _meta.toml `order` (API refs have no order -> index
+# first, then the rest alphabetically). We render via the SAME pandoc html we
+# already produce and hand it to weasyprint, which needs no LaTeX. The title
+# page + running header/footer come from _templates/pdf-print.css (CSS paged
+# media), which is what a LaTeX header would otherwise supply.
+#
+# `articles/` has no top-level _meta.toml (it is two independent sub-books,
+# inmemory + mssgtxt), so book discovery walks every dir with a _meta.toml
+# that names a title -- that yields one PDF per real book, not one monster.
+
+PDF_SKIP_STEMS = {"frame_index", "frame_main"}
+
+
+def _find_books():
+    """Every content dir with a _meta.toml -> (dir, meta). One book per dir."""
+    books = []
+    for meta_path in sorted(SRC.rglob("_meta.toml")):
+        d = meta_path.parent
+        rel = d.relative_to(SRC)
+        if rel.parts and rel.parts[0] in SKIP_DIRS:
+            continue
+        meta = load_meta(d)
+        if not meta.get("title"):
+            continue
+        books.append((d, meta))
+    return books
+
+
+def _book_chapters(d, meta):
+    """Ordered chapter .md paths for a book. `order` pins the reading order;
+    absent (API refs) -> landing/index first, then the rest alphabetically,
+    minus the frameset nav stubs."""
+    order = meta.get("order") or []
+    if order:
+        paths = [d / f"{s}.md" for s in order]
+        return [p for p in paths if p.exists()]
+    landing = meta.get("landing", "index.md")
+    first = d / landing
+    rest = [p for p in sorted(d.glob("*.md"))
+            if p.name != landing and p.stem not in PDF_SKIP_STEMS]
+    return ([first] if first.exists() else []) + rest
+
+
+def _book_name(d):
+    """Slug for the output file: guides/gsg_txn -> gsg_txn, api/c -> api_c,
+    guides/articles/inmemory -> articles_inmemory."""
+    return "_".join(d.relative_to(SRC).parts)
+
+
+def _concat_book_md(chapters):
+    body = []
+    for p in chapters:
+        _meta, txt = strip_front_matter(p.read_text(encoding="utf-8"))
+        body.append(txt.strip())
+    return "\n\n".join(body)
+
+
+def _pdf_css(version, book_title):
+    """Fill the {{version}}/{{book}} placeholders in the print stylesheet."""
+    css = PDF_CSS.read_text(encoding="utf-8")
+    return (css.replace("{{version}}", version)
+               .replace("{{book}}", book_title.replace('"', "'")))
+
+
+def _title_page_html(project, book_title, version, copyright_):
+    return (
+        '<div class="pdf-title-page">'
+        f'<p class="project">{html.escape(project)}</p>'
+        f'<p class="book">{html.escape(book_title)}</p>'
+        f'<p class="version">Version {html.escape(version)}</p>'
+        f'<p class="copyright">{html.escape(copyright_)}</p>'
+        "</div>\n"
+    )
+
+
+def _book_html(body_md, project, book_title, version, copyright_):
+    """Standalone HTML for one book: title page + pandoc-rendered chapters,
+    with the print CSS inlined so weasyprint needs no external files."""
+    p = subprocess.run(
+        ["pandoc", "-f", "gfm", "-t", "html", "--wrap=none"],
+        input=body_md, capture_output=True, text=True,
+    )
+    if p.returncode != 0:
+        raise RuntimeError(f"pandoc md->html (pdf) failed: {p.stderr[:500]}")
+    css = _pdf_css(version, book_title)
+    title = _title_page_html(project, book_title, version, copyright_)
+    return (
+        "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        f"<title>{html.escape(book_title)}</title>"
+        f"<style>{css}</style></head><body>\n{title}{p.stdout}\n</body></html>\n"
+    )
+
+
+def _weasyprint(html_text, dest):
+    """HTML string -> PDF file via the weasyprint CLI (stdin '-')."""
+    p = subprocess.run(
+        ["weasyprint", "-q", "-", str(dest)],
+        input=html_text, capture_output=True, text=True,
+    )
+    if p.returncode != 0:
+        raise RuntimeError(f"weasyprint failed for {dest.name}: {p.stderr[:500]}")
+
+
 def build_pdf(version, site):
-    """TODO(phase-4): pandoc per book (api_reference, GSGs, programmer_reference)
-    with a shared LaTeX header. Not built this phase."""
-    return 0
+    """Render every book (2 API refs + each guide) to docs-build/pdf/<book>.pdf.
+    Returns a list of (name, dest) for the caller to report / page-count.
+    Requires `pandoc` and `weasyprint` on PATH."""
+    if not PDF_CSS.exists():
+        sys.exit(f"missing pdf css {PDF_CSS}")
+    PDF_OUT.mkdir(parents=True, exist_ok=True)
+    project, copyright_ = site["project"], site["copyright"]
+    built = []
+    for d, meta in _find_books():
+        chapters = _book_chapters(d, meta)
+        if not chapters:
+            continue
+        book_title = meta["title"]
+        body_md = _concat_book_md(chapters)
+        html_text = _book_html(body_md, project, book_title, version, copyright_)
+        dest = PDF_OUT / f"{_book_name(d)}.pdf"
+        _weasyprint(html_text, dest)
+        built.append((_book_name(d), dest, len(chapters)))
+    return built
 
 
 def _selfcheck():
@@ -351,10 +499,36 @@ def _selfcheck():
     assert "int DB->foo(void);" in mm                   # synopsis kept
     # roff tidy drops PP right after a heading
     assert _tidy_roff(".SS X\n.PP\n.TS\n") == ".SS X\n.TS\n"
+    # PDF book discovery: every book has a title + at least one chapter, and
+    # articles is TWO sub-books (not one), so no monster merge.
+    books = _find_books()
+    names = {_book_name(d) for d, _ in books}
+    assert "api_c" in names and "api_stl" in names, names
+    assert "guides_articles_inmemory" in names, names
+    assert "guides_articles_mssgtxt" in names, names
+    assert "guides_articles" not in names, "articles must not be one merged book"
+    for d, meta in books:
+        assert meta.get("title"), d
+        assert _book_chapters(d, meta), f"no chapters for {d}"
+    # ordered book uses `order`; unordered (api) puts landing first.
+    prd = SRC / "guides/programmer_reference"
+    ch = _book_chapters(prd, load_meta(prd))
+    assert ch[0].stem == "preface", ch[0]
+    apic = SRC / "api/c"
+    assert _book_chapters(apic, load_meta(apic))[0].stem == "index"
+    # title page HTML carries project + version.
+    tp = _title_page_html("Berkeley DB", "C API", "5.3.33", "(c) X")
+    assert "Version 5.3.33" in tp and "Berkeley DB" in tp and "C API" in tp
+    # cross-tree .md links rewrite to .html; absolute URLs are left alone.
+    got = re.sub(r'(href="(?!\w+:|//)[A-Za-z0-9_./\-]+)\.md(#[^"]*)?"',
+                 lambda m: f'{m.group(1)}.html{m.group(2) or ""}"',
+                 'a href="../../api/c/env.md#x" b href="foo.md" c href="http://x/y.md"')
+    assert '../../api/c/env.html#x' in got and 'foo.html' in got
+    assert 'http://x/y.md' in got, "absolute .md URL must not be rewritten"
     print("selfcheck ok")
 
 
-def main():
+def main(build_pdf_too=True):
     if not TEMPLATE.exists():
         sys.exit(f"missing template {TEMPLATE}")
     version = load_version()
@@ -364,10 +538,15 @@ def main():
     print(f"built {n} HTML pages -> {OUT}  (version {version})")
     m = build_man(version, site)
     print(f"built {m} man pages -> {MAN_OUT}  (version {version})")
+    if build_pdf_too:
+        books = build_pdf(version, site)
+        print(f"built {len(books)} PDF books -> {PDF_OUT}  (version {version})")
+        for name, dest, nch in books:
+            print(f"  {name:24s} {nch:4d} chapters  {dest.stat().st_size:>9d} bytes")
 
 
 if __name__ == "__main__":
     if "--selfcheck" in sys.argv:
         _selfcheck()
     else:
-        main()
+        main(build_pdf_too="--no-pdf" not in sys.argv)
