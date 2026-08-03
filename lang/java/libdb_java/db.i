@@ -12,8 +12,6 @@
 
 #if defined(SWIGJAVA)
 %include "db_java.i"
-#elif defined(SWIGCSHARP)
-%include "db_csharp.i"
 #endif
 
 typedef	unsigned char u_int8_t;

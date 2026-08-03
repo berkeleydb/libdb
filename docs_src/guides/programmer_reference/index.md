@@ -255,11 +255,7 @@ To obtain a copy of this document's original source code, please submit a reques
 
 <span class="sect1"> [Java FAQ](java_faq.md) </span>
 
-<span class="chapter"> [6. C# API](csharp.md) </span>
-
-<span class="sect1"> [Compatibility](csharp.md#csharp_compat) </span>
-
-<span class="chapter"> [7. Standard Template Library API](stl.md) </span>
+<span class="chapter"> [6. Standard Template Library API](stl.md) </span>
 
 <span class="sect1"> [Dbstl introduction](stl.md#stl_intro) </span>
 
