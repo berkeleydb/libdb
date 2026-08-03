@@ -866,6 +866,7 @@ compile-commands:
 		echo "Error: bear not found. Reconfigure with --enable-compile-commands." >&2; \
 		exit 1; \
 	fi
+	$(MAKE) clean >/dev/null 2>&1 || true
 	$(BEAR) -o compile_commands.json -- $(MAKE) library_build
 	@echo "Generated compile_commands.json"
 
