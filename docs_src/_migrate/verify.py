@@ -2,7 +2,7 @@
 """Completeness / no-loss gate for the reverse-DocBook migration.
 
 For each old page docs/api_reference/C/<x>.html and its new
-docs-src/api/c/<x>.md, compare CONTENT so we can prove nothing was dropped:
+docs_src/api/c/<x>.md, compare CONTENT so we can prove nothing was dropped:
 
   1. Visible-word multiset retention: intersection(new, old) / |old|, over the
      visible text of each (boilerplate navheader/navfooter excluded from OLD by
@@ -15,7 +15,7 @@ docs-src/api/c/<x>.md, compare CONTENT so we can prove nothing was dropped:
 Any drop in (2) or (3), or retention below threshold in (1), is an OUTLIER.
 
 Usage:  verify.py [OLD_HTML_DIR] [NEW_MD_DIR] [--threshold 0.97]
-Defaults: docs/api_reference/C  vs  docs-src/api/c
+Defaults: docs/api_reference/C  vs  docs_src/api/c
 Exit non-zero if any hard drop (code block / sub-section) is detected, so CI can
 gate on it. Low word-retention is reported but (this phase) not fatal unless it
 also drops structure \u2014 pandoc reflow/normalization loses stopwords legitimately.
@@ -47,7 +47,7 @@ def _positionals(argv):
 
 _pos = _positionals(sys.argv[1:])
 OLD = Path(_pos[0]) if len(_pos) > 0 else REPO / "docs/api_reference/C"
-NEW = Path(_pos[1]) if len(_pos) > 1 else REPO / "docs-src/api/c"
+NEW = Path(_pos[1]) if len(_pos) > 1 else REPO / "docs_src/api/c"
 
 # Reuse the extractor's body isolation so OLD text excludes the same boilerplate.
 sys.path.insert(0, str(Path(__file__).resolve().parent))

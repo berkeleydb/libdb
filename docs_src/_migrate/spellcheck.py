@@ -20,7 +20,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-DOCS = REPO / "docs-src"
+DOCS = REPO / "docs_src"
 BASELINE = HERE / "codespell-baseline.txt"
 WORDLIST = HERE / "codespell-wordlist.txt"
 SKIP = "*.toml,*.tmpl,*.css,_migrate,PLAN.md"

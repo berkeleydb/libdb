@@ -22,19 +22,19 @@ build-android.cross.txt
 .agent/
 
 # prototype build artifact
-lab/lsm/test_adaptive
+rfc/0001/test_adaptive
 
-# benchmark driver binaries (built from lab/bench/*.c)
-lab/bench/scale_bench
-lab/bench/scale_iso
-lab/bench/lock_bench
-lab/bench/tproc_c
-lab/bench/tproc_b
-lab/bench/tproc_h
-lab/bench/ssi_abort_bench
+# benchmark driver binaries (built from test/bench/*.c)
+test/bench/scale_bench
+test/bench/scale_iso
+test/bench/lock_bench
+test/bench/tproc_c
+test/bench/tproc_b
+test/bench/tproc_h
+test/bench/ssi_abort_bench
 
-# Generated documentation (docs-src/build.py output)
+# Generated documentation (docs_src/build.py output)
 docs-build/
-docs-src/**/__pycache__/
+docs_src/**/__pycache__/
 rfc/0001/test_adaptive
 test_adaptive

@@ -18,7 +18,7 @@ pandoc (html -> gfm), then a small cleanup pass that:
   - keeps programlisting code fences and parameter/errors sections verbatim.
 
 Usage:  extract.py [SRC_HTML_DIR] [OUT_MD_DIR]
-Defaults: docs/api_reference/C  ->  docs-src/api/c
+Defaults: docs/api_reference/C  ->  docs_src/api/c
 Requires: pandoc on PATH (run under `nix shell nixpkgs#pandoc`).
 
 Works for both the flat `refentry` API trees (C, STL) and the chaptered
@@ -37,7 +37,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "docs/api_reference/C"
-OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else REPO / "docs-src/api/c"
+OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else REPO / "docs_src/api/c"
 # source: path shown in front-matter; derived from SRC relative to the repo.
 try:
     SRC_REL = str(SRC.resolve().relative_to(REPO))

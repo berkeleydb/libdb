@@ -21,7 +21,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent          # docs-src/
+HERE = Path(__file__).resolve().parent          # docs_src/
 REPO = HERE.parent
 SRC = HERE
 OUT = REPO / "docs-build/html"
@@ -35,7 +35,7 @@ PDF_CSS = HERE / "_templates/pdf-print.css"
 # API .md trees whose refentry pages become section-3 man pages.
 API_DIRS = [HERE / "api/c", HERE / "api/stl"]
 
-# Directories under docs-src/ that are machinery/data, not content.
+# Directories under docs_src/ that are machinery/data, not content.
 SKIP_DIRS = {"_data", "_templates", "_migrate"}
 
 

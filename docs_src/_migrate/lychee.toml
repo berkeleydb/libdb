@@ -4,7 +4,7 @@
 # resolve. The excludes below are the only known dangling targets, and NONE is
 # a migration regression:
 #   - CXX / java / com/sleepycat: language-binding API trees deliberately NOT
-#     migrated (see docs-src/PLAN.md "Deferred"); links into them dangle until
+#     migrated (see docs_src/PLAN.md "Deferred"); links into them dangle until
 #     a future phase regenerates them from source.
 #   - build_vxworks / build_wince: dead in the UPSTREAM DocBook too (VxWorks /
 #     WinCE build pages were referenced but never shipped) -- pre-existing, not
@@ -13,7 +13,7 @@
 # the gate.
 #
 # Usage (internal only, offline):
-#   lychee --offline --config docs-src/_migrate/lychee.toml "docs-build/html/**/*.html"
+#   lychee --offline --config docs_src/_migrate/lychee.toml "docs-build/html/**/*.html"
 # External links are advisory and checked separately (scheduled), not here.
 
 exclude = [
@@ -24,7 +24,7 @@ exclude = [
   "build_vxworks",
   "build_wince",
   # Bundled external assets referenced by the programmer's reference but not
-  # migrated into docs-src (they live only in the source docs/ tree): the
+  # migrated into docs_src (they live only in the source docs/ tree): the
   # USENIX papers (*.pdf), the example C listings (transapp.cs / writetest.cs),
   # and a sample tuning file (solaris.txt). A later phase can copy these in;
   # until then their links dangle and are not a migration regression.
