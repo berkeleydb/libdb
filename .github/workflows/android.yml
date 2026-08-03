@@ -1,7 +1,8 @@
 # Android cross-build — core libdb for aarch64-linux-android (bionic libc).
 #
 # Dedicated workflow (does NOT touch ci.yml). Cross-compiles the core C
-# library with the NDK's clang against the existing root meson.build and
+# library with the NDK's clang against the root meson.build shim (which drives
+# dist/meson.build) and
 # asserts that a real ARM aarch64 libdb.so is produced. This is a cross-BUILD
 # test: no emulator or device is used or needed.
 #
@@ -25,7 +26,8 @@ on:
       - 'src/**'
       - 'meson.build'
       - 'meson_options.txt'
-      - 'meson/**'
+      - 'dist/meson.build'
+      - 'dist/meson/**'
       - 'dist/android/**'
       - '.github/workflows/android.yml'
   schedule:

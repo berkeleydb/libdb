@@ -19,7 +19,8 @@
             inherit version;
             src = ./.;
             nativeBuildInputs = [ pkgs.meson pkgs.ninja pkgs.python3 pkgs.pkg-config ];
-            # meson.build is at the repo root; nix's meson hooks drive it.
+            # A thin meson.build at the repo root drives dist/meson.build; nix's
+            # meson hooks find the root meson.build unchanged.
           };
 
           # The reference Autoconf build (build_unix), full feature set.
