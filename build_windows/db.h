@@ -985,7 +985,7 @@ struct __db_txn {
 #define	TXN_READ_COMMITTED	0x01000	/* Txn has degree 2 isolation. */
 #define	TXN_READ_UNCOMMITTED	0x02000	/* Txn has degree 1 isolation. */
 #define	TXN_RESTORED		0x04000	/* Txn has been restored. */
-#define	TXN_SNAPSHOT		0x08000	/* Snapshot Isolation. */
+#define	TXN_SNAPSHOT		0x08000	/* Snapshot isolation substrate (always with SSI). */
 #define	TXN_SYNC		0x10000	/* Write and sync on prepare/commit. */
 #define	TXN_WRITE_NOSYNC	0x20000	/* Write only on prepare/commit. */
 #define TXN_BULK		0x40000 /* Enable bulk loading optimization. */
@@ -3050,7 +3050,6 @@ typedef struct entry {
 #define	DB_TXN_NOT_DURABLE			0x00000004
 #define	DB_TXN_NOWAIT				0x00000002
 #define	DB_TXN_SNAPSHOT				0x00000004
-#define	DB_TXN_SNAPSHOT_SAFE			0x00000800
 #define	DB_TXN_SYNC				0x00000008
 #define	DB_TXN_WAIT				0x00000080
 #define	DB_TXN_WRITE_NOSYNC			0x00000020
