@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
-"""Rewrite cross-tree links from the OLD docs/ layout to the NEW docs-src/ one.
+"""Rewrite cross-tree links from the OLD docs/ layout to the NEW docs_src/ one.
 
 The extractor rewrites *same-tree* links (`foo.html` -> `foo.md`). Cross-tree
 links keep their old relative shape, e.g. from an API page:
     ../../programmer_reference/env_db_config.html#frag
     ../api_reference/C/dbget.html
 Those still address the OLD `docs/` tree. This pass maps the old tree segment to
-the new `docs-src/` location and re-computes the relative prefix from each page's
+the new `docs_src/` location and re-computes the relative prefix from each page's
 own depth, emitting `.md` targets (build.py turns `.md` -> `.html`).
 
 Trees not migrated yet (CXX, TCL, java, csharp) are left as-is: their links stay
 `.html` pointing at the archived `docs/` tree, which still resolves for readers.
 
 Idempotent: only rewrites links whose old tree segment is in OLD_TO_NEW.
-Usage:  fix_xrefs.py            # rewrite under docs-src/api + docs-src/guides
+Usage:  fix_xrefs.py            # rewrite under docs_src/api + docs_src/guides
 """
 import re
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-DOCS_SRC = HERE.parent            # docs-src/
+DOCS_SRC = HERE.parent            # docs_src/
 ROOTS = [DOCS_SRC / "api", DOCS_SRC / "guides"]
 
-# Old docs/ tree segment  ->  new docs-src/ tree dir (relative to docs-src root).
+# Old docs/ tree segment  ->  new docs_src/ tree dir (relative to docs_src root).
 OLD_TO_NEW = {
     "api_reference/C": "api/c",
     "api_reference/STL": "api/stl",
@@ -45,7 +45,7 @@ HREF = re.compile(r'href="((?:\.\./)+)([A-Za-z0-9_./\-]+)\.html(#[^"]*)?"')
 
 
 def new_root_prefix(page):
-    """`../` * (depth of page below docs-src) -> reach docs-src root."""
+    """`../` * (depth of page below docs_src) -> reach docs_src root."""
     depth = len(page.relative_to(DOCS_SRC).parts) - 1
     return "../" * depth
 
