@@ -24,7 +24,6 @@ order = [
   "win_build_cxx",
   "win_build_stl",
   "build_win_java",
-  "build_win_csharp",
   "build_win_sql",
   "build_win_tcl",
   "win_build_dist_dll",
