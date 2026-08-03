@@ -55,7 +55,6 @@ order = [
   "java_compat",
   "java_program",
   "java_faq",
-  "csharp",
   "stl",
   "stl_usecase",
   "stl_examples",

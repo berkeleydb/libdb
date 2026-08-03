@@ -60,7 +60,7 @@
 #
 # Optional environment:
 #	BUILD    build_unix dir holding db_upgrade/db_verify (default: .)
-#	FIXTURE  committed old-format fixture (default: ../test/csharp/bdb4.7.db)
+#	FIXTURE  committed old-format fixture (default: ../test/db/fixtures/bdb4.7.db)
 #	TCL_LIB  libdb_tcl-*.so (auto-detected under $BUILD/.libs)
 #	TCLSH    tclsh binary (default: tclsh8.6 if present, else tclsh)
 #	PYTHON   python3 used to rewrite metadata pages (default: python3)
@@ -71,7 +71,7 @@
 set -e
 
 BUILD=${BUILD:-.}
-FIXTURE=${FIXTURE:-../test/csharp/bdb4.7.db}
+FIXTURE=${FIXTURE:-../test/db/fixtures/bdb4.7.db}
 WORK=${WORK:-UPGTEST}
 TIMEOUT=${TIMEOUT:-60}
 PYTHON=${PYTHON:-python3}
