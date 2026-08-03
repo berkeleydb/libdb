@@ -48,6 +48,7 @@
           packages = [
             pkgs.meson pkgs.ninja pkgs.python3 pkgs.pkg-config
             pkgs.gcc pkgs.clang pkgs.autoconf pkgs.gnumake
+            pkgs.bear  # compile_commands.json for clangd (Autoconf build: `make compdb`)
             pkgs.tcl   # for the TCL test harness (--enable-test)
             pkgs.cbmc  # bounded model checker for the formal-verification harnesses (test/cbmc)
             pkgs.pandoc  # docs pipeline: html->md extraction + md->html/pdf/man (docs_src/build.py)
