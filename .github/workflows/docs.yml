@@ -89,11 +89,15 @@ jobs:
 
       # 6. INTERNAL LINK CHECK (hard): every link into migrated content must
       #    resolve. Deferred-tree + un-migrated-asset links are excluded (see
-      #    docs_src/_migrate/lychee.toml). External links are the advisory job.
+      #    docs_src/_migrate/lychee.toml). The javadoc-generated java-api/ tree
+      #    is a build artifact (not migrated Markdown); its doc-comment
+      #    cross-links to the old DocBook paths dangle in this layout, so it is
+      #    excluded from the source set via --exclude-path. External links are
+      #    the advisory job.
       - name: Internal link check (lychee, offline)
         run: |
           nix develop --command bash -c \
-            'shopt -s globstar; lychee --offline --config docs_src/_migrate/lychee.toml --no-progress "docs-build/html/**/*.html"'
+            'shopt -s globstar; lychee --offline --config docs_src/_migrate/lychee.toml --exclude-path docs-build/html/java-api --no-progress "docs-build/html/**/*.html"'
 
       # 7. MAN-LINT (hard): 0 ERRORS from mandoc across every generated .3
       #    (STYLE/WARNING are fine).
@@ -192,7 +196,8 @@ jobs:
           nix develop --command bash -c '
             shopt -s globstar
             lychee --no-progress --scheme http --scheme https \
-              --exclude "localhost" --max-concurrency 8 \
+              --exclude "localhost" --exclude-path docs-build/html/java-api \
+              --max-concurrency 8 \
               "docs-build/html/**/*.html" || true'
 
   # ----------------------------------------------------------------------------

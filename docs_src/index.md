@@ -29,10 +29,16 @@ transactional key/value storage engine. Generated from Markdown source by
   logging, transactions, replication, XA, and tuning.
 - [Getting Started with Data Storage](guides/gsg/index.html) — databases,
   cursors, secondary indexes, the four access methods.
+  ([C](guides/gsg/index.html) · [C++](guides/gsg/cxx/index.html) ·
+  [Java](guides/gsg/java/index.html))
 - [Getting Started with Transactions](guides/gsg_txn/index.html) — ACID,
   isolation, deadlocks, recovery, checkpoints.
+  ([C](guides/gsg_txn/index.html) · [C++](guides/gsg_txn/cxx/index.html) ·
+  [Java](guides/gsg_txn/java/index.html))
 - [Getting Started with Replication](guides/gsg_db_rep/index.html) — the
   replication framework and Replication Manager.
+  ([C](guides/gsg_db_rep/index.html) · [C++](guides/gsg_db_rep/cxx/index.html) ·
+  [Java](guides/gsg_db_rep/java/index.html))
 - [Collections (Bindings) Tutorial](guides/collections/index.html) — the
   Java-style collections/bindings API.
 - [Berkeley DB SQL](guides/bdb-sql/index.html) — the SQLite-compatible SQL
@@ -57,6 +63,9 @@ page, e.g. `man libdb`, `man db_get`.
 Each book is also available as a PDF (see the release assets / `docs-build/pdf/`):
 `api_c.pdf`, `api_stl.pdf`, `guides_programmer_reference.pdf`,
 `guides_gsg.pdf`, `guides_gsg_txn.pdf`, `guides_gsg_db_rep.pdf`,
+`guides_gsg_cxx.pdf`, `guides_gsg_java.pdf`,
+`guides_gsg_txn_cxx.pdf`, `guides_gsg_txn_java.pdf`,
+`guides_gsg_db_rep_cxx.pdf`, `guides_gsg_db_rep_java.pdf`,
 `guides_collections.pdf`, `guides_bdb-sql.pdf`, `guides_installation.pdf`,
 `guides_upgrading.pdf`, `guides_porting.pdf`,
 `guides_articles_inmemory.pdf`, `guides_articles_mssgtxt.pdf`.
