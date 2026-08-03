@@ -19,6 +19,7 @@ build-android.cross.txt
 
 # agent working notes (audits, status, scratch design) — not product docs
 .agents/
+.agent/
 
 # prototype build artifact
 lab/lsm/test_adaptive
