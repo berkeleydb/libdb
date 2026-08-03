@@ -5,6 +5,8 @@ source: docs/gsg_db_rep/C/index.html
 ---
 # Getting Started with Replicated Berkeley DB Applications
 
+**Language:** C (this page) · [C++](cxx/index.md) · [Java](java/index.md)
+
 **Legal Notice**
 
 This documentation is distributed under an open source license. You may review the terms of this license at: <a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html" class="ulink" target="_top">http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html</a>
