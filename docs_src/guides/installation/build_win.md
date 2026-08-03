@@ -29,8 +29,6 @@ source: docs/installation/build_win.html
 
 <span class="sect1"> [Building the Java API](build_win_java.md) </span>
 
-<span class="sect1"> [Building the C# API](build_win_csharp.md) </span>
-
 <span class="sect1"> [Building the SQL API](build_win_sql.md) </span>
 
 <span class="sect2"> [Binary Compatibility With SQLite](build_win_sql.md#idp290248) </span>
