@@ -16,6 +16,7 @@ Requires: pandoc on PATH; PDF also needs weasyprint
 """
 import html
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -32,6 +33,23 @@ RELEASE = REPO / "dist/RELEASE"
 MAN_OUT = REPO / "docs-build/man/man3"
 PDF_OUT = REPO / "docs-build/pdf"
 PDF_CSS = HERE / "_templates/pdf-print.css"
+# Java binding sources -> javadoc HTML (a generated artifact, gitignored).
+# Lands under the HTML site (docs-build/html/java-api/) so index.md's link
+# resolves and it publishes/installs alongside the rest of the site.
+JAVA_SRC = REPO / "lang/java/src"
+JAVA_API_OUT = OUT / "java-api"
+# Public packages, matching the set the historical Oracle Javadoc published
+# (excludes the bundled ObjectWeb ASM copy, the compat shims, and the
+# db.internal / persist.impl / util.keyrange internals). Referenced-but-not-
+# documented internals still resolve via -sourcepath.
+JAVA_PACKAGES = [
+    "com.sleepycat.bind", "com.sleepycat.bind.serial", "com.sleepycat.bind.tuple",
+    "com.sleepycat.collections",
+    "com.sleepycat.db",
+    "com.sleepycat.persist", "com.sleepycat.persist.evolve",
+    "com.sleepycat.persist.model", "com.sleepycat.persist.raw",
+    "com.sleepycat.util",
+]
 # API .md trees whose refentry pages become section-3 man pages.
 API_DIRS = [HERE / "api/c", HERE / "api/stl"]
 
@@ -153,7 +171,6 @@ def _copy_assets():
     (`![](deadlock.jpg)`) but migrate stored them under `<tree>/img/`, so
     flatten each `img/` into the page dir (docs-build/html/<tree>/deadlock.jpg).
     Without this the <img>/asset links dangle -- the link-check gate catches it."""
-    import shutil
     for img_dir in SRC.rglob("img"):
         if not img_dir.is_dir():
             continue
@@ -483,6 +500,43 @@ def build_pdf(version, site):
     return built
 
 
+# --- Java API reference: regenerate javadoc from lang/java/src (always current
+# with the code, unlike the frozen 2013 HTML). Output is a build artifact under
+# docs-build/java-api/ (gitignored), linked from index.md. Guarded on javadoc
+# availability like the PDF path -- skip-with-note if the JDK is absent.
+
+def build_java_api(version, site):
+    """Run javadoc over the public com.sleepycat.* packages into
+    docs-build/java-api/. Returns the output dir, or None if javadoc/sources
+    are unavailable (skipped-with-note). The 2005-era doc comments carry
+    legacy HTML that javadoc 21's doclint rejects, so -Xdoclint:none keeps it
+    warnings-only; -sourcepath spans all of lang/java/src so referenced
+    internals resolve while only JAVA_PACKAGES are documented."""
+    if not shutil.which("javadoc"):
+        print("(javadoc not found: skipping Java API reference)")
+        return None
+    if not JAVA_SRC.exists():
+        print(f"(no {JAVA_SRC}: skipping Java API reference)")
+        return None
+    JAVA_API_OUT.mkdir(parents=True, exist_ok=True)
+    title = f"{site['project']} Java API {version}"
+    cmd = [
+        "javadoc", "-quiet", "-Xdoclint:none",
+        "-d", str(JAVA_API_OUT),
+        "-sourcepath", str(JAVA_SRC),
+        "-windowtitle", title,
+        "-doctitle", title,
+        "-notimestamp",
+        *JAVA_PACKAGES,
+    ]
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    if p.returncode != 0:
+        raise RuntimeError(f"javadoc failed:\n{p.stderr[-1500:]}")
+    if not (JAVA_API_OUT / "index.html").exists():
+        raise RuntimeError("javadoc produced no index.html")
+    return JAVA_API_OUT
+
+
 def _selfcheck():
     """Guard the md->man reshape: NAME/SYNOPSIS/DESCRIPTION split, heading
     promotion, and in-list heading demotion."""
@@ -525,6 +579,11 @@ def _selfcheck():
                  'a href="../../api/c/env.md#x" b href="foo.md" c href="http://x/y.md"')
     assert '../../api/c/env.html#x' in got and 'foo.html' in got
     assert 'http://x/y.md' in got, "absolute .md URL must not be rewritten"
+    # Java API: the documented package set matches the historical public
+    # surface and excludes the bundled/internal packages.
+    assert "com.sleepycat.db" in JAVA_PACKAGES
+    assert "com.sleepycat.asm" not in JAVA_PACKAGES
+    assert "com.sleepycat.db.internal" not in JAVA_PACKAGES
     print("selfcheck ok")
 
 
@@ -538,6 +597,9 @@ def main(build_pdf_too=True):
     print(f"built {n} HTML pages -> {OUT}  (version {version})")
     m = build_man(version, site)
     print(f"built {m} man pages -> {MAN_OUT}  (version {version})")
+    jdir = build_java_api(version, site)
+    if jdir:
+        print(f"built Java API reference -> {jdir}  (version {version})")
     if build_pdf_too:
         books = build_pdf(version, site)
         print(f"built {len(books)} PDF books -> {PDF_OUT}  (version {version})")
