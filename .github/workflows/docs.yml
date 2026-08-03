@@ -1,6 +1,6 @@
 # Documentation validation.
 #
-# Builds the modernized docs (docs-src/build.py: Markdown -> HTML + man + PDF)
+# Builds the modernized docs (docs_src/build.py: Markdown -> HTML + man + PDF)
 # and runs the validators that lock in the reverse-DocBook migration's
 # guarantees. Modeled on ci.yml/fuzz.yml conventions: hard gates block PRs,
 # advisory tiers are continue-on-error, and heavy work (PDF/TeX-free but slow,
@@ -11,7 +11,7 @@
 # exactly -- pandoc, weasyprint, poppler-utils, mandoc, codespell, lychee and
 # write-good are all pinned there.
 #
-# HARD gates (fail the PR):     build (HTML+man), no-loss, completeness, spelling,
+# HARD gates (fail the PR):     build (HTML+man), completeness, spelling,
 #                               internal link-check, man-lint.
 # ADVISORY (continue-on-error): prose (write-good), external link-check.
 # BEST-EFFORT (scheduled / continue-on-error): PDF build + validation (slow).
@@ -23,7 +23,7 @@ on:
     branches: [master]
   pull_request:
     paths:
-      - 'docs-src/**'
+      - 'docs_src/**'
       - '.github/workflows/docs.yml'
       - 'flake.nix'
       - 'dist/RELEASE'
@@ -47,7 +47,7 @@ jobs:
   # `pdf` job) so a PR isn't gated on the ~4-minute weasyprint pass.
   # ----------------------------------------------------------------------------
   build:
-    name: build + gates (html, man, no-loss, completeness, spelling, links, man-lint)
+    name: build + gates (html, man, completeness, spelling, links, man-lint)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,37 +61,39 @@ jobs:
       # 1. BUILD (hard): HTML + man with 0 errors. --no-pdf keeps the PR fast;
       #    the PDF path is exercised by the `pdf` job (scheduled/best-effort).
       - name: Build HTML + man
-        run: nix develop --command bash -c 'cd docs-src && python3 build.py --no-pdf'
+        run: nix develop --command bash -c 'cd docs_src && python3 build.py --no-pdf'
 
       # build.py self-check guards the md->man reshape, PDF book discovery, and
       # the .md->.html link rewrite (unit-level, no external tools).
       - name: build.py self-check
-        run: nix develop --command bash -c 'cd docs-src && python3 build.py --selfcheck'
+        run: nix develop --command bash -c 'cd docs_src && python3 build.py --selfcheck'
 
-      # 2. NO-LOSS GATE (hard): every migrated tree still retains its source
-      #    content (word-multiset retention + no code/section drop). Locks the
-      #    "nothing lost" guarantee against future edits.
-      - name: No-loss gate (all trees)
-        run: nix develop --command bash -c 'python3 docs-src/_migrate/verify_all.py'
+      # 2. (RETIRED) The no-loss gate compared the OLD scraped-DocBook docs/
+      #    tree against docs_src/ to prove the reverse migration dropped
+      #    nothing. It did its job (PRs #119/#120, ~100% retention) and the
+      #    docs/ source has since been removed from master (it lives on the
+      #    gh-pages historical archive). With no source tree to diff against
+      #    the gate can't run, so it is retired. verify_all.py/verify.py stay
+      #    in docs_src/_migrate/ for reference against that archive.
 
       # 3. COMPLETENESS GATE (hard): every public db.h function is documented
       #    (28/28), and every uncovered method is on the frozen allowlist -- a
       #    NEW undocumented API fails.
       - name: Completeness gate (API coverage)
-        run: nix develop --command bash -c 'python3 docs-src/_migrate/man_coverage.py --ci'
+        run: nix develop --command bash -c 'python3 docs_src/_migrate/man_coverage.py --ci'
 
       # 4. SPELLING (hard on NEW typos): codespell, baselined against the legacy
       #    typo backlog so only newly-introduced typos fail.
       - name: Spelling gate (codespell, baselined)
-        run: nix develop --command bash -c 'python3 docs-src/_migrate/spellcheck.py'
+        run: nix develop --command bash -c 'python3 docs_src/_migrate/spellcheck.py'
 
       # 6. INTERNAL LINK CHECK (hard): every link into migrated content must
       #    resolve. Deferred-tree + un-migrated-asset links are excluded (see
-      #    docs-src/_migrate/lychee.toml). External links are the advisory job.
+      #    docs_src/_migrate/lychee.toml). External links are the advisory job.
       - name: Internal link check (lychee, offline)
         run: |
           nix develop --command bash -c \
-            'shopt -s globstar; lychee --offline --config docs-src/_migrate/lychee.toml --no-progress "docs-build/html/**/*.html"'
+            'shopt -s globstar; lychee --offline --config docs_src/_migrate/lychee.toml --no-progress "docs-build/html/**/*.html"'
 
       # 7. MAN-LINT (hard): 0 ERRORS from mandoc across every generated .3
       #    (STYLE/WARNING are fine).
@@ -128,13 +130,13 @@ jobs:
           nix develop --command bash -c '
             shopt -s globstar
             total=0
-            for d in docs-src/api/* docs-src/guides/*; do
+            for d in docs_src/api/* docs_src/guides/*; do
               [ -d "$d" ] || continue
               n=$(write-good "$d"/**/*.md 2>/dev/null | grep -c "on line" || true)
               printf "%-40s %5s suggestions\n" "$d" "$n"
               total=$((total+n))
             done
-            echo "::notice title=Prose (write-good)::$total advisory suggestion(s) across docs-src"'
+            echo "::notice title=Prose (write-good)::$total advisory suggestion(s) across docs_src"'
 
   # ----------------------------------------------------------------------------
   # PDF (best-effort / scheduled): weasyprint renders one PDF per book (~4 min
@@ -155,9 +157,9 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
       - name: Build all outputs (incl. PDF)
-        run: nix develop --command bash -c 'cd docs-src && timeout 900 python3 build.py'
+        run: nix develop --command bash -c 'cd docs_src && timeout 900 python3 build.py'
       - name: Validate PDFs (non-empty, page count, title-page version)
-        run: nix develop --command bash -c 'python3 docs-src/_migrate/validate_pdf.py'
+        run: nix develop --command bash -c 'python3 docs_src/_migrate/validate_pdf.py'
       - name: Upload PDFs
         if: always()
         uses: actions/upload-artifact@v4
@@ -184,7 +186,7 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
       - name: Build HTML
-        run: nix develop --command bash -c 'cd docs-src && python3 build.py --no-pdf'
+        run: nix develop --command bash -c 'cd docs_src && python3 build.py --no-pdf'
       - name: Check external links (network, advisory)
         run: |
           nix develop --command bash -c '
@@ -214,7 +216,7 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
       - name: Build the full site (HTML + PDF + man)
-        run: nix develop --command bash -c 'cd docs-src && python3 build.py'
+        run: nix develop --command bash -c 'cd docs_src && python3 build.py'
       - name: Deploy /reference/ to gh-pages
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

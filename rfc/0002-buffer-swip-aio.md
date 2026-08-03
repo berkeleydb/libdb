@@ -16,7 +16,7 @@ Code anchors verified against `master` and recorded in
 
 ## 1. Problem
 
-Measured (24-core Xeon, `lab/bench/scale_bench`): in-cache random reads peak at
+Measured (24-core Xeon, `test/bench/scale_bench`): in-cache random reads peak at
 ~8 threads and then *negatively scale*. `perf` self-time is dominated by
 `futex` + `__atomic_inc/dec`. The cause is not a lock we can shard: every
 B-tree descent re-pins the root and upper internal pages, and each pin performs
@@ -293,7 +293,7 @@ counts still wants a true many-physical-core / multi-socket NUMA box, since the
 
 ## 9. Measurement plan
 
-Re-run `lab/bench/scale_bench {rrand,sepdb,snap} 200000 3 1 2 4 8 12 16 24` plus
+Re-run `test/bench/scale_bench {rrand,sepdb,snap} 200000 3 1 2 4 8 12 16 24` plus
 a cache-pressure workload and a write/trickle workload, on the 24-core Linux box
 (`meh`) — the laptop is too noisy (asymmetric cores) to resolve these deltas.
 Each stage records before/after medians and a `perf` self-time delta in
