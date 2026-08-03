@@ -9,9 +9,18 @@
 
 ---
 
+> **Amendment (2026, post-implementation):** the public API was simplified. SSI
+> is no longer a separate `DB_TXN_SNAPSHOT_SAFE` flag — that flag was **removed**
+> and its behavior folded into **`DB_TXN_SNAPSHOT`**, which is now always
+> serializable. There is no separate plain (non-serializable) snapshot-isolation
+> mode in the public API. This is a deliberate ABI break, accepted to avoid the
+> awkward `_SAFE` flag name. Everything below describing `DB_TXN_SNAPSHOT_SAFE`
+> now applies to `DB_TXN_SNAPSHOT`; the internal `TXN_SNAPSHOT_SAFE` state and
+> the SSI machinery are unchanged.
+
 ## Summary
 
-An opt-in `DB_TXN_SNAPSHOT_SAFE` transaction mode that provides full
+The `DB_TXN_SNAPSHOT` transaction mode provides full
 serializable isolation on top of MVCC snapshot isolation, using Michael
 Cahill's Serializable Snapshot Isolation algorithm: detect the dangerous
 read/write dependency structures that let snapshot isolation admit
@@ -36,8 +45,9 @@ without a server and without giving up embedded operation.
 - Multi-process correctness: SIREAD markers/lockers live in the shared lock
   region; the concurrent-writer lifetime is hardened (see the M2/M4 notes) and
   guarded by `ssi009` (multi-process stress).
-- On-disk/log/region/ABI: no on-disk or log format change. `DB_TXN_SNAPSHOT_SAFE`
-  is a new flag; `prepare()`/2PC rejects it.
+- On-disk/log/region/ABI: no on-disk or log format change. `DB_TXN_SNAPSHOT`
+  is now the SSI mode (the separate `DB_TXN_SNAPSHOT_SAFE` flag was removed — a
+  deliberate ABI break); `prepare()`/2PC rejects an SSI transaction.
 
 ## Design
 

@@ -45,15 +45,18 @@ for full provenance and the per-version index.
 
 ## What's new on the living fork
 
-- **Serializable Snapshot Isolation (SSI)** — an opt-in `DB_TXN_SNAPSHOT_SAFE`
-  transaction mode that detects dangerous read/write dependency structures and
+- **Serializable Snapshot Isolation (SSI)** — the `DB_TXN_SNAPSHOT`
+  transaction mode is now serializable: it detects dangerous read/write
+  dependency structures and
   aborts the pivot with `DB_SNAPSHOT_CONFLICT`. Both of Cahill's rw-conflict
   detection mechanisms are implemented: the lock-table path (a concurrent
   writer meeting a reader's SIREAD marker) and the MVCC version-chain path in
   `mp_fget` (a reader handed an older version than one a concurrent writer
   committed). SIREAD markers are reclaimed incrementally and bounded (not only
   at checkpoint); the commit-time pivot check is race-free against concurrent
-  edge recording; and `DB_TXN_SNAPSHOT_SAFE` is rejected with `prepare()`/2PC.
+  edge recording; and a `DB_TXN_SNAPSHOT` transaction is rejected with `prepare()`/2PC.
+  (This fork makes `DB_TXN_SNAPSHOT` serializable and removed the earlier
+  separate `DB_TXN_SNAPSHOT_SAFE` flag — a deliberate ABI break.)
   The SIREAD marker/locker/detail lifetime is hardened for concurrent writers:
   a family of pre-existing use-after-free bugs (most importantly a lock object
   reclaimed while it still held SIREAD markers) was found with TSan/ASan and
