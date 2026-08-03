@@ -11,7 +11,7 @@
 #   ninja -C build bench     # build the test/bench microbenchmark drivers
 
 project('libdb', 'c',
-  version: '5.3.33',
+  version: '5.3.34',
   license: 'AGPL-3.0-or-later OR Sleepycat',
   meson_version: '>=0.56.0',
   default_options: ['c_std=c99', 'warning_level=1'])

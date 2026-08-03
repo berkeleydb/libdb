@@ -61,9 +61,9 @@ extern "C" {
 #define	DB_VERSION_RELEASE	2
 #define	DB_VERSION_MAJOR	5
 #define	DB_VERSION_MINOR	3
-#define	DB_VERSION_PATCH	33
-#define	DB_VERSION_STRING	"Berkeley DB 5.3.33: (July 31, 2026)"
-#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.3.33: (July 31, 2026)"
+#define	DB_VERSION_PATCH	34
+#define	DB_VERSION_STRING	"Berkeley DB 5.3.34: (August 3, 2026)"
+#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.3.34: (August 3, 2026)"
 
 /*
  * !!!
