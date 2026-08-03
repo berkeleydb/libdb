@@ -137,7 +137,6 @@ docs_src/guides/porting/modscope.md	platfrom
 docs_src/guides/programmer_reference/arch_apis.md	extention
 docs_src/guides/programmer_reference/bt_conf.md	preceeding
 docs_src/guides/programmer_reference/ch13s02.md	pre-emptive
-docs_src/guides/programmer_reference/csharp.md	libaries
 docs_src/guides/programmer_reference/embedded.md	seemlessly
 docs_src/guides/programmer_reference/env_encrypt.md	Documenation
 docs_src/guides/programmer_reference/intro_products.md	informaion
@@ -151,3 +150,12 @@ docs_src/guides/programmer_reference/transapp_atomicity.md	ACI
 docs_src/guides/programmer_reference/transapp_throughput.md	ACI
 docs_src/guides/programmer_reference/txn_config.md	ACI
 docs_src/guides/upgrading/changelog_4_7.md	invalide
+docs_src/guides/gsg/cxx/secondaryDelete.md	desireable
+docs_src/guides/gsg_db_rep/cxx/elections.md	desireable
+docs_src/guides/gsg_db_rep/cxx/fwrkmasterreplica.md	applicaton
+docs_src/guides/gsg_db_rep/cxx/rep_init_code.md	peformed
+docs_src/guides/gsg_db_rep/java/elections.md	desireable
+docs_src/guides/gsg_db_rep/java/fwrkmasterreplica.md	occured
+docs_src/guides/gsg_db_rep/java/fwrkmasterreplica.md	applicaton
+docs_src/guides/gsg_db_rep/java/processingloop.md	optins
+docs_src/guides/gsg_txn/java/readmodifywrite.md	retreived
