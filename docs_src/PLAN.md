@@ -36,11 +36,11 @@ Rejected alternatives (with why):
 **Markdown is the source of truth.** It's the most maintainable authoring format,
 diffs cleanly, and both PDF (via pandoc) and man pages (via pandoc or a small
 converter) and HTML (via a template) render from it. Common pieces live in ONE
-place (a `docs-src/_data/` config + shared templates/partials), injected at build.
+place (a `docs_src/_data/` config + shared templates/partials), injected at build.
 
-### Source layout (new — `docs-src/`, the committed source of truth)
+### Source layout (new — `docs_src/`, the committed source of truth)
 ```
-docs-src/
+docs_src/
   _data/
     site.toml           # version, copyright, project name, base URL — ONE place
                         #   (version derived from dist/RELEASE at build time)
@@ -59,10 +59,10 @@ docs-src/
   index.md              # site landing content
 ```
 
-### The generator (`docs-src/build.py` — stdlib + pandoc, no framework)
+### The generator (`docs_src/build.py` — stdlib + pandoc, no framework)
 One small Python script:
 1. loads `site.toml` (version pulled live from `dist/RELEASE`),
-2. walks `docs-src/**.md`,
+2. walks `docs_src/**.md`,
 3. renders each to **HTML** (Markdown + the shared template → boilerplate injected
    once), **PDF** (pandoc per book), and **man pages** (per API .md → section 3),
 4. builds nav/index/TOC from `_meta.toml`,
@@ -74,7 +74,7 @@ API index + the programmer's-reference intro.
 
 ## Migration (content-preserving — nothing is lost)
 
-A **one-time extraction** script `docs-src/_migrate/extract.py`:
+A **one-time extraction** script `docs_src/_migrate/extract.py`:
 1. Parse each existing `docs/**.html` with Python's `html.parser`/`lxml`.
 2. Strip the repeated boilerplate (navheader, libver, generator meta, css link,
    Prev/Next) — recognized by the stable DocBook classes (`navheader`, `libver`,
@@ -82,18 +82,18 @@ A **one-time extraction** script `docs-src/_migrate/extract.py`:
 3. Convert the semantic body (sect1/sect2/refsect, programlisting, tables,
    variablelist for parameters) to Markdown (pandoc `html→gfm`, then a cleanup
    pass that restores the API section schema as headings + a front-matter block).
-4. Preserve images (copy to `docs-src/**/img/`), internal cross-links (rewrite
+4. Preserve images (copy to `docs_src/**/img/`), internal cross-links (rewrite
    `.html` → the new scheme), and code samples verbatim.
-5. Emit the `docs-src/` tree. **Diff-verify**: a checksum/word-count report per
+5. Emit the `docs_src/` tree. **Diff-verify**: a checksum/word-count report per
    page old-vs-new so we prove no content dropped (completeness gate).
 
-The old `docs/` HTML stays in git history; once `docs-src/` + `docs-build/` are
+The old `docs/` HTML stays in git history; once `docs_src/` + `docs-build/` are
 validated, `docs/` is replaced by the generated `docs-build/html` for publishing
 (or kept until the new tree is signed off).
 
 ## CI validation (new `.github/workflows/docs.yml`)
 
-Runs on PRs touching `docs-src/**` + on push + schedule:
+Runs on PRs touching `docs_src/**` + on push + schedule:
 - **Build**: the generator produces HTML/PDF/man with 0 errors.
 - **Spelling**: `codespell` (+ a project wordlist for BDB terms: mpool, DBT,
   txnid, lsn, ...).
@@ -102,7 +102,7 @@ Runs on PRs touching `docs-src/**` + on push + schedule:
   must resolve; external links advisory.
 - **Man-page lint**: `mandoc -Tlint` on every generated `*.3`.
 - **Completeness gate**: assert every public API in `db.h` (the ~393 methods +
-  28 functions) has a corresponding `docs-src/api/**.md` — fail if an API is
+  28 functions) has a corresponding `docs_src/api/**.md` — fail if an API is
   undocumented (this is the "completeness" check + catches drift as APIs change).
 - **No-orphan check**: every .md is reachable from an index/nav.
 
@@ -116,13 +116,13 @@ the site (and can attach to GitHub releases).
 
 ## Execution phases
 
-1. **Scaffold** (DONE, PR #119): `docs-src/` skeleton, `site.toml` (version from
+1. **Scaffold** (DONE, PR #119): `docs_src/` skeleton, `site.toml` (version from
    `dist/RELEASE`), templates, `build.py` (HTML first).
 2. **Extractor + trees** (DONE): `extract.py` + `verify.py` no-loss gate on the
    C API tree (100.00%), then STL (100.00%) and every guide tree. See the
    retention table below. `migrate_tree.py` drives chaptered guides (order from
    the index TOC, image copy); `fix_xrefs.py` remaps cross-tree links to the new
-   `docs-src/` layout.
+   `docs_src/` layout.
 3. **Man pages** (DONE): `build_man()` -> 787 `*.3` (785 C+STL refentry pages +
    `libdb.3` overview + utilities), `mandoc -Tlint` = 0 errors. `man_coverage.py`
    reports API coverage (measure-only; the CI gate is phase 5).

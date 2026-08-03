@@ -19,19 +19,19 @@ VERIFY = HERE / "verify.py"
 # (old HTML dir, new MD dir) relative to REPO. Guides that migrated the C
 # variant point at the C/ subdir; articles is two independent sub-books.
 PAIRS = [
-    ("docs/api_reference/C", "docs-src/api/c"),
-    ("docs/api_reference/STL", "docs-src/api/stl"),
-    ("docs/programmer_reference", "docs-src/guides/programmer_reference"),
-    ("docs/upgrading", "docs-src/guides/upgrading"),
-    ("docs/installation", "docs-src/guides/installation"),
-    ("docs/porting", "docs-src/guides/porting"),
-    ("docs/gsg/C", "docs-src/guides/gsg"),
-    ("docs/gsg_txn/C", "docs-src/guides/gsg_txn"),
-    ("docs/gsg_db_rep/C", "docs-src/guides/gsg_db_rep"),
-    ("docs/collections/tutorial", "docs-src/guides/collections"),
-    ("docs/bdb-sql", "docs-src/guides/bdb-sql"),
-    ("docs/articles/inmemory/C", "docs-src/guides/articles/inmemory"),
-    ("docs/articles/mssgtxt", "docs-src/guides/articles/mssgtxt"),
+    ("docs/api_reference/C", "docs_src/api/c"),
+    ("docs/api_reference/STL", "docs_src/api/stl"),
+    ("docs/programmer_reference", "docs_src/guides/programmer_reference"),
+    ("docs/upgrading", "docs_src/guides/upgrading"),
+    ("docs/installation", "docs_src/guides/installation"),
+    ("docs/porting", "docs_src/guides/porting"),
+    ("docs/gsg/C", "docs_src/guides/gsg"),
+    ("docs/gsg_txn/C", "docs_src/guides/gsg_txn"),
+    ("docs/gsg_db_rep/C", "docs_src/guides/gsg_db_rep"),
+    ("docs/collections/tutorial", "docs_src/guides/collections"),
+    ("docs/bdb-sql", "docs_src/guides/bdb-sql"),
+    ("docs/articles/inmemory/C", "docs_src/guides/articles/inmemory"),
+    ("docs/articles/mssgtxt", "docs_src/guides/articles/mssgtxt"),
 ]
 
 

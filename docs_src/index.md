@@ -5,9 +5,9 @@ title: "Berkeley DB Documentation"
 
 The complete reference for **libdb** (Berkeley DB) — the embedded,
 transactional key/value storage engine. Generated from Markdown source by
-`docs-src/build.py`; available as HTML (here), [PDF](#pdf), and
+`docs_src/build.py`; available as HTML (here), [PDF](#pdf), and
 [man pages](#man). Version and copyright are single-sourced from
-`docs-src/_data/site.toml` + `dist/RELEASE`.
+`docs_src/_data/site.toml` + `dist/RELEASE`.
 
 ## API reference
 
