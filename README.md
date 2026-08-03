@@ -103,5 +103,7 @@ the automated OCR reviewer.
 ## License
 
 Berkeley DB is distributed under its original license; see
-[`LICENSE`](LICENSE). Individual archived versions carry the license in effect
-for that release.
+[`LICENSE`](LICENSE). Per-component and bundled-code licenses (BSD, Harvard,
+CDDL, ASM, and the Berkeley DB license in HTML form) are collected under
+[`LICENSES/`](LICENSES/). Individual archived versions carry the license in
+effect for that release.
