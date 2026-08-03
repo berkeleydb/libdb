@@ -1186,7 +1186,7 @@ uninstall_utilities:
 
 # We install csharp docs even on UNIX so we don't have a 
 # broken link on the landing page.
-DOCLIST=api_reference articles bdb-sql collections csharp \
+DOCLIST=api_reference articles bdb-sql collections \
 	gsg gsg_db_rep gsg_txn index.html installation java \
 	license porting programmer_reference upgrading
 
