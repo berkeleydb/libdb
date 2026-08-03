@@ -377,8 +377,8 @@ jobs:
           int main(void){int a,b,c;char *s=db_version(&a,&b,&c);
             printf("libdb %s (%d.%d.%d)\n",s,a,b,c);return 0;}
           EOF
-          cc /tmp/smoke.c -Ibuild-meson -Lbuild-meson -ldb -o /tmp/smoke
-          if [ "$RUNNER_OS" = "macOS" ]; then export DYLD_LIBRARY_PATH=build-meson; else export LD_LIBRARY_PATH=build-meson; fi
+          cc /tmp/smoke.c -Ibuild-meson/dist -Lbuild-meson/dist -ldb -o /tmp/smoke
+          if [ "$RUNNER_OS" = "macOS" ]; then export DYLD_LIBRARY_PATH=build-meson/dist; else export LD_LIBRARY_PATH=build-meson/dist; fi
           /tmp/smoke
 
   # ----------------------------------------------------------------------------

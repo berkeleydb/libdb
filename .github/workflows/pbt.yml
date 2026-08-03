@@ -18,6 +18,8 @@ on:
       - 'test/pbt/**'
       - 'meson.build'
       - 'meson_options.txt'
+      - 'dist/meson.build'
+      - 'dist/meson/**'
       - 'src/**'
       - '.github/workflows/pbt.yml'
   workflow_dispatch:

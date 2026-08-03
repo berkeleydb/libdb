@@ -845,6 +845,8 @@ LIB_INSTALL_FILE_LIST=\
 ##################################################
 # Note: "all" must be the first target in the Makefile.
 ##################################################
+.PHONY: docs docs-check compdb bench
+
 all: @BUILD_TARGET@
 
 install: all @INSTALL_TARGET@
@@ -864,6 +866,7 @@ compile-commands:
 		echo "Error: bear not found. Reconfigure with --enable-compile-commands." >&2; \
 		exit 1; \
 	fi
+	$(MAKE) clean >/dev/null 2>&1 || true
 	$(BEAR) -o compile_commands.json -- $(MAKE) library_build
 	@echo "Generated compile_commands.json"
 
@@ -1184,22 +1187,97 @@ uninstall_utilities:
 		$(RM) $$i; \
 	done)
 
-# We install csharp docs even on UNIX so we don't have a 
-# broken link on the landing page.
-DOCLIST=api_reference articles bdb-sql collections \
-	gsg gsg_db_rep gsg_txn index.html installation java \
-	license porting programmer_reference upgrading
-
+# The rendered documentation is built from the Markdown source under
+# $(topdir)/docs_src by docs_src/build.py (needs python3 + pandoc; PDF also
+# needs weasyprint). Install the generated HTML tree if it exists; the build
+# is a separate "make docs" concern (below) so a plain install never requires
+# the docs toolchain.
 install_docs:
-	@echo "Installing documentation: $(DESTDIR)$(docdir) ..."
-	@test -d $(DESTDIR)$(docdir) || \
-	    ($(MKDIR) -p $(DESTDIR)$(docdir) && \
-	    $(CHMOD) $(dmode) $(DESTDIR)$(docdir))
-	@cd $(DESTDIR)$(docdir) && $(RM) -r $(DOCLIST)
-	@cd $(topdir)/docs && $(CP) -pr $(DOCLIST) $(DESTDIR)$(docdir)/
+	@if [ -d $(topdir)/docs-build/html ]; then \
+	    echo "Installing documentation: $(DESTDIR)$(docdir) ..."; \
+	    test -d $(DESTDIR)$(docdir) || \
+		($(MKDIR) -p $(DESTDIR)$(docdir) && \
+		 $(CHMOD) $(dmode) $(DESTDIR)$(docdir)); \
+	    $(CP) -pr $(topdir)/docs-build/html/. $(DESTDIR)$(docdir)/; \
+	else \
+	    echo "No docs-build/html found; run 'make docs' first to install docs (skipping)."; \
+	fi
 
 uninstall_docs:
-	@cd $(DESTDIR)$(docdir) && $(RM) -r $(DOCLIST)
+	@$(RM) -r $(DESTDIR)$(docdir)
+
+##################################################
+# Documentation build/check targets.
+#
+# docs        render HTML + man (+ PDF) from docs_src/ into docs-build/.
+# docs-check  the docs.yml gates, run locally: build + self-check,
+#             completeness (API coverage), spelling, man-lint.
+#
+# Both guard on python3/pandoc: if the toolchain is absent they print a note
+# and succeed (they never hard-fail a build that isn't about docs).
+##################################################
+DOCS_SRC=	$(topdir)/docs_src
+DOCS_OUT=	$(topdir)/docs-build
+
+docs:
+	@if command -v python3 >/dev/null 2>&1 && command -v pandoc >/dev/null 2>&1; then \
+	    echo "Building documentation -> $(DOCS_OUT) ..."; \
+	    if command -v weasyprint >/dev/null 2>&1; then \
+		(cd $(DOCS_SRC) && python3 build.py); \
+	    else \
+		echo "(weasyprint not found: building HTML + man only, no PDF)"; \
+		(cd $(DOCS_SRC) && python3 build.py --no-pdf); \
+	    fi; \
+	else \
+	    echo "SKIP docs: need python3 + pandoc on PATH (nix develop provides them)."; \
+	fi
+
+docs-check:
+	@if command -v python3 >/dev/null 2>&1 && command -v pandoc >/dev/null 2>&1; then \
+	    set -e; \
+	    echo "docs-check: build + self-check"; \
+	    (cd $(DOCS_SRC) && python3 build.py --selfcheck); \
+	    (cd $(DOCS_SRC) && python3 build.py --no-pdf); \
+	    echo "docs-check: API completeness gate"; \
+	    python3 $(DOCS_SRC)/_migrate/man_coverage.py --ci; \
+	    echo "docs-check: spelling gate"; \
+	    python3 $(DOCS_SRC)/_migrate/spellcheck.py; \
+	    if command -v mandoc >/dev/null 2>&1; then \
+		echo "docs-check: man-lint (mandoc -Tlint, 0 ERRORS)"; \
+		e=0; \
+		for f in $(DOCS_OUT)/man/man3/*.3; do \
+		    if mandoc -Tlint "$$f" 2>&1 | grep -q ERROR; then e=1; \
+			echo "ERRORS in $$f"; fi; \
+		done; \
+		test "$$e" -eq 0; \
+	    else echo "(mandoc not found: skipping man-lint)"; fi; \
+	    echo "docs-check: PASS"; \
+	else \
+	    echo "SKIP docs-check: need python3 + pandoc on PATH."; \
+	fi
+
+##################################################
+# compile_commands.json for clangd / LSPs.
+#
+# Autoconf doesn't emit a compilation database, so wrap the build with bear
+# (github.com/rizsotto/Bear). Produces a repo-root compile_commands.json.
+# Requires `bear` on PATH (in the nix dev shell).
+##################################################
+compdb compile_commands.json:
+	@if command -v bear >/dev/null 2>&1; then \
+	    echo "Generating compile_commands.json via bear ..."; \
+	    bear --output $(topdir)/compile_commands.json -- $(MAKE) $(DEF_LIB); \
+	    echo "Wrote $(topdir)/compile_commands.json"; \
+	else \
+	    echo "SKIP compile_commands.json: need 'bear' on PATH (nix develop provides it)."; \
+	fi
+
+##################################################
+# Microbenchmark drivers (test/bench). A regression-watch tool, not part of
+# the library build: it links against this build_unix directory.
+##################################################
+bench:
+	@$(MAKE) -C $(testdir)/bench BDB=$(CURDIR) CC=cc
 
 ##################################################
 # Remaining standard Makefile targets.

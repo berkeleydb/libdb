@@ -67,6 +67,12 @@ for full provenance and the per-version index.
 
 ## Building
 
+Two build systems produce the core library; the Autoconf tree is the reference
+(full feature set + language bindings), Meson is a fast parallel build of the
+core C library.
+
+### Autoconf (reference)
+
 ```sh
 cd build_unix
 ../dist/configure            # see ../dist/configure --help for options
@@ -77,10 +83,37 @@ make -j
 #   --enable-cxx                          C++ API
 #   --enable-sql                          SQL (SQLite-compatible) API
 #   --enable-test --with-tcl=<dir>        build the TCL test harness
+
+make docs                    # render docs_src/ -> docs-build/ (needs pandoc)
+make bench                   # build the test/bench microbenchmark drivers
+make compdb                  # compile_commands.json for clangd (needs bear)
 ```
 
-To view the original distribution and API documentation, open
-`docs/index.html` in a browser.
+### Meson / Ninja (core C library)
+
+```sh
+meson setup build            # thin root meson.build drives dist/meson.build
+ninja -C build               # -> build/dist/libdb.so
+ninja -C build docs          # render the docs
+ninja -C build bench         # build the microbenchmark drivers
+```
+
+Both `dist/meson.build` and `dist/meson_options.txt`-worth of build logic live
+under `dist/` alongside the Autoconf files; the root `meson.build` is a thin
+shim that Meson requires at the setup directory (`meson_options.txt` also stays
+at the root because Meson binds it to the `project()` directory).
+
+**LSP / clangd:** Meson emits `build/compile_commands.json` automatically after
+`ninja`; symlink or point clangd at it (`ln -sf build/compile_commands.json .`).
+The Autoconf build has no compilation database, so `make compdb` (in
+`build_unix`) wraps the build with [`bear`](https://github.com/rizsotto/Bear)
+to produce a repo-root `compile_commands.json`. Both are git-ignored.
+
+To read the API and guide documentation, build it from the Markdown
+source under [`docs_src/`](docs_src/) (`make docs` for Autoconf or
+`ninja docs` for Meson — see above) and open `docs-build/html/index.html`
+in a browser. The rendered reference is also published at
+<https://libdb.org/reference/>.
 
 ## Testing
 
@@ -103,5 +136,7 @@ the automated OCR reviewer.
 ## License
 
 Berkeley DB is distributed under its original license; see
-[`LICENSE`](LICENSE). Individual archived versions carry the license in effect
-for that release.
+[`LICENSE`](LICENSE). Per-component and bundled-code licenses (BSD, Harvard,
+CDDL, ASM, and the Berkeley DB license in HTML form) are collected under
+[`LICENSES/`](LICENSES/). Individual archived versions carry the license in
+effect for that release.

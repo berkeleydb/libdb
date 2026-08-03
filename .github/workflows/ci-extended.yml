@@ -189,7 +189,7 @@ jobs:
             done
           }
           extract build_unix/db_config.h > /tmp/auto.flags
-          extract build-meson/db_config.h > /tmp/meson.flags
+          extract build-meson/dist/db_config.h > /tmp/meson.flags
           echo "=== autoconf | meson ==="
           paste -d' ' /tmp/auto.flags /tmp/meson.flags
           if diff -u /tmp/auto.flags /tmp/meson.flags > /tmp/flags.diff; then
