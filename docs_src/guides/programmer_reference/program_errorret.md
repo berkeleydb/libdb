@@ -55,3 +55,11 @@ Applications can handle such fatal errors in one of two ways: first, by checking
 **DB_SECONDARY_BAD**
 
 The DB_SECONDARY_BAD error is returned if a secondary index has been corrupted. This may be the result of an application operating on related databases without first associating them.
+
+**DB_SNAPSHOT_CONFLICT**
+
+The DB_SNAPSHOT_CONFLICT error is returned to a transaction started with the <a href="../../api/c/txnbegin.md" class="olink">DB_TXN_SNAPSHOT_SAFE</a> flag (serializable snapshot isolation, SSI) when Berkeley DB detects a conflicting snapshot update — an attempt to commit an update that conflicts with another concurrent snapshot-safe transaction. The affected transaction must be aborted; the application may then retry it. This return is specific to serializable snapshot isolation and does not occur for plain <a href="../../api/c/txnbegin.md" class="olink">DB_TXN_SNAPSHOT</a> transactions.
+
+**DB_SNAPSHOT_UNSAFE**
+
+The DB_SNAPSHOT_UNSAFE error is returned to a transaction started with the <a href="../../api/c/txnbegin.md" class="olink">DB_TXN_SNAPSHOT_SAFE</a> flag (serializable snapshot isolation, SSI) when Berkeley DB detects a potential serializability anomaly through a read/write anti-dependency: the transaction sits as the pivot of a dangerous structure (it is both the read end and the write end of anti-dependency edges among committed and running transactions) that could otherwise produce a non-serializable schedule. The affected transaction is aborted rather than allowed to commit; the application may then retry it. As with DB_SNAPSHOT_CONFLICT, this return is specific to serializable snapshot isolation.
