@@ -11,7 +11,7 @@
 # exactly -- pandoc, weasyprint, poppler-utils, mandoc, codespell, lychee and
 # write-good are all pinned there.
 #
-# HARD gates (fail the PR):     build (HTML+man), no-loss, completeness, spelling,
+# HARD gates (fail the PR):     build (HTML+man), completeness, spelling,
 #                               internal link-check, man-lint.
 # ADVISORY (continue-on-error): prose (write-good), external link-check.
 # BEST-EFFORT (scheduled / continue-on-error): PDF build + validation (slow).
@@ -47,7 +47,7 @@ jobs:
   # `pdf` job) so a PR isn't gated on the ~4-minute weasyprint pass.
   # ----------------------------------------------------------------------------
   build:
-    name: build + gates (html, man, no-loss, completeness, spelling, links, man-lint)
+    name: build + gates (html, man, completeness, spelling, links, man-lint)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -68,11 +68,13 @@ jobs:
       - name: build.py self-check
         run: nix develop --command bash -c 'cd docs_src && python3 build.py --selfcheck'
 
-      # 2. NO-LOSS GATE (hard): every migrated tree still retains its source
-      #    content (word-multiset retention + no code/section drop). Locks the
-      #    "nothing lost" guarantee against future edits.
-      - name: No-loss gate (all trees)
-        run: nix develop --command bash -c 'python3 docs_src/_migrate/verify_all.py'
+      # 2. (RETIRED) The no-loss gate compared the OLD scraped-DocBook docs/
+      #    tree against docs_src/ to prove the reverse migration dropped
+      #    nothing. It did its job (PRs #119/#120, ~100% retention) and the
+      #    docs/ source has since been removed from master (it lives on the
+      #    gh-pages historical archive). With no source tree to diff against
+      #    the gate can't run, so it is retired. verify_all.py/verify.py stay
+      #    in docs_src/_migrate/ for reference against that archive.
 
       # 3. COMPLETENESS GATE (hard): every public db.h function is documented
       #    (28/28), and every uncovered method is on the frozen allowlist -- a
