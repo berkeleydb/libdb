@@ -56,26 +56,5 @@ Example:
 ./tproc_h -i -S 1 -m && ./tproc_h -t 8 -w 4 -m -s 30   # MVCC analytic vs writers
 ```
 
-## `lab/lsm` — unified adaptive LSM controller
-
-Prototype of the two-axis adaptive controller from
-[`docs/design/lsm.md`](../../docs/design/lsm.md): one rolling-window + cooldown
-core driving both the **structure axis** (SINGLE ⇄ HYBRID ⇄ MULTILEVEL,
-structure-adaptive) and the **per-segment policy axis** (LEVELED ⇄ TIERED, Amethyst-style).
-
-Time is a caller-supplied "tick" so the logic is deterministic and testable.
-
-```sh
-cd lab/lsm && make check
-```
-
-`test_adaptive.c` drives an Amethyst-style phase-shifting workload and asserts:
-- a write-heavy phase spawns the structure to `MULTILEVEL`; an idle phase
-  collapses it back to `SINGLE`, with no oscillation;
-- a sustained load reaches `MULTILEVEL` and stays (cooldown anti-flap);
-- write-hot segments converge to `TIERED`, read-hot to `LEVELED`, and balanced
-  segments don't churn.
-
-Next: replace the tick with a millisecond clock, feed real op counters from the
-access-method layer, and have the policy axis emit segment-rewrite decisions to
-the compactor / log cleaner (ROADMAP #9, #14).
+The adaptive-LSM controller prototype that used to live here has graduated to
+[`rfc/0001/`](../rfc/0001/) alongside RFC 0001 (adaptive LSM access method).
