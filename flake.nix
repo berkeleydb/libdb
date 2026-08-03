@@ -52,6 +52,7 @@
             pkgs.tcl   # for the TCL test harness (--enable-test)
             pkgs.cbmc  # bounded model checker for the formal-verification harnesses (test/cbmc)
             pkgs.pandoc  # docs pipeline: html->md extraction + md->html/pdf/man (docs_src/build.py)
+            pkgs.jdk     # javadoc: Java API reference (build_java_api in docs_src/build.py)
             # Docs validation toolchain (docs_src/build.py + .github/workflows/docs.yml):
             pkgs.python3Packages.weasyprint  # HTML->PDF (build_pdf; no TeX needed)
             pkgs.poppler-utils               # pdfinfo/pdftotext: PDF page-count + title check
