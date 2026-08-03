@@ -61,10 +61,10 @@ extern "C" {
 #define	DB_VERSION_RELEASE	2
 #define	DB_VERSION_MAJOR	2026
 #define	DB_VERSION_MINOR	0
-#define	DB_VERSION_PATCH	5
-#define	DB_CALVER	"2026.07.3"
-#define	DB_VERSION_STRING	"libdb 2026.07.3 (July 31, 2026)"
-#define	DB_VERSION_FULL_STRING	"libdb 2026.07.3 (July 31, 2026)"
+#define	DB_VERSION_PATCH	6
+#define	DB_CALVER	"2026.08"
+#define	DB_VERSION_STRING	"libdb 2026.08 (August 3, 2026)"
+#define	DB_VERSION_FULL_STRING	"libdb 2026.08 (August 3, 2026)"
 
 /*
  * !!!
