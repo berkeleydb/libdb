@@ -1,0 +1,32 @@
+# Nav/index metadata for the gsg_db_rep C++ variant (order derived from the
+# source index.html TOC chain). See the C variant _meta.toml.
+
+title = "Berkeley DB Getting Started with Replicated Applications (C++)"
+landing = "index.md"
+order = [
+  "preface",
+  "moreinfo",
+  "introduction",
+  "repadvantage",
+  "apioverview",
+  "elections",
+  "permmessages",
+  "txnapp",
+  "simpleprogramlisting",
+  "repapp",
+  "rep_init_code",
+  "repmgr_init_example_c",
+  "fwrkpermmessage",
+  "electiontimes",
+  "fmwrkconnectretry",
+  "heartbeats",
+  "fwrkmasterreplica",
+  "processingloop",
+  "exampledoloop",
+  "addfeatures",
+  "manageblock",
+  "autoinit",
+  "rywc",
+  "c2ctransfer",
+  "bulk",
+]
