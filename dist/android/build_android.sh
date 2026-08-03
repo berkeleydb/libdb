@@ -81,5 +81,9 @@ meson setup "$BUILDDIR" "$ROOT" --cross-file "$CROSS" --wipe 2>/dev/null \
   || meson setup "$BUILDDIR" "$ROOT" --cross-file "$CROSS"
 ninja -C "$BUILDDIR"
 
+# The library builds under $BUILDDIR/dist/ (dist/meson.build owns library()).
+# Copy it to $BUILDDIR/libdb.so so the artifact path stays stable.
+cp "$BUILDDIR/dist/libdb.so" "$BUILDDIR/libdb.so"
+
 "$BIN/llvm-strip" -o "$BUILDDIR/libdb.so.stripped" "$BUILDDIR/libdb.so" 2>/dev/null || true
 file "$BUILDDIR/libdb.so"
