@@ -1,0 +1,43 @@
+# Nav/index metadata for the gsg C++ variant (order derived from the
+# source index.html TOC chain). See the C variant _meta.toml.
+
+title = "Getting Started with Berkeley DB (C++)"
+landing = "index.md"
+order = [
+  "preface",
+  "moreinfo",
+  "introduction",
+  "concepts",
+  "accessmethods",
+  "databaseLimits",
+  "environments",
+  "coreExceptions",
+  "returns",
+  "gettingit",
+  "databases",
+  "coredbclose",
+  "DBOpenFlags",
+  "CoreDBAdmin",
+  "dbErrorReporting",
+  "CoreEnvUsage",
+  "CoreDbCXXUsage",
+  "DBEntry",
+  "usingDbt",
+  "DbCXXUsage",
+  "Cursors",
+  "Positioning",
+  "PutEntryWCursor",
+  "DeleteEntryWCursor",
+  "ReplacingEntryWCursor",
+  "CoreCursorUsage",
+  "indexes",
+  "keyCreator",
+  "readSecondary",
+  "secondaryDelete",
+  "secondaryCursor",
+  "joins",
+  "coreindexusage",
+  "dbconfig",
+  "cachesize",
+  "btree",
+]

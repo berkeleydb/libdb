@@ -57,6 +57,10 @@ The **flags** parameter must be set to 0 or by bitwise inclusively **OR**'ing to
 
   The bulk insert optimization is effective only for top-level transactions. The `DB_TXN_BULK` flag is ignored when **parent** is non-null.
 
+- `DB_TXN_FAMILY`
+
+  Start this transaction as part of a transaction family: a group of transactions that share locks and never conflict with one another. A family transaction is read-only from the caller's perspective and does not itself perform updates; it is used to hand a common locking context to a set of cooperating transactions (for example, a client/server design that spreads one logical unit of work across several transaction handles). When this flag is set the transaction is created read-only and shares the locker of its family, so operations performed under different members of the same family do not deadlock against each other.
+
 - `DB_TXN_NOSYNC`
 
   Do not synchronously flush the log when this transaction commits or prepares. This means the transaction will exhibit the ACI (atomicity, consistency, and isolation) properties, but not D (durability); that is, database integrity will be maintained but it is possible that this transaction may be undone during recovery.
@@ -74,6 +78,14 @@ The **flags** parameter must be set to 0 or by bitwise inclusively **OR**'ing to
   This transaction will execute with <a href="../../guides/programmer_reference/transapp_read.md" class="olink">snapshot isolation</a>. For databases with the <a href="dbopen.md#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> flag set, data values will be read as they are when the transaction begins, without taking read locks. Silently ignored for operations on databases with <a href="dbopen.md#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> not set on the underlying database (read locks are acquired).
 
   The error `DB_LOCK_DEADLOCK` will be returned from update operations if a snapshot transaction attempts to update data which was modified after the snapshot transaction read it.
+
+- `DB_TXN_SNAPSHOT_SAFE`
+
+  This transaction will execute with **serializable snapshot isolation** (SSI). This is a Berkeley DB extension beyond `DB_TXN_SNAPSHOT`: it implies `DB_TXN_SNAPSHOT` (the transaction reads a consistent snapshot as of its start, as above) and additionally enables serializable conflict detection (the Cahill SSI algorithm). Berkeley DB tracks read/write anti-dependencies between concurrent snapshot-safe transactions and, when it detects a dependency cycle that could produce a non-serializable schedule, aborts one of the transactions so the committed history is equivalent to some serial order.
+
+  A transaction that hits such a potential anomaly is aborted with one of two Berkeley DB-specific error returns instead of committing: <a href="../../guides/programmer_reference/program_errorret.md" class="olink">DB_SNAPSHOT_UNSAFE</a> (a potential serializable-snapshot anomaly was detected via a read/write anti-dependency) or <a href="../../guides/programmer_reference/program_errorret.md" class="olink">DB_SNAPSHOT_CONFLICT</a> (a conflicting snapshot update was detected). On either return the application must abort the transaction and may retry it. As with `DB_TXN_SNAPSHOT`, snapshot behavior applies to databases opened with <a href="dbopen.md#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a>.
+
+  A `DB_TXN_SNAPSHOT_SAFE` (SSI) transaction **cannot be prepared for two-phase commit**: <a href="txnprepare.md" class="xref" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a> returns `EINVAL` for such a transaction, because SSI's conflict status is not frozen at prepare time and a later-detected anomaly could not be honored after the transaction had entered the prepared state.
 
 - `DB_TXN_SYNC`
 

@@ -393,3 +393,18 @@ main(void)
 
  
 ```
+
+#### Serializable Snapshot Isolation
+
+Berkeley DB also offers *serializable snapshot isolation* (SSI), a stronger mode selected with the `DB_TXN_SNAPSHOT_SAFE` flag. Plain snapshot isolation (`DB_TXN_SNAPSHOT`, above) gives each transaction a consistent view as of its start and avoids read locks, but it permits a small class of anomalies (write skew) that a fully serializable schedule would not. SSI closes that gap: it runs the transaction under snapshot isolation *and* tracks read/write anti-dependencies between concurrent snapshot-safe transactions, aborting a transaction whenever it detects a dependency cycle that could produce a non-serializable outcome.
+
+`DB_TXN_SNAPSHOT_SAFE` is a per-transaction flag; it implies `DB_TXN_SNAPSHOT` and is passed to <a href="../../api/c/txnbegin.md" class="olink">DB_ENV-&gt;txn_begin()</a> the same way. Unlike `DB_TXN_SNAPSHOT`, it cannot be enabled environment-wide through `DB_ENV->set_flags()` — each transaction that wants serializable snapshot isolation must request it.
+
+Because SSI aborts transactions to preserve serializability, a serializable-snapshot transaction may fail to commit with one of two Berkeley DB-specific return codes:
+
+- `DB_SNAPSHOT_UNSAFE` — a potential serializability anomaly was detected via a read/write anti-dependency (the transaction is the pivot of a dangerous structure).
+- `DB_SNAPSHOT_CONFLICT` — a conflicting snapshot update was detected.
+
+In both cases the application must abort the transaction and may retry it, exactly as it would for `DB_LOCK_DEADLOCK`. See <a href="../../guides/programmer_reference/program_errorret.md" class="olink">Error Returns to Applications</a> for the return-code descriptions.
+
+One restriction applies: a `DB_TXN_SNAPSHOT_SAFE` transaction cannot be prepared for two-phase commit. <a href="../../api/c/txnprepare.md" class="olink">DB_TXN-&gt;prepare()</a> returns `EINVAL` for such a transaction, because SSI's conflict status is not frozen at prepare time and a later-detected anomaly could not be honored once the transaction had entered the prepared state.
