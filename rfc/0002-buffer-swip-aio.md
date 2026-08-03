@@ -1,8 +1,18 @@
-# Scalable buffer access: tagged swip, optimistic descent, and async I/O
+# RFC 0002: Scalable buffer access — tagged swip, optimistic descent, async I/O
 
-Status: design / plan of record. Companion to
-[`scaling-findings.md`](scaling-findings.md). Code anchors verified against
-`master` and recorded in `research/mpool-btree.md` and `research/os-aio.md`.
+- **Status:** Draft
+- **Type:** Prospective
+- **Author:** libdb maintainers
+- **Date:** 2026-07-31
+- **Prototype:** surveys in [`rfc/0002/`](0002/)
+
+---
+
+## Summary
+
+Code anchors verified against `master` and recorded in
+[`0002/mpool-btree-survey.md`](0002/mpool-btree-survey.md) and
+[`0002/os-aio-survey.md`](0002/os-aio-survey.md).
 
 ## 1. Problem
 

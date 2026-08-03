@@ -35,3 +35,5 @@ lab/bench/ssi_abort_bench
 # Generated documentation (docs-src/build.py output)
 docs-build/
 docs-src/**/__pycache__/
+rfc/0001/test_adaptive
+test_adaptive
