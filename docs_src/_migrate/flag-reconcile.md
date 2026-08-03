@@ -24,8 +24,8 @@ environment / database flag surfaces the SSI work touched. Sources of truth:
 | DB_TXN_FAMILY          | **MISSING** | **added** (txnbegin.md) |
 | DB_TXN_NOSYNC          | doc    | doc               |
 | DB_TXN_NOWAIT          | doc    | doc               |
-| DB_TXN_SNAPSHOT        | doc    | doc               |
-| DB_TXN_SNAPSHOT_SAFE   | **MISSING** | **added** (txnbegin.md, +guides, +return codes) |
+| DB_TXN_SNAPSHOT        | doc    | doc (now = SSI)   |
+| DB_TXN_SNAPSHOT_SAFE   | *removed* | flag removed — folded into DB_TXN_SNAPSHOT |
 | DB_TXN_SYNC            | doc    | doc               |
 | DB_TXN_WAIT            | doc    | doc               |
 | DB_TXN_WRITE_NOSYNC    | doc    | doc               |
@@ -58,10 +58,11 @@ Every `txn_begin` flag the engine accepts is now documented.
 | DB_YIELDCPU              | doc    |
 | DB_HOTBACKUP_IN_PROGRESS | doc    |
 
-Note: `DB_TXN_SNAPSHOT_SAFE` is deliberately **not** a valid `set_flags`
-flag — SSI is a per-transaction property only (the env `OK_FLAGS` mask accepts
-plain `DB_TXN_SNAPSHOT` but not `_SAFE`). `envset_flags.md` now states this
-explicitly under `DB_TXN_SNAPSHOT`.
+Note: `DB_TXN_SNAPSHOT` is now serializable snapshot isolation (SSI); the
+separate `DB_TXN_SNAPSHOT_SAFE` flag was **removed** and its behavior folded
+into `DB_TXN_SNAPSHOT`, which is a valid `set_flags` env flag (SSI can be set
+environment-wide or per-transaction). `envset_flags.md` states this under
+`DB_TXN_SNAPSHOT`.
 
 ## Public return codes (src/dbinc/db.in) — SSI-era
 
@@ -75,9 +76,10 @@ return *code* an SSI transaction may get, not a `txn_begin` option.
 
 ## What this change fixed
 
-- `DB_TXN_SNAPSHOT_SAFE` (0x800) — the SSI flag our engine work added:
-  documented on `api/c/txnbegin.md`, cross-noted on `api/c/envset_flags.md`
-  (per-transaction only), and explained in the transactions guide
+- `DB_TXN_SNAPSHOT` — now serializable snapshot isolation (SSI); the earlier
+  separate `DB_TXN_SNAPSHOT_SAFE` (0x800) flag was removed and folded in:
+  documented on `api/c/txnbegin.md`, cross-noted on `api/c/envset_flags.md`,
+  and explained in the transactions guide
   (`guides/gsg_txn/isolation.md`) and the programmer's reference
   (`guides/programmer_reference/transapp_read.md`).
 - `DB_SNAPSHOT_UNSAFE` / `DB_SNAPSHOT_CONFLICT` return codes documented in

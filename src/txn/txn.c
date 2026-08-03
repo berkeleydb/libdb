@@ -112,7 +112,6 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 	    DB_IGNORE_LEASE |DB_READ_COMMITTED | DB_READ_UNCOMMITTED |
 	    DB_TXN_FAMILY | DB_TXN_NOSYNC | DB_TXN_SNAPSHOT | DB_TXN_SYNC |
 	    DB_TXN_WAIT | DB_TXN_WRITE_NOSYNC | DB_TXN_NOWAIT |
-	    DB_TXN_SNAPSHOT_SAFE |
 	    DB_TXN_BULK)) != 0)
 		return (ret);
 	if ((ret = __db_fcchk(env, "txn_begin", flags,
@@ -231,7 +230,7 @@ __txn_begin(env, ip, parent, txnpp, flags)
 		F_SET(txn, TXN_READ_UNCOMMITTED);
 	if (LF_ISSET(DB_TXN_FAMILY))
 		F_SET(txn, TXN_FAMILY | TXN_INFAMILY | TXN_READONLY);
-	if (LF_ISSET(DB_TXN_SNAPSHOT | DB_TXN_SNAPSHOT_SAFE) ||
+	if (LF_ISSET(DB_TXN_SNAPSHOT) ||
 	    F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT) ||
 	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT))) {
 		if (IS_REP_CLIENT(env)) {
@@ -241,8 +240,14 @@ __txn_begin(env, ip, parent, txnpp, flags)
 		} else
 			F_SET(txn, TXN_SNAPSHOT);
 	}
-	/* SSI is snapshot isolation plus serializable conflict detection. */
-	if (LF_ISSET(DB_TXN_SNAPSHOT_SAFE) ||
+	/*
+	 * DB_TXN_SNAPSHOT is serializable snapshot isolation (SSI): snapshot
+	 * isolation plus serializable conflict detection.  Any snapshot
+	 * transaction gets SSI -- there is no separate plain-SI mode.  (A
+	 * replication client already returned EINVAL above, so we only reach
+	 * here for a snapshot txn that is allowed to be SSI.)
+	 */
+	if (F_ISSET(txn, TXN_SNAPSHOT) ||
 	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT_SAFE))) {
 		F_SET(txn, TXN_SNAPSHOT_SAFE);
 		/*
@@ -1378,7 +1383,7 @@ __txn_prepare(txn, gid)
 	 */
 	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
 		__db_errx(env, DB_STR("4575",
-		    "DB_TXN->prepare: DB_TXN_SNAPSHOT_SAFE (SSI) transactions "
+		    "DB_TXN->prepare: DB_TXN_SNAPSHOT (SSI) transactions "
 		    "cannot be prepared for two-phase commit"));
 		ret = EINVAL;
 		goto err;

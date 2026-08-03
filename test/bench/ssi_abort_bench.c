@@ -1,7 +1,7 @@
 /*-
  * libdb SSI abort-rate probe.
  *
- * Serializable Snapshot Isolation (DB_TXN_SNAPSHOT_SAFE) prevents write-skew
+ * Serializable Snapshot Isolation (DB_TXN_SNAPSHOT) prevents write-skew
  * and other snapshot anomalies by aborting the pivot of a dangerous rw-
  * dependency structure.  The cost is a nonzero abort rate that grows with
  * contention, and -- because Berkeley DB tracks conflicts at PAGE granularity,
@@ -60,7 +60,7 @@ one_txn(targ_t *t)
 	rk = rand_r(&t->seed) % hotkeys;
 	wk = rand_r(&t->seed) % hotkeys;
 
-	if (env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT_SAFE) != 0) {
+	if (env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT) != 0) {
 		t->other++;
 		return;
 	}
