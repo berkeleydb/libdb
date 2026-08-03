@@ -1,8 +1,16 @@
-# LSM design study: adaptive compaction, Bitcask, index-in-WAL, and Amethyst
+# RFC 0001: Adaptive LSM access method
 
-Status: design note (informs ROADMAP items #9 LSM, #13 HASH, #14 index-in-WAL).
+- **Status:** Draft
+- **Type:** Prospective
+- **Author:** libdb maintainers
+- **Date:** 2026-07-31
+- **Prototype:** [`rfc/0001/`](0001/) (adaptive-controller spike)
 
-This note compares three log-structured storage models against the
+---
+
+## Summary
+
+This RFC compares three log-structured storage models against the
 adaptive-compaction ideas in *Amethyst* and proposes a synthesized LSM design
 for libdb.
 
@@ -40,7 +48,7 @@ for libdb.
   model); a separate evictor handles cache management; recovery does
   checkpoint/replay.
 - Replication in this model rides on a **VLSN** (versioned LSN); consensus can
-  use quorum systems + Fast Paxos (ROADMAP #15).
+  use quorum systems + Fast Paxos (see the scalable-replication RFC).
 - This is the **index-in-WAL + cleaner** durability model — the cleaner plays
   the same role a compactor does in an LSM.
 
@@ -68,7 +76,7 @@ Neither model has both. Combining them yields an LSM that (a) only pays LSM
 cost when the workload warrants it, and (b) within the LSM, compacts each
 segment with the locally-best policy.
 
-## Proposed libdb LSM design (ROADMAP #9)
+## Proposed libdb LSM design
 
 1. **Base structure:** HanoiDB Towers-of-Hanoi levels for bounded `O(log n)`
    write amplification, with incremental merge scheduling for smooth
@@ -86,7 +94,7 @@ segment with the locally-best policy.
 4. **Generic over the access method's page/index** so the LSM composes with
    libdb's existing B-tree/Hash rather than replacing them.
 
-## Mapping to durability configs (ROADMAP #14)
+## Mapping to durability configs
 
 The "index-in-WAL with a cleaner" option is the same idea as LSM compaction,
 specialized by access method:
