@@ -162,6 +162,8 @@ The **flags** parameter must be set by bitwise inclusively **OR**'ing together o
 
   The DB_TXN_SNAPSHOT flag may be used to configure Berkeley DB at any time during the life of the application.
 
+  Note that only plain snapshot isolation can be configured environment-wide. The serializable-snapshot-isolation flag DB_TXN_SNAPSHOT_SAFE is a per-transaction flag only: it is accepted by <a href="txnbegin.md" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a> but not by `DB_ENV->set_flags()`, so SSI must be requested for each transaction individually.
+
 - `DB_TXN_WRITE_NOSYNC`
 
   If set, Berkeley DB will write, but will not synchronously flush, the log on transaction commit. This means that transactions exhibit the ACI (atomicity, consistency, and isolation) properties, but not D (durability); that is, database integrity will be maintained, but if the system fails, it is possible some number of the most recently committed transactions may be undone during recovery. The number of transactions at risk is governed by how often the system flushes dirty buffers to disk and how often the log is checkpointed.
