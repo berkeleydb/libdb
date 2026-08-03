@@ -16,6 +16,11 @@ transactional key/value storage engine. Generated from Markdown source by
   command-line utilities.
 - [C++ / STL API Reference](api/stl/index.html) — the `dbstl` standard-template-
   library containers and iterators backed by Berkeley DB.
+- [Java API Reference](java-api/index.html) — the `com.sleepycat.*` Java
+  binding (`db`, `bind`, `collections`, `persist`). This tree is
+  **javadoc-generated** from `lang/java/src/` at build time (not Markdown
+  source), so it always matches the current code; it is not part of the
+  Markdown no-loss gate.
 
 ## Guides
 
@@ -58,5 +63,7 @@ Each book is also available as a PDF (see the release assets / `docs-build/pdf/`
 
 ---
 
-*The C#/Java language-binding manuals (Sandcastle / Javadoc, not DocBook) are
-archived separately and are not part of this Markdown-sourced tree.*
+*The C# language-binding manual (Sandcastle, not DocBook) is archived
+separately and is not part of this Markdown-sourced tree. The Java API
+reference above is regenerated from source by javadoc rather than migrated
+from DocBook.*
