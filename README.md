@@ -59,11 +59,11 @@ for full provenance and the per-version index.
   reclaimed while it still held SIREAD markers) was found with TSan/ASan and
   fixed, and a multi-process concurrent-writer stress test (`ssi009`) guards
   against regression. **Still experimental** in that page-granularity conflict
-  tracking can raise abort rates under contention (measured by
-  `lab/bench/ssi_abort_bench`), and the HA/replication qualification is still
-  being built. This is the *first* of the planned features in
-  [`ROADMAP.md`](ROADMAP.md), which targets matching or beating InnoDB and
-  WiredTiger on multicore/NUMA scalability and performance.
+  tracking can raise abort rates under contention (measured by the
+  microbenchmark suite under `test/bench`), and the HA/replication
+  qualification is still being built. Planned performance work is tracked as
+  design proposals under [`rfc/`](rfc/), targeting matching or beating InnoDB
+  and WiredTiger on multicore/NUMA scalability and performance.
 
 ## Building
 
