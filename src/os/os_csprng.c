@@ -35,8 +35,14 @@ __os_csprng(env, buf, len)
 {
 	u_int8_t *p;
 	size_t need;
+#if defined(HAVE_GETRANDOM)
 	ssize_t n;
-	int fd, ret;
+#endif
+#if !defined(HAVE_ARC4RANDOM_BUF)
+	DB_FH *fhp;
+	size_t nr;
+	int ret;
+#endif
 
 	p = buf;
 	need = len;
@@ -74,23 +80,24 @@ __os_csprng(env, buf, len)
 #else
 	/*
 	 * Portable fallback: read /dev/urandom.  Use the OS layer so the file
-	 * handling matches the rest of the library.
+	 * handling matches the rest of the library (DB_FH handle, not a raw fd).
 	 */
 	if ((ret = __os_open(env, "/dev/urandom", 0,
-	    DB_OSO_RDONLY, DB_MODE_600, &fd)) != 0)
+	    DB_OSO_RDONLY, DB_MODE_600, &fhp)) != 0)
 		return (ret);
 
 	while (need > 0) {
-		if ((ret = __os_read(env, fd, p, need, &n)) != 0) {
-			(void)__os_closehandle(env, fd);
+		nr = 0;
+		if ((ret = __os_read(env, fhp, p, need, &nr)) != 0) {
+			(void)__os_closehandle(env, fhp);
 			return (ret);
 		}
-		if (n == 0)			/* Unexpected EOF. */
+		if (nr == 0)			/* Unexpected EOF. */
 			break;
-		p += n;
-		need -= (size_t)n;
+		p += nr;
+		need -= nr;
 	}
-	(void)__os_closehandle(env, fd);
+	(void)__os_closehandle(env, fhp);
 
 	if (need != 0) {
 		__db_errx(env, DB_STR("0213",
