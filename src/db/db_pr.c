@@ -357,6 +357,8 @@ __db_lockmode_to_string(mode)
 		return ("Read uncommitted");
 	case DB_LOCK_WWRITE:
 		return ("Was written");
+	case DB_LOCK_SIREAD:
+		return ("Snapshot isolation read");
 	default:
 		break;
 	}

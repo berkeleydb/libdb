@@ -1,0 +1,107 @@
+# lockmode_inventory.txt -- the CHECKED inventory of DB_LOCK_* mode enumeration
+# sites in libdb.  Enforced by dist/cocci/lockmode_inventory.sh in CI
+# (.github/workflows/cocci.yml).  Rationale + the reviewer checklist:
+# rfc/0003/lock-mode-audit.md.
+#
+# Adding a lock mode to db_lockmode_t (src/dbinc/db.in) FAILS CI until you
+# (a) walk every `site` line below and record a verdict, and (b) add a `mode`
+# line here.  Every `exhaustive` switch must gain a case arm for the new mode.
+#
+# Line formats
+#   mode        <DB_LOCK_NAME>
+#   site        <path> <function> <verdict> <note>
+#   exhaustive  <path> <function>            # switch must cover EVERY mode
+#
+# Verdicts
+#   writelock-predicate  Decides read-vs-write via IS_WRITELOCK(); correct for
+#                        any future mode by construction.  PREFERRED SHAPE.
+#   mode-specific        Deliberately about ONE named mode; a new mode does not
+#                        belong in it.  Correct as written.
+#   exhaustive           Enumerates the whole mode set; a new mode needs an arm.
+#   conflict-matrix      Indexed by mode value; a new mode needs a matrix row
+#                        AND column (see the note on the row).
+
+# --- the mode set (must match db_lockmode_t in src/dbinc/db.in exactly) ------
+mode	DB_LOCK_IREAD
+mode	DB_LOCK_IWR
+mode	DB_LOCK_IWRITE
+mode	DB_LOCK_NG
+mode	DB_LOCK_READ
+mode	DB_LOCK_READ_UNCOMMITTED
+mode	DB_LOCK_SIREAD
+mode	DB_LOCK_WAIT
+mode	DB_LOCK_WRITE
+mode	DB_LOCK_WWRITE
+
+# --- lock manager: the release / accounting paths ---------------------------
+# FIXED for #140.  Both the objlist SIZING pass and the populate branch now key
+# on IS_WRITELOCK, so they agree by construction; __lock_fix_list is handed the
+# count actually populated, and a runtime bounds check (not a DIAGNOSTIC-only
+# DB_ASSERT) fails the op rather than overrunning the heap.
+site	src/lock/lock.c	__lock_vec	writelock-predicate	objlist sizing+population+fix_list count all keyed on IS_WRITELOCK (issue #140); the RELEASE condition still names read modes deliberately -- SIREAD must be retained here for __lock_sicommit
+# nwrites/nlocks accounting: all keyed on IS_WRITELOCK, so SIREAD is correctly
+# counted in nlocks and never in nwrites.
+site	src/lock/lock.c	__lock_get_internal	writelock-predicate	nwrites++ under IS_WRITELOCK; SIREAD handled by its own safe_si arms
+site	src/lock/lock.c	__lock_freelock	writelock-predicate	nlocks/nwrites decrement under IS_WRITELOCK
+site	src/lock/lock.c	__lock_downgrade	writelock-predicate	nwrites-- only on write->non-write transition
+site	src/lock/lock.c	__lock_inherit_locks	writelock-predicate	parent nlocks/nwrites under IS_WRITELOCK
+site	src/lock/lock.c	__lock_trade	writelock-predicate	new locker nlocks/nwrites under IS_WRITELOCK
+# Mode-specific by design: SIREAD markers live on obj->sireaders, every other
+# mode on obj->holders, so removal MUST branch on the mode.
+site	src/lock/lock.c	__lock_put_internal	mode-specific	SIREAD removed from ->sireaders, all other modes from ->holders
+site	src/lock/lock.c	__lock_sicommit	mode-specific	walks heldby for SIREAD markers only (SSI commit/abort)
+site	src/lock/lock.c	__lock_siclean_obj	mode-specific	walks obj->sireaders (all entries are SIREAD by construction)
+
+# --- deadlock detector ------------------------------------------------------
+# atype switch is over db_lockdetect policies (DB_LOCK_MINWRITE, ...), NOT over
+# db_lockmode_t; the nlocks/nwrites counts it reads are maintained above.  A new
+# lock MODE needs no change here.
+site	src/lock/lock_deadlock.c	__dd_build	mode-specific	switches on detector atype, not on lock mode; uses nlocks/nwrites
+
+# --- failchk ---------------------------------------------------------------
+# `lip->nlocks == lip->nwrites` means "holds no non-write locks".  SIREAD is
+# counted in nlocks and not in nwrites, so a locker holding SIREAD markers is
+# correctly treated as holding non-write locks and is NOT skipped.  It then goes
+# down the DB_LOCK_PUT_READ path, which now retains SIREAD (they are released by
+# __lock_sicommit / DB_LOCK_PUT_ALL at txn end) -- correct.
+site	src/lock/lock_failchk.c	__lock_failchk	writelock-predicate	nlocks==nwrites test; SIREAD counts in nlocks only
+
+# --- conflict matrix -------------------------------------------------------
+# db_riw_conflicts is DB_LOCK_RIW_N x DB_LOCK_RIW_N, indexed by mode value; the
+# SI row/column exist and are all-zero (a SIREAD marker never blocks and is
+# never blocked -- SSI detects conflicts by walking obj->sireaders, not via the
+# matrix).  A new mode MUST bump DB_LOCK_RIW_N and add a row AND a column.
+# __lock_get_internal validates lock_mode < region->nmodes, so a mode added
+# without a matrix row is rejected at runtime rather than reading out of bounds.
+site	src/lock/lock_region.c	__lock_region_init	conflict-matrix	db_riw_conflicts is 10x10 incl. the SI row/column; DB_LOCK_RIW_N must track db_lockmode_t
+
+# --- lock lists (serialization for replication / prepare) ------------------
+# Mode-agnostic: operate on DBT object descriptors, never on modes.  The caller
+# (__lock_vec, above) decides WHICH locks enter the list; __lock_get_list
+# reacquires them all in one caller-supplied mode.
+site	src/lock/lock_list.c	__lock_fix_list	mode-specific	serializes DBT objects; mode-agnostic
+site	src/lock/lock_list.c	__lock_get_list	mode-specific	reacquires listed objects in the caller's mode (DB_LOCK_WRITE from rep apply)
+
+# --- diagnostics / printing (exhaustive switches) -------------------------
+# FIXED for #140's class: both printers previously fell through to
+# "UNKNOWN"/"UNKNOWN LOCK MODE" for SIREAD.  Now exhaustive and CI-enforced.
+exhaustive	src/lock/lock_stat.c	__lock_printlock
+exhaustive	src/db/db_pr.c	__db_lockmode_to_string
+# FIXED for #140's class: walked only holders+waiters, so an object pinned only
+# by SIREAD markers printed as empty.  Now walks ->sireaders too.
+site	src/lock/lock_stat.c	__lock_dump_object	mode-specific	walks holders, waiters AND sireaders
+site	src/lock/lock_stat.c	__lock_dump_locker	mode-specific	walks heldby; mode printed by __lock_printlock
+
+# --- access-method lock decisions ----------------------------------------
+# Deliberately mode-specific: these choose a mode to REQUEST and decide lock
+# coupling for the mode actually granted.  SIREAD is produced here (from
+# DB_LOCK_READ under MULTIVERSION+TXN_SNAPSHOT) and is intentionally excluded
+# from the couple/downgrade tests -- an SSI read marker must be held to txn end.
+site	src/db/db_meta.c	__db_lget	mode-specific	converts READ->SIREAD under MULTIVERSION+SSI; coupling tests name single modes
+site	src/db/db_meta.c	__db_lput	mode-specific	couple/downgrade decisions per named mode; SIREAD retained to txn end
+
+# --- txn event (handle-lock) trades --------------------------------------
+# IS_WRITELOCK on a HANDLE lock (DB_LOCK_READ or DB_LOCK_WRITE on a database
+# handle).  Handle locks are never SIREAD (that conversion is page-read only),
+# so the predicate is correct and future-proof.
+site	src/txn/txn_util.c	__txn_doevents	writelock-predicate	IS_WRITELOCK on handle locks; handle locks are never SIREAD
