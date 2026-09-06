@@ -218,6 +218,9 @@ SIM_OBJS=	sim_core@o@ sim_os_hooks@o@
 # by configure only when --enable-faultinject.  Compile rule below.
 FI_OBJS=	fi_alloc@o@
 
+# SSI resource-accounting leak tests -- test/c/.  Compile rules below.
+LEAK_TESTS=	leak_si_locker leak_si_mvcc_mtx
+
 BTREE_OBJS=\
 	bt_compare@o@ bt_compress@o@ bt_conv@o@ bt_curadj@o@ bt_cursor@o@ \
 	bt_delete@o@ bt_method@o@ bt_open@o@ bt_put@o@ bt_rec@o@ \
@@ -1308,6 +1311,7 @@ mostly-clean clean:
 	$(RM) -r ALL.OUT.* PARALLEL_TESTDIR.*
 	$(RM) -r RUN_LOG RUNQUEUE TESTDIR TESTDIR.A TEST.LIST
 	$(RM) -r logtrack_seen.db test_micro test_mutex .libs
+	$(RM) -r $(LEAK_TESTS)
 	$(RM) -r $(LIB_INSTALL_FILE_LIST)
 	$(RM) compile_commands.json
 	@subdir_cmd@
@@ -1561,6 +1565,30 @@ test_mutex@o@: $(srcdir)/mutex/test_mutex.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 test_mutex: test_mutex@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) test_mutex@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+##################################################
+# SSI resource-accounting leak tests -- test/c/.
+#
+# Regression gates for the SIREAD cleanup resource leaks (issues #137, #138).
+# They assert through the public statistics APIs that locker / mutex / detail
+# slot counts stay bounded across thousands of sequential snapshot txns.
+# `make leak_tests` builds them; test/c/leak-run.sh builds+runs both modes.
+##################################################
+leak_tests: $(LEAK_TESTS)
+
+leak_si_locker@o@: $(testdir)/c/leak_si_locker.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+leak_si_locker: leak_si_locker@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) leak_si_locker@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+leak_si_mvcc_mtx@o@: $(testdir)/c/leak_si_mvcc_mtx.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+leak_si_mvcc_mtx: leak_si_mvcc_mtx@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) leak_si_mvcc_mtx@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 ##################################################
