@@ -44,7 +44,8 @@ tiers_tests = [
 
 foreach t : tiers_tests
   exe = executable('test_' + t[0],
-    files(meson.project_source_root() / 'test' / t[1] / t[2]),
+    [files(meson.project_source_root() / 'test' / t[1] / t[2]),
+     db_h, db_int_h, db_int_def_h],
     include_directories: inc,
     link_with: libdb,
     dependencies: thread_dep,
