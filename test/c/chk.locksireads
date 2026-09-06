@@ -1,0 +1,136 @@
+#!/bin/sh
+# chk.locksireads -- ASan regression gate for GitHub issue #140.
+#
+# Builds an AddressSanitizer-instrumented libdb (reusing the fuzz gate's
+# build_asan_gate/ mechanism -- see test/fuzz/check-crashes.sh) and runs
+# test/c/test_lock_sireads.c twice:
+#
+#   --trigger   DB_TXN_SNAPSHOT txn on a DB_MULTIVERSION btree holding BOTH a
+#               write lock and a DB_LOCK_SIREAD marker, committed on a
+#               replication master (the only path that builds a commit lock
+#               list).  Before the fix this was a heap-buffer-overflow WRITE in
+#               __lock_vec (the SIREAD lock consumed a DBT descriptor slot that
+#               the nwrites-based sizing never allocated) AND produced a commit
+#               lock list that omitted the modified page.  Must be clean.
+#
+#   --control   The same transaction with the read removed: one write lock, no
+#               SIREAD marker, no overflow.  Clean before AND after the fix; it
+#               proves the SIREAD lock is what triggers the bug.
+#
+# We assert BOTH: no ASan fault, and -- for the trigger -- that the commit lock
+# list actually names the page the transaction modified (the isolation half of
+# #140: a SIREAD object must never displace a write-lock object, because the
+# replication apply path reacquires only the listed objects as write locks).
+#
+# Run from test/c/ inside a `nix develop` shell (or any shell with clang).
+# Usage:  sh test/c/chk.locksireads
+# Env:    CC (default clang), LIBDB_ASAN_BUILD (reuse an existing ASan tree)
+
+set -eu
+
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT=$(CDPATH= cd -- "$HERE/../.." && pwd)
+CC=${CC:-clang}
+GATE=${LIBDB_ASAN_BUILD:-$ROOT/build_asan_gate}
+WORK=$(mktemp -d)
+trap 'rm -f -r "$WORK" 2>/dev/null || true' EXIT
+
+# ---- 1. ASan libdb (same recipe as test/fuzz/check-crashes.sh) -------------
+if [ ! -f "$GATE/libdb.a" ]; then
+	echo "building ASan libdb in $GATE (this takes a few minutes)..."
+	mkdir -p "$GATE"
+	( cd "$GATE" &&
+	  ../dist/configure --enable-debug \
+	      CC="$CC" CFLAGS="-fsanitize=address -g -O1" >configure.log 2>&1 &&
+	  make -j"$(nproc 2>/dev/null || echo 4)" >build.log 2>&1 ) || {
+		echo "FAIL: could not build an ASan libdb (see $GATE/build.log)" >&2
+		exit 1
+	}
+fi
+
+# liburing is linked in when the ASan tree autodetected io_uring.
+URING=
+grep -q '^#define[ 	]*HAVE_IO_URING' "$GATE/db_config.h" 2>/dev/null &&
+    URING=-luring
+
+echo "compiling test_lock_sireads against $GATE"
+"$CC" -g -O1 -fsanitize=address -fno-omit-frame-pointer -I "$GATE" \
+    "$HERE/test_lock_sireads.c" "$GATE/libdb.a" $URING -lpthread -ldl \
+    -o "$WORK/test_lock_sireads"
+
+# ---- 2. run both variants -------------------------------------------------
+rc=0
+run() {  # run <label> <arg>
+	dir="$WORK/$1"
+	mkdir -p "$dir"
+	if ( cd "$dir" &&
+	     ASAN_OPTIONS=detect_leaks=0:halt_on_error=1:abort_on_error=1 \
+	     "$WORK/test_lock_sireads" "$2" ) >"$WORK/$1.log" 2>&1; then
+		echo "PASS: $1 (no ASan fault)"
+	else
+		echo "FAIL: $1 exited $? -- ASan fault or DB error"
+		sed -n '1,40p' "$WORK/$1.log"
+		rc=1
+	fi
+	if grep -q 'AddressSanitizer' "$WORK/$1.log"; then
+		echo "FAIL: $1 produced an AddressSanitizer report"
+		grep -m1 'SUMMARY: AddressSanitizer' "$WORK/$1.log" || true
+		rc=1
+	fi
+}
+
+run trigger --trigger
+run control --control
+
+# ---- 3. the trigger's commit lock list must name the MODIFIED page --------
+# Before the fix, __lock_fix_list was handed nwrites, so the list was truncated
+# to the first descriptor -- which (newly granted locks go to the HEAD of the
+# locker's heldby list) was the SIREAD object, NOT the written page.
+if [ "$rc" = 0 ]; then
+	PRINTLOG="$GATE/.libs/db_printlog"
+	if [ -x "$PRINTLOG" ]; then
+		LD_LIBRARY_PATH="$GATE/.libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+		    "$PRINTLOG" -h "$WORK/trigger" >"$WORK/trigger.printlog" 2>/dev/null || true
+		if [ -s "$WORK/trigger.printlog" ]; then
+			if awk '
+			  # Last __db_addrem writing key journal000001: remember its
+			  # pgno and txn id; then the matching __txn_regop must list
+			  # that same page.
+			  /__db_addrem:/ { hdr = $0; pg = "" }
+			  /^[ \t]*pgno:/ { if (hdr != "") pg = $2 }
+			  /data: journal000001/ {
+				match(hdr, /txnp [^ ]+/)
+				txn = substr(hdr, RSTART + 5, RLENGTH - 5)
+				wpg = pg
+			  }
+			  { if (txn != "" && $0 ~ ("__txn_regop: rec: 10 txnp " txn " ")) inc = 1 }
+			  inc && /^[ \t]*\(/ { locks = locks " " $0 }
+			  END {
+				if (wpg == "") { print "no write record found"; exit 2 }
+				if (index(locks, " " wpg) == 0) {
+					printf "commit lock list %s omits written page %s\n", locks, wpg
+					exit 1
+				}
+				printf "commit lock list names written page %s\n", wpg
+				exit 0
+			  }
+			' "$WORK/trigger.printlog"; then
+				echo "PASS: trigger commit lock list is complete"
+			else
+				echo "FAIL: trigger commit lock list is wrong (issue #140 isolation half)"
+				rc=1
+			fi
+		else
+			echo "SKIP: db_printlog produced no output; lock-list content not checked"
+		fi
+	else
+		echo "SKIP: $PRINTLOG not built; lock-list content not checked"
+	fi
+fi
+
+if [ "$rc" = 0 ]; then
+	echo "chk.locksireads: PASS"
+else
+	echo "chk.locksireads: FAIL"
+fi
+exit "$rc"
