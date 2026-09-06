@@ -154,14 +154,20 @@ __db_genrand(env)
 
 	if (env->mti == N+1) {  /* if sgenrand() has not been called, */
 		/*
-		 * Seed the generator with the hashed time.  The __db_mac
-		 * function will return 4 bytes if we don't send in a key.
+		 * Seed the generator from the OS entropy source.  This used to
+		 * hash the wall-clock seconds, which is low-entropy and
+		 * guessable -- an attacker who knows roughly when the
+		 * environment was created could narrow the IV stream.  Fall
+		 * back to the hashed clock only if the OS has no entropy
+		 * source at all, so encryption still functions on such a
+		 * platform (with the historical, weaker seeding).
 		 */
-		do {
-			__os_gettime(env, &ts, 1);
-			__db_chksum(NULL, (u_int8_t *)&ts.tv_sec,
-			    sizeof(ts.tv_sec), NULL, (u_int8_t *)&seed);
-		} while (seed == 0);
+		if (__os_csprng(env, &seed, sizeof(seed)) != 0 || seed == 0)
+			do {
+				__os_gettime(env, &ts, 1);
+				__db_chksum(NULL, (u_int8_t *)&ts.tv_sec,
+				    sizeof(ts.tv_sec), NULL, (u_int8_t *)&seed);
+			} while (seed == 0);
 		__db_sgenrand((unsigned long)seed, env->mt, &env->mti);
 	}
 
