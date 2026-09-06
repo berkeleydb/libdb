@@ -333,7 +333,7 @@ __lock_vec(env, sh_locker, flags, list, nlist, elistp)
 	DB_LOCKREGION *region;
 	DB_LOCKTAB *lt;
 	DBT *objlist, *np;
-	u_int32_t ndx;
+	u_int32_t ndx, nobj;
 	int did_abort, i, ret, run_dd, upgrade, writes;
 
 	/* Check if locks have been globally turned off. */
@@ -398,9 +398,27 @@ __lock_vec(env, sh_locker, flags, list, nlist, elistp)
 				 * We know these should be ilocks,
 				 * but they could be something else,
 				 * so allocate room for the size too.
+				 *
+				 * Size from the SAME predicate the populate
+				 * branch below uses -- one slot per retained
+				 * write lock -- so sizing and population agree
+				 * by construction.  Do NOT size from
+				 * sh_locker->nwrites: that counter only counts
+				 * write locks whose status is DB_LSTAT_HELD,
+				 * and it says nothing about the non-write
+				 * modes this loop retains (DB_LOCK_SIREAD,
+				 * DB_LOCK_IREAD, DB_LOCK_WAIT, ...), which used
+				 * to fall through and consume uncounted
+				 * slots -- a heap overflow (issue #140).
 				 */
-				objlist->size =
-				     sh_locker->nwrites * sizeof(DBT);
+				nobj = 0;
+				if (writes != 1)
+					SH_LIST_FOREACH(lp,
+					    &sh_locker->heldby,
+					    locker_links, __db_lock)
+						if (IS_WRITELOCK(lp->mode))
+							nobj++;
+				objlist->size = nobj * sizeof(DBT);
 				if ((ret = __os_malloc(env,
 				     objlist->size, &objlist->data)) != 0)
 					goto up_done;
@@ -450,10 +468,51 @@ __lock_vec(env, sh_locker, flags, list, nlist, elistp)
 						break;
 					continue;
 				}
-				if (objlist != NULL) {
-					DB_ASSERT(env, (u_int8_t *)np <
-					     (u_int8_t *)objlist->data +
-					     objlist->size);
+				/*
+				 * MODE ENUMERATION (keep in sync with the
+				 * sizing pass above, and with IS_WRITELOCK in
+				 * dbinc/lock.h):
+				 *
+				 * The replication commit lock list is consumed
+				 * by __rep_process_txn, which reacquires every
+				 * listed object as DB_LOCK_WRITE before apply.
+				 * It must therefore contain EXACTLY the write
+				 * locks this transaction retains.  A retained
+				 * non-write mode (DB_LOCK_SIREAD -- an SSI read
+				 * marker, DB_LOCK_IREAD, DB_LOCK_WAIT, ...) is
+				 * not a write lock and must not enter the list:
+				 * before this test existed such a lock consumed
+				 * a descriptor slot that the sizing never
+				 * allocated (heap overflow) and, because newly
+				 * granted locks go to the head of heldby, could
+				 * displace a modified page's write-lock object
+				 * from the truncated list -- letting apply
+				 * change a page a client still read-locks
+				 * (issue #140).
+				 *
+				 * Non-write locks retained here are released
+				 * later by the DB_LOCK_PUT_ALL in __txn_end;
+				 * SIREAD markers are handled just before it by
+				 * __lock_sicommit, which is why they must be
+				 * RETAINED (not released) on this path.
+				 */
+				if (objlist != NULL && IS_WRITELOCK(lp->mode)) {
+					/*
+					 * Runtime bounds check, not a
+					 * DB_ASSERT: DB_ASSERT compiles out of
+					 * every non-DIAGNOSTIC build, which is
+					 * precisely where a sizing/population
+					 * skew would corrupt the heap in
+					 * silence.  Fail loudly instead.
+					 */
+					if ((u_int8_t *)(np + 1) >
+					    (u_int8_t *)objlist->data +
+					    objlist->size) {
+						__db_errx(env, DB_STR("2056",
+						   "Lock list overflow"));
+						ret = __env_panic(env, EINVAL);
+						break;
+					}
 					np->data = SH_DBT_PTR(&sh_obj->lockobj);
 					np->size = sh_obj->lockobj.size;
 					np++;
@@ -462,10 +521,18 @@ __lock_vec(env, sh_locker, flags, list, nlist, elistp)
 			if (ret != 0)
 				goto up_done;
 
-			if (objlist != NULL)
+			/*
+			 * Serialize exactly the descriptors populated above --
+			 * not sh_locker->nwrites, which is an independently
+			 * maintained counter and so could truncate the list or
+			 * read uninitialized slots.
+			 */
+			if (objlist != NULL) {
+				nobj = (u_int32_t)(np - (DBT *)objlist->data);
 				if ((ret = __lock_fix_list(env,
-				     objlist, sh_locker->nwrites)) != 0)
+				    objlist, nobj)) != 0)
 					goto up_done;
+			}
 			switch (list[i].op) {
 			case DB_LOCK_UPGRADE_WRITE:
 				/*
