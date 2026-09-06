@@ -327,6 +327,7 @@ libdb_srcnames = [
   'src/os/os_atomic.c',
   'src/os/os_clock.c',
   'src/os/os_config.c',
+  'src/os/os_csprng.c',
   'src/os/os_cpu.c',
   'src/os/os_ctime.c',
   'src/os/os_dir.c',

@@ -230,6 +230,7 @@ src/os/os_aio_iocp.c	android
 src/os/os_alloc.c	android
 src/os/os_clock.c	android
 src/os/os_config.c	android
+src/os/os_csprng.c	android
 src/os/os_cpu.c	android
 src/os/os_ctime.c	android
 src/os/os_dir.c	android

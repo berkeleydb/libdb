@@ -316,6 +316,7 @@
     <ClCompile Include="..\..\src\os\os_uid.c"/>
     <ClCompile Include="..\..\src\os_windows\os_abs.c"/>
     <ClCompile Include="..\..\src\os_windows\os_clock.c"/>
+    <ClCompile Include="..\..\src\os_windows\os_csprng.c"/>
     <ClCompile Include="..\..\src\os_windows\os_config.c"/>
     <ClCompile Include="..\..\src\os_windows\os_cpu.c"/>
     <ClCompile Include="..\..\src\os_windows\os_dir.c"/>
