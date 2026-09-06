@@ -9,6 +9,7 @@
 #   ninja -C build           # parallel build -> libdb
 #   ninja -C build docs      # render docs_src/ -> docs-build/
 #   ninja -C build bench     # build the test/bench microbenchmark drivers
+#   meson test -C build --suite tiers   # isolation + lock-matrix tiers
 
 project('libdb', 'c',
   version: '5.3.34',
@@ -34,3 +35,8 @@ subdir('dist')
 if not get_option('hegel').disabled()
   subdir('test/pbt')
 endif
+
+# Isolation / soak / lock-matrix test tiers (B1/B2/B3) -- test/tiers. Always
+# entered: the drivers are build_by_default:false so a plain `ninja` is
+# unaffected, and they need no library-side hooks (public API only).
+subdir('test/tiers')
