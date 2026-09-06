@@ -1917,6 +1917,39 @@ fi_sweep: fi_sweep@o@ $(DEF_LIB)
 fi_tests: fi_sweep
 
 ##################################################
+# Isolation / soak / lock-matrix test tiers -- test/isolation/, test/soak/,
+# test/lockmatrix/.
+#
+# These need no library-side hooks at all (they drive the public API only), so
+# unlike the DST and faultinject tiers there is no configure option and no
+# ADDITIONAL_OBJS.  `make tier_tests` builds all three drivers.  Each tier also
+# has a run.sh that builds standalone against an existing build_unix; see the
+# README.md in each directory.
+##################################################
+test_iso_anomaly@o@: $(testdir)/isolation/test_iso_anomaly.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+test_iso_anomaly: test_iso_anomaly@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_iso_anomaly@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_soak_resources@o@: $(testdir)/soak/test_soak_resources.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+test_soak_resources: test_soak_resources@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_soak_resources@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_lock_matrix@o@: $(testdir)/lockmatrix/test_lock_matrix.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+test_lock_matrix: test_lock_matrix@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_lock_matrix@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+tier_tests: test_iso_anomaly test_soak_resources test_lock_matrix
+
+##################################################
 # Targets for example programs.
 ##################################################
 examples_c: ex_access ex_apprec ex_btrec ex_bulk ex_env ex_heap ex_lock \
