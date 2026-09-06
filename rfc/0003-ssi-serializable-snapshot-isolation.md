@@ -58,9 +58,32 @@ Both of Cahill's rw-conflict detection paths are implemented:
 2. **MVCC version-chain path** in `mp_fget` — a reader handed an older version
    than one a concurrent writer committed.
 
-SIREAD markers are reclaimed incrementally and bounded (not only at
-checkpoint); the commit-time pivot check is race-free against concurrent edge
-recording. The two working notes in `rfc/0003/` are the porting/design record:
+SIREAD markers are reclaimed incrementally (not only at checkpoint).
+
+> **Known limitations (2026-09, from external reports #136–#140).** The claims in
+> this RFC describe the *intended* design; the delivered behavior is weaker in
+> ways confirmed by outside review. Until the fixes land with regression tests,
+> treat the serializability guarantee as **best-effort, not absolute**:
+>
+> - **#136 — write skew can commit.** The commit-time pivot check is **not**
+>   atomic with respect to the `TXN_RUNNING` → `TXN_COMMITTED` transition. A
+>   conflicting write that lands while the first transaction is *inside*
+>   `DB_TXN->commit` can leave both transactions committing, producing a state
+>   with no serial order. A separate observation from the same report: two
+>   records on *different pages of one B-tree* may detect no conflict at all.
+>   (An earlier working note in this directory claimed this race was resolved;
+>   that claim was wrong and is retracted.)
+> - **#137 / #138 — marker reclamation is not fully bounded.** SIREAD cleanup
+>   does not reclaim the deferred committed-reader locker, and
+>   `__txn_reap_si_details` frees a transaction detail without releasing its MVCC
+>   mutex. Long-lived environments running many snapshot transactions can
+>   therefore exhaust the mutex region and see `ENOMEM`.
+> - **#140 — lock-list sizing.** `DB_LOCK_SIREAD` was not accounted for in the
+>   replication commit lock-list sizing (a heap overflow in release builds).
+>
+> This section is removed only when each item is fixed *and* covered by a test.
+
+The two working notes in `rfc/0003/` are the porting/design record:
 
 - **`M2-partition-design.md`** — porting Cahill's 4.6.21 single-global-lock-table
   SIREAD GC onto 5.3.x's *partitioned* lock regions (`OBJECT_LOCK_NDX` is now
