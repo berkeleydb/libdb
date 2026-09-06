@@ -347,6 +347,16 @@ if [ "${COV_BACKUP:-1}" = 1 ]; then
   else
     echo "FAIL recd_handlers (rc=$?)"; tail -5 /tmp/cov-recdhandlers.log
   fi
+  # Legacy P_HASH_UNSORTED lookup with a custom DB->set_h_compare: the
+  # h_compare branch of __ham_getindex_unsorted needs a pre-4.6 page AND an
+  # explicit comparator at the same time, which no Tcl test arranges
+  # (test093 sets a comparator over sorted pages; run_upgrade.sh reads legacy
+  # pages without one).  Regression gate for issue #139.
+  if sh "$root/test/db/run_hash_unsorted_cmp.sh" >/tmp/cov-hashunsorted.log 2>&1; then
+    echo "PASS hash_unsorted_cmp"
+  else
+    echo "FAIL hash_unsorted_cmp (rc=$?)"; tail -5 /tmp/cov-hashunsorted.log
+  fi
   echo "  .gcda files after backup/compact: $(find . -name '*.gcda' | wc -l)"
 fi
 
