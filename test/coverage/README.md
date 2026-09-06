@@ -77,6 +77,27 @@ timeout, so they cannot hang:
     current db, because current off-page dups are already stored as a Recno
     tree (P_LRECNO/P_IRECNO), not a flat page chain. A genuine pre-3.1 fixture
     is required.
+- **Legacy unsorted-hash lookup with a custom comparator** —
+  `test/db/run_hash_unsorted_cmp.sh` builds `test/db/hash_unsorted_cmp.c`, the
+  regression test for issue #139. `__ham_getindex_unsorted`
+  (`src/hash/hash_page.c`) is the linear search over a pre-4.6
+  `P_HASH_UNSORTED` page; its `t->h_compare != NULL` inline-key branch was
+  never reached by any test, because the branch needs a legacy page **and** an
+  explicitly configured `DB->set_h_compare` at the same time (`test093` sets a
+  comparator but only over current-format sorted pages, which take
+  `__ham_getindex_sorted`; `run_upgrade.sh` reads legacy pages but never sets a
+  comparator). The branch called the comparator, dropped its result, and built
+  the stored-key DBT with the *search* key's length -- so an equal key was
+  reported absent (`DB->get` → `DB_NOTFOUND`, `DB_NOOVERWRITE` → success plus a
+  duplicate) and a search key that merely prefixed a stored key compared equal.
+  The driver manufactures its legacy fixture the same way `run_upgrade.sh`
+  does, without an old library or a committed blob: it creates a current-format
+  Hash db (small pages, inline + off-page keys), then rewrites each bucket
+  page's `PAGE.type` byte from `P_HASH` to `P_HASH_UNSORTED` and the metadata
+  version back to the 4.5.20 hash version 8 -- exactly what `__ham_getindex`
+  dispatches to the unsorted path. Every check runs twice, with and without the
+  comparator, so a failure is attributable to the comparator path and not to
+  the fixture.
 - **Async I/O backends (os_aio)** — `test/os/run_os_aio.sh` builds
   `test/os/os_aio_direct.c`, which links the internal libdb symbols and drives
   the async-I/O abstraction (`src/os/os_aio.c`) and its backends
