@@ -682,11 +682,15 @@ __ham_getindex_unsorted(dbc, p, key, match, indx)
 			break;
 		case H_KEYDATA:
 			if (t->h_compare != NULL) {
-				DB_INIT_DBT(pg_dbt,
-				    HKEYDATA_DATA(hk), key->size);
-				if (t->h_compare(
-				    dbp, key, &pg_dbt) != 0)
-					break;
+				/*
+				 * Compare against the stored key at its own
+				 * length -- as __ham_getindex_sorted does --
+				 * and record the result: a 0 return means the
+				 * keys are equal and the search is done.
+				 */
+				DB_INIT_DBT(pg_dbt, HKEYDATA_DATA(hk),
+				    LEN_HKEY(dbp, p, dbp->pgsize, i));
+				res = t->h_compare(dbp, key, &pg_dbt);
 			} else if (key->size ==
 			    LEN_HKEY(dbp, p, dbp->pgsize, i))
 				res = memcmp(key->data, HKEYDATA_DATA(hk),
