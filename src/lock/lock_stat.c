@@ -606,6 +606,13 @@ __lock_dump_object(lt, mbp, op)
 		__lock_printlock(lt, mbp, lp, 1);
 	SH_TAILQ_FOREACH(lp, &op->waiters, links, __db_lock)
 		__lock_printlock(lt, mbp, lp, 1);
+	/*
+	 * SSI SIREAD markers live on their own list, not on holders: a mode
+	 * enumeration that walks only holders/waiters reports the object as
+	 * having no locks while markers still pin it (and pin their lockers).
+	 */
+	SH_TAILQ_FOREACH(lp, &op->sireaders, links, __db_lock)
+		__lock_printlock(lt, mbp, lp, 1);
 	return (0);
 }
 
@@ -677,6 +684,9 @@ __lock_printlock(lt, mbp, lp, ispgno)
 		break;
 	case DB_LOCK_WAIT:
 		mode = "WAIT";
+		break;
+	case DB_LOCK_SIREAD:
+		mode = "SIREAD";
 		break;
 	default:
 		mode = "UNKNOWN";
