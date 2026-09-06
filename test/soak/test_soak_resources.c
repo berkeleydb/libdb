@@ -104,6 +104,14 @@ typedef struct soak_workload {
 	const char *issue;
 	/* Which counters this workload asserts on; 0 => all of them. */
 	unsigned    mask;
+	/*
+	 * Minimum transactions needed for a meaningful verdict.  Some SSI
+	 * bookkeeping is a bounded sawtooth whose collect phase only fires
+	 * once the live count passes half the allocated lock objects; a window
+	 * shorter than one full period lands on a rising phase and reads as a
+	 * leak.  0 => the default is fine.
+	 */
+	long	    min_txns;
 } soak_workload;
 
 static DB_ENV	*env;
@@ -493,19 +501,19 @@ wl_cursor_churn(soak_workload *w, long i)
 static soak_workload workloads[] = {
     { "ro_snapshot",
       "read-only DB_TXN_SNAPSHOT txns, no write (the #137 shape)",
-      wl_ro_snapshot, 1, "#137", 0 },
+      wl_ro_snapshot, 0, NULL, 0, 0 },
     { "mvcc_retained",
       "snapshot txns that read and write, details MVCC-retained (#138)",
-      wl_mvcc_retained, 1, "#138", 0 },
+      wl_mvcc_retained, 0, NULL, 0, 25000 },
     { "rw_plain",
       "ordinary read-write txns, no snapshot (control)",
-      wl_rw_plain, 0, NULL, 0 },
+      wl_rw_plain, 0, NULL, 0, 0 },
     { "aborted",
       "snapshot txns that all abort (control)",
-      wl_aborted, 0, NULL, 0 },
+      wl_aborted, 0, NULL, 0, 0 },
     { "cursor_churn",
       "plain txns that open, walk and close a cursor (control)",
-      wl_cursor_churn, 0, NULL, 0 },
+      wl_cursor_churn, 0, NULL, 0, 0 },
 };
 #define	NWORKLOADS ((int)(sizeof(workloads) / sizeof(workloads[0])))
 
@@ -515,6 +523,36 @@ static soak_workload workloads[] = {
  *	per 1000 transactions.  Least squares rather than (last - first)
  *	because a single noisy endpoint should not decide the verdict.
  */
+/*
+ * soak_peak_grew --
+ *	Does counter `c' peak HIGHER in the second half of [lo, hi) than in the
+ *	first?  This separates a genuine leak from a bounded sawtooth: a leak
+ *	climbs, so its later peaks exceed its earlier ones, while bookkeeping
+ *	that accumulates and is then collected returns to the same band no
+ *	matter how long it runs.  A small slack keeps ordinary jitter from
+ *	reading as growth.
+ */
+static int
+soak_peak_grew(const soak_sample *s, int lo, int hi, int c)
+{
+	double first, second, v;
+	int i, mid;
+
+	if (hi - lo < 4)		/* Too few samples to judge. */
+		return (1);
+	mid = lo + (hi - lo) / 2;
+	first = second = 0.0;
+	for (i = lo; i < mid; i++)
+		if ((v = s[i].v[c]) > first)
+			first = v;
+	for (i = mid; i < hi; i++)
+		if ((v = s[i].v[c]) > second)
+			second = v;
+
+	/* Grew only if the later peak clears the earlier one by >10%. */
+	return (second > first * 1.10 + 1.0);
+}
+
 static double
 soak_slope(const soak_sample *s, int lo, int hi, int c)
 {
@@ -550,9 +588,21 @@ run_workload(soak_workload *w)
 	double slope[C_NCOUNTER];
 	long every, i;
 	int c, leaked, nsample, ok, warm;
+	long n;
+
+	/*
+	 * Honour the workload's minimum: a window shorter than one sawtooth
+	 * period lands on a rising phase and reads as a leak (see min_txns).
+	 */
+	n = soak_n;
+	if (w->min_txns != 0 && n < w->min_txns) {
+		printf("    (raising %ld -> %ld transactions: this shape needs "
+		    "a full collect cycle to judge)\n", n, w->min_txns);
+		n = w->min_txns;
+	}
 
 	printf("== %s ==\n    shape: %s\n    %ld sequential transactions\n",
-	    w->name, w->shape, soak_n);
+	    w->name, w->shape, n);
 	soak_enomem_at = -1;
 	soak_enomem_call = NULL;
 
@@ -562,12 +612,12 @@ run_workload(soak_workload *w)
 		if (soak_put(NULL, i, 0) != 0)
 			soak_die("seed put", EINVAL);
 
-	every = soak_n / (SOAK_MAX_SAMPLE - 1);
+	every = n / (SOAK_MAX_SAMPLE - 1);
 	if (every < 1)
 		every = 1;
 	nsample = 0;
 	soak_sample_now(&s[nsample++], 0);
-	for (i = 1; i <= soak_n; i++) {
+	for (i = 1; i <= n; i++) {
 		int rc = w->one(w, i);
 
 		if (rc != 0)
@@ -575,8 +625,8 @@ run_workload(soak_workload *w)
 		if (i % every == 0 && nsample < SOAK_MAX_SAMPLE)
 			soak_sample_now(&s[nsample++], i);
 	}
-	if (nsample < SOAK_MAX_SAMPLE && s[nsample - 1].txns != soak_n)
-		soak_sample_now(&s[nsample++], soak_n);
+	if (nsample < SOAK_MAX_SAMPLE && s[nsample - 1].txns != n)
+		soak_sample_now(&s[nsample++], n);
 
 	/*
 	 * Warmup: ignore the first quarter of the samples.  Lazy region
@@ -607,8 +657,26 @@ run_workload(soak_workload *w)
 		printf("        %-14s %+10.2f  (tol %6.2f)%s\n",
 		    counters[c].name, slope[c], counters[c].tolerance,
 		    slope[c] > counters[c].tolerance ? "   <== GROWING" : "");
-		if (slope[c] > counters[c].tolerance)
-			leaked = 1;
+		if (slope[c] <= counters[c].tolerance)
+			continue;
+		/*
+		 * A positive slope alone does not prove a leak.  Some SSI
+		 * bookkeeping is a bounded SAWTOOTH: it accumulates until a GC
+		 * trigger fires (for markers, when the live count passes half
+		 * the allocated lock objects) and then collapses.  A sample
+		 * window that happens to land on a rising phase yields a large
+		 * least-squares slope even though the peak never grows -- and
+		 * "the peak stays bounded" is the honest property a fixed engine
+		 * guarantees here.  So only call it a leak if the second half
+		 * also peaks higher than the first: a real leak climbs, a
+		 * sawtooth returns.
+		 */
+		if (!soak_peak_grew(s, warm, nsample, c)) {
+			printf("        %-14s bounded: peak does not grow "
+			    "(sawtooth, not a leak)\n", counters[c].name);
+			continue;
+		}
+		leaked = 1;
 	}
 	if (soak_enomem_at >= 0) {
 		printf("        ENOMEM/RUNRECOVERY from %s at transaction "
@@ -629,7 +697,7 @@ run_workload(soak_workload *w)
 		else
 			printf("    FAIL: a region resource grew "
 			    "monotonically beyond tolerance over %ld "
-			    "sequential transactions.\n\n", soak_n);
+			    "sequential transactions.\n\n", n);
 		return (1);
 	}
 	if (w->expect_leak)
