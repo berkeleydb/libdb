@@ -1,0 +1,174 @@
+# Isolation, resource-accounting and lock-mode test tiers.
+#
+# These three tiers close a structural blind spot: the existing suite is strong
+# on crash/durability (test/sim) and on memory safety against malformed input
+# (test/fuzz), but was blind to (a) isolation semantics as a checkable property
+# and (b) long-running resource accounting.  Five external bug reports
+# (#136-#140) landed on v5.3.34 through that gap.
+#
+#   B1  test/isolation/  serializability checker -- would have caught #136
+#   B2  test/soak/       resource-accounting soak -- would have caught #137/#138
+#   B3  test/lockmatrix/ lock-mode matrix under ASan -- would have caught #140
+#
+# Gating policy follows the house style:
+#   - B1 is a HARD GATE on every push/PR.  It is fast (~1 min) and its
+#     expectations are self-correcting: the checker fails both when a new
+#     serializability violation appears AND when a scenario marked as
+#     reproducing a known issue stops violating, so a fix cannot land without
+#     updating the expectation.
+#   - B3 is advisory (continue-on-error) for now, because on current master it
+#     legitimately aborts under ASan: that IS the #140 reproduction.  Flip it to
+#     a hard gate in the same PR that fixes #140.
+#   - B2 (soak) is scheduled/nightly plus manual dispatch: it is a long run and
+#     the same expectation-flip applies once #137/#138 land.
+
+name: Test tiers (isolation / soak / lock matrix)
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    paths:
+      - 'test/isolation/**'
+      - 'test/soak/**'
+      - 'test/lockmatrix/**'
+      - 'src/lock/**'
+      - 'src/txn/**'
+      - 'src/mp/**'
+      - 'dist/**'
+      - '.github/workflows/test-tiers.yml'
+  schedule:
+    # Nightly (04:41 UTC), offset from ci.yml's 03:17 so the runners do not
+    # contend.  This is when the soak tier runs.
+    - cron: '41 4 * * *'
+  workflow_dispatch:
+    inputs:
+      soak_n:
+        description: 'Transactions per soak workload'
+        default: '5000'
+
+concurrency:
+  group: test-tiers-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Tier B1 -- isolation / anomaly checker.  Hard gate: fast and deterministic
+  # enough to run per push.
+  # --------------------------------------------------------------------------
+  isolation:
+    name: B1 isolation/anomaly checker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liburing-dev
+
+      - name: Build libdb (debug, so DB_ASSERTs are live)
+        working-directory: build_unix
+        run: |
+          ../dist/configure --enable-debug
+          make -j"$(nproc)"
+
+      - name: Run the anomaly scenarios
+        working-directory: test/isolation
+        run: ISO_TIMEOUT=600 ./run.sh
+
+      - name: Upload scenario databases on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolation-artifacts
+          path: test/isolation/build/ISODIR.*/**
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # Tier B3 -- lock-mode matrix under ASan.  Advisory until #140 lands, because
+  # the ASan heap-buffer-overflow it finds in __lock_vec IS the bug report.
+  # --------------------------------------------------------------------------
+  lock-matrix:
+    name: B3 lock-mode matrix (ASan)
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory until #140 is fixed
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang + build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm liburing-dev
+          clang --version
+
+      - name: Run the lock-mode matrix (builds an ASan libdb once)
+        working-directory: test/lockmatrix
+        run: CC=clang LOCK_TIMEOUT=900 ./run.sh 2>&1 | tee matrix.log
+
+      - name: Summarise
+        if: always()
+        working-directory: test/lockmatrix
+        run: |
+          if grep -q 'AddressSanitizer' matrix.log; then
+            echo "::warning::Tier B3 reproduced an ASan fault in the lock list"
+            echo "Last shape attempted before the fault:"
+            grep -E '^    (PUT_READ|UPGRADE_WRITE)' matrix.log | tail -1
+            grep -m1 'SUMMARY: AddressSanitizer' matrix.log || true
+          fi
+
+      - name: Upload matrix log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lock-matrix-log
+          path: test/lockmatrix/matrix.log
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # Tier B2 -- resource-accounting soak.  Scheduled/manual only: it is a long
+  # run (thousands of sequential transactions per workload).
+  # --------------------------------------------------------------------------
+  soak:
+    name: B2 resource-accounting soak
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory until #137/#138 are fixed
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liburing-dev
+
+      - name: Build libdb (debug)
+        working-directory: build_unix
+        run: |
+          ../dist/configure --enable-debug
+          make -j"$(nproc)"
+
+      - name: Soak
+        working-directory: test/soak
+        run: |
+          SOAK_N="${{ github.event.inputs.soak_n || 5000 }}" \
+          SOAK_TIMEOUT=2400 ./run.sh 2>&1 | tee soak.log
+
+      - name: Summarise growth
+        if: always()
+        working-directory: test/soak
+        run: |
+          echo "== slopes that exceeded tolerance =="
+          grep -E 'GROWING|ENOMEM' soak.log || echo "(none)"
+
+      - name: Upload growth curves
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soak-growth-curves
+          path: test/soak/soak.log
+          if-no-files-found: ignore
