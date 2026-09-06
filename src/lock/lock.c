@@ -1063,12 +1063,32 @@ again:	if (obj == NULL) {
 				/*
 				 * Upgrading our own SIREAD to WRITE: drop the
 				 * SIREAD marker to avoid self-conflicts.
+				 *
+				 * Account for the detail reference the marker
+				 * held, exactly as the other two removal sites
+				 * (__lock_sicommit, __lock_siclean_obj) do and
+				 * with the same td_off guard the grant used.
+				 * Without it si_ref stays permanently above the
+				 * true marker count, so the owning detail (and
+				 * the locker deferring on it) can never be
+				 * reclaimed: a snapshot txn that reads then
+				 * writes the same key leaks a detail, a locker
+				 * and their mutex slots on every iteration until
+				 * txn_begin returns ENOMEM.
+				 *
+				 * This is the reader's OWN marker (sh_off ==
+				 * holder), so the detail is its live, running
+				 * transaction: si_ref cannot reach zero here and
+				 * no reclaim can trigger underneath us.
 				 */
 				SH_TAILQ_REMOVE(&sh_obj->sireaders,
 				    sireadlp, links, __db_lock);
 				if (atomic_read_relaxed(&region->nsireaders) > 0)
 					(void)atomic_dec(env,
 					    &region->nsireaders);
+				if (sh_locker->td_off != INVALID_ROFF)
+					(void)atomic_dec(env,
+					    &LOCKER_TD(env, sh_locker)->si_ref);
 				if ((ret = __lock_freelock(lt, sireadlp,
 				    LOCK_HOLDER(env, sireadlp),
 				    DB_LOCK_UNLINK | DB_LOCK_FREE)) != 0)
