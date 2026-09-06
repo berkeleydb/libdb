@@ -107,7 +107,12 @@ jobs:
 
       - name: Run the lock-mode matrix (builds an ASan libdb once)
         working-directory: test/lockmatrix
-        run: CC=clang LOCK_TIMEOUT=900 ./run.sh 2>&1 | tee matrix.log
+        run: |
+          # Pipe-to-tee would mask the driver's exit status behind tee's, and
+          # an ASan abort is exactly the signal we must not lose.  Capture the
+          # status explicitly and re-raise it after the summary step has run.
+          set -o pipefail
+          CC=clang LOCK_TIMEOUT=900 ./run.sh 2>&1 | tee matrix.log
 
       - name: Summarise
         if: always()
@@ -155,6 +160,7 @@ jobs:
       - name: Soak
         working-directory: test/soak
         run: |
+          set -o pipefail   # do not let tee mask a failing soak
           SOAK_N="${{ github.event.inputs.soak_n || 5000 }}" \
           SOAK_TIMEOUT=2400 ./run.sh 2>&1 | tee soak.log
 
