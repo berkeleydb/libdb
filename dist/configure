@@ -22095,6 +22095,12 @@ then :
   printf '%s\n' "#define HAVE_EXECINFO_H 1" >>confdefs.h
 
 fi
+ac_fn_c_check_header_compile "$LINENO" "sys/random.h" "ac_cv_header_sys_random_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_random_h" = xyes
+then :
+  printf '%s\n' "#define HAVE_SYS_RANDOM_H 1" >>confdefs.h
+
+fi
 ac_fn_c_check_header_compile "$LINENO" "sys/select.h" "ac_cv_header_sys_select_h" "$ac_includes_default"
 if test "x$ac_cv_header_sys_select_h" = xyes
 then :
@@ -27316,6 +27322,23 @@ ac_fn_c_check_func "$LINENO" "yield" "ac_cv_func_yield"
 if test "x$ac_cv_func_yield" = xyes
 then :
   printf '%s\n' "#define HAVE_YIELD 1" >>confdefs.h
+
+fi
+
+
+# Cryptographically strong OS entropy, used to seed encryption IVs.
+# getrandom(2) is Linux/glibc 2.25+; arc4random_buf(3) is the BSDs and macOS.
+# Neither is required: os_csprng.c falls back to reading /dev/urandom.
+ac_fn_c_check_func "$LINENO" "getrandom" "ac_cv_func_getrandom"
+if test "x$ac_cv_func_getrandom" = xyes
+then :
+  printf '%s\n' "#define HAVE_GETRANDOM 1" >>confdefs.h
+
+fi
+ac_fn_c_check_func "$LINENO" "arc4random_buf" "ac_cv_func_arc4random_buf"
+if test "x$ac_cv_func_arc4random_buf" = xyes
+then :
+  printf '%s\n' "#define HAVE_ARC4RANDOM_BUF 1" >>confdefs.h
 
 fi
 

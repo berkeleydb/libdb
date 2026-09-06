@@ -320,6 +320,7 @@ int __os_support_direct_io __P((void));
 int __os_support_db_register __P((void));
 int __os_support_replication __P((void));
 u_int32_t __os_cpu_count __P((void));
+int __os_csprng __P((ENV *, void *, size_t));
 char *__os_ctime __P((const time_t *, char *));
 int __os_dirlist __P((ENV *, const char *, int, char ***, int *));
 void __os_dirfree __P((ENV *, char **, int));
