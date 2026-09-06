@@ -6,6 +6,8 @@
 #                   rule_*.cocci convention checks and fails ONLY on NEW
 #                   violations vs the committed baseline (dist/cocci/baseline.txt).
 #                   This is a lint-style gate, NOT an ABI guarantee.
+#                   It ALSO runs the lock-mode inventory (see below), which is
+#                   an absolute, non-baselined gate.
 #
 #   abi-diff     -- libabigail (abidiff) + nm are the AUTHORITATIVE binary-ABI
 #                   check (SHARED-struct layout, public symbols).  Advisory
@@ -55,6 +57,20 @@ jobs:
           cd build_unix
           ../dist/configure >/tmp/configure.log 2>&1 || { tail -40 /tmp/configure.log; exit 1; }
           test -f db.h && test -f db_int.h
+
+      # Lock-mode enumeration inventory (issue #140's root-cause class).
+      # BLOCKING and NOT baselined: adding a DB_LOCK_* mode to db_lockmode_t,
+      # renaming an inventoried enumeration site, or dropping a case arm from a
+      # switch declared exhaustive all fail here.  Coccinelle cannot express
+      # "switch missing a case" in this spatch build, so this script -- not
+      # rule_lock_mode_enum.cocci -- is the authority for that shape.
+      # See rfc/0003/lock-mode-audit.md.
+      - name: Lock-mode inventory (blocking)
+        run: |
+          sh dist/cocci/lockmode_inventory.sh || {
+            echo "::error::Lock-mode enumeration inventory is out of date. A new DB_LOCK_* mode (or a renamed/changed enumeration site) must be reviewed against every site in dist/cocci/lockmode_inventory.txt -- see rfc/0003/lock-mode-audit.md."
+            exit 1
+          }
 
       - name: Run convention rules
         run: |
@@ -248,3 +264,30 @@ jobs:
                 owner: context.repo.owner, repo: context.repo.repo,
                 issue_number: prNumber, body });
             }
+
+  # ---------------------------------------------------------------------------
+  # Lock-mode memory-safety regression gate (GitHub issue #140).  BLOCKING.
+  #
+  # Builds an AddressSanitizer libdb and runs test/c/chk.locksireads, whose
+  # trigger is a DB_TXN_SNAPSHOT txn holding BOTH a write lock and a
+  # DB_LOCK_SIREAD marker committed on a replication master.  Before the fix
+  # that was a heap-buffer-overflow WRITE in __lock_vec (the SIREAD lock
+  # consumed a DBT slot the nwrites-based sizing never allocated) plus a commit
+  # lock list that omitted the modified page.  The gate asserts both: no ASan
+  # fault, and that the serialized commit lock list names the written page.
+  #
+  # This is the empirical half of the guard; the static half (Coccinelle rules +
+  # the mode inventory) runs in the `conventions` job above.  See
+  # rfc/0003/lock-mode-audit.md.
+  # ---------------------------------------------------------------------------
+  lock-mode-asan:
+    name: lock-mode asan regression (#140)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang
+        run: sudo apt-get update && sudo apt-get install -y clang
+      - name: Run the ASan lock-mode gate
+        run: timeout 2400 sh test/c/chk.locksireads
+        env:
+          CC: clang

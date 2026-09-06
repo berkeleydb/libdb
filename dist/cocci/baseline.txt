@@ -1,3 +1,8 @@
+rule_lock_mode_enum|LOCK_MODE_READTEST|src/db/db_meta.c|else if (lockp->mode == DB_LOCK_READ_UNCOMMITTED )
+rule_lock_mode_enum|LOCK_MODE_READTEST|src/lock/lock.c|} else if (lock_mode == DB_LOCK_READ_UNCOMMITTED )
+rule_lock_mode_enum|LOCK_MODE_READTEST|src/lock/lock.c|lock_mode == DB_LOCK_READ_UNCOMMITTED )
+rule_lock_mode_enum|LOCK_MODE_READTEST|src/lock/lock.c|lock_mode == DB_LOCK_READ_UNCOMMITTED ) {
+rule_lock_mode_enum|LOCK_MODE_READTEST|src/lock/lock.c|lp->mode == DB_LOCK_READ_UNCOMMITTED ) {
 rule_mutex_unbalanced|MUTEX_UNBALANCED|src/btree/bt_curadj.c|return (ret);
 rule_mutex_unbalanced|MUTEX_UNBALANCED|src/crypto/mersenne/mt19937db.c|return (ret);
 rule_mutex_unbalanced|MUTEX_UNBALANCED|src/mp/mp_alloc.c|return (ret);
