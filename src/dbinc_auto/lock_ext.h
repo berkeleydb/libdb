@@ -32,6 +32,7 @@ int __lock_id_set __P((ENV *, u_int32_t, u_int32_t));
 int __lock_getlocker __P((DB_LOCKTAB *, u_int32_t, int, DB_LOCKER **));
 int __lock_getlocker_int __P((DB_LOCKTAB *, u_int32_t, int, DB_LOCKER **));
 int __lock_addfamilylocker __P((ENV *, u_int32_t, u_int32_t, u_int32_t));
+int __lock_sireap_lockers __P((ENV *));
 int __lock_freelocker  __P((DB_LOCKTAB *, DB_LOCKER *));
 int __lock_familyremove  __P((DB_LOCKTAB *, DB_LOCKER *));
 int __lock_fix_list __P((ENV *, DBT *, u_int32_t));
