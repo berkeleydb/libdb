@@ -166,6 +166,7 @@ run_driver db_upgrade  "$R/test/db/run_upgrade.sh"
 run_driver os_aio      "$R/test/os/run_os_aio.sh"
 run_driver backup      "$R/test/backup/run_backup_direct.sh"
 run_driver recd_compact "$R/test/db/run_recd_compact.sh"
+run_driver hash_unsorted_cmp "$R/test/db/run_hash_unsorted_cmp.sh"
 log "  .gcda after C drivers: $(find .libs -name '*.gcda' | wc -l)"
 
 # COV_DEAD_REG: deadlock detector + DB_REGISTER (driver-per-test)
