@@ -742,7 +742,7 @@ fi
 AC_HEADER_STAT
 AC_CHECK_HEADERS([sys/time.h time.h])
 AC_HEADER_DIRENT
-AC_CHECK_HEADERS(execinfo.h sys/select.h sys/socket.h sys/time.h)
+AC_CHECK_HEADERS(execinfo.h sys/random.h sys/select.h sys/socket.h sys/time.h)
 AC_CHECK_MEMBERS([struct stat.st_blksize])
 AM_TYPES
 
@@ -846,6 +846,11 @@ AC_CHECK_FUNCS(\
 	getrusage getuid hstrerror mprotect pstat_getdynamic\
 	pthread_self pthread_yield random sched_yield select setgid setuid\
 	sigaction snprintf stat sysconf vsnprintf yield)
+
+# Cryptographically strong OS entropy, used to seed encryption IVs.
+# getrandom(2) is Linux/glibc 2.25+; arc4random_buf(3) is the BSDs and macOS.
+# Neither is required: os_csprng.c falls back to reading /dev/urandom.
+AC_CHECK_FUNCS(getrandom arc4random_buf)
 
 AC_TIMERS
 
