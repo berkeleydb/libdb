@@ -340,6 +340,7 @@
     <ClCompile Include="..\..\src\os\os_aio_iocp.c"/>
     <ClCompile Include="..\..\src\os\os_aio_pool.c"/>
     <ClCompile Include="..\..\src\os_windows\os_clock.c"/>
+    <ClCompile Include="..\..\src\os_windows\os_csprng.c"/>
     <ClCompile Include="..\..\src\os_windows\os_config.c"/>
     <ClCompile Include="..\..\src\os_windows\os_cpu.c"/>
     <ClCompile Include="..\..\src\os\os_ctime.c"/>
