@@ -357,10 +357,10 @@ db_strerror(error)
 		return (DB_STR("0088",
 	    "DB_SECONDARY_BAD: Secondary index inconsistent with primary"));
 	case DB_SNAPSHOT_CONFLICT:
-		return (DB_STR("4573",
+		return (DB_STR("0211",
 	    "DB_SNAPSHOT_CONFLICT: Serializable snapshot update conflict"));
 	case DB_SNAPSHOT_UNSAFE:
-		return (DB_STR("4574",
+		return (DB_STR("0212",
 	    "DB_SNAPSHOT_UNSAFE: Potential serializable snapshot anomaly"));
 	case DB_TIMEOUT:
 		return (DB_STR("0089", "DB_TIMEOUT: Operation timed out"));

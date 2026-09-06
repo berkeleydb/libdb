@@ -25,6 +25,16 @@
 #endif
 #endif
 
+/*
+ * getrandom(2) is declared in <sys/random.h> on glibc and in <unistd.h> on
+ * some others; include the header when we have it so os_csprng.c can call it.
+ */
+#ifdef HAVE_GETRANDOM
+#ifdef HAVE_SYS_RANDOM_H
+#include <sys/random.h>
+#endif
+#endif
+
 #if TIME_WITH_SYS_TIME
 #include <sys/time.h>
 #include <time.h>
