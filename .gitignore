@@ -8,6 +8,17 @@ test/tcl/tclIndex
 TESTDIR_sim_*/
 test/sim/TESTDIR_sim_*/
 
+# Test-tier build dirs and scratch env dirs (test/isolation, test/soak,
+# test/lockmatrix -- each run.sh builds into ./build and each driver creates
+# its scratch environments beside the binary)
+test/isolation/build/
+test/soak/build/
+test/lockmatrix/build/
+ISODIR.*/
+SOAKDIR.*/
+LOCKDIR/
+build_dst/**
+
 # Meson/Ninja out-of-tree build dirs
 build-meson/
 build/
