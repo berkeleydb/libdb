@@ -32,11 +32,13 @@ SRC=${SRC:-../test/db/hash_unsorted_cmp.c}
 HOME_DIR=${HOME_DIR:-HASH_UNSORTED_TESTDIR}
 TIMEOUT=${TIMEOUT:-180}
 
-LIB="$BUILD/.libs/libdb-5.3.so"
-if [ ! -f "$LIB" ]; then
-	LIB=$(ls "$BUILD"/.libs/libdb-*.so 2>/dev/null | head -1)
-fi
-[ -n "$LIB" ] || { echo "FAIL: libdb .so not found in $BUILD/.libs"; exit 1; }
+# Shared-library suffix is platform-dependent: .so on Linux, .dylib on macOS.
+LIB=""
+for cand in "$BUILD"/.libs/libdb-5.3.so "$BUILD"/.libs/libdb-5.3.dylib \
+    "$BUILD"/.libs/libdb-*.so "$BUILD"/.libs/libdb-*.dylib; do
+	if [ -f "$cand" ]; then LIB="$cand"; break; fi
+done
+[ -n "$LIB" ] || { echo "FAIL: libdb shared library (.so/.dylib) not found in $BUILD/.libs"; exit 1; }
 
 echo "Compiling hash_unsorted_cmp against $LIB"
 gcc -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$LIB" \
