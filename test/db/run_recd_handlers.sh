@@ -43,8 +43,26 @@ rm -f "$HOME_DIR"/__db.* "$HOME_DIR"/log.* "$HOME_DIR"/*.db \
     "$HOME_DIR"/DB_CONFIG 2>/dev/null || true
 mkdir -p "$HOME_DIR"
 
+# `timeout` is GNU coreutils: present on Linux, absent on stock macOS (where it
+# is `gtimeout` if coreutils is installed).  Resolve it once; if neither exists,
+# run without a timeout rather than failing with rc=127.
+if command -v timeout >/dev/null 2>&1; then
+	TIMEOUT_CMD="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+	TIMEOUT_CMD="gtimeout"
+else
+	TIMEOUT_CMD=""
+fi
+run_with_timeout() {
+	if [ -n "$TIMEOUT_CMD" ]; then
+		"$TIMEOUT_CMD" "$@"
+	else
+		shift	# drop the seconds argument
+		"$@"
+	fi
+}
 echo "Running recd_handlers (timeout ${TIMEOUT}s)"
-if timeout "$TIMEOUT" "$BUILD/recd_handlers"; then
+if run_with_timeout "$TIMEOUT" "$BUILD/recd_handlers"; then
 	echo "run_recd_handlers.sh: PASS"
 	rm -f "$HOME_DIR"/__db.* "$HOME_DIR"/log.* "$HOME_DIR"/*.db \
 	    "$HOME_DIR"/DB_CONFIG 2>/dev/null || true
