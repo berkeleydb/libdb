@@ -433,7 +433,24 @@ __dbreg_id_to_db(env, txn, dbpp, ndx, tryopen)
 			return (ret);
 
 		*dbpp = dblp->dbentry[ndx].dbp;
-		return (*dbpp == NULL ? DB_DELETED : 0);
+		if (*dbpp == NULL)
+			return (DB_DELETED);
+		/*
+		 * __dbreg_do_open() registers the handle with __dbreg_assign_id()
+		 * before the open is finished, so a failure after that point (an
+		 * allocation failure, say) leaves a handle in the entry whose
+		 * __db_open() never completed: its mpf is set but names an mpool
+		 * file that was never validly attached.  Reporting success here
+		 * handed that half-built handle to the caller, and REC_INTRO's
+		 * __db_cursor()/MULTIVERSION() dereferenced it -- a SIGSEGV while
+		 * undoing a transaction at env close.  Treat it as not openable;
+		 * every REC_INTRO caller already propagates the error.
+		 */
+		if (!F_ISSET(*dbpp, DB_AM_OPEN_CALLED)) {
+			*dbpp = NULL;
+			return (ENOENT);
+		}
+		return (0);
 	}
 
 	/*
@@ -447,7 +464,11 @@ __dbreg_id_to_db(env, txn, dbpp, ndx, tryopen)
 	/* It's an error if we don't have a corresponding writable DB. */
 	if ((*dbpp = dblp->dbentry[ndx].dbp) == NULL)
 		ret = ENOENT;
-	else
+	else if (!F_ISSET(*dbpp, DB_AM_OPEN_CALLED)) {
+		/* See the comment on the tryopen path above. */
+		*dbpp = NULL;
+		ret = ENOENT;
+	} else
 		/*
 		 * If we are in recovery, then set that the file has
 		 * been written.  It is possible to run recovery,
