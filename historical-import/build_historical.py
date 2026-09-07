@@ -18,9 +18,9 @@ import sys
 import tempfile
 from datetime import datetime, timedelta
 
-REPO = "/Users/gregburd/oss/libdb-historical"
-MIRROR = "/Users/gregburd/oss/bdb-mirror"
-PATCH = "gpatch"
+REPO = os.environ.get("LIBDB_HISTORICAL_REPO", os.path.expanduser("~/libdb-historical"))
+MIRROR = os.environ.get("BDB_MIRROR", os.path.expanduser("~/bdb-mirror"))
+PATCH = os.environ.get("PATCH", "gpatch" if shutil.which("gpatch") else "patch")
 
 # Ordered release timeline. Each entry: version, tarball, optional patches
 # (label, filename), optional patch subdir, optional NC tarball, optional
@@ -29,6 +29,8 @@ RELEASES = [
     {"v": "1.85", "tar": "db.1.85.tar.gz", "psub": "1.85", "date": "1992-08-01",
      "patches": [("1", "patch.1.1"), ("2", "patch.1.2"), ("3", "patch.1.3"), ("4", "patch.1.4")]},
     {"v": "1.86", "tar": "db.1.86.tar.gz", "date": "1996-01-01"},
+    {"v": "2.3.16", "tar": "db-2.3.16.tar.gz", "date": "1998-01-22"},
+    {"v": "2.4.14", "tar": "db-2.4.14.tar.gz", "date": "1998-06-02"},
     {"v": "2.7.7", "tar": "db-2.7.7.tar.gz"},
     {"v": "3.0.55", "tar": "db-3.0.55.tar.gz", "patches": [("1", "patch.3.0.55.1")]},
     {"v": "3.1.17", "tar": "db-3.1.17.tar.gz"},
