@@ -87,6 +87,22 @@ jobs:
           make ex_access 2>/dev/null || true
           ls -l libdb-*.a 2>/dev/null || ls -l .libs/libdb-*.* 2>/dev/null || true
 
+      # The test/db/ regression runners guard specific fixed bugs (the #139 hash
+      # comparator, recd compact/handler recovery, and the on-disk upgrade path).
+      # They were previously orphaned: no CI job and no make target invoked them,
+      # so a regression would have gone unnoticed. They all follow the same
+      # BUILD=${BUILD:-.} convention and expect to run from the build directory.
+      - name: Regression runners (test/db)
+        if: matrix.config == 'default'
+        working-directory: build_unix
+        run: |
+          set -e
+          for r in run_hash_unsorted_cmp run_recd_compact run_recd_handlers run_upgrade; do
+            echo "::group::$r"
+            bash "../test/db/$r.sh"
+            echo "::endgroup::"
+          done
+
   # ----------------------------------------------------------------------------
   # 32-bit build on Linux (pointer-size / portability coverage).
   # ----------------------------------------------------------------------------
