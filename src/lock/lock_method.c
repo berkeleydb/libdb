@@ -479,8 +479,18 @@ __lock_set_lk_priority(dbenv, lockid, priority)
 	if (!LOCKING_ON(env))
 		return (EINVAL);
 
-	if ((ret = __lock_getlocker(env->lk_handle, lockid, 0, &locker)) == 0)
+	if ((ret = __lock_getlocker(env->lk_handle, lockid, 0, &locker)) == 0) {
+		/*
+		 * __lock_getlocker() with create == 0 reports a missing locker
+		 * by returning 0 with a NULL locker, not by returning an error,
+		 * so ret == 0 alone does not mean we have one.  Callers such as
+		 * __lock_vec_pp() rely on that contract (a locker legitimately
+		 * holds no locks), so check here rather than changing it.
+		 */
+		if (locker == NULL)
+			return (EINVAL);
 		locker->priority = priority;
+	}
 	return (ret);
 }
 
@@ -504,8 +514,12 @@ __lock_get_lk_priority(dbenv, lockid, priorityp)
 	if (!LOCKING_ON(env))
 		return (EINVAL);
 
-	if ((ret = __lock_getlocker(env->lk_handle, lockid, 0, &locker)) == 0)
+	if ((ret = __lock_getlocker(env->lk_handle, lockid, 0, &locker)) == 0) {
+		/* See the comment in __lock_set_lk_priority(). */
+		if (locker == NULL)
+			return (EINVAL);
 		*priorityp = locker->priority;
+	}
 	return ret;
 }
 

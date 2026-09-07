@@ -97,7 +97,8 @@ jobs:
         working-directory: build_unix
         run: |
           set -e
-          for r in run_hash_unsorted_cmp run_recd_compact run_recd_handlers run_upgrade; do
+          for r in run_hash_unsorted_cmp run_recd_compact run_recd_handlers run_upgrade \
+                   run_lock_priority_nullderef; do
             echo "::group::$r"
             bash "../test/db/$r.sh"
             echo "::endgroup::"
