@@ -85,13 +85,31 @@ ABS_VERIFY=$(cd "$BUILD" && pwd)/db_verify
 rm -f "$WORK"/__db.* "$WORK"/log.* "$WORK"/*.db 2>/dev/null || true
 mkdir -p "$WORK"
 
+# `timeout` is GNU coreutils: present on Linux, absent on stock macOS (where it
+# is `gtimeout` if coreutils is installed).  Resolve it once; if neither exists,
+# run without a timeout rather than failing with rc=127.
+if command -v timeout >/dev/null 2>&1; then
+	TIMEOUT_CMD="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+	TIMEOUT_CMD="gtimeout"
+else
+	TIMEOUT_CMD=""
+fi
+run_with_timeout() {
+	if [ -n "$TIMEOUT_CMD" ]; then
+		"$TIMEOUT_CMD" "$@"
+	else
+		shift	# drop the seconds argument
+		"$@"
+	fi
+}
 # upgrade_verify FILE [extra db_upgrade flags...] -- run db_upgrade then
 # db_verify (both under a timeout).  Used for paths that must verify clean.
 upgrade_verify() {
 	f=$1; shift
 	echo "db_upgrade $* + verify: $f"
-	( cd "$WORK" && timeout "$TIMEOUT" "$ABS_UPGRADE" -h . "$@" "$f" )
-	( cd "$WORK" && timeout "$TIMEOUT" "$ABS_VERIFY" "$f" >/dev/null )
+	( cd "$WORK" && run_with_timeout "$TIMEOUT" "$ABS_UPGRADE" -h . "$@" "$f" )
+	( cd "$WORK" && run_with_timeout "$TIMEOUT" "$ABS_VERIFY" "$f" >/dev/null )
 	echo "  CLEAN $f"
 }
 
@@ -102,7 +120,7 @@ upgrade_verify() {
 upgrade_only() {
 	f=$1; exp=$2
 	echo "db_upgrade (no verify): $f"
-	( cd "$WORK" && timeout "$TIMEOUT" "$ABS_UPGRADE" -h . "$f" )
+	( cd "$WORK" && run_with_timeout "$TIMEOUT" "$ABS_UPGRADE" -h . "$f" )
 	got=$( cd "$WORK" && "$PYTHON" -c "import struct,sys;print(struct.unpack_from('<I',open(sys.argv[1],'rb').read(20),16)[0])" "$f" )
 	[ "$got" = "$exp" ] || { echo "FAIL: $f upgraded to version $got, expected $exp"; exit 1; }
 	echo "  UPG-OK $f (version->$got; verify skipped: __db_set_lastpgno off-by-one)"
@@ -173,7 +191,7 @@ done
 # btree-with-dups: also drive the -s (DB_DUPSORT) flag path + salvage.
 upgrade_verify cur_btdup.db -s
 echo "salvage-verify cur_btdup.db"
-( cd "$WORK" && timeout "$TIMEOUT" "$ABS_VERIFY" -o cur_btdup.db >/dev/null )
+( cd "$WORK" && run_with_timeout "$TIMEOUT" "$ABS_VERIFY" -o cur_btdup.db >/dev/null )
 echo "  CLEAN cur_btdup.db (salvage)"
 
 # 2b. rewrite metadata pages into old on-disk layouts (see header).
