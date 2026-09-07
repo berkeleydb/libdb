@@ -16,11 +16,13 @@
 #     serializability violation appears AND when a scenario marked as
 #     reproducing a known issue stops violating, so a fix cannot land without
 #     updating the expectation.
-#   - B3 is advisory (continue-on-error) for now, because on current master it
-#     legitimately aborts under ASan: that IS the #140 reproduction.  Flip it to
-#     a hard gate in the same PR that fixes #140.
-#   - B2 (soak) is scheduled/nightly plus manual dispatch: it is a long run and
-#     the same expectation-flip applies once #137/#138 land.
+#   - B3 is a HARD GATE.  It was advisory while #140 was open (on that master it
+#     legitimately aborted under ASan -- that abort WAS the #140 reproduction);
+#     #145 fixed the lock-list sizing, so the matrix passes and any future ASan
+#     fault in the lock list is a real regression.
+#   - B2 (soak) is scheduled/nightly plus manual dispatch: it is a long run.  It
+#     was advisory while #137/#138 were open; those are fixed, so when it runs it
+#     is a hard gate.
 
 name: Test tiers (isolation / soak / lock matrix)
 
@@ -89,13 +91,13 @@ jobs:
           if-no-files-found: ignore
 
   # --------------------------------------------------------------------------
-  # Tier B3 -- lock-mode matrix under ASan.  Advisory until #140 lands, because
-  # the ASan heap-buffer-overflow it finds in __lock_vec IS the bug report.
+  # Tier B3 -- lock-mode matrix under ASan.  A HARD GATE since #145 fixed the
+  # __lock_vec lock-list sizing (#140): the matrix passes, so any ASan fault in
+  # the lock list is now a real regression.
   # --------------------------------------------------------------------------
   lock-matrix:
     name: B3 lock-mode matrix (ASan)
     runs-on: ubuntu-latest
-    continue-on-error: true   # advisory until #140 is fixed
     steps:
       - uses: actions/checkout@v4
 
@@ -141,7 +143,6 @@ jobs:
     name: B2 resource-accounting soak
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    continue-on-error: true   # advisory until #137/#138 are fixed
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
