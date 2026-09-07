@@ -60,19 +60,23 @@ Both of Cahill's rw-conflict detection paths are implemented:
 
 SIREAD markers are reclaimed incrementally (not only at checkpoint).
 
-> **Known limitations (2026-09, from external reports #136–#140).** The claims in
+The commit-time pivot check is atomic with respect to conflict recording. Both
+pivot flags are read under `TXN_SYSTEM_LOCK` — the mutex every recorder
+(`__lock_get_internal`, `__memp_si_rwconflict`) takes around its flag
+read-modify-write — and, in the same critical section, a passing check publishes
+`TXN_DTL_SICHECKED` on the detail. That flag is what makes the window between
+the check and `__txn_end`'s `TXN_COMMITTED` store safe: a recorder that arrives
+during it sees that the committing transaction will not re-examine its flags and
+resolves the edge itself (`DB_SNAPSHOT_UNSAFE`) instead of deferring to a check
+that has already happened. Deferring on `status == TXN_RUNNING` alone was
+issue #136 — a write skew where both transactions committed; `test/isolation`
+gates it.
+
+> **Known limitations (2026-09, from external reports #137–#140).** The claims in
 > this RFC describe the *intended* design; the delivered behavior is weaker in
 > ways confirmed by outside review. Until the fixes land with regression tests,
 > treat the serializability guarantee as **best-effort, not absolute**:
 >
-> - **#136 — write skew can commit.** The commit-time pivot check is **not**
->   atomic with respect to the `TXN_RUNNING` → `TXN_COMMITTED` transition. A
->   conflicting write that lands while the first transaction is *inside*
->   `DB_TXN->commit` can leave both transactions committing, producing a state
->   with no serial order. A separate observation from the same report: two
->   records on *different pages of one B-tree* may detect no conflict at all.
->   (An earlier working note in this directory claimed this race was resolved;
->   that claim was wrong and is retracted.)
 > - **#137 / #138 — marker reclamation is not fully bounded.** SIREAD cleanup
 >   does not reclaim the deferred committed-reader locker, and
 >   `__txn_reap_si_details` frees a transaction detail without releasing its MVCC

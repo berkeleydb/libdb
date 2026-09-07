@@ -114,6 +114,7 @@ typedef struct __txn_detail {
 #define	TXN_DTL_NOWAIT		0x10	/* Don't block on locks. */
 #define	TXN_DTL_WCONF		0x20	/* SSI: write end of an rw-conflict. */
 #define	TXN_DTL_RCONF		0x40	/* SSI: read end of an rw-conflict. */
+#define	TXN_DTL_SICHECKED	0x80	/* SSI: past its commit pivot check. */
 	u_int32_t flags;
 
 	SH_TAILQ_ENTRY	links;		/* active/free/snapshot list */
@@ -128,6 +129,35 @@ typedef struct __txn_detail {
 	int32_t format;			/* XA format */
 	roff_t slots[TXN_NSLOTS];	/* Initial DB slot allocation. */
 } TXN_DETAIL;
+
+/*
+ * TXN_SI_PAST_CHECK --
+ *	SSI: TRUE when this transaction will not consult its own pivot flags
+ *	again, so a writer forming an rw-conflict edge into it now cannot defer
+ *	the conflict to it and must resolve the edge itself.  That is the case
+ *	once the transaction has committed and, crucially, also while it is
+ *	inside DB_TXN->commit past its one and only pivot check: __txn_commit
+ *	publishes TXN_DTL_SICHECKED under TXN_SYSTEM_LOCK, atomically with that
+ *	check.
+ *
+ *	Without the flag the whole span from the pivot check to __txn_end's
+ *	status store still reads TXN_RUNNING, so a writer deferred to a check
+ *	that had already happened and both transactions committed a write skew
+ *	(issue #136).  An aborted transaction is deliberately NOT "past check":
+ *	its reads never committed, so an edge into it is not a conflict at all
+ *	-- hence the status test rather than testing TXN_DTL_SICHECKED alone,
+ *	which survives on the detail if the commit fails after publishing it.
+ *	In that narrow error window (commit published the flag, then failed and
+ *	his on its way to TXN_ABORTED) a writer may abort itself needlessly.
+ *	That errs safe -- a spurious DB_SNAPSHOT_UNSAFE, never a missed one --
+ *	and only on a path where the peer is already failing.
+ *
+ *	Callers hold TXN_SYSTEM_LOCK, which is where every writer of the pivot
+ *	flags and of TXN_DTL_SICHECKED serializes.
+ */
+#define	TXN_SI_PAST_CHECK(td)						\
+	((td)->status == TXN_COMMITTED ||				\
+	    ((td)->status == TXN_RUNNING && F_ISSET(td, TXN_DTL_SICHECKED)))
 
 /*
  * DB_TXNMGR --
