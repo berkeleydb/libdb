@@ -58,7 +58,10 @@ Both of Cahill's rw-conflict detection paths are implemented:
 2. **MVCC version-chain path** in `mp_fget` — a reader handed an older version
    than one a concurrent writer committed.
 
-SIREAD markers are reclaimed incrementally (not only at checkpoint).
+SIREAD markers are reclaimed incrementally (not only at checkpoint), and
+reclamation is bounded: `test/soak` asserts that region, mutex and locker
+counts return to baseline over tens of thousands of sequential transactions
+(issues #137, #138).
 
 The commit-time pivot check is atomic with respect to conflict recording. Both
 pivot flags are read under `TXN_SYSTEM_LOCK` — the mutex every recorder
@@ -72,20 +75,31 @@ that has already happened. Deferring on `status == TXN_RUNNING` alone was
 issue #136 — a write skew where both transactions committed; `test/isolation`
 gates it.
 
-> **Known limitations (2026-09, from external reports #137–#140).** The claims in
-> this RFC describe the *intended* design; the delivered behavior is weaker in
-> ways confirmed by outside review. Until the fixes land with regression tests,
-> treat the serializability guarantee as **best-effort, not absolute**:
+> **External review, 2026-09 (issues #136–#140) — all five fixed and gated.**
+> An outside reviewer found five defects in the delivered implementation. Per the
+> rule this section carried ("removed only when each item is fixed *and* covered
+> by a test"), it is now retired; each item has a fix and a CI-gated regression
+> test:
 >
-> - **#137 / #138 — marker reclamation is not fully bounded.** SIREAD cleanup
->   does not reclaim the deferred committed-reader locker, and
->   `__txn_reap_si_details` frees a transaction detail without releasing its MVCC
->   mutex. Long-lived environments running many snapshot transactions can
->   therefore exhaust the mutex region and see `ENOMEM`.
-> - **#140 — lock-list sizing.** `DB_LOCK_SIREAD` was not accounted for in the
->   replication commit lock-list sizing (a heap overflow in release builds).
+> | Issue | Defect | Fix | Gated by |
+> |---|---|---|---|
+> | **#136** | Write skew committed when the second writer's edge landed inside `__txn_commit` | `TXN_DTL_SICHECKED` published under `TXN_SYSTEM_LOCK` atomically with the pivot check (see above); mirror site `__memp_si_rwconflict` fixed too | `test/isolation` (hard gate) |
+> | **#137** | Committed-reader lockers not reclaimed → mutex region exhausted (`ENOMEM`) | reader bookkeeping released on the deferred path | `test/soak` |
+> | **#138** | `__txn_reap_si_details` freed a detail without `__mutex_free(&td->mvcc_mtx)` | mutex freed on the reap path | `test/soak` |
+> | *(third leak)* | `si_ref` not decremented on a SIREAD→WRITE upgrade in `__lock_get_internal` | found during #137/#138 validation, not externally reported | `test/soak` |
+> | **#140** | `DB_LOCK_SIREAD` uncounted in replication lock-list sizing → heap overflow | sizing and population share one `IS_WRITELOCK` predicate; `DB_ASSERT` promoted to `__env_panic` | `test/lockmatrix` |
 >
-> This section is removed only when each item is fixed *and* covered by a test.
+> **Root-cause class, now guarded.** #140 existed because SSI added a lock mode
+> without auditing pre-existing exhaustive mode enumerations. All 19 sites were
+> audited (4 were wrong), and `dist/cocci/lockmode_inventory.sh` now fails CI if a
+> new `DB_LOCK_*` mode appears without updating the inventory. See
+> `rfc/0003/lock-mode-audit.md`.
+>
+> One reported symptom was **not** a separate defect: two records on different
+> pages of one B-tree appeared to escape conflict detection entirely, but with two
+> independent constructions (including 33 verified leaf pages) the control timing
+> correctly returns `DB_SNAPSHOT_CONFLICT` — it was the same #136 commit-window
+> race.
 
 The two working notes in `rfc/0003/` are the porting/design record:
 
