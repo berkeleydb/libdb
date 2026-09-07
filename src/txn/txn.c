@@ -746,12 +746,25 @@ __txn_commit(txn, flags)
 	 * could produce a non-serializable schedule.
 	 *
 	 * The pivot flags are set on td by concurrent writers in the lock
-	 * manager, which serialize their flag writes on the txn-region mutex
-	 * (see __lock_get_internal).  Read both flags under the same mutex so
-	 * the two-flag test and this commit decision are atomic with respect
-	 * to a writer recording our second conflict edge -- otherwise an edge
-	 * set between the two reads, or just after they pass, would let a real
-	 * pivot commit.
+	 * manager and in mpool, which serialize their flag writes on the
+	 * txn-region mutex (see __lock_get_internal, __memp_si_rwconflict).
+	 * Read both flags under that mutex so the two-flag test is atomic with
+	 * respect to a writer recording our second conflict edge.
+	 *
+	 * This is our ONLY pivot check: everything below (cursor close, lease
+	 * check, log write) is past the point where aborting on a late edge
+	 * would be correct, and __txn_end does not publish TXN_COMMITTED until
+	 * much later.  So, in the same critical section, publish
+	 * TXN_DTL_SICHECKED: it tells a writer that arrives during that whole
+	 * span that this transaction will not look at its pivot flags again, so
+	 * the writer must resolve the edge itself (abort with
+	 * DB_SNAPSHOT_UNSAFE) rather than defer to a check that has already
+	 * happened.  Without it a writer treats us as "still running, already
+	 * flagged, it will abort at its check" and both transactions commit a
+	 * write skew (issue #136).
+	 *
+	 * Only a snapshot-safe txn is examined by those writers, so nothing is
+	 * published for the ordinary path.
 	 */
 	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
 		int is_pivot;
@@ -759,6 +772,8 @@ __txn_commit(txn, flags)
 			TXN_SYSTEM_LOCK(env);
 		is_pivot = F_ISSET(td, TXN_DTL_WCONF) &&
 		    F_ISSET(td, TXN_DTL_RCONF);
+		if (!is_pivot)
+			F_SET(td, TXN_DTL_SICHECKED);
 		if (TXN_ON(env))
 			TXN_SYSTEM_UNLOCK(env);
 		if (is_pivot) {

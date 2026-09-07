@@ -38,11 +38,11 @@ The state vector has two kinds of slot:
 
 | Scenario | Shape | Expectation on master |
 |---|---|---|
-| `write_skew_trigger` | two one-page DBs; T2's write lands while T1 is inside `commit` | **XFAIL — reproduces #136** |
+| `write_skew_trigger` | two one-page DBs; T2's write lands while T1 is inside `commit` | PASS (`DB_SNAPSHOT_UNSAFE` to T2) — regression gate for #136 |
 | `write_skew_control` | two one-page DBs; T2 writes and commits before T1 commits | PASS (`DB_SNAPSHOT_CONFLICT` to T1) |
 | `write_skew_late` | two one-page DBs; T2 writes after T1's commit returned | PASS (`DB_SNAPSHOT_UNSAFE` to T2) |
 | `write_skew_samebtree_control` | two records on **different pages of one** B-tree; control timing | PASS |
-| `write_skew_samebtree_trigger` | same, trigger timing | **XFAIL — reproduces #136** |
+| `write_skew_samebtree_trigger` | same, trigger timing | PASS — regression gate for #136 |
 | `g2_antidep` | G2-item: both txns scan for markers, both insert one | PASS |
 | `read_only_anomaly` | Fekete's 3-txn pattern; the read-only txn's observation is checked | PASS |
 | `lost_update` | both txns read the counter and write read+1 | PASS |
@@ -83,7 +83,8 @@ purpose: **one** violation in any attempt is a reproduction, while a pass
 requires **every** attempt to be clean. A serializability violation is a real
 counterexample; a single clean run of a racy schedule proves nothing.
 
-In practice both #136 shapes violate on the first attempt.
+In practice both #136 shapes violated on the first attempt before the fix; both
+now report `DB_SNAPSHOT_UNSAFE` to T2 in every attempt.
 
 ## Running it
 
@@ -113,5 +114,6 @@ Environment: `CC`, `LIBDB_BUILD` (default `../../build_unix`), `ISO_TIMEOUT`
   `test_iso_anomaly.c`. The message says which.
 - `2` — harness error.
 
-When #136 lands, clear `expect_fail` on `write_skew_trigger` and
-`write_skew_samebtree_trigger`; the tier then gates the fix against regression.
+#136 is fixed (`TXN_DTL_SICHECKED`, see `rfc/0003`), so `expect_fail` is clear
+on every scenario and this tier is a plain regression gate: any violation is a
+new bug.

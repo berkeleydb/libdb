@@ -1019,7 +1019,7 @@ read_your_writes(iso_scenario *sc, iso_state *st, iso_txn *t)
 static iso_scenario scenarios[] = {
     { "write_skew_trigger",
       "two one-page DBs; T2's write lands while T1 is inside commit",
-      2, 2, 2, 1, "#136", 40, sk_trigger },
+      2, 2, 2, 0, NULL, 40, sk_trigger },
     { "write_skew_control",
       "two one-page DBs; T2 writes and commits before T1 commits",
       2, 2, 2, 0, NULL, 5, sk_control },
@@ -1031,7 +1031,7 @@ static iso_scenario scenarios[] = {
       2, 2, 2, 0, NULL, 5, sk_samebtree_control },
     { "write_skew_samebtree_trigger",
       "two records on DIFFERENT pages of ONE btree; trigger timing",
-      2, 2, 2, 1, "#136", 40, sk_samebtree_trigger },
+      2, 2, 2, 0, NULL, 40, sk_samebtree_trigger },
     { "g2_antidep",
       "G2-item: both txns scan for markers, both insert one",
       1, 1, 2, 0, NULL, 1, g2_antidep },
