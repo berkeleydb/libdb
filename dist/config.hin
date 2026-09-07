@@ -39,6 +39,9 @@
 /* Define to 1 to use the thread-pool AIO offload backend. */
 #undef HAVE_AIO_THREADPOOL
 
+/* Define to 1 if you have the 'arc4random_buf' function. */
+#undef HAVE_ARC4RANDOM_BUF
+
 /* Define to 1 if you have the 'atoi' function. */
 #undef HAVE_ATOI
 
@@ -185,6 +188,9 @@
 
 /* Define to 1 if getopt supports the optreset variable. */
 #undef HAVE_GETOPT_OPTRESET
+
+/* Define to 1 if you have the 'getrandom' function. */
+#undef HAVE_GETRANDOM
 
 /* Define to 1 if you have the 'getrusage' function. */
 #undef HAVE_GETRUSAGE
@@ -548,6 +554,9 @@
 /* Define to 1 if you have the <sys/ndir.h> header file, and it defines 'DIR'.
    */
 #undef HAVE_SYS_NDIR_H
+
+/* Define to 1 if you have the <sys/random.h> header file. */
+#undef HAVE_SYS_RANDOM_H
 
 /* Define to 1 if you have the <sys/sdt.h> header file. */
 #undef HAVE_SYS_SDT_H
