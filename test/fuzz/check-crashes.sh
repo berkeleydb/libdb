@@ -73,6 +73,20 @@ seed_harness() {
 
 rc=0
 found=0
+# A seed that makes libdb spin (rather than fault) is a denial of service, and
+# without a timeout it would hang CI instead of failing it.  Bound every seed:
+# these harnesses process one small file and finish in well under a second, so a
+# seed still running after SEED_TIMEOUT seconds has found a runaway scan.  Use
+# gtimeout on macOS, and if neither exists run unbounded rather than skip.
+SEED_TIMEOUT=${SEED_TIMEOUT:-30}
+if command -v timeout >/dev/null 2>&1; then
+	TIMEOUT_CMD="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+	TIMEOUT_CMD="gtimeout"
+else
+	TIMEOUT_CMD=""
+fi
+
 for seed in crashes/*.seed; do
 	[ -f "$seed" ] || continue
 	found=$((found + 1))
@@ -81,9 +95,21 @@ for seed in crashes/*.seed; do
 		echo "SKIP (unknown harness): $seed"
 		continue
 	fi
-	if ASAN_OPTIONS=detect_leaks=1 "build/fuzz_${h}_standalone" \
-	    "$seed" >/dev/null 2>&1; then
+	# `set -e` is in effect, so guard the exit-status capture: a non-zero rc
+	# here is data, not a script error.
+	src=0
+	if [ -n "$TIMEOUT_CMD" ]; then
+		ASAN_OPTIONS=detect_leaks=1 "$TIMEOUT_CMD" -s KILL "$SEED_TIMEOUT" \
+		    "build/fuzz_${h}_standalone" "$seed" >/dev/null 2>&1 || src=$?
+	else
+		ASAN_OPTIONS=detect_leaks=1 "build/fuzz_${h}_standalone" \
+		    "$seed" >/dev/null 2>&1 || src=$?
+	fi
+	if [ "$src" -eq 0 ]; then
 		echo "PASS: $seed ($h)"
+	elif [ "$src" -eq 137 ] || [ "$src" -eq 124 ]; then
+		echo "FAIL (hang/runaway scan > ${SEED_TIMEOUT}s): $seed ($h)"
+		rc=1
 	else
 		echo "FAIL (crash/fault): $seed ($h)"
 		rc=1
