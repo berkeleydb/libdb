@@ -24,6 +24,11 @@ static int __cdsgroup_get_name __P((DB_TXN *txn, const char **namep));
 static int __cdsgroup_set_name __P((DB_TXN *txn, const char *name));
 static int __cdsgroup_set_timeout
     __P((DB_TXN *txn, db_timeout_t timeout, u_int32_t flags));
+static int __cdsgroup_get_priority __P((DB_TXN *txn, u_int32_t *priorityp));
+static int __cdsgroup_set_priority __P((DB_TXN *txn, u_int32_t priority));
+static int __cdsgroup_set_commit_token __P((DB_TXN *txn, DB_TXN_TOKEN *tokenp));
+static void __cdsgroup_set_txn_lsnp
+    __P((DB_TXN *txn, DB_LSN **rlsnp, DB_LSN **lsnp));
 
 /*
  * __cdsgroup_notsup --
@@ -127,6 +132,53 @@ static int __cdsgroup_set_timeout(txn, timeout, flags)
 	return (__cdsgroup_notsup(txn->mgrp->env, "set_timeout"));
 }
 
+static int
+__cdsgroup_get_priority(txn, priorityp)
+	DB_TXN *txn;
+	u_int32_t *priorityp;
+{
+	COMPQUIET(priorityp, NULL);
+	return (__cdsgroup_notsup(txn->mgrp->env, "get_priority"));
+}
+
+static int
+__cdsgroup_set_priority(txn, priority)
+	DB_TXN *txn;
+	u_int32_t priority;
+{
+	COMPQUIET(priority, 0);
+	return (__cdsgroup_notsup(txn->mgrp->env, "set_priority"));
+}
+
+static int
+__cdsgroup_set_commit_token(txn, tokenp)
+	DB_TXN *txn;
+	DB_TXN_TOKEN *tokenp;
+{
+	COMPQUIET(tokenp, NULL);
+	return (__cdsgroup_notsup(txn->mgrp->env, "set_commit_token"));
+}
+
+/*
+ * __cdsgroup_set_txn_lsnp --
+ *	The DB_TXN method table declares this one void, so it cannot report
+ *	DB_OPNOTSUP the way the others do.  A CDS group has no transactional
+ *	LSNs, so hand back NULL pointers: callers in the log path test these for
+ *	NULL, and leaving the slot itself NULL meant an indirect call through a
+ *	NULL function pointer instead.
+ */
+static void
+__cdsgroup_set_txn_lsnp(txn, rlsnp, lsnp)
+	DB_TXN *txn;
+	DB_LSN **rlsnp, **lsnp;
+{
+	COMPQUIET(txn, NULL);
+	if (rlsnp != NULL)
+		*rlsnp = NULL;
+	if (lsnp != NULL)
+		*lsnp = NULL;
+}
+
 /*
  * PUBLIC: int __cdsgroup_begin __P((ENV *, DB_TXN **));
  */
@@ -161,6 +213,16 @@ __cdsgroup_begin(env, txnpp)
 	txn->get_name = __cdsgroup_get_name;
 	txn->set_name = __cdsgroup_set_name;
 	txn->set_timeout = __cdsgroup_set_timeout;
+	/*
+	 * A DB_TXN handle has 12 methods; the eight above are the ones a CDS
+	 * group can implement.  The remaining four used to be left NULL, so an
+	 * application calling one of them made an indirect call through a NULL
+	 * function pointer and crashed instead of getting an error.
+	 */
+	txn->get_priority = __cdsgroup_get_priority;
+	txn->set_priority = __cdsgroup_set_priority;
+	txn->set_commit_token = __cdsgroup_set_commit_token;
+	txn->set_txn_lsnp = __cdsgroup_set_txn_lsnp;
 
 	*txnpp = txn;
 

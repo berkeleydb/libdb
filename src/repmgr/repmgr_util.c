@@ -517,6 +517,18 @@ __repmgr_get_nsites(env, nsitesp)
 
 	db_rep = env->rep_handle;
 
+	/*
+	 * db_rep->region is only attached once the environment is opened, but
+	 * ENV_NOT_CONFIGURED() (the caller's guard) only tests anything after
+	 * ENV_OPEN_CALLED is set, so a pre-open call reached this dereference
+	 * and crashed.  Report the same error as an unstarted repmgr instead.
+	 */
+	if (db_rep->region == NULL) {
+		__db_errx(env, DB_STR("3672",
+		    "Nsites unknown before repmgr_start()"));
+		return (EINVAL);
+	}
+
 	if ((nsites = db_rep->region->config_nsites) == 0) {
 		__db_errx(env, DB_STR("3672",
 		    "Nsites unknown before repmgr_start()"));
