@@ -453,6 +453,13 @@ __txn_oldest_reader(env, lsnp)
  *	(mvcc_ref == 0); genuine MVCC-version holders are freed by
  *	__txn_remove_buffer when their last page is evicted.  Best effort.
  *
+ *	TXN_DTL_SNAPSHOT is the free claim, and it is taken under td->mvcc_mtx
+ *	-- the latch every writer of that flag holds (__txn_end takes it nested
+ *	inside TXN_SYSTEM_LOCK; __txn_remove_buffer takes it alone).  This
+ *	routine and __txn_remove_buffer test the same predicate, so without a
+ *	shared claim both could free the same detail.  Ordering here is
+ *	TXN_SYSTEM_LOCK -> mvcc_mtx, matching __txn_end.
+ *
  * PUBLIC: int __txn_reap_si_details __P((ENV *));
  */
 int
@@ -462,25 +469,58 @@ __txn_reap_si_details(env)
 	DB_TXNMGR *mgr;
 	DB_TXNREGION *region;
 	TXN_DETAIL *td, *next_td;
+	db_mutex_t mvcc_mtx;
+	int free_it, ret, t_ret;
 
 	if ((mgr = env->tx_handle) == NULL)
 		return (0);
 	region = mgr->reginfo.primary;
+	ret = 0;
 
 	TXN_SYSTEM_LOCK(env);
 	for (td = SH_TAILQ_FIRST(&region->mvcc_txn, __txn_detail);
 	    td != NULL; td = next_td) {
 		next_td = SH_TAILQ_NEXT(td, links, __txn_detail);
-		if (F_ISSET(td, TXN_DTL_SNAPSHOT) &&
-		    td->mvcc_ref == 0 && atomic_read(&td->si_ref) == 0) {
-			SH_TAILQ_REMOVE(&region->mvcc_txn,
-			    td, links, __txn_detail);
-			__env_alloc_free(&mgr->reginfo, td);
-		}
+		if (!F_ISSET(td, TXN_DTL_SNAPSHOT))
+			continue;
+		/*
+		 * Re-test and claim under mvcc_mtx: mvcc_ref is only stable
+		 * under it, and the claim has to exclude __txn_remove_buffer,
+		 * which holds only that mutex.  A read-only committed reader
+		 * never allocated one (MUTEX_INVALID); then MUTEX_LOCK is a
+		 * no-op and TXN_SYSTEM_LOCK alone is the serializer, which is
+		 * all __txn_end holds for that case too.
+		 */
+		mvcc_mtx = td->mvcc_mtx;
+		MUTEX_LOCK(env, mvcc_mtx);
+		free_it = F_ISSET(td, TXN_DTL_SNAPSHOT) &&
+		    td->mvcc_ref == 0 && atomic_read(&td->si_ref) == 0;
+		if (free_it)
+			F_CLR(td, TXN_DTL_SNAPSHOT);
+		MUTEX_UNLOCK(env, mvcc_mtx);
+		if (!free_it)
+			continue;
+
+		SH_TAILQ_REMOVE(&region->mvcc_txn, td, links, __txn_detail);
+		STAT_DEC(env,
+		    txn, nsnapshot, region->stat.st_nsnapshot, td->txnid);
+		/*
+		 * Release the detail's MVCC mutex before freeing the detail --
+		 * otherwise the slot is leaked for the life of the environment
+		 * and repetition exhausts the mutex region (a later valid
+		 * operation then gets ENOMEM).  The two other detail-free paths
+		 * (__txn_end and __txn_remove_buffer) already free it; doing so
+		 * here under TXN_SYSTEM_LOCK matches __txn_end, so no new lock
+		 * ordering is introduced.  Safe to free now: we hold the claim,
+		 * mvcc_ref is 0, and the detail is off every list.
+		 */
+		if ((t_ret = __mutex_free(env, &td->mvcc_mtx)) != 0 && ret == 0)
+			ret = t_ret;
+		__env_alloc_free(&mgr->reginfo, td);
 	}
 	TXN_SYSTEM_UNLOCK(env);
 
-	return (0);
+	return (ret);
 }
 
 /*
@@ -533,21 +573,28 @@ __txn_remove_buffer(env, td, hash_mtx)
 	 * We free the transaction detail here only if this is the last
 	 * reference and td is on the list of committed snapshot transactions
 	 * with active pages.
+	 *
+	 * Claim the free by clearing TXN_DTL_SNAPSHOT here, while mvcc_mtx is
+	 * still held: __txn_reap_si_details tests the same predicate and takes
+	 * the same claim under this mutex, so exactly one of us frees the
+	 * detail.  Claiming later (under TXN_SYSTEM_LOCK, which we cannot hold
+	 * yet -- hash_mtx must be dropped first) would leave a window in which
+	 * the reaper frees td and we then touch freed region memory.
 	 */
 	need_free = (--td->mvcc_ref == 0) && F_ISSET(td, TXN_DTL_SNAPSHOT) &&
 	    atomic_read(&td->si_ref) == 0;
+	if (need_free)
+		F_CLR(td, TXN_DTL_SNAPSHOT);
 	MUTEX_UNLOCK(env, td->mvcc_mtx);
 
 	if (need_free) {
 		MUTEX_UNLOCK(env, hash_mtx);
 
-		ret = __mutex_free(env, &td->mvcc_mtx);
-		td->mvcc_mtx = MUTEX_INVALID;
-
 		TXN_SYSTEM_LOCK(env);
 		SH_TAILQ_REMOVE(&region->mvcc_txn, td, links, __txn_detail);
 		STAT_DEC(env,
 		    txn, nsnapshot, region->stat.st_nsnapshot, td->txnid);
+		ret = __mutex_free(env, &td->mvcc_mtx);
 		__env_alloc_free(&mgr->reginfo, td);
 		TXN_SYSTEM_UNLOCK(env);
 

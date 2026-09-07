@@ -494,6 +494,14 @@ __lock_addfamilylocker(env, pid, id, is_family)
 }
 
 int
+__lock_sireap_lockers(env)
+	ENV *env;
+{
+	COMPQUIET(env, NULL);
+	return (0);
+}
+
+int
 __lock_freelocker(lt, sh_locker)
 	DB_LOCKTAB *lt;
 	DB_LOCKER *sh_locker;

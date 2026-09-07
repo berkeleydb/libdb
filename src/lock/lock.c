@@ -161,8 +161,31 @@ __lock_siclean_obj(env, obj, old_lsnp)
 		 * detail and the (DB_LOCKER_FREED) locker are reclaimed by
 		 * __lock_sicleanup once their last marker is gone.
 		 */
-		if (sh_locker->td_off != INVALID_ROFF)
-			(void)atomic_dec(env, &LOCKER_TD(env, sh_locker)->si_ref);
+		if (sh_locker->td_off != INVALID_ROFF &&
+		    atomic_dec(env,
+		    &LOCKER_TD(env, sh_locker)->si_ref) == 0 &&
+		    F_ISSET(sh_locker, DB_LOCKER_FREED))
+			/*
+			 * We just removed the LAST marker of a locker whose
+			 * reclamation __lock_freelocker_int deferred (that
+			 * deferral is why DB_LOCKER_FREED is set, and it always
+			 * happened already: __txn_end frees the locker before it
+			 * publishes status != TXN_RUNNING, which is what let this
+			 * sweep consider the marker at all).  Nothing references
+			 * the locker any more, so mark it reclaimable by dropping
+			 * its detail link, and let __lock_sireap_lockers free it
+			 * after this partition mutex is released -- freeing a
+			 * locker needs LOCK_LOCKERS, and the established order is
+			 * LOCK_LOCKERS -> partition, never the reverse.
+			 *
+			 * Clearing td_off here (rather than re-reading si_ref
+			 * later) is what makes the reclaim UAF-free: mpool's
+			 * __txn_remove_buffer may free this detail the instant
+			 * si_ref reaches zero, so the reclaim pass must never
+			 * dereference it again.  atomic_dec's return value is the
+			 * last safe observation of the detail.
+			 */
+			sh_locker->td_off = INVALID_ROFF;
 		if (sh_locker->nlocks > 0)
 			sh_locker->nlocks--;
 		if ((ret = __lock_freelock(lt, lp, sh_locker,
@@ -215,6 +238,16 @@ __lock_sicleanup(env)
 		}
 		OBJECT_UNLOCK(lt, region, i);
 	}
+
+	/*
+	 * Reclaim committed-reader lockers whose last marker was just removed
+	 * (marked by __lock_siclean_obj), then free the details those markers
+	 * were pinning.  Both are done here, with no object partition mutex
+	 * held: locker frees need LOCK_LOCKERS and detail frees need the txn
+	 * region lock, and the established order puts both outside a partition
+	 * mutex.  Lockers first, so no locker is left naming a freed detail.
+	 */
+	(void)__lock_sireap_lockers(env);
 
 	/*
 	 * Free committed-reader details whose last SIREAD marker was just
@@ -1030,12 +1063,32 @@ again:	if (obj == NULL) {
 				/*
 				 * Upgrading our own SIREAD to WRITE: drop the
 				 * SIREAD marker to avoid self-conflicts.
+				 *
+				 * Account for the detail reference the marker
+				 * held, exactly as the other two removal sites
+				 * (__lock_sicommit, __lock_siclean_obj) do and
+				 * with the same td_off guard the grant used.
+				 * Without it si_ref stays permanently above the
+				 * true marker count, so the owning detail (and
+				 * the locker deferring on it) can never be
+				 * reclaimed: a snapshot txn that reads then
+				 * writes the same key leaks a detail, a locker
+				 * and their mutex slots on every iteration until
+				 * txn_begin returns ENOMEM.
+				 *
+				 * This is the reader's OWN marker (sh_off ==
+				 * holder), so the detail is its live, running
+				 * transaction: si_ref cannot reach zero here and
+				 * no reclaim can trigger underneath us.
 				 */
 				SH_TAILQ_REMOVE(&sh_obj->sireaders,
 				    sireadlp, links, __db_lock);
 				if (atomic_read_relaxed(&region->nsireaders) > 0)
 					(void)atomic_dec(env,
 					    &region->nsireaders);
+				if (sh_locker->td_off != INVALID_ROFF)
+					(void)atomic_dec(env,
+					    &LOCKER_TD(env, sh_locker)->si_ref);
 				if ((ret = __lock_freelock(lt, sireadlp,
 				    LOCK_HOLDER(env, sireadlp),
 				    DB_LOCK_UNLINK | DB_LOCK_FREE)) != 0)

@@ -268,10 +268,12 @@ __txn_begin(env, ip, parent, txnpp, flags)
 			 * Trigger the marker sweep when live SIREAD markers pass
 			 * half the allocated lock objects, so the committed-reader
 			 * marker footprint stays bounded instead of growing until
-			 * the next checkpoint.  (Committed-reader locker structs are
-			 * not yet reclaimed -- see the SSI known-issues note.)
-			 * st_objects is always non-zero, so the bound holds whether
-			 * or not a max is configured.
+			 * the next checkpoint.  The sweep also reclaims the
+			 * committed-reader locker and detail structs the markers
+			 * were pinning (__lock_sireap_lockers /
+			 * __txn_reap_si_details), so those do not accumulate
+			 * either.  st_objects is always non-zero, so the bound
+			 * holds whether or not a max is configured.
 			 */
 			u_int32_t nobj = lkreg->stat.st_objects;
 			if (nobj != 0 && atomic_read_relaxed(&lkreg->nsireaders) > nobj / 2)
