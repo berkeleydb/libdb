@@ -545,6 +545,65 @@ __lock_freelocker_int(lt, region, sh_locker, reallyfree)
 }
 
 /*
+ * __lock_sireap_lockers --
+ *	Free committed-reader (SSI) lockers whose last SIREAD marker has been
+ *	reclaimed.  __lock_siclean_obj marks such a locker while holding the
+ *	object partition mutex, by clearing its td_off once the marker count
+ *	reaches zero; here, with no partition mutex held, we take LOCK_LOCKERS
+ *	and release the locker and its logical mutex.  Without this the
+ *	DB_LOCKER_FREED locker stayed allocated for the life of the environment,
+ *	so sequential read-only snapshot transactions eventually exhausted the
+ *	mutex region (DB_ENV->txn_begin returning ENOMEM).
+ *
+ *	This deliberately dereferences no TXN_DETAIL: mpool may free the detail
+ *	as soon as si_ref reaches zero, so the marker-count observation has to
+ *	happen (and does) in __lock_siclean_obj, not here.
+ *
+ * PUBLIC: int __lock_sireap_lockers __P((ENV *));
+ */
+int
+__lock_sireap_lockers(env)
+	ENV *env;
+{
+	DB_LOCKER *sh_locker, *next_locker;
+	DB_LOCKREGION *region;
+	DB_LOCKTAB *lt;
+	int ret;
+
+	if (!LOCKING_ON(env))
+		return (0);
+	lt = env->lk_handle;
+	region = lt->reginfo.primary;
+	ret = 0;
+
+	LOCK_LOCKERS(env, region);
+	for (sh_locker = SH_TAILQ_FIRST(&region->lockers, __db_locker);
+	    sh_locker != NULL; sh_locker = next_locker) {
+		next_locker = SH_TAILQ_NEXT(sh_locker, ulinks, __db_locker);
+		/*
+		 * (DB_LOCKER_FREED && td_off == INVALID_ROFF) is set only by
+		 * __lock_siclean_obj: a locker whose reclamation was deferred
+		 * for SIREAD markers that are now all gone.  A live locker never
+		 * carries DB_LOCKER_FREED, and a still-deferred one still has
+		 * its td_off.  heldby must be empty (__lock_sicommit detached
+		 * the markers, DB_LOCK_PUT_ALL released everything else) --
+		 * __lock_freelocker_int would return EINVAL rather than free a
+		 * locker with locks, so skip it instead of failing the sweep.
+		 */
+		if (!F_ISSET(sh_locker, DB_LOCKER_FREED) ||
+		    sh_locker->td_off != INVALID_ROFF ||
+		    !SH_LIST_EMPTY(&sh_locker->heldby))
+			continue;
+		if ((ret =
+		    __lock_freelocker_int(lt, region, sh_locker, 1)) != 0)
+			break;
+	}
+	UNLOCK_LOCKERS(env, region);
+
+	return (ret);
+}
+
+/*
  * __lock_freelocker
  *	Remove a locker its family from the hash table.
  *
