@@ -1120,6 +1120,7 @@
 #define	__lock_getlocker __lock_getlocker@DB_VERSION_UNIQUE_NAME@
 #define	__lock_getlocker_int __lock_getlocker_int@DB_VERSION_UNIQUE_NAME@
 #define	__lock_addfamilylocker __lock_addfamilylocker@DB_VERSION_UNIQUE_NAME@
+#define	__lock_sireap_lockers __lock_sireap_lockers@DB_VERSION_UNIQUE_NAME@
 #define	__lock_freelocker __lock_freelocker@DB_VERSION_UNIQUE_NAME@
 #define	__lock_familyremove __lock_familyremove@DB_VERSION_UNIQUE_NAME@
 #define	__lock_fix_list __lock_fix_list@DB_VERSION_UNIQUE_NAME@
