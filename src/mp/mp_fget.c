@@ -156,12 +156,16 @@ __memp_si_rwconflict(env, txn, visible_bhp)
 			break;
 		}
 		/*
-		 * Set W's write-end flag unless W already committed with the
-		 * read end set (W was itself a pivot that slipped through);
-		 * in that case the incoming edge still makes R the pivot.
+		 * Set W's write-end flag unless W already reached the point
+		 * where it will not re-examine its own pivot flags -- it has
+		 * committed, or it is inside DB_TXN->commit past its pivot
+		 * check (TXN_DTL_SICHECKED, published under this same mutex).
+		 * If W is there and already carries the read end, W is a pivot
+		 * that nobody will stop, so the incoming edge makes R abort
+		 * instead.  Testing W's status alone missed the committing case
+		 * and let a write skew commit (issue #136).
 		 */
-		if (F_ISSET(wtd, TXN_DTL_RCONF) &&
-		    wtd->status == TXN_COMMITTED) {
+		if (F_ISSET(wtd, TXN_DTL_RCONF) && TXN_SI_PAST_CHECK(wtd)) {
 			ret = DB_SNAPSHOT_CONFLICT;
 			break;
 		}

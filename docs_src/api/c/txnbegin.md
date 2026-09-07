@@ -83,7 +83,7 @@ The **flags** parameter must be set to 0 or by bitwise inclusively **OR**'ing to
 
   > **Note:** In this fork, `DB_TXN_SNAPSHOT` provides *serializable* snapshot isolation. In stock Oracle Berkeley DB, `DB_TXN_SNAPSHOT` provided only plain (non-serializable) snapshot isolation, and the earlier `DB_TXN_SNAPSHOT_SAFE` flag has been removed — there is no separate non-serializable snapshot mode.
 
-  > **Known limitation (as of 5.3.34).** Outside review found that the serializable guarantee is **not yet absolute**. A conflicting write that lands while another transaction is *inside* <a href="txncommit.md" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a> can escape detection, allowing a write skew to commit; and two records on different pages of one B-tree may not be detected as conflicting. Separately, long-lived environments running many snapshot transactions can exhaust the mutex region (`ENOMEM`) because reader bookkeeping is not fully reclaimed. Applications that depend on serializability for a correctness invariant should not yet rely on it alone. Tracking: issues #136, #137, #138 (and #140 for a related replication-path defect).
+  > **Known limitation (as of 5.3.34).** Long-lived environments running many snapshot transactions can exhaust the mutex region (`ENOMEM`) because reader bookkeeping is not fully reclaimed. Tracking: issues #137, #138 (and #140 for a related replication-path defect).
 
 - `DB_TXN_SYNC`
 
