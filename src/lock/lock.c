@@ -1102,22 +1102,34 @@ again:	if (obj == NULL) {
 				 * Record R --rw--> W under the txn-region mutex so
 				 * the two-flag reads and writes are atomic against
 				 * a concurrent recorder and the commit-time check.
+				 *
+				 * Both fate tests below ask "can R still resolve
+				 * this edge itself?", which is FALSE not only once R
+				 * has committed but also while R is inside
+				 * DB_TXN->commit past its pivot check --
+				 * TXN_SI_PAST_CHECK covers both, because
+				 * __txn_commit publishes TXN_DTL_SICHECKED under
+				 * this same mutex.  Testing R's status alone read
+				 * TXN_RUNNING for the whole span between R's check
+				 * and __txn_end, so we deferred to a check that had
+				 * already happened and both transactions committed a
+				 * write skew (#136).
 				 */
 				if (TXN_ON(env))
 					TXN_SYSTEM_LOCK(env);
 				if (F_ISSET(LOCK_OWNER(env, sireadlp),
 				    TXN_DTL_WCONF) &&
-				    LOCK_OWNER(env, sireadlp)->status ==
-				    TXN_COMMITTED)
+				    TXN_SI_PAST_CHECK(LOCK_OWNER(env, sireadlp)))
 					ret = DB_SNAPSHOT_UNSAFE;
 				else {
 					rwconf = 1;
 					/*
 					 * Set our incoming-conflict flag unless
-					 * the reader will itself abort.
+					 * the reader will itself abort -- which it
+					 * only will if it has a pivot check left.
 					 */
-					if (LOCK_OWNER(env, sireadlp)->status ==
-					    TXN_COMMITTED ||
+					if (TXN_SI_PAST_CHECK(LOCK_OWNER(env,
+					    sireadlp)) ||
 					    !F_ISSET(LOCK_OWNER(env, sireadlp),
 					    TXN_DTL_WCONF)) {
 						if (F_ISSET(LOCKER_TD(env,
