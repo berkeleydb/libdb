@@ -1846,6 +1846,7 @@
 #define	__os_support_db_register __os_support_db_register@DB_VERSION_UNIQUE_NAME@
 #define	__os_support_replication __os_support_replication@DB_VERSION_UNIQUE_NAME@
 #define	__os_cpu_count __os_cpu_count@DB_VERSION_UNIQUE_NAME@
+#define	__os_csprng __os_csprng@DB_VERSION_UNIQUE_NAME@
 #define	__os_ctime __os_ctime@DB_VERSION_UNIQUE_NAME@
 #define	__os_dirlist __os_dirlist@DB_VERSION_UNIQUE_NAME@
 #define	__os_dirfree __os_dirfree@DB_VERSION_UNIQUE_NAME@
