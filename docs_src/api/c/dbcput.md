@@ -116,6 +116,14 @@ When a client synchronizes with the master, it is possible for committed transac
 
 The operation was blocked by client/master synchronization.
 
+#### DB_SNAPSHOT_CONFLICT
+
+For a transaction begun with <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), a conflicting snapshot update was detected. The transaction must be aborted, and may then be retried. See <a href="../../guides/programmer_reference/program_errorret.md" class="olink">Error Returns to Applications</a>.
+
+#### DB_SNAPSHOT_UNSAFE
+
+For a transaction begun with <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), a potential serializability anomaly was detected through a read/write anti-dependency. The transaction must be aborted, and may then be retried. See <a href="../../guides/programmer_reference/program_errorret.md" class="olink">Error Returns to Applications</a>.
+
 #### EACCES
 
 An attempt was made to modify a read-only database.

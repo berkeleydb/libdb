@@ -155,6 +155,14 @@ The operation was blocked by client/master synchronization.
 
 A secondary index references a nonexistent primary key.
 
+#### DB_SNAPSHOT_CONFLICT
+
+For a transaction begun with <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), a conflicting snapshot update was detected. The transaction must be aborted, and may then be retried. See <a href="../../guides/programmer_reference/program_errorret.md" class="olink">Error Returns to Applications</a>.
+
+#### DB_SNAPSHOT_UNSAFE
+
+For a transaction begun with <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), a potential serializability anomaly was detected through a read/write anti-dependency. The transaction must be aborted, and may then be retried. See <a href="../../guides/programmer_reference/program_errorret.md" class="olink">Error Returns to Applications</a>.
+
 #### EINVAL
 
 If a record number of 0 was specified; the <a href="envopen.md#envopen_DB_THREAD" class="link">DB_THREAD</a> flag was specified to the <a href="dbopen.md" class="xref" title="DB-&gt;open()">DB-&gt;open()</a> method and none of the <a href="dbt.md#dbt_DB_DBT_MALLOC" class="link">DB_DBT_MALLOC</a>, <a href="dbt.md#dbt_DB_DBT_REALLOC" class="link">DB_DBT_REALLOC</a> or <a href="dbt.md#dbt_DB_DBT_USERMEM" class="link">DB_DBT_USERMEM</a> flags were set in the <a href="dbt.md" class="link" title="Chapter 4.  The DBT Handle">DBT</a>; the `DB->pget()` method was called with a <a href="db.md" class="link" title="Chapter 2.  The DB Handle">DB</a> handle that does not refer to a secondary index; or if an invalid flag value or parameter was specified.

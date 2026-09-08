@@ -27,13 +27,29 @@ The method flag parameters are as follows:
 
   Enables/disables configuring Berkeley DB to flush database writes to the backing disk before returning from the write system call, rather than flushing database writes explicitly in a separate system call, as necessary.
 
+- DB_MPOOL_AIO
+
+  Enables/disables asynchronous buffer-pool writeback (checkpoint, sync and trickle) using a native asynchronous I/O engine where one is available. Disabled by default; when disabled, or when no asynchronous backend is configured for the platform, writeback is synchronous. Foreground buffer eviction is always synchronous. Read-ahead and prefetch are not affected — the cache has no asynchronous read path.
+
 - DB_MULTIVERSION
 
   Enables/disables all databases in the environment from being opened as if DB_MULTIVERSION is passed to the DB-\>open method. This flag will be ignored for queue databases for which DB_MULTIVERSION is not supported.
 
+- DB_NOLOCKING
+
+  Enables/disables granting all requested mutual exclusion mutexes and database locks without regard for their actual availability. For debugging only.
+
 - DB_NOMMAP
 
   Enables/disables Berkeley DB from copying read-only database files into the local cache instead of potentially mapping them into process memory.
+
+- DB_NOPANIC
+
+  Enables/disables ignoring any panic state in the database environment. For debugging only; running with this set can corrupt databases.
+
+- DB_OVERWRITE
+
+  Enables/disables overwriting files stored in unencrypted format before they are deleted, so removed database environment regions and log files are less recoverable from disk.
 
 - DB_REGION_INIT
 
@@ -53,7 +69,7 @@ The method flag parameters are as follows:
 
 - DB_TXN_SNAPSHOT
 
-  Enables/disables all transactions in the environment to be started as if DB_TXN_SNAPSHOT were passed to the DB_ENV-\>txn_begin method, and all non-transactional cursors to be opened as if DB_TXN_SNAPSHOT were passed to the DB-\>cursor method.
+  Enables/disables all transactions in the environment to be started as if DB_TXN_SNAPSHOT were passed to the DB_ENV-\>txn_begin method, and all non-transactional cursors to be opened as if DB_TXN_SNAPSHOT were passed to the DB-\>cursor method. In this release DB_TXN_SNAPSHOT means *serializable* snapshot isolation (SSI), so setting it here makes every transaction in the environment serializable and subject to the DB_SNAPSHOT_CONFLICT / DB_SNAPSHOT_UNSAFE return codes. See <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a>.
 
 - DB_TXN_WRITE_NOSYNC
 
