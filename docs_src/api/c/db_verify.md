@@ -6,7 +6,7 @@ source: docs/api_reference/C/db_verify.html
 ## db_verify
 
 ``` c
-db_verify [-NoqV] [-h home] [-P password] file ...  
+db_verify [-mNoqV] [-h home] [-P password] file ...  
 ```
 
 The <span class="command">**db_verify**</span> utility verifies the structure of one or more files and the databases they contain.
@@ -16,6 +16,10 @@ The options are as follows:
 - **-h**
 
   Specify a home directory for the database environment; by default, the current working directory is used.
+
+- **-m**
+
+  Verify a named in-memory database rather than a file on disk. When this option is given, the remaining argument names the in-memory database.
 
 - **-o**
 

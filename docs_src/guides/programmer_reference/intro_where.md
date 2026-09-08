@@ -11,6 +11,6 @@ Berkeley DB will autoconfigure and run on almost any modern UNIX, POSIX or Linux
 
 The Berkeley DB distribution includes support for QNX Neutrino. See the Berkeley DB Installation and Build Guide for more information.
 
-The Berkeley DB distribution includes support for VxWorks. See the Berkeley DB Installation and Build Guide for more information.
+The Berkeley DB distribution includes support for Windows, via the Microsoft Visual C++ development environment. See the Berkeley DB Installation and Build Guide for more information.
 
-The Berkeley DB distribution includes support for Windows/NT, Windows/2000 and Windows/XP, via the Microsoft Visual C++ 6.0 and .NET development environments. See the Berkeley DB Installation and Build Guide for more information.
+Support for VxWorks and for Windows CE was present in earlier releases and has been removed; neither platform is supported by this release.

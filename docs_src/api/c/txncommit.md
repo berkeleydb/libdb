@@ -36,6 +36,14 @@ You attempted to open a database handle that is configured for no waiting exclus
 
 The operation failed because the site's replication master lease has expired.
 
+#### DB_SNAPSHOT_CONFLICT
+
+The transaction was begun with <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation) and was found at commit time to be the pivot of a dependency structure that could produce a non-serializable schedule. The transaction has been aborted and may be retried. See <a href="../../guides/programmer_reference/program_errorret.md" class="olink">Error Returns to Applications</a>.
+
+#### DB_SNAPSHOT_UNSAFE
+
+The transaction was begun with <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation) and a potential serializability anomaly was detected through a read/write anti-dependency. The transaction has been aborted and may be retried. See <a href="../../guides/programmer_reference/program_errorret.md" class="olink">Error Returns to Applications</a>.
+
 #### EINVAL
 
 If the cursor is already closed; or if an invalid flag value or parameter was specified.
