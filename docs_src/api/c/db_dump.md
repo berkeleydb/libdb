@@ -6,8 +6,8 @@ source: docs/api_reference/C/db_dump.html
 ## db_dump
 
 ``` c
-db_dump [-klNpRrV] [-b blob_dir] [-d ahr]
-    [-f output] [-h home] [-P password] [-s database] [-D bytes] file
+db_dump [-klNpRrV] [-d ahr] [-f output] [-h home] [-P password]
+    [-s database] [-D bytes] [-F first-page] [-L last-page] file
 
 db_dump [-kNpV] [-d ahr] [-f output] [-h home] -m database
 
@@ -19,10 +19,6 @@ The <span class="command">**db_dump**</span> utility reads the database file **f
 The <span class="command">**db_dump185**</span> utility is similar to the <span class="command">**db_dump**</span> utility, except that it reads databases in the format used by Berkeley DB versions 1.85 and 1.86.
 
 The options are as follows:
-
-- **-b**
-
-  Specifies the directory where BLOB data is stored for the database you are dumping.
 
 - **-d**
 
@@ -50,6 +46,10 @@ The options are as follows:
 
   Write to the specified file instead of to the standard output.
 
+- **-F**
+
+  With **-d**, begin the debugging dump at the specified page number instead of at the first page. Only valid in combination with the **-d** option.
+
 - **-h**
 
   Specify a home directory for the database environment; by default, the current working directory is used.
@@ -61,6 +61,10 @@ The options are as follows:
 - **-l**
 
   List the databases stored in the file.
+
+- **-L**
+
+  With **-d**, stop the debugging dump after the specified page number instead of at the last page. Only valid in combination with the **-d** option.
 
 - **-m**
 
