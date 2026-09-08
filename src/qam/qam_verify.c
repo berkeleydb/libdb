@@ -439,7 +439,7 @@ __qam_vrfy_walkqueue(dbp, vdp, handle, callback, flags)
 	PAGE *h;
 	QUEUE *qp;
 	VRFY_PAGEINFO *pip;
-	db_pgno_t first, i, last, pg_ext, stop;
+	db_pgno_t first, i, last, maxpage, pg_ext, stop;
 	int isbad, nextents, ret, t_ret;
 
 	COMPQUIET(h, NULL);
@@ -467,27 +467,33 @@ __qam_vrfy_walkqueue(dbp, vdp, handle, callback, flags)
 	/*
 	 * A wrapped queue (first > last) sets `stop` to the page holding recno
 	 * UINT32_MAX -- for a small rec_page that is billions of pages, far
-	 * more than the file can hold.  The loop below steps one page at a time
+	 * more than any queue can hold.  The loop below steps one page at a time
 	 * (it only skips ahead by an extent when a page is missing), so a
 	 * corrupt or hostile queue meta page turns verification into a
 	 * multi-billion-iteration scan: a denial of service.  It is a bounded
 	 * one -- the scan terminates and corrupts nothing -- but it can occupy
 	 * a verify for hours.
 	 *
-	 * No page past the end of the file can belong to the queue, so clamp to
-	 * the real last page.  vdp->last_pgno is set from
-	 * __memp_get_last_pgno() in __db_verify_arg(), i.e. the actual file
-	 * size, and is what IS_VALID_PGNO() already tests against.  A
-	 * legitimate large or wrapped queue cannot be rejected by this: its
-	 * pages exist, so they are <= last_pgno.  Extent pages live in separate
-	 * files and are reached through __qam_fget() below, not by this bound.
+	 * Bound the scan by what the extent files on disk can actually hold.
+	 * Note this must NOT be bounded by vdp->last_pgno: that is the last page
+	 * of the main .db file, and a queue with extents keeps only its meta
+	 * page there (every data page lives in a separate __dbq.<name>.<id>
+	 * file), so last_pgno is 0 and clamping to it skips this loop entirely,
+	 * silently verifying nothing.  __qam_extent_maxpage() reads the data
+	 * directory instead and returns the last page of the highest-numbered
+	 * extent present.
 	 *
-	 * Note the sibling scan in __qam_vrfy_meta() needs no such clamp: it
-	 * returns early unless last_recno > first_recno, and QAM_RECNO_PAGE()
-	 * is monotonic in recno, so its own `first > last` branch is dead code.
+	 * A legitimate queue cannot be truncated by this bound: its pages live
+	 * in extents that exist, so they are <= maxpage.  A missing extent stays
+	 * non-fatal -- consuming unlinks extents and leaves holes, and the
+	 * ENOENT path below still skips ahead rather than failing.  When no
+	 * extent file exists at all (maxpage == PGNO_INVALID) there is nothing
+	 * to walk, so the queue's own first/last remain the only bound.
 	 */
-	if (stop > vdp->last_pgno)
-		stop = vdp->last_pgno;
+	if ((ret = __qam_extent_maxpage(dbp, &maxpage)) != 0)
+		return (ret);
+	if (maxpage != PGNO_INVALID && stop > maxpage)
+		stop = maxpage;
 	nextents = vdp->nextents;
 
 	/* Verify/salvage each page. */
