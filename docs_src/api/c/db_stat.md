@@ -8,13 +8,17 @@ source: docs/api_reference/C/db_stat.html
 ``` c
 db_stat -d file [-fN] [-h home] [-P password] [-s database]
 
-db_stat [-cEelmNrtVxZ] [-C Aclop] [-h home] [-L A] [-M Ah] [-R A] 
-        [-P password]  
+db_stat [-acEelmNrtVxZ] [-C Aclop] [-h home] [-L A] [-M Ah] [-R A] 
+        [-X A] [-P password]  
 ```
 
 The <span class="command">**db_stat**</span> utility displays statistics for Berkeley DB environments.
 
 The options are as follows:
+
+- **-a**
+
+  Display the shared-region allocation lists in addition to the requested statistics. This option only has an effect in combination with one of the uppercase subsystem options (which imply "display all information"); given on its own it is an error. The output is voluminous and is intended for debugging the library's region allocator.
 
 - **-C**
 
@@ -129,6 +133,14 @@ The options are as follows:
 - **-x**
 
   Display mutex subsystem statistics, as described in the <a href="mutexstat.md" class="xref" title="DB_ENV-&gt;mutex_stat()">DB_ENV-&gt;mutex_stat()</a> method.
+
+- **-X**
+
+  Display detailed information about the mutex subsystem.
+
+  - **A**
+
+    Display all information.
 
 - **-Z**
 

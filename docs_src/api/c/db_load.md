@@ -6,8 +6,8 @@ source: docs/api_reference/C/db_load.html
 ## db_load
 
 ``` c
-db_load [-nTV] [-b blob_dir] [-c name=value] [-f file]
-    [-h home] [-P password] [-o blob_threshold] 
+db_load [-nTV] [-c name=value] [-f file]
+    [-h home] [-P password]
     [-t btree | hash | queue | recno] file
 
 db_load [-r lsn | fileid] [-h home] [-P password] file  
@@ -18,10 +18,6 @@ The <span class="command">**db_load**</span> utility reads from the standard inp
 The input to <span class="command">**db_load**</span> must be in the output format specified by the <a href="db_dump.md" class="xref" title="db_dump">db_dump</a> utility or as specified by the **-T** option below.
 
 The options are as follows:
-
-- **-b**
-
-  Identifies the directory where BLOB data is stored. If this option is not specified, then BLOB data is placed in a subdirectory within the DB's environment. See also the **-o** option.
 
 - **-c**
 
@@ -40,10 +36,6 @@ The options are as follows:
 - **-n**
 
   Do not overwrite existing keys in the database when loading into an already existing database. If a key/data pair cannot be loaded into the database for this reason, a warning message is displayed on the standard error output, and the key/data pair are skipped.
-
-- **-o**
-
-  Identifies the BLOB threshold in bytes. This threshold determines when a data item will be stored as a BLOB. Data items sized less than this threshold are stored as normal data within the database. Data items larger than this size are stored on-disk in a subdirectory set aside for the purpose. Use the **-b** command line option to identify where BLOB data is stored.
 
 - **-P**
 

@@ -36,9 +36,9 @@ The **flags** parameter must be set by bitwise inclusively **OR**'ing together o
 
   If set, remove the file when the last reference to it is closed.
 
-  The `DB_MPOOL_ULINK` flag configures a file in the cache, not only operations performed using the specified <a href="memp.md" class="link" title="Chapter 8.  The DB_MPOOLFILE Handle">DB_MPOOLFILE</a> handle.
+  The `DB_MPOOL_UNLINK` flag configures a file in the cache, not only operations performed using the specified <a href="memp.md" class="link" title="Chapter 8.  The DB_MPOOLFILE Handle">DB_MPOOLFILE</a> handle.
 
-  The `DB_MPOOL_ULINK` flag may be used to configure Berkeley DB at any time during the life of the application.
+  The `DB_MPOOL_UNLINK` flag may be used to configure Berkeley DB at any time during the life of the application.
 
 #### onoff
 

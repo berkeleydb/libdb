@@ -27,7 +27,7 @@ In order to get a token, the application must supply a small memory buffer, usin
 
 Note that a token is generated only upon a successful commit operation, and therefore the token buffer content is valid only after a successful commit. Also, if a transaction does not perform any update operations it does not generate a useful token.
 
-In the Berkeley DB Java and C# API, getting a token is simpler. The application need only invoke the <a href="../java/com/sleepycat/db/Transaction.html#getCommitToken()" class="ulink" target="_top">Transaction.getCommitToken()</a> method, after the transaction has committed.
+In the Berkeley DB Java API, getting a token is simpler. The application need only invoke the <a href="../java/com/sleepycat/db/Transaction.html#getCommitToken()" class="ulink" target="_top">Transaction.getCommitToken()</a> method, after the transaction has committed.
 
 ### Token handling
 
