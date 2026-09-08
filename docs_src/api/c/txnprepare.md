@@ -20,6 +20,8 @@ In the case of nested transactions, preparing the parent causes all unresolved c
 
 All open cursors in the transaction are closed and the first cursor close error will be returned.
 
+A transaction running under serializable snapshot isolation — one begun with the <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> flag, or begun in an environment configured with `DB_TXN_SNAPSHOT` — **cannot be prepared**: `DB_TXN->prepare()` returns `EINVAL` for such a transaction. SSI's serializability check runs at commit time and can still abort the transaction after prepare would have returned, so the combination is refused rather than allowing a prepared transaction to become uncommittable. Applications that need two-phase commit must run those transactions without `DB_TXN_SNAPSHOT`.
+
 The `DB_TXN->prepare()` method returns a non-zero error value on failure and 0 on success. The errors that this method returns include the error values of `DBcursor->close()` and the following:
 
 #### DB_LOCK_DEADLOCK
@@ -34,7 +36,7 @@ You attempted to open a database handle that is configured for no waiting exclus
 
 #### EINVAL
 
-If the cursor is already closed; or if an invalid flag value or parameter was specified.
+If the transaction was begun with <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), which cannot be prepared for two-phase commit; if the cursor is already closed; or if an invalid flag value or parameter was specified.
 
 ### Parameters
 

@@ -7,7 +7,8 @@ source: docs/api_reference/C/db_deadlock.html
 
 ``` c
 db_deadlock [-Vv]
-    [-a e | m | n | o | W | w | y] [-h home] [-L file] [-t sec.usec]  
+    [-a e | m | n | o | W | w | y] [-h home] [-L file] [-P password]
+    [-t sec.usec]  
 ```
 
 The <span class="command">**db_deadlock**</span> utility traverses the database environment lock region, and aborts a lock request each time it detects a deadlock or a lock request that has timed out. By default, in the case of a deadlock, a random lock request is chosen to be aborted.
@@ -61,6 +62,10 @@ The options are as follows:
   ```
 
   This file will be removed if the <span class="command">**db_deadlock**</span> utility exits gracefully.
+
+- **-P**
+
+  Specify an environment password. Although Berkeley DB utilities overwrite password strings as soon as possible, be aware there may be a window of vulnerability on systems where unprivileged users can see command-line arguments or where utilities are not able to overwrite the memory containing the command-line arguments.
 
 - **-t**
 
