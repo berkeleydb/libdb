@@ -23,6 +23,7 @@ int __qam_init_print __P((ENV *, DB_DISTAB *));
 int __qam_mswap __P((ENV *, PAGE *));
 int __qam_pgin_out __P((ENV *, db_pgno_t, void *, DBT *));
 int __qam_fprobe __P((DBC *, db_pgno_t, void *, qam_probe_mode, DB_CACHE_PRIORITY, u_int32_t));
+int __qam_extent_maxpage __P((DB *, db_pgno_t *));
 int __qam_fclose __P((DB *, db_pgno_t));
 int __qam_fremove __P((DB *, db_pgno_t));
 int __qam_sync __P((DB *));
