@@ -6,7 +6,7 @@ source: docs/api_reference/C/db_hotbackup.html
 ## db_hotbackup
 
 ``` c
-db_hotbackup [-cDEguVv] [-d data_dir ...] [-h home] 
+db_hotbackup [-cDFguVv] [-d data_dir ...] [-h home] 
         [-l log_dir] [-P password] -b backup_dir  
 ```
 

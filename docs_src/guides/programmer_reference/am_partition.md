@@ -13,10 +13,6 @@ source: docs/programmer_reference/am_partition.html
 
 You can improve concurrency on your database reads and writes by splitting access to a single database into multiple databases. This helps to avoid contention for internal database pages, as well as allowing you to spread your databases across multiple disks, which can help to improve disk I/O.
 
-### Note
-
-Database partitions are not supported by the C# and Java APIs at this time.
-
 While you can manually do this by creating and using more than one database for your data, DB is capable of partitioning your database for you. When you use DB's built-in database partitioning feature, your access to your data is performed in exactly the same way as if you were only using one database; all the work of knowing which database to use to access a particular record is handled for you under the hood.
 
 Only the BTree and Hash access methods are supported for partitioned databases.
