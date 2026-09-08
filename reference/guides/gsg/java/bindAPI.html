@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Using the BIND APIs — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg / java</nav>
+  <main>
+<h2 id="using-the-bind-apis">Using the BIND APIs</h2>
+<p><span class="sect2"> <a href="bindAPI.html#bindPrimitive">Numerical and String Objects</a> </span></p>
+<p><span class="sect2"> <a href="bindAPI.html#object2dbt">Serializable Complex Objects</a> </span></p>
+<p><span class="sect2"> <a href="bindAPI.html#customTuple">Custom Tuple Bindings</a> </span></p>
+<p>Except for Java String and boolean types, efficiently moving data in and out of Java byte arrays for storage in a database can be a nontrivial operation. To help you with this problem, DB provides the Bind APIs. While these APIs are described in detail in the <em>Berkeley DB Collections Tutorial</em>, this section provides a brief introduction to using the Bind APIs with:</p>
+<ul>
+<li><p>Single field numerical and string objects</p>
+<p>Use this if you want to store a single numerical or string object, such as <code>Long</code>, <code>Double</code>, or <code>String</code>.</p></li>
+<li><p>Complex objects that implement Java serialization.</p>
+<p>Use this if you are storing objects that implement <code>Serializable</code> and if you do not need to sort them.</p></li>
+<li><p>Non-serialized complex objects.</p>
+<p>If you are storing objects that do not implement serialization, you can create your own custom tuple bindings. Note that you should use custom tuple bindings even if your objects are serializable if you want to sort on that data.</p></li>
+</ul>
+<h3 id="numerical-and-string-objects">Numerical and String Objects</h3>
+<p>You can use the Bind APIs to store primitive data in a <code>DatabaseEntry</code> object. That is, you can store a single field containing one of the following types:</p>
+<ul>
+<li><p><code>String</code></p></li>
+<li><p><code>Character</code></p></li>
+<li><p><code>Boolean</code></p></li>
+<li><p><code>Byte</code></p></li>
+<li><p><code>Short</code></p></li>
+<li><p><code>Integer</code></p></li>
+<li><p><code>Long</code></p></li>
+<li><p><code>Float</code></p></li>
+<li><p><code>Double</code></p></li>
+</ul>
+<p>To store primitive data using the Bind APIs:</p>
+<ol type="1">
+<li><p>Create an <code>EntryBinding</code> object.</p>
+<p>When you do this, you use <code>TupleBinding.getPrimitiveBinding()</code> to return an appropriate binding for the conversion.</p></li>
+<li><p>Use the <code>EntryBinding</code> object to place the numerical object on the <code>DatabaseEntry</code>.</p></li>
+</ol>
+<p>Once the data is stored in the DatabaseEntry, you can put it to the database in whatever manner you wish. For example:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>EntryBinding<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleBinding<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Database<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseEntry<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>Database myDatabase <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">// Database open omitted for clarity.</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">// Need a key for the put.</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>try <span class="op">{</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    String aKey <span class="op">=</span> <span class="st">&quot;myLong&quot;</span><span class="op">;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    DatabaseEntry theKey <span class="op">=</span> new DatabaseEntry<span class="op">(</span>aKey<span class="op">.</span>getBytes<span class="op">(</span><span class="st">&quot;UTF-8&quot;</span><span class="op">));</span>    </span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Now build the DatabaseEntry using a TupleBinding</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    Long myLong <span class="op">=</span> new Long<span class="op">(</span><span class="dv">123456789</span><span class="bu">l</span><span class="op">);</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    DatabaseEntry theData <span class="op">=</span> new DatabaseEntry<span class="op">();</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    EntryBinding myBinding <span class="op">=</span> TupleBinding<span class="op">.</span>getPrimitiveBinding<span class="op">(</span>Long<span class="op">.</span>class<span class="op">);</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    myBinding<span class="op">.</span>objectToEntry<span class="op">(</span>myLong<span class="op">,</span> theData<span class="op">);</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Now store it</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    myDatabase<span class="op">.</span>put<span class="op">(</span>null<span class="op">,</span> theKey<span class="op">,</span> theData<span class="op">);</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> catch <span class="op">(</span>Exception e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Exception handling goes here</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Retrieval from the <code>DatabaseEntry</code> object is performed in much the same way:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>      </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>EntryBinding<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleBinding<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Database<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseEntry<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>LockMode<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>OperationStatus<span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>Database myDatabase <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co">// Database open omitted for clarity</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>try <span class="op">{</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Need a key for the get</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    String aKey <span class="op">=</span> <span class="st">&quot;myLong&quot;</span><span class="op">;</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    DatabaseEntry theKey <span class="op">=</span> new DatabaseEntry<span class="op">(</span>aKey<span class="op">.</span>getBytes<span class="op">(</span><span class="st">&quot;UTF-8&quot;</span><span class="op">));</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Need a DatabaseEntry to hold the associated data.</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    DatabaseEntry theData <span class="op">=</span> new DatabaseEntry<span class="op">();</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Bindings need only be created once for a given scope</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    EntryBinding myBinding <span class="op">=</span> TupleBinding<span class="op">.</span>getPrimitiveBinding<span class="op">(</span>Long<span class="op">.</span>class<span class="op">);</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Get it</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    OperationStatus retVal <span class="op">=</span> myDatabase<span class="op">.</span>get<span class="op">(</span>null<span class="op">,</span> theKey<span class="op">,</span> theData<span class="op">,</span> </span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>                                            LockMode<span class="op">.</span>DEFAULT<span class="op">);</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    String retKey <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>retVal <span class="op">==</span> OperationStatus<span class="op">.</span>SUCCESS<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Recreate the data.</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Use the binding to convert the byte array contained in theData</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>        <span class="co">// to a Long type.</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>        Long theLong <span class="op">=</span> <span class="op">(</span>Long<span class="op">)</span> myBinding<span class="op">.</span>entryToObject<span class="op">(</span>theData<span class="op">);</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>        retKey <span class="op">=</span> new String<span class="op">(</span>theKey<span class="op">.</span>getData<span class="op">(),</span> <span class="st">&quot;UTF-8&quot;</span><span class="op">);</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;For key: &#39;&quot;</span> <span class="op">+</span> retKey <span class="op">+</span> <span class="st">&quot;&#39; found Long: &#39;&quot;</span> <span class="op">+</span> </span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>                            theLong <span class="op">+</span> <span class="st">&quot;&#39;.&quot;</span><span class="op">);</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;No record found for key &#39;&quot;</span> <span class="op">+</span> retKey <span class="op">+</span> <span class="st">&quot;&#39;.&quot;</span><span class="op">);</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> catch <span class="op">(</span>Exception e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Exception handling goes here</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<h3 id="serializable-complex-objects">Serializable Complex Objects</h3>
+<p>Frequently your application requires you to store and manage objects for your record data and/or keys. You may need to do this if you are caching objects created by another process. You may also want to do this if you want to store multiple data values on a record. When used with just primitive data, or with objects containing a single data member, DB database records effectively represent a single row in a two-column table. By storing a complex object in the record, you can turn each record into a single row in an <span class="emphasis"><em>n</em></span>-column table, where <span class="emphasis"><em>n</em></span> is the number of data members contained by the stored object(s).</p>
+<p>In order to store objects in a DB database, you must convert them to and from a <code>byte</code> array. The first instinct for many Java programmers is to do this using Java serialization. While this is functionally a correct solution, the result is poor space-performance because this causes the class information to be stored on every such database record. This information can be quite large and it is redundant — the class information does not vary for serialized objects of the same type.</p>
+<p>In other words, directly using serialization to place your objects into byte arrays means that you will be storing a great deal of unnecessary information in your database, which ultimately leads to larger databases and more expensive disk I/O.</p>
+<p>The easiest way for you to solve this problem is to use the Bind APIs to perform the serialization for you. Doing so causes the extra object information to be saved off to a unique <code>Database</code> dedicated for that purpose. This means that you do not have to duplicate that information on each record in the <code>Database</code> that your application is using to store its information.</p>
+<p>Note that when you use the Bind APIs to perform serialization, you still receive all the benefits of serialization. You can still use arbitrarily complex object graphs, and you still receive built-in class evolution through the serialVersionUID (SUID) scheme. All of the Java serialization rules apply without modification. For example, you can implement Externalizable instead of Serializable.</p>
+<h4 id="usage-caveats">Usage Caveats</h4>
+<p>Before using the Bind APIs to perform serialization, you may want to consider writing your own custom tuple bindings. Specifically, avoid serialization if:</p>
+<ul>
+<li><p>If you need to sort based on the objects your are storing. The sort order is meaningless for the byte arrays that you obtain through serialization. Consequently, you should not use serialization for keys if you care about their sort order. You should also not use serialization for record data if your <code>Database</code> supports duplicate records and you care about sort order.</p></li>
+<li><p>You want to minimize the size of your byte arrays. Even when using the Bind APIs to perform the serialization the resulting <code>byte</code> array may be larger than necessary. You can achieve more compact results by building your own custom tuple binding.</p></li>
+<li><p>You want to optimize for speed. In general, custom tuple bindings are faster than serialization at moving data in and out of <code>byte</code> arrays.</p></li>
+</ul>
+<p>For information on building your own custom tuple binding, see <a href="bindAPI.html#customTuple" class="xref" title="Custom Tuple Bindings">Custom Tuple Bindings</a>.</p>
+<h4 id="serializing-objects">Serializing Objects</h4>
+<p>To store a serializable complex object using the Bind APIs:</p>
+<ol type="1">
+<li><p>Implement java.io.Serializable in the class whose instances that you want to store.</p></li>
+<li><p>Open (create) your databases. You need two. The first is the database that you use to store your data. The second is used to store the class information.</p></li>
+<li><p>Instantiate a class catalog. You do this with <code>com.sleepycat.bind.serial.StoredClassCatalog</code>, and at that time you must provide a handle to an open database that is used to store the class information.</p></li>
+<li><p>Create an entry binding that uses <code>com.sleepycat.bind.serial.SerialBinding</code>.</p></li>
+<li><p>Instantiate an instance of the object that you want to store, and place it in a <code>DatabaseEntry</code> using the entry binding that you created in the previous step.</p></li>
+</ol>
+<p>For example, suppose you want to store a long, double, and a String as a record's data. Then you might create a class that looks something like this:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span>    </span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>Serializable<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>public class MyData implements Serializable <span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">long</span> longData<span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">double</span> doubleData<span class="op">;</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    private String description<span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    MyData<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        longData <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        doubleData <span class="op">=</span> <span class="fl">0.0</span><span class="op">;</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        description <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setLong<span class="op">(</span><span class="dt">long</span> data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>        longData <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setDouble<span class="op">(</span><span class="dt">double</span> data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>        doubleData <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setDescription<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>        description <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">long</span> getLong<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> longData<span class="op">;</span></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">double</span> getDouble<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> doubleData<span class="op">;</span></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>    public String getDescription<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> description<span class="op">;</span></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>You can then store instances of this class as follows:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>EntryBinding<span class="op">;</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>serial<span class="op">.</span>StoredClassCatalog<span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>serial<span class="op">.</span>SerialBinding<span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Database<span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseConfig<span class="op">;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseEntry<span class="op">;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseType<span class="op">;</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co">// The key data.</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>String aKey <span class="op">=</span> <span class="st">&quot;myData&quot;</span><span class="op">;</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="co">// The data data</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>MyData data2Store <span class="op">=</span> new MyData<span class="op">();</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>data2Store<span class="op">.</span>setLong<span class="op">(</span><span class="dv">123456789</span><span class="bu">l</span><span class="op">);</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>data2Store<span class="op">.</span>setDouble<span class="op">(</span><span class="fl">1234.9876543</span><span class="op">);</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>data2Store<span class="op">.</span>setDescription<span class="op">(</span><span class="st">&quot;A test instance of this class&quot;</span><span class="op">);</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>try <span class="op">{</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Open the database that you will use to store your data</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    DatabaseConfig myDbConfig <span class="op">=</span> new DatabaseConfig<span class="op">();</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>    myDbConfig<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    myDbConfig<span class="op">.</span>setSortedDuplicates<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    myDbConfig<span class="op">.</span>setType<span class="op">(</span>DatabaseType<span class="op">.</span>BTREE<span class="op">);</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    Database myDatabase <span class="op">=</span> new Database<span class="op">(</span><span class="st">&quot;myDb&quot;</span><span class="op">,</span> null<span class="op">,</span> myDbConfig<span class="op">);</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Open the database that you use to store your class information.</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The db used to store class information does not require duplicates</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>    <span class="co">// support.</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    myDbConfig<span class="op">.</span>setSortedDuplicates<span class="op">(</span><span class="kw">false</span><span class="op">);</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    Database myClassDb <span class="op">=</span> new Database<span class="op">(</span><span class="st">&quot;classDb&quot;</span><span class="op">,</span> null<span class="op">,</span> myDbConfig<span class="op">);</span> </span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Instantiate the class catalog</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    StoredClassCatalog classCatalog <span class="op">=</span> new StoredClassCatalog<span class="op">(</span>myClassDb<span class="op">);</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Create the binding</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>    EntryBinding dataBinding <span class="op">=</span> new SerialBinding<span class="op">(</span>classCatalog<span class="op">,</span> </span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>                                                 MyData<span class="op">.</span>class<span class="op">);</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Create the DatabaseEntry for the key</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>    DatabaseEntry theKey <span class="op">=</span> new DatabaseEntry<span class="op">(</span>aKey<span class="op">.</span>getBytes<span class="op">(</span><span class="st">&quot;UTF-8&quot;</span><span class="op">));</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Create the DatabaseEntry for the data. Use the EntryBinding object</span></span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a>    <span class="co">// that was just created to populate the DatabaseEntry</span></span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a>    DatabaseEntry theData <span class="op">=</span> new DatabaseEntry<span class="op">();</span></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>    dataBinding<span class="op">.</span>objectToEntry<span class="op">(</span>data2Store<span class="op">,</span> theData<span class="op">);</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Put it as normal</span></span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a>    myDatabase<span class="op">.</span>put<span class="op">(</span>null<span class="op">,</span> theKey<span class="op">,</span> theData<span class="op">);</span></span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Database and environment close omitted for brevity </span></span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> catch <span class="op">(</span>Exception e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Exception handling goes here</span></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h4 id="deserializing-objects">Deserializing Objects</h4>
+<p>Once an object is stored in the database, you can retrieve the <code>MyData</code> objects from the retrieved <code>DatabaseEntry</code> using the Bind APIs in much the same way as is described above. For example:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>EntryBinding<span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>serial<span class="op">.</span>StoredClassCatalog<span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>serial<span class="op">.</span>SerialBinding<span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Database<span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseConfig<span class="op">;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseEntry<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseType<span class="op">;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>LockMode<span class="op">;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="co">// The key data.</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>String aKey <span class="op">=</span> <span class="st">&quot;myData&quot;</span><span class="op">;</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>try <span class="op">{</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Open the database that stores your data</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    DatabaseConfig myDbConfig <span class="op">=</span> new DatabaseConfig<span class="op">();</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>    myDbConfig<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">false</span><span class="op">);</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    myDbConfig<span class="op">.</span>setType<span class="op">(</span>DatabaseType<span class="op">.</span>BTREE<span class="op">);</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>    Database myDatabase <span class="op">=</span> new Database<span class="op">(</span><span class="st">&quot;myDb&quot;</span><span class="op">,</span> null<span class="op">,</span> myDbConfig<span class="op">);</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Open the database that stores your class information.</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>    Database myClassDb <span class="op">=</span> new Database<span class="op">(</span><span class="st">&quot;classDb&quot;</span><span class="op">,</span> null<span class="op">,</span> myDbConfig<span class="op">);</span> </span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Instantiate the class catalog</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>    StoredClassCatalog classCatalog <span class="op">=</span> new StoredClassCatalog<span class="op">(</span>myClassDb<span class="op">);</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Create the binding</span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>    EntryBinding dataBinding <span class="op">=</span> new SerialBinding<span class="op">(</span>classCatalog<span class="op">,</span> </span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>                                                 MyData<span class="op">.</span>class<span class="op">);</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Create DatabaseEntry objects for the key and data</span></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>    DatabaseEntry theKey <span class="op">=</span> new DatabaseEntry<span class="op">(</span>aKey<span class="op">.</span>getBytes<span class="op">(</span><span class="st">&quot;UTF-8&quot;</span><span class="op">));</span></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>    DatabaseEntry theData <span class="op">=</span> new DatabaseEntry<span class="op">();</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Do the get as normal</span></span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>    myDatabase<span class="op">.</span>get<span class="op">(</span>null<span class="op">,</span> theKey<span class="op">,</span> theData<span class="op">,</span> LockMode<span class="op">.</span>DEFAULT<span class="op">);</span></span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Recreate the MyData object from the retrieved DatabaseEntry using</span></span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>    <span class="co">// the EntryBinding created above</span></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>    MyData retrievedData <span class="op">=</span> <span class="op">(</span>MyData<span class="op">)</span> dataBinding<span class="op">.</span>entryToObject<span class="op">(</span>theData<span class="op">);</span></span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Database and environment close omitted for brevity</span></span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> catch <span class="op">(</span>Exception e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Exception handling goes here</span></span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="custom-tuple-bindings">Custom Tuple Bindings</h3>
+<p>If you want to store complex objects in your database, then you can use tuple bindings to do this. While they are more work to write and maintain than if you were to use serialization, the <code>byte</code> array conversion is faster. In addition, custom tuple bindings should allow you to create <code>byte</code> arrays that are smaller than those created by serialization. Custom tuple bindings also allow you to optimize your BTree comparisons, whereas serialization does not.</p>
+<p>For information on using serialization to store complex objects, see <a href="bindAPI.html#object2dbt" class="xref" title="Serializable Complex Objects">Serializable Complex Objects</a>.</p>
+<p>To store complex objects using a custom tuple binding:</p>
+<ol type="1">
+<li><p>Implement the class whose instances that you want to store. Note that you do not have to implement the Serializable interface.</p></li>
+<li><p>Write a tuple binding using the <code>com.sleepycat.bind.tuple.TupleBinding</code> class.</p></li>
+<li><p>Open (create) your database. Unlike serialization, you only need one.</p></li>
+<li><p>Create an entry binding that uses the tuple binding that you implemented in step 2.</p></li>
+<li><p>Instantiate an instance of the object that you want to store, and place it in a <code>DatabaseEntry</code> using the entry binding that you created in the previous step.</p></li>
+</ol>
+<p>For example, suppose you want to your keys to be instances of the following class:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>public class MyData2 <span class="op">{</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">long</span> longData<span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    private Double doubleData<span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    private String description<span class="op">;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    public MyData2<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>        longData <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>        doubleData <span class="op">=</span> new Double<span class="op">(</span><span class="fl">0.0</span><span class="op">);</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>        description <span class="op">=</span> <span class="st">&quot;&quot;</span><span class="op">;</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setLong<span class="op">(</span><span class="dt">long</span> data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>        longData <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setDouble<span class="op">(</span>Double data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>        doubleData <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setString<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>        description <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">long</span> getLong<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> longData<span class="op">;</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>    public Double getDouble<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> doubleData<span class="op">;</span></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>    public String getString<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> description<span class="op">;</span></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>In this case, you need to write a tuple binding for the <code>MyData2</code> class. When you do this, you must implement the <code>TupleBinding.objectToEntry()</code> and <code>TupleBinding.entryToObject()</code> abstract methods. Remember the following as you implement these methods:</p>
+<ul>
+<li><p>You use <code>TupleBinding.objectToEntry()</code> to convert objects to <code>byte</code> arrays. You use <code>com.sleepycat.bind.tuple.TupleOutput</code> to write primitive data types to the <code>byte</code> array. Note that <code>TupleOutput</code> provides methods that allows you to work with numerical types (<code>long</code>, <code>double</code>, <code>int</code>, and so forth) and not the corresponding <code>java.lang</code> numerical classes.</p></li>
+<li><p>The order that you write data to the <code>byte</code> array in <code>TupleBinding.objectToEntry()</code> is the order that it appears in the array. So given the <code>MyData2</code> class as an example, if you write <code>description</code>, <code>doubleData</code>, and then <code>longData</code>, then the resulting byte array will contain these data elements in that order. This means that your records will sort based on the value of the <code>description</code> data member and then the <code>doubleData</code> member, and so forth. If you prefer to sort based on, say, the <code>longData</code> data member, write it to the byte array first.</p></li>
+<li><p>You use <code>TupleBinding.entryToObject()</code> to convert the <code>byte</code> array back into an instance of your original class. You use <code>com.sleepycat.bind.tuple.TupleInput</code> to get data from the <code>byte</code> array.</p></li>
+<li><p>The order that you read data from the <code>byte</code> array must be exactly the same as the order in which it was written.</p></li>
+</ul>
+<p>For example:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleBinding<span class="op">;</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleInput<span class="op">;</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleOutput<span class="op">;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>public class MyTupleBinding extends TupleBinding <span class="op">{</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Write a MyData2 object to a TupleOutput</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> objectToEntry<span class="op">(</span>Object object<span class="op">,</span> TupleOutput to<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>        MyData2 myData <span class="op">=</span> <span class="op">(</span>MyData2<span class="op">)</span>object<span class="op">;</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Write the data to the TupleOutput (a DatabaseEntry).</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Order is important. The first data written will be</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>        <span class="co">// the first bytes used by the default comparison routines.</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>        to<span class="op">.</span>writeDouble<span class="op">(</span>myData<span class="op">.</span>getDouble<span class="op">().</span>doubleValue<span class="op">());</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>        to<span class="op">.</span>writeLong<span class="op">(</span>myData<span class="op">.</span>getLong<span class="op">());</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>        to<span class="op">.</span>writeString<span class="op">(</span>myData<span class="op">.</span>getString<span class="op">());</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Convert a TupleInput to a MyData2 object</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>    public Object entryToObject<span class="op">(</span>TupleInput ti<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Data must be read in the same order that it was</span></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>        <span class="co">// originally written.</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>        Double theDouble <span class="op">=</span> new Double<span class="op">(</span>ti<span class="op">.</span>readDouble<span class="op">());</span></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>        <span class="dt">long</span> theLong <span class="op">=</span> ti<span class="op">.</span>readLong<span class="op">();</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>        String theString <span class="op">=</span> ti<span class="op">.</span>readString<span class="op">();</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>        MyData2 myData <span class="op">=</span> new MyData2<span class="op">();</span></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>        myData<span class="op">.</span>setDouble<span class="op">(</span>theDouble<span class="op">);</span></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>        myData<span class="op">.</span>setLong<span class="op">(</span>theLong<span class="op">);</span></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>        myData<span class="op">.</span>setString<span class="op">(</span>theString<span class="op">);</span></span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> myData<span class="op">;</span></span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>In order to use the tuple binding, instantiate the binding and then use:</p>
+<ul>
+<li><p><code>MyTupleBinding.objectToEntry()</code> to convert a MyData2 object to a <code>DatabaseEntry</code>.</p></li>
+<li><p><code>MyTupleBinding.entryToObject()</code> to convert a <code>DatabaseEntry</code> to a <code>MyData2</code> object.</p></li>
+</ul>
+<p>For example:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleBinding<span class="op">;</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseEntry<span class="op">;</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>TupleBinding keyBinding <span class="op">=</span> new MyTupleBinding<span class="op">();</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>MyData2 theKeyData <span class="op">=</span> new MyData2<span class="op">();</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>theKeyData<span class="op">.</span>setLong<span class="op">(</span><span class="dv">123456789</span><span class="bu">l</span><span class="op">);</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>theKeyData<span class="op">.</span>setDouble<span class="op">(</span>new Double<span class="op">(</span><span class="fl">12345.6789</span><span class="op">));</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>theKeyData<span class="op">.</span>setString<span class="op">(</span><span class="st">&quot;My key data&quot;</span><span class="op">);</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>DatabaseEntry myKey <span class="op">=</span> new DatabaseEntry<span class="op">();</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>try <span class="op">{</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Store theKeyData in the DatabaseEntry</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>    keyBinding<span class="op">.</span>objectToEntry<span class="op">(</span>theKeyData<span class="op">,</span> myKey<span class="op">);</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Database put and get activity omitted for clarity</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Retrieve the key data</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>    theKeyData <span class="op">=</span> <span class="op">(</span>MyData2<span class="op">)</span> keyBinding<span class="op">.</span>entryToObject<span class="op">(</span>myKey<span class="op">);</span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> catch <span class="op">(</span>Exception e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Exception handling goes here</span></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

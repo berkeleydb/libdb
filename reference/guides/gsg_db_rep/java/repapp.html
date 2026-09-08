@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 3. The DB Replication Manager — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg_db_rep / java</nav>
+  <main>
+<h2 id="chapter-3-the-db-replication-manager">Chapter 3. The DB Replication Manager</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="repapp.html#rep_init_code">Starting and Stopping Replication</a> </span></p>
+<p><span class="sect2"> <a href="repapp.html#election_flags">Managing Election Policies</a> </span></p>
+<p><span class="sect2"> <a href="repapp.html#thread_count">Selecting the Number of Threads</a> </span></p>
+<p><span class="sect1"> <a href="repmgr_init_example_c.html">Adding the Replication Manager to SimpleTxn</a> </span></p>
+<p><span class="sect1"> <a href="fwrkpermmessage.html">Permanent Message Handling</a> </span></p>
+<p><span class="sect2"> <a href="fwrkpermmessage.html#fmwrkpermpolicy">Identifying Permanent Message Policies</a> </span></p>
+<p><span class="sect2"> <a href="fwrkpermmessage.html#fmwrkpermtimeout">Setting the Permanent Message Timeout</a> </span></p>
+<p><span class="sect2"> <a href="fwrkpermmessage.html#perm2fmwrkexample">Adding a Permanent Message Policy to RepQuoteExampleGSG</a> </span></p>
+<p><span class="sect1"> <a href="electiontimes.html">Managing Election Times</a> </span></p>
+<p><span class="sect2"> <a href="electiontimes.html#electiontimeout">Managing Election Timeouts</a> </span></p>
+<p><span class="sect2"> <a href="electiontimes.html#electretrytime">Managing Election Retry Times</a> </span></p>
+<p><span class="sect1"> <a href="fmwrkconnectretry.html">Managing Connection Retries</a> </span></p>
+<p><span class="sect1"> <a href="heartbeats.html">Managing Heartbeats</a> </span></p>
+<p>The easiest way to add replication to your transactional application is to use the Replication Manager. The Replication Manager provides a comprehensive communications layer that enables replication. For a brief listing of the Replication Manager's feature set, see <a href="apioverview.html#repframeworkoverview" class="xref" title="Replication Manager Overview">Replication Manager Overview</a>.</p>
+<p>To use the Replication Manager, you make use of special methods off the <code>Environment</code> and <code>EnvironmentConfig</code> classes, as well as the <code>ReplicationManagerSiteConfig</code> class. You also use a series of related classes to perform your implementation. For example, in order to detect whether your code is running as a master or a replica, you must implement <code>com.sleepycat.db.EventHandler</code>. (see <a href="fwrkmasterreplica.html#determinestate" class="xref" title="Determining State">Determining State</a>). That is:</p>
+<ol type="1">
+<li><p>Create an environment handle as normal.</p></li>
+<li><p>Configure your environment handle as needed (e.g. set the error file and error prefix values, if desired).</p></li>
+<li><p>Use the Replication Manager replication classes and methods to configure the Replication Manager. Using these classes and methods causes DB to know that you are using the Replication Manager.</p>
+<p>Configuring the Replication Manager entails setting the replication environment's priority, setting the TCP/IP address that this replication environment will use for incoming replication messages, identifying TCP/IP addresses of other replication environments, setting the number of replication environments in the replication group, and so forth. These actions are discussed throughout the remainder of this chapter.</p></li>
+<li><p>Open your environment handle. When you do this, be sure to specify <code>EnvironmentConfig.setInitializeReplication()</code> when you configure your environment handle. This is in addition to the configuration that you would normally use for a transactional application. This causes replication to be initialized for the application.</p></li>
+<li><p>Start replication by calling <code>Environment.replicationManagerStart()</code>.</p></li>
+<li><p>Open your databases as needed. Masters must open their databases for read and write activity. Replicas can open their databases for read-only activity, but doing so means they must re-open the databases if the replica ever becomes a master. Either way, replicas should never attempt to write to the database(s) directly.</p></li>
+</ol>
+<h3 id="note">Note</h3>
+<p>The Replication Manager allows you to only use one environment handle per process.</p>
+<p>When you are ready to shut down your application:</p>
+<ol type="1">
+<li><p>Close your databases</p></li>
+<li><p>Close your environment. This causes replication to stop as well.</p></li>
+</ol>
+<h3 id="note-1">Note</h3>
+<p>Before you can use the Replication Manager, you may have to enable it in your DB library. This is <span class="emphasis"><em>not</em></span> a requirement for Microsoft Windows systems, or Unix systems that use pthread mutexes by default. Other systems, notably BSD and BSD-derived systems (such as Mac OS X), must enable the Replication Manager when you configure the DB build.</p>
+<p>You do this by <span class="emphasis"><em>not</em></span> disabling replication and by configuring the library with POSIX threads support. In other words, replication must be turned on in the build (it is by default), and POSIX thread support must be enabled if it is not already by default. To do this, use the <code>--enable-pthread_api</code> switch on the configure script.</p>
+<p>For example:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">../</span>dist<span class="op">/</span>configure <span class="op">--</span>enable<span class="op">-</span>pthread<span class="op">-</span>api</span></code></pre></div>
+<h2 id="starting-and-stopping-replication">Starting and Stopping Replication</h2>
+<p><span class="sect2"> <a href="repapp.html#election_flags">Managing Election Policies</a> </span></p>
+<p><span class="sect2"> <a href="repapp.html#thread_count">Selecting the Number of Threads</a> </span></p>
+<p>As described above, you introduce replication to an application by starting with a transactional application, performing some basic replication configuration, and then starting replication using <code>Environment.replicationManagerStart()</code>.</p>
+<p>You stop replication by closing your environment cleanly in the same way you would for any DB application.</p>
+<p>For example, the following code fragment initializes, then stops and starts replication. Note that other replication activities are omitted for brevity.</p>
+<h3 id="note-2">Note</h3>
+<p>Note that the following code fragment would be part of a larger class that must implement <code>com.sleepycat.db.EventHandler</code>. This class is used to track state changes between master and replica. We put off that implementation for the moment, but the point remains that the following code fragment would be contained in a method or two that you would include in your <code>com.sleepycat.db.EventHandler</code> implementation.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Environment<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>EnvironmentConfig<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationHostAddress<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationManagerStartPolicy<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationManagerSiteConfig<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    String progname <span class="op">=</span> <span class="st">&quot;example_replication&quot;</span><span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    String envHome <span class="op">=</span> <span class="st">&quot;TESTDIR&quot;</span><span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> cachesize <span class="op">=</span> <span class="dv">10</span> <span class="op">*</span> <span class="dv">1024</span> <span class="op">*</span> <span class="dv">1024</span><span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    Environment dbenv<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    String listenHost <span class="op">=</span> <span class="st">&quot;mymachine.sleepycat.com&quot;</span><span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    String otherHost <span class="op">=</span> <span class="st">&quot;anothermachine.sleepycat.com&quot;</span><span class="op">;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> listenPort <span class="op">=</span> <span class="dv">8080</span><span class="op">;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> otherPort <span class="op">=</span> <span class="dv">8081</span><span class="op">;</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>try <span class="op">{</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Configure the environment handle</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    EnvironmentConfig envConfig <span class="op">=</span> new EnvironmentConfig<span class="op">();</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setErrorStream<span class="op">(</span>System<span class="op">.</span>err<span class="op">);</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setErrorPrefix<span class="op">(</span>progname<span class="op">);</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setCacheSize<span class="op">(</span>cachesize<span class="op">);</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setTxnNoSync<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Identify the local replication site. This is the local hostname</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="co">// and  port that this replication participant will use to receive</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    <span class="co">// incoming replication messages. Note that this can be</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="co">// performed only once for the application. It is required.</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    ReplicationManagerSiteConfig thisHostConfig <span class="op">=</span> </span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>        new ReplicationManagerSiteConfig<span class="op">(</span>listenHost<span class="op">,</span> listenPort<span class="op">);</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    thisHostConfig<span class="op">.</span>setGroupCreator<span class="op">(</span>creator<span class="op">);</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    thisHostConfig<span class="op">.</span>setLocalSite<span class="op">(</span><span class="kw">true</span><span class="op">)</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>addReplicationManagerSite<span class="op">(</span>thisHostConfig<span class="op">);</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Set this application&#39;s priority. This is used for elections.</span></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>    <span class="co">// </span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Set this number to a positive integer, or 0 if you do not want</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>    <span class="co">// this site to be able to become a master.</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setReplicationPriority<span class="op">(</span><span class="dv">100</span><span class="op">);</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Add a site to the list of replication environments known to </span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>    <span class="co">// this application.</span></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>    ReplicationManagerSiteConfig remoteSiteConfig <span class="op">=</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>        new ReplicationManagerSiteConfig<span class="op">(</span>otherHost<span class="op">,</span> otherPort<span class="op">);</span></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>    remoteSiteConfig<span class="op">.</span>setBootstrapHelper<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>addReplicationManagerSite<span class="op">(</span>remoteSiteConfig<span class="op">);</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Configure the environment&#39;s subsystems. Note that we initialize</span></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>    <span class="co">// replication. This is required.</span></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setRunRecovery<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setThreaded<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setInitializeReplication<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setInitializeLocking<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setInitializeLogging<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setInitializeCache<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>    envConfig<span class="op">.</span>setTransactional<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Missing from this is where we set the event handle and the</span></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>    <span class="co">// acknowledgement policy. We discuss these things later in this </span></span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>    <span class="co">// book. </span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Open our environment handle.</span></span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a>    try <span class="op">{</span></span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>        dbenv <span class="op">=</span> new Environment<span class="op">(</span>envHome<span class="op">,</span> envConfig<span class="op">);</span></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> catch<span class="op">(</span>FileNotFoundException e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;FileNotFound exception: &quot;</span> <span class="op">+</span> e<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span></span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Ensure that the environment directory is pre-created.&quot;</span><span class="op">);</span></span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Start the replication manager such that it has three threads.</span></span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a>    dbenv<span class="op">.</span>replicationManagerStart<span class="op">(</span><span class="dv">3</span><span class="op">,</span></span>
+<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a>        ReplicationManagerStartPolicy<span class="op">.</span>REP_ELECTION<span class="op">);</span></span>
+<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-77"><a href="#cb2-77" aria-hidden="true" tabindex="-1"></a>    <span class="co">//////////////////////////////////////////////////</span></span>
+<span id="cb2-78"><a href="#cb2-78" aria-hidden="true" tabindex="-1"></a>    <span class="co">// All other application code goes here, including</span></span>
+<span id="cb2-79"><a href="#cb2-79" aria-hidden="true" tabindex="-1"></a>    <span class="co">// database opens.</span></span>
+<span id="cb2-80"><a href="#cb2-80" aria-hidden="true" tabindex="-1"></a>    <span class="co">//////////////////////////////////////////////////</span></span>
+<span id="cb2-81"><a href="#cb2-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-82"><a href="#cb2-82" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> catch <span class="op">(</span>DatabaseException dbe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-83"><a href="#cb2-83" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Error handling goes here</span></span>
+<span id="cb2-84"><a href="#cb2-84" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-85"><a href="#cb2-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-86"><a href="#cb2-86" aria-hidden="true" tabindex="-1"></a><span class="co">// Close out your application here.</span></span>
+<span id="cb2-87"><a href="#cb2-87" aria-hidden="true" tabindex="-1"></a>try <span class="op">{</span></span>
+<span id="cb2-88"><a href="#cb2-88" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Make sure all your databases are closed.</span></span>
+<span id="cb2-89"><a href="#cb2-89" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-90"><a href="#cb2-90" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Closing your environment stops replication.</span></span>
+<span id="cb2-91"><a href="#cb2-91" aria-hidden="true" tabindex="-1"></a>   dbenv<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb2-92"><a href="#cb2-92" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> catch <span class="op">(</span>DatabaseException dbe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-93"><a href="#cb2-93" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Error handling here.</span></span>
+<span id="cb2-94"><a href="#cb2-94" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-95"><a href="#cb2-95" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-96"><a href="#cb2-96" aria-hidden="true" tabindex="-1"></a><span class="co">// All done.  </span></span></code></pre></div>
+<h3 id="managing-election-policies">Managing Election Policies</h3>
+<p>Before continuing, it is worth taking a look at the startup election options that you can set for replication. You set these using the <code>ReplicationManagerStartPolicy</code> class that you pass to the <code>Environment.replicationManagerStart()</code> method.</p>
+<p>In the previous example, we specified <code>ReplicationManagerStartPolicy.REP_ELECTION</code> when we started replication. This causes the application to try to find a master upon startup. If it cannot, it calls for an election. In the event an election is held, the environment receiving the most number of votes will become the master.</p>
+<p>There's some important points to make here:</p>
+<ul>
+<li><p>This option only requires that other environments in the replication group participate in the vote. There is no requirement that <span class="emphasis"><em>all</em></span> such environments participate. In other words, if an environment starts up, it can call for an election, and select a master, even if all other environment have not yet joined the replication group.</p></li>
+<li><p>It only requires a simple majority of participating environments to elect a master. This is always true of elections held using the Replication Manager.</p></li>
+<li><p>As always, the environment participating in the election with the most up-to-date log files is selected as master. If an environment with more recent log files has not yet joined the replication group, it may not become the master.</p></li>
+</ul>
+<p>Any one of these points may be enough to cause a less-than-optimum environment to be selected as master. Therefore, to give you a better degree of control over which environment becomes a master at application startup, the Replication Manager offers the following start-up options:</p>
+<table data-border="1" width="80%">
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="literal">ReplicationManagerStartPolicy. REP_MASTER</code></td>
+<td><p>The application starts up and declares the environment to be a master without calling for an election. It is an error for more than one environment to start up using this flag, or for an environment to use this flag when a master already exists.</p>
+<p>Note that no replication group should <span class="emphasis"><em>ever</em></span> operate with more than one master.</p>
+<p>In the event that a environment attempts to become a master when a master already exists, the replication code will resolve the problem by holding an election. Note, however, that there is always a possibility of data loss in the face of duplicate masters, because once a master is selected, the environment that loses the election will have to roll back any transactions committed until it is in sync with the "real" master.</p></td>
+</tr>
+<tr>
+<td><code class="literal">ReplicationManagerStartPolicy. REP_CLIENT</code></td>
+<td><p>The application starts up and declares the environment to be a replica without calling for an election. Note that the environment can still become a master if a subsequent application starts up, calls for an election, and this environment is elected master.</p></td>
+</tr>
+<tr>
+<td><code class="literal">ReplicationManagerStartPolicy. REP_ELECTION</code></td>
+<td><p>As described above, the application starts up, looks for a master, and if one is not found calls for an election.</p></td>
+</tr>
+</tbody>
+</table>
+
+<h3 id="selecting-the-number-of-threads">Selecting the Number of Threads</h3>
+<p>Under the hood, the Replication Manager is threaded and you can control the number of threads used to process messages received from other replicas. The threads that the Replication Manager uses are:</p>
+<ul>
+<li><p>Incoming message thread. This thread receives messages from the site's socket and passes those messages to message processing threads (see below) for handling.</p></li>
+<li><p>Outgoing message thread. Outgoing messages are sent from whatever thread performed a write to the database(s). That is, the thread that called, for example, <code>Database.put()</code> is the thread that writes replication messages about that fact to the socket.</p>
+<p>Note that if this write activity would cause the thread to be blocked due to some condition on the socket, the Replication Manager will hand the outgoing message to the incoming message thread, and it will then write the message to the socket. This prevents your database write threads from blocking due to abnormal network I/O conditions.</p></li>
+<li><p>Message processing threads are responsible for parsing and then responding to incoming replication messages. Typically, a response will include write activity to your database(s), so these threads can be busy performing disk I/O.</p></li>
+</ul>
+<p>Of these threads, the only ones that you have any configuration control over are the message processing threads. In this case, you can determine how many of these threads you want to run.</p>
+<p>It is always a bit of an art to decide on a thread count, but the short answer is you probably do not need more than three threads here, and it is likely that one will suffice. That said, the best thing to do is set your thread count to a fairly low number and then increase it if it appears that your application will benefit from the additional threads.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

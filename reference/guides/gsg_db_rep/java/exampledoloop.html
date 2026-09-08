@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Example Processing Loop — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg_db_rep / java</nav>
+  <main>
+<h2 id="example-processing-loop">Example Processing Loop</h2>
+<p><span class="sect2"> <a href="exampledoloop.html#runningit">Running It</a> </span></p>
+<p>In this section we take the example processing loop that we presented in the previous section and we flesh it out to provide a more complete example. We do this by updating the <code>doloop()</code> function that our original transaction application used (see <a href="simpleprogramlisting.html#doloop_java" class="xref" title="Method: SimpleTxn.doloop()">Method: SimpleTxn.doloop()</a>) to fully support our replicated application.</p>
+<p>In the following example code, code that we add to the original example is presented in <strong><code>bold</code></strong>.</p>
+<p>To begin, we must implement a way to track whether our application is running as a master or a client. There are many ways to do this, but in this case what we will do is extend <code>com.sleepycat.db.Environment</code> to carry the information. We do this by creating the <code>RepQuoteEnvironment</code> class.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>repquote<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseException<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Environment<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>EnvironmentConfig<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>public class RepQuoteEnvironment extends Environment</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    private boolean isMaster<span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    public RepQuoteEnvironment<span class="op">(</span>final java<span class="op">.</span>io<span class="op">.</span>File host<span class="op">,</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        EnvironmentConfig config<span class="op">)</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException<span class="op">,</span> java<span class="op">.</span>io<span class="op">.</span>FileNotFoundException</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        super<span class="op">(</span>host<span class="op">,</span> config<span class="op">);</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        isMaster <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    boolean getIsMaster<span class="op">()</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> isMaster<span class="op">;</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setIsMaster<span class="op">(</span>boolean isMaster<span class="op">)</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>        this<span class="op">.</span>isMaster <span class="op">=</span> isMaster<span class="op">;</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Next, we go to <code>RepQuoteExampleGSG.java</code> and we include the <code>RepQuoteEnvironment</code> class as well as the <code>EventHandler</code> class. We then cause our <code>RepQuoteExampleGSG</code> class to implement <code>EventHandler</code>. We also change our environment handle to be an instance of <code>RepQuoteEnvironment</code> instead of <code>Environment</code>.</p>
+<p>Note that we also import the <code>com.sleepycat.db.ReplicationHandleDeadException</code> class. We will discuss what that exception is used for a little later in this example.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>repquote<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>FileNotFoundException<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>BufferedReader<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>InputStreamReader<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>IOException<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>UnsupportedEncodingException<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>lang<span class="op">.</span>Thread<span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>lang<span class="op">.</span>InterruptedException<span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Cursor<span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Database<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseConfig<span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseEntry<span class="op">;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseException<span class="op">;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseType<span class="op">;</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>EnvironmentConfig<span class="op">;</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>EventHandler<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>LockMode<span class="op">;</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>OperationStatus<span class="op">;</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationHandleDeadException<span class="op">;</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationHostAddress<span class="op">;</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationManagerSiteConfig<span class="op">;</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>import db<span class="op">.</span>repquote<span class="op">.</span>RepConfig<span class="op">;</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>import db<span class="op">.</span>repquote<span class="op">.</span>RepQuoteEnvironment</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>public class RepQuoteExampleGSG  implements EventHandler</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    private RepConfig repConfig<span class="op">;</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    private RepQuoteEnvironment dbenv<span class="op">;</span> </span></code></pre></div>
+<p>That done, we can skip the <code>main()</code> method and our class constructor, because they do not change. Instead, we skip down to our <code>init()</code> method where we take care of opening our environment and setting the event handler.</p>
+<p>To update our <code>init()</code> method, we only need to do a couple of things. First, we identify the current class as the event handler. Then, when we open our environment, we instantiate a <code>RepQuoteEnvironment</code> class instead of an <code>Environment</code> class.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">int</span> init<span class="op">(</span>RepConfig config<span class="op">)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> ret <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        repConfig <span class="op">=</span> config<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        EnvironmentConfig envConfig <span class="op">=</span> new EnvironmentConfig<span class="op">();</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setErrorStream<span class="op">(</span>System<span class="op">.</span>err<span class="op">);</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setErrorPrefix<span class="op">(</span>RepConfig<span class="op">.</span>progname<span class="op">);</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>addReplicationManagerSite<span class="op">(</span>repConfig<span class="op">.</span>getThisHost<span class="op">());</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(</span>ReplicationHostAddress host <span class="op">=</span> </span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>            repConfig<span class="op">.</span>getFirstOtherHost<span class="op">();</span> host <span class="op">!=</span> null<span class="op">;</span> </span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>            host <span class="op">=</span> repConfig<span class="op">.</span>getNextOtherHost<span class="op">()){</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>            ReplicationManagerSiteConfig repmgrRemoteSiteConfig <span class="op">=</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>                new ReplicationManagerSiteConfig<span class="op">(</span>host<span class="op">.</span>host<span class="op">,</span> host<span class="op">.</span>port<span class="op">);</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>            repmgrRemoteSiteConfig<span class="op">.</span>setBootstrapHelper<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>            envConfig<span class="op">.</span>addReplicationManagerSite<span class="op">(</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>                repmgrRemoteSiteConfig<span class="op">);</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setReplicationPriority<span class="op">(</span>repConfig<span class="op">.</span>priority<span class="op">);</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setReplicationManagerAckPolicy<span class="op">(</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>            ReplicationManagerAckPolicy<span class="op">.</span>ALL<span class="op">);</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setCacheSize<span class="op">(</span>RepConfig<span class="op">.</span>CACHESIZE<span class="op">);</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setTxnNoSync<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setEventHandler<span class="op">(</span>this<span class="op">);</span></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setRunRecovery<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setThreaded<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeReplication<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeLocking<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeLogging<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeCache<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setTransactional<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setVerboseReplication<span class="op">(</span>appConfig<span class="op">.</span>verbose<span class="op">);</span></span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>            dbenv <span class="op">=</span> new RepQuoteEnvironment<span class="op">(</span>repConfig<span class="op">.</span>getHome<span class="op">(),</span> </span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>                                                       envConfig<span class="op">);</span></span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch<span class="op">(</span>FileNotFoundException e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;FileNotFound exception: &quot;</span> <span class="op">+</span> e<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span></span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;Ensure that the environment directory is pre-created.&quot;</span><span class="op">);</span></span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a>            ret <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a>        <span class="co">// start Replication Manager</span></span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">.</span>replicationManagerStart<span class="op">(</span><span class="dv">3</span><span class="op">,</span> repConfig<span class="op">.</span>startPolicy<span class="op">);</span></span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> ret<span class="op">;</span></span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>That done, we need to implement the methods required for responding to replication events. These methods are required because we are now implementing <code>com.sleepycat.db.EventHandler</code>. While we are required to provide an implementation for all of these methods, for our simple application we are really only interested in these because they allow us to track whether a replication instance is a master.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepClientEvent<span class="op">()</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">.</span>setIsMaster<span class="op">(</span><span class="kw">false</span><span class="op">);</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepConnectBrokenEvent<span class="op">()</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepConnectEstablishedEvent<span class="op">()</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepConnectTryFailedEvent<span class="op">()</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepMasterEvent<span class="op">()</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">.</span>setIsMaster<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepNewMasterEvent<span class="op">(</span><span class="dt">int</span> envId<span class="op">)</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleWriteFailedEvent<span class="op">(</span><span class="dt">int</span> errorCode<span class="op">)</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Write to stable storage failed!&quot;</span> <span class="op">+</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Operating system error code:&quot;</span> <span class="op">+</span> errorCode<span class="op">);</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Continuing....&quot;</span><span class="op">);</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepStartupDoneEvent<span class="op">()</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepPermFailedEvent<span class="op">()</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Ignored for now.</span></span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepLocalSiteRemovedEvent<span class="op">()</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepSiteAddedEvent<span class="op">()</span></span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepSiteRemovedEvent<span class="op">()</span></span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-63"><a href="#cb4-63" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepElectedEvent<span class="op">()</span></span>
+<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-65"><a href="#cb4-65" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored for Replication Manager applications.</span></span>
+<span id="cb4-66"><a href="#cb4-66" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-67"><a href="#cb4-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-68"><a href="#cb4-68" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepElectionFailedEvent<span class="op">()</span></span>
+<span id="cb4-69"><a href="#cb4-69" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-70"><a href="#cb4-70" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored for Replication Manager applications that do</span></span>
+<span id="cb4-71"><a href="#cb4-71" aria-hidden="true" tabindex="-1"></a>        <span class="co">// not manage their own master selection.</span></span>
+<span id="cb4-72"><a href="#cb4-72" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-73"><a href="#cb4-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-74"><a href="#cb4-74" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepJoinFailureEvent<span class="op">()</span></span>
+<span id="cb4-75"><a href="#cb4-75" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-76"><a href="#cb4-76" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored since this application did not turn off AUTOINIT.</span></span>
+<span id="cb4-77"><a href="#cb4-77" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-78"><a href="#cb4-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-79"><a href="#cb4-79" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepMasterFailureEvent<span class="op">()</span></span>
+<span id="cb4-80"><a href="#cb4-80" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-81"><a href="#cb4-81" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored for Replication Manager applications that do</span></span>
+<span id="cb4-82"><a href="#cb4-82" aria-hidden="true" tabindex="-1"></a>        <span class="co">// not manage their own master selection.</span></span>
+<span id="cb4-83"><a href="#cb4-83" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-84"><a href="#cb4-84" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-85"><a href="#cb4-85" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepDupmasterEvent<span class="op">()</span></span>
+<span id="cb4-86"><a href="#cb4-86" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-87"><a href="#cb4-87" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored for Replication Manager applications that do</span></span>
+<span id="cb4-88"><a href="#cb4-88" aria-hidden="true" tabindex="-1"></a>        <span class="co">// not manage their own master selection.</span></span>
+<span id="cb4-89"><a href="#cb4-89" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-90"><a href="#cb4-90" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-91"><a href="#cb4-91" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handlePanicEvent<span class="op">()</span></span>
+<span id="cb4-92"><a href="#cb4-92" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-93"><a href="#cb4-93" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Panic encountered!&quot;</span><span class="op">);</span></span>
+<span id="cb4-94"><a href="#cb4-94" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Shutting down.&quot;</span><span class="op">);</span></span>
+<span id="cb4-95"><a href="#cb4-95" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;You should restart, running recovery.&quot;</span><span class="op">);</span></span>
+<span id="cb4-96"><a href="#cb4-96" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb4-97"><a href="#cb4-97" aria-hidden="true" tabindex="-1"></a>            terminate<span class="op">();</span></span>
+<span id="cb4-98"><a href="#cb4-98" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch <span class="op">(</span>DatabaseException dbe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-99"><a href="#cb4-99" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Caught an exception during &quot;</span> <span class="op">+</span></span>
+<span id="cb4-100"><a href="#cb4-100" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;termination in handlePanicEvent: &quot;</span> <span class="op">+</span> dbe<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb4-101"><a href="#cb4-101" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-102"><a href="#cb4-102" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>exit<span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb4-103"><a href="#cb4-103" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>That done, we need to update our <code>doloop()</code> method.</p>
+<p>We begin by updating our <code>DatabaseConfig</code> instance to determine which options to use, depending on whether the application is running as a master.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">int</span> doloop<span class="op">()</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        Database db <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(;;)</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>db <span class="op">==</span> null<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>                DatabaseConfig dbconf <span class="op">=</span> new DatabaseConfig<span class="op">();</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>                dbconf<span class="op">.</span>setType<span class="op">(</span>DatabaseType<span class="op">.</span>BTREE<span class="op">);</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>dbenv<span class="op">.</span>getIsMaster<span class="op">())</span> <span class="op">{</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>                    dbconf<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>                dbconf<span class="op">.</span>setTransactional<span class="op">(</span><span class="kw">true</span><span class="op">);</span> </span></code></pre></div>
+<p>When we open the database, we modify our error handling to account for the case where the database does not yet exist. This can happen if our code is running as a replica and the Replication Manager has not yet had a chance to create the databases for us. Recall that replicas never write to their own databases directly, and so they cannot create databases on their own.</p>
+<p>If we detect that the database does not yet exist, we simply close the database handle, sleep for a short period of time and then continue processing. This gives the Replication Manager a chance to create the database so that our replica can continue operations.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>                try <span class="op">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                    db <span class="op">=</span> dbenv<span class="op">.</span>openDatabase</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                        <span class="op">(</span>null<span class="op">,</span> RepConfig<span class="op">.</span>progname<span class="op">,</span> null<span class="op">,</span> dbconf<span class="op">);</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span> catch <span class="op">(</span>java<span class="op">.</span>io<span class="op">.</span>FileNotFoundException e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>                    System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;no stock database available yet.&quot;</span><span class="op">);</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">if</span> <span class="op">(</span>db <span class="op">!=</span> null<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>                        db<span class="op">.</span>close<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>                        db <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>                    <span class="op">}</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>                    try <span class="op">{</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>                        Thread<span class="op">.</span>sleep<span class="op">(</span>RepConfig<span class="op">.</span>SLEEPTIME<span class="op">);</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>                    <span class="op">}</span> catch <span class="op">(</span>InterruptedException ie<span class="op">)</span> <span class="op">{}</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> </span></code></pre></div>
+<p>Next we modify our prompt, so that if the local process is running as a replica, we can tell from the shell that the prompt is for a read-only process.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>            BufferedReader stdin <span class="op">=</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                new BufferedReader<span class="op">(</span>new InputStreamReader<span class="op">(</span>System<span class="op">.</span>in<span class="op">));</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>            <span class="co">// listen for input, and add it to the database.</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>print<span class="op">(</span><span class="st">&quot;QUOTESERVER&quot;</span><span class="op">);</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(!</span>dbenv<span class="op">.</span>getIsMaster<span class="op">())</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>out<span class="op">.</span>print<span class="op">(</span><span class="st">&quot;(read-only)&quot;</span><span class="op">);</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>print<span class="op">(</span><span class="st">&quot;&gt; &quot;</span><span class="op">);</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>flush<span class="op">();</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>            String nextline <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>            try <span class="op">{</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>                nextline <span class="op">=</span> stdin<span class="op">.</span>readLine<span class="op">();</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> catch <span class="op">(</span>IOException ioe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Unable to get data from stdin&quot;</span><span class="op">);</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>            String<span class="op">[]</span> words <span class="op">=</span> nextline<span class="op">.</span>split<span class="op">(</span><span class="st">&quot;</span><span class="sc">\\</span><span class="st">s&quot;</span><span class="op">);</span> </span></code></pre></div>
+<p>When we collect data from the prompt, there is a case that says if no data is entered then show the entire stocks database. This display is performed by our <code>print_stocks()</code> method (which has not required a modification since we first introduced it in <a href="simpleprogramlisting.html#printstocks_c" class="xref" title="Method: SimpleTxn.printStocks()"><span>Method: SimpleTxn.printStocks()</span></a> ).</p>
+<p>When we call <code>printStocks()</code>, we check for a dead replication handle. Dead replication handles happen whenever a replication election results in a previously committed transaction becoming invalid. This is an error scenario caused by a new master having a slightly older version of the data than the original master and so all replicas must modify their database(s) to reflect that of the new master. In this situation, some number of previously committed transactions may have to be unrolled. From the replica's perspective, the database handles should all be closed and then opened again.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>            <span class="co">// A blank line causes the DB to be dumped to stdout.</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>words<span class="op">.</span>length <span class="op">==</span> <span class="dv">0</span> <span class="op">||</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                <span class="op">(</span>words<span class="op">.</span>length <span class="op">==</span> <span class="dv">1</span> <span class="op">&amp;&amp;</span> words<span class="op">[</span><span class="dv">0</span><span class="op">].</span>length<span class="op">()</span> <span class="op">==</span> <span class="dv">0</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                try <span class="op">{</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                    printStocks<span class="op">(</span>db<span class="op">);</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span> catch <span class="op">(</span>DeadlockException de<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>                <span class="co">// Dead replication handles are caused by an election</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>                <span class="co">// resulting in a previously committing read becoming</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>                <span class="co">// invalid. Close the db handle and reopen.</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span> catch <span class="op">(</span>ReplicationHandleDeadException rhde<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>                    db<span class="op">.</span>close<span class="op">(</span><span class="kw">true</span><span class="op">);</span> <span class="co">// close no sync.</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>                    db <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span> catch <span class="op">(</span>DatabaseException e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>                    System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Got db exception reading &quot;</span> <span class="op">+</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>                        <span class="st">&quot;replication DB: &quot;</span> <span class="op">+</span> e<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>                <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>words<span class="op">.</span>length <span class="op">==</span> <span class="dv">1</span> <span class="op">&amp;&amp;</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>                <span class="op">(</span>words<span class="op">[</span><span class="dv">0</span><span class="op">].</span>compareToIgnoreCase<span class="op">(</span><span class="st">&quot;quit&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span> <span class="op">||</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>                words<span class="op">[</span><span class="dv">0</span><span class="op">].</span>compareToIgnoreCase<span class="op">(</span><span class="st">&quot;exit&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> <span class="op">(</span>words<span class="op">.</span>length <span class="op">!=</span> <span class="dv">2</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Format: TICKER VALUE&quot;</span><span class="op">);</span></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>                <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> </span></code></pre></div>
+<p>That done, we need to add a little error checking to our command prompt to make sure the user is not attempting to modify the database at a replica. Remember, replicas must never modify their local databases on their own. This guards against that happening due to user input at the prompt.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(!</span>dbenv<span class="op">.</span>getIsMaster<span class="op">())</span> <span class="op">{</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Can&#39;t update client.&quot;</span><span class="op">);</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>                <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>            DatabaseEntry key <span class="op">=</span> new DatabaseEntry<span class="op">(</span>words<span class="op">[</span><span class="dv">0</span><span class="op">].</span>getBytes<span class="op">());</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>            DatabaseEntry data <span class="op">=</span> new DatabaseEntry<span class="op">(</span>words<span class="op">[</span><span class="dv">1</span><span class="op">].</span>getBytes<span class="op">());</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>            db<span class="op">.</span>put<span class="op">(</span>null<span class="op">,</span> key<span class="op">,</span> data<span class="op">);</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>db <span class="op">!=</span> null<span class="op">)</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>            db<span class="op">.</span>close<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>With that completed, we are all done updating our application for replication. The only remaining method, <code>printStocks()</code>, is unmodified from when we originally introduced it. For details on that function, see <a href="simpleprogramlisting.html#printstocks_c" class="xref" title="Method: SimpleTxn.printStocks()"><span>Method: SimpleTxn.printStocks()</span></a> .</p>
+<h3 id="running-it">Running It</h3>
+<p>To run our replicated application, we need to make sure each participating environment has its own unique home directory. We can do this by running each site on a separate networked machine, but that is not strictly necessary; multiple instances of this code can run on the same machine provided the environment home restriction is observed.</p>
+<p>To run a process, make sure the environment home exists and then start the process using the <code>-h</code> option to specify that directory. You must also use the <code>-l</code> or <code>-L</code> option to identify the local host and port that this process will use to listen for replication messages (-L means that this is a group creator), and the <code>-r</code> option to identify the other processes in the replication group. Finally, use the <code>-p</code> option to specify a priority. The process that you designate to have the highest priority will become the master.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> mkdir env1</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> java db<span class="op">.</span>repquote_gsg<span class="op">.</span>RepQuoteExampleGSG <span class="op">-</span>h env1 <span class="op">-</span>L localhost<span class="op">:</span><span class="dv">8080</span> \</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="op">-</span>p <span class="dv">10</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>No stock database yet available<span class="op">.</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>No stock database yet available<span class="op">.</span>  </span></code></pre></div>
+<p>Now, start another process. This time, change the environment home to something else, use the <code>-l</code> flag to at least change the port number the process is listening on, and use the <code>-r</code> option to identify the host and port of the other replication process:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> mkdir env2</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> java db<span class="op">.</span>repquote_gsg<span class="op">.</span>RepQuoteExampleGSG <span class="op">-</span>h env2 <span class="op">-</span>l localhost<span class="op">:</span><span class="dv">8081</span> \</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="op">-</span>r localhost<span class="op">:</span><span class="dv">8080</span> <span class="op">-</span>p <span class="dv">20</span></span></code></pre></div>
+<p>After a short pause, the second process should display the master prompt:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER <span class="op">&gt;</span> </span></code></pre></div>
+<p>And the first process should display the read-only prompt:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER <span class="op">(</span>read<span class="op">-</span>only<span class="op">)&gt;</span> </span></code></pre></div>
+<p>Now go to the master process and give it a couple of stocks and stock prices:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> FAKECO <span class="fl">9.87</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> NOINC <span class="fl">.23</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> </span></code></pre></div>
+<p>Then, go to the replica and hit <strong><code>return</code></strong> at the prompt to see the new values:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER <span class="op">(</span>read<span class="op">-</span>only<span class="op">)&gt;</span> </span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>        Symbol  Price</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>        <span class="op">======</span>  <span class="op">=====</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>        FAKECO  <span class="fl">9.87</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>        NOINC    <span class="fl">.23</span> </span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>QUOTESERVER <span class="op">(</span>read<span class="op">-</span>only<span class="op">)&gt;</span> </span></code></pre></div>
+<p>Doing the same at the master results in the same thing:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> </span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>        Symbol  Price</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>        <span class="op">======</span>  <span class="op">=====</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>        FAKECO  <span class="fl">9.87</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>        NOINC    <span class="fl">.23</span> </span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> </span></code></pre></div>
+<p>You can change a stock by simply entering the stock value and new price at the master's prompt:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> FAKECO <span class="fl">10.01</span> </span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> </span></code></pre></div>
+<p>Then, go to either the master or the replica to see the updated database. On the master:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> </span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>        Symbol  Price</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>        <span class="op">======</span>  <span class="op">=====</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>        FAKECO  <span class="fl">10.01</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>        NOINC    <span class="fl">.23</span> </span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> </span></code></pre></div>
+<p>And on the replica:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER <span class="op">(</span>read<span class="op">-</span>only<span class="op">)&gt;</span> </span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>        Symbol  Price</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>        <span class="op">======</span>  <span class="op">=====</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>        FAKECO  <span class="fl">10.01</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>        NOINC    <span class="fl">.23</span> </span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>QUOTESERVER <span class="op">(</span>read<span class="op">-</span>only<span class="op">)&gt;</span> </span></code></pre></div>
+<p>Finally, to quit the applications, simply type <code>quit</code> at both prompts. On the replica:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER <span class="op">(</span>read<span class="op">-</span>only<span class="op">)&gt;</span> quit</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> </span></code></pre></div>
+<p>And on the master as well:</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>QUOTESERVER<span class="op">&gt;</span> quit</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> </span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

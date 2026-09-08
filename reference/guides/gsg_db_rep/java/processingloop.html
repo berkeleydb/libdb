@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Processing Loop — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg_db_rep / java</nav>
+  <main>
+<h2 id="processing-loop">Processing Loop</h2>
+<p>Typically the central part of any replication application is some sort of a continuous loop that constantly checks the state of the environment (whether it is a replica or a master), opens and/or closes the databases as is necessary, and performs other useful work. A loop such as this one must of necessity take special care to know whether it is operating on a master or a replica environment because all of its activities are dependent upon that state.</p>
+<p>The flow of activities through the loop will generally be as follows:</p>
+<ol type="1">
+<li><p>Check whether the environment has changed state. If it has, you might want to reopen your database handles, especially if you opened your replica's database handles as read-only. In this case, you might need to reopen them as read-write. However, if you always open your database handles as read-write, then it is not automatically necessary to reopen the databases due to a state change. Instead, you could check for a <code>ReplicationHandleDeadException</code> exception when you use your database handle(s). If you see this, then you need to reopen your database handle(s).</p></li>
+<li><p>If the databases are closed, create new database handles, configure the handle as is appropriate, and then open the databases. Note that handle configuration will be different, depending on whether the handle is opened as a replica or a master. At a minimum, the master should be opened with database creation privileges, whereas the replica does not need to be. You must also open the master such that its databases are read-write. You <span class="emphasis"><em>can</em></span> open replicas with read-only databases, so long as you are prepared to close and then reopen the handle in the event the client becomes a master.</p>
+<p>Also, note that if the local environment is a replica, then it is possible that databases do not currently exist. In this case, the database open attempts will fail. Your code will have to take this corner case into account (described below).</p></li>
+<li><p>Once the databases are opened, check to see if the local environment is a master. If it is, do whatever it is a master should do for your application.</p>
+<p>Remember that the code for your master should include some way for you to tell the master to exit gracefully.</p></li>
+<li><p>If the local environment is not a master, then do whatever it is your replica environments should do. Again, like the code for your master environments, you should provide a way for your replicas to exit the processing loop gracefully.</p></li>
+</ol>
+<p>The following code fragment illustrates these points (note that we fill out this fragment with a working example next in this chapter):</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// loop to manage replication activities </span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>public <span class="dt">int</span> doloop<span class="op">()</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    Database db <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Infinite loop. We exit depending on how the master and replica code</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">// is written.</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="op">(;;)</span> <span class="op">{</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">/* If dbp is not opened, we need to open it. */</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>db <span class="op">==</span> null<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>         <span class="co">// Create the handle and then configure it. Before you open</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>         <span class="co">// it, you have to decide what open flags to use:</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>         DatabaseConfig dbconf <span class="op">=</span> new DatabaseConfig<span class="op">();</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>         dbconf<span class="op">.</span>setType<span class="op">(</span>DatabaseType<span class="op">.</span>BTREE<span class="op">);</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>         <span class="cf">if</span> <span class="op">(</span>isMaster<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>            dbconf<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>         <span class="op">}</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>         <span class="co">// Now you can open your database handle, passing to it the</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>         <span class="co">// optins selected above. </span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>         </span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>         try <span class="op">{</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>            db <span class="op">=</span> dbenv<span class="op">.</span>openDatabase</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>                 <span class="op">(</span>null<span class="op">,</span> progname<span class="op">,</span> null<span class="op">,</span> dbconf<span class="op">);</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>         <span class="op">}</span> catch<span class="op">(</span>java<span class="op">.</span>io<span class="op">.</span>FileNotFoundException e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>                <span class="co">// Put your error handling code here.</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>         <span class="op">}</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>     <span class="co">// Now that the databases have been opened, continue with general</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>     <span class="co">// processing, depending on whether we are a master or a replica.</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>     <span class="cf">if</span> <span class="op">(</span>isMaster<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>         <span class="co">// Do master stuff here. Don&#39;t forget to include a way to</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>         <span class="co">// gracefully exit the loop.</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>     <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>         <span class="co">// Do replica stuff here. As is the case with the master</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>         <span class="co">// code, be sure to include a way to gracefully exit the</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>         <span class="co">// loop. </span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>     <span class="op">}</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

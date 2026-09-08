@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Secondary Database Example — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg / cxx</nav>
+  <main>
+<h2 id="secondary-database-example">Secondary Database Example</h2>
+<p><span class="sect2"> <a href="coreindexusage.html#edlWIndexes">Secondary Databases with example_database_load</a> </span></p>
+<p><span class="sect2"> <a href="coreindexusage.html#edrWIndexes">Secondary Databases with example_database_read</a> </span></p>
+<p>In previous chapters in this book, we built applications that load and display several DB databases. In this example, we will extend those examples to use secondary databases. Specifically:</p>
+<ul>
+<li><p>In <a href="DbCXXUsage.html" class="xref" title="Database Usage Example">Database Usage Example</a> we built an application that can open and load data into several databases. In <a href="coreindexusage.html#edlWIndexes" class="xref" title="Secondary Databases with example_database_load">Secondary Databases with example_database_load</a> we will extend that application to also open a secondary database for the purpose of indexing inventory item names.</p></li>
+<li><p>In <a href="CoreCursorUsage.html" class="xref" title="Cursor Example">Cursor Example</a> we built an application to display our inventory database (and related vendor information). In <a href="coreindexusage.html#edrWIndexes" class="xref" title="Secondary Databases with example_database_read">Secondary Databases with example_database_read</a> we will extend that application to show inventory records based on the index we cause to be loaded using <code>example_database_load</code>.</p></li>
+</ul>
+<h3 id="secondary-databases-with-example_database_load">Secondary Databases with example_database_load</h3>
+<p>In order to update <code>example_database_load</code> to maintain an index of inventory item names, all we really need to do is:</p>
+<ol type="1">
+<li><p>Create a new database to be used as a secondary database.</p></li>
+<li><p>Associate our new database to the inventory primary database.</p></li>
+</ol>
+<p>We also need a function that can create our secondary keys for us.</p>
+<p>Because DB maintains secondary databases for us; once this work is done we need not make any other changes to <code>example_database_load</code>.</p>
+<p>Remember that you can find the complete implementation of these functions in:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>DB_INSTALL<span class="op">/</span>examples_cxx<span class="op">/</span>getting_started</span></code></pre></div>
+<p>where <span class="emphasis"><em><code>DB_INSTALL</code></em></span> is the location where you placed your DB distribution.</p>
+<p>To begin, we go to <code>gettingStartedCommon.hpp</code> and we write our secondary key extractor function. This is a fairly trivial function to write because we have already done most of the work when we wrote the <code>InventoryData</code> class. Recall that when we wrote that class, we provided a constructor that accepts a pointer to a buffer and unpacks the contents of the buffer for us (see <a href="DbCXXUsage.html#InventoryData" class="xref" title="Example 3.2 InventoryData Class">InventoryData Class</a> for the implementation). We now make use of that constructor.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File: gettingStartedCommon.hpp</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co">// Forward declarations</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>class Db<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>class Dbt<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Used to extract an inventory item&#39;s name from an</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co">// inventory database record. This function is used to create</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co">// keys for secondary database records.</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>get_item_name<span class="op">(</span>Db <span class="op">*</span>dbp<span class="op">,</span> <span class="dt">const</span> Dbt <span class="op">*</span>pkey<span class="op">,</span> <span class="dt">const</span> Dbt <span class="op">*</span>pdata<span class="op">,</span> Dbt <span class="op">*</span>skey<span class="op">)</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Obtain the buffer location where the we placed the item&#39;s name. In</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="co">// this example, the item&#39;s name is located in the primary data. It is</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="co">// the first string in the buffer after the price (a double) and</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// the quantity (a long).</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">size_t</span> offset <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">double</span><span class="op">)</span> <span class="op">+</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">long</span><span class="op">);</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> <span class="op">*</span> itemname <span class="op">=</span> <span class="op">(</span><span class="dt">char</span> <span class="op">*)</span>pdata<span class="op">-&gt;</span>get_data<span class="op">()</span> <span class="op">+</span> offset<span class="op">;</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">// unused</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">(</span><span class="dt">void</span><span class="op">)</span>pkey<span class="op">;</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="co">// If the offset is beyond the end of the data, then there is a</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="co">// problem with the buffer contained in pdata, or there&#39;s a</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    <span class="co">// programming error in how the buffer is marshalled/unmarshalled.</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    <span class="co">// This should never happen!</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span>offset <span class="op">&gt;</span> pdata<span class="op">-&gt;</span>get_size<span class="op">())</span> <span class="op">{</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>        dbp<span class="op">-&gt;</span>errx<span class="op">(</span><span class="st">&quot;get_item_name: buffer sizes do not match!&quot;</span><span class="op">);</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>        <span class="co">// When we return non-zero, the index record is not</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>        <span class="co">// added/updated.</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Now set the secondary key&#39;s data to be the item name </span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>    skey<span class="op">-&gt;</span>set_data<span class="op">(</span>itemname<span class="op">);</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    skey<span class="op">-&gt;</span>set_size<span class="op">(</span>strlen<span class="op">(</span>itemname<span class="op">)</span> <span class="op">+</span> <span class="dv">1</span><span class="op">);</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a><span class="op">};</span> </span></code></pre></div>
+<p>Having written our key extractor callback, we now need to make a trivial update to our <code>MyDb</code> implementation. Because an item name is used by multiple inventory records, we need our secondary database to support sorted duplicates. We therefore must update <code>MyDb</code> to handle this detail.</p>
+<p>The <code>MyDb</code> class definition changes to add a boolean to the constructor (remember that new code is in <strong><code>bold</code></strong>):</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File: MyDb.hpp</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db_cxx.h&gt;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>class MyDb</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>public<span class="op">:</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Constructor requires a path to the database,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// and a database name.</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    MyDb<span class="op">(</span>std<span class="op">::</span>string <span class="op">&amp;</span>path<span class="op">,</span> std<span class="op">::</span>string <span class="op">&amp;</span>dbName<span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>         <span class="dt">bool</span> isSecondary <span class="op">=</span> <span class="kw">false</span><span class="op">);</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Our destructor just calls our private close method.</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">~</span>MyDb<span class="op">()</span> <span class="op">{</span> close<span class="op">();</span> <span class="op">}</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> Db <span class="op">&amp;</span>getDb<span class="op">()</span> <span class="op">{</span><span class="cf">return</span> db_<span class="op">;}</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>private<span class="op">:</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    Db db_<span class="op">;</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string dbFileName_<span class="op">;</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    u_int32_t cFlags_<span class="op">;</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Make sure the default constructor is private</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    <span class="co">// We don&#39;t want it used.</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    MyDb<span class="op">()</span> <span class="op">:</span> db_<span class="op">(</span><span class="dv">0</span><span class="op">,</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{}</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>    <span class="co">// We put our database close activity here.</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>    <span class="co">// This is called from our destructor. In</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>    <span class="co">// a more complicated example, we might want</span></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>    <span class="co">// to make this method public, but a private</span></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>    <span class="co">// method is more appropriate for this example.</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> close<span class="op">();</span></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a><span class="op">};</span> </span></code></pre></div>
+<p>And the implementation changes slightly to take advantage of the new boolean. Note that to save space, we just show the constructor where the code actually changes:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File: MyDb.cpp</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;MyDb.hpp&quot;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">// Class constructor. Requires a path to the location</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">// where the database is located, and a database name</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>MyDb<span class="op">::</span>MyDb<span class="op">(</span>std<span class="op">::</span>string <span class="op">&amp;</span>path<span class="op">,</span> std<span class="op">::</span>string <span class="op">&amp;</span>dbName<span class="op">,</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>           <span class="dt">bool</span> isSecondary<span class="op">)</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">:</span> db_<span class="op">(</span>NULL<span class="op">,</span> <span class="dv">0</span><span class="op">),</span>               <span class="co">// Instantiate Db object</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>      dbFileName_<span class="op">(</span>path <span class="op">+</span> dbName<span class="op">),</span> <span class="co">// Database file name</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>      cFlags_<span class="op">(</span>DB_CREATE<span class="op">)</span>          <span class="co">// If the database doesn&#39;t yet exist,</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>                                  <span class="co">// allow it to be created.</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    try</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Redirect debugging information to std::cerr</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>        db_<span class="op">.</span>set_error_stream<span class="op">(&amp;</span>std<span class="op">::</span>cerr<span class="op">);</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>        <span class="co">// If this is a secondary database, support</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>        <span class="co">// sorted duplicates</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>isSecondary<span class="op">)</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>            db_<span class="op">.</span>set_flags<span class="op">(</span>DB_DUPSORT<span class="op">);</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Open the database</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>        db_<span class="op">.</span>open<span class="op">(</span>NULL<span class="op">,</span> dbFileName_<span class="op">.</span>c_str<span class="op">(),</span> NULL<span class="op">,</span> DB_BTREE<span class="op">,</span> cFlags_<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>    <span class="co">// DbException is not a subclass of std::exception, so we</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    <span class="co">// need to catch them both.</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>    catch<span class="op">(</span>DbException <span class="op">&amp;</span>e<span class="op">)</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Error opening database: &quot;</span> <span class="op">&lt;&lt;</span> dbFileName_ <span class="op">&lt;&lt;</span> <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">;</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> e<span class="op">.</span>what<span class="op">()</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    catch<span class="op">(</span>std<span class="op">::</span>exception <span class="op">&amp;</span>e<span class="op">)</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Error opening database: &quot;</span> <span class="op">&lt;&lt;</span> dbFileName_ <span class="op">&lt;&lt;</span> <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">;</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> e<span class="op">.</span>what<span class="op">()</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>That done, we can now update <code>example_database_load</code> to open our new secondary database and associate it to the inventory database.</p>
+<p>To save space, we do not show the entire implementation for this program here. Instead, we show just the <code>main()</code> function, which is where all our modifications occur. To see the rest of the implementation for this command, see <a href="DbCXXUsage.html#exampledbload-cxx" class="xref" title="Example 3.3 example_database_load">example_database_load</a>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Loads the contents of vendors.txt and inventory.txt into</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co">// Berkeley DB databases.</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>main<span class="op">(</span><span class="dt">int</span> argc<span class="op">,</span> <span class="dt">char</span> <span class="op">*</span>argv<span class="op">[])</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Initialize the path to the database files</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string basename<span class="op">(</span><span class="st">&quot;./&quot;</span><span class="op">);</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string databaseHome<span class="op">(</span><span class="st">&quot;./&quot;</span><span class="op">);</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Database names</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string vDbName<span class="op">(</span><span class="st">&quot;vendordb.db&quot;</span><span class="op">);</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string iDbName<span class="op">(</span><span class="st">&quot;inventorydb.db&quot;</span><span class="op">);</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string itemSDbName<span class="op">(</span><span class="st">&quot;itemname.sdb&quot;</span><span class="op">);</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Parse the command line arguments here and determine</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="co">// the location of the flat text files containing the</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    <span class="co">// inventory data here. This step is omitted for clarity.</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">//  Identify the full name for our input files, which should</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>    <span class="co">//  also include some path information.</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string inventoryFile <span class="op">=</span> basename <span class="op">+</span> <span class="st">&quot;inventory.txt&quot;</span><span class="op">;</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string vendorFile <span class="op">=</span> basename <span class="op">+</span> <span class="st">&quot;vendors.txt&quot;</span><span class="op">;</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>    try</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Open all databases.</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>        MyDb inventoryDB<span class="op">(</span>databaseHome<span class="op">,</span> iDbName<span class="op">);</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>        MyDb vendorDB<span class="op">(</span>databaseHome<span class="op">,</span> vDbName<span class="op">);</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>        MyDb itemnameSDB<span class="op">(</span>databaseHome<span class="op">,</span> itemSDbName<span class="op">,</span> <span class="kw">true</span><span class="op">);</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Associate the primary and the secondary</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>        inventoryDB<span class="op">.</span>getDb<span class="op">().</span>associate<span class="op">(</span>NULL<span class="op">,</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>                                      <span class="op">&amp;(</span>itemnameSDB<span class="op">.</span>getDb<span class="op">()),</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>                                      get_item_name<span class="op">,</span></span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>                                      <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Load the vendor database</span></span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>        loadVendorDB<span class="op">(</span>vendorDB<span class="op">,</span> vendorFile<span class="op">);</span></span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Load the inventory database</span></span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>        loadInventoryDB<span class="op">(</span>inventoryDB<span class="op">,</span> inventoryFile<span class="op">);</span></span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> catch<span class="op">(</span>DbException <span class="op">&amp;</span>e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Error loading databases. &quot;</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> e<span class="op">.</span>what<span class="op">()</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span><span class="op">(</span>e<span class="op">.</span>get_errno<span class="op">());</span></span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> catch<span class="op">(</span>std<span class="op">::</span>exception <span class="op">&amp;</span>e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Error loading databases. &quot;</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> e<span class="op">.</span>what<span class="op">()</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span><span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span><span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="co">// End main </span></span></code></pre></div>
+<p>Note that the order in which we instantiate our <code>MyDb</code> class instances is important. In general you want to close a secondary database before closing the primary with which it is associated. This is particularly true for multi-threaded or multi-processed applications where the database closes are not single threaded. Even so, it is a good habit to adopt, even for simple applications such as this one. Here, we ensure that the databases are closed in the desired order by opening the secondary database last. This works because our <code>MyDb</code> objects are on the stack, and therefore the last one opened is the first one closed.</p>
+<p>That completes our update to <code>example_database_load</code>. Now when this program is called, it will automatically index inventory items based on their names. We can then query for those items using the new index. We show how to do that in the next section.</p>
+<h3 id="secondary-databases-with-example_database_read">Secondary Databases with example_database_read</h3>
+<p>In <a href="CoreCursorUsage.html" class="xref" title="Cursor Example">Cursor Example</a> we wrote an application that displays every inventory item in the Inventory database. In this section, we will update that example to allow us to search for and display an inventory item given a specific name. To do this, we will make use of the secondary database that <code>example_database_load</code> now creates.</p>
+<p>The update to <code>example_database_read</code> is relatively modest. We need to open the new secondary database in exactly the same way was we do for <code>example_database_load</code>. We also need to add a command line parameter on which we can specify the item name, and we will need a new function in which we will perform the query and display the results.</p>
+<p>To begin, we add a single forward declaration to the application, and update our usage function slightly:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File: example_database_read.cpp</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;iostream&gt;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;fstream&gt;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;cstdlib&gt;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;MyDb.hpp&quot;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;gettingStartedCommon.hpp&quot;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co">// Forward declarations</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> show_all_records<span class="op">(</span>MyDb <span class="op">&amp;</span>inventoryDB<span class="op">,</span> MyDb <span class="op">&amp;</span>vendorDB<span class="op">);</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> show_item<span class="op">(</span>MyDb <span class="op">&amp;</span>itemnameSDB<span class="op">,</span> MyDb <span class="op">&amp;</span>vendorDB<span class="op">,</span> std<span class="op">::</span>string <span class="op">&amp;</span>itemName<span class="op">);</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span> show_vendor<span class="op">(</span>MyDb <span class="op">&amp;</span>vendorDB<span class="op">,</span> <span class="dt">const</span> <span class="dt">char</span> <span class="op">*</span>vendor<span class="op">);</span> </span></code></pre></div>
+<p>Next, we update <code>main()</code> to open the new secondary database and accept the new command line switch. We also need a new variable to contain the item's name.</p>
+<p>The final update to the <code>main()</code> entails a little bit of logic to determine whether we want to display all available inventory items, or just the ones that match a name provided on the <code>-i</code> command line parameter.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Displays all inventory items and the associated vendor record.</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>main <span class="op">(</span><span class="dt">int</span> argc<span class="op">,</span> <span class="dt">char</span> <span class="op">*</span>argv<span class="op">[])</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Initialize the path to the database files</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string databaseHome<span class="op">(</span><span class="st">&quot;./&quot;</span><span class="op">);</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string itemName<span class="op">;</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Database names</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string vDbName<span class="op">(</span><span class="st">&quot;vendordb.db&quot;</span><span class="op">);</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string iDbName<span class="op">(</span><span class="st">&quot;inventorydb.db&quot;</span><span class="op">);</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string itemSDbName<span class="op">(</span><span class="st">&quot;itemname.sdb&quot;</span><span class="op">);</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Parse the command line arguments</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Omitted for brevity</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    try</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Open all databases.</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>        MyDb inventoryDB<span class="op">(</span>databaseHome<span class="op">,</span> iDbName<span class="op">);</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>        MyDb vendorDB<span class="op">(</span>databaseHome<span class="op">,</span> vDbName<span class="op">);</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>        MyDb itemnameSDB<span class="op">(</span>databaseHome<span class="op">,</span> itemSDbName<span class="op">,</span> <span class="kw">true</span><span class="op">);</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Associate the secondary to the primary</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>        inventoryDB<span class="op">.</span>getDb<span class="op">().</span>associate<span class="op">(</span>NULL<span class="op">,</span></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>                                      <span class="op">&amp;(</span>itemnameSDB<span class="op">.</span>getDb<span class="op">()),</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>                                      get_item_name<span class="op">,</span></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>                                      <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>itemName<span class="op">.</span>empty<span class="op">())</span></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>            show_all_records<span class="op">(</span>inventoryDB<span class="op">,</span> vendorDB<span class="op">);</span></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>            show_item<span class="op">(</span>itemnameSDB<span class="op">,</span> vendorDB<span class="op">,</span> itemName<span class="op">);</span></span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> catch<span class="op">(</span>DbException <span class="op">&amp;</span>e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Error reading databases. &quot;</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> e<span class="op">.</span>what<span class="op">()</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span><span class="op">(</span>e<span class="op">.</span>get_errno<span class="op">());</span></span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> catch<span class="op">(</span>std<span class="op">::</span>exception <span class="op">&amp;</span>e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Error reading databases. &quot;</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> e<span class="op">.</span>what<span class="op">()</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span><span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span><span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="co">// End main </span></span></code></pre></div>
+<p>The only other thing that we need to add to the application is the implementation of the <code>show_item()</code> function.</p>
+<h3 id="note">Note</h3>
+<p>In the interest of space, we refrain from showing the other functions used by this application. For their implementation, please see <a href="CoreCursorUsage.html" class="xref" title="Cursor Example">Cursor Example</a>. Alternatively, you can see the entire implementation of this application in:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>DB_INSTALL<span class="op">/</span>examples_cxx<span class="op">/</span>getting_started</span></code></pre></div>
+<p>where <span class="emphasis"><em><code>DB_INSTALL</code></em></span> is the location where you placed your DB distribution.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Shows the records in the inventory database that</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="co">// have a specific item name. For each inventory record</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="co">// shown, the appropriate vendor record is also displayed.</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>show_item<span class="op">(</span>MyDb <span class="op">&amp;</span>itemnameSDB<span class="op">,</span> MyDb <span class="op">&amp;</span>vendorDB<span class="op">,</span> std<span class="op">::</span>string <span class="op">&amp;</span>itemName<span class="op">)</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Get a cursor to the itemname secondary db</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    Dbc <span class="op">*</span>cursorp<span class="op">;</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    try <span class="op">{</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>        itemnameSDB<span class="op">.</span>getDb<span class="op">().</span>cursor<span class="op">(</span>NULL<span class="op">,</span> <span class="op">&amp;</span>cursorp<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Get the search key. This is the name on the inventory</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>        <span class="co">// record that we want to examine.</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cout <span class="op">&lt;&lt;</span> <span class="st">&quot;Looking for &quot;</span> <span class="op">&lt;&lt;</span> itemName <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>        Dbt key<span class="op">((</span><span class="dt">void</span> <span class="op">*)</span>itemName<span class="op">.</span>c_str<span class="op">(),</span> itemName<span class="op">.</span>length<span class="op">()</span> <span class="op">+</span> <span class="dv">1</span><span class="op">);</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>        Dbt data<span class="op">;</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Position the cursor to the first record in the secondary</span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>        <span class="co">// database that has the appropriate key.</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> ret <span class="op">=</span> cursorp<span class="op">-&gt;</span>get<span class="op">(&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_SET<span class="op">);</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(!</span>ret<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>            <span class="cf">do</span> <span class="op">{</span></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>                InventoryData inventoryItem<span class="op">(</span>data<span class="op">.</span>get_data<span class="op">());</span></span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>                inventoryItem<span class="op">.</span>show<span class="op">();</span></span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>                show_vendor<span class="op">(</span>vendorDB<span class="op">,</span> inventoryItem<span class="op">.</span>getVendor<span class="op">().</span>c_str<span class="op">());</span></span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">while</span><span class="op">(</span>cursorp<span class="op">-&gt;</span>get<span class="op">(&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> DB_NEXT_DUP<span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>            std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;No records found for &#39;&quot;</span> <span class="op">&lt;&lt;</span> itemName</span>
+<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a>                      <span class="op">&lt;&lt;</span> <span class="st">&quot;&#39;&quot;</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> catch<span class="op">(</span>DbException <span class="op">&amp;</span>e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a>        itemnameSDB<span class="op">.</span>getDb<span class="op">().</span>err<span class="op">(</span>e<span class="op">.</span>get_errno<span class="op">(),</span> <span class="st">&quot;Error in show_item&quot;</span><span class="op">);</span></span>
+<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a>        cursorp<span class="op">-&gt;</span>close<span class="op">();</span></span>
+<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a>        throw e<span class="op">;</span></span>
+<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> catch<span class="op">(</span>std<span class="op">::</span>exception <span class="op">&amp;</span>e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-39"><a href="#cb9-39" aria-hidden="true" tabindex="-1"></a>        itemnameSDB<span class="op">.</span>getDb<span class="op">().</span>errx<span class="op">(</span><span class="st">&quot;Error in show_item: </span><span class="sc">%s</span><span class="st">&quot;</span><span class="op">,</span> e<span class="op">.</span>what<span class="op">());</span></span>
+<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a>        cursorp<span class="op">-&gt;</span>close<span class="op">();</span></span>
+<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a>        throw e<span class="op">;</span></span>
+<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-44"><a href="#cb9-44" aria-hidden="true" tabindex="-1"></a>    cursorp<span class="op">-&gt;</span>close<span class="op">();</span></span>
+<span id="cb9-45"><a href="#cb9-45" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb9-46"><a href="#cb9-46" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>This completes our update to <code>example_inventory_read</code>. Using this update, you can now search for and show all inventory items that match a particular name. For example:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>    example_inventory_read <span class="op">-</span>i <span class="st">&quot;Zulu Nut&quot;</span></span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Database Usage Example — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg / cxx</nav>
+  <main>
+<h2 id="database-usage-example">Database Usage Example</h2>
+<p>In <a href="CoreDbCXXUsage.html" class="xref" title="Database Example">Database Example</a> we created a class that opens and closes a database for us. We now make use of that class to load inventory data into two databases that we will use for our inventory system.</p>
+<p>Again, remember that you can find the complete implementation for these functions in:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>DB_INSTALL<span class="op">/</span>examples_cxx<span class="op">/</span>getting_started</span></code></pre></div>
+<p>where <span class="emphasis"><em><code>DB_INSTALL</code></em></span> is the location where you placed your DB distribution.</p>
+<p><strong>Example 3.1 VENDOR Structure</strong></p>
+<p>We want to store data related to an inventory system. There are two types of information that we want to manage: inventory data and related vendor contact information. To manage this information, we could have created a structure for each type of data, but to illustrate storing mixed data without a structure we refrain from creating one for the inventory data.</p>
+<p>We now show the definition of the VENDOR structure. Note that the VENDOR structure uses fixed-length fields. This is not necessary and in fact could represent a waste of resources if the number of vendors stored in our database scales to very large numbers. However, for simplicity we use fixed-length fields anyway, especially given that our sample data contains so few vendor records.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File: gettingStartedCommon.hpp</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#define MAXFIELD </span><span class="dv">20</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">typedef</span> <span class="kw">struct</span> vendor <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> name<span class="op">[</span>MAXFIELD<span class="op">];</span>             <span class="co">// Vendor name</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> street<span class="op">[</span>MAXFIELD<span class="op">];</span>           <span class="co">// Street name and number</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> city<span class="op">[</span>MAXFIELD<span class="op">];</span>             <span class="co">// City</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> state<span class="op">[</span><span class="dv">3</span><span class="op">];</span>                   <span class="co">// Two-digit US state code</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> zipcode<span class="op">[</span><span class="dv">6</span><span class="op">];</span>                 <span class="co">// US zipcode</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> phone_number<span class="op">[</span><span class="dv">13</span><span class="op">];</span>           <span class="co">// Vendor phone number</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> sales_rep<span class="op">[</span>MAXFIELD<span class="op">];</span>        <span class="co">// Name of sales representative</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> sales_rep_phone<span class="op">[</span>MAXFIELD<span class="op">];</span>  <span class="co">// Sales rep&#39;s phone number</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> VENDOR<span class="op">;</span></span></code></pre></div>
+<p><strong>Example 3.2 InventoryData Class</strong></p>
+<p>In order to manage our actual inventory data, we create a class that encapsulates the data that we want to store for each inventory record. Beyond simple data encapsulation, this class is also capable of marshaling the inventory data into a single contiguous buffer for the purposes of storing in that data in a DB database.</p>
+<p>We also provide two constructors for this class. The default constructor simply initializes all our data members for us. A second constructor is also provided that is capable of populating our data members from a <code>void *</code>. This second constructor is not really needed until the next chapter where we show how to read data from the databases, but we include it here for the purpose of completeness anyway.</p>
+<p>To simplify things a bit, we include the entire implementation for this class in <code>gettingStartedCommon.hpp</code> along with our <code>VENDOR</code> structure definition.</p>
+<p>To begin, we create the public getter and setter methods that we use with our class' private members. We also show the implementation of the method that we use to initialize all our private members.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>class InventoryData</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>public<span class="op">:</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> <span class="dt">void</span> setPrice<span class="op">(</span><span class="dt">double</span> price<span class="op">)</span> <span class="op">{</span>price_ <span class="op">=</span> price<span class="op">;}</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> <span class="dt">void</span> setQuantity<span class="op">(</span><span class="dt">long</span> quantity<span class="op">)</span> <span class="op">{</span>quantity_ <span class="op">=</span> quantity<span class="op">;}</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> <span class="dt">void</span> setCategory<span class="op">(</span>std<span class="op">::</span>string <span class="op">&amp;</span>category<span class="op">)</span> </span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>                    <span class="op">{</span>category_ <span class="op">=</span> category<span class="op">;}</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> <span class="dt">void</span> setName<span class="op">(</span>std<span class="op">::</span>string <span class="op">&amp;</span>name<span class="op">)</span> <span class="op">{</span>name_ <span class="op">=</span> name<span class="op">;}</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> <span class="dt">void</span> setVendor<span class="op">(</span>std<span class="op">::</span>string <span class="op">&amp;</span>vendor<span class="op">)</span> <span class="op">{</span>vendor_ <span class="op">=</span> vendor<span class="op">;}</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> <span class="dt">void</span> setSKU<span class="op">(</span>std<span class="op">::</span>string <span class="op">&amp;</span>sku<span class="op">)</span> <span class="op">{</span>sku_ <span class="op">=</span> sku<span class="op">;}</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> <span class="dt">double</span><span class="op">&amp;</span> getPrice<span class="op">()</span> <span class="op">{</span><span class="cf">return</span><span class="op">(</span>price_<span class="op">);}</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> <span class="dt">long</span><span class="op">&amp;</span> getQuantity<span class="op">()</span> <span class="op">{</span><span class="cf">return</span><span class="op">(</span>quantity_<span class="op">);}</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> std<span class="op">::</span>string<span class="op">&amp;</span> getCategory<span class="op">()</span> <span class="op">{</span><span class="cf">return</span><span class="op">(</span>category_<span class="op">);}</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> std<span class="op">::</span>string<span class="op">&amp;</span> getName<span class="op">()</span> <span class="op">{</span><span class="cf">return</span><span class="op">(</span>name_<span class="op">);}</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> std<span class="op">::</span>string<span class="op">&amp;</span> getVendor<span class="op">()</span> <span class="op">{</span><span class="cf">return</span><span class="op">(</span>vendor_<span class="op">);}</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> std<span class="op">::</span>string<span class="op">&amp;</span> getSKU<span class="op">()</span> <span class="op">{</span><span class="cf">return</span><span class="op">(</span>sku_<span class="op">);}</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Initialize our data members</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span> clear<span class="op">()</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>        price_ <span class="op">=</span> <span class="fl">0.0</span><span class="op">;</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>        quantity_ <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>        category_<span class="op">.</span>clear<span class="op">();</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>        name_<span class="op">.</span>clear<span class="op">();</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>        vendor_<span class="op">.</span>clear<span class="op">();</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>        sku_<span class="op">.</span>clear<span class="op">();</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Next we implement our constructors. The default constructor simply calls the <code>clear()</code>. The second constructor takes a <code>void *</code> as an argument, which it then uses to initialize the data members. Note, again, that we will not actually use this second constructor in this chapter, but we show it here just to be complete anyway.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Default constructor</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    InventoryData<span class="op">()</span> <span class="op">{</span> clear<span class="op">();</span> <span class="op">}</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Constructor from a void *</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// For use with the data returned from a bdb get</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    InventoryData<span class="op">(</span><span class="dt">void</span> <span class="op">*</span>buffer<span class="op">)</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">char</span> <span class="op">*</span>buf <span class="op">=</span> <span class="op">(</span><span class="dt">char</span> <span class="op">*)</span>buffer<span class="op">;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        price_ <span class="op">=</span> <span class="op">*((</span><span class="dt">double</span> <span class="op">*)</span>buf<span class="op">);</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">double</span><span class="op">);</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        quantity_ <span class="op">=</span> <span class="op">*((</span><span class="dt">long</span> <span class="op">*)(</span>buf <span class="op">+</span> bufLen_<span class="op">));</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">+=</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">long</span><span class="op">);</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>        name_ <span class="op">=</span> buf <span class="op">+</span> bufLen_<span class="op">;</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">+=</span> name_<span class="op">.</span>size<span class="op">()</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>        sku_ <span class="op">=</span> buf <span class="op">+</span> bufLen_<span class="op">;</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">+=</span> sku_<span class="op">.</span>size<span class="op">()</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>        category_ <span class="op">=</span> buf <span class="op">+</span> bufLen_<span class="op">;</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">+=</span> category_<span class="op">.</span>size<span class="op">()</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>        vendor_ <span class="op">=</span> buf <span class="op">+</span> bufLen_<span class="op">;</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">+=</span> vendor_<span class="op">.</span>size<span class="op">()</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Next we provide a couple of methods for returning the class' buffer and the size of the buffer. These are used for actually storing the class' data in a DB database.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Marshalls this classes data members into a single</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// contiguous memory location for the purpose of storing</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// the data in a database.</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> <span class="op">*</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    getBuffer<span class="op">()</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Zero out the buffer</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        memset<span class="op">(</span>databuf_<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">500</span><span class="op">);</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Now pack the data into a single contiguous memory location</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        <span class="co">// for storage.</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> dataLen <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>        dataLen <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">double</span><span class="op">);</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>        memcpy<span class="op">(</span>databuf_<span class="op">,</span> <span class="op">&amp;</span>price_<span class="op">,</span> dataLen<span class="op">);</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">+=</span> dataLen<span class="op">;</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>        dataLen <span class="op">=</span> <span class="kw">sizeof</span><span class="op">(</span><span class="dt">long</span><span class="op">);</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>        memcpy<span class="op">(</span>databuf_ <span class="op">+</span> bufLen_<span class="op">,</span> <span class="op">&amp;</span>quantity_<span class="op">,</span> dataLen<span class="op">);</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">+=</span> dataLen<span class="op">;</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>        packString<span class="op">(</span>databuf_<span class="op">,</span> name_<span class="op">);</span></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>        packString<span class="op">(</span>databuf_<span class="op">,</span> sku_<span class="op">);</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>        packString<span class="op">(</span>databuf_<span class="op">,</span> category_<span class="op">);</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>        packString<span class="op">(</span>databuf_<span class="op">,</span> vendor_<span class="op">);</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>databuf_<span class="op">);</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Returns the size of the buffer. Used for storing</span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>    <span class="co">// the buffer in a database.</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>    <span class="kw">inline</span> <span class="dt">int</span> getBufferSize<span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> <span class="op">(</span>bufLen_<span class="op">);</span> <span class="op">}</span> </span></code></pre></div>
+<p>Our last public method is a utility method that we use to get the class to show itself.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>     <span class="co">// Utility function used to show the contents of this class</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    show<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cout <span class="op">&lt;&lt;</span> <span class="st">&quot;</span><span class="sc">\n</span><span class="st">Name:         &quot;</span> <span class="op">&lt;&lt;</span> name_ <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cout <span class="op">&lt;&lt;</span> <span class="st">&quot;    SKU:        &quot;</span> <span class="op">&lt;&lt;</span> sku_ <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cout <span class="op">&lt;&lt;</span> <span class="st">&quot;    Price:      &quot;</span> <span class="op">&lt;&lt;</span> price_ <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cout <span class="op">&lt;&lt;</span> <span class="st">&quot;    Quantity:   &quot;</span> <span class="op">&lt;&lt;</span> quantity_ <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cout <span class="op">&lt;&lt;</span> <span class="st">&quot;    Category:   &quot;</span> <span class="op">&lt;&lt;</span> category_ <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cout <span class="op">&lt;&lt;</span> <span class="st">&quot;    Vendor:     &quot;</span> <span class="op">&lt;&lt;</span> vendor_ <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Finally, we provide a private method that is used to help us pack data into our buffer, and we declare our private data members.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>private<span class="op">:</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Utility function that appends a char * to the end of</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// the buffer.</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">void</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    packString<span class="op">(</span><span class="dt">char</span> <span class="op">*</span>buffer<span class="op">,</span> std<span class="op">::</span>string <span class="op">&amp;</span>theString<span class="op">)</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> string_size <span class="op">=</span> theString<span class="op">.</span>size<span class="op">()</span> <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>        memcpy<span class="op">(</span>buffer<span class="op">+</span>bufLen_<span class="op">,</span> theString<span class="op">.</span>c_str<span class="op">(),</span> string_size<span class="op">);</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>        bufLen_ <span class="op">+=</span> string_size<span class="op">;</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Data members</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string category_<span class="op">,</span> name_<span class="op">,</span> vendor_<span class="op">,</span> sku_<span class="op">;</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="dt">double</span> price_<span class="op">;</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    <span class="dt">long</span> quantity_<span class="op">;</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> bufLen_<span class="op">;</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">char</span> databuf_<span class="op">[</span><span class="dv">500</span><span class="op">];</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a><span class="op">};</span> </span></code></pre></div>
+<p><strong>Example 3.3 example_database_load</strong></p>
+<p>Our initial sample application loads database information from several flat files. To save space, we won't show all the details of this example program. However, as always you can find the complete implementation for this program here:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>DB_INSTALL<span class="op">/</span>examples_cxx<span class="op">/</span>getting_started</span></code></pre></div>
+<p>where <span class="emphasis"><em><code>DB_INSTALL</code></em></span> is the location where you placed your DB distribution.</p>
+<p>We begin with the normal include directives and forward declarations:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File: example_database_load.cpp</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;iostream&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;fstream&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;cstdlib&gt;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;MyDb.hpp&quot;</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&quot;gettingStartedCommon.hpp&quot;</span><span class="pp"> </span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="co">// Forward declarations</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> loadVendorDB<span class="op">(</span>MyDb<span class="op">&amp;,</span> std<span class="op">::</span>string<span class="op">&amp;);</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span> loadInventoryDB<span class="op">(</span>MyDb<span class="op">&amp;,</span> std<span class="op">::</span>string<span class="op">&amp;);</span></span></code></pre></div>
+<p>Next we begin our <code>main()</code> function with the variable declarations and command line parsing that is normal for most command line applications:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Loads the contents of vendors.txt and inventory.txt into</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="co">// Berkeley DB databases. </span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>main<span class="op">(</span><span class="dt">int</span> argc<span class="op">,</span> <span class="dt">char</span> <span class="op">*</span>argv<span class="op">[])</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Initialize the path to the database files</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string basename<span class="op">(</span><span class="st">&quot;./&quot;</span><span class="op">);</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string databaseHome<span class="op">(</span><span class="st">&quot;./&quot;</span><span class="op">);</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Database names</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string vDbName<span class="op">(</span><span class="st">&quot;vendordb.db&quot;</span><span class="op">);</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string iDbName<span class="op">(</span><span class="st">&quot;inventorydb.db&quot;</span><span class="op">);</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Parse the command line arguments here and determine </span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// the location of the flat text files containing the </span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>    <span class="co">// inventory data here. This step is omitted for clarity.</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">//  Identify the full name for our input files, which should</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">//  also include some path information.</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string inventoryFile <span class="op">=</span> basename <span class="op">+</span> <span class="st">&quot;inventory.txt&quot;</span><span class="op">;</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string vendorFile <span class="op">=</span> basename <span class="op">+</span> <span class="st">&quot;vendors.txt&quot;</span><span class="op">;</span></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>    try</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Open all databases.</span></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>        MyDb inventoryDB<span class="op">(</span>databaseHome<span class="op">,</span> iDbName<span class="op">);</span></span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>        MyDb vendorDB<span class="op">(</span>databaseHome<span class="op">,</span> vDbName<span class="op">);</span></span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Load the vendor database</span></span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>        loadVendorDB<span class="op">(</span>vendorDB<span class="op">,</span> vendorFile<span class="op">);</span></span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Load the inventory database</span></span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>        loadInventoryDB<span class="op">(</span>inventoryDB<span class="op">,</span> inventoryFile<span class="op">);</span></span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> catch<span class="op">(</span>DbException <span class="op">&amp;</span>e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Error loading databases. &quot;</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> e<span class="op">.</span>what<span class="op">()</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span><span class="op">(</span>e<span class="op">.</span>get_errno<span class="op">());</span></span>
+<span id="cb10-38"><a href="#cb10-38" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> catch<span class="op">(</span>std<span class="op">::</span>exception <span class="op">&amp;</span>e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-39"><a href="#cb10-39" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Error loading databases. &quot;</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb10-40"><a href="#cb10-40" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> e<span class="op">.</span>what<span class="op">()</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb10-41"><a href="#cb10-41" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span><span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb10-42"><a href="#cb10-42" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb10-43"><a href="#cb10-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-44"><a href="#cb10-44" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span><span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb10-45"><a href="#cb10-45" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="co">// End main </span></span></code></pre></div>
+<p>Note that we do not explicitly close our databases here. This is because the databases are encapsulated in <code>MyDb</code> class objects, and those objects are on the stack. When they go out of scope, their destructors will cause the database close to occur.</p>
+<p>Notice that there is not a lot to this function because we have pushed off all the database activity to other places.</p>
+<p>Next we show the implementation of <code>loadVendorDB()</code>. We load this data by scanning (line by line) the contents of the <code>vendors.txt</code> file into a VENDOR structure. Once we have a line scanned into the structure, we can store that structure into our vendors database.</p>
+<p>Note that we use the vendor's name as the key here. In doing so, we assume that the vendor's name is unique in our database. If it was not, we would either have to select a different key, or architect our application such that it could cope with multiple vendor records with the same name.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Loads the contents of the vendors.txt file into a database</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>loadVendorDB<span class="op">(</span>MyDb <span class="op">&amp;</span>vendorDB<span class="op">,</span> std<span class="op">::</span>string <span class="op">&amp;</span>vendorFile<span class="op">)</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>ifstream inFile<span class="op">(</span>vendorFile<span class="op">.</span>c_str<span class="op">(),</span> std<span class="op">::</span>ios<span class="op">::</span>in<span class="op">);</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(</span> <span class="op">!</span>inFile <span class="op">)</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Could not open file &#39;&quot;</span> <span class="op">&lt;&lt;</span> vendorFile</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>                  <span class="op">&lt;&lt;</span> <span class="st">&quot;&#39;. Giving up.&quot;</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>        throw std<span class="op">::</span>exception<span class="op">();</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    VENDOR my_vendor<span class="op">;</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="op">(!</span>inFile<span class="op">.</span>eof<span class="op">())</span></span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>string stringBuf<span class="op">;</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>getline<span class="op">(</span>inFile<span class="op">,</span> stringBuf<span class="op">);</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>        memset<span class="op">(&amp;</span>my_vendor<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>VENDOR<span class="op">));</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Scan the line into the structure.</span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Convenient, but not particularly safe.</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>        <span class="co">// In a real program, there would be a lot more</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>        <span class="co">// defensive code here.</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>        sscanf<span class="op">(</span>stringBuf<span class="op">.</span>c_str<span class="op">(),</span></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;%20[^#]#%20[^#]#%20[^#]#%3[^#]#%6[^#]#%13[^#]#%20[^#]#%20[^</span><span class="sc">\n</span><span class="st">]&quot;</span><span class="op">,</span></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>          my_vendor<span class="op">.</span>name<span class="op">,</span> my_vendor<span class="op">.</span>street<span class="op">,</span></span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>          my_vendor<span class="op">.</span>city<span class="op">,</span> my_vendor<span class="op">.</span>state<span class="op">,</span></span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>          my_vendor<span class="op">.</span>zipcode<span class="op">,</span> my_vendor<span class="op">.</span>phone_number<span class="op">,</span></span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>          my_vendor<span class="op">.</span>sales_rep<span class="op">,</span> my_vendor<span class="op">.</span>sales_rep_phone<span class="op">);</span></span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>        Dbt key<span class="op">(</span>my_vendor<span class="op">.</span>name<span class="op">,</span> strlen<span class="op">(</span>my_vendor<span class="op">.</span>name<span class="op">)</span> <span class="op">+</span> <span class="dv">1</span><span class="op">);</span></span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>        Dbt data<span class="op">(&amp;</span>my_vendor<span class="op">,</span> <span class="kw">sizeof</span><span class="op">(</span>VENDOR<span class="op">));</span></span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a>        vendorDB<span class="op">.</span>getDb<span class="op">().</span>put<span class="op">(</span>NULL<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb11-36"><a href="#cb11-36" aria-hidden="true" tabindex="-1"></a>    inFile<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb11-37"><a href="#cb11-37" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>Finally, we need to write the <code>loadInventoryDB()</code> function. To load the inventory information, we read in each line of the inventory.txt file, obtain each field from it, then we load this data into an <code>InventoryData</code> instance.</p>
+<p>To help us obtain the various fields from each line of input, we also create a simple helper function that locates the position of the first a field delimiter (a pound (#) sign) from a line of input.</p>
+<p>Note that we could have simply decided to store our inventory data in a structure very much like the VENDOR structure that we use above. However, by storing this data in the <code>InventoryData</code> class, which identifies the size of the data that it contains, we can use the smallest amount of space possible for the data that we are storing. The result is that our cache can be smaller than it might otherwise be and our database will take less space on disk than if we used a structure with fixed-length fields.</p>
+<p>For a trivial dataset such as what we use for these examples, these resource savings are negligible. But if we were storing hundreds of millions of records, then the cost savings may become significant.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Used to locate the first pound sign (a field delimiter)</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co">// in the input string.</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>getNextPound<span class="op">(</span>std<span class="op">::</span>string <span class="op">&amp;</span>theString<span class="op">,</span> std<span class="op">::</span>string <span class="op">&amp;</span>substring<span class="op">)</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> pos <span class="op">=</span> theString<span class="op">.</span>find<span class="op">(</span><span class="st">&quot;#&quot;</span><span class="op">);</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    substring<span class="op">.</span>assign<span class="op">(</span>theString<span class="op">,</span> <span class="dv">0</span><span class="op">,</span> pos<span class="op">);</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    theString<span class="op">.</span>assign<span class="op">(</span>theString<span class="op">,</span> pos <span class="op">+</span> <span class="dv">1</span><span class="op">,</span> theString<span class="op">.</span>size<span class="op">());</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">(</span>pos<span class="op">);</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="co">// Loads the contents of the inventory.txt file into a database</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="dt">void</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>loadInventoryDB<span class="op">(</span>MyDb <span class="op">&amp;</span>inventoryDB<span class="op">,</span> std<span class="op">::</span>string <span class="op">&amp;</span>inventoryFile<span class="op">)</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    InventoryData inventoryData<span class="op">;</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>string substring<span class="op">;</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>    <span class="dt">int</span> nextPound<span class="op">;</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>    std<span class="op">::</span>ifstream inFile<span class="op">(</span>inventoryFile<span class="op">.</span>c_str<span class="op">(),</span> std<span class="op">::</span>ios<span class="op">::</span>in<span class="op">);</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="op">(!</span>inFile<span class="op">)</span></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>cerr <span class="op">&lt;&lt;</span> <span class="st">&quot;Could not open file &#39;&quot;</span> <span class="op">&lt;&lt;</span> inventoryFile</span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>                  <span class="op">&lt;&lt;</span> <span class="st">&quot;&#39;. Giving up.&quot;</span> <span class="op">&lt;&lt;</span> std<span class="op">::</span>endl<span class="op">;</span></span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>        throw std<span class="op">::</span>exception<span class="op">();</span></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="op">(!</span>inFile<span class="op">.</span>eof<span class="op">())</span></span>
+<span id="cb12-29"><a href="#cb12-29" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb12-30"><a href="#cb12-30" aria-hidden="true" tabindex="-1"></a>        inventoryData<span class="op">.</span>clear<span class="op">();</span></span>
+<span id="cb12-31"><a href="#cb12-31" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>string stringBuf<span class="op">;</span></span>
+<span id="cb12-32"><a href="#cb12-32" aria-hidden="true" tabindex="-1"></a>        std<span class="op">::</span>getline<span class="op">(</span>inFile<span class="op">,</span> stringBuf<span class="op">);</span></span>
+<span id="cb12-33"><a href="#cb12-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-34"><a href="#cb12-34" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Now parse the line</span></span>
+<span id="cb12-35"><a href="#cb12-35" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(!</span>stringBuf<span class="op">.</span>empty<span class="op">())</span></span>
+<span id="cb12-36"><a href="#cb12-36" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb12-37"><a href="#cb12-37" aria-hidden="true" tabindex="-1"></a>            nextPound <span class="op">=</span> getNextPound<span class="op">(</span>stringBuf<span class="op">,</span> substring<span class="op">);</span></span>
+<span id="cb12-38"><a href="#cb12-38" aria-hidden="true" tabindex="-1"></a>            inventoryData<span class="op">.</span>setName<span class="op">(</span>substring<span class="op">);</span></span>
+<span id="cb12-39"><a href="#cb12-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-40"><a href="#cb12-40" aria-hidden="true" tabindex="-1"></a>            nextPound <span class="op">=</span> getNextPound<span class="op">(</span>stringBuf<span class="op">,</span> substring<span class="op">);</span></span>
+<span id="cb12-41"><a href="#cb12-41" aria-hidden="true" tabindex="-1"></a>            inventoryData<span class="op">.</span>setSKU<span class="op">(</span>substring<span class="op">);</span></span>
+<span id="cb12-42"><a href="#cb12-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-43"><a href="#cb12-43" aria-hidden="true" tabindex="-1"></a>            nextPound <span class="op">=</span> getNextPound<span class="op">(</span>stringBuf<span class="op">,</span> substring<span class="op">);</span></span>
+<span id="cb12-44"><a href="#cb12-44" aria-hidden="true" tabindex="-1"></a>            inventoryData<span class="op">.</span>setPrice<span class="op">(</span>strtod<span class="op">(</span>substring<span class="op">.</span>c_str<span class="op">(),</span> <span class="dv">0</span><span class="op">));</span></span>
+<span id="cb12-45"><a href="#cb12-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-46"><a href="#cb12-46" aria-hidden="true" tabindex="-1"></a>            nextPound <span class="op">=</span> getNextPound<span class="op">(</span>stringBuf<span class="op">,</span> substring<span class="op">);</span></span>
+<span id="cb12-47"><a href="#cb12-47" aria-hidden="true" tabindex="-1"></a>            inventoryData<span class="op">.</span>setQuantity<span class="op">(</span>strtol<span class="op">(</span>substring<span class="op">.</span>c_str<span class="op">(),</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">10</span><span class="op">));</span></span>
+<span id="cb12-48"><a href="#cb12-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-49"><a href="#cb12-49" aria-hidden="true" tabindex="-1"></a>            nextPound <span class="op">=</span> getNextPound<span class="op">(</span>stringBuf<span class="op">,</span> substring<span class="op">);</span></span>
+<span id="cb12-50"><a href="#cb12-50" aria-hidden="true" tabindex="-1"></a>            inventoryData<span class="op">.</span>setCategory<span class="op">(</span>substring<span class="op">);</span></span>
+<span id="cb12-51"><a href="#cb12-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-52"><a href="#cb12-52" aria-hidden="true" tabindex="-1"></a>            nextPound <span class="op">=</span> getNextPound<span class="op">(</span>stringBuf<span class="op">,</span> substring<span class="op">);</span></span>
+<span id="cb12-53"><a href="#cb12-53" aria-hidden="true" tabindex="-1"></a>            inventoryData<span class="op">.</span>setVendor<span class="op">(</span>substring<span class="op">);</span></span>
+<span id="cb12-54"><a href="#cb12-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-55"><a href="#cb12-55" aria-hidden="true" tabindex="-1"></a>            <span class="dt">void</span> <span class="op">*</span>buff <span class="op">=</span> <span class="op">(</span><span class="dt">void</span> <span class="op">*)</span>inventoryData<span class="op">.</span>getSKU<span class="op">().</span>c_str<span class="op">();</span></span>
+<span id="cb12-56"><a href="#cb12-56" aria-hidden="true" tabindex="-1"></a>            <span class="dt">int</span> size <span class="op">=</span> inventoryData<span class="op">.</span>getSKU<span class="op">().</span>size<span class="op">()+</span><span class="dv">1</span><span class="op">;</span></span>
+<span id="cb12-57"><a href="#cb12-57" aria-hidden="true" tabindex="-1"></a>            Dbt key<span class="op">(</span>buff<span class="op">,</span> size<span class="op">);</span></span>
+<span id="cb12-58"><a href="#cb12-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-59"><a href="#cb12-59" aria-hidden="true" tabindex="-1"></a>            buff <span class="op">=</span> inventoryData<span class="op">.</span>getBuffer<span class="op">();</span></span>
+<span id="cb12-60"><a href="#cb12-60" aria-hidden="true" tabindex="-1"></a>            size <span class="op">=</span> inventoryData<span class="op">.</span>getBufferSize<span class="op">();</span></span>
+<span id="cb12-61"><a href="#cb12-61" aria-hidden="true" tabindex="-1"></a>            Dbt data<span class="op">(</span>buff<span class="op">,</span> size<span class="op">);</span></span>
+<span id="cb12-62"><a href="#cb12-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-63"><a href="#cb12-63" aria-hidden="true" tabindex="-1"></a>            inventoryDB<span class="op">.</span>getDb<span class="op">().</span>put<span class="op">(</span>NULL<span class="op">,</span> <span class="op">&amp;</span>key<span class="op">,</span> <span class="op">&amp;</span>data<span class="op">,</span> <span class="dv">0</span><span class="op">);</span></span>
+<span id="cb12-64"><a href="#cb12-64" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb12-65"><a href="#cb12-65" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb12-66"><a href="#cb12-66" aria-hidden="true" tabindex="-1"></a>    inFile<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb12-67"><a href="#cb12-67" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>In the next chapter we provide an example that shows how to read the inventory and vendor databases.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

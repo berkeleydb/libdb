@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adding the Replication Manager to SimpleTxn — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg_db_rep / java</nav>
+  <main>
+<h2 id="adding-the-replication-manager-to-simpletxn">Adding the Replication Manager to SimpleTxn</h2>
+<p>We now use the methods described above to add partial support to the SimpleTxn example that we presented in <a href="txnapp.html" class="xref" title="Chapter 2. Transactional Application">Transactional Application</a>. That is, in this section we will:</p>
+<ul>
+<li><p>Enhance our command line options to accept information of interest to a replicated application.</p></li>
+<li><p>Configure our environment handle to use replication and the Replication Manager.</p></li>
+<li><p>Minimally configure the Replication Manager.</p></li>
+<li><p>Start replication.</p></li>
+</ul>
+<p>Note that when we are done with this section, we will be only partially ready to run the application. Some critical pieces will be missing; specifically, we will not yet be handling the differences between a master and a replica. (We do that in the next chapter).</p>
+<p>Also, note that in the following code fragments, additions and changes to the code are marked in <strong><code>bold</code></strong>.</p>
+<p>To begin, we make some significant changes to our <code>RepConfig</code> class because we will be using it to maintain a lot more information that we needed for our simple transactional example.</p>
+<p>We begin by importing a few new classes. <code>java.util.Vector</code> is used to organize a list of "other host" definitions (that is, the host and port information for the other replication participants known to this application). We also need a couple of classes used to manage individual host and port information, as well as replication sites and startup policy information.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>repquote_gsg<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>util<span class="op">.</span>Vector<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationHostAddress<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationManagerSiteConfig<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationManagerStartPolicy<span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>public class RepConfig</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="op">{</span> </span></code></pre></div>
+<p>Next we add considerably to the constants and data members used by this class. All of this is used to manage information necessary for replication purposes. We also at this point change the program's name, since we will be doing that to the main class in our application a little later in this description.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Constant values used in the RepQuote application.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> final String progname <span class="op">=</span> <span class="st">&quot;RepQuoteExampleGSG&quot;</span><span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> final <span class="dt">int</span> CACHESIZE <span class="op">=</span> <span class="dv">10</span> <span class="op">*</span> <span class="dv">1024</span> <span class="op">*</span> <span class="dv">1024</span><span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> final <span class="dt">int</span> SLEEPTIME <span class="op">=</span> <span class="dv">5000</span><span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="co">// member variables containing configuration information</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// String specifying the home directory for rep files.</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    public String home<span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Stores an optional set of &quot;other&quot; hosts.</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    public Vector<span class="op">&lt;</span>ReplicationHostAddress<span class="op">&gt;</span> otherHosts<span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Priority within the replication group.</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">int</span> priority<span class="op">;</span> </span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    public ReplicationManagerStartPolicy startPolicy<span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The host address to listen to.</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    public ReplicationHostAddress thisHost<span class="op">;</span> </span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="co">// member variables used internally.</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">int</span> currOtherHost<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    private boolean gotListenAddress<span class="op">;</span></span></code></pre></div>
+<p>Now we update our class constructor to initialize all of these new variables:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>    public RepConfig<span class="op">()</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>        startPolicy <span class="op">=</span> ReplicationManagerStartPolicy<span class="op">.</span>REP_ELECTION<span class="op">;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        home <span class="op">=</span> <span class="st">&quot;TESTDIR&quot;</span><span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        gotListenAddress <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        priority <span class="op">=</span> <span class="dv">100</span><span class="op">;</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        currOtherHost <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        thisHost <span class="op">=</span> new ReplicationManagerSiteConfig<span class="op">();</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        otherHosts <span class="op">=</span> new Vector<span class="op">();</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Finally, we finish updating this class by providing a series of new getter and setter methods. These are used primarily for setting a retrieving host information of interest to our replicated application:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    public java<span class="op">.</span>io<span class="op">.</span>File getHome<span class="op">()</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> new java<span class="op">.</span>io<span class="op">.</span>File<span class="op">(</span>home<span class="op">);</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setThisHost<span class="op">(</span>String host<span class="op">,</span> <span class="dt">int</span> port<span class="op">,</span> boolean creator<span class="op">)</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        gotListenAddress <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        thisHost<span class="op">.</span>setHost<span class="op">(</span>host<span class="op">);</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        thisPort<span class="op">.</span>setPort<span class="op">(</span>port<span class="op">);</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        thisHost<span class="op">.</span>setGroupCreator<span class="op">(</span>creator<span class="op">);</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    public ReplicationManagerSiteConfig getThisHost<span class="op">()</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(!</span>gotListenAddress<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Warning: no host specified.&quot;</span><span class="op">);</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Returning default.&quot;</span><span class="op">);</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> thisHost<span class="op">;</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    public ReplicationHostAddress getThisHostAddress<span class="op">()</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(!</span>gotListenAddress<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Warning: no host specified.&quot;</span><span class="op">);</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Returning default.&quot;</span><span class="op">);</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> thisHost<span class="op">.</span>getAddress<span class="op">();</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    public boolean gotListenAddress<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> gotListenAddress<span class="op">;</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> addOtherHost<span class="op">(</span>String host<span class="op">,</span> <span class="dt">int</span> port<span class="op">)</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>        ReplicationHostAddress newInfo <span class="op">=</span> </span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>            new ReplicationHostAddress<span class="op">(</span>host<span class="op">,</span> port<span class="op">);</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>        otherHosts<span class="op">.</span>add<span class="op">(</span>newInfo<span class="op">);</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>    public ReplicationHostAddress getFirstOtherHost<span class="op">()</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>        currOtherHost <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>otherHosts<span class="op">.</span>size<span class="op">()</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> null<span class="op">;</span></span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>ReplicationHostAddress<span class="op">)</span>otherHosts<span class="op">.</span>get<span class="op">(</span>currOtherHost<span class="op">);</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a>    public ReplicationHostAddress getNextOtherHost<span class="op">()</span></span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>        currOtherHost<span class="op">++;</span></span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>currOtherHost <span class="op">&gt;=</span> otherHosts<span class="op">.</span>size<span class="op">())</span></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> null<span class="op">;</span></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>ReplicationHostAddress<span class="op">)</span>otherHosts<span class="op">.</span>get<span class="op">(</span>currOtherHost<span class="op">);</span></span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>    public ReplicationHostAddress getOtherHost<span class="op">(</span><span class="dt">int</span> i<span class="op">)</span></span>
+<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>i <span class="op">&gt;=</span> otherHosts<span class="op">.</span>size<span class="op">())</span></span>
+<span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> null<span class="op">;</span></span>
+<span id="cb4-63"><a href="#cb4-63" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="op">(</span>ReplicationHostAddress<span class="op">)</span>otherHosts<span class="op">.</span>get<span class="op">(</span>i<span class="op">);</span></span>
+<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-65"><a href="#cb4-65" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>Having completed our update to the <code>RepConfig</code> class, we can now start making changes to the main portion of our program. We begin by changing the program's name. (This, of course, means that we copy our <code>SimpleTxn</code> code to a file named <code>RepQuoteExampleGSG.java</code>.)</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>repquote_gsg<span class="op">;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>                            </span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>FileNotFoundException<span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>BufferedReader<span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>InputStreamReader<span class="op">;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>IOException<span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>UnsupportedEncodingException<span class="op">;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>lang<span class="op">.</span>Thread<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>lang<span class="op">.</span>InterruptedException<span class="op">;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Cursor<span class="op">;</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Database<span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseConfig<span class="op">;</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseEntry<span class="op">;</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseException<span class="op">;</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseType<span class="op">;</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>EnvironmentConfig<span class="op">;</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>LockMode<span class="op">;</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>OperationStatus<span class="op">;</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationHostAddress<span class="op">;</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>ReplicationManagerSiteConfig<span class="op">;</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>import db<span class="op">.</span>repquote<span class="op">.</span>RepConfig<span class="op">;</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>public class RepQuoteExampleGSG</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>    private RepConfig repConfig<span class="op">;</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>    private Environment dbenv<span class="op">;</span> </span></code></pre></div>
+<p>Next we update our usage function. The application will continue to accept the <code>-h</code> parameter so that we can identify the environment home directory used by this application. However, we also add the:</p>
+<ul>
+<li><p><code>-l</code> parameter which allows us to identify the host and port used by this application to listen for replication messages. This parameter is required unless the -L parameter is specified.</p></li>
+<li><p><code>-L</code> parameter, which allows us to identify the local site as the group creator.</p></li>
+<li><p><code>-r</code> parameter which allows us to specify other replicas.</p></li>
+<li><p><code>-p</code> option, which is used to identify this replica's priority (recall that the priority is used as a tie breaker for elections)</p></li>
+</ul>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>    public RepQuoteExampleGSG<span class="op">()</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>        repConfig <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>        dbenv <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> <span class="dt">void</span> usage<span class="op">()</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;usage: &quot;</span> <span class="op">+</span> repConfig<span class="op">.</span>progname<span class="op">);</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;-h home[-r host:port][-l|-L host:port]&quot;</span> <span class="op">+</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;[-r host:port][-p priority]&quot;</span><span class="op">);</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st"> -h home directory (required)</span><span class="sc">\n</span><span class="st">&quot;</span> <span class="op">+</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;</span><span class="sc">\t</span><span class="st"> -l host:port (required, unless -L is specified; &quot;</span> <span class="op">+</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>             <span class="st">&quot;l stands for local)</span><span class="sc">\n</span><span class="st">&quot;</span> <span class="op">+</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>             <span class="st">&quot;</span><span class="sc">\t</span><span class="st"> -L host:port (optional;L mean group creator)</span><span class="sc">\n</span><span class="st">&quot;</span> <span class="op">+</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>             <span class="st">&quot;</span><span class="sc">\t</span><span class="st"> -r host:port (optional; r stands for remote; any &quot;</span> <span class="op">+</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>             <span class="st">&quot;number of these may be specified)</span><span class="sc">\n</span><span class="st">&quot;</span> <span class="op">+</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>             <span class="st">&quot;</span><span class="sc">\t</span><span class="st"> -p priority (optional: defaults to 100)</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>exit<span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Now we can begin working on our <code>main()</code> function. We begin by adding a couple of variables that we will use to collect TCP/IP host and port information.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> <span class="dt">void</span> main<span class="op">(</span>String<span class="op">[]</span> argv<span class="op">)</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>        throws Exception</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>        RepConfig config <span class="op">=</span> new RepConfig<span class="op">();</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>        String tmpHost<span class="op">;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> tmpPort <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> </span></code></pre></div>
+<p>Now we collect our command line arguments. As we do so, we will configure host and port information as required, and we will configure the application's election priority if necessary.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Extract the command line parameters</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> argv<span class="op">.</span>length<span class="op">;</span> i<span class="op">++)</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>argv<span class="op">[</span>i<span class="op">].</span>compareTo<span class="op">(</span><span class="st">&quot;-h&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                <span class="co">// home is a string arg.</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                i<span class="op">++;</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>                config<span class="op">.</span>home <span class="op">=</span> argv<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> <span class="op">(</span>argv<span class="op">[</span>i<span class="op">].</span>compareTo<span class="op">(</span><span class="st">&quot;-l&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span> <span class="op">||</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>              argv<span class="op">[</span>i<span class="op">].</span>compareTo<span class="op">(</span><span class="st">&quot;-L&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>i <span class="op">==</span> argv<span class="op">.</span>length <span class="op">-</span> <span class="dv">1</span><span class="op">)</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>                    usage<span class="op">();</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>argv<span class="op">[</span>i<span class="op">].</span>compareTo<span class="op">(</span><span class="st">&quot;-L&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>                    isCreator <span class="op">=</span> <span class="kw">true</span><span class="op">;</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>                <span class="co">// &quot;local&quot; should be host:port.</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>                i<span class="op">++;</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>                String<span class="op">[]</span> words <span class="op">=</span> argv<span class="op">[</span>i<span class="op">].</span>split<span class="op">(</span><span class="st">&quot;:&quot;</span><span class="op">);</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>words<span class="op">.</span>length <span class="op">!=</span> <span class="dv">2</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>                   System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>                     <span class="st">&quot;Invalid host specification host:port needed.&quot;</span><span class="op">);</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>                    usage<span class="op">();</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>                try <span class="op">{</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>                    tmpPort <span class="op">=</span> Integer<span class="op">.</span>parseInt<span class="op">(</span>words<span class="op">[</span><span class="dv">1</span><span class="op">]);</span></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span> catch <span class="op">(</span>NumberFormatException nfe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>                    System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Invalid host specification, &quot;</span> <span class="op">+</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>                        <span class="st">&quot;could not parse port number.&quot;</span><span class="op">);</span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>                    usage<span class="op">();</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>                config<span class="op">.</span>setThisHost<span class="op">(</span>words<span class="op">[</span><span class="dv">0</span><span class="op">],</span> tmpPort<span class="op">,</span> isCreator<span class="op">);</span></span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> <span class="op">(</span>argv<span class="op">[</span>i<span class="op">].</span>compareTo<span class="op">(</span><span class="st">&quot;-p&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>                i<span class="op">++;</span></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>                config<span class="op">.</span>priority <span class="op">=</span> Integer<span class="op">.</span>parseInt<span class="op">(</span>argv<span class="op">[</span>i<span class="op">]);</span></span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> <span class="op">(</span>argv<span class="op">[</span>i<span class="op">].</span>compareTo<span class="op">(</span><span class="st">&quot;-r&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>                i<span class="op">++;</span></span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>                String<span class="op">[]</span> words <span class="op">=</span> argv<span class="op">[</span>i<span class="op">].</span>split<span class="op">(</span><span class="st">&quot;:&quot;</span><span class="op">);</span></span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> <span class="op">(</span>words<span class="op">.</span>length <span class="op">!=</span> <span class="dv">2</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>                   System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span></span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>                     <span class="st">&quot;Invalid host specification host:port needed.&quot;</span><span class="op">);</span></span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a>                   usage<span class="op">();</span></span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>                try <span class="op">{</span></span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>                    tmpPort <span class="op">=</span> Integer<span class="op">.</span>parseInt<span class="op">(</span>words<span class="op">[</span><span class="dv">1</span><span class="op">]);</span></span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span> catch <span class="op">(</span>NumberFormatException nfe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>                    System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Invalid host specification, &quot;</span> <span class="op">+</span></span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>                        <span class="st">&quot;could not parse port number.&quot;</span><span class="op">);</span></span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a>                    usage<span class="op">();</span></span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a>                config<span class="op">.</span>addOtherHost<span class="op">(</span>words<span class="op">[</span><span class="dv">0</span><span class="op">],</span> tmpPort<span class="op">);</span></span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Unrecognized option: &quot;</span> <span class="op">+</span> argv<span class="op">[</span>i<span class="op">]);</span></span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>                usage<span class="op">();</span></span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> </span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Error check command line.</span></span>
+<span id="cb8-56"><a href="#cb8-56" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">((!</span>config<span class="op">.</span>gotListenAddress<span class="op">())</span> <span class="op">||</span> config<span class="op">.</span>home<span class="op">.</span>length<span class="op">()</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb8-57"><a href="#cb8-57" aria-hidden="true" tabindex="-1"></a>            usage<span class="op">();</span> </span></code></pre></div>
+<p>Having done that, the remainder of our <code>main()</code> function is left unchanged, with the exception of a few name changes required by the new class name:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>        RepQuoteExampleGSG runner <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>            runner <span class="op">=</span> new RepQuoteExampleGSG<span class="op">();</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>            runner<span class="op">.</span>init<span class="op">(</span>config<span class="op">);</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>            runner<span class="op">.</span>doloop<span class="op">();</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>            runner<span class="op">.</span>terminate<span class="op">();</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch <span class="op">(</span>DatabaseException dbe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Caught an exception during &quot;</span> <span class="op">+</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;initialization or processing: &quot;</span> <span class="op">+</span> dbe<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>runner <span class="op">!=</span> null<span class="op">)</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>                runner<span class="op">.</span>terminate<span class="op">();</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>exit<span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="co">// end main     </span></span></code></pre></div>
+<p>Now we need to update our <code>RepQuoteExampleGSG.init()</code> method. Our updates are at first related to configuring replication. First, we need to update the method so that we can identify the local site to the environment handle (that is, the site identified by the <code>-l</code> command line option):</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">int</span> init<span class="op">(</span>RepConfig config<span class="op">)</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> ret <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>        repConfig <span class="op">=</span> config<span class="op">;</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        EnvironmentConfig envConfig <span class="op">=</span> new EnvironmentConfig<span class="op">();</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setErrorStream<span class="op">(</span>System<span class="op">.</span>err<span class="op">);</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setErrorPrefix<span class="op">(</span>RepConfig<span class="op">.</span>progname<span class="op">);</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>addReplicationManagerSite<span class="op">(</span>repConfig<span class="op">.</span>getThisHost<span class="op">());</span> </span></code></pre></div>
+<p>And we also add code to allow us to identify "other" sites to the environment handle (that is, the sites that we identify using the <code>-o</code> command line option). To do this, we iterate over each of the "other" sites provided to us using the <code>-o</code> command line option, and we add each one individually in turn:</p>
+<p>We also add code here to set the environment's priority.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(</span>ReplicationHostAddress host <span class="op">=</span> </span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>            repConfig<span class="op">.</span>getFirstOtherHost<span class="op">();</span> host <span class="op">!=</span> null<span class="op">;</span> </span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>            host <span class="op">=</span> repConfig<span class="op">.</span>getNextOtherHost<span class="op">())</span> <span class="op">{</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>            ReplicationManagerSiteConfig repmgrRemoteSiteConfig <span class="op">=</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>                new ReplicationManagerSiteConfig<span class="op">(</span>host<span class="op">.</span>host<span class="op">,</span> host<span class="op">.</span>port<span class="op">);</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>            repmgrRemoteSiteConfig<span class="op">.</span>setBootstrapHelper<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>            envConfig<span class="op">.</span>addReplicationManagerSite<span class="op">(</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>                repmgrRemoteSiteConfig<span class="op">);</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>addReplicationPriority<span class="op">(</span>repConfig<span class="op">.</span>priority<span class="op">);</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>         </span></code></pre></div>
+<p>We can now open our environment. Note that the options we use to open the environment are slightly different for a replicated application than they are for a non-replicated application. Namely, replication requires the <code>EnvironmentConfig.setInitializeReplication()</code> option.</p>
+<p>Also, because we are using the Replication Manager, we must prepare our environment for threaded usage. For this reason, we also need the <code>DB_THREAD</code> flag.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setCacheSize<span class="op">(</span>RepConfig<span class="op">.</span>CACHESIZE<span class="op">);</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setTxnNoSync<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setRunRecovery<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeReplication<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeLocking<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeLogging<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeCache<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setTransactional<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>            dbenv <span class="op">=</span> new Environment<span class="op">(</span>appConfig<span class="op">.</span>getHome<span class="op">(),</span> envConfig<span class="op">);</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch<span class="op">(</span>FileNotFoundException e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;FileNotFound exception: &quot;</span> <span class="op">+</span> e<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;Ensure that the environment directory is pre-created.&quot;</span><span class="op">);</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>            ret <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> </span></code></pre></div>
+<p>Finally, we start replication before we exit this method. Immediately after exiting this method, our application will go into the <code>RepQuoteExampleGSG.doloop()</code> method, which is where the bulk of our application's work is performed. We update that method in the next chapter.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>        <span class="co">// start Replication Manager</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">.</span>replicationManagerStart<span class="op">(</span><span class="dv">3</span><span class="op">,</span> appConfig<span class="op">.</span>startPolicy<span class="op">);</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> ret<span class="op">;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>This completes our replication updates for the moment. We are not as yet ready to actually run this program; there remains a few critical pieces left to add to it. However, the work that we performed in this section represents a solid foundation for the remainder of our replication work.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

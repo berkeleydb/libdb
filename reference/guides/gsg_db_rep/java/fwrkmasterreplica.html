@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chapter 4. Replica versus Master Processes — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg_db_rep / java</nav>
+  <main>
+<h2 id="chapter-4-replica-versus-master-processes">Chapter 4. Replica versus Master Processes</h2>
+<p><strong>Table of Contents</strong></p>
+<p><span class="sect1"> <a href="fwrkmasterreplica.html#determinestate">Determining State</a> </span></p>
+<p><span class="sect1"> <a href="processingloop.html">Processing Loop</a> </span></p>
+<p><span class="sect1"> <a href="exampledoloop.html">Example Processing Loop</a> </span></p>
+<p><span class="sect2"> <a href="exampledoloop.html#runningit">Running It</a> </span></p>
+<p>Every environment participating in a replicated application must know whether it is a <span class="emphasis"><em>master</em></span> or <span class="emphasis"><em>replica</em></span>. The reason for this is because, simply, the master can modify the database while replicas cannot. As a result, not only will you open databases differently depended on whether the environment is running as a master, but the environment will frequently behave quite a bit differently depending on whether it thinks it is operating as the read/write interface for your database.</p>
+<p>Moreover, an environment must also be capable of gracefully switching between master and replica states. This means that the environment must be able to detect when it has switched states.</p>
+<p>Not surprisingly, a large part of your application's code will be tied up in knowing which state a given environment is in and then in the logic of how to behave depending on its state.</p>
+<p>This chapter shows you how to determine your environment's state, and it then shows you some sample code on how an application might behave depending on whether it is a master or a replica in a replicated application.</p>
+<h2 id="determining-state">Determining State</h2>
+<p>In order to determine whether your code is running as a master or a replica, you must write your application as an implementation of <code>com.sleepycat.db.EventHandler</code>. This class gives you a series of methods within which you can detect and respond to various events that occur in your DB code. Some, but not all, of these methods have to do with elections:</p>
+<p>Some of the more commonly handled events are described below. For a complete list of events, see the <code>com.sleepycat.db.EventHandler</code> javadoc page.</p>
+<ul>
+<li><p><code>EventHandler.handlePanicEvent()</code></p>
+<p>An error has occured in the Berkeley DB library requiring your application to shut down and then run recovery.</p></li>
+<li><p><code>EventHandler.handleRepClientEvent()</code></p>
+<p>The local environment is now a replica.</p></li>
+<li><p><code>EventHandler.handleRepConnectBrokenEvent()</code></p>
+<p>A previously established connection between two sites in the replication group has been broken.</p></li>
+<li><p><code>EventHandler.handleRepConnectEstablishedEvent()</code></p>
+<p>A connection has been established between two sites in the replication group.</p></li>
+<li><p><code>EventHandler.handleRepConnectTryFailedEvent()</code></p>
+<p>An attempt was made to establish a connection to a known remote site, but the connection attempt failed.</p></li>
+<li><p><code>EventHandler.handleRepDupmasterEvent()</code></p>
+<p>A duplicate master has been discovered in the replication group.</p></li>
+<li><p><code>EventHandler.handleRepElectedEvent()</code></p>
+<p>The local site has just won an election and is now the master. Your code should now reconfigure itself to operation as a master site.</p></li>
+<li><p><code>EventHandler.handleRepElectionFailedEvent()</code></p>
+<p>The local site's attempt to initiate or participate in a replication master election failed, due to the lack of timely message response from a sufficient number of remote sites.</p></li>
+<li><p><code>EventHandler.handleRepJoinFailureEvent()</code></p>
+<p>The local site could not synchronize with the master because an internal initialization was required, but internal initialization has been turned off</p></li>
+<li><p><code>EventHandler.handleRepLocalSiteRemovedEvent()</code></p>
+<p>The local site has been removed from the group.</p></li>
+<li><p><code>EventHandler.handleRepNewMasterEvent()</code></p>
+<p>An election was held and a new environment was made a master. However, the current environment <span class="emphasis"><em>is not</em></span> the master. This event exists so that you can cause your code to take some unique action in the event that the replication groups switches masters.</p></li>
+<li><p><code>EventHandler.handleRepMasterEvent()</code></p>
+<p>The local environment is now a master.</p></li>
+<li><p><code>EventHandler.handleRepMasterFailureEvent()</code></p>
+<p>The connection to the remote master replication site has failed.</p></li>
+<li><p><code>EventHandler.handleRepPermFailedEvent()</code></p>
+<p>The Replication Manager did not receive enough acknowledgements to ensure the transaction's durability within the replicationg group. The Replication Manager has therefore flushed the transaction to the master's local disk for storage.</p>
+<p>How the Replication Manager knows whether the acknowledgements it has received is determined by the ack policy you have set for your applicaton. See <a href="fwrkpermmessage.html#fmwrkpermpolicy" class="xref" title="Identifying Permanent Message Policies">Identifying Permanent Message Policies</a> for more information.</p></li>
+<li><p><code>EventHandler.handleRepSiteAddedEvent()</code></p>
+<p>A new site has joined the replication group.</p></li>
+<li><p><code>EventHandler.handleRepSiteRemovedEvent()</code></p>
+<p>An existing site has been removed from the replication group.</p></li>
+<li><p><code>EventHandler.handleRepStartupDoneEvent()</code></p>
+<p>The replica has completed startup synchronization and is now processing log records received from the master.</p></li>
+<li><p><code>EventHandler.handleWriteFailedEvent()</code></p>
+<p>A Berkeley DB write to stable storage failed.</p></li>
+</ul>
+<p>Note that these events are raised whenever the state is established. That is, when the current environment becomes a replica, and that includes at application startup, the event is raised. Also, when an election is held and a replica is elected to be a master, then the event occurs.</p>
+<p>The <code>EventHandler</code> implementation is fairly simple. First you detect the event, and then you record the state change in some data member maintained in a location that is convenient to you.</p>
+<p>For example:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>repquote<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co">// We make our main class an EventHandler implementation</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>EventHandler<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>public class MyReplicationClass implements EventHandler</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">// Somewhere we provide a data member that is used to track</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">// whether we are a master server. This could be in our main</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">// class, or it could be part of a supporting class.</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>private boolean isMaster<span class="op">;</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>isMaster <span class="op">=</span> <span class="kw">false</span><span class="op">;</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">// In the code where we open our environment and start replication,</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">// we must identify the class that is the event handler. In this</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">// example, we are performing this from within the class that </span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">// implements com.sleepycat.db.EventHandler so we identify</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">// &quot;this&quot; class as the event handler</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>envConfig<span class="op">.</span>setEventHandler<span class="op">(</span>this<span class="op">);</span> </span></code></pre></div>
+<p>That done, we still need to implement the methods required for handling replication events. For a simple application like this one, these implementations can be trivial.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepClientEvent<span class="op">()</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">.</span>setIsMaster<span class="op">(</span><span class="kw">false</span><span class="op">);</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepConnectBrokenEvent<span class="op">()</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepConnectEstablishedEvent<span class="op">()</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepConnectTryFailedEvent<span class="op">()</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepMasterEvent<span class="op">()</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        dbenv<span class="op">.</span>setIsMaster<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepNewMasterEvent<span class="op">(</span><span class="dt">int</span> envId<span class="op">)</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleWriteFailedEvent<span class="op">(</span><span class="dt">int</span> errorCode<span class="op">)</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Write to stable storage failed!&quot;</span> <span class="op">+</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;Operating system error code:&quot;</span> <span class="op">+</span> errorCode<span class="op">);</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Continuing....&quot;</span><span class="op">);</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepStartupDoneEvent<span class="op">()</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Replication startup is completed.&quot;</span><span class="op">);</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepPermFailedEvent<span class="op">()</span></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;This application failed to receive enough&quot;</span> <span class="op">+</span></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;acks for a permanent message. The transaction is flushed&quot;</span> <span class="op">+</span> </span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;to disk on this master host.&quot;</span><span class="op">);</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepLocalSiteRemovedEvent<span class="op">()</span></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepSiteAddedEvent<span class="op">()</span></span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepSiteRemovedEvent<span class="op">()</span></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Ignored for now.</span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepElectedEvent<span class="op">()</span></span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored for Replication Manager applications.</span></span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepElectionFailedEvent<span class="op">()</span></span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored for Replication Manager applications that do</span></span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a>        <span class="co">// not manage their own master selection.</span></span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepJoinFailureEvent<span class="op">()</span></span>
+<span id="cb2-77"><a href="#cb2-77" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-78"><a href="#cb2-78" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored since this application did not turn off AUTOINIT.</span></span>
+<span id="cb2-79"><a href="#cb2-79" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-80"><a href="#cb2-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-81"><a href="#cb2-81" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepMasterFailureEvent<span class="op">()</span></span>
+<span id="cb2-82"><a href="#cb2-82" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-83"><a href="#cb2-83" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored for Replication Manager applications that do</span></span>
+<span id="cb2-84"><a href="#cb2-84" aria-hidden="true" tabindex="-1"></a>        <span class="co">// not manage their own master selection.</span></span>
+<span id="cb2-85"><a href="#cb2-85" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-86"><a href="#cb2-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-87"><a href="#cb2-87" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handleRepDupmasterEvent<span class="op">()</span></span>
+<span id="cb2-88"><a href="#cb2-88" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-89"><a href="#cb2-89" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Safely ignored for Replication Manager applications that do</span></span>
+<span id="cb2-90"><a href="#cb2-90" aria-hidden="true" tabindex="-1"></a>        <span class="co">// not manage their own master selection.</span></span>
+<span id="cb2-91"><a href="#cb2-91" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-92"><a href="#cb2-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-93"><a href="#cb2-93" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> handlePanicEvent<span class="op">()</span></span>
+<span id="cb2-94"><a href="#cb2-94" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb2-95"><a href="#cb2-95" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Panic encountered!&quot;</span><span class="op">);</span></span>
+<span id="cb2-96"><a href="#cb2-96" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Shutting down.&quot;</span><span class="op">);</span></span>
+<span id="cb2-97"><a href="#cb2-97" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;You should restart, running recovery.&quot;</span><span class="op">);</span></span>
+<span id="cb2-98"><a href="#cb2-98" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb2-99"><a href="#cb2-99" aria-hidden="true" tabindex="-1"></a>            terminate<span class="op">();</span></span>
+<span id="cb2-100"><a href="#cb2-100" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch <span class="op">(</span>DatabaseException dbe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-101"><a href="#cb2-101" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Caught an exception during &quot;</span> <span class="op">+</span></span>
+<span id="cb2-102"><a href="#cb2-102" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;termination in handlePanicEvent: &quot;</span> <span class="op">+</span> dbe<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb2-103"><a href="#cb2-103" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-104"><a href="#cb2-104" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>exit<span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb2-105"><a href="#cb2-105" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span></code></pre></div>
+<p>Of course, this only gives us the current state of the environment. We still need the code that determines what to do when the environment changes state and how to behave depending on the state (described in the next section).</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

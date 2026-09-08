@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Database Usage Example — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg / java</nav>
+  <main>
+<h2 id="database-usage-example">Database Usage Example</h2>
+<p>In <a href="CoreJavaUsage.html#MyDb" class="xref" title="Example 7.1 MyDbs Class">MyDbs Class</a> we created a class that opens and closes databases for us. We now make use of that class to load inventory data into two databases that we will use for our inventory system.</p>
+<p>Again, remember that you can find the complete implementation for these functions in:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>DB_INSTALL<span class="op">/</span>examples_java<span class="op">/</span>db<span class="op">/</span>GettingStarted</span></code></pre></div>
+<p>where <span class="emphasis"><em><code>DB_INSTALL</code></em></span> is the location where you placed your DB distribution.</p>
+<p>Note that in this example, we are going to save two types of information. First there are a series of inventory records that identify information about some food items (fruits, vegetables, and desserts). These records identify particulars about each item such as the vendor that the item can be obtained from, how much the vendor has in stock, the price per unit, and so forth.</p>
+<p>We also want to manage vendor contact information, such as the vendor's address and phone number, the sales representative's name and his phone number, and so forth.</p>
+<p><strong>Example 8.1 Inventory.java</strong></p>
+<p>All Inventory data is encapsulated in an instance of the following class. Note that because this class is not serializable, we need a custom tuple binding in order to place it on a <code>DatabaseEntry</code> object. Because the <code>TupleInput</code> and <code>TupleOutput</code> classes used by custom tuple bindings support Java numerical types and not Java numerical classes, we use <code>int</code> and <code>float</code> here instead of the corresponding <code>Integer</code> and <code>Float</code> classes.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File Inventory.java</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>public class Inventory <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    private String sku<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    private String itemName<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    private String category<span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    private String vendor<span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">int</span> vendorInventory<span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">float</span> vendorPrice<span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setSku<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>            sku <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setItemName<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>            itemName <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setCategory<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>            category <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setVendorInventory<span class="op">(</span><span class="dt">int</span> data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>            vendorInventory <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setVendor<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>            vendor <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setVendorPrice<span class="op">(</span><span class="dt">float</span> data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>            vendorPrice <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>    public String getSku<span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> sku<span class="op">;</span> <span class="op">}</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>    public String getItemName<span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> itemName<span class="op">;</span> <span class="op">}</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>    public String getCategory<span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> category<span class="op">;</span> <span class="op">}</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">int</span> getVendorInventory<span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> vendorInventory<span class="op">;</span> <span class="op">}</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>    public String getVendor<span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> vendor<span class="op">;</span> <span class="op">}</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">float</span> getVendorPrice<span class="op">()</span> <span class="op">{</span> <span class="cf">return</span> vendorPrice<span class="op">;</span> <span class="op">}</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p><strong>Example 8.2 Vendor.java</strong></p>
+<p>The data for vendor records are stored in instances of the following class. Notice that we are using serialization with this class for no other reason than to demonstrate serializing a class instance.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File Vendor.java</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>Serializable<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>public class Vendor implements Serializable <span class="op">{</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    private String repName<span class="op">;</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    private String address<span class="op">;</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    private String city<span class="op">;</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    private String state<span class="op">;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    private String zipcode<span class="op">;</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    private String bizPhoneNumber<span class="op">;</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    private String repPhoneNumber<span class="op">;</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    private String vendor<span class="op">;</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setRepName<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>        repName <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setAddress<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>        address <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setCity<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>        city <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setState<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>        state <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setZipcode<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>        zipcode <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setBusinessPhoneNumber<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>        bizPhoneNumber <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setRepPhoneNumber<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>        repPhoneNumber <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setVendorName<span class="op">(</span>String data<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-46"><a href="#cb3-46" aria-hidden="true" tabindex="-1"></a>        vendor <span class="op">=</span> data<span class="op">;</span></span>
+<span id="cb3-47"><a href="#cb3-47" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb3-48"><a href="#cb3-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-49"><a href="#cb3-49" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span></span>
+<span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Corresponding getter methods omitted for brevity.</span></span>
+<span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>    <span class="co">// See examples/je/gettingStarted/Vendor.java</span></span>
+<span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a>    <span class="co">// for a complete implementation of this class.</span></span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>Because we will not be using serialization to convert our <code>Inventory</code> objects to a <code>DatabaseEntry</code> object, we need a custom tuple binding:</p>
+<p><strong>Example 8.3 InventoryBinding.java</strong></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File InventoryBinding.java</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleBinding<span class="op">;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleInput<span class="op">;</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleOutput<span class="op">;</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>public class InventoryBinding extends TupleBinding <span class="op">{</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Implement this abstract method. Used to convert</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// a DatabaseEntry to an Inventory object.</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    public Object entryToObject<span class="op">(</span>TupleInput ti<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        String sku <span class="op">=</span> ti<span class="op">.</span>readString<span class="op">();</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>        String itemName <span class="op">=</span> ti<span class="op">.</span>readString<span class="op">();</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>        String category <span class="op">=</span> ti<span class="op">.</span>readString<span class="op">();</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>        String vendor <span class="op">=</span> ti<span class="op">.</span>readString<span class="op">();</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> vendorInventory <span class="op">=</span> ti<span class="op">.</span>readInt<span class="op">();</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>        <span class="dt">float</span> vendorPrice <span class="op">=</span> ti<span class="op">.</span>readFloat<span class="op">();</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>        Inventory inventory <span class="op">=</span> new Inventory<span class="op">();</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>        inventory<span class="op">.</span>setSku<span class="op">(</span>sku<span class="op">);</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>        inventory<span class="op">.</span>setItemName<span class="op">(</span>itemName<span class="op">);</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>        inventory<span class="op">.</span>setCategory<span class="op">(</span>category<span class="op">);</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>        inventory<span class="op">.</span>setVendor<span class="op">(</span>vendor<span class="op">);</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>        inventory<span class="op">.</span>setVendorInventory<span class="op">(</span>vendorInventory<span class="op">);</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>        inventory<span class="op">.</span>setVendorPrice<span class="op">(</span>vendorPrice<span class="op">);</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> inventory<span class="op">;</span></span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Implement this abstract method. Used to convert a</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Inventory object to a DatabaseEntry object.</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> objectToEntry<span class="op">(</span>Object object<span class="op">,</span> TupleOutput to<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>        Inventory inventory <span class="op">=</span> <span class="op">(</span>Inventory<span class="op">)</span>object<span class="op">;</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>        to<span class="op">.</span>writeString<span class="op">(</span>inventory<span class="op">.</span>getSku<span class="op">());</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>        to<span class="op">.</span>writeString<span class="op">(</span>inventory<span class="op">.</span>getItemName<span class="op">());</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>        to<span class="op">.</span>writeString<span class="op">(</span>inventory<span class="op">.</span>getCategory<span class="op">());</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>        to<span class="op">.</span>writeString<span class="op">(</span>inventory<span class="op">.</span>getVendor<span class="op">());</span></span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>        to<span class="op">.</span>writeInt<span class="op">(</span>inventory<span class="op">.</span>getVendorInventory<span class="op">());</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>        to<span class="op">.</span>writeFloat<span class="op">(</span>inventory<span class="op">.</span>getVendorPrice<span class="op">());</span></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>In order to store the data identified above, we write the <code>ExampleDatabaseLoad</code> application. This application loads the inventory and vendor databases for you.</p>
+<p>Inventory information is stored in a <code>Database</code> dedicated for that purpose. The key for each such record is a product SKU. The inventory data stored in this database are objects of the <code>Inventory</code> class (see <a href="dbtJavaUsage.html#inventoryjava" class="xref" title="Example 8.1 Inventory.java">Inventory.java</a> for more information). <code>ExampleDatabaseLoad</code> loads the inventory database as follows:</p>
+<ol type="1">
+<li><p>Reads the inventory data from a flat text file prepared in advance for this purpose.</p></li>
+<li><p>Uses <code>java.lang.String</code> to create a key based on the item's SKU.</p></li>
+<li><p>Uses an <code>Inventory</code> class instance for the record data. This object is stored on a <code>DatabaseEntry</code> object using <code>InventoryBinding</code>, a custom tuple binding that we implemented above.</p></li>
+<li><p>Saves each record to the inventory database.</p></li>
+</ol>
+<p>Vendor information is also stored in a <code>Database</code> dedicated for that purpose. The vendor data stored in this database are objects of the <code>Vendor</code> class (see <a href="dbtJavaUsage.html#vendorjava" class="xref" title="Example 8.2 Vendor.java">Vendor.java</a> for more information). To load this <code>Database</code>, <code>ExampleDatabaseLoad</code> does the following:</p>
+<ol type="1">
+<li><p>Reads the vendor data from a flat text file prepared in advance for this purpose.</p></li>
+<li><p>Uses the vendor's name as the record's key.</p></li>
+<li><p>Uses a <code>Vendor</code> class instance for the record data. This object is stored on a <code>DatabaseEntry</code> object using <code>com.sleepycat.bind.serial.SerialBinding</code>.</p></li>
+</ol>
+<p><strong>Example 8.4 Stored Class Catalog Management with MyDbs</strong></p>
+<p>Before we can write <code>ExampleDatabaseLoad</code>, we need to update <code>MyDbs.java</code> to support the class catalogs that we need for this application.</p>
+<p>To do this, we start by importing an additional class to support stored class catalogs:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File: MyDbs.java</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>serial<span class="op">.</span>StoredClassCatalog<span class="op">;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Database<span class="op">;</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseConfig<span class="op">;</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseException<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseType<span class="op">;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>FileNotFoundException<span class="op">;</span> </span></code></pre></div>
+<p>We also need to add two additional private data members to this class. One supports the database used for the class catalog, and the other is used as a handle for the class catalog itself.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>public class MyDbs <span class="op">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The databases that our application uses</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    private Database vendorDb <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    private Database inventoryDb <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    private Database classCatalogDb <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Needed for object serialization</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    private StoredClassCatalog classCatalog<span class="op">;</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    private String vendordb <span class="op">=</span> <span class="st">&quot;VendorDB.db&quot;</span><span class="op">;</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    private String inventorydb <span class="op">=</span> <span class="st">&quot;InventoryDB.db&quot;</span><span class="op">;</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    private String classcatalogdb <span class="op">=</span> <span class="st">&quot;ClassCatalogDB.db&quot;</span><span class="op">;</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Our constructor does nothing</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    public MyDbs<span class="op">()</span> <span class="op">{}</span> </span></code></pre></div>
+<p>Next we need to update the <code>MyDbs.setup()</code> method to open the class catalog database and create the class catalog.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The setup() method opens all our databases</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// for us.</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> setup<span class="op">(</span>String databasesHome<span class="op">)</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException <span class="op">{</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>        DatabaseConfig myDbConfig <span class="op">=</span> new DatabaseConfig<span class="op">();</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">...</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Database configuration omitted for brevity</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">...</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Now open, or create and open, our databases</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Open the vendors and inventory databases</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>            vendordb <span class="op">=</span> databasesHome <span class="op">+</span> <span class="st">&quot;/&quot;</span> <span class="op">+</span> vendordb<span class="op">;</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>            vendorDb <span class="op">=</span> new Database<span class="op">(</span>vendordb<span class="op">,</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>                                    null<span class="op">,</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>                                    myDbConfig<span class="op">);</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>            inventorydb <span class="op">=</span> databasesHome <span class="op">+</span> <span class="st">&quot;/&quot;</span> <span class="op">+</span> inventorydb<span class="op">;</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>            inventoryDb <span class="op">=</span> new Database<span class="op">(</span>inventorydb<span class="op">,</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>                                        null<span class="op">,</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>                                        myDbConfig<span class="op">);</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Open the class catalog db. This is used to</span></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>            <span class="co">// optimize class serialization.</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>            classcatalogdb <span class="op">=</span> databasesHome <span class="op">+</span> <span class="st">&quot;/&quot;</span> <span class="op">+</span> classcatalogdb<span class="op">;</span></span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>            classCatalogDb <span class="op">=</span> new Database<span class="op">(</span>classcatalogdb<span class="op">,</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>                                          null<span class="op">,</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>                                          myDbConfig<span class="op">);</span> </span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch<span class="op">(</span>FileNotFoundException fnfe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;MyDbs: &quot;</span> <span class="op">+</span> fnfe<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>exit<span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Finally we need a getter method to return the class catalog. Note that we do not provide a getter for the catalog database itself – our application has no need for that.</p>
+<p>We also update our <code>close()</code> to close our class catalog.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>   <span class="co">// getter methods</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    public Database getVendorDB<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> vendorDb<span class="op">;</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    public Database getInventoryDB<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> inventoryDb<span class="op">;</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>    public StoredClassCatalog getClassCatalog<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> classCatalog<span class="op">;</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span></code></pre></div>
+<p>Finally, we need our <code>close()</code> method:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Close the databases</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> close<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>vendorDb <span class="op">!=</span> null<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>                vendorDb<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>inventoryDb <span class="op">!=</span> null<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>                inventoryDb<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>classCatalogDb <span class="op">!=</span> null<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>                classCatalogDb<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch<span class="op">(</span>DatabaseException dbe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Error closing MyDbs: &quot;</span> <span class="op">+</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>                                dbe<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>exit<span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>So far we have identified the data that we want to store in our databases and how we will convert that data in and out of <code>DatabaseEntry</code> objects for database storage. We have also updated <code>MyDbs</code> to manage our databases for us. Now we write <code>ExampleDatabaseLoad</code> to actually put the inventory and vendor data into their respective databases. Because of the work that we have done so far, this application is actually fairly simple to write.</p>
+<p><strong>Example 8.5 ExampleDatabaseLoad.java</strong></p>
+<p>First we need the usual series of import statements:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">// File: ExampleDatabaseLoad.java</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>GettingStarted<span class="op">;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>BufferedReader<span class="op">;</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>File<span class="op">;</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>FileInputStream<span class="op">;</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>FileNotFoundException<span class="op">;</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>IOException<span class="op">;</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>InputStreamReader<span class="op">;</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>util<span class="op">.</span>ArrayList<span class="op">;</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>util<span class="op">.</span>List<span class="op">;</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>EntryBinding<span class="op">;</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>serial<span class="op">.</span>SerialBinding<span class="op">;</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>bind<span class="op">.</span>tuple<span class="op">.</span>TupleBinding<span class="op">;</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseEntry<span class="op">;</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseException<span class="op">;</span> </span></code></pre></div>
+<p>Next comes the class declaration and the private data members that we need for this class. Most of these are setting up default values for the program.</p>
+<p>Note that two <code>DatabaseEntry</code> objects are instantiated here. We will reuse these for every database operation that this program performs. Also a <code>MyDbEnv</code> object is instantiated here. We can do this because its constructor never throws an exception. See <a href="dbtJavaUsage.html#dbsStoredClass" class="xref" title="Example 8.4 Stored Class Catalog Management with MyDbs">Stored Class Catalog Management with MyDbs</a> for its implementation details.</p>
+<p>Finally, the <code>inventory.txt</code> and <code>vendors.txt</code> file can be found in the GettingStarted examples directory along with the classes described in this extended example.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>public class ExampleDatabaseLoad <span class="op">{</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> String myDbsPath <span class="op">=</span> <span class="st">&quot;./&quot;</span><span class="op">;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> File inventoryFile <span class="op">=</span> new File<span class="op">(</span><span class="st">&quot;./inventory.txt&quot;</span><span class="op">);</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> File vendorsFile <span class="op">=</span> new File<span class="op">(</span><span class="st">&quot;./vendors.txt&quot;</span><span class="op">);</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">// DatabaseEntries used for loading records</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> DatabaseEntry theKey <span class="op">=</span> new DatabaseEntry<span class="op">();</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> DatabaseEntry theData <span class="op">=</span> new DatabaseEntry<span class="op">();</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Encapsulates the databases.</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> MyDbs myDbs <span class="op">=</span> new MyDbs<span class="op">();</span> </span></code></pre></div>
+<p>Next comes the <code>usage()</code> and <code>main()</code> methods. Notice the exception handling in the <code>main()</code> method. This is the only place in the application where we catch exceptions. For this reason, we must catch <code>DatabaseException</code> which is thrown by the <code>com.sleepycat.db.*</code> classes.</p>
+<p>Also notice the call to <code>MyDbs.close()</code> in the <code>finally</code> block. This is the only place in the application where <code>MyDbs.close()</code> is called. <code>MyDbs.close()</code> is responsible for closing all open <code>Database</code> handles for you.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> <span class="dt">void</span> usage<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;ExampleDatabaseLoad [-h &lt;database home&gt;]&quot;</span><span class="op">);</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;      [-s &lt;selections file&gt;]&quot;</span><span class="op">);</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;      [-v &lt;vendors file&gt;]&quot;</span><span class="op">);</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>exit<span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> <span class="dt">void</span> main<span class="op">(</span>String args<span class="op">[])</span> <span class="op">{</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>        ExampleDatabaseLoad edl <span class="op">=</span> new ExampleDatabaseLoad<span class="op">();</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>            edl<span class="op">.</span>run<span class="op">(</span>args<span class="op">);</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch <span class="op">(</span>DatabaseException dbe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;ExampleDatabaseLoad: &quot;</span> <span class="op">+</span> dbe<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>            dbe<span class="op">.</span>printStackTrace<span class="op">();</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch <span class="op">(</span>Exception e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Exception: &quot;</span> <span class="op">+</span> e<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>            e<span class="op">.</span>printStackTrace<span class="op">();</span></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> finally <span class="op">{</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>            myDbs<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;All done.&quot;</span><span class="op">);</span></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Next we write the <code>ExampleDatabaseLoad.run()</code> method. This method is responsible for initializing all objects. Because our environment and databases are all opened using the <code>MyDbs.setup()</code> method, <code>ExampleDatabaseLoad.run()</code> method is only responsible for calling <code>MyDbs.setup()</code> and then calling the <code>ExampleDatabaseLoad</code> methods that actually load the databases.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">void</span> run<span class="op">(</span>String args<span class="op">[])</span> throws DatabaseException <span class="op">{</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Parse the arguments list</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>        parseArgs<span class="op">(</span>args<span class="op">);</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>        myDbs<span class="op">.</span>setup<span class="op">(</span>myDbsPath<span class="op">);</span> <span class="co">// path to the environment home</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;loading vendors db.&quot;</span><span class="op">);</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>        loadVendorsDb<span class="op">();</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;loading inventory db.&quot;</span><span class="op">);</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>        loadInventoryDb<span class="op">();</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>This next method loads the vendor database. This method uses serialization to convert the <code>Vendor</code> object to a <code>DatabaseEntry</code> object.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>   private <span class="dt">void</span> loadVendorsDb<span class="op">()</span> </span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>            throws DatabaseException <span class="op">{</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>        <span class="co">// loadFile opens a flat-text file that contains our data</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>        <span class="co">// and loads it into a list for us to work with. The integer</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// parameter represents the number of fields expected in the</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>        <span class="co">// file.</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>        List vendors <span class="op">=</span> loadFile<span class="op">(</span>vendorsFile<span class="op">,</span> <span class="dv">8</span><span class="op">);</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Now load the data into the database. The vendor&#39;s name is the</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">// key, and the data is a Vendor class object.</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Need a serial binding for the data</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>        EntryBinding dataBinding <span class="op">=</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>            new SerialBinding<span class="op">(</span>myDbs<span class="op">.</span>getClassCatalog<span class="op">(),</span> Vendor<span class="op">.</span>class<span class="op">);</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> vendors<span class="op">.</span>size<span class="op">();</span> i<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>            String<span class="op">[]</span> sArray <span class="op">=</span> <span class="op">(</span>String<span class="op">[])</span>vendors<span class="op">.</span>get<span class="op">(</span>i<span class="op">);</span></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>            Vendor theVendor <span class="op">=</span> new Vendor<span class="op">();</span></span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>            theVendor<span class="op">.</span>setVendorName<span class="op">(</span>sArray<span class="op">[</span><span class="dv">0</span><span class="op">]);</span></span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>            theVendor<span class="op">.</span>setAddress<span class="op">(</span>sArray<span class="op">[</span><span class="dv">1</span><span class="op">]);</span></span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>            theVendor<span class="op">.</span>setCity<span class="op">(</span>sArray<span class="op">[</span><span class="dv">2</span><span class="op">]);</span></span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>            theVendor<span class="op">.</span>setState<span class="op">(</span>sArray<span class="op">[</span><span class="dv">3</span><span class="op">]);</span></span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>            theVendor<span class="op">.</span>setZipcode<span class="op">(</span>sArray<span class="op">[</span><span class="dv">4</span><span class="op">]);</span></span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>            theVendor<span class="op">.</span>setBusinessPhoneNumber<span class="op">(</span>sArray<span class="op">[</span><span class="dv">5</span><span class="op">]);</span></span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>            theVendor<span class="op">.</span>setRepName<span class="op">(</span>sArray<span class="op">[</span><span class="dv">6</span><span class="op">]);</span></span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>            theVendor<span class="op">.</span>setRepPhoneNumber<span class="op">(</span>sArray<span class="op">[</span><span class="dv">7</span><span class="op">]);</span></span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>            <span class="co">// The key is the vendor&#39;s name.</span></span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>            <span class="co">// ASSUMES THE VENDOR&#39;S NAME IS UNIQUE!</span></span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>            String vendorName <span class="op">=</span> theVendor<span class="op">.</span>getVendorName<span class="op">();</span></span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>            try <span class="op">{</span></span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>                theKey <span class="op">=</span> new DatabaseEntry<span class="op">(</span>vendorName<span class="op">.</span>getBytes<span class="op">(</span><span class="st">&quot;UTF-8&quot;</span><span class="op">));</span></span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> catch <span class="op">(</span>IOException willNeverOccur<span class="op">)</span> <span class="op">{}</span></span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Convert the Vendor object to a DatabaseEntry object</span></span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a>            <span class="co">// using our SerialBinding</span></span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a>            dataBinding<span class="op">.</span>objectToEntry<span class="op">(</span>theVendor<span class="op">,</span> theData<span class="op">);</span></span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Put it in the database.</span></span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a>            myDbs<span class="op">.</span>getVendorDB<span class="op">().</span>put<span class="op">(</span>null<span class="op">,</span> theKey<span class="op">,</span> theData<span class="op">);</span></span>
+<span id="cb14-42"><a href="#cb14-42" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb14-43"><a href="#cb14-43" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Now load the inventory database. This method uses our custom tuple binding (see <a href="dbtJavaUsage.html#InventoryJavaBinding" class="xref" title="Example 8.3 InventoryBinding.java">InventoryBinding.java</a>) to convert the <code>Inventory</code> object to a <code>DatabaseEntry</code> object.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">void</span> loadInventoryDb<span class="op">()</span> </span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException <span class="op">{</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>        <span class="co">// loadFile opens a flat-text file that contains our data</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>        <span class="co">// and loads it into a list for us to work with. The integer</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// parameter represents the number of fields expected in the</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>        <span class="co">// file.</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>        List inventoryArray <span class="op">=</span> loadFile<span class="op">(</span>inventoryFile<span class="op">,</span> <span class="dv">6</span><span class="op">);</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Now load the data into the database. The item&#39;s sku is the</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>        <span class="co">// key, and the data is an Inventory class object.</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Need a tuple binding for the Inventory class.</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>        TupleBinding inventoryBinding <span class="op">=</span> new InventoryBinding<span class="op">();</span></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> inventoryArray<span class="op">.</span>size<span class="op">();</span> i<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>            String<span class="op">[]</span> sArray <span class="op">=</span> <span class="op">(</span>String<span class="op">[])</span>inventoryArray<span class="op">.</span>get<span class="op">(</span>i<span class="op">);</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>            String sku <span class="op">=</span> sArray<span class="op">[</span><span class="dv">1</span><span class="op">];</span></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>            try <span class="op">{</span></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>                theKey <span class="op">=</span> new DatabaseEntry<span class="op">(</span>sku<span class="op">.</span>getBytes<span class="op">(</span><span class="st">&quot;UTF-8&quot;</span><span class="op">));</span></span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> catch <span class="op">(</span>IOException willNeverOccur<span class="op">)</span> <span class="op">{}</span></span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>            Inventory theInventory <span class="op">=</span> new Inventory<span class="op">();</span></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>            theInventory<span class="op">.</span>setItemName<span class="op">(</span>sArray<span class="op">[</span><span class="dv">0</span><span class="op">]);</span></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>            theInventory<span class="op">.</span>setSku<span class="op">(</span>sArray<span class="op">[</span><span class="dv">1</span><span class="op">]);</span></span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>            Float price <span class="op">=</span> new Float<span class="op">(</span>sArray<span class="op">[</span><span class="dv">2</span><span class="op">]);</span></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a>            theInventory<span class="op">.</span>setVendorPrice<span class="op">(</span>price<span class="op">.</span>floatValue<span class="op">());</span></span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a>            Integer vInventory <span class="op">=</span> new Integer<span class="op">(</span>sArray<span class="op">[</span><span class="dv">3</span><span class="op">]);</span></span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>            theInventory<span class="op">.</span>setVendorInventory<span class="op">(</span>vInventory<span class="op">.</span>intValue<span class="op">());</span></span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>            theInventory<span class="op">.</span>setCategory<span class="op">(</span>sArray<span class="op">[</span><span class="dv">4</span><span class="op">]);</span></span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>            theInventory<span class="op">.</span>setVendor<span class="op">(</span>sArray<span class="op">[</span><span class="dv">5</span><span class="op">]);</span></span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Place the Vendor object on the DatabaseEntry object using </span></span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a>            <span class="co">// our the tuple binding we implemented in </span></span>
+<span id="cb15-35"><a href="#cb15-35" aria-hidden="true" tabindex="-1"></a>            <span class="co">// InventoryBinding.java</span></span>
+<span id="cb15-36"><a href="#cb15-36" aria-hidden="true" tabindex="-1"></a>            inventoryBinding<span class="op">.</span>objectToEntry<span class="op">(</span>theInventory<span class="op">,</span> theData<span class="op">);</span></span>
+<span id="cb15-37"><a href="#cb15-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-38"><a href="#cb15-38" aria-hidden="true" tabindex="-1"></a>            <span class="co">// Put it in the database. Note that this causes our </span></span>
+<span id="cb15-39"><a href="#cb15-39" aria-hidden="true" tabindex="-1"></a>            <span class="co">// secondary database to be automatically updated for us.</span></span>
+<span id="cb15-40"><a href="#cb15-40" aria-hidden="true" tabindex="-1"></a>            myDbs<span class="op">.</span>getInventoryDB<span class="op">().</span>put<span class="op">(</span>null<span class="op">,</span> theKey<span class="op">,</span> theData<span class="op">);</span></span>
+<span id="cb15-41"><a href="#cb15-41" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb15-42"><a href="#cb15-42" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span></code></pre></div>
+<p>The remainder of this application provides utility methods to read a flat text file into an array of strings and parse the command line options:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> <span class="dt">void</span> parseArgs<span class="op">(</span>String args<span class="op">[])</span> <span class="op">{</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Implementation omitted for brevity.</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    private List loadFile<span class="op">(</span>File theFile<span class="op">,</span> <span class="dt">int</span> numFields<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>        List records <span class="op">=</span> new ArrayList<span class="op">();</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Implementation omitted for brevity.</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> records<span class="op">;</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    protected ExampleDatabaseLoad<span class="op">()</span> <span class="op">{}</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+<p>From the perspective of this document, these things are relatively uninteresting. You can see how they are implemented by looking at <code>ExampleDatabaseLoad.java</code> in:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>DB_INSTALL<span class="op">/</span>examples_java<span class="op">/</span>db<span class="op">/</span>GettingStarted</span></code></pre></div>
+<p>where <span class="emphasis"><em><code>DB_INSTALL</code></em></span> is the location where you placed your DB distribution.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

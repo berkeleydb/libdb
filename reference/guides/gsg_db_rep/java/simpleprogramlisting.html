@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Program Listing — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg_db_rep / java</nav>
+  <main>
+<h2 id="program-listing">Program Listing</h2>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#repconfiginfo_cxx">Class: RepConfig</a> </span></p>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#simpletxnusage_java">Class: SimpleTxn</a> </span></p>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#simpletxnmain_java">Method: SimpleTxn.main()</a> </span></p>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#simpletxn_init_java">Method: SimpleTxn.init()</a> </span></p>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#doloop_java">Method: SimpleTxn.doloop()</a> </span></p>
+<p><span class="sect2"> <a href="simpleprogramlisting.html#printstocks_c">Method: SimpleTxn.printStocks()</a> </span></p>
+<p>Our example program is a fairly simple transactional application. At this early stage of its development, the application contains no hint that it must be network-aware so the only command line argument that it takes is one that allows us to specify the environment home directory. (Eventually, we will specify things like host names and ports from the command line).</p>
+<p>Note that the application performs all writes under the protection of a transaction; however, multiple database operations are not performed per transaction. Consequently, we simplify things a bit by using autocommit for our database writes.</p>
+<p>Also, this application is single-threaded. It is possible to write a multi-threaded or multi-process application that performs replication. That said, the concepts described in this book are applicable to both single threaded and multi-threaded applications so nothing is gained by multi-threading this application other than distracting complexity. This manual does, however, identify where care must be taken when performing replication with a non-single threaded application.</p>
+<p>Finally, remember that transaction processing is not described in this manual. Rather, see the <em>Berkeley DB Getting Started with Transaction Processing</em> guide for details on that topic.</p>
+<h3 id="class-repconfig">Class: RepConfig</h3>
+<p>Before we begin, we present a class that we will use to maintain useful information for us. Under normal circumstances, this class would not be necessary for a simple transactional example such as this. However, this code will grow into a replicated example that needs to track a lot more information for the application, and so we lay the groundwork for it here.</p>
+<p>The class that we create is called <code>RepConfig</code> and its only purpose at this time is to track the location of our environment home directory.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>repquote_gsg<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>public class RepConfig</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Constant values used in the RepQuote application.</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> final String progname <span class="op">=</span> <span class="st">&quot;SimpleTxn&quot;</span><span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> final <span class="dt">int</span> CACHESIZE <span class="op">=</span> <span class="dv">10</span> <span class="op">*</span> <span class="dv">1024</span> <span class="op">*</span> <span class="dv">1024</span><span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">// member variables containing configuration information</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    public String home<span class="op">;</span> <span class="co">// String specifying the home directory for </span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>                        <span class="co">// rep files.</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    public RepConfig<span class="op">()</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>        home <span class="op">=</span> <span class="st">&quot;TESTDIR&quot;</span><span class="op">;</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    public java<span class="op">.</span>io<span class="op">.</span>File getHome<span class="op">()</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> new java<span class="op">.</span>io<span class="op">.</span>File<span class="op">(</span>home<span class="op">);</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="op">}</span>  </span></code></pre></div>
+<h3 id="class-simpletxn">Class: SimpleTxn</h3>
+<p>Our transactional example will consist of a class, <code>SimpleTxn</code>, that performs all our work for us.</p>
+<p>First, we provide the package declaration and then a few import statements that the class needs.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>package db<span class="op">.</span>repquote_gsg<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>FileNotFoundException<span class="op">;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>BufferedReader<span class="op">;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>InputStreamReader<span class="op">;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>IOException<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>UnsupportedEncodingException<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Cursor<span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Database<span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseConfig<span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseEntry<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseException<span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseType<span class="op">;</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>Environment<span class="op">;</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>EnvironmentConfig<span class="op">;</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>LockMode<span class="op">;</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>OperationStatus<span class="op">;</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>import db<span class="op">.</span>repquote_gsg<span class="op">.</span>RepConfig<span class="op">;</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>public class SimpleTxn</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="op">{</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    private RepConfig repConfig<span class="op">;</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    private Environment dbenv<span class="op">;</span> </span></code></pre></div>
+<p>Next, we provide our class constructor. This simply initializes our class data members.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>    public SimpleTxn<span class="op">()</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        repConfig <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        dbenv <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>  </span></code></pre></div>
+<p>And then we provide our <code>usage()</code> method. At this point, this method has very little to report:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> <span class="dt">void</span> usage<span class="op">()</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;usage: &quot;</span> <span class="op">+</span> repConfig<span class="op">.</span>progname<span class="op">);</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;-h home&quot;</span><span class="op">);</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st"> -h home directory</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">);</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>exit<span class="op">(</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>  </span></code></pre></div>
+<h3 id="method-simpletxnmain">Method: SimpleTxn.main()</h3>
+<p>Having implemented our <code>usage()</code> method, we can jump directly into our <code>main()</code> method. This method begins by instantiating a <code>RepConfig</code> object, and then collecting the command line arguments so that it can populate the object with the appropriate data (just the environment home directory, at this time):</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> <span class="dt">void</span> main<span class="op">(</span>String<span class="op">[]</span> argv<span class="op">)</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>        throws Exception</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        RepConfig config <span class="op">=</span> new RepConfig<span class="op">();</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Extract the command line parameters</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> argv<span class="op">.</span>length<span class="op">;</span> i<span class="op">++)</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>argv<span class="op">[</span>i<span class="op">].</span>compareTo<span class="op">(</span><span class="st">&quot;-h&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>                <span class="co">// home - a string arg.</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>                i<span class="op">++;</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>                config<span class="op">.</span>home <span class="op">=</span> argv<span class="op">[</span>i<span class="op">];</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Unrecognized option: &quot;</span> <span class="op">+</span> argv<span class="op">[</span>i<span class="op">]);</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>                usage<span class="op">();</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span>  </span></code></pre></div>
+<p>And then perform a little sanity checking on the command line input:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Error check command line.</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>config<span class="op">.</span>home<span class="op">.</span>length<span class="op">()</span> <span class="op">==</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>            usage<span class="op">();</span>  </span></code></pre></div>
+<p>Now we perform the class' work. To begin, we initialize the object. The <code>init()</code> method actually opens our environment for us (shown in the next section).</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>        SimpleTxn runner <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>            runner <span class="op">=</span> new SimpleTxn<span class="op">();</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>            runner<span class="op">.</span>init<span class="op">(</span>config<span class="op">);</span>  </span></code></pre></div>
+<p>And then we call our <code>doloop()</code> method. This method is where we perform all our database activity. See <a href="simpleprogramlisting.html#doloop_java" class="xref" title="Method: SimpleTxn.doloop()">Method: SimpleTxn.doloop()</a> for it's details.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>                    runner<span class="op">.</span>doloop<span class="op">();</span>  </span></code></pre></div>
+<p>And then, finally terminate the application (which closes our environment handle) and end the method.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>            runner<span class="op">.</span>terminate<span class="op">();</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch <span class="op">(</span>DatabaseException dbe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Caught an exception during &quot;</span> <span class="op">+</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;initialization or processing: &quot;</span> <span class="op">+</span> dbe<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>runner <span class="op">!=</span> null<span class="op">)</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>                runner<span class="op">.</span>terminate<span class="op">();</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>exit<span class="op">(</span><span class="dv">0</span><span class="op">);</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> <span class="co">// end main  </span></span></code></pre></div>
+<h3 id="method-simpletxninit">Method: SimpleTxn.init()</h3>
+<p>The <code>SimpleTxn.init()</code> method is used to open our environment handle. For readers familiar with writing transactional DB applications, there should be no surprises here. However, we will be adding to this in later chapters as we roll replication into this example.</p>
+<p>The only thing worth noting in this method here is that we relax our transactional durability guarantee for this application. We do this because the application will eventually be replicated and so we don't need a high durability guarantee.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">int</span> init<span class="op">(</span>RepConfig config<span class="op">)</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> ret <span class="op">=</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>        repConfig <span class="op">=</span> config<span class="op">;</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>        EnvironmentConfig envConfig <span class="op">=</span> new EnvironmentConfig<span class="op">();</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setErrorStream<span class="op">(</span>System<span class="op">.</span>err<span class="op">);</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setErrorPrefix<span class="op">(</span>RepConfig<span class="op">.</span>progname<span class="op">);</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setCacheSize<span class="op">(</span>RepConfig<span class="op">.</span>CACHESIZE<span class="op">);</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setTxnNoSync<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setRunRecovery<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeLocking<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeLogging<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setInitializeCache<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>        envConfig<span class="op">.</span>setTransactional<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>            dbenv <span class="op">=</span> new Environment<span class="op">(</span>repConfig<span class="op">.</span>getHome<span class="op">(),</span> envConfig<span class="op">);</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch<span class="op">(</span>FileNotFoundException e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;FileNotFound exception: &quot;</span> <span class="op">+</span> e<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span></span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;Ensure that the environment directory is pre-created.&quot;</span><span class="op">);</span></span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>            ret <span class="op">=</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> ret<span class="op">;</span></span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>  </span></code></pre></div>
+<p>Finally, we present the <code>SimpleTxn.terminate()</code> method here. All this does is close the environment handle. Again, there should be no surprises here, but we provide the implementation for the sake of completeness anyway.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> terminate<span class="op">()</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>            dbenv<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>  </span></code></pre></div>
+<h3 id="method-simpletxndoloop">Method: SimpleTxn.doloop()</h3>
+<p>We now implement our application's primary data processing method. This method provides a command prompt at which the user can enter a stock ticker value and a price for that value. This information is then entered to the database.</p>
+<p>To display the database, simply enter <code>return</code> at the prompt.</p>
+<p>To begin, we declare a database pointer:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">int</span> doloop<span class="op">()</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException<span class="op">,</span> <span class="op">,</span> UnsupportedEncodingException</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>        Database db <span class="op">=</span> null<span class="op">;</span>  </span></code></pre></div>
+<p>Next, we begin the loop and we immediately open our database if it has not already been opened.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(;;)</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>        <span class="op">{</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>db <span class="op">==</span> null<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>                DatabaseConfig dbconf <span class="op">=</span> new DatabaseConfig<span class="op">();</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>                dbconf<span class="op">.</span>setType<span class="op">(</span>DatabaseType<span class="op">.</span>BTREE<span class="op">);</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>                dbconf<span class="op">.</span>setAllowCreate<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>                dbconf<span class="op">.</span>setTransactional<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>                try <span class="op">{</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>                    db <span class="op">=</span> dbenv<span class="op">.</span>openDatabase<span class="op">(</span>null<span class="op">,</span>           <span class="co">// Txn handle</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>                                        RepConfig<span class="op">.</span>progname<span class="op">,</span> <span class="co">// db filename</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>                                        null<span class="op">,</span>               <span class="co">// db name</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>                                        dbconf<span class="op">);</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>               <span class="op">}</span> catch <span class="op">(</span>FileNotFoundException fnfe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>                    System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;File not found exception&quot;</span> <span class="op">+</span> </span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>                                        fnfe<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>                    <span class="co">// Get here only if the environment home directory</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>                    <span class="co">// somehow does not exist.</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>               <span class="op">}</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span>  </span></code></pre></div>
+<p>Now we implement our command prompt. This is a simple and not very robust implementation of a command prompt. If the user enters the keywords <code>exit</code> or <code>quit</code>, the loop is exited and the application ends. If the user enters nothing and instead simply presses <code>return</code>, the entire contents of the database is displayed. We use our <code>printStocks()</code> method to display the database. (That implementation is shown next in this chapter.)</p>
+<p>Notice that very little error checking is performed on the data entered at this prompt. If the user fails to enter at least one space in the value string, a simple help message is printed and the prompt is returned to the user. That is the only error checking performed here. In a real-world application, at a minimum the application would probably check to ensure that the price was in fact an integer or float value. However, in order to keep this example code as simple as possible, we refrain from implementing a thorough user interface.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>            BufferedReader stdin <span class="op">=</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>                new BufferedReader<span class="op">(</span>new InputStreamReader<span class="op">(</span>System<span class="op">.</span>in<span class="op">));</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>            <span class="co">// listen for input, and add it to the database.</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>print<span class="op">(</span><span class="st">&quot;QUOTESERVER&gt; &quot;</span><span class="op">);</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>flush<span class="op">();</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>            String nextline <span class="op">=</span> null<span class="op">;</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>            try <span class="op">{</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>                nextline <span class="op">=</span> stdin<span class="op">.</span>readLine<span class="op">();</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> catch <span class="op">(</span>IOException ioe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Unable to get data from stdin&quot;</span><span class="op">);</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>            String<span class="op">[]</span> words <span class="op">=</span> nextline<span class="op">.</span>split<span class="op">(</span><span class="st">&quot;</span><span class="sc">\\</span><span class="st">s&quot;</span><span class="op">);</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>            <span class="co">// A blank line causes the DB to be dumped to stdout.</span></span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>words<span class="op">.</span>length <span class="op">==</span> <span class="dv">0</span> <span class="op">||</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>                <span class="op">(</span>words<span class="op">.</span>length <span class="op">==</span> <span class="dv">1</span> <span class="op">&amp;&amp;</span> words<span class="op">[</span><span class="dv">0</span><span class="op">].</span>length<span class="op">()</span> <span class="op">==</span> <span class="dv">0</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>                try <span class="op">{</span></span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>                    printStocks<span class="op">(</span>db<span class="op">);</span></span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span> catch <span class="op">(</span>DatabaseException e<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>                    System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Got db exception reading &quot;</span> <span class="op">+</span></span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>                        <span class="st">&quot;DB: &quot;</span> <span class="op">+</span> e<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>                <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>words<span class="op">.</span>length <span class="op">==</span> <span class="dv">1</span> <span class="op">&amp;&amp;</span></span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>                <span class="op">(</span>words<span class="op">[</span><span class="dv">0</span><span class="op">].</span>compareToIgnoreCase<span class="op">(</span><span class="st">&quot;quit&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span> <span class="op">||</span></span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a>                words<span class="op">[</span><span class="dv">0</span><span class="op">].</span>compareToIgnoreCase<span class="op">(</span><span class="st">&quot;exit&quot;</span><span class="op">)</span> <span class="op">==</span> <span class="dv">0</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span> <span class="cf">else</span> <span class="cf">if</span> <span class="op">(</span>words<span class="op">.</span>length <span class="op">!=</span> <span class="dv">2</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a>                System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;Format: TICKER VALUE&quot;</span><span class="op">);</span></span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a>                <span class="cf">continue</span><span class="op">;</span></span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span>  </span></code></pre></div>
+<p>Now we assign data to the <code>DatabaseEntry</code> classes that we will use to write the new information to the database.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>            DatabaseEntry key <span class="op">=</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>                    new DatabaseEntry<span class="op">(</span>words<span class="op">[</span><span class="dv">0</span><span class="op">].</span>getBytes<span class="op">(</span><span class="st">&quot;UTF-8&quot;</span><span class="op">));</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>            DatabaseEntry data <span class="op">=</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>                    new DatabaseEntry<span class="op">(</span>words<span class="op">[</span><span class="dv">1</span><span class="op">].</span>getBytes<span class="op">(</span><span class="st">&quot;UTF-8&quot;</span><span class="op">));</span>  </span></code></pre></div>
+<p>Having done that, we can write the new information to the database. Remember that because a transaction handle is not explicitly used, but we did open the database such that it supports transactions, then autocommit is automatically used for this database write.</p>
+<p>Autocommit is described in the <em>Berkeley DB Getting Started with Transaction Processing</em> guide.</p>
+<p>Also, the database is not configured for duplicate records, so the data portion of a record is overwritten if the provided key already exists in the database. However, in this case DB returns <code>OperationStatus.KEYEXIST</code> — which we ignore.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>            db<span class="op">.</span>put<span class="op">(</span>null<span class="op">,</span> key<span class="op">,</span> data<span class="op">);</span>  </span></code></pre></div>
+<p>Finally, we close our database before returning from the method.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>db <span class="op">!=</span> null<span class="op">)</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>            db<span class="op">.</span>close<span class="op">(</span><span class="kw">true</span><span class="op">);</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span>  </span></code></pre></div>
+<h3 id="method-simpletxnprintstocks">Method: SimpleTxn.printStocks()</h3>
+<p>The <code>printStocks()</code> method simply takes a database handle, opens a cursor, and uses it to display all the information it finds in a database. This is trivial cursor operation that should hold no surprises for you. We simply provide it here for the sake of completeness.</p>
+<p>If you are unfamiliar with basic cursor operations, please see the <em>Getting Started with Berkeley DB</em> guide.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">void</span> terminate<span class="op">()</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>            dbenv<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">/*</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a><span class="co">     * void return type since error conditions are propagated</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="co">     * via exceptions.</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a><span class="co">     */</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">void</span> printStocks<span class="op">(</span>Database db<span class="op">)</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">{</span></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>        Cursor dbc <span class="op">=</span> db<span class="op">.</span>openCursor<span class="op">(</span>null<span class="op">,</span> null<span class="op">);</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st">Symbol</span><span class="sc">\t</span><span class="st">Price&quot;</span><span class="op">);</span></span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st">======</span><span class="sc">\t</span><span class="st">=====&quot;</span><span class="op">);</span></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>        DatabaseEntry key <span class="op">=</span> new DatabaseEntry<span class="op">();</span></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>        DatabaseEntry data <span class="op">=</span> new DatabaseEntry<span class="op">();</span></span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>        OperationStatus ret<span class="op">;</span></span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(</span>ret <span class="op">=</span> dbc<span class="op">.</span>getFirst<span class="op">(</span>key<span class="op">,</span> data<span class="op">,</span> LockMode<span class="op">.</span>DEFAULT<span class="op">);</span></span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>            ret <span class="op">==</span> OperationStatus<span class="op">.</span>SUCCESS<span class="op">;</span></span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a>            ret <span class="op">=</span> dbc<span class="op">.</span>getNext<span class="op">(</span>key<span class="op">,</span> data<span class="op">,</span> LockMode<span class="op">.</span>DEFAULT<span class="op">))</span> <span class="op">{</span></span>
+<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a>            String keystr <span class="op">=</span> new String</span>
+<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a>                <span class="op">(</span>key<span class="op">.</span>getData<span class="op">(),</span> key<span class="op">.</span>getOffset<span class="op">(),</span> key<span class="op">.</span>getSize<span class="op">());</span></span>
+<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a>            String datastr <span class="op">=</span> new String</span>
+<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a>                <span class="op">(</span>data<span class="op">.</span>getData<span class="op">(),</span> data<span class="op">.</span>getOffset<span class="op">(),</span> data<span class="op">.</span>getSize<span class="op">());</span></span>
+<span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st">&quot;</span><span class="op">+</span>keystr<span class="op">+</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st">&quot;</span><span class="op">+</span>datastr<span class="op">);</span></span>
+<span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb18-32"><a href="#cb18-32" aria-hidden="true" tabindex="-1"></a>        dbc<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb18-33"><a href="#cb18-33" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb18-34"><a href="#cb18-34" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> <span class="co">// end class  </span></span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

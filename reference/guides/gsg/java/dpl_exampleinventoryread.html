@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ExampleInventoryRead.java — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg / java</nav>
+  <main>
+<h2 id="exampleinventoryreadjava">ExampleInventoryRead.java</h2>
+<p><code>ExampleInventoryRead</code> retrieves inventory information from our entity store and displays it. When it displays each inventory item, it also displays the related vendor contact information.</p>
+<p><code>ExampleInventoryRead</code> can do one of two things. If you provide no search criteria, it displays all of the inventory items in the store. If you provide an item name (using the <code>-s</code> command line switch), then just those inventory items using that name are displayed.</p>
+<p>The beginning of our example is almost identical to our <code>ExampleDatabasePut</code> example program. We repeat that example code here for the sake of completeness. For a complete walk-through of it, see the previous section (<a href="dpl_exampledatabaseput.html" class="xref" title="ExampleDatabasePut.java">ExampleDatabasePut.java</a>).</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>package persist<span class="op">.</span>gettingStarted<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>File<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>import java<span class="op">.</span>io<span class="op">.</span>IOException<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>db<span class="op">.</span>DatabaseException<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>persist<span class="op">.</span>EntityCursor<span class="op">;</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>public class ExampleInventoryRead <span class="op">{</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> File myDbEnvPath <span class="op">=</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>        new File<span class="op">(</span><span class="st">&quot;/tmp/JEDB&quot;</span><span class="op">);</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    private DataAccessor da<span class="op">;</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Encapsulates the database environment.</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> MyDbEnv myDbEnv <span class="op">=</span> new MyDbEnv<span class="op">();</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The item to locate if the -s switch is used</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> String locateItem<span class="op">;</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> <span class="dt">void</span> usage<span class="op">()</span> <span class="op">{</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;ExampleInventoryRead [-h &lt;env directory&gt;]&quot;</span> <span class="op">+</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>                           <span class="st">&quot;[-s &lt;item to locate&gt;]&quot;</span><span class="op">);</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>exit<span class="op">(-</span><span class="dv">1</span><span class="op">);</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>    public <span class="dt">static</span> <span class="dt">void</span> main<span class="op">(</span>String args<span class="op">[])</span> <span class="op">{</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>        ExampleInventoryRead eir <span class="op">=</span> new ExampleInventoryRead<span class="op">();</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>            eir<span class="op">.</span>run<span class="op">(</span>args<span class="op">);</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> catch <span class="op">(</span>DatabaseException dbe<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>err<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;ExampleInventoryRead: &quot;</span> <span class="op">+</span> dbe<span class="op">.</span>toString<span class="op">());</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>            dbe<span class="op">.</span>printStackTrace<span class="op">();</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> finally <span class="op">{</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>            myDbEnv<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>        System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;All done.&quot;</span><span class="op">);</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">void</span> run<span class="op">(</span>String args<span class="op">[])</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException <span class="op">{</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Parse the arguments list</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>        parseArgs<span class="op">(</span>args<span class="op">);</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>        myDbEnv<span class="op">.</span>setup<span class="op">(</span>myDbEnvPath<span class="op">,</span> <span class="co">// path to the environment home</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>                      <span class="kw">true</span><span class="op">);</span>       <span class="co">// is this environment read-only?</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Open the data accessor. This is used to retrieve</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>        <span class="co">// persistent objects.</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>        da <span class="op">=</span> new DataAccessor<span class="op">(</span>myDbEnv<span class="op">.</span>getEntityStore<span class="op">());</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>        <span class="co">// If a item to locate is provided on the command line,</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>        <span class="co">// show just the inventory items using the provided name.</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Otherwise, show everything in the inventory.</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>locateItem <span class="op">!=</span> null<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>            showItem<span class="op">();</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> <span class="cf">else</span> <span class="op">{</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>            showAllInventory<span class="op">();</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>The first method that we provide is used to show inventory items related to a given inventory name. This method is called only if an inventory name is passed to <code>ExampleInventoryRead</code> via the <code>-s</code> option. Given the sample data that we provide with this example, each matching inventory name will result in the display of three inventory objects.</p>
+<p>To display these objects we use the <code>Inventory</code> class' <code>inventoryByName</code> secondary index to retrieve an <code>EntityCursor</code>, and then we iterate over the resulting objects using the cursor.</p>
+<p>Notice that this method calls <code>displayInventoryRecord()</code> to display each individual object. We show this method a little later in the example.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Shows all the inventory items that exist for a given</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// inventory name.</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">void</span> showItem<span class="op">()</span> throws DatabaseException <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Use the inventory name secondary key to retrieve</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// these objects.</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        EntityCursor<span class="op">&lt;</span>Inventory<span class="op">&gt;</span> items <span class="op">=</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            da<span class="op">.</span>inventoryByName<span class="op">.</span>subIndex<span class="op">(</span>locateItem<span class="op">).</span>entities<span class="op">();</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> <span class="op">(</span>Inventory item <span class="op">:</span> items<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>                displayInventoryRecord<span class="op">(</span>item<span class="op">);</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> finally <span class="op">{</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>            items<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Next we implement <code>showAllInventory()</code>, which shows all of the <code>Inventory</code> objects in the store. To do this, we obtain an <code>EntityCursor</code> from the <code>Inventory</code> class' primary index and, again, we iterate using that cursor.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Displays all the inventory items in the store</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">void</span> showAllInventory<span class="op">()</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>        throws DatabaseException <span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="co">// Get a cursor that will walk every</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">// inventory object in the store.</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        EntityCursor<span class="op">&lt;</span>Inventory<span class="op">&gt;</span> items <span class="op">=</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>            da<span class="op">.</span>inventoryBySku<span class="op">.</span>entities<span class="op">();</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>        try <span class="op">{</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> <span class="op">(</span>Inventory item <span class="op">:</span> items<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>                displayInventoryRecord<span class="op">(</span>item<span class="op">);</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span> finally <span class="op">{</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>            items<span class="op">.</span>close<span class="op">();</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>Now we implement <code>displayInventoryRecord()</code>. This uses the getter methods on the <code>Inventory</code> class to obtain the information that we want to display. The only thing interesting about this method is that we obtain <code>Vendor</code> objects within. The vendor objects are retrieved <code>Vendor</code> objects using their primary index. We get the key for the retrieval from the <code>Inventory</code> object that we are displaying at the time.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">void</span> displayInventoryRecord<span class="op">(</span>Inventory theInventory<span class="op">)</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>            throws DatabaseException <span class="op">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span>theInventory<span class="op">.</span>getSku<span class="op">()</span> <span class="op">+</span> <span class="st">&quot;:&quot;</span><span class="op">);</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st"> &quot;</span> <span class="op">+</span> theInventory<span class="op">.</span>getItemName<span class="op">());</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st"> &quot;</span> <span class="op">+</span> theInventory<span class="op">.</span>getCategory<span class="op">());</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t</span><span class="st"> &quot;</span> <span class="op">+</span> theInventory<span class="op">.</span>getVendor<span class="op">());</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t\t</span><span class="st">Number in stock: &quot;</span> <span class="op">+</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>                theInventory<span class="op">.</span>getVendorInventory<span class="op">());</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t\t</span><span class="st">Price per unit:  &quot;</span> <span class="op">+</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>                theInventory<span class="op">.</span>getVendorPrice<span class="op">());</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t\t</span><span class="st">Contact: &quot;</span><span class="op">);</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>            Vendor theVendor <span class="op">=</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>                    da<span class="op">.</span>vendorByName<span class="op">.</span>get<span class="op">(</span>theInventory<span class="op">.</span>getVendor<span class="op">());</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>            assert theVendor <span class="op">!=</span> null<span class="op">;</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t\t</span><span class="st"> &quot;</span> <span class="op">+</span> theVendor<span class="op">.</span>getAddress<span class="op">());</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t\t</span><span class="st"> &quot;</span> <span class="op">+</span> theVendor<span class="op">.</span>getCity<span class="op">()</span> <span class="op">+</span> <span class="st">&quot;, &quot;</span> <span class="op">+</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>                theVendor<span class="op">.</span>getState<span class="op">()</span> <span class="op">+</span> <span class="st">&quot; &quot;</span> <span class="op">+</span> theVendor<span class="op">.</span>getZipcode<span class="op">());</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t\t</span><span class="st"> Business Phone: &quot;</span> <span class="op">+</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>                theVendor<span class="op">.</span>getBusinessPhoneNumber<span class="op">());</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t\t</span><span class="st"> Sales Rep: &quot;</span> <span class="op">+</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>                                theVendor<span class="op">.</span>getRepName<span class="op">());</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>            System<span class="op">.</span>out<span class="op">.</span>println<span class="op">(</span><span class="st">&quot;</span><span class="sc">\t\t</span><span class="st">            &quot;</span> <span class="op">+</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>                theVendor<span class="op">.</span>getRepPhoneNumber<span class="op">());</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span> </span></code></pre></div>
+<p>The last remaining parts of the example are used to parse the command line. This is not very interesting for our purposes here, but we show it anyway for the sake of completeness.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>    protected ExampleInventoryRead<span class="op">()</span> <span class="op">{}</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    private <span class="dt">static</span> <span class="dt">void</span> parseArgs<span class="op">(</span>String args<span class="op">[])</span> <span class="op">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span><span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> args<span class="op">.</span>length<span class="op">;</span> <span class="op">++</span>i<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> <span class="op">(</span>args<span class="op">[</span>i<span class="op">].</span>startsWith<span class="op">(</span><span class="st">&quot;-&quot;</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>                <span class="cf">switch</span><span class="op">(</span>args<span class="op">[</span>i<span class="op">].</span>charAt<span class="op">(</span><span class="dv">1</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">case</span> <span class="ch">&#39;h&#39;</span><span class="op">:</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>                        myDbEnvPath <span class="op">=</span> new File<span class="op">(</span>args<span class="op">[++</span>i<span class="op">]);</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">case</span> <span class="ch">&#39;s&#39;</span><span class="op">:</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>                        locateItem <span class="op">=</span> args<span class="op">[++</span>i<span class="op">];</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">break</span><span class="op">;</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">default</span><span class="op">:</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>                        usage<span class="op">();</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>                <span class="op">}</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

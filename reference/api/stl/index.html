@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Berkeley DB C++ Standard Template Library API Reference — Berkeley DB 5.3.33</title>
+  <title>Berkeley DB C++ Standard Template Library API Reference — Berkeley DB 5.3.35</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,11 +37,1982 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.33</span>
+    <span class="ver">Version 5.3.35</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / stl</nav>
   <main>
 <h1 id="berkeley-db-c-standard-template-library-api-reference">Berkeley DB C++ Standard Template Library API Reference</h1>
+<table>
+<thead>
+<tr>
+<th>DB C++ STL API</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="dbstl_global_functions.html" class="xref" title="Dbstl Global Public Functions">Dbstl Global Public Functions</a></td>
+<td>23 members</td>
+</tr>
+<tr>
+<td><a href="dbstl_containers.html" class="xref" title="Dbstl Container Classes">Dbstl Container Classes</a></td>
+<td>6 members</td>
+</tr>
+<tr>
+<td><a href="db_container.html" class="xref" title="Db_container">Db_container</a></td>
+<td>14 members</td>
+</tr>
+<tr>
+<td><a href="db_vector.html" class="xref" title="Db_vector">Db_vector</a></td>
+<td>36 members</td>
+</tr>
+<tr>
+<td><a href="db_map.html" class="xref" title="Db_map">Db_map</a></td>
+<td>28 members</td>
+</tr>
+<tr>
+<td><a href="db_multimap.html" class="xref" title="Db_multimap">Db_multimap</a></td>
+<td>12 members</td>
+</tr>
+<tr>
+<td><a href="db_set.html" class="xref" title="Db_set">Db_set</a></td>
+<td>8 members</td>
+</tr>
+<tr>
+<td><a href="db_multiset.html" class="xref" title="Db_multiset">Db_multiset</a></td>
+<td>8 members</td>
+</tr>
+<tr>
+<td><a href="dbstl_iterators.html" class="xref" title="Dbstl Iterator Classes">Dbstl Iterator Classes</a></td>
+<td>6 members</td>
+</tr>
+<tr>
+<td><a href="db_base_iterator.html" class="xref" title="Db_base_iterator">Db_base_iterator</a></td>
+<td>10 members</td>
+</tr>
+<tr>
+<td><a href="db_vector_iterators.html" class="xref" title="Iterator Classes for db_vector">Iterator Classes for db_vector</a></td>
+<td>2 members</td>
+</tr>
+<tr>
+<td><a href="db_vector_base_iterator.html" class="xref" title="Db_vector_base_iterator">Db_vector_base_iterator</a></td>
+<td>24 members</td>
+</tr>
+<tr>
+<td><a href="db_vector_iterator.html" class="xref" title="Db_vector_iterator">Db_vector_iterator</a></td>
+<td>13 members</td>
+</tr>
+<tr>
+<td><a href="db_map_iterators.html" class="xref" title="Iterator Classes for db_map and db_multimap">Iterator Classes for db_map and db_multimap</a></td>
+<td>2 members</td>
+</tr>
+<tr>
+<td><a href="db_map_base_iterator.html" class="xref" title="Db_map_base_iterator">Db_map_base_iterator</a></td>
+<td>14 members</td>
+</tr>
+<tr>
+<td><a href="db_map_iterator.html" class="xref" title="Db_map_iterator">Db_map_iterator</a></td>
+<td>8 members</td>
+</tr>
+<tr>
+<td><a href="dbset_iterators.html" class="xref" title="Iterator Classes for db_set and db_multiset">Iterator Classes for db_set and db_multiset</a></td>
+<td>2 members</td>
+</tr>
+<tr>
+<td><a href="db_set_base_iterator.html" class="xref" title="Db_set_base_iterator">Db_set_base_iterator</a></td>
+<td>7 members</td>
+</tr>
+<tr>
+<td><a href="db_set_iterator.html" class="xref" title="Db_set_iterator">Db_set_iterator</a></td>
+<td>7 members</td>
+</tr>
+<tr>
+<td><a href="db_reverse_iterator.html" class="xref" title="Db_reverse_iterator">Db_reverse_iterator</a></td>
+<td>13 members</td>
+</tr>
+<tr>
+<td><a href="dbstl_helper_classes.html" class="xref" title="Dbstl Helper Classes">Dbstl Helper Classes</a></td>
+<td>5 members</td>
+</tr>
+<tr>
+<td><a href="Element_wrappers.html" class="xref" title="ElementRef and ElementHolder Wappers">ElementRef and ElementHolder Wappers</a></td>
+<td>2 members</td>
+</tr>
+<tr>
+<td><a href="ElementHolder.html" class="xref" title="ElementHolder">ElementHolder</a></td>
+<td>18 members</td>
+</tr>
+<tr>
+<td><a href="ElementRef.html" class="xref" title="ElementRef">ElementRef</a></td>
+<td>5 members</td>
+</tr>
+<tr>
+<td><a href="DbstlDbt.html" class="xref" title="DbstlDbt">DbstlDbt</a></td>
+<td>3 members</td>
+</tr>
+<tr>
+<td><a href="DbstlElemTraits.html" class="xref" title="DbstlElemTraits">DbstlElemTraits</a></td>
+<td>34 members</td>
+</tr>
+<tr>
+<td><a href="BulkRetrievalOption.html" class="xref" title="BulkRetrievalOption">BulkRetrievalOption</a></td>
+<td>6 members</td>
+</tr>
+<tr>
+<td><a href="ReadModifyWriteOption.html" class="xref" title="ReadModifyWriteOption">ReadModifyWriteOption</a></td>
+<td>4 members</td>
+</tr>
+<tr>
+<td><a href="Exception_classes_group.html" class="xref" title="Dbstl Exception Classes">Dbstl Exception Classes</a></td>
+<td>10 members</td>
+</tr>
+<tr>
+<td><a href="DbstlException.html" class="xref" title="DbstlException">DbstlException</a></td>
+<td>3 members</td>
+</tr>
+<tr>
+<td><a href="InvalidDbtException.html" class="xref" title="InvalidDbtException">InvalidDbtException</a></td>
+<td>1 members</td>
+</tr>
+<tr>
+<td><a href="FailedAssertionException.html" class="xref" title="FailedAssertionException">FailedAssertionException</a></td>
+<td>3 members</td>
+</tr>
+<tr>
+<td><a href="InvalidCursorException.html" class="xref" title="InvalidCursorException">InvalidCursorException</a></td>
+<td>1 members</td>
+</tr>
+<tr>
+<td><a href="NoSuchKeyException.html" class="xref" title="NoSuchKeyException">NoSuchKeyException</a></td>
+<td>1 members</td>
+</tr>
+<tr>
+<td><a href="NotEnoughMemoryException.html" class="xref" title="NotEnoughMemoryException">NotEnoughMemoryException</a></td>
+<td>1 members</td>
+</tr>
+<tr>
+<td><a href="NotSupportedException.html" class="xref" title="NotSupportedException">NotSupportedException</a></td>
+<td>1 members</td>
+</tr>
+<tr>
+<td><a href="InvalidIteratorException.html" class="xref" title="InvalidIteratorException">InvalidIteratorException</a></td>
+<td>1 members</td>
+</tr>
+<tr>
+<td><a href="InvalidFunctionCall.html" class="xref" title="InvalidFunctionCall">InvalidFunctionCall</a></td>
+<td>1 members</td>
+</tr>
+<tr>
+<td><a href="InvalidArgumentException.html" class="xref" title="InvalidArgumentException">InvalidArgumentException</a></td>
+<td>1 members</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dbstl-global-public-functions"><a href="dbstl_global_functions.html" class="xref" title="Dbstl Global Public Functions">Dbstl Global Public Functions</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="dbstl_global_functions.html#stldbstl_global_functionsclose_db" class="xref" title="close_db">close_db</a></td>
+<td>Close pdb regardless of reference count.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsclose_all_dbs.html" class="xref" title="close_all_dbs">close_all_dbs</a></td>
+<td>Close all open database handles regardless of reference count.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsclose_db_env.html" class="xref" title="close_db_env">close_db_env</a></td>
+<td>Close specified database environment handle regardless of reference count.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsclose_all_db_envs.html" class="xref" title="close_all_db_envs">close_all_db_envs</a></td>
+<td>Close all open database environment handles regardless of reference count.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsbegin_txn.html" class="xref" title="begin_txn">begin_txn</a></td>
+<td>Begin a new transaction from the specified environment "env".</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionscommit_txn.html" class="xref" title="commit_txn">commit_txn</a></td>
+<td>Commit current transaction opened in the environment "env".</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsabort_txn.html" class="xref" title="abort_txn">abort_txn</a></td>
+<td>Abort current transaction of environment "env".</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionscurrent_txn.html" class="xref" title="current_txn">current_txn</a></td>
+<td>Get current transaction of environment "env".</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsset_current_txn_handle.html" class="xref" title="set_current_txn_handle">set_current_txn_handle</a></td>
+<td>Set environment env's current transaction handle to be newtxn.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsregister_db.html" class="xref" title="register_db">register_db</a></td>
+<td>Register a Db handle "pdb1".</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsregister_db_env.html" class="xref" title="register_db_env">register_db_env</a></td>
+<td>Register a DbEnv handle env1, this handle and handles opened in it will be closed by ResourceManager .</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsopen_db.html" class="xref" title="open_db">open_db</a></td>
+<td>Helper function to open a database and register it into dbstl for the calling thread.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsopen_env.html" class="xref" title="open_env">open_env</a></td>
+<td>Helper function to open an environment and register it into dbstl for the calling thread.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsalloc_mutex.html" class="xref" title="alloc_mutex">alloc_mutex</a></td>
+<td>Allocate a Berkeley DB mutex.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionslock_mutex.html" class="xref" title="lock_mutex">lock_mutex</a></td>
+<td>Lock a mutex, wait if it is held by another thread.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsunlock_mutex.html" class="xref" title="unlock_mutex">unlock_mutex</a></td>
+<td>Unlock a mutex, and return immediately.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsfree_mutex.html" class="xref" title="free_mutex">free_mutex</a></td>
+<td>Free a mutex, and return immediately.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsdbstl_startup.html" class="xref" title="dbstl_startup">dbstl_startup</a></td>
+<td>If there are multiple threads within a process that make use of dbstl, then this function should be called in a single thread mutual exclusively before any use of dbstl in a process; Otherwise, you don't need to call it, but are allowed to call it anyway.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsdbstl_exit.html" class="xref" title="dbstl_exit">dbstl_exit</a></td>
+<td>This function releases any memory allocated in the heap by code of dbstl.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsdbstl_thread_exit.html" class="xref" title="dbstl_thread_exit">dbstl_thread_exit</a></td>
+<td>This function closes all Berkeley DB handles in the right order, if other threads do not use them.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsoperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Operators to compare two Dbt objects.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsset_global_dbfile_suffix_number.html" class="xref" title="set_global_dbfile_suffix_number">set_global_dbfile_suffix_number</a></td>
+<td>If exisiting random temporary database name generation mechanism is still causing name clashes, users can set this global suffix number which will be append to each temporary database file name and incremented after each append, and by default it is 0.</td>
+</tr>
+<tr>
+<td><a href="stldbstl_global_functionsclose_db_cursors.html" class="xref" title="close_db_cursors">close_db_cursors</a></td>
+<td>Close cursors opened in dbp1.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dbstl-container-classes"><a href="dbstl_containers.html" class="xref" title="Dbstl Container Classes">Dbstl Container Classes</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_container.html" class="link" title="Chapter 3.  Db_container">db_container</a></td>
+<td>db_container</td>
+</tr>
+<tr>
+<td><a href="db_map.html" class="link" title="Chapter 5.  Db_map">db_map</a></td>
+<td>db_map</td>
+</tr>
+<tr>
+<td><a href="db_multimap.html" class="link" title="Chapter 6.  Db_multimap">db_multimap</a></td>
+<td>db_multimap</td>
+</tr>
+<tr>
+<td><a href="db_set.html" class="link" title="Chapter 7.  Db_set">db_set</a></td>
+<td>db_set</td>
+</tr>
+<tr>
+<td><a href="db_multiset.html" class="link" title="Chapter 8.  Db_multiset">db_multiset</a></td>
+<td>db_multiset</td>
+</tr>
+<tr>
+<td><a href="db_vector.html" class="link" title="Chapter 4.  Db_vector">db_vector</a></td>
+<td>db_vector</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_container"><a href="db_container.html" class="xref" title="Db_container">Db_container</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_container.html#stldb_containerget_db_open_flags" class="xref" title="get_db_open_flags">get_db_open_flags</a></td>
+<td>Get the backing database's open flags.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerget_db_set_flags.html" class="xref" title="get_db_set_flags">get_db_set_flags</a></td>
+<td>Get the backing database's flags that are set via Db::set_flags() function.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerget_db_handle.html" class="xref" title="get_db_handle">get_db_handle</a></td>
+<td>Get the backing database's handle.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerget_db_env_handle.html" class="xref" title="get_db_env_handle">get_db_env_handle</a></td>
+<td>Get the backing database environment's handle.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerset_db_handle.html" class="xref" title="set_db_handle">set_db_handle</a></td>
+<td>Set the underlying database's handle, and optionally environment handle if the environment has also changed.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerset_all_flags.html" class="xref" title="set_all_flags">set_all_flags</a></td>
+<td>Set the flags required by the Berkeley DB functions DbEnv::txn_begin(), DbTxn::commit() and DbEnv::cursor().</td>
+</tr>
+<tr>
+<td><a href="stldb_containerset_txn_begin_flags.html" class="xref" title="set_txn_begin_flags">set_txn_begin_flags</a></td>
+<td>Set flag of DbEnv::txn_begin() call.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerget_txn_begin_flags.html" class="xref" title="get_txn_begin_flags">get_txn_begin_flags</a></td>
+<td>Get flag of DbEnv::txn_begin() call.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerset_commit_flags.html" class="xref" title="set_commit_flags">set_commit_flags</a></td>
+<td>Set flag of DbTxn::commit() call.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerget_commit_flags.html" class="xref" title="get_commit_flags">get_commit_flags</a></td>
+<td>Get flag of DbTxn::commit() call.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerget_cursor_open_flags.html" class="xref" title="get_cursor_open_flags">get_cursor_open_flags</a></td>
+<td>Get flag of Db::cursor() call.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerset_cursor_open_flags.html" class="xref" title="set_cursor_open_flags">set_cursor_open_flags</a></td>
+<td>Set flag of Db::cursor() call.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerdb_container.html" class="xref" title="db_container">db_container</a></td>
+<td>Default constructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_containerdstr_db_container.html" class="xref" title="~db_container">~db_container</a></td>
+<td>The backing database is not closed in this function.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_vector"><a href="db_vector.html" class="xref" title="Db_vector">Db_vector</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_vector.html#stldb_vectorbegin" class="xref" title="begin">begin</a></td>
+<td>Create a read-write or read-only iterator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorend.html" class="xref" title="end">end</a></td>
+<td>Create an open boundary iterator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorrbegin.html" class="xref" title="rbegin">rbegin</a></td>
+<td>Create a reverse iterator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorrend.html" class="xref" title="rend">rend</a></td>
+<td>Create an open boundary iterator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectormax_size.html" class="xref" title="max_size">max_size</a></td>
+<td>Get max size.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorcapacity.html" class="xref" title="capacity">capacity</a></td>
+<td>Get capacity.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectoroperator_sqbrk.html" class="xref" title="operator[]">operator[]</a></td>
+<td>Index operator, can act as both a left value and a right value.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorat.html" class="xref" title="at">at</a></td>
+<td>Index function.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorfront.html" class="xref" title="front">front</a></td>
+<td>Return a reference to the first element.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorback.html" class="xref" title="back">back</a></td>
+<td>Return a reference to the last element.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectoroperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Container equality comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectoroperator_ueq.html" class="xref" title="operator!=">operator!=</a></td>
+<td>Container in-equality comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectoroperator_lt.html" class="xref" title="operator&lt;">operator&lt;</a></td>
+<td>Container less than comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorassign.html" class="xref" title="assign">assign</a></td>
+<td>Assign a range [first, last) to this container.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorpush_front.html" class="xref" title="push_front">push_front</a></td>
+<td>Push an element x into the vector from front.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorpop_front.html" class="xref" title="pop_front">pop_front</a></td>
+<td>Pop out the front element from the vector.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorinsert.html" class="xref" title="insert">insert</a></td>
+<td>Insert x before position pos.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorerase.html" class="xref" title="erase">erase</a></td>
+<td>Erase element at position pos.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorremove.html" class="xref" title="remove">remove</a></td>
+<td>Remove all elements whose values are "value" from the list.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorremove_if.html" class="xref" title="remove_if">remove_if</a></td>
+<td>Remove all elements making "pred" return true.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectormerge.html" class="xref" title="merge">merge</a></td>
+<td>Merge content with another container.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorunique.html" class="xref" title="unique">unique</a></td>
+<td>Remove consecutive duplicate values from this list.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorsort.html" class="xref" title="sort">sort</a></td>
+<td>Sort this list.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorreverse.html" class="xref" title="reverse">reverse</a></td>
+<td>Reverse this list.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorsplice.html" class="xref" title="splice">splice</a></td>
+<td>Moves elements from list x into this list.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorsize.html" class="xref" title="size">size</a></td>
+<td>Return the number of elements in this container.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorempty.html" class="xref" title="empty">empty</a></td>
+<td>Returns whether this container is empty.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectordb_vector.html" class="xref" title="db_vector">db_vector</a></td>
+<td>Constructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectordstr_db_vector.html" class="xref" title="~db_vector">~db_vector</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stldb_vectoroperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Container assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorresize.html" class="xref" title="resize">resize</a></td>
+<td>Resize this container to specified size n, insert values t if need to enlarge the container.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorreserve.html" class="xref" title="reserve">reserve</a></td>
+<td>Reserve space.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorpush_back.html" class="xref" title="push_back">push_back</a></td>
+<td>Push back an element into the vector.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorpop_back.html" class="xref" title="pop_back">pop_back</a></td>
+<td>Pop out last element from the vector.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorswap.html" class="xref" title="swap">swap</a></td>
+<td>Swap content with another vector vec.</td>
+</tr>
+<tr>
+<td><a href="stldb_vectorclear.html" class="xref" title="clear">clear</a></td>
+<td>Remove all elements of the vector, make it an empty vector.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_map"><a href="db_map.html" class="xref" title="Db_map">Db_map</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_map.html#stldb_mapdb_map" class="xref" title="db_map">db_map</a></td>
+<td>Create a std::map/hash_map equivalent associative container.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapdstr_db_map.html" class="xref" title="~db_map">~db_map</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stldb_mapinsert.html" class="xref" title="insert">insert</a></td>
+<td>Insert a single key/data pair if the key is not in the container.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapbegin.html" class="xref" title="begin">begin</a></td>
+<td>Begin a read-write or readonly iterator which sits on the first key/data pair of the database.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapend.html" class="xref" title="end">end</a></td>
+<td>Create an open boundary iterator.</td>
+</tr>
+<tr>
+<td><a href="stldb_maprbegin.html" class="xref" title="rbegin">rbegin</a></td>
+<td>Begin a read-write or readonly reverse iterator which sits on the first key/data pair of the database.</td>
+</tr>
+<tr>
+<td><a href="stldb_maprend.html" class="xref" title="rend">rend</a></td>
+<td>Create an open boundary iterator.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapis_hash.html" class="xref" title="is_hash">is_hash</a></td>
+<td>Get container category.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapbucket_count.html" class="xref" title="bucket_count">bucket_count</a></td>
+<td>Only for std::hash_map, return number of hash bucket in use.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapsize.html" class="xref" title="size">size</a></td>
+<td>This function supports auto-commit.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapmax_size.html" class="xref" title="max_size">max_size</a></td>
+<td>Get max size.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapempty.html" class="xref" title="empty">empty</a></td>
+<td>Returns whether this container is empty.</td>
+</tr>
+<tr>
+<td><a href="stldb_maperase.html" class="xref" title="erase">erase</a></td>
+<td>Erase a key/data pair at specified position.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapfind.html" class="xref" title="find">find</a></td>
+<td>Find the key/data pair with specified key x.</td>
+</tr>
+<tr>
+<td><a href="stldb_maplower_bound.html" class="xref" title="lower_bound">lower_bound</a></td>
+<td>Find the greatest key less than or equal to x.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapequal_range.html" class="xref" title="equal_range">equal_range</a></td>
+<td>Find the range within which all keys equal to specified key x.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapcount.html" class="xref" title="count">count</a></td>
+<td>Count the number of key/data pairs having specified key x.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapupper_bound.html" class="xref" title="upper_bound">upper_bound</a></td>
+<td>Find the least key greater than x.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapkey_eq.html" class="xref" title="key_eq">key_eq</a></td>
+<td>Function to get key compare functor.</td>
+</tr>
+<tr>
+<td><a href="stldb_maphash_funct.html" class="xref" title="hash_funct">hash_funct</a></td>
+<td>Function to get hash key generating functor.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapvalue_comp.html" class="xref" title="value_comp">value_comp</a></td>
+<td>Function to get value compare functor.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapkey_comp.html" class="xref" title="key_comp">key_comp</a></td>
+<td>Function to get key compare functor.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapoperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Container content assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapoperator_sqbrk.html" class="xref" title="operator[]">operator[]</a></td>
+<td>Retrieve data element by key.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapswap.html" class="xref" title="swap">swap</a></td>
+<td>Swap content with container mp.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapclear.html" class="xref" title="clear">clear</a></td>
+<td>Clear contents in this container.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapoperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Map content equality comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_mapoperator_ueq.html" class="xref" title="operator!=">operator!=</a></td>
+<td>Container unequality comparison operator.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_multimap"><a href="db_multimap.html" class="xref" title="Db_multimap">Db_multimap</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_multimap.html#stldb_multimapinsert" class="xref" title="insert">insert</a></td>
+<td>Range insertion.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimaperase.html" class="xref" title="erase">erase</a></td>
+<td>Erase elements by key.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimapequal_range.html" class="xref" title="equal_range">equal_range</a></td>
+<td>Find the range within which all keys equal to specified key x.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimapequal_range_N.html" class="xref" title="equal_range_N">equal_range_N</a></td>
+<td>Find equal range and number of key/data pairs in the range.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimapcount.html" class="xref" title="count">count</a></td>
+<td>Count the number of key/data pairs having specified key x.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimapupper_bound.html" class="xref" title="upper_bound">upper_bound</a></td>
+<td>Find the least key greater than x.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimapdb_multimap.html" class="xref" title="db_multimap">db_multimap</a></td>
+<td>Constructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimapdstr_db_multimap.html" class="xref" title="~db_multimap">~db_multimap</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stldb_multimapoperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Container content assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimapswap.html" class="xref" title="swap">swap</a></td>
+<td>Swap content with another multimap container.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimapoperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Returns whether the two containers have identical content.</td>
+</tr>
+<tr>
+<td><a href="stldb_multimapoperator_ueq.html" class="xref" title="operator!=">operator!=</a></td>
+<td>Container unequality comparison operator.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_set"><a href="db_set.html" class="xref" title="Db_set">Db_set</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_set.html#stldb_setdb_set" class="xref" title="db_set">db_set</a></td>
+<td>Create a std::set/hash_set equivalent associative container.</td>
+</tr>
+<tr>
+<td><a href="stldb_setdstr_db_set.html" class="xref" title="~db_set">~db_set</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stldb_setinsert.html" class="xref" title="insert">insert</a></td>
+<td>Insert a single key/data pair if the key is not in the container.</td>
+</tr>
+<tr>
+<td><a href="stldb_setoperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Container content assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_setvalue_comp.html" class="xref" title="value_comp">value_comp</a></td>
+<td>Get value comparison functor.</td>
+</tr>
+<tr>
+<td><a href="stldb_setswap.html" class="xref" title="swap">swap</a></td>
+<td>Swap content with another container.</td>
+</tr>
+<tr>
+<td><a href="stldb_setoperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Set content equality comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_setoperator_ueq.html" class="xref" title="operator!=">operator!=</a></td>
+<td>Inequality comparison operator.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_multiset"><a href="db_multiset.html" class="xref" title="Db_multiset">Db_multiset</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_multiset.html#stldb_multisetdb_multiset" class="xref" title="db_multiset">db_multiset</a></td>
+<td>Create a std::multiset/hash_multiset equivalent associative container.</td>
+</tr>
+<tr>
+<td><a href="stldb_multisetdstr_db_multiset.html" class="xref" title="~db_multiset">~db_multiset</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stldb_multisetinsert.html" class="xref" title="insert">insert</a></td>
+<td>Insert a single key if the key is not in the container.</td>
+</tr>
+<tr>
+<td><a href="stldb_multiseterase.html" class="xref" title="erase">erase</a></td>
+<td>Erase elements by key.</td>
+</tr>
+<tr>
+<td><a href="stldb_multisetoperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Container content assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_multisetswap.html" class="xref" title="swap">swap</a></td>
+<td>Swap content with another container.</td>
+</tr>
+<tr>
+<td><a href="stldb_multisetoperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Container content equality compare operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_multisetoperator_ueq.html" class="xref" title="operator!=">operator!=</a></td>
+<td>Inequality comparison operator.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dbstl-iterator-classes"><a href="dbstl_iterators.html" class="xref" title="Dbstl Iterator Classes">Dbstl Iterator Classes</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_base_iterator.html" class="link" title="Chapter 10.  Db_base_iterator">db_base_iterator</a></td>
+<td>db_base_iterator</td>
+</tr>
+<tr>
+<td><a href="db_reverse_iterator.html" class="link" title="Chapter 20.  Db_reverse_iterator">db_reverse_iterator</a></td>
+<td>db_reverse_iterator</td>
+</tr>
+<tr>
+<td><a href="db_map_iterator.html" class="link" title="Chapter 16.  Db_map_iterator">db_map_iterator</a></td>
+<td>db_map_iterator</td>
+</tr>
+<tr>
+<td><a href="db_map_iterators.html" class="link" title="Chapter 14.  Iterator Classes for db_map and db_multimap">Iterator classes for db_map and db_multimap.</a></td>
+<td>Iterator classes for db_map and db_multimap.</td>
+</tr>
+<tr>
+<td><a href="dbset_iterators.html" class="link" title="Chapter 17.  Iterator Classes for db_set and db_multiset">Iterator classes for db_set and db_multiset.</a></td>
+<td>Iterator classes for db_set and db_multiset.</td>
+</tr>
+<tr>
+<td><a href="db_vector_iterators.html" class="link" title="Chapter 11.  Iterator Classes for db_vector">Iterator classes for db_vector.</a></td>
+<td>Iterator classes for db_vector.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_base_iterator"><a href="db_base_iterator.html" class="xref" title="Db_base_iterator">Db_base_iterator</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_base_iterator.html#stldb_base_iteratorrefresh" class="xref" title="refresh">refresh</a></td>
+<td>Read data from underlying database via its cursor, and update its cached value.</td>
+</tr>
+<tr>
+<td><a href="stldb_base_iteratorclose_cursor.html" class="xref" title="close_cursor">close_cursor</a></td>
+<td>Close its cursor.</td>
+</tr>
+<tr>
+<td><a href="stldb_base_iteratorset_bulk_buffer.html" class="xref" title="set_bulk_buffer">set_bulk_buffer</a></td>
+<td>Call this function to modify bulk buffer size.</td>
+</tr>
+<tr>
+<td><a href="stldb_base_iteratorget_bulk_bufsize.html" class="xref" title="get_bulk_bufsize">get_bulk_bufsize</a></td>
+<td>Return current bulk buffer size.</td>
+</tr>
+<tr>
+<td><a href="stldb_base_iteratordb_base_iterator.html" class="xref" title="db_base_iterator">db_base_iterator</a></td>
+<td>Default constructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_base_iteratoroperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Iterator assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_base_iteratordstr_db_base_iterator.html" class="xref" title="~db_base_iterator">~db_base_iterator</a></td>
+<td>Destructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_base_iteratorget_bulk_retrieval.html" class="xref" title="get_bulk_retrieval">get_bulk_retrieval</a></td>
+<td>Get bulk buffer size.</td>
+</tr>
+<tr>
+<td><a href="stldb_base_iteratoris_rmw.html" class="xref" title="is_rmw">is_rmw</a></td>
+<td>Get DB_RMW setting.</td>
+</tr>
+<tr>
+<td><a href="stldb_base_iteratoris_directdb_get.html" class="xref" title="is_directdb_get">is_directdb_get</a></td>
+<td>Get direct database get setting.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="iterator-classes-for-db_vector"><a href="db_vector_iterators.html" class="xref" title="Iterator Classes for db_vector">Iterator Classes for db_vector</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_vector_base_iterator.html" class="link" title="Chapter 12.  Db_vector_base_iterator">db_vector_base_iterator</a></td>
+<td>db_vector_base_iterator</td>
+</tr>
+<tr>
+<td><a href="db_vector_iterator.html" class="link" title="Chapter 13.  Db_vector_iterator">db_vector_iterator</a></td>
+<td>db_vector_iterator</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_vector_base_iterator"><a href="db_vector_base_iterator.html" class="xref" title="Db_vector_base_iterator">Db_vector_base_iterator</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_vector_base_iterator.html#stldb_vector_base_iteratordb_vector_base_iterator" class="xref" title="db_vector_base_iterator">db_vector_base_iterator</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratordstr_db_vector_base_iterator.html" class="xref" title="~db_vector_base_iterator">~db_vector_base_iterator</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Equality comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_ueq.html" class="xref" title="operator!=">operator!=</a></td>
+<td>Unequal compare, identical to !operator(==itr).</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_lt.html" class="xref" title="operator&lt;">operator&lt;</a></td>
+<td>Less than comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_le.html" class="xref" title="operator&lt;=">operator&lt;=</a></td>
+<td>Less equal comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_ge.html" class="xref" title="operator&gt;=">operator&gt;=</a></td>
+<td>Greater equal comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_gt.html" class="xref" title="operator&gt;">operator&gt;</a></td>
+<td>Greater comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_incr.html" class="xref" title="operator++">operator++</a></td>
+<td>Pre-increment.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_decr.html" class="xref" title="operator--">operator--</a></td>
+<td>Pre-decrement.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_add.html" class="xref" title="operator+">operator+</a></td>
+<td>Iterator movement operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_ia.html" class="xref" title="operator+=">operator+=</a></td>
+<td>Move this iterator backward by n elements.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_sub.html" class="xref" title="operator-">operator-</a></td>
+<td>Iterator movement operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_sa.html" class="xref" title="operator-=">operator-=</a></td>
+<td>Move this iterator forward by n elements.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator__star.html" class="xref" title="operator *">operator *</a></td>
+<td>Dereference operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_arrow.html" class="xref" title="operator-&gt;">operator-&gt;</a></td>
+<td>Arrow operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratoroperator_sqbrk.html" class="xref" title="operator[]">operator[]</a></td>
+<td>Iterator index operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratorget_current_index.html" class="xref" title="get_current_index">get_current_index</a></td>
+<td>Get current index of within the vector.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratormove_to.html" class="xref" title="move_to">move_to</a></td>
+<td>Iterator movement function.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratorrefresh.html" class="xref" title="refresh">refresh</a></td>
+<td>Refresh iterator cached value.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratorclose_cursor.html" class="xref" title="close_cursor">close_cursor</a></td>
+<td>Close underlying Berkeley DB cursor of this iterator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratorset_bulk_buffer.html" class="xref" title="set_bulk_buffer">set_bulk_buffer</a></td>
+<td>Modify bulk buffer size.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_base_iteratorget_bulk_bufsize.html" class="xref" title="get_bulk_bufsize">get_bulk_bufsize</a></td>
+<td>Get bulk retrieval buffer size in bytes.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_vector_iterator"><a href="db_vector_iterator.html" class="xref" title="Db_vector_iterator">Db_vector_iterator</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_vector_iterator.html#stldb_vector_iteratordb_vector_iterator" class="xref" title="db_vector_iterator">db_vector_iterator</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratordstr_db_vector_iterator.html" class="xref" title="~db_vector_iterator">~db_vector_iterator</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator_incr.html" class="xref" title="operator++">operator++</a></td>
+<td>Pre-increment.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator_decr.html" class="xref" title="operator--">operator--</a></td>
+<td>Pre-decrement.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator_add.html" class="xref" title="operator+">operator+</a></td>
+<td>Iterator movement operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator_ia.html" class="xref" title="operator+=">operator+=</a></td>
+<td>Move this iterator backward by n elements.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator_sub.html" class="xref" title="operator-">operator-</a></td>
+<td>Iterator movement operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator_sa.html" class="xref" title="operator-=">operator-=</a></td>
+<td>Move this iterator forward by n elements.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator__star.html" class="xref" title="operator *">operator *</a></td>
+<td>Dereference operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator_arrow.html" class="xref" title="operator-&gt;">operator-&gt;</a></td>
+<td>Arrow operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratoroperator_sqbrk.html" class="xref" title="operator[]">operator[]</a></td>
+<td>Iterator index operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_vector_iteratorrefresh.html" class="xref" title="refresh">refresh</a></td>
+<td>Refresh iterator cached value.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="iterator-classes-for-db_map-and-db_multimap"><a href="db_map_iterators.html" class="xref" title="Iterator Classes for db_map and db_multimap">Iterator Classes for db_map and db_multimap</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_map_base_iterator.html" class="link" title="Chapter 15.  Db_map_base_iterator">db_map_base_iterator</a></td>
+<td>db_map_base_iterator</td>
+</tr>
+<tr>
+<td><a href="db_map_iterator.html" class="link" title="Chapter 16.  Db_map_iterator">db_map_iterator</a></td>
+<td>db_map_iterator</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_map_base_iterator"><a href="db_map_base_iterator.html" class="xref" title="Db_map_base_iterator">Db_map_base_iterator</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_map_base_iterator.html#stldb_map_base_iteratordb_map_base_iterator" class="xref" title="db_map_base_iterator">db_map_base_iterator</a></td>
+<td>Copy constructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratordstr_db_map_base_iterator.html" class="xref" title="~db_map_base_iterator">~db_map_base_iterator</a></td>
+<td>Destructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratoroperator_incr.html" class="xref" title="operator++">operator++</a></td>
+<td>Pre-increment.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratoroperator_decr.html" class="xref" title="operator--">operator--</a></td>
+<td>Pre-decrement.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratoroperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Equal comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratoroperator_ueq.html" class="xref" title="operator!=">operator!=</a></td>
+<td>Unequal comparison operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratoroperator__star.html" class="xref" title="operator *">operator *</a></td>
+<td>Dereference operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratoroperator_arrow.html" class="xref" title="operator-&gt;">operator-&gt;</a></td>
+<td>Arrow operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratorrefresh.html" class="xref" title="refresh">refresh</a></td>
+<td>Refresh iterator cached value.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratorclose_cursor.html" class="xref" title="close_cursor">close_cursor</a></td>
+<td>Close underlying Berkeley DB cursor of this iterator.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratormove_to.html" class="xref" title="move_to">move_to</a></td>
+<td>Iterator movement function.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratorset_bulk_buffer.html" class="xref" title="set_bulk_buffer">set_bulk_buffer</a></td>
+<td>Modify bulk buffer size.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratorget_bulk_bufsize.html" class="xref" title="get_bulk_bufsize">get_bulk_bufsize</a></td>
+<td>Get bulk retrieval buffer size in bytes.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_base_iteratoroperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Assignment operator.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_map_iterator"><a href="db_map_iterator.html" class="xref" title="Db_map_iterator">Db_map_iterator</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_map_iterator.html#stldb_map_iteratordb_map_iterator" class="xref" title="db_map_iterator">db_map_iterator</a></td>
+<td>Copy constructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_iteratordstr_db_map_iterator.html" class="xref" title="~db_map_iterator">~db_map_iterator</a></td>
+<td>Destructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_iteratoroperator_incr.html" class="xref" title="operator++">operator++</a></td>
+<td>Pre-increment.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_iteratoroperator_decr.html" class="xref" title="operator--">operator--</a></td>
+<td>Pre-decrement.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_iteratoroperator__star.html" class="xref" title="operator *">operator *</a></td>
+<td>Dereference operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_iteratoroperator_arrow.html" class="xref" title="operator-&gt;">operator-&gt;</a></td>
+<td>Arrow operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_iteratorrefresh.html" class="xref" title="refresh">refresh</a></td>
+<td>Refresh iterator cached value.</td>
+</tr>
+<tr>
+<td><a href="stldb_map_iteratoroperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Assignment operator.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="iterator-classes-for-db_set-and-db_multiset"><a href="dbset_iterators.html" class="xref" title="Iterator Classes for db_set and db_multiset">Iterator Classes for db_set and db_multiset</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_set_base_iterator.html" class="link" title="Chapter 18.  Db_set_base_iterator">db_set_base_iterator</a></td>
+<td>db_set_base_iterator</td>
+</tr>
+<tr>
+<td><a href="db_set_iterator.html" class="link" title="Chapter 19.  Db_set_iterator">db_set_iterator</a></td>
+<td>db_set_iterator</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_set_base_iterator"><a href="db_set_base_iterator.html" class="xref" title="Db_set_base_iterator">Db_set_base_iterator</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_set_base_iterator.html#stldb_set_base_iteratordstr_db_set_base_iterator" class="xref" title="~db_set_base_iterator">~db_set_base_iterator</a></td>
+<td>Destructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_base_iteratordb_set_base_iterator.html" class="xref" title="db_set_base_iterator">db_set_base_iterator</a></td>
+<td>Constructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_base_iteratoroperator_incr.html" class="xref" title="operator++">operator++</a></td>
+<td>Post-increment.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_base_iteratoroperator_decr.html" class="xref" title="operator--">operator--</a></td>
+<td>Post-decrement.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_base_iteratoroperator__star.html" class="xref" title="operator *">operator *</a></td>
+<td>Dereference operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_base_iteratoroperator_arrow.html" class="xref" title="operator-&gt;">operator-&gt;</a></td>
+<td>Arrow operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_base_iteratorrefresh.html" class="xref" title="refresh">refresh</a></td>
+<td>Refresh iterator cached value.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_set_iterator"><a href="db_set_iterator.html" class="xref" title="Db_set_iterator">Db_set_iterator</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_set_iterator.html#stldb_set_iteratordstr_db_set_iterator" class="xref" title="~db_set_iterator">~db_set_iterator</a></td>
+<td>Destructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_iteratordb_set_iterator.html" class="xref" title="db_set_iterator">db_set_iterator</a></td>
+<td>Constructor.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_iteratoroperator_incr.html" class="xref" title="operator++">operator++</a></td>
+<td>Pre-increment.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_iteratoroperator_decr.html" class="xref" title="operator--">operator--</a></td>
+<td>Pre-decrement.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_iteratoroperator__star.html" class="xref" title="operator *">operator *</a></td>
+<td>Dereference operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_iteratoroperator_arrow.html" class="xref" title="operator-&gt;">operator-&gt;</a></td>
+<td>Arrow operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_set_iteratorrefresh.html" class="xref" title="refresh">refresh</a></td>
+<td>Refresh iterator cached value.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="db_reverse_iterator"><a href="db_reverse_iterator.html" class="xref" title="Db_reverse_iterator">Db_reverse_iterator</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="db_reverse_iterator.html#stldb_reverse_iteratoroperator_incr" class="xref" title="operator++">operator++</a></td>
+<td>Move this iterator forward by one element.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_decr.html" class="xref" title="operator--">operator--</a></td>
+<td>Move this iterator backward by one element.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_add.html" class="xref" title="operator+">operator+</a></td>
+<td>Iterator shuffle operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_sub.html" class="xref" title="operator-">operator-</a></td>
+<td>Iterator shuffle operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_ia.html" class="xref" title="operator+=">operator+=</a></td>
+<td>Iterator shuffle operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_sa.html" class="xref" title="operator-=">operator-=</a></td>
+<td>Iterator shuffle operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_lt.html" class="xref" title="operator&lt;">operator&lt;</a></td>
+<td>Less compare operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_gt.html" class="xref" title="operator&gt;">operator&gt;</a></td>
+<td>Greater compare operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_le.html" class="xref" title="operator&lt;=">operator&lt;=</a></td>
+<td>Less equal compare operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_ge.html" class="xref" title="operator&gt;=">operator&gt;=</a></td>
+<td>Greater equal compare operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratordb_reverse_iterator.html" class="xref" title="db_reverse_iterator">db_reverse_iterator</a></td>
+<td>Constructor. Construct from an iterator of wrapped type.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stldb_reverse_iteratoroperator_sqbrk.html" class="xref" title="operator[]">operator[]</a></td>
+<td>Return the reference of the element which can be reached by moving this reverse iterator by Off times backward.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dbstl-helper-classes"><a href="dbstl_helper_classes.html" class="xref" title="Dbstl Helper Classes">Dbstl Helper Classes</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="BulkRetrievalOption.html" class="link" title="Chapter 27.  BulkRetrievalOption">BulkRetrievalOption</a></td>
+<td>BulkRetrievalOption</td>
+</tr>
+<tr>
+<td><a href="ReadModifyWriteOption.html" class="link" title="Chapter 28.  ReadModifyWriteOption">ReadModifyWriteOption</a></td>
+<td>ReadModifyWriteOption</td>
+</tr>
+<tr>
+<td><a href="DbstlElemTraits.html" class="link" title="Chapter 26.  DbstlElemTraits">DbstlElemTraits</a></td>
+<td>DbstlElemTraits</td>
+</tr>
+<tr>
+<td><a href="DbstlDbt.html" class="link" title="Chapter 25.  DbstlDbt">DbstlDbt</a></td>
+<td>DbstlDbt</td>
+</tr>
+<tr>
+<td><a href="Element_wrappers.html" class="link" title="Chapter 22.  ElementRef and ElementHolder Wappers">ElementRef and ElementHolder wrappers.</a></td>
+<td>ElementRef and ElementHolder wrappers.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="elementref-and-elementholder-wappers"><a href="Element_wrappers.html" class="xref" title="ElementRef and ElementHolder Wappers">ElementRef and ElementHolder Wappers</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="ElementRef.html" class="link" title="Chapter 24.  ElementRef">ElementRef</a></td>
+<td>ElementRef</td>
+</tr>
+<tr>
+<td><a href="ElementHolder.html" class="link" title="Chapter 23.  ElementHolder">ElementHolder</a></td>
+<td>ElementHolder</td>
+</tr>
+</tbody>
+</table>
+<h2 id="elementholder"><a href="ElementHolder.html" class="xref" title="ElementHolder">ElementHolder</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="ElementHolder.html#stlElementHolderElementHolder" class="xref" title="ElementHolder">ElementHolder</a></td>
+<td>Constructor.</td>
+</tr>
+<tr>
+<td><a href="stlElementHolderdstr_ElementHolder.html" class="xref" title="~ElementHolder">~ElementHolder</a></td>
+<td>Destructor.</td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_ia.html" class="xref" title="operator+=">operator+=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_sa.html" class="xref" title="operator-=">operator-=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator__ma.html" class="xref" title="operator *=">operator *=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_da.html" class="xref" title="operator/=">operator/=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_modasg.html" class="xref" title="operator%=">operator%=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator__aa.html" class="xref" title="operator &amp;=">operator &amp;=</a></td>
+<td></td>
+</tr>
+<tr>
+<td>&lt;a href="stlElementHolderoperator_oa.html" class="xref" title="operator</td>
+<td>="&gt;operator</td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_xa.html" class="xref" title="operator^=">operator^=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_gt_ge.html" class="xref" title="operator&gt;&gt;=">operator&gt;&gt;=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_lt_le.html" class="xref" title="operator&lt;&lt;=">operator&lt;&lt;=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_incr.html" class="xref" title="operator++">operator++</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_decr.html" class="xref" title="operator--">operator--</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlElementHolderoperator_ptype.html" class="xref" title="operator ptype">operator ptype</a></td>
+<td>This operator is a type converter.</td>
+</tr>
+<tr>
+<td><a href="stlElementHolder_DB_STL_value.html" class="xref" title="_DB_STL_value">_DB_STL_value</a></td>
+<td>Returns the data element this wrapper object wraps;.</td>
+</tr>
+<tr>
+<td><a href="stlElementHolder_DB_STL_StoreElement.html" class="xref" title="_DB_STL_StoreElement">_DB_STL_StoreElement</a></td>
+<td>Function to store the data element.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="elementref"><a href="ElementRef.html" class="xref" title="ElementRef">ElementRef</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="ElementRef.html#stlElementRefdstr_ElementRef" class="xref" title="~ElementRef">~ElementRef</a></td>
+<td>Destructor.</td>
+</tr>
+<tr>
+<td><a href="stlElementRefElementRef.html" class="xref" title="ElementRef">ElementRef</a></td>
+<td>Constructor.</td>
+</tr>
+<tr>
+<td><a href="stlElementRefoperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Assignment Operator.</td>
+</tr>
+<tr>
+<td><a href="stlElementRef_DB_STL_StoreElement.html" class="xref" title="_DB_STL_StoreElement">_DB_STL_StoreElement</a></td>
+<td>Function to store the data element.</td>
+</tr>
+<tr>
+<td><a href="stlElementRef_DB_STL_value.html" class="xref" title="_DB_STL_value">_DB_STL_value</a></td>
+<td>Returns the data element this wrapper object wraps.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dbstldbt"><a href="DbstlDbt.html" class="xref" title="DbstlDbt">DbstlDbt</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="DbstlDbt.html#stlDbstlDbtDbstlDbt" class="xref" title="DbstlDbt">DbstlDbt</a></td>
+<td>Construct an object with an existing chunk of memory of size1 bytes, refered by data1,.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlDbtdstr_DbstlDbt.html" class="xref" title="~DbstlDbt">~DbstlDbt</a></td>
+<td>The memory will be free'ed by the destructor.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlDbtoperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>The memory will be reallocated if neccessary.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dbstlelemtraits"><a href="DbstlElemTraits.html" class="xref" title="DbstlElemTraits">DbstlElemTraits</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="DbstlElemTraits.html#stlDbstlElemTraitsassign" class="xref" title="assign">assign</a></td>
+<td>Assignone object to another.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitseq.html" class="xref" title="eq">eq</a></td>
+<td>Check for equality of two objects.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitslt.html" class="xref" title="lt">lt</a></td>
+<td>Less than comparison.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitscompare.html" class="xref" title="compare">compare</a></td>
+<td>Sequence comparison.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitslength.html" class="xref" title="length">length</a></td>
+<td>Returns the number of elements in sequence seq1.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitscopy.html" class="xref" title="copy">copy</a></td>
+<td>Copy first cnt number of elements from seq2 to seq1.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsfind.html" class="xref" title="find">find</a></td>
+<td>Find within the first cnt elements of sequence seq the position of element equal to elem.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsmove.html" class="xref" title="move">move</a></td>
+<td>Sequence movement.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsto_char_type.html" class="xref" title="to_char_type">to_char_type</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsto_int_type.html" class="xref" title="to_int_type">to_int_type</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitseq_int_type.html" class="xref" title="eq_int_type">eq_int_type</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitseof.html" class="xref" title="eof">eof</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsnot_eof.html" class="xref" title="not_eof">not_eof</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_restore_function.html" class="xref" title="set_restore_function">set_restore_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_restore_function.html" class="xref" title="get_restore_function">get_restore_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_assign_function.html" class="xref" title="set_assign_function">set_assign_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_assign_function.html" class="xref" title="get_assign_function">get_assign_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_size_function.html" class="xref" title="get_size_function">get_size_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_size_function.html" class="xref" title="set_size_function">set_size_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_copy_function.html" class="xref" title="get_copy_function">get_copy_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_copy_function.html" class="xref" title="set_copy_function">set_copy_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_sequence_len_function.html" class="xref" title="set_sequence_len_function">set_sequence_len_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_sequence_len_function.html" class="xref" title="get_sequence_len_function">get_sequence_len_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_sequence_copy_function.html" class="xref" title="get_sequence_copy_function">get_sequence_copy_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_sequence_copy_function.html" class="xref" title="set_sequence_copy_function">set_sequence_copy_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_compare_function.html" class="xref" title="set_compare_function">set_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_compare_function.html" class="xref" title="get_compare_function">get_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_sequence_compare_function.html" class="xref" title="set_sequence_compare_function">set_sequence_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_sequence_compare_function.html" class="xref" title="get_sequence_compare_function">get_sequence_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsset_sequence_n_compare_function.html" class="xref" title="set_sequence_n_compare_function">set_sequence_n_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsget_sequence_n_compare_function.html" class="xref" title="get_sequence_n_compare_function">get_sequence_n_compare_function</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsinstance.html" class="xref" title="instance">instance</a></td>
+<td>Factory method to create a singeleton instance of this class.</td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsdstr_DbstlElemTraits.html" class="xref" title="~DbstlElemTraits">~DbstlElemTraits</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlElemTraitsDbstlElemTraits.html" class="xref" title="DbstlElemTraits">DbstlElemTraits</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="bulkretrievaloption"><a href="BulkRetrievalOption.html" class="xref" title="BulkRetrievalOption">BulkRetrievalOption</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="BulkRetrievalOption.html#stlBulkRetrievalOptionBulkRetrievalOption" class="xref" title="BulkRetrievalOption">BulkRetrievalOption</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlBulkRetrievalOptionoperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Equality comparison.</td>
+</tr>
+<tr>
+<td><a href="stlBulkRetrievalOptionoperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td>Assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stlBulkRetrievalOptionbulk_buf_size.html" class="xref" title="bulk_buf_size">bulk_buf_size</a></td>
+<td>Return the buffer size set to this object.</td>
+</tr>
+<tr>
+<td><a href="stlBulkRetrievalOptionbulk_retrieval.html" class="xref" title="bulk_retrieval">bulk_retrieval</a></td>
+<td>This function indicates that you need a bulk retrieval iterator, and it can be also used to optionally set the bulk read buffer size.</td>
+</tr>
+<tr>
+<td><a href="stlBulkRetrievalOptionno_bulk_retrieval.html" class="xref" title="no_bulk_retrieval">no_bulk_retrieval</a></td>
+<td>This function indicates that you do not need a bulk retrieval iterator.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="readmodifywriteoption"><a href="ReadModifyWriteOption.html" class="xref" title="ReadModifyWriteOption">ReadModifyWriteOption</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="ReadModifyWriteOption.html#stlReadModifyWriteOptionoperator_assign" class="xref" title="operator=">operator=</a></td>
+<td>Assignment operator.</td>
+</tr>
+<tr>
+<td><a href="stlReadModifyWriteOptionoperator_eq.html" class="xref" title="operator==">operator==</a></td>
+<td>Equality comparison.</td>
+</tr>
+<tr>
+<td><a href="stlReadModifyWriteOptionread_modify_write.html" class="xref" title="read_modify_write">read_modify_write</a></td>
+<td>Call this function to tell the container's begin() function that you need a read-modify-write iterator.</td>
+</tr>
+<tr>
+<td><a href="stlReadModifyWriteOptionno_read_modify_write.html" class="xref" title="no_read_modify_write">no_read_modify_write</a></td>
+<td>Call this function to tell the container's begin() function that you do not need a read-modify-write iterator.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dbstl-exception-classes"><a href="Exception_classes_group.html" class="xref" title="Dbstl Exception Classes">Dbstl Exception Classes</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="DbstlException.html" class="link" title="Chapter 30.  DbstlException">DbstlException</a></td>
+<td>DbstlException</td>
+</tr>
+<tr>
+<td><a href="NotEnoughMemoryException.html" class="link" title="Chapter 35.  NotEnoughMemoryException">NotEnoughMemoryException</a></td>
+<td>NotEnoughMemoryException</td>
+</tr>
+<tr>
+<td><a href="InvalidIteratorException.html" class="link" title="Chapter 37.  InvalidIteratorException">InvalidIteratorException</a></td>
+<td>InvalidIteratorException</td>
+</tr>
+<tr>
+<td><a href="InvalidCursorException.html" class="link" title="Chapter 33.  InvalidCursorException">InvalidCursorException</a></td>
+<td>InvalidCursorException</td>
+</tr>
+<tr>
+<td><a href="InvalidDbtException.html" class="link" title="Chapter 31.  InvalidDbtException">InvalidDbtException</a></td>
+<td>InvalidDbtException</td>
+</tr>
+<tr>
+<td><a href="FailedAssertionException.html" class="link" title="Chapter 32.  FailedAssertionException">FailedAssertionException</a></td>
+<td>FailedAssertionException</td>
+</tr>
+<tr>
+<td><a href="NoSuchKeyException.html" class="link" title="Chapter 34.  NoSuchKeyException">NoSuchKeyException</a></td>
+<td>NoSuchKeyException</td>
+</tr>
+<tr>
+<td><a href="InvalidArgumentException.html" class="link" title="Chapter 39.  InvalidArgumentException">InvalidArgumentException</a></td>
+<td>InvalidArgumentException</td>
+</tr>
+<tr>
+<td><a href="NotSupportedException.html" class="link" title="Chapter 36.  NotSupportedException">NotSupportedException</a></td>
+<td>NotSupportedException</td>
+</tr>
+<tr>
+<td><a href="InvalidFunctionCall.html" class="link" title="Chapter 38.  InvalidFunctionCall">InvalidFunctionCall</a></td>
+<td>InvalidFunctionCall</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dbstlexception"><a href="DbstlException.html" class="xref" title="DbstlException">DbstlException</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="DbstlException.html#stlDbstlExceptionDbstlException" class="xref" title="DbstlException">DbstlException</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlExceptionoperator_assign.html" class="xref" title="operator=">operator=</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlDbstlExceptiondstr_DbstlException.html" class="xref" title="~DbstlException">~DbstlException</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="invaliddbtexception"><a href="InvalidDbtException.html" class="xref" title="InvalidDbtException">InvalidDbtException</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="InvalidDbtException.html#stlInvalidDbtExceptionInvalidDbtException" class="xref" title="InvalidDbtException">InvalidDbtException</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="failedassertionexception"><a href="FailedAssertionException.html" class="xref" title="FailedAssertionException">FailedAssertionException</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="FailedAssertionException.html#stlFailedAssertionExceptionwhat" class="xref" title="what">what</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlFailedAssertionExceptionFailedAssertionException.html" class="xref" title="FailedAssertionException">FailedAssertionException</a></td>
+<td></td>
+</tr>
+<tr>
+<td><a href="stlFailedAssertionExceptiondstr_FailedAssertionException.html" class="xref" title="~FailedAssertionException">~FailedAssertionException</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="invalidcursorexception"><a href="InvalidCursorException.html" class="xref" title="InvalidCursorException">InvalidCursorException</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="InvalidCursorException.html#stlInvalidCursorExceptionInvalidCursorException" class="xref" title="InvalidCursorException">InvalidCursorException</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="nosuchkeyexception"><a href="NoSuchKeyException.html" class="xref" title="NoSuchKeyException">NoSuchKeyException</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="NoSuchKeyException.html#stlNoSuchKeyExceptionNoSuchKeyException" class="xref" title="NoSuchKeyException">NoSuchKeyException</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="notenoughmemoryexception"><a href="NotEnoughMemoryException.html" class="xref" title="NotEnoughMemoryException">NotEnoughMemoryException</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="NotEnoughMemoryException.html#stlNotEnoughMemoryExceptionNotEnoughMemoryException" class="xref" title="NotEnoughMemoryException">NotEnoughMemoryException</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="notsupportedexception"><a href="NotSupportedException.html" class="xref" title="NotSupportedException">NotSupportedException</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="NotSupportedException.html#stlNotSupportedExceptionNotSupportedException" class="xref" title="NotSupportedException">NotSupportedException</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="invaliditeratorexception"><a href="InvalidIteratorException.html" class="xref" title="InvalidIteratorException">InvalidIteratorException</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="InvalidIteratorException.html#stlInvalidIteratorExceptionInvalidIteratorException" class="xref" title="InvalidIteratorException">InvalidIteratorException</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="invalidfunctioncall"><a href="InvalidFunctionCall.html" class="xref" title="InvalidFunctionCall">InvalidFunctionCall</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="InvalidFunctionCall.html#stlInvalidFunctionCallInvalidFunctionCall" class="xref" title="InvalidFunctionCall">InvalidFunctionCall</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="invalidargumentexception"><a href="InvalidArgumentException.html" class="xref" title="InvalidArgumentException">InvalidArgumentException</a></h2>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="InvalidArgumentException.html#stlInvalidArgumentExceptionInvalidArgumentException" class="xref" title="InvalidArgumentException">InvalidArgumentException</a></td>
+<td></td>
+</tr>
+</tbody>
+</table>
 <p><strong>Legal Notice</strong></p>
 <p>This documentation is distributed under an open source license. You may review the terms of this license at: <a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html" class="ulink" target="_top"><a href="http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html">http://www.oracle.com/technetwork/database/berkeleydb/downloads/oslicense-093458.html</a></a></p>
 <p>Oracle, Berkeley DB, and Sleepycat are trademarks or registered trademarks of Oracle. All rights to these marks are reserved. No third-party use is permitted without the express prior written consent of Oracle.</p>
@@ -53,7 +2024,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Creating Indexes — Berkeley DB 5.3.35</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 5.3.35</span>
+  </header>
+  <nav class="crumbs"><a href="../../../index.html">Home</a> / guides / gsg / java</nav>
+  <main>
+<h2 id="creating-indexes">Creating Indexes</h2>
+<p><span class="sect2"> <a href="dplindexcreate.html#dplprimaryidxdecl">Declaring a Primary Indexes</a> </span></p>
+<p><span class="sect2"> <a href="dplindexcreate.html#dplsecondaryidxdecl">Declaring Secondary Indexes</a> </span></p>
+<p><span class="sect2"> <a href="dplindexcreate.html#foreignkey">Foreign Key Constraints</a> </span></p>
+<p>To create an index using the DPL, you use Java annotations to declare which feature on the class is used for the primary index, and which features (if any) are to be used as secondary indexes.</p>
+<p>All entity classes stored in the DPL must have a primary index declared for it.</p>
+<p>Entity classes can have zero or more secondary indexes declared for them. There is no limit on the number of secondary indexes that you can declare.</p>
+<h3 id="declaring-a-primary-indexes">Declaring a Primary Indexes</h3>
+<p>You declare a primary key for an entity class by using the <code>@PrimaryKey</code> annotation. This annotation must appear immediately before the data member which represents the class's primary key. For example:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>package persist<span class="op">.</span>gettingStarted<span class="op">;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>persist<span class="op">.</span>model<span class="op">.</span>Entity<span class="op">;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>import com<span class="op">.</span>sleepycat<span class="op">.</span>persist<span class="op">.</span>model<span class="op">.</span>PrimaryKey<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>@Entity</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>public class Vendor <span class="op">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    private String address<span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    private String bizPhoneNumber<span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    private String city<span class="op">;</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    private String repName<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    private String repPhoneNumber<span class="op">;</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    private String state<span class="op">;</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Primary key is the vendor&#39;s name</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    <span class="co">// This assumes that the vendor&#39;s name is</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    <span class="co">// unique in the database.</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    @PrimaryKey</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    private String vendor<span class="op">;</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span> </span></code></pre></div>
+<p>For this class, the <code>vendor</code> value is set for an individual <code>Vendor</code> class object by the <code>setVendorName()</code> method. If our example code fails to set this value before storing the object, the data member used to store the primary key is set to a null value. This would result in a runtime error.</p>
+<p>You can avoid the need to explicitly set a value for a class's primary index by specifying a sequence to be used for the primary key. This results in an unique integer value being used as the primary key for each stored object.</p>
+<p>You declare a sequence is to be used by specifying the <code>sequence</code> keyword to the <code>@PrimaryKey</code> annotation. You must also provide a name for the sequence. For example: For example:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>@PrimaryKey<span class="op">(</span>sequence<span class="op">=</span><span class="st">&quot;Sequence_Namespace&quot;</span><span class="op">)</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">long</span> myPrimaryKey<span class="op">;</span> </span></code></pre></div>
+<h3 id="declaring-secondary-indexes">Declaring Secondary Indexes</h3>
+<p>To declare a secondary index, we use the <code>@SecondaryKey</code> annotation. Note that when we do this, we must declare what sort of an index it is; that is, what is its relationship to other data in the data store.</p>
+<p>The <span class="emphasis"><em>kind</em></span> of indices that we can declare are:</p>
+<ul>
+<li><p><code>ONE_TO_ONE</code></p>
+<p>This relationship indicates that the secondary key is unique to the object. If an object is stored with a secondary key that already exists in the data store, a run time error is raised.</p>
+<p>For example, a person object might be stored with a primary key of a social security number (in the US), with a secondary key of the person's employee number. Both values are expected to be unique in the data store.</p></li>
+<li><p><code>MANY_TO_ONE</code></p>
+<p>Indicates that the secondary key may be used for multiple objects in the data store. That is, the key appears more than once, but for each stored object it can be used only once.</p>
+<p>Consider a data store that relates managers to employees. A given manager will have multiple employees, but each employee is assumed to have just one manager. In this case, the manager's employee number might be a secondary key, so that you can quickly locate all the objects related to that manager's employees.</p></li>
+<li><p><code>ONE_TO_MANY</code></p>
+<p>Indicates that the secondary key might be used more than once for a given object. Index keys themselves are assumed to be unique, but multiple instances of the index can be used per object.</p>
+<p>For example, employees might have multiple unique email addresses. In this case, any given object can be access by one or more email addresses. Each such address is unique in the data store, but each such address will relate to a single employee object.</p></li>
+<li><p><code>MANY_TO_MANY</code></p>
+<p>There can be multiple keys for any given object, and for any given key there can be many related objects.</p>
+<p>For example, suppose your organization has a shared resource, such as printers. You might want to track which printers a given employee can use (there might be more than one). You might also want to track which employees can use a specific printer. This represents a many-to-many relationship.</p></li>
+</ul>
+<p>Note that for <code>ONE_TO_ONE</code> and <code>MANY_TO_ONE</code> relationships, you need a simple data member (not an array or collection) to hold the key. For <code>ONE_TO_MANY</code> and <code>MANY_TO_MANY</code> relationships, you need an array or collection to hold the keys:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>@SecondaryKey<span class="op">(</span>relate<span class="op">=</span>ONE_TO_ONE<span class="op">)</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>private String primaryEmailAddress <span class="op">=</span> new String<span class="op">();</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>@SecondaryKey<span class="op">(</span>relate<span class="op">=</span>ONE_TO_MANY<span class="op">)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>private Set<span class="op">&lt;</span>String<span class="op">&gt;</span> emailAddresses <span class="op">=</span> new HashSet<span class="op">&lt;</span>String<span class="op">&gt;();</span> </span></code></pre></div>
+<h3 id="foreign-key-constraints">Foreign Key Constraints</h3>
+<p>Sometimes a secondary index is related in some way to another entity class that is also contained in the data store. That is, the secondary key might be the primary key for another entity class. If this is the case, you can declare the foreign key constraint to make data integrity easier to accomplish.</p>
+<p>For example, you might have one class that is used to represent employees. You might have another that is used to represent corporate divisions. When you add or modify an employee record, you might want to ensure that the division to which the employee belongs is known to the data store. You do this by specifying a foreign key constraint.</p>
+<p>When a foreign key constraint is declared:</p>
+<ul>
+<li><p>When a new secondary key for the object is stored, it is checked to make sure it exists as a primary key for the related entity object. If it does not, a runtime error occurs.</p></li>
+<li><p>When a related entity is deleted (that is, a corporate division is removed from the data store), some action is automatically taken for the entities that refer to this object (that is, the employee objects). Exactly what that action is, is definable by you. See below.</p></li>
+</ul>
+<p>When a related entity is deleted from the data store, one of the following actions are taken:</p>
+<ul>
+<li><p><code>ABORT</code></p>
+<p>The delete operation is not allowed. A runtime error is raised as a result of the operation. This is the default behavior.</p></li>
+<li><p><code>CASCADE</code></p>
+<p>All entities related to this one are deleted as well. For example, if you deleted a <code>Division</code> object, then all <code>Employee</code> objects that belonged to the division are also deleted.</p></li>
+<li><p><code>NULLIFY</code></p>
+<p>All entities related to the deleted entity are updated so that the pertinent data member is nullified. That is, if you deleted a division, then all employee objects related to that division would have their division key automatically set to null.</p></li>
+</ul>
+<p>You declare a foreign key constraint by using the <code>relatedEntity</code> keyword. You declare the foreign key constraint deletion policy using the <code>onRelatedEntityDelete</code> keyword. For example, the following declares a foreign key constraint to <code>Division</code> class objects, and it causes related objects to be deleted if the <code>Division</code> class is deleted:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>@SecondaryKey<span class="op">(</span>relate<span class="op">=</span>ONE_TO_ONE<span class="op">,</span> relatedEntity<span class="op">=</span>Division<span class="op">.</span>class<span class="op">,</span> </span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    onRelatedEntityDelete<span class="op">=</span>CASCADE<span class="op">)</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>private String division <span class="op">=</span> new String<span class="op">();</span> </span></code></pre></div>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

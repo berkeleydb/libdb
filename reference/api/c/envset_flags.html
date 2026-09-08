@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DB_ENV-&gt;set_flags() — Berkeley DB 5.3.33</title>
+  <title>DB_ENV-&gt;set_flags() — Berkeley DB 5.3.35</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.33</span>
+    <span class="ver">Version 5.3.35</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -121,7 +121,8 @@
 <li><p><code>DB_TXN_SNAPSHOT</code></p>
 <p>If set, all transactions in the environment will be started as if DB_TXN_SNAPSHOT were passed to the <a href="txnbegin.html" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a> method, and all non-transactional cursors will be opened as if DB_TXN_SNAPSHOT were passed to the <a href="dbcursor.html" class="xref" title="DB-&gt;cursor()">DB-&gt;cursor()</a> method.</p>
 <p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_TXN_SNAPSHOT flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_TXN_SNAPSHOT flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
-<p>The DB_TXN_SNAPSHOT flag may be used to configure Berkeley DB at any time during the life of the application.</p></li>
+<p>The DB_TXN_SNAPSHOT flag may be used to configure Berkeley DB at any time during the life of the application.</p>
+<p>Note that snapshot transactions configured environment-wide with this flag receive serializable snapshot isolation (SSI); <code>DB_TXN_SNAPSHOT</code> is now the SSI mode (there is no separate plain-SI flag). The same behavior can be requested per-transaction via <a href="txnbegin.html" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>.</p></li>
 <li><p><code>DB_TXN_WRITE_NOSYNC</code></p>
 <p>If set, Berkeley DB will write, but will not synchronously flush, the log on transaction commit. This means that transactions exhibit the ACI (atomicity, consistency, and isolation) properties, but not D (durability); that is, database integrity will be maintained, but if the system fails, it is possible some number of the most recently committed transactions may be undone during recovery. The number of transactions at risk is governed by how often the system flushes dirty buffers to disk and how often the log is checkpointed.</p>
 <p>Calling <code>DB_ENV-&gt;set_flags()</code> with the DB_TXN_WRITE_NOSYNC flag only affects the specified <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handle (and any other Berkeley DB handles opened within the scope of that handle). For consistent behavior across the environment, all <a href="env.html" class="link" title="Chapter 5.  The DB_ENV Handle">DB_ENV</a> handles opened in the environment must either set the DB_TXN_WRITE_NOSYNC flag or the flag should be specified in the <a href="../../guides/programmer_reference/env_db_config.html#env_db_config.DB_CONFIG" class="olink">DB_CONFIG</a> configuration file.</p>
@@ -145,7 +146,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

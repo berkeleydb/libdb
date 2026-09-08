@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Berkeley DB Documentation — Berkeley DB 5.3.33</title>
+  <title>Berkeley DB Documentation — Berkeley DB 5.3.35</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,23 +37,24 @@
 <body>
   <header class="site">
     <span class="brand"><a href="index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.33</span>
+    <span class="ver">Version 5.3.35</span>
   </header>
   <nav class="crumbs"><a href="index.html">Home</a></nav>
   <main>
 <h1 id="berkeley-db-documentation">Berkeley DB Documentation</h1>
-<p>The complete reference for <strong>libdb</strong> (Berkeley DB) — the embedded, transactional key/value storage engine. Generated from Markdown source by <code>docs-src/build.py</code>; available as HTML (here), <a href="#pdf">PDF</a>, and <a href="#man">man pages</a>. Version and copyright are single-sourced from <code>docs-src/_data/site.toml</code> + <code>dist/RELEASE</code>.</p>
+<p>The complete reference for <strong>libdb</strong> (Berkeley DB) — the embedded, transactional key/value storage engine. Generated from Markdown source by <code>docs_src/build.py</code>; available as HTML (here), <a href="#pdf">PDF</a>, and <a href="#man">man pages</a>. Version and copyright are single-sourced from <code>docs_src/_data/site.toml</code> + <code>dist/RELEASE</code>.</p>
 <h2 id="api-reference">API reference</h2>
 <ul>
 <li><a href="api/c/index.html">C API Reference</a> — the primary interface: <code>DB_ENV</code>, <code>DB</code>, <code>DBC</code> (cursor), <code>DBT</code>, transactions, locking, logging, replication, and the command-line utilities.</li>
 <li><a href="api/stl/index.html">C++ / STL API Reference</a> — the <code>dbstl</code> standard-template- library containers and iterators backed by Berkeley DB.</li>
+<li><a href="java-api/index.html">Java API Reference</a> — the <code>com.sleepycat.*</code> Java binding (<code>db</code>, <code>bind</code>, <code>collections</code>, <code>persist</code>). This tree is <strong>javadoc-generated</strong> from <code>lang/java/src/</code> at build time (not Markdown source), so it always matches the current code; it is not part of the Markdown no-loss gate.</li>
 </ul>
 <h2 id="guides">Guides</h2>
 <ul>
 <li><a href="guides/programmer_reference/index.html">Programmer's Reference</a> — the conceptual manual: access methods, the environment, memory pool, locking, logging, transactions, replication, XA, and tuning.</li>
-<li><a href="guides/gsg/index.html">Getting Started with Data Storage</a> — databases, cursors, secondary indexes, the four access methods.</li>
-<li><a href="guides/gsg_txn/index.html">Getting Started with Transactions</a> — ACID, isolation, deadlocks, recovery, checkpoints.</li>
-<li><a href="guides/gsg_db_rep/index.html">Getting Started with Replication</a> — the replication framework and Replication Manager.</li>
+<li><a href="guides/gsg/index.html">Getting Started with Data Storage</a> — databases, cursors, secondary indexes, the four access methods. (<a href="guides/gsg/index.html">C</a> · <a href="guides/gsg/cxx/index.html">C++</a> · <a href="guides/gsg/java/index.html">Java</a>)</li>
+<li><a href="guides/gsg_txn/index.html">Getting Started with Transactions</a> — ACID, isolation, deadlocks, recovery, checkpoints. (<a href="guides/gsg_txn/index.html">C</a> · <a href="guides/gsg_txn/cxx/index.html">C++</a> · <a href="guides/gsg_txn/java/index.html">Java</a>)</li>
+<li><a href="guides/gsg_db_rep/index.html">Getting Started with Replication</a> — the replication framework and Replication Manager. (<a href="guides/gsg_db_rep/index.html">C</a> · <a href="guides/gsg_db_rep/cxx/index.html">C++</a> · <a href="guides/gsg_db_rep/java/index.html">Java</a>)</li>
 <li><a href="guides/collections/index.html">Collections (Bindings) Tutorial</a> — the Java-style collections/bindings API.</li>
 <li><a href="guides/bdb-sql/index.html">Berkeley DB SQL</a> — the SQLite-compatible SQL interface.</li>
 <li><a href="guides/installation/index.html">Installation &amp; Build</a> — building on Unix, Windows, Android; configuration flags; the test suite.</li>
@@ -64,14 +65,14 @@
 <h2 id="man-pages"><a id="man"></a>Man pages</h2>
 <p>Every public API has a section-3 man page, plus a library overview (<strong><code>libdb(3)</code></strong>). They are built to <code>docs-build/man/man3/</code> (787 pages) and shipped in the release man-page tarball. Install and use like any system man page, e.g. <code>man libdb</code>, <code>man db_get</code>.</p>
 <h2 id="pdf-downloads"><a id="pdf"></a>PDF downloads</h2>
-<p>Each book is also available as a PDF (see the release assets / <code>docs-build/pdf/</code>): <code>api_c.pdf</code>, <code>api_stl.pdf</code>, <code>guides_programmer_reference.pdf</code>, <code>guides_gsg.pdf</code>, <code>guides_gsg_txn.pdf</code>, <code>guides_gsg_db_rep.pdf</code>, <code>guides_collections.pdf</code>, <code>guides_bdb-sql.pdf</code>, <code>guides_installation.pdf</code>, <code>guides_upgrading.pdf</code>, <code>guides_porting.pdf</code>, <code>guides_articles_inmemory.pdf</code>, <code>guides_articles_mssgtxt.pdf</code>.</p>
+<p>Each book is also available as a PDF (see the release assets / <code>docs-build/pdf/</code>): <code>api_c.pdf</code>, <code>api_stl.pdf</code>, <code>guides_programmer_reference.pdf</code>, <code>guides_gsg.pdf</code>, <code>guides_gsg_txn.pdf</code>, <code>guides_gsg_db_rep.pdf</code>, <code>guides_gsg_cxx.pdf</code>, <code>guides_gsg_java.pdf</code>, <code>guides_gsg_txn_cxx.pdf</code>, <code>guides_gsg_txn_java.pdf</code>, <code>guides_gsg_db_rep_cxx.pdf</code>, <code>guides_gsg_db_rep_java.pdf</code>, <code>guides_collections.pdf</code>, <code>guides_bdb-sql.pdf</code>, <code>guides_installation.pdf</code>, <code>guides_upgrading.pdf</code>, <code>guides_porting.pdf</code>, <code>guides_articles_inmemory.pdf</code>, <code>guides_articles_mssgtxt.pdf</code>.</p>
 <hr />
-<p><em>The C#/Java language-binding manuals (Sandcastle / Javadoc, not DocBook) are archived separately and are not part of this Markdown-sourced tree.</em></p>
+<p><em>The C# language-binding manual (Sandcastle, not DocBook) is archived separately and is not part of this Markdown-sourced tree. The Java API reference above is regenerated from source by javadoc rather than migrated from DocBook.</em></p>
 
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

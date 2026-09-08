@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DB_ENV-&gt;txn_begin() — Berkeley DB 5.3.33</title>
+  <title>DB_ENV-&gt;txn_begin() — Berkeley DB 5.3.35</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.33</span>
+    <span class="ver">Version 5.3.35</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -70,6 +70,8 @@
 <p>Users of this option should be aware of several issues. When the optimization is in effect, page allocations that extend the database file are logged as usual; this allows transaction aborts to work correctly, both online and during recovery. At commit time, the database's pages are flushed to disk, eliminating the need to roll-forward the transaction during normal recovery. However, there are other recovery operations that depend on roll-forward, and care must be taken when <code>DB_TXN_BULK</code> transactions interact with them.</p>
 <p>In particular, <code>DB_TXN_BULK</code> is incompatible with replication, and is simply ignored when replication is enabled. Also, hot backup procedures must follow a particular protocol, introduced in Berkeley DB 11gR2.5.1, which is to set the <a href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS" class="xref"><code class="literal">DB_HOTBACKUP_IN_PROGRESS</code></a> flag in the environment before starting to copy files. It is important to note that incremental hot backups can be invalidated by use of the bulk insert optimization. For more information, see the section on Hot Backup in the <span class="emphasis"><em>Getting Started With Transaction Processing Guide</em></span> and the description of the flag <a href="envset_flags.html#set_flags_DB_HOTBACKUP_IN_PROGRESS" class="xref"><code class="literal">DB_HOTBACKUP_IN_PROGRESS</code></a> in <code>DB_ENV-&gt;set_flags</code>.</p>
 <p>The bulk insert optimization is effective only for top-level transactions. The <code>DB_TXN_BULK</code> flag is ignored when <strong>parent</strong> is non-null.</p></li>
+<li><p><code>DB_TXN_FAMILY</code></p>
+<p>Start this transaction as part of a transaction family: a group of transactions that share locks and never conflict with one another. A family transaction is read-only from the caller's perspective and does not itself perform updates; it is used to hand a common locking context to a set of cooperating transactions (for example, a client/server design that spreads one logical unit of work across several transaction handles). When this flag is set the transaction is created read-only and shares the locker of its family, so operations performed under different members of the same family do not deadlock against each other.</p></li>
 <li><p><code>DB_TXN_NOSYNC</code></p>
 <p>Do not synchronously flush the log when this transaction commits or prepares. This means the transaction will exhibit the ACI (atomicity, consistency, and isolation) properties, but not D (durability); that is, database integrity will be maintained but it is possible that this transaction may be undone during recovery.</p>
 <p>This behavior may be set for a Berkeley DB environment using the <a href="envset_flags.html" class="xref" title="DB_ENV-&gt;set_flags()">DB_ENV-&gt;set_flags()</a> method. Any value specified to this method overrides that setting.</p></li>
@@ -77,8 +79,15 @@
 <p>If a lock is unavailable for any Berkeley DB operation performed in the context of this transaction, cause the operation to return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a> (or <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> if the database environment has been configured using the <a href="envset_flags.html#envset_flags_DB_TIME_NOTGRANTED" class="link">DB_TIME_NOTGRANTED</a> flag).</p>
 <p>This behavior may be set for a Berkeley DB environment using the <a href="envset_flags.html" class="xref" title="DB_ENV-&gt;set_flags()">DB_ENV-&gt;set_flags()</a> method. Any value specified to this method overrides that setting.</p></li>
 <li><p><code>DB_TXN_SNAPSHOT</code></p>
-<p>This transaction will execute with <a href="../../guides/programmer_reference/transapp_read.html" class="olink">snapshot isolation</a>. For databases with the <a href="dbopen.html#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> flag set, data values will be read as they are when the transaction begins, without taking read locks. Silently ignored for operations on databases with <a href="dbopen.html#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> not set on the underlying database (read locks are acquired).</p>
-<p>The error <code>DB_LOCK_DEADLOCK</code> will be returned from update operations if a snapshot transaction attempts to update data which was modified after the snapshot transaction read it.</p></li>
+<p>This transaction will execute with <strong>serializable snapshot isolation</strong> (SSI): snapshot isolation plus serializable conflict detection (the Cahill SSI algorithm). For databases with the <a href="dbopen.html#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> flag set, data values are read as they are when the transaction begins, without taking read locks; for databases without DB_MULTIVERSION, read locks are acquired. On top of that consistent snapshot, Berkeley DB tracks read/write anti-dependencies between concurrent snapshot transactions and, when it detects a dependency structure that could produce a non-serializable schedule, aborts one of the transactions so the committed history is equivalent to some serial order.</p>
+<p>A transaction that hits such a potential anomaly is aborted with one of two Berkeley DB-specific error returns instead of committing: <a href="../../guides/programmer_reference/program_errorret.html" class="olink">DB_SNAPSHOT_UNSAFE</a> (a potential serializable-snapshot anomaly was detected via a read/write anti-dependency) or <a href="../../guides/programmer_reference/program_errorret.html" class="olink">DB_SNAPSHOT_CONFLICT</a> (a conflicting snapshot update was detected). On either return the application must abort the transaction and may retry it. The error <code>DB_LOCK_DEADLOCK</code> may also be returned from update operations if a snapshot transaction attempts to update data modified after it read the snapshot.</p>
+<p>A <code>DB_TXN_SNAPSHOT</code> (SSI) transaction <strong>cannot be prepared for two-phase commit</strong>: <a href="txnprepare.html" class="xref" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a> returns <code>EINVAL</code> for such a transaction, because SSI's conflict status is not frozen at prepare time and a later-detected anomaly could not be honored after the transaction had entered the prepared state.</p>
+<blockquote>
+<p><strong>Note:</strong> In this fork, <code>DB_TXN_SNAPSHOT</code> provides <em>serializable</em> snapshot isolation. In stock Oracle Berkeley DB, <code>DB_TXN_SNAPSHOT</code> provided only plain (non-serializable) snapshot isolation, and the earlier <code>DB_TXN_SNAPSHOT_SAFE</code> flag has been removed — there is no separate non-serializable snapshot mode.</p>
+</blockquote>
+<blockquote>
+<p><strong>Fixed after 5.3.34.</strong> Release 5.3.34 had two defects affecting this flag, both now fixed: a write skew could commit when the second transaction's write landed while the first was inside <a href="txncommit.html" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a> (issue #136), and long-lived environments running many snapshot transactions could exhaust the mutex region with <code>ENOMEM</code> because reader bookkeeping was not fully reclaimed (issues #137, #138). Each fix is covered by a regression test that runs in continuous integration. If you are using 5.3.34, upgrade.</p>
+</blockquote></li>
 <li><p><code>DB_TXN_SYNC</code></p>
 <p>Synchronously flush the log when this transaction commits or prepares. This means the transaction will exhibit all of the ACID (atomicity, consistency, isolation, and durability) properties.</p>
 <p>This behavior is the default for Berkeley DB environments unless the <code>DB_TXN_NOSYNC</code> flag was specified to the <a href="envset_flags.html" class="xref" title="DB_ENV-&gt;set_flags()">DB_ENV-&gt;set_flags()</a> method. Any value specified to this method overrides that setting.</p></li>
@@ -101,7 +110,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.33 — generated from Markdown source by <code>docs-src/build.py</code>.</p>
+    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>
