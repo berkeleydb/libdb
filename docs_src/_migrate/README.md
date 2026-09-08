@@ -17,6 +17,22 @@ survives. These scripts recover clean, maintainable Markdown from that HTML.
   block or parameter/error sub-section was dropped. Reports mean retention and
   any outlier; exits non-zero on a hard structural drop (for CI).
 
+- **`gen_stl_index.py`** — rebuilds `docs_src/api/stl/index.md`. Unlike the C
+  tree, whose `index.html` carries the full 446-entry method table, the
+  upstream STL `index.html` is titlepage-only (3698 bytes: legal notice, no
+  TOC) — STL navigation lived in the frameset sidebar `frame_index.html`, which
+  the migration converted but which no longer renders as nav. So the STL
+  landing page had no links at all and the whole 322-page tree was unreachable.
+  This script derives the index from the tree's own converted pages: chapter
+  ORDER from `frame_index.md`, and each chapter's member rows copied verbatim
+  from that chapter page's `Public Members` table. Nothing is invented, and it
+  is idempotent — rerun it after editing any STL chapter's member table.
+
+  ```sh
+  python3 docs_src/_migrate/gen_stl_index.py             # rewrite index.md
+  python3 docs_src/_migrate/gen_stl_index.py --selfcheck  # guard the row copy
+  ```
+
 ## Run (needs pandoc — use the dev shell)
 
 ```sh
