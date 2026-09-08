@@ -87,6 +87,10 @@ If the `DB_MPOOL_NEW` flag was set, and the source file was not opened for writi
 
 For transactions configured with <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="link">DB_TXN_SNAPSHOT</a>, the page has been modified since the transaction began.
 
+#### DB_SNAPSHOT_CONFLICT
+
+For a transaction begun with <a href="txnbegin.md#txnbegin_DB_TXN_SNAPSHOT" class="link">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), this read skipped newer versions of the page created by concurrent snapshot transactions and recording the resulting read/write anti-dependency would make this transaction the pivot of a dependency structure that could produce a non-serializable schedule. The transaction must be aborted, and may then be retried. See <a href="../../guides/programmer_reference/program_errorret.md" class="olink">Error Returns to Applications</a>.
+
 #### ENOMEM
 
 The cache is full, and no more pages will fit in the cache.

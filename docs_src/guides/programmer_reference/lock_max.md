@@ -42,7 +42,7 @@ By default a minimum number of locking objects are allocated at startup. To avoi
 
   Specifies the number of lockers that can simultaneously request locks in the system.
 
-- `DB_MEM_LOCKOBJECTS`
+- `DB_MEM_LOCKOBJECT`
 
   Specifies the number of objects that can simultaneously be locked in the system.
 
