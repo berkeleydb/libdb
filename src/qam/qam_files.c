@@ -332,6 +332,99 @@ err:
 }
 
 /*
+ * __qam_extent_maxpage --
+ *	Find the highest page number that any extent file present on disk can
+ *	hold.
+ *
+ * A queue's meta page records first_recno/cur_recno, and the page numbers
+ * derived from them are trusted from the file.  For a queue with extents the
+ * main .db file holds only the meta page -- every data page lives in a separate
+ * __dbq.<name>.<extid> file -- so the main file's size says nothing at all about
+ * which pages may exist.  The only on-disk evidence of the queue's true extent
+ * is which extent files are actually there, so read the directory once and take
+ * the largest id.
+ *
+ * A missing extent is NOT an error: consuming from a queue unlinks extents and
+ * legitimately leaves holes.  This gives a bound on where the queue *ends*, not
+ * a claim that everything below it is present.
+ *
+ * *maxpagep is set to PGNO_INVALID when no extent file exists at all, which is
+ * a legitimate state (a newly created or fully consumed queue).
+ *
+ * PUBLIC: int __qam_extent_maxpage __P((DB *, db_pgno_t *));
+ */
+int
+__qam_extent_maxpage(dbp, maxpagep)
+	DB *dbp;
+	db_pgno_t *maxpagep;
+{
+	ENV *env;
+	QUEUE *qp;
+	size_t len;
+	u_long extid, maxextid;
+	int cnt, i, found, ret;
+	char *buf, *dirbuf, **names;
+
+	env = dbp->env;
+	qp = (QUEUE *)dbp->q_internal;
+	buf = dirbuf = NULL;
+	names = NULL;
+	cnt = 0;
+	found = 0;
+	maxextid = 0;
+	*maxpagep = PGNO_INVALID;
+
+	/* No extents configured, or nothing to look at: nothing to bound. */
+	if (qp->page_ext == 0 || qp->name == NULL ||
+	    F_ISSET(dbp, DB_AM_INMEM))
+		return (0);
+
+	if ((ret = __db_appname(env,
+	    DB_APP_DATA, qp->dir, NULL, &dirbuf)) != 0)
+		return (ret);
+	if ((ret = __os_dirlist(env, dirbuf, 0, &names, &cnt)) != 0)
+		goto err;
+
+	/* Build the "__dbq.<name>." prefix that this queue's extents share. */
+	len = strlen(QUEUE_EXTENT_HEAD) + strlen(qp->name) + 1;
+	if ((ret = __os_malloc(env, len, &buf)) != 0)
+		goto err;
+	len = (size_t)snprintf(buf, len, QUEUE_EXTENT_HEAD, qp->name);
+
+	for (i = 0; i < cnt; i++) {
+		if (strncmp(names[i], buf, len) != 0)
+			continue;
+		extid = strtoul(&names[i][len], NULL, 10);
+		if (!found || extid > maxextid) {
+			maxextid = extid;
+			found = 1;
+		}
+	}
+
+	/*
+	 * Pages in extent e are e*page_ext+1 .. (e+1)*page_ext, since
+	 * QAM_PAGE_EXTENT() is (pgno - 1) / page_ext.  Saturate rather than
+	 * wrap: a bogus extent file name can be any 32-bit value, and a bound
+	 * that overflowed to a small number would reject real pages.
+	 */
+	if (found) {
+		if (maxextid >= (u_long)(PGNO_INVALID - 1) / qp->page_ext)
+			*maxpagep = (db_pgno_t)PGNO_INVALID - 1;
+		else
+			*maxpagep =
+			    (db_pgno_t)((maxextid + 1) * qp->page_ext);
+	}
+
+err:	if (names != NULL)
+		__os_dirfree(env, names, cnt);
+	if (buf != NULL)
+		__os_free(env, buf);
+	if (dirbuf != NULL)
+		__os_free(env, dirbuf);
+	return (ret);
+}
+
+/*
  * __qam_fclose -- close an extent.
  *
  * Calculate which extent the page is in and close it.

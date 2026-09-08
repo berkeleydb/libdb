@@ -98,7 +98,8 @@ jobs:
         run: |
           set -e
           for r in run_hash_unsorted_cmp run_recd_compact run_recd_handlers run_upgrade \
-                   run_lock_priority_nullderef run_null_method_slots; do
+                   run_lock_priority_nullderef run_null_method_slots \
+                   run_qam_extent_vrfy; do
             echo "::group::$r"
             bash "../test/db/$r.sh"
             echo "::endgroup::"

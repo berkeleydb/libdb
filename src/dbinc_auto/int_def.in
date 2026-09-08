@@ -1916,6 +1916,7 @@
 #define	__qam_mswap __qam_mswap@DB_VERSION_UNIQUE_NAME@
 #define	__qam_pgin_out __qam_pgin_out@DB_VERSION_UNIQUE_NAME@
 #define	__qam_fprobe __qam_fprobe@DB_VERSION_UNIQUE_NAME@
+#define	__qam_extent_maxpage __qam_extent_maxpage@DB_VERSION_UNIQUE_NAME@
 #define	__qam_fclose __qam_fclose@DB_VERSION_UNIQUE_NAME@
 #define	__qam_fremove __qam_fremove@DB_VERSION_UNIQUE_NAME@
 #define	__qam_sync __qam_sync@DB_VERSION_UNIQUE_NAME@
