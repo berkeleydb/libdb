@@ -97,14 +97,6 @@ main(argc, argv)
 	if (argc <= 0)
 		return (usage());
 
-	if (mflag) {
-		dname = argv[0];
-		fname = NULL;
-	} else {
-		fname = argv[0];
-		dname = NULL;
-	}
-
 	/* Handle possible interruptions. */
 	__db_util_siginit();
 
@@ -169,6 +161,21 @@ retry:	if ((ret = db_env_create(&dbenv, 0)) != 0) {
 	 * enabled.
 	 */
 	for (; !__db_util_interrupted() && argv[0] != NULL; ++argv) {
+		/*
+		 * Resolve the name for THIS iteration.  These used to be set
+		 * once before the loop, so every file after the first was
+		 * verified as a repeat of the first while the message at the
+		 * bottom of the loop printed the current argv[0] -- the output
+		 * looked right while the work was wrong, and a corrupt second
+		 * file was reported as clean.
+		 */
+		if (mflag) {
+			dname = argv[0];
+			fname = NULL;
+		} else {
+			fname = argv[0];
+			dname = NULL;
+		}
 		if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 			dbenv->err(dbenv, ret, "%s: db_create", progname);
 			goto err;
