@@ -37,6 +37,12 @@ docs_src/api/stl/db_vector_base_iterator.md	explictily
 docs_src/api/stl/db_vector_iterator.md	explictily
 docs_src/api/stl/dbstl_global_functions.md	exisiting
 docs_src/api/stl/dbstl_helper_classes.md	Wappers
+docs_src/api/stl/index.md	Wappers
+docs_src/api/stl/index.md	exisiting
+docs_src/api/stl/index.md	neccessary
+docs_src/api/stl/index.md	refered
+docs_src/api/stl/index.md	singeleton
+docs_src/api/stl/index.md	unequality
 docs_src/api/stl/stlDbstlDbtoperator_assign.md	neccessary
 docs_src/api/stl/stlDbstlElemTraitscompare.md	compatiable
 docs_src/api/stl/stlDbstlElemTraitscompare.md	funcitons
