@@ -368,11 +368,24 @@ jobs:
         run: msbuild Berkeley_DB_vs2010.sln /m /t:db /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0
 
   # ----------------------------------------------------------------------------
-  # Windows ARM64 cross-build (best-effort).  GitHub has no Windows-on-ARM
-  # runner, so this can only cross-compile from the x64 runner and verify the
-  # machine type of the output -- it never RUNS an ARM64 binary.  Treat a green
-  # result as "the ARM64 configurations still build and still emit AA64", not
-  # as evidence that libdb works on ARM64.
+  # Windows ARM64: configuration drift check, plus a best-effort cross-build.
+  #
+  # The drift check always runs -- it needs only Python, and it is the part that
+  # actually guards against a project being added without its ARM64
+  # configurations.
+  #
+  # The cross-build is conditional because the hosted runner image does not ship
+  # the MSVC ARM64 cross tools.  (It has VS2026/v180 with the v143 *x64* tools --
+  # which is why the x64 job above passes with /p:PlatformToolset=v143 -- but no
+  # v143 ARM64, so pinning that toolset fails with MSB8020.)  Rather than pin a
+  # toolset that may not exist, probe for an ARM64 cl.exe and let msbuild use the
+  # installed default; if there is no ARM64 compiler at all, warn and skip.  When
+  # the runner image gains the component this starts verifying for real with no
+  # change here.
+  #
+  # Even when it does run, this can only cross-compile and inspect: GitHub has no
+  # Windows-on-ARM runner, so no ARM64 binary is ever executed.  A green result
+  # means "still builds, still emits AA64", never that libdb works on ARM64.
   # ----------------------------------------------------------------------------
   windows-arm64:
     name: windows msbuild (ARM64 cross)
@@ -386,11 +399,29 @@ jobs:
       - name: Check the ARM64 configurations are in sync
         run: python dist/win_arm64_configs.py --check
       - uses: microsoft/setup-msbuild@v2
+      - name: Look for an ARM64 cross-compiler
+        id: arm64tools
+        shell: pwsh
+        run: |
+          $glob = 'C:\Program Files*\Microsoft Visual Studio\*\*\VC\Tools\MSVC\*\bin\Host*\arm64\cl.exe'
+          $cl = Get-ChildItem -Path $glob -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($cl) {
+            Add-Content $env:GITHUB_OUTPUT 'found=true'
+            "ARM64 cross-compiler: $($cl.FullName)"
+          } else {
+            Add-Content $env:GITHUB_OUTPUT 'found=false'
+            "::warning title=arm64-toolset::This runner has no MSVC ARM64 cross-compiler, so the ARM64 cross-build was skipped. The ARM64 configurations were still checked for drift. Build them locally with the VC.Tools.ARM64 component -- see docs_src/guides/installation/win_build_arm64.md."
+          }
       - name: Cross-build the library and utilities for ARM64
+        if: steps.arm64tools.outputs.found == 'true'
         shell: cmd
         working-directory: build_windows
-        run: msbuild Berkeley_DB_vs2010.sln /m /t:db;db_archive;db_checkpoint;db_deadlock;db_dump;db_hotbackup;db_load;db_log_verify;db_printlog;db_recover;db_replicate;db_stat;db_tuner;db_upgrade;db_verify /p:Configuration=Release /p:Platform=ARM64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0
+        # No /p:PlatformToolset here on purpose: pin nothing and let msbuild use
+        # whichever toolset the installed VS owns, since that is the install the
+        # ARM64 compiler we just found belongs to.
+        run: msbuild Berkeley_DB_vs2010.sln /m /t:db;db_archive;db_checkpoint;db_deadlock;db_dump;db_hotbackup;db_load;db_log_verify;db_printlog;db_recover;db_replicate;db_stat;db_tuner;db_upgrade;db_verify /p:Configuration=Release /p:Platform=ARM64 /p:WindowsTargetPlatformVersion=10.0
       - name: Verify every artifact is a genuine ARM64 (AA64) image
+        if: steps.arm64tools.outputs.found == 'true'
         shell: pwsh
         working-directory: build_windows/ARM64/Release
         # Read the PE header directly rather than shelling out to dumpbin, so
