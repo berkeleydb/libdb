@@ -2,5 +2,27 @@
 # src/-only, gcov/lcov, representative test subset (see test/coverage/README.md).
 # The Coverage workflow warns (advisory) if branch coverage drops >0.5% below this.
 # Update after landing new tests that raise coverage (ratchet upward, never down).
-line=68.0
-branch=50.2
+#
+# THESE NUMBERS COME FROM test/coverage/run_coverage.sh -- the script
+# .github/workflows/coverage.yml actually runs -- and from nothing else.
+#
+# That distinction matters and was previously wrong here.  From commit 1ced5023
+# until now this file carried FULL-SUITE figures (48.0/36.1, then 62.3/46.2 for
+# report #2, then 68.0/50.2 for report #3).  Those were produced by
+# full_run2_par.sh / full_run3_combined.sh / full_run4.sh, which run the ENTIRE
+# Tcl suite in parallel (5 access methods x ~135 tests, ~20 subsystem groups, 37
+# replication tests).  run_coverage.sh deliberately runs a BOUNDED ~34-test
+# curated subset instead.  So the ratchet was comparing a subset measurement
+# against a full-suite ceiling it structurally could not reach, which made the
+# advisory warning fire unconditionally and hid the real regression signal.
+#
+# Measured 2026-09-09 on an idle dedicated EC2 c7i.24xlarge (96 vCPU, verified
+# load ~0.0), master @ b4d65c25f + the cov_* wiring, gcc/gcov 11.5.0, lcov
+# 2.0-1, `--enable-test --enable-faultinject`, -O0 -g --coverage, wall 34m28s.
+# Denominator includes dbinc_auto (run_coverage.sh does not strip it; reports
+# #2/#3 did, which is a second reason their figures are not comparable).
+#
+# Full-suite figures live in FULL-COVERAGE-REPORT-{2,3,4}.md, not here.
+line=59.4
+branch=40.6
+function=78.6
