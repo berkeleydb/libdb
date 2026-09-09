@@ -241,6 +241,49 @@ alloc:			if ((ret = __os_realloc(env,
 
 	/* If the extent file is not yet open, open it. */
 	if (array->mpfarray[offset].mpf == NULL) {
+		/*
+		 * Stop a runaway walk before it touches the filesystem.
+		 *
+		 * first_recno/cur_recno come from the meta page, and a corrupt or
+		 * hostile one can describe a range spanning most of the recno
+		 * space (QAM_OUTSIDE_QUEUE treats cur < first as a wrapped queue,
+		 * so nearly every recno reads as "inside").  A walk over that
+		 * range asks for one page per record, and each miss costs a
+		 * filename construction plus a stat(2) -- billions of them.
+		 * Issue #159.
+		 *
+		 * The extent files actually present are the only independent
+		 * evidence of how far the queue really goes, so bound by them.
+		 *
+		 * Three things about the placement, each learned the hard way:
+		 *
+		 * - This must come AFTER the extent-array management above, which
+		 *   closes idle extent files when their pinref drops to zero.
+		 *   Returning before it leaks extents until __memp_alloc() spins
+		 *   waiting for buffer-cache space -- a hang, not a fix.
+		 * - Only when not creating: a writer legitimately extends past
+		 *   every existing extent.
+		 * - From the CACHED bound only.  __qam_extent_maxpage() reads the
+		 *   directory, so consulting it per probe would replace one
+		 *   stat(2) with a whole readdir and make the DoS worse.  The
+		 *   cache is dropped below when an extent is created, which is the
+		 *   only way a legitimately higher page can appear.
+		 *
+		 * PGNO_INVALID means no extent exists at all, so no page can be
+		 * found; treating that as "in range" is how the scan stayed
+		 * unbounded.
+		 */
+		if (!LF_ISSET(DB_MPOOL_CREATE)) {
+			if (!qp->q_maxpage_valid &&
+			    __qam_extent_maxpage(dbp, &qp->q_maxpage) == 0)
+				qp->q_maxpage_valid = 1;
+			if (qp->q_maxpage_valid &&
+			    (qp->q_maxpage == PGNO_INVALID ||
+			    pgno > qp->q_maxpage)) {
+				ret = DB_PAGE_NOTFOUND;
+				goto err;
+			}
+		}
 		QAM_EXNAME(qp, extid, buf, sizeof(buf));
 		if ((ret = __memp_fcreate(
 		    env, &array->mpfarray[offset].mpf)) != 0)
@@ -256,8 +299,11 @@ alloc:			if ((ret = __os_realloc(env,
 		__qam_exid(dbp, fid, extid);
 		(void)__memp_set_fileid(mpf, fid);
 		openflags = DB_EXTENT;
-		if (LF_ISSET(DB_MPOOL_CREATE))
+		if (LF_ISSET(DB_MPOOL_CREATE)) {
 			openflags |= DB_CREATE;
+			/* A new extent may exceed the cached bound. */
+			qp->q_maxpage_valid = 0;
+		}
 		if (F_ISSET(dbp, DB_AM_RDONLY))
 			openflags |= DB_RDONLY;
 		if (F_ISSET(env->dbenv, DB_ENV_DIRECT_DB))
