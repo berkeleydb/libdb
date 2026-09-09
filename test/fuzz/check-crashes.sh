@@ -78,7 +78,17 @@ found=0
 # these harnesses process one small file and finish in well under a second, so a
 # seed still running after SEED_TIMEOUT seconds has found a runaway scan.  Use
 # gtimeout on macOS, and if neither exists run unbounded rather than skip.
-SEED_TIMEOUT=${SEED_TIMEOUT:-30}
+# Per-seed ceiling.  These harnesses process one small file, so a seed still
+# running after this has found a runaway scan rather than merely slow work.
+#
+# 30s was too tight once dbfile_dos_qam_extent_scan.seed became a gated seed:
+# that input is a queue meta page claiming a wrapped near-UINT32_MAX range, and
+# even correctly bounded (#159) the walk does real work over the pages the meta
+# page legitimately describes -- measured 16s in a plain build but 74-120s under
+# the ASan library this gate builds by default, a ~5-7x instrumentation cost.
+# 240s keeps a genuine runaway (minutes to hours) clearly distinguishable while
+# not failing on instrumentation overhead.
+SEED_TIMEOUT=${SEED_TIMEOUT:-240}
 if command -v timeout >/dev/null 2>&1; then
 	TIMEOUT_CMD="timeout"
 elif command -v gtimeout >/dev/null 2>&1; then
