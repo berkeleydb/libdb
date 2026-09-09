@@ -1,0 +1,147 @@
+# Performance regression harness (test/bench) — advisory on shared runners,
+# authoritative only on dedicated hardware.
+#
+# Two modes, and the difference matters:
+#
+#   push / pull_request  -> GitHub-hosted runner, `run_bench.sh -q` smoke
+#                           matrix, continue-on-error. This proves the harness
+#                           still BUILDS AND RUNS. Its numbers are NOT
+#                           comparable to the committed baseline: shared
+#                           runners have 2-4 vCPUs, invisible neighbour load,
+#                           and cannot exercise a 96-thread sweep. Never quote
+#                           them as measurements.
+#
+#   workflow_dispatch    -> self-hosted [self-hosted, bench] runner, full
+#                           matrix at -r 5, compared against the committed
+#                           baseline. THIS is the authoritative mode; only its
+#                           PASS/FAIL verdict means anything.
+#
+# There is deliberately no per-push performance gate. A flaky gate gets
+# disabled, and a disabled gate is worth less than none. See
+# test/bench/README.md.
+
+name: Bench
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'test/bench/**'
+      - 'src/**'
+      - '.github/workflows/bench.yml'
+  pull_request:
+    paths:
+      - 'test/bench/**'
+      - 'src/**'
+      - '.github/workflows/bench.yml'
+  workflow_dispatch:
+    inputs:
+      reps:
+        description: 'Repetitions per case (>= 5 for a trustworthy verdict)'
+        default: '5'
+      secs:
+        description: 'Measured window per case, seconds'
+        default: '10'
+      threads:
+        description: 'Thread sweep'
+        default: '1 8 32 96'
+      baseline:
+        description: 'Baseline file to compare against'
+        default: 'test/bench/baseline-c7i.24xlarge.tsv'
+
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------- advisory
+  smoke:
+    name: harness smoke (advisory, shared runner)
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true   # advisory: never gates a merge
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comparison-tool self-check
+        run: python3 test/bench/test_bench_cmp.py
+
+      - name: Build libdb
+        run: |
+          cd build_unix
+          ../dist/configure --enable-o_direct >/dev/null
+          make -j"$(nproc)" >/dev/null
+
+      - name: Run the quick matrix
+        run: |
+          cd test/bench
+          BENCH_HW="github-hosted-$(nproc)vcpu" \
+            timeout 1800 ./run_bench.sh -q -o "$RUNNER_TEMP/smoke.tsv"
+
+      - name: Noise floor of this runner (informational only)
+        run: python3 test/bench/bench_cmp.py --noise "$RUNNER_TEMP/smoke.tsv"
+
+      - name: Note on comparability
+        run: |
+          echo "::notice::Advisory tier: shared-runner numbers are not" \
+               "comparable to the committed baseline. The authoritative" \
+               "comparison runs via workflow_dispatch on dedicated hardware."
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-smoke-results
+          path: ${{ runner.temp }}/smoke.tsv
+          if-no-files-found: warn
+
+  # ----------------------------------------------------------- authoritative
+  gate:
+    name: regression gate (authoritative, dedicated hardware)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, bench]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comparison-tool self-check
+        run: python3 test/bench/test_bench_cmp.py
+
+      - name: Confirm the machine is idle
+        run: |
+          uptime
+          load=$(cut -d' ' -f1 /proc/loadavg)
+          # A busy machine invalidates every number; fail loudly rather than
+          # publishing a verdict measured under someone else's build.
+          awk -v l="$load" 'BEGIN { if (l > 2.0) {
+            print "load average " l " is too high for a trustworthy run"
+            exit 1 } }'
+
+      - name: Build libdb
+        run: |
+          cd build_unix
+          ../dist/configure --enable-o_direct >/dev/null
+          make -j"$(nproc)" >/dev/null
+
+      - name: Measure
+        run: |
+          cd test/bench
+          timeout 14400 ./run_bench.sh \
+            -r "${{ inputs.reps }}" -s "${{ inputs.secs }}" \
+            -n "${{ inputs.threads }}" -o "$RUNNER_TEMP/candidate.tsv"
+
+      - name: Noise floor of this run
+        run: python3 test/bench/bench_cmp.py --noise "$RUNNER_TEMP/candidate.tsv"
+
+      - name: Compare against the committed baseline
+        run: |
+          python3 test/bench/bench_cmp.py \
+            "${{ inputs.baseline }}" "$RUNNER_TEMP/candidate.tsv"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-candidate-results
+          path: ${{ runner.temp }}/candidate.tsv
+          if-no-files-found: warn
