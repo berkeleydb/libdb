@@ -179,6 +179,18 @@ main(int argc, char **argv)
 	if ((ret = db_env_create(&env, 0)) != 0) { fprintf(stderr, "env_create %d\n", ret); return 1; }
 	env->set_errfile(env, stderr);
 	env->set_cachesize(env, 0, 512 * 1024 * 1024, 1);
+	/*
+	 * Size the lock and transaction regions for the widest sweep.  The
+	 * snap workload holds one long-lived DB_TXN_SNAPSHOT transaction per
+	 * thread for the whole run; with the default ~1000-entry regions that
+	 * exhausts txn detail and lock entries at as few as 8 threads, and the
+	 * driver then reports the throughput of a failing workload (measured:
+	 * 1075 ops/sec at 8 threads instead of 2.25M) rather than an error.
+	 */
+	env->set_lk_max_locks(env, 500000);
+	env->set_lk_max_objects(env, 500000);
+	env->set_lk_max_lockers(env, 500000);
+	env->set_tx_max(env, 200000);
 	/* MVCC needs to be enabled on the env for snapshot reads. */
 	if ((ret = env->open(env, "./ISODB", DB_CREATE | DB_INIT_MPOOL |
 	    DB_INIT_LOCK | DB_INIT_TXN | DB_INIT_LOG | DB_THREAD | DB_MULTIVERSION, 0)) != 0) {
