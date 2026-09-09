@@ -170,7 +170,17 @@ rm -f "$bld/coverage.info" "$bld/coverage-src.info" 2>/dev/null || true
 # --- configure + build with instrumentation ---------------------------------
 echo "== configure (--coverage) =="
 cd "$bld"
-CC=gcc ../dist/configure --enable-test --with-tcl="$TCL_LIB" \
+# --enable-faultinject is REQUIRED by the cov_oom_paths driver below (it prints
+# SKIP and covers nothing without HAVE_FAULT_INJECT).  It is additive and inert
+# until a test arms it (dist/configure.ac: "when off ... bit-for-bit the stock
+# library"), and it touches exactly one src/ file (os/os_alloc.c), so it widens
+# what CAN be measured without distorting what IS measured.
+# --enable-dst is only added when COV_DST=1: the sim core it compiles in is what
+# `make dst_tests` links against, but the 41 DST scenarios need a time budget
+# far past a CI run, so cov_dst SKIPs by default.
+EXTRA_CONF="--enable-faultinject"
+[ "${COV_DST:-0}" = 1 ] && EXTRA_CONF="$EXTRA_CONF --enable-dst"
+CC=gcc ../dist/configure --enable-test --with-tcl="$TCL_LIB" $EXTRA_CONF \
   CFLAGS="-O0 -g --coverage" LDFLAGS="--coverage" >/tmp/cov-configure.log 2>&1 \
   || { echo "configure failed:"; tail -30 /tmp/cov-configure.log; exit 1; }
 
@@ -275,6 +285,19 @@ fi
 #     off-page-duplicate page chain -- see test/coverage/README.md.)
 # Both self-clean their home dir and run under a hard timeout, so they cannot
 # hang.  Set COV_XA_UPG=0 to skip.
+# Every C driver below compiles a small program against the just-built libdb.
+# Those that prefer the STATIC build_unix/libdb.a (run_recd_compact.sh,
+# run_recd_handlers.sh, run_hash_unsorted_cmp.sh -- static because on macOS the
+# .dylib's baked-in install name beats -rpath) need --coverage on their OWN link
+# line too: the archive's objects reference __gcov_init/__gcov_exit/
+# __gcov_merge_add, and nothing else pulls in libgcov.  Without this those three
+# drivers fail to LINK under this script and contribute zero coverage -- they
+# did exactly that, silently, on every run before this line existed.  The
+# .so-linking drivers already get libgcov from the shared library and are
+# unaffected (they just also instrument their own driver source, which the
+# `*/src/*` extract discards).
+export CFLAGS="${CFLAGS:-} --coverage"
+
 if [ "${COV_XA_UPG:-1}" = 1 ]; then
   echo "== run XA + upgrade drivers (COV_XA_UPG=1) =="
   if sh "$root/test/xa/run_xa_direct.sh" >/tmp/cov-xa.log 2>&1; then
@@ -481,6 +504,66 @@ if [ "${COV_RECD:-1}" = 1 ]; then
   done
   rm -f "$recdtcl"
   echo "  .gcda files after recd: $(find . -name '*.gcda' | wc -l)"
+fi
+
+# --- optional cov_* C drivers (COV_C_DRIVERS=1, default on) ------------------
+# The drivers added by PR #147.  Each is a standalone C program (or a runner
+# for an existing-but-never-measured tier) with the same self-clean +
+# hard-timeout shape as the XA/upgrade/backup drivers above, and each closes a
+# gap no Tcl workload can reach:
+#   test/c/cov_api_surface.c   -- the ~60 never-called DB_ENV / DB / DBC /
+#     DB_TXN / DB_MPOOLFILE *getters* and callback-setters in db_method.c /
+#     env_method.c / mp_fmethod.c / db_cds.c, plus the argument-validation
+#     branches of the matching setters.  The Tcl bindings call setters only.
+#   test/c/cov_rep_api.c       -- the rep_* / repmgr_* CONFIG + QUERY surface
+#     and the DB_SITE handle methods, in a single process with no peers: the
+#     config/validation half of rep_method.c / repmgr_method.c that the rep0NN
+#     harness (which only ever uses the default config) never touches.
+#   test/c/cov_logrec_print.c  -- writes a log carrying as many DISTINCT record
+#     types as one process can produce, then walks it through db_printlog so
+#     the ~39 generated per-record printers in src/<sub>/<sub>_autop.c run.
+#   test/c/cov_codecs.c        -- boundary sweep of the two self-contained
+#     codecs, db_compint.c (the varint size classes + the 64-bit decoder that
+#     btree compression never marshals) and db_getlong.c.
+#   test/c/cov_oom_paths.c     -- the OOM error-path sweep.  fi_sweep.c walks
+#     the same seam but its children _exit(), skipping gcov's atexit flush, so
+#     its failure points contribute ZERO measured coverage; this driver calls
+#     __gcov_dump() in each child first.  NEEDS --enable-faultinject (added to
+#     the configure line above) -- without it it prints SKIP and covers
+#     nothing.  Its own TOTAL_SECS budget (1800s) bounds it; COV_OOM_STRIDE
+#     spreads a bounded number of failure points across the whole workload
+#     instead of exhausting the first N.
+# Plus two never-measured tiers that already existed and already passed:
+#   test/c/run_cov_cutest.sh   -- the 9-suite CuTest binary.  TestChannel alone
+#     brings up three live repmgr sites and drives the whole DB_CHANNEL API
+#     (the never-called set in repmgr_method.c); TestDbTuner drives db_tuner.c.
+#     Runs one suite per process so a crashing suite cannot discard the others'
+#     coverage (gcov flushes from atexit).
+#   test/c/run_cov_fuzz_corpus.sh -- replays the committed fuzz corpus + crash
+#     seeds against THIS instrumented build (test/fuzz/run.sh builds its own
+#     ASan tree, so the corrupt-input rejection branches of the verify/salvage
+#     paths have never been counted).
+# cov_dst is listed too but SKIPs unless COV_DST=1 (see the configure line).
+# Set COV_C_DRIVERS=0 to skip the whole block.
+if [ "${COV_C_DRIVERS:-1}" = 1 ]; then
+  echo "== run cov_* C drivers (COV_C_DRIVERS=1) =="
+  # A bounded OOM sweep by default so the block fits a CI budget; set
+  # COV_OOM_STRIDE=1 for the exhaustive sweep.
+  : "${COV_OOM_STRIDE:=4}"
+  export COV_OOM_STRIDE
+  for d in cov_api_surface cov_rep_api cov_logrec_print cov_codecs \
+           cov_cutest cov_fuzz_corpus cov_dst cov_oom_paths; do
+    if sh "$root/test/c/run_$d.sh" >/tmp/cov-$d.log 2>&1; then
+      if grep -q 'SKIP' /tmp/cov-$d.log; then
+        echo "SKIP $d ($(grep -m1 'SKIP' /tmp/cov-$d.log))"
+      else
+        echo "PASS $d"
+      fi
+    else
+      echo "FAIL $d (rc=$?)"; tail -5 /tmp/cov-$d.log
+    fi
+  done
+  echo "  .gcda files after cov_* drivers: $(find . -name '*.gcda' | wc -l)"
 fi
 
 # --- aggregate ---------------------------------------------------------------
