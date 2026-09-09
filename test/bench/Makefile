@@ -6,14 +6,20 @@
 BDB ?= ../../build_unix
 CFLAGS ?= -O2 -pthread
 INCLUDES = -I$(BDB)
-LIBS = -L$(BDB)/.libs -ldb-5.3
+# -rpath is not optional: without it the loader silently picks up a
+# system-installed libdb-5.3 (e.g. /lib64/libdb-5.3.so) and every measurement
+# describes that library instead of this build tree.
+LIBS = -L$(BDB)/.libs -ldb-5.3 -Wl,-rpath,$(abspath $(BDB)/.libs)
 
-BENCHES = scale_bench tproc_c tproc_b tproc_h lock_bench ssi_abort_bench
+BENCHES = scale_bench scale_iso tproc_c tproc_b tproc_h lock_bench ssi_abort_bench
 
 all: $(BENCHES)
 
 scale_bench: scale_bench.c
 	$(CC) $(CFLAGS) $(INCLUDES) scale_bench.c $(LIBS) -o $@
+
+scale_iso: scale_iso.c
+	$(CC) $(CFLAGS) $(INCLUDES) scale_iso.c $(LIBS) -o $@
 
 lock_bench: lock_bench.c
 	$(CC) $(CFLAGS) $(INCLUDES) lock_bench.c $(LIBS) -o $@
@@ -31,5 +37,11 @@ tproc_h: tproc_h.c bdb_bench.h
 	$(CC) $(CFLAGS) $(INCLUDES) tproc_h.c $(LIBS) -o $@
 
 clean:; rm -f $(BENCHES)
+
+# Reproducible regression harness (see README.md): measure, then compare.
+baseline: all
+	./run_bench.sh
+
+.PHONY: baseline
 
 .PHONY: all clean
