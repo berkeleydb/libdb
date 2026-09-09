@@ -455,11 +455,26 @@ and watch the number climb.
 
 ## The ratchet
 
-`baseline.txt` holds the last-known good `line=` and `branch=` percentages. The
-`Coverage` CI workflow (`coverage.yml.workflow`, see below) warns (advisory,
-never gates) if branch coverage drops more than 0.5% below the baseline. When
-you land tests that raise coverage, update `baseline.txt` — ratchet **up**,
-never down.
+`baseline.txt` holds the last-known good `line=`, `branch=` and `function=`
+percentages. The `Coverage` CI workflow (`coverage.yml.workflow`, see below)
+warns (advisory, never gates) if branch coverage drops more than 0.5% below the
+baseline. When you land tests that raise coverage, update `baseline.txt` —
+ratchet **up**, never down.
+
+**The baseline must come from `run_coverage.sh` and nothing else.** This was
+wrong for three generations: at commit `1ced502` the baseline was switched from
+the `run_coverage.sh` subset number (28.8/19.0) to the *full-suite* number
+(48.0/36.1), then updated to 62.3/46.2 and 68.0/50.2 as reports #2 and #3 landed.
+Those come from `full_run2_par.sh` / `full_run3_combined.sh` / `full_run4.sh`,
+which run the entire Tcl suite in parallel; `run_coverage.sh` runs a bounded
+~34-test curated subset. Comparing the two makes the advisory warning fire
+unconditionally and destroys the regression signal. Full-suite figures belong in
+`FULL-COVERAGE-REPORT-*.md`; `baseline.txt` tracks what CI actually runs. See
+`FULL-COVERAGE-REPORT-4.md` for the measurement that corrected this.
+
+Note also that `run_coverage.sh` does **not** strip `*/dbinc_auto/*`, while the
+full-suite reports do — a second reason the two families of number are not
+interchangeable.
 
 ## CI
 
