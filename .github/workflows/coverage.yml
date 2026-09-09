@@ -62,8 +62,16 @@ jobs:
                | grep -oE '[0-9]+\.[0-9]+%' | head -1 | tr -d '%')
           ln=$(grep -E 'lines' build_unix/coverage-summary.txt \
                | grep -oE '[0-9]+\.[0-9]+%' | head -1 | tr -d '%')
+          # FUNCTION coverage is the metric with a reachable target: >85% needs
+          # ~+180 functions, whereas >85% BRANCH would need +27k -- 70% of every
+          # branch currently missing, because ~1662 `if ((ret = f()) != 0)` OOM
+          # legs are reachable only one-per-fault-injection-run.  See
+          # test/coverage/FULL-COVERAGE-REPORT-4.md.
+          fn=$(grep -E 'functions' build_unix/coverage-summary.txt \
+               | grep -oE '[0-9]+\.[0-9]+%' | head -1 | tr -d '%')
           echo "branch=$br" >> "$GITHUB_OUTPUT"
           echo "line=$ln" >> "$GITHUB_OUTPUT"
+          echo "function=$fn" >> "$GITHUB_OUTPUT"
 
       - name: Ratchet (advisory) -- warn if branch coverage dropped
         run: |
@@ -73,7 +81,9 @@ jobs:
           if [ -f "$base_file" ]; then
             base_br=$(grep -E '^branch=' "$base_file" | cut -d= -f2)
             base_ln=$(grep -E '^line=' "$base_file" | cut -d= -f2)
-            echo "baseline: line=${base_ln}% branch=${base_br}%  now: line=${ln}% branch=${br}%"
+            base_fn=$(grep -E '^function=' "$base_file" | cut -d= -f2)
+            echo "baseline: line=${base_ln}% branch=${base_br}% function=${base_fn:-n/a}"
+            echo "now:      line=${ln}% branch=${br}% function=${fn}"
             # bc may be absent; use awk for the float compare.
             drop=$(awk -v a="$br" -v b="$base_br" 'BEGIN{print (a+0 < b-0.5) ? 1 : 0}')
             if [ "$drop" = "1" ]; then
@@ -81,10 +91,20 @@ jobs:
             else
               echo "::notice title=Coverage ratchet::branch coverage ${br}% >= baseline ${base_br}% (ok)"
             fi
+            # Same advisory treatment for function coverage, the metric we
+            # actually track toward 85%.  Skipped when the baseline predates it.
+            if [ -n "${base_fn:-}" ]; then
+              fdrop=$(awk -v a="$fn" -v b="$base_fn" 'BEGIN{print (a+0 < b-0.5) ? 1 : 0}')
+              if [ "$fdrop" = "1" ]; then
+                echo "::warning title=Coverage ratchet::function coverage dropped ${base_fn}% -> ${fn}% (advisory)"
+              else
+                echo "::notice title=Coverage ratchet::function coverage ${fn}% >= baseline ${base_fn}% (ok)"
+              fi
+            fi
           else
             echo "::notice title=Coverage ratchet::no baseline file yet; current branch=${br}% line=${ln}%"
           fi
-          echo "To update the committed baseline: put 'line=${ln}' and 'branch=${br}' in $base_file"
+          echo "To update the committed baseline: put 'line=${ln}', 'branch=${br}' and 'function=${fn}' in $base_file"
 
       - name: Upload HTML report
         if: always()
