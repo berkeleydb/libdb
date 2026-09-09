@@ -87,6 +87,8 @@ source: docs/installation/index.html
 
 <span class="sect2"> [x64 build with Visual Studio 2005 or newer](win_build64.md#idp259672) </span>
 
+<span class="sect1"> [Building Berkeley DB for Windows on ARM64](win_build_arm64.md) </span>
+
 <span class="sect1"> [Building Berkeley DB with Cygwin](win_build_cygwin.md) </span>
 
 <span class="sect1"> [Building the C++ API](win_build_cxx.md) </span>
