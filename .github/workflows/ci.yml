@@ -368,6 +368,47 @@ jobs:
         run: msbuild Berkeley_DB_vs2010.sln /m /t:db /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0
 
   # ----------------------------------------------------------------------------
+  # Windows ARM64 cross-build (best-effort).  GitHub has no Windows-on-ARM
+  # runner, so this can only cross-compile from the x64 runner and verify the
+  # machine type of the output -- it never RUNS an ARM64 binary.  Treat a green
+  # result as "the ARM64 configurations still build and still emit AA64", not
+  # as evidence that libdb works on ARM64.
+  # ----------------------------------------------------------------------------
+  windows-arm64:
+    name: windows msbuild (ARM64 cross)
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check the ARM64 configurations are in sync
+        run: python dist/win_arm64_configs.py --check
+      - uses: microsoft/setup-msbuild@v2
+      - name: Cross-build the library and utilities for ARM64
+        shell: cmd
+        working-directory: build_windows
+        run: msbuild Berkeley_DB_vs2010.sln /m /t:db;db_archive;db_checkpoint;db_deadlock;db_dump;db_hotbackup;db_load;db_log_verify;db_printlog;db_recover;db_replicate;db_stat;db_tuner;db_upgrade;db_verify /p:Configuration=Release /p:Platform=ARM64 /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0
+      - name: Verify every artifact is a genuine ARM64 (AA64) image
+        shell: pwsh
+        working-directory: build_windows/ARM64/Release
+        # Read the PE header directly rather than shelling out to dumpbin, so
+        # this does not depend on the VC tools being on PATH.  IMAGE_FILE_MACHINE_ARM64
+        # is 0xAA64 and lives 4 bytes past the PE signature at e_lfanew.
+        run: |
+          $bad = 0
+          Get-ChildItem -Include *.dll,*.exe -Path * | ForEach-Object {
+            $b = [IO.File]::ReadAllBytes($_.FullName)
+            $pe = [BitConverter]::ToInt32($b, 0x3C)
+            $machine = [BitConverter]::ToUInt16($b, $pe + 4)
+            $hex = '0x{0:X4}' -f $machine
+            if ($machine -eq 0xAA64) { "OK   $($_.Name)  $hex (ARM64)" }
+            else { "FAIL $($_.Name)  $hex (expected 0xAA64)"; $bad++ }
+          }
+          if ($bad -gt 0) { throw "$bad artifact(s) are not ARM64" }
+
+  # ----------------------------------------------------------------------------
   # Meson/Ninja build of the core library (parallel build system).
   # ----------------------------------------------------------------------------
   meson:
