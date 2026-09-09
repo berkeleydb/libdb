@@ -69,6 +69,21 @@ struct __queue {
 	char *name;			/* The name of the file. */
 	char *dir;			/* The dir of the file. */
 	int mode;			/* Mode to open extents. */
+
+	/*
+	 * Cached upper bound on the pages the extent files present on disk can
+	 * hold, used to stop a walk that a corrupt meta page would otherwise
+	 * send probing billions of nonexistent extents (issue #159).
+	 *
+	 * Consulted only when an extent is not already open, so a walk over
+	 * extents that are present costs nothing.  Dropped when an extent is
+	 * created, which is the only way a legitimately higher page appears.
+	 * This struct is per-handle heap memory (__os_calloc in
+	 * __qam_db_create) with no on-disk or shared-region role, so caching
+	 * here changes no file format and no ABI.
+	 */
+	db_pgno_t q_maxpage;		/* Last page a present extent can hold. */
+	int q_maxpage_valid;		/* q_maxpage has been computed. */
 };
 
 /* Format for queue extent names. */
