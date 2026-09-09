@@ -492,7 +492,16 @@ __qam_vrfy_walkqueue(dbp, vdp, handle, callback, flags)
 	 */
 	if ((ret = __qam_extent_maxpage(dbp, &maxpage)) != 0)
 		return (ret);
-	if (maxpage != PGNO_INVALID && stop > maxpage)
+	if (maxpage == PGNO_INVALID)
+		/*
+		 * No extent file exists at all -- a newly created or fully
+		 * consumed queue.  There are no extent pages to walk, so
+		 * scanning to `stop` would probe every page the meta page
+		 * claims: billions for a wrapped queue, one stat(2) apiece.
+		 * #163 skipped the clamp here and so left this case unbounded.
+		 */
+		stop = first;
+	else if (stop > maxpage)
 		stop = maxpage;
 	nextents = vdp->nextents;
 
