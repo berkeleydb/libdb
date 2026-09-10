@@ -274,7 +274,7 @@ __partition_open(dbp, ip, txn, fname, type, flags, mode, do_open)
 	DB_PARTITION *part;
 	DBC *dbc;
 	ENV *env;
-	u_int32_t part_id;
+	u_int32_t cq_i, part_id;
 	int ret;
 	char *name, *sp;
 	const char **dirp, *np;
@@ -357,9 +357,12 @@ __partition_open(dbp, ip, txn, fname, type, flags, mode, do_open)
 	}
 
 	/* Get rid of the cursor used to open the database its the wrong type */
-done:	while ((dbc = TAILQ_FIRST(&dbp->free_queue)) != NULL)
-		if ((ret = __dbc_destroy(dbc)) != 0)
-			break;
+done:	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
+		while ((dbc =
+		    TAILQ_FIRST(&dbp->cq_parts[cq_i].free_queue)) != NULL)
+			if ((ret = __dbc_destroy(dbc)) != 0)
+				goto donebreak;
+donebreak:
 
 	if (0) {
 err:		(void)__partition_close(dbp, txn, 0);
