@@ -1,0 +1,145 @@
+# libdb cursor-shard sweep  variants=master,shard,fixed  suffix=''
+# reps=5 secs=10 nkeys=100000 primary_threads='1 8 16 24 48 96' ctrl_threads='24'
+# hw=
+# cpu=Intel(R) Xeon(R) Platinum 8488C vcpus=96
+# numa_nodes=1 kernel=6.18.44-99.149.amzn2023.x86_64 gcc=11
+# thp=always madvise [never] numa_bal=0
+# mutex_tier=1
+# loadavg_start=2.78 5.09 3.87
+variant	workload	threads	rep	ops_per_sec	lockpart_pct	mpoolhash_pct	lockers_pct
+master	rrand	1	1	926867	0.0	0.0	0.0
+shard	rrand	1	1	907639	0.0	0.0	0.0
+fixed	rrand	1	1	916862	0.0	0.0	0.0
+master	rrand	8	1	584310	0.0	0.0	7.1
+shard	rrand	8	1	391126	0.0	0.0	28.6
+fixed	rrand	8	1	2177839	0.1	0.0	14.3
+master	rrand	16	1	297170	0.0	0.0	7.4
+shard	rrand	16	1	161127	0.0	0.0	56.7
+fixed	rrand	16	1	4027968	0.1	0.0	7.1
+master	rrand	24	1	200823	0.0	0.0	46.2
+shard	rrand	24	1	121854	0.0	0.0	46.2
+fixed	rrand	24	1	3603558	0.1	0.0	70.7
+master	rrand	48	1	81392	0.0	0.0	0.0
+shard	rrand	48	1	104994	0.0	0.0	58.0
+fixed	rrand	48	1	3506431	0.1	0.0	63.6
+master	rrand	96	1	52254	0.0	0.0	37.8
+shard	rrand	96	1	128392	0.0	0.0	64.4
+fixed	rrand	96	1	2015789	0.1	0.0	67.6
+master	rhot	24	1	188272	9.0	0.0	47.4
+shard	rhot	24	1	101559	1.4	0.0	16.2
+fixed	rhot	24	1	215984	74.1	0.0	0.0
+master	sepdb	24	1	2696272	0.1	0.0	95.2
+shard	sepdb	24	1	2712495	0.1	0.0	92.3
+fixed	sepdb	24	1	3014592	0.1	0.0	53.8
+master	none	24	1	0			
+shard	none	24	1	0			
+fixed	none	24	1	0			
+master	rrand	1	2	921555	0.0	0.0	0.0
+shard	rrand	1	2	934910	0.0	0.0	0.0
+fixed	rrand	1	2	925619	0.0	0.0	0.0
+master	rrand	8	2	594687	0.0	0.0	42.9
+shard	rrand	8	2	400830	0.0	0.0	0.0
+fixed	rrand	8	2	2283016	0.1	0.0	57.1
+master	rrand	16	2	259637	0.0	0.0	72.4
+shard	rrand	16	2	167177	0.0	0.0	11.1
+fixed	rrand	16	2	3294383	0.1	0.0	25.9
+master	rrand	24	2	172573	0.0	0.0	16.2
+shard	rrand	24	2	96208	0.0	0.0	16.2
+fixed	rrand	24	2	3885661	0.1	0.0	8.1
+master	rrand	48	2	76016	0.0	0.0	69.8
+shard	rrand	48	2	105973	0.0	0.0	61.8
+fixed	rrand	48	2	3590889	0.1	0.0	53.2
+master	rrand	96	2	51872	0.0	0.0	82.7
+shard	rrand	96	2	131336	0.0	0.0	71.4
+fixed	rrand	96	2	2096054	0.1	0.0	64.3
+master	rhot	24	2	185112	10.5	0.0	81.4
+shard	rhot	24	2	97523	1.3	0.0	10.8
+fixed	rhot	24	2	221078	34.4	0.0	18.9
+master	sepdb	24	2	2494215	0.1	0.0	97.5
+shard	sepdb	24	2	2752211	0.1	0.0	95.0
+fixed	sepdb	24	2	2792159	0.1	0.0	21.6
+master	none	24	2	0			
+shard	none	24	2	0			
+fixed	none	24	2	0			
+master	rrand	1	3	928816	0.0	0.0	0.0
+shard	rrand	1	3	919396	0.0	0.0	0.0
+fixed	rrand	1	3	925415	0.0	0.0	0.0
+master	rrand	8	3	537347	0.0	0.0	28.6
+shard	rrand	8	3	396060	0.0	0.0	21.4
+fixed	rrand	8	3	2533914	0.1	0.0	42.9
+master	rrand	16	3	303648	0.0	0.0	18.5
+shard	rrand	16	3	174873	0.0	0.0	14.8
+fixed	rrand	16	3	3288057	0.1	0.0	11.1
+master	rrand	24	3	193605	0.0	0.0	48.7
+shard	rrand	24	3	94541	0.0	0.0	16.2
+fixed	rrand	24	3	3706043	0.1	0.0	63.2
+master	rrand	48	3	79911	0.0	0.0	0.0
+shard	rrand	48	3	106842	0.0	0.0	66.7
+fixed	rrand	48	3	3674854	0.1	0.0	65.1
+master	rrand	96	3	51317	0.0	0.0	65.5
+shard	rrand	96	3	132457	0.0	0.0	75.5
+fixed	rrand	96	3	2051262	0.1	0.0	29.7
+master	rhot	24	3	181232	9.6	0.0	85.7
+shard	rhot	24	3	106182	1.4	0.0	25.0
+fixed	rhot	24	3	222216	76.7	0.0	56.1
+master	sepdb	24	3	2902010	0.1	0.0	94.7
+shard	sepdb	24	3	3144621	0.1	0.0	92.7
+fixed	sepdb	24	3	2650679	0.1	0.0	30.6
+master	none	24	3	0			
+shard	none	24	3	0			
+fixed	none	24	3	0			
+master	rrand	1	4	929395	0.0	0.0	0.0
+shard	rrand	1	4	932383	0.0	0.0	0.0
+fixed	rrand	1	4	908569	0.0	0.0	0.0
+master	rrand	8	4	553147	0.0	0.0	64.3
+shard	rrand	8	4	384296	0.0	0.0	21.4
+fixed	rrand	8	4	2484324	0.1	0.0	50.0
+master	rrand	16	4	280728	0.0	0.0	0.0
+shard	rrand	16	4	157403	0.0	0.0	3.7
+fixed	rrand	16	4	3251460	0.1	0.0	0.0
+master	rrand	24	4	171393	0.0	0.0	10.8
+shard	rrand	24	4	118063	0.0	0.0	17.9
+fixed	rrand	24	4	3420285	0.1	0.0	61.5
+master	rrand	48	4	79234	0.0	0.0	47.4
+shard	rrand	48	4	108738	0.0	0.0	0.0
+fixed	rrand	48	4	3650038	0.1	0.0	10.8
+master	rrand	96	4	53035	0.0	0.0	79.6
+shard	rrand	96	4	132070	0.0	0.0	75.5
+fixed	rrand	96	4	1951594	0.1	0.0	28.4
+master	rhot	24	4	198735	9.9	0.0	79.5
+shard	rhot	24	4	90214	1.1	0.0	0.0
+fixed	rhot	24	4	245412	75.5	0.0	36.8
+master	sepdb	24	4	2779482	0.1	0.0	88.9
+shard	sepdb	24	4	2969764	0.1	0.0	94.7
+fixed	sepdb	24	4	2813993	0.1	0.0	43.6
+master	none	24	4	0			
+shard	none	24	4	0			
+fixed	none	24	4	0			
+master	rrand	1	5	920247	0.0	0.0	0.0
+shard	rrand	1	5	924332	0.0	0.0	0.0
+fixed	rrand	1	5	905803	0.0	0.0	0.0
+master	rrand	8	5	556739	0.0	0.0	0.0
+shard	rrand	8	5	405276	0.0	0.0	14.3
+fixed	rrand	8	5	2456548	0.1	0.0	0.0
+master	rrand	16	5	292833	0.0	0.0	44.4
+shard	rrand	16	5	168034	0.0	0.0	29.6
+fixed	rrand	16	5	3654267	0.1	0.0	21.4
+master	rrand	24	5	174288	0.0	0.0	5.4
+shard	rrand	24	5	123296	0.0	0.0	35.9
+fixed	rrand	24	5	3726570	0.1	0.0	59.5
+master	rrand	48	5	76860	0.0	0.0	58.2
+shard	rrand	48	5	108988	0.0	0.0	0.0
+fixed	rrand	48	5	3473046	0.1	0.0	67.7
+master	rrand	96	5	51803	0.0	0.0	76.8
+shard	rrand	96	5	128166	0.0	0.0	72.6
+fixed	rrand	96	5	2028715	0.1	0.0	53.5
+master	rhot	24	5	268274	72.9	0.0	59.5
+shard	rhot	24	5	101898	1.3	0.0	68.3
+fixed	rhot	24	5	235679	74.5	0.0	10.8
+master	sepdb	24	5	2855904	0.1	0.0	97.5
+shard	sepdb	24	5	2699871	0.1	0.0	94.7
+fixed	sepdb	24	5	2855918	0.1	0.0	2.7
+master	none	24	5	0			
+shard	none	24	5	0			
+fixed	none	24	5	0			
+# loadavg_end=19.78 22.40 19.27
