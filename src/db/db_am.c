@@ -24,6 +24,40 @@ static int __dbc_set_priority __P((DBC *, DB_CACHE_PRIORITY));
 static int __dbc_get_priority __P((DBC *, DB_CACHE_PRIORITY* ));
 
 /*
+ * __db_cursor_part --
+ *	Return the cursor-queue partition index for the calling thread.
+ *
+ *	Derived from the thread id (not the process id, and not the optional
+ *	DB_THREAD_INFO block) -- see DB_CURSOR_PART_PICK in db_am.h for why.
+ *
+ * PUBLIC: u_int32_t __db_cursor_part __P((DB *));
+ */
+u_int32_t
+__db_cursor_part(dbp)
+	DB *dbp;
+{
+	db_threadid_t tid;
+	pid_t pid;
+
+	DB_THREADID_INIT(tid);
+	dbp->dbenv->thread_id(dbp->dbenv, &pid, &tid);
+
+#ifdef HAVE_SIMPLE_THREAD_TYPE
+	/*
+	 * A db_threadid_t is a scalar (typically pthread_t, i.e. an address):
+	 * hash it directly.
+	 */
+	return (DB_CURSOR_PART_HASH(tid));
+#else
+	/*
+	 * A db_threadid_t is a struct: fold its bytes first.  __ham_func5 is
+	 * the same hash the thread-info table itself uses for this case.
+	 */
+	return (DB_CURSOR_PART_HASH(__ham_func5(NULL, &tid, sizeof(tid))));
+#endif
+}
+
+/*
  * __db_cq_active_any --
  *	Return 1 if any cursor-queue partition of this handle has an active
  *	cursor, else 0.  Used by the (non-hot) paths that must check for
