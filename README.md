@@ -63,10 +63,30 @@ for full provenance and the per-version index.
   fixed, and a multi-process concurrent-writer stress test (`ssi009`) guards
   against regression. **Still experimental** in that page-granularity conflict
   tracking can raise abort rates under contention (measured by the
-  microbenchmark suite under `test/bench`), and the HA/replication
-  qualification is still being built. Planned performance work is tracked as
-  design proposals under [`rfc/`](rfc/), targeting matching or beating InnoDB
-  and WiredTiger on multicore/NUMA scalability and performance.
+  microbenchmark suite under `test/bench`).
+
+- **Concurrent-read scaling on a shared handle.** `DB->get` allocates and frees a
+  transient cursor per operation, and moving it between the handle's free and
+  active queues used to serialize every `get` on one mutex. Those queues are now
+  sharded per handle, which removes the wall: on a 96-vCPU machine, uniform
+  random reads through one shared `DB_THREAD` handle went from 174k to 3.7M
+  ops/s at 24 threads, and from a *declining* curve past 8 threads to one that
+  keeps climbing. Single-threaded throughput is unchanged, and workloads that
+  contend on the same few pages gain little (they are bound by the lock
+  partition, not cursor allocation). Numbers, method and limits:
+  [`test/bench/CURSOR-SHARD-RESULTS.md`](test/bench/CURSOR-SHARD-RESULTS.md).
+
+- **Replication has an executable isolation test.** `test/repiso/` runs a real
+  two-process master/client pair over a socket and asserts that every page a
+  replicated transaction modified appears in that transaction's commit lock
+  list — the invariant whose violation caused issue #140. Replication was the
+  least-tested subsystem; this is its first isolation gate.
+
+  Further performance work is tracked as design proposals under [`rfc/`](rfc/),
+  targeting matching or beating InnoDB and WiredTiger on multicore/NUMA
+  scalability and performance. Changes are gated by the regression harness in
+  [`test/bench`](test/bench/README.md), whose tolerances are derived from a
+  measured noise floor rather than guessed.
 
 ## Building
 
@@ -127,6 +147,26 @@ tclsh
   % source ../test/tcl/test.tcl
   % ssi001        ;# SSI write-skew test
   % run_std       ;# the standard suite (long)
+```
+
+Beyond the TCL suite, the fork adds targeted tiers that each guard a specific
+class of defect. All run from a plain `--enable-debug` build:
+
+| Tier | What it proves |
+|---|---|
+| [`test/db`](test/db) | one runner per fixed defect, each verified to fail when its fix is reverted |
+| [`test/isolation`](test/isolation) | concurrent schedules validated against *some* serial order (write skew, G2, read-only anomaly) |
+| [`test/soak`](test/soak) | region, mutex and locker counts return to baseline over tens of thousands of transactions |
+| [`test/lockmatrix`](test/lockmatrix) | exhaustive lock-mode matrix under ASan; asserts the invariant, so a newly added mode is covered |
+| [`test/repiso`](test/repiso) | two-process replication: every page a replicated txn modified must appear in its commit lock list |
+| [`test/sim`](test/sim) | deterministic crash/recovery simulation with injected faults |
+| [`test/fuzz`](test/fuzz) | malformed-file corpus with an ASan-instrumented library and a per-seed timeout |
+| [`test/faultinject`](test/faultinject) | sweeps every allocation failure point and asserts clean teardown |
+| [`test/bench`](test/bench) | performance regression gate, tolerances derived from a measured noise floor |
+
+```sh
+bash test/isolation/run.sh      # and soak / lockmatrix / repiso the same way
+bash test/fuzz/check-crashes.sh
 ```
 
 ## Contributing
