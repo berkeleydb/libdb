@@ -12,6 +12,47 @@
 extern "C" {
 #endif
 
+/*
+ * Cursor-queue partition selection.
+ *
+ * Choose a partition for a cursor from the allocating thread so that threads
+ * sharing a DB handle spread their cursor alloc/free across the per-handle
+ * partitions instead of serializing on one mutex.
+ *
+ * The partition must be derived from the THREAD identity, not the process
+ * identity, and must not depend on the optional thread-info block:
+ *
+ *   - DB_THREAD_INFO.dbth_pid is the *process* id (dbenv->thread_id defaults
+ *     to __os_id, which returns env->pid_cache), so every thread in a process
+ *     hashes alike -- the sharding would degenerate to a single partition,
+ *     which is exactly the mutex this code exists to relieve.
+ *   - ip is NULL entirely unless the application called set_thread_count()
+ *     (ENV_ENTER yields NULL when env->thr_hashtab == NULL), so ip cannot be
+ *     the source of the identity either.
+ *
+ * So call dbenv->thread_id for the thread id directly.  DB_CURSOR_NPART is a
+ * power of two; the id is mixed by a Knuth multiplicative hash and the HIGH
+ * bits are taken, because the low/middle bits of a db_threadid_t are poorly
+ * distributed (a pthread_t is typically a stack address, so bits below the
+ * per-thread stack stride are constant).
+ *
+ * DB_CURSOR_PART_PICK  -- partition index for the calling thread.
+ * DB_CURSOR_PART(dbc)  -- the partition struct a cursor belongs to.
+ * CQ_LOCK/CQ_UNLOCK    -- lock/unlock a partition's mutex (no-op when the
+ *                         handle is not threaded, i.e. the mutex is INVALID,
+ *                         exactly as the old single dbp->mutex behaved).
+ */
+#define	DB_CURSOR_PART_HASH(v)						\
+	((u_int32_t)(((u_int32_t)(uintptr_t)(v) * 2654435761U) >> 29) &	\
+	    (DB_CURSOR_NPART - 1))
+
+#define	DB_CURSOR_PART_PICK(dbp, ip)	__db_cursor_part(dbp)
+
+#define	DB_CURSOR_PART(dbc)	(&(dbc)->dbp->cq_parts[(dbc)->part])
+
+#define	CQ_LOCK(env, part)	MUTEX_LOCK(env, (part)->mutex)
+#define	CQ_UNLOCK(env, part)	MUTEX_UNLOCK(env, (part)->mutex)
+
 struct __db_foreign_info; \
 			typedef struct __db_foreign_info DB_FOREIGN_INFO;
 
