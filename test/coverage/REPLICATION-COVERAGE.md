@@ -76,6 +76,33 @@ starts an appointed master + two clients bound to localhost ports from
   `db_repsite.cpp` and add it to the `make` target, then run under a per-test
   timeout. Skipped as out-of-scope multi-process.
 
+## Update: `test/repiso/` covers the multi-process apply path
+
+The "needs real multi-process" gap above is no longer total. `test/repiso/`
+(Tier B4) is a **two-process** master+client harness over a **real TCP socket**
+using the **Base Replication API** — not the in-process message shuffle, and not
+repmgr, so it needs no `db_repsite`.
+
+It exists to observe issue #140's **client-side** isolation consequence, which
+the in-process `rep0NN` harness structurally cannot see: there the client's apply
+and the client's reader are the same thread, so the reader can never hold a lock
+while apply runs. See `test/repiso/README.md`.
+
+What it newly drives, that nothing else here did:
+
+- `__rep_process_txn` → `__lock_get_list` **under genuine lock contention from a
+  separate process** (the client reader holds a read lock on a page apply wants).
+- The master-side commit-lock-list construction in `__lock_vec`'s
+  `DB_LOCK_PUT_READ` path with `IS_REP_MASTER` true — `src/txn/txn.c:881-887`
+  populates that list **only** for a real master, so a single-process
+  `DB_INIT_REP` environment logs an empty list and never exercises it.
+- `__lock_list_print` via `db_printlog`, which is how the tier reads the list
+  back out of the client's own replicated log.
+
+It is one focused shape rather than a coverage sweep, so treat its contribution
+as closing a *reachability* gap, not as a large line-count lift. `rep_lease.c`
+remains at 0% — the tier uses fixed roles and no elections.
+
 ## How to reproduce
 
 ```sh
