@@ -103,9 +103,37 @@ jobs:
         run: |
           set -o pipefail   # do not let tee mask the harness exit status
           rc=0
-          ./run.sh 2>&1 | tee repiso.log || rc=$?
+          # sh explicitly: a lost exec bit must not be able to skip the run.
+          # (It did once -- the job then reported success having tested
+          # nothing, which is the one outcome this tier must never produce.)
+          sh ./run.sh 2>&1 | tee repiso.log || rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
-          exit 0            # verdict is applied in the two steps below
+          exit 0            # verdict is applied in the steps below
+
+      # ---------------------------------------------------------------------
+      # DID IT ACTUALLY RUN?  A harness that never executed produces no
+      # verdict line, and "no failures found" then reads exactly like a pass.
+      # This ran green once on a lost exec bit.  Assert the evidence exists
+      # before any verdict is trusted, on EVERY trigger including advisory
+      # ones -- an advisory tier that silently stopped running is worse than
+      # no tier, because it looks like coverage.
+      # ---------------------------------------------------------------------
+      - name: Assert the harness produced evidence
+        working-directory: test/repiso
+        run: |
+          if ! grep -q 'RESULT verdict=' repiso.log; then
+            echo "::error::Tier B4 produced NO verdict line -- the harness did not run (build failure, lost exec bit, missing db_printlog?). This is not a pass."
+            echo "---- captured output ----"
+            cat repiso.log
+            exit 1
+          fi
+          if ! grep -q 'LOCKLIST: RESULT verdict=' repiso.log; then
+            echo "::error::Tier B4 produced no LOCKLIST verdict -- the gating check did not run."
+            cat repiso.log
+            exit 1
+          fi
+          echo "Evidence present:"
+          grep -c 'RESULT verdict=' repiso.log | sed 's/^/  verdict lines: /'
 
       - name: Summarise
         if: always()
