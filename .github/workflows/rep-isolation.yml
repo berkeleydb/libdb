@@ -1,0 +1,200 @@
+# Tier B4 -- two-site replication isolation harness.
+#
+# Two real OS processes (master + client) over a real TCP socket, using the Base
+# Replication API, closing this tree's last known blind spot: there was no
+# multi-process replication test at all, and issue #140's CLIENT-side isolation
+# consequence had never been directly observed.  It now is -- see
+# test/repiso/README.md.
+#
+# GATING POLICY -- deliberately split, and workflow_dispatch is authoritative.
+#
+#   workflow_dispatch  AUTHORITATIVE.  REPISO_RUNS=5, and the job FAILS on a
+#                      lock-list omission or a master crash.  This is the mode
+#                      to trust before a release and the one to run when
+#                      touching src/lock, src/txn or src/rep.
+#
+#   push / pull_request / schedule
+#                      ADVISORY.  Runs and annotates, never fails the build.
+#
+# Why not a per-push hard gate: a real-socket, two-process, timing-exposed test
+# on a shared GitHub runner will eventually flake, and a flaky GATE gets
+# disabled -- at which point it protects nothing at all.  An advisory signal
+# that always runs, plus an authoritative mode that is trusted, is worth more
+# than a hard gate someone switches off.  This follows the house pattern in
+# test-tiers.yml (B1 per-push hard gate because it is fast and deterministic, B2
+# schedule+dispatch because it is long).
+#
+# The gate itself is the DETERMINISTIC check (REPISO_GATE=locklist): the
+# "every page a replicated txn modified must appear in its commit lock list"
+# invariant, read out of the client's own replicated log with db_printlog.  It is
+# a pure function of the log bytes.  The behavioural repeatable-read check runs
+# in the same pass and is reported, but does not decide the exit status -- it is
+# the timing-exposed one.
+
+name: Tier B4 replication isolation (two-site)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'test/repiso/**'
+      - 'src/lock/**'
+      - 'src/txn/**'
+      - 'src/rep/**'
+      - '.github/workflows/rep-isolation.yml'
+  pull_request:
+    paths:
+      - 'test/repiso/**'
+      - 'src/lock/**'
+      - 'src/txn/**'
+      - 'src/rep/**'
+      - '.github/workflows/rep-isolation.yml'
+  schedule:
+    # 05:23 UTC -- offset from ci.yml (03:17) and test-tiers.yml (04:41) so the
+    # runners do not contend.
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: 'Master/client pairs to run'
+        default: '5'
+      gate:
+        description: 'Which checks gate: locklist (default) or both'
+        default: 'locklist'
+
+concurrency:
+  group: rep-isolation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rep-isolation:
+    name: B4 two-site replication isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liburing-dev
+
+      - name: Build libdb (debug)
+        working-directory: build_unix
+        run: |
+          ../dist/configure --enable-debug
+          make -j"$(nproc)"
+
+      - name: Run the harness
+        id: harness
+        working-directory: test/repiso
+        env:
+          # 180s per pair.  Measured N=8 on an idle EC2 c7i.4xlarge:
+          # 11.65-11.76s (spread 0.11s), ~10s of which is the deliberate
+          # sentinel poll.  The same runs on a box at load 25-37 took 51-92s --
+          # a 7x spread from load alone, which is why the ceiling is generous.
+          # A shared CI runner is closer to the loaded case than the idle one.
+          REPISO_TIMEOUT: 180
+          REPISO_RUNS: ${{ github.event.inputs.runs || 3 }}
+          REPISO_GATE: ${{ github.event.inputs.gate || 'locklist' }}
+        run: |
+          set -o pipefail   # do not let tee mask the harness exit status
+          rc=0
+          # sh explicitly: a lost exec bit must not be able to skip the run.
+          # (It did once -- the job then reported success having tested
+          # nothing, which is the one outcome this tier must never produce.)
+          sh ./run.sh 2>&1 | tee repiso.log || rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0            # verdict is applied in the steps below
+
+      # ---------------------------------------------------------------------
+      # DID IT ACTUALLY RUN?  A harness that never executed produces no
+      # verdict line, and "no failures found" then reads exactly like a pass.
+      # This ran green once on a lost exec bit.  Assert the evidence exists
+      # before any verdict is trusted, on EVERY trigger including advisory
+      # ones -- an advisory tier that silently stopped running is worse than
+      # no tier, because it looks like coverage.
+      # ---------------------------------------------------------------------
+      - name: Assert the harness produced evidence
+        working-directory: test/repiso
+        run: |
+          if ! grep -q 'RESULT verdict=' repiso.log; then
+            echo "::error::Tier B4 produced NO verdict line -- the harness did not run (build failure, lost exec bit, missing db_printlog?). This is not a pass."
+            echo "---- captured output ----"
+            cat repiso.log
+            exit 1
+          fi
+          if ! grep -q 'LOCKLIST: RESULT verdict=' repiso.log; then
+            echo "::error::Tier B4 produced no LOCKLIST verdict -- the gating check did not run."
+            cat repiso.log
+            exit 1
+          fi
+          echo "Evidence present:"
+          grep -c 'RESULT verdict=' repiso.log | sed 's/^/  verdict lines: /'
+
+      - name: Summarise
+        if: always()
+        working-directory: test/repiso
+        run: |
+          echo "== verdicts =="
+          grep -hE 'RESULT verdict=' repiso.log || echo "(none)"
+          echo
+          echo "== lock-list omissions (the gating invariant) =="
+          grep -h '^  *OMISSION' repiso.log || echo "(none)"
+          echo
+          echo "== master crashes =="
+          grep -h 'MASTER CRASHED' repiso.log || echo "(none)"
+
+          # An omission or a crash means the #140 client consequence is live.
+          if grep -q 'OMISSION' repiso.log; then
+            echo "::error::Tier B4 found a commit-lock-list omission: apply on a client would modify a page it holds no lock on (issue #140 client consequence)"
+          fi
+          if grep -q 'MASTER CRASHED' repiso.log; then
+            echo "::error::Tier B4 master crashed -- the #140 master-side heap overflow"
+          fi
+          if grep -q 'verdict=ANOMALY' repiso.log; then
+            echo "::warning::Tier B4 observed the client-side repeatable-read anomaly"
+          fi
+          # NO_EVIDENCE / INCONCLUSIVE mean the harness proved nothing.  That is
+          # not a pass, and on the authoritative path it is not silence either.
+          if grep -qE 'verdict=(NO_EVIDENCE|INCONCLUSIVE|SHAPE_NOT_ESTABLISHED|CLIENT_NEVER_READY|NO_STARTUPDONE|DB_NEVER_REPLICATED)' repiso.log; then
+            echo "::warning::Tier B4 run was inconclusive -- the harness did not reach the decisive path, so a clean result would prove nothing"
+          fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repiso-logs
+          path: |
+            test/repiso/repiso.log
+            test/repiso/build/REPISODIR.*/*.log
+          if-no-files-found: ignore
+
+      # ---------------------------------------------------------------------
+      # The verdict.  Authoritative only on workflow_dispatch; advisory
+      # everywhere else, so a timing flake on a shared runner cannot block a
+      # merge and get this tier switched off.
+      # ---------------------------------------------------------------------
+      - name: Apply verdict (AUTHORITATIVE -- workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: test/repiso
+        run: |
+          if [ "${{ steps.harness.outputs.rc }}" != "0" ]; then
+            echo "Tier B4 FAILED (rc=${{ steps.harness.outputs.rc }}) -- see the verdicts above."
+            exit 1
+          fi
+          echo "Tier B4 passed."
+
+      - name: Apply verdict (ADVISORY -- push/PR/schedule)
+        if: github.event_name != 'workflow_dispatch'
+        working-directory: test/repiso
+        run: |
+          if [ "${{ steps.harness.outputs.rc }}" != "0" ]; then
+            echo "::warning::Tier B4 reported a failure (rc=${{ steps.harness.outputs.rc }}). This run is ADVISORY -- re-run via workflow_dispatch for an authoritative verdict."
+          else
+            echo "Tier B4 passed (advisory run)."
+          fi
