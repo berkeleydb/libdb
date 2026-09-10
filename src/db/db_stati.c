@@ -382,6 +382,7 @@ __db_print_cursor(dbp)
 {
 	DBC *dbc;
 	ENV *env;
+	u_int32_t cq_i;
 	int ret, t_ret;
 
 	env = dbp->env;
@@ -390,20 +391,32 @@ __db_print_cursor(dbp)
 	__db_msg(env, "DB handle cursors:");
 
 	ret = 0;
-	MUTEX_LOCK(dbp->env, dbp->mutex);
 	__db_msg(env, "Active queue:");
-	TAILQ_FOREACH(dbc, &dbp->active_queue, links)
-		if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
-			ret = t_ret;
+	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++) {
+		struct __cq_part *cqp = &dbp->cq_parts[cq_i];
+
+		CQ_LOCK(dbp->env, cqp);
+		TAILQ_FOREACH(dbc, &cqp->active_queue, links)
+			if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
+				ret = t_ret;
+		CQ_UNLOCK(dbp->env, cqp);
+	}
+	MUTEX_LOCK(dbp->env, dbp->mutex);
 	__db_msg(env, "Join queue:");
 	TAILQ_FOREACH(dbc, &dbp->join_queue, links)
 		if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
 			ret = t_ret;
-	__db_msg(env, "Free queue:");
-	TAILQ_FOREACH(dbc, &dbp->free_queue, links)
-		if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
-			ret = t_ret;
 	MUTEX_UNLOCK(dbp->env, dbp->mutex);
+	__db_msg(env, "Free queue:");
+	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++) {
+		struct __cq_part *cqp = &dbp->cq_parts[cq_i];
+
+		CQ_LOCK(dbp->env, cqp);
+		TAILQ_FOREACH(dbc, &cqp->free_queue, links)
+			if ((t_ret = __db_print_citem(dbc)) != 0 && ret == 0)
+				ret = t_ret;
+		CQ_UNLOCK(dbp->env, cqp);
+	}
 
 	return (ret);
 }
