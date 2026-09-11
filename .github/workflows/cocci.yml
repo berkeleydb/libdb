@@ -151,9 +151,8 @@ jobs:
   # only the header-regen drift sub-check is blocking.
   # ---------------------------------------------------------------------------
   abi-diff:
-    name: abi drift (advisory)
+    name: abi drift
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -217,6 +216,13 @@ jobs:
             echo
             echo '```'
             abidiff "$BASE_SO" "$HEAD_SO" 2>&1 | head -200 || true
+            # abidiff's exit status is a bitmask: bit0(1)=error, bit2(4)=ABI
+            # CHANGE, bit3(8)=ABI INCOMPATIBLE change.  Only 8 means a caller
+            # compiled against the base release could break, so that is the one
+            # worth failing on; 4 alone covers benign additions.
+            abidiff "$BASE_SO" "$HEAD_SO" >/dev/null 2>&1; ABI_RC=$?
+            echo "abidiff exit bitmask: $ABI_RC"
+            echo "abi_rc=$ABI_RC" >> "$GITHUB_OUTPUT"
             echo '```'
             echo
             echo "#### Removed exported symbols (nm -D, _NNNN version suffix normalized)"
@@ -236,8 +242,43 @@ jobs:
           } > /tmp/abi-report.md
           cat /tmp/abi-report.md
 
-      - name: Post ABI report to PR
+      # The report above is informational; THIS is the gate.  It is deliberately
+      # narrow: only an ABI-INCOMPATIBLE change (abidiff bit3) fails, because
+      # that is the case where a caller built against the previous release could
+      # break.  Benign additions (bit2) are reported and allowed.
+      #
+      # Escape hatch: a deliberate ABI break -- e.g. removing DB_TXN_SNAPSHOT_SAFE
+      # in 5.3.34 -- is declared by putting the literal token ABI-BREAK-INTENDED
+      # in the PR body or the head commit message.  It must be explicit, so an
+      # accidental break cannot pass as an intended one.
+      - name: ABI compatibility gate
         if: always()
+        env:
+          ABI_RC: ${{ steps.abi.outputs.abi_rc }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          rc="${ABI_RC:-0}"
+          if [ "$rc" = "" ]; then rc=0; fi
+          # No comparison happened (no base tag, build skipped): nothing to gate.
+          if [ "$rc" -eq 0 ]; then
+            echo "::notice title=ABI::No ABI change against the base release."
+            exit 0
+          fi
+          if [ $((rc & 8)) -eq 0 ]; then
+            echo "::notice title=ABI::abidiff reports changes (bitmask $rc) but none ABI-incompatible."
+            exit 0
+          fi
+          if printf '%s' "$PR_BODY" | grep -q 'ABI-BREAK-INTENDED' ||
+             git log -1 --format=%B | grep -q 'ABI-BREAK-INTENDED'; then
+            echo "::warning title=ABI::ABI-INCOMPATIBLE change, declared intentional via ABI-BREAK-INTENDED."
+            exit 0
+          fi
+          echo "::error title=ABI::abidiff reports an ABI-INCOMPATIBLE change (bitmask $rc) against the base release."
+          echo "::error::If this is deliberate, put ABI-BREAK-INTENDED in the PR body or commit message and say why."
+          exit 1
+
+      - name: Post ABI report to PR
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: actions/github-script@v9
         with:
