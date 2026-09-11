@@ -30,9 +30,9 @@
 #define	__db_testcopy __db_testcopy@DB_VERSION_UNIQUE_NAME@
 #endif
 #define	__db_testdocopy __db_testdocopy@DB_VERSION_UNIQUE_NAME@
-#define	__db_cursor_int __db_cursor_int@DB_VERSION_UNIQUE_NAME@
 #define	__db_cursor_part __db_cursor_part@DB_VERSION_UNIQUE_NAME@
 #define	__db_cq_active_any __db_cq_active_any@DB_VERSION_UNIQUE_NAME@
+#define	__db_cursor_int __db_cursor_int@DB_VERSION_UNIQUE_NAME@
 #define	__db_put __db_put@DB_VERSION_UNIQUE_NAME@
 #define	__db_del __db_del@DB_VERSION_UNIQUE_NAME@
 #define	__db_sync __db_sync@DB_VERSION_UNIQUE_NAME@
