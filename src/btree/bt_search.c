@@ -978,7 +978,7 @@ retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel,
 			 * often (a leaf parent) simply fails the live-LSN confirm on
 			 * the next descent and falls back -- never a wrong child.
 			 */
-			if (snap_ok && TYPE(h) == P_IBTREE)
+			if (snap_ok && __bam_isnap_enabled() && TYPE(h) == P_IBTREE)
 				(void)__bam_isnap_store(dbc, h);
 		}
 		inp = P_INP(dbp, h);
