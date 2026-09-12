@@ -44,11 +44,18 @@ extern "C" {
  */
 #define	DB_VERSION_FAMILY	11
 #define	DB_VERSION_RELEASE	2
-#define	DB_VERSION_MAJOR	5
-#define	DB_VERSION_MINOR	3
-#define	DB_VERSION_PATCH	28
-#define	DB_VERSION_STRING	"Berkeley DB 5.3.28: (September  9, 2013)"
-#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.3.28: (September  9, 2013)"
+#define	DB_VERSION_MAJOR	2026
+#define	DB_VERSION_MINOR	0
+#define	DB_VERSION_PATCH	9
+/*
+ * DB_CALVER is the calver.org release identity of this fork (YYYY.0M[.MICRO]),
+ * distinct from the frozen 5.3.37 above which is only the format/ABI compat
+ * level.  Use this to identify the community fork; use the MAJOR/MINOR/PATCH
+ * triplet for format/ABI compatibility decisions.
+ */
+#define	DB_CALVER	"2026.09.2"
+#define	DB_VERSION_STRING	"libdb 2026.09.2 (September 10, 2026)"
+#define	DB_VERSION_FULL_STRING	"libdb 2026.09.2 (September 10, 2026)"
 
 /*
  * !!!
@@ -304,7 +311,8 @@ typedef enum {
 	DB_LOCK_IREAD=5,		/* Intent to share/read. */
 	DB_LOCK_IWR=6,			/* Intent to read and write. */
 	DB_LOCK_READ_UNCOMMITTED=7,	/* Degree 1 isolation. */
-	DB_LOCK_WWRITE=8		/* Was Written. */
+	DB_LOCK_WWRITE=8,		/* Was Written. */
+	DB_LOCK_SIREAD=9		/* Snapshot isolation read (SSI). */
 } db_lockmode_t;
 
 /*
@@ -941,10 +949,11 @@ struct __db_txn {
 #define	TXN_READ_COMMITTED	0x01000	/* Txn has degree 2 isolation. */
 #define	TXN_READ_UNCOMMITTED	0x02000	/* Txn has degree 1 isolation. */
 #define	TXN_RESTORED		0x04000	/* Txn has been restored. */
-#define	TXN_SNAPSHOT		0x08000	/* Snapshot Isolation. */
+#define	TXN_SNAPSHOT		0x08000	/* Snapshot isolation substrate (always with SSI). */
 #define	TXN_SYNC		0x10000	/* Write and sync on prepare/commit. */
 #define	TXN_WRITE_NOSYNC	0x20000	/* Write only on prepare/commit. */
 #define TXN_BULK		0x40000 /* Enable bulk loading optimization. */
+#define	TXN_SNAPSHOT_SAFE	0x80000	/* Serializable snapshot isolation (SSI). */
 	u_int32_t	flags;
 };
 
@@ -1386,6 +1395,8 @@ typedef enum {
 #define	DB_TIMEOUT		(-30971)/* Timed out on read consistency. */
 #define	DB_VERIFY_BAD		(-30970)/* Verify failed; bad format. */
 #define	DB_VERSION_MISMATCH	(-30969)/* Environment version mismatch. */
+#define	DB_SNAPSHOT_CONFLICT	(-30968)/* SSI: conflicting snapshot update. */
+#define	DB_SNAPSHOT_UNSAFE	(-30967)/* SSI: potential snapshot anomaly. */
 
 /* DB (private) error return codes. */
 #define	DB_ALREADY_ABORTED	(-30899)
@@ -1402,6 +1413,15 @@ typedef enum {
 #define	DB_SWAPBYTES		(-30889)/* Database needs byte swapping. */
 #define	DB_TXN_CKP		(-30888)/* Encountered ckp record in log. */
 #define	DB_VERIFY_FATAL		(-30887)/* DB->verify cannot proceed. */
+
+/*
+ * Number of partitions the per-handle cursor free/active queues are sharded
+ * into.  Must be a power of two so the partition index can be a mask of the
+ * thread id.  A threaded (DB_THREAD) handle allocates this many extra
+ * process-only mutexes; non-threaded handles allocate none (the queues are
+ * accessed without locking, as before).
+ */
+#define	DB_CURSOR_NPART		8
 
 /* Database handle. */
 struct __db {
@@ -1489,20 +1509,33 @@ struct __db {
 	/*
 	 * Cursor queues.
 	 *
+	 * The free and active cursor queues are sharded into DB_CURSOR_NPART
+	 * partitions, each with its own mutex, so concurrent cursor alloc/free
+	 * on a shared (DB_THREAD) handle does not serialize on a single mutex.
+	 * A cursor records its partition (DBC->part) at allocation so it is
+	 * always returned to the same partition, even when closed by a
+	 * different thread than allocated it.  The join queue is not sharded
+	 * (join cursors are rare and not on the hot path); it stays under
+	 * dbp->mutex.
+	 *
 	 * !!!
 	 * Explicit representations of structures from queue.h.
-	 * TAILQ_HEAD(__cq_fq, __dbc) free_queue;
-	 * TAILQ_HEAD(__cq_aq, __dbc) active_queue;
+	 * Per partition:
+	 *   TAILQ_HEAD(__cq_fq, __dbc) free_queue;
+	 *   TAILQ_HEAD(__cq_aq, __dbc) active_queue;
 	 * TAILQ_HEAD(__cq_jq, __dbc) join_queue;
 	 */
-	struct __cq_fq {
-		struct __dbc *tqh_first;
-		struct __dbc **tqh_last;
-	} free_queue;
-	struct __cq_aq {
-		struct __dbc *tqh_first;
-		struct __dbc **tqh_last;
-	} active_queue;
+	struct __cq_part {
+		db_mutex_t mutex;		/* Partition mutex (or INVALID). */
+		struct __cq_fq {
+			struct __dbc *tqh_first;
+			struct __dbc **tqh_last;
+		} free_queue;
+		struct __cq_aq {
+			struct __dbc *tqh_first;
+			struct __dbc **tqh_last;
+		} active_queue;
+	} cq_parts[DB_CURSOR_NPART];
 	struct __cq_jq {
 		struct __dbc *tqh_first;
 		struct __dbc **tqh_last;
@@ -2008,10 +2041,17 @@ struct __dbc {
 	/*
 	 * Active/free cursor queues.
 	 *
+	 * "part" is the index of the DB handle cursor-queue partition this
+	 * cursor belongs to (DB->cq_parts[part]).  It is assigned when the
+	 * cursor is allocated and never changes, so the cursor is returned to
+	 * the same partition when freed -- even if it is closed by a different
+	 * thread than allocated it.
+	 *
 	 * !!!
 	 * Explicit representations of structures from queue.h.
 	 * TAILQ_ENTRY(__dbc) links;
 	 */
+	u_int32_t part;		/* Cursor-queue partition index. */
 	struct {
 		DBC *tqe_next;
 		DBC **tqe_prev;
@@ -2404,6 +2444,7 @@ struct __db_env {
 #define	DB_ENV_YIELDCPU		0x00020000 /* DB_YIELDCPU set */
 #define DB_ENV_HOTBACKUP	0x00040000 /* DB_HOTBACKUP_IN_PROGRESS set */
 #define DB_ENV_NOFLUSH		0x00080000 /* DB_NOFLUSH set */
+#define	DB_ENV_MPOOL_AIO	0x00100000 /* DB_MPOOL_AIO set */
 	u_int32_t flags;
 
 	/* DB_ENV PUBLIC HANDLE LIST BEGIN */
@@ -2761,16 +2802,21 @@ typedef struct {
  *
  * The global variables dbrdonly, dirf and pagf were not retained when 4BSD
  * replaced the dbm interface with ndbm, and are not supported here.
+ *
+ * These unprefixed 4BSD names (delete, fetch, firstkey, nextkey, store, ...)
+ * are C-only historic aliases: they collide with C++ keywords and standard
+ * library member names (e.g. std::atomic<>::store, which MSVC's <atomic>
+ * pulls into any C++ translation unit).  Suppress them for C++.
  */
+#if !defined(__cplusplus)
 #define	dbminit(a)	__db_dbm_init(a)
 #define	dbmclose	__db_dbm_close
-#if !defined(__cplusplus)
 #define	delete(a)	__db_dbm_delete(a)
-#endif
 #define	fetch(a)	__db_dbm_fetch(a)
 #define	firstkey	__db_dbm_firstkey
 #define	nextkey(a)	__db_dbm_nextkey(a)
 #define	store(a, b)	__db_dbm_store(a, b)
+#endif
 
 /*******************************************************
  * Hsearch historic interface.
@@ -2882,6 +2928,7 @@ typedef struct entry {
 #define	DB_LOG_VERIFY_WARNING			0x00000080
 #define	DB_LOG_WRNOSYNC				0x00000020
 #define	DB_LOG_ZERO				0x00000010
+#define	DB_MPOOL_AIO				0x00100000
 #define	DB_MPOOL_CREATE				0x00000001
 #define	DB_MPOOL_DIRTY				0x00000002
 #define	DB_MPOOL_DISCARD			0x00000001
@@ -3061,7 +3108,7 @@ int db_env_create __P((DB_ENV **, u_int32_t));
 char *db_version __P((int *, int *, int *));
 char *db_full_version __P((int *, int *, int *, int *, int *));
 int log_compare __P((const DB_LSN *, const DB_LSN *));
-#if defined(DB_WIN32) && !defined(DB_WINCE)
+#if defined(DB_WIN32)
 int db_env_set_win_security __P((SECURITY_ATTRIBUTES *sa));
 #endif
 int db_sequence_create __P((DB_SEQUENCE **, DB *, u_int32_t));
