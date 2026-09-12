@@ -13,6 +13,10 @@ welcome.
   *why*, and how you tested it.
 - **Conventional Commits** for messages (`feat:`, `fix:`, `test:`, `docs:`,
   `perf:`, `refactor:`, `chore:`, `ci:`).
+- **Versioning is [CalVer](https://calver.org/)** (`vYYYY.0M`), not the historical
+  `5.3.x`. The `5.3.37` triplet is now a frozen format/ABI compatibility level,
+  not the release version — see [`VERSIONING.md`](../VERSIONING.md) before
+  touching anything version-related or cutting a release.
 
 ## Building and testing
 
