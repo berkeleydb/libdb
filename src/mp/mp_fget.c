@@ -194,6 +194,16 @@ __memp_bhpin_enabled()
 	return (cached);
 }
 
+#ifdef DIAGNOSTIC
+/*
+ * R1 validation counters (DIAGNOSTIC builds only): prove the optimistic path
+ * actually fires and is not vacuously bypassed.  Not present in production
+ * builds -- no hot-path cost.
+ */
+unsigned long __memp_bhpin_hits = 0;
+unsigned long __memp_bhpin_attempts = 0;
+#endif
+
 /*
  * __memp_fget_optimistic --
  *	R1 optimistic, seqlock-validated, refcount-free read-hit fast path.
@@ -249,6 +259,9 @@ __memp_fget_optimistic(dbmfp, pgno, ip, mfp, mf_offset, addrp)
 	 */
 	if (mp->max_nreg != 1)
 		return (DB_NOTFOUND);
+#ifdef DIAGNOSTIC
+	(void)__sync_fetch_and_add(&__memp_bhpin_attempts, 1);
+#endif
 	MP_BUCKET(mf_offset, pgno, mp->nbuckets, bucket);
 	htab = R_ADDR(&dbmp->reginfo[0], mp->htab);
 	hp = &htab[bucket];
@@ -330,6 +343,9 @@ __memp_fget_optimistic(dbmfp, pgno, ip, mfp, mf_offset, addrp)
 			MPOOL_SYSTEM_LOCK(env);
 			++dbmfp->pinref;
 			MPOOL_SYSTEM_UNLOCK(env);
+#endif
+#ifdef DIAGNOSTIC
+			(void)__sync_fetch_and_add(&__memp_bhpin_hits, 1);
 #endif
 			*(void **)addrp = frame;
 			return (0);
