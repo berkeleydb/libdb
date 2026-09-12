@@ -12,7 +12,7 @@
 #   meson test -C build --suite tiers   # isolation + lock-matrix tiers
 
 project('libdb', 'c',
-  version: '5.3.34',
+  version: '2026.09',
   license: 'AGPL-3.0-or-later OR Sleepycat',
   meson_version: '>=0.56.0',
   default_options: ['c_std=c99', 'warning_level=1'])
