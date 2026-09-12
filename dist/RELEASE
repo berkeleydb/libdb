@@ -1,5 +1,24 @@
 # $Id$
 
+# ---------------------------------------------------------------------------
+# CalVer release identity (calver.org) -- this is the version this FORK ships
+# under, chosen to disambiguate the community continuation from every prior
+# Sleepycat/Oracle Berkeley DB release (which used 5.3.x / 11.2.5.x / 18.1.x).
+#
+# Format: YYYY.0M  (append .MICRO for a same-month re-release, e.g. 2026.09.1).
+# Bump YYYY.0M for the month you cut the release; MICRO for follow-ups.
+# ---------------------------------------------------------------------------
+DB_CALVER="2026.09"
+
+# ---------------------------------------------------------------------------
+# FORMAT / ABI COMPATIBILITY LEVEL -- FROZEN at 5.3.37, do NOT bump for a
+# release. These drive: the shared-region attach check (majver/minver in
+# env_region.c, a multi-process north-star invariant), the shared-object
+# soname (libdb-5.3.so via LIBVERSION), DB_VERSION_UNIQUE_NAME symbol
+# mangling (_5003), and every downstream packaging assumption. Change these
+# ONLY for a real format/ABI break, and then only with the ABI-BREAK-INTENDED
+# process -- never merely to "do a release". CalVer above is the release knob.
+# ---------------------------------------------------------------------------
 DB_VERSION_FAMILY=11
 DB_VERSION_LETTER="g"
 DB_VERSION_RELEASE=2
@@ -12,5 +31,8 @@ DB_VERSION_FULL="$DB_VERSION_FAMILY.$DB_VERSION_RELEASE.$DB_VERSION_MAJOR.$DB_VE
 DB_VERSION_UNIQUE_NAME=`printf "_%d%03d" $DB_VERSION_MAJOR $DB_VERSION_MINOR`
 
 DB_RELEASE_DATE="September 10, 2026"
-DB_VERSION_STRING="Berkeley DB $DB_VERSION: ($DB_RELEASE_DATE)"
-DB_VERSION_FULL_STRING="Berkeley DB $DB_VERSION_FAMILY$DB_VERSION_LETTER Release $DB_VERSION_RELEASE, library version $DB_VERSION_FULL: ($DB_RELEASE_DATE)"
+# User-facing string leads with the CalVer identity; the frozen 5.3.37 is kept
+# as the parenthesised format/ABI compatibility level so tools that parse it
+# and existing environments still see a stable compat number.
+DB_VERSION_STRING="libdb $DB_CALVER (Berkeley DB compat $DB_VERSION: $DB_RELEASE_DATE)"
+DB_VERSION_FULL_STRING="libdb $DB_CALVER (Berkeley DB $DB_VERSION_FAMILY$DB_VERSION_LETTER Release $DB_VERSION_RELEASE, compat library version $DB_VERSION_FULL: $DB_RELEASE_DATE)"

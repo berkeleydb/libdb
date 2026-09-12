@@ -61,9 +61,16 @@ extern "C" {
 #define	DB_VERSION_RELEASE	2
 #define	DB_VERSION_MAJOR	5
 #define	DB_VERSION_MINOR	3
-#define	DB_VERSION_PATCH	36
-#define	DB_VERSION_STRING	"Berkeley DB 5.3.36: (September 9, 2026)"
-#define	DB_VERSION_FULL_STRING	"Berkeley DB 11g Release 2, library version 11.2.5.3.36: (September 9, 2026)"
+#define	DB_VERSION_PATCH	37
+/*
+ * DB_CALVER is the calver.org release identity of this fork (YYYY.0M[.MICRO]),
+ * distinct from the frozen 5.3.37 above which is only the format/ABI compat
+ * level.  Use this to identify the community fork; use the MAJOR/MINOR/PATCH
+ * triplet for format/ABI compatibility decisions.
+ */
+#define	DB_CALVER	"2026.09"
+#define	DB_VERSION_STRING	"libdb 2026.09 (Berkeley DB compat 5.3.37: September 10, 2026)"
+#define	DB_VERSION_FULL_STRING	"libdb 2026.09 (Berkeley DB 11g Release 2, compat library version 11.2.5.3.37: September 10, 2026)"
 
 /*
  * !!!

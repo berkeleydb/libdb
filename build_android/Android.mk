@@ -1,6 +1,6 @@
 # DO NOT EDIT: automatically built by dist/s_android.
 # Makefile for building a drop-in replacement of SQLite using
-# Berkeley DB 11g Release 2, library version 11.2.5.3.28: (September  9, 2013)
+# libdb 2026.09 (Berkeley DB 11g Release 2, compat library version 11.2.5.3.37: September 10, 2026)
 ###################################################################
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
@@ -10,7 +10,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libsqlite
 
 # BDB_TOP will change with release numbers
-BDB_TOP := db-5.3.28
+BDB_TOP := db-5.3.37
 BDB_PATH := $(LOCAL_PATH)/$(BDB_TOP)/src
 
 # This directive results in arm (vs thumb) code.  It's necessary to
@@ -165,9 +165,16 @@ LOCAL_SRC_FILES := \
 	$(BDB_TOP)/src/mutex/mut_tas.c \
 	$(BDB_TOP)/src/os/os_abort.c \
 	$(BDB_TOP)/src/os/os_abs.c \
+	$(BDB_TOP)/src/os/os_aio.c \
+	$(BDB_TOP)/src/os/os_aio_uring.c \
+	$(BDB_TOP)/src/os/os_aio_posix.c \
+	$(BDB_TOP)/src/os/os_aio_kqueue.c \
+	$(BDB_TOP)/src/os/os_aio_pool.c \
+	$(BDB_TOP)/src/os/os_aio_iocp.c \
 	$(BDB_TOP)/src/os/os_alloc.c \
 	$(BDB_TOP)/src/os/os_clock.c \
 	$(BDB_TOP)/src/os/os_config.c \
+	$(BDB_TOP)/src/os/os_csprng.c \
 	$(BDB_TOP)/src/os/os_cpu.c \
 	$(BDB_TOP)/src/os/os_ctime.c \
 	$(BDB_TOP)/src/os/os_dir.c \

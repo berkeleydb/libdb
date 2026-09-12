@@ -735,6 +735,7 @@ CHMOD
 DB_VERSION_UNIQUE_NAME
 DB_VERSION_FULL_STRING
 DB_VERSION_STRING
+DB_CALVER
 DB_VERSION_PATCH
 DB_VERSION_MINOR
 DB_VERSION_MAJOR
@@ -3587,9 +3588,11 @@ DB_VERSION_MINOR="3"
 
 DB_VERSION_PATCH="37"
 
-DB_VERSION_STRING='"Berkeley DB 5.3.37: (September 10, 2026)"'
+DB_CALVER="2026.09"
 
-DB_VERSION_FULL_STRING='"Berkeley DB 11g Release 2, library version 11.2.5.3.37: (September 10, 2026)"'
+DB_VERSION_STRING='"libdb 2026.09 (Berkeley DB compat 5.3.37: September 10, 2026)"'
+
+DB_VERSION_FULL_STRING='"libdb 2026.09 (Berkeley DB 11g Release 2, compat library version 11.2.5.3.37: September 10, 2026)"'
 
 
 # Process all options before using them.
@@ -20392,7 +20395,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20395 "configure" */
+/* #line 20398 "configure" */
 public class Test {
 }
 EOF
@@ -20687,7 +20690,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20690: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20693: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20819,7 +20822,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20822 "configure" */
+/* #line 20825 "configure" */
 public class Test {
 }
 EOF
@@ -20856,7 +20859,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20859 "configure" */
+/* [#]line 20862 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);
