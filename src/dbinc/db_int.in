@@ -692,6 +692,21 @@ typedef struct __pin_list {
 } PIN_LIST;
 #define	PINMAX 4
 
+/*
+ * R1 (ROADMAP #2): the optimistic, refcount-free read-hit fast path in
+ * __memp_fget returns a wired frame WITHOUT taking bhp->ref.  It still records
+ * the get in dbth_pinlist so failchk's "pages returned == retrieved" accounting
+ * stays balanced and __memp_fput can find and clear the slot -- but the slot is
+ * marked "borrowed" (no ref taken) by bitwise-NOT-encoding the region index
+ * (real region r in [0,nreg) -> encoded r' = ~r, always negative and reversible,
+ * never colliding with a real region or with the b_ref==INVALID_ROFF empty
+ * marker).  __memp_fput/__memp_unpin_buffers detect a borrowed slot, clear it,
+ * and do NOTHING else (no atomic_dec, no latch release -- the borrow held none).
+ */
+#define	MP_PIN_BORROWED(region)		((region) < 0)
+#define	MP_PIN_BORROW_ENCODE(region)	(~(region))
+#define	MP_PIN_BORROW_DECODE(region)	(~(region))
+
 struct __db_thread_info { /* SHARED */
 	pid_t		dbth_pid;
 	db_threadid_t	dbth_tid;

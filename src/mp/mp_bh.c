@@ -461,6 +461,7 @@ __memp_pgwrite_finish(c, did_io, io_ret)
 	 */
 	if (F_ISSET(bhp, BH_DIRTY | BH_TRASH)) {
 		MUTEX_LOCK(env, hp->mtx_hash);
+		MP_SEQ_ENTER(env, hp);
 		DB_ASSERT(env, !SH_CHAIN_HASNEXT(bhp, vc));
 		if (ret == 0 && F_ISSET(bhp, BH_DIRTY)) {
 			F_CLR(bhp, BH_DIRTY | BH_DIRTY_CREATE);
@@ -474,6 +475,7 @@ __memp_pgwrite_finish(c, did_io, io_ret)
 			ret = __memp_pg(c->dbmfp, bhp->pgno, bhp->buf, 1);
 			F_CLR(bhp, BH_TRASH);
 		}
+		MP_SEQ_LEAVE(env, hp);
 		MUTEX_UNLOCK(env, hp->mtx_hash);
 	}
 
@@ -836,6 +838,7 @@ __memp_bhfree(dbmp, infop, mfp, hp, bhp, flags)
 	 */
 	if (hp == NULL)
 		goto no_hp;
+	MP_SEQ_ENTER(env, hp);
 	prev_bhp = SH_CHAIN_PREV(bhp, vc, __bh);
 	if (!SH_CHAIN_HASNEXT(bhp, vc)) {
 		if (prev_bhp != NULL)
@@ -844,6 +847,7 @@ __memp_bhfree(dbmp, infop, mfp, hp, bhp, flags)
 		SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
 	}
 	SH_CHAIN_REMOVE(bhp, vc, __bh);
+	MP_SEQ_LEAVE(env, hp);
 
 	/*
 	 * Remove the reference to this buffer from the transaction that

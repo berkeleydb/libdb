@@ -2275,7 +2275,20 @@ struct __db_qam_stat { /* SHARED */
 /*******************************************************
  * Environment.
  *******************************************************/
-#define	DB_REGION_MAGIC	0x120897	/* Environment magic number. */
+#define	DB_REGION_MAGIC	0x120898	/* Environment magic number. */
+					/*
+					 * Bumped from 0x120897 for R1 (ROADMAP #2):
+					 * adding the per-bucket seqlock stamp
+					 * (seq_pad + seq) grows DB_MPOOL_HASH, a
+					 * shared-region struct, so the shared-memory
+					 * region layout changed.  The magic bump makes
+					 * a new binary refuse to attach to a region
+					 * created by an old (smaller-layout) binary
+					 * instead of reading past the old bucket array.
+					 * Deliberate region-format break
+					 * (ABI-BREAK-INTENDED); no on-disk/log format
+					 * change, no public-struct size change.
+					 */
 
 /*
  * Database environment structure.

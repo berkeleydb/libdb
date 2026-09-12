@@ -359,7 +359,43 @@ struct __db_mpool_hash {
 	DB_LSN		old_reader;	/* Oldest snapshot reader (cached). */
 
 	u_int32_t	flags;
+
+	/*
+	 * R1 (ROADMAP #2): per-bucket seqlock version stamp for the optimistic,
+	 * refcount-free read-hit fast path in __memp_fget.  Convention:
+	 *   odd  == a structural mutation of this bucket is in progress
+	 *   even == the bucket is stable
+	 * Every writer that mutates this bucket's hash chain / MVCC version
+	 * chain / a resident buffer's reader-visible flags (all of which hold
+	 * mtx_hash exclusive today) brackets the mutation MP_SEQ_ENTER()/
+	 * MP_SEQ_LEAVE() so a lock-free reader either completes before the bump
+	 * or observes a parity change and retries/falls back.  Region-only and
+	 * non-persistent: re-initialized to 0 (even) on region create and by
+	 * recovery (see mp_region.c), so a crash cannot leave it permanently odd
+	 * in a reused environment.
+	 *
+	 * Placed after a cache-line pad so a mutator's seq bump never falsely
+	 * shares the line with mtx_hash (which slow-path readers still read) or
+	 * with hash_page_dirty (ROADMAP #7, false sharing).
+	 */
+	u_int8_t	seq_pad[64];	/* Isolate seq on its own cache line. */
+	db_atomic_t	seq;
 };
+
+/*
+ * MP_SEQ_ENTER / MP_SEQ_LEAVE --
+ *	Bracket a structural mutation of hp's bucket for the R1 seqlock.  The
+ *	caller MUST hold hp->mtx_hash exclusive, which serializes the bumps, so
+ *	seq monotonically transitions even -> odd (ENTER) -> even (LEAVE); an
+ *	optimistic reader that saw the pre-ENTER even value observes either the
+ *	odd value or the post-LEAVE even value (!= pre-ENTER by 2) and retries.
+ *	The atomic inc supplies the release fence that publishes the mutation
+ *	before the reader's acquire-load of seq can advance.  A no-op when the
+ *	hp has no live seqlock (uninitialized/failchk teardown paths pass a
+ *	bucket that is being discarded).
+ */
+#define	MP_SEQ_ENTER(env, hp)	(void)atomic_inc((env), &(hp)->seq)
+#define	MP_SEQ_LEAVE(env, hp)	(void)atomic_inc((env), &(hp)->seq)
 
 /*
  * Mpool file statistics structure for use in shared memory.

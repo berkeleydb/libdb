@@ -178,6 +178,178 @@ __memp_si_rwconflict(env, txn, visible_bhp)
 }
 
 /*
+ * __memp_bhpin_enabled --
+ *	R1 (ROADMAP #2) optimistic seqlock read-hit fast path is on by default;
+ *	setting DB_NO_BHPIN in the environment disables it (A/B benchmarking and
+ *	bisecting a suspected fast-path bug).  Read once, cached process-wide,
+ *	mirroring __bam_rsnap_enabled().
+ */
+static int
+__memp_bhpin_enabled()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_NO_BHPIN") != NULL ? 0 : 1;
+	return (cached);
+}
+
+/*
+ * __memp_fget_optimistic --
+ *	R1 optimistic, seqlock-validated, refcount-free read-hit fast path.
+ *
+ *	Returns 0 and sets *addrp to the resident frame WITHOUT taking any
+ *	shared latch (mtx_hash/mtx_buf) and WITHOUT the bhp->ref RMW when the
+ *	page is a clean, singleton, wired (non-evictable) read hit.  Returns
+ *	DB_NOTFOUND to mean "cannot serve optimistically -- fall through to the
+ *	latched slow path" (never an error; the slow path re-derives everything).
+ *
+ *	The frame address is stable because the page is wired (the eviction hand
+ *	skips wired buffers, __memp_alloc), and its identity/contents did not
+ *	change under us because the two acquire-loads of hp->seq bracket a
+ *	parity-stable, even (no-mutation-in-flight) window (see MP_SEQ_ENTER).
+ *	Every writer that could change this bucket's chain, a resident buffer's
+ *	reader-visible flags, or unwire this page brackets its change with a seq
+ *	bump, so any concurrent structural change forces a retry or slow-path
+ *	fallback -- the frame can never be freed, reused, frozen, dirtied, or
+ *	unwired between our two seq reads without being caught.
+ *
+ *	Scope (the gate): single mpool region only (max_nreg == 1), non-MVCC
+ *	read (read_lsnp == NULL), pure read (no DIRTY/EDIT/FREE/NEW/CREATE),
+ *	singleton clean wired page.  Everything else falls to the slow path.
+ */
+static int
+__memp_fget_optimistic(dbmfp, pgno, ip, mfp, mf_offset, addrp)
+	DB_MPOOLFILE *dbmfp;
+	db_pgno_t pgno;
+	DB_THREAD_INFO *ip;
+	MPOOLFILE *mfp;
+	roff_t mf_offset;
+	void *addrp;
+{
+	BH *bhp;
+	DB_MPOOL *dbmp;
+	DB_MPOOL_HASH *hp, *htab;
+	ENV *env;
+	MPOOL *mp;
+	PIN_LIST *list, *lp;
+	void *frame;
+	atomic_value_t s0, s1;
+	u_int32_t bucket;
+	int region, retries;
+
+	env = dbmfp->env;
+	dbmp = env->mp_handle;
+	mp = dbmp->reginfo[0].primary;
+
+	/*
+	 * Single region only: resolve the bucket exactly like the max_nreg==1
+	 * branch of MP_GET_BUCKET, but take NO latch.  The multi-region resize
+	 * path (region remap) is out of scope and falls to the slow path.
+	 */
+	if (mp->max_nreg != 1)
+		return (DB_NOTFOUND);
+	MP_BUCKET(mf_offset, pgno, mp->nbuckets, bucket);
+	htab = R_ADDR(&dbmp->reginfo[0], mp->htab);
+	hp = &htab[bucket];
+
+	/*
+	 * BOUNDED retry (design 7.3): an odd seq from a dead mutator must not
+	 * spin the reader forever.  After a small cap, fall to the latched slow
+	 * path so the dead-holder -> DB_RUNRECOVERY machinery runs.  A live
+	 * mutation is a handful of stores under mtx_hash, so a genuine even
+	 * window arrives within a couple of iterations; more than that means
+	 * heavy churn (take the latch) or a dead holder (take the latch and let
+	 * failchk fire).
+	 */
+	for (retries = 0; retries < 4; retries++) {
+		s0 = atomic_read(&hp->seq);	/* acquire load */
+		if (s0 & 1)
+			continue;		/* mutation in flight; re-read */
+
+		/* Walk the bucket chain with NO latch held. */
+		for (bhp = SH_TAILQ_FIRST(&hp->hash_bucket, __bh);
+		    bhp != NULL; bhp = SH_TAILQ_NEXT(bhp, hq, __bh)) {
+			if (bhp->pgno != pgno || bhp->mf_offset != mf_offset)
+				continue;
+
+			/*
+			 * Gate: only a wired (guaranteed-resident) clean
+			 * singleton page with no reader-hostile flag may be
+			 * served optimistically.  Any miss on these tests is a
+			 * fall-through, not an error.
+			 */
+			if (!bhp->wired)
+				return (DB_NOTFOUND);
+			if (F_ISSET(bhp, BH_DIRTY | BH_EXCLUSIVE |
+			    BH_FROZEN | BH_TRASH | BH_FREED | BH_THAWED |
+			    BH_CALLPGIN))
+				return (DB_NOTFOUND);
+			if (SH_CHAIN_HASNEXT(bhp, vc) ||
+			    SH_CHAIN_HASPREV(bhp, vc))
+				return (DB_NOTFOUND);
+
+			frame = bhp->buf;		/* candidate */
+
+			/*
+			 * Re-read the stamp AFTER capturing the frame pointer
+			 * and reading the gating flags.  If the bucket mutated
+			 * (parity change, or now odd) between s0 and here, the
+			 * candidate may be stale/freed/unwired -- retry.
+			 */
+			s1 = atomic_read(&hp->seq);	/* acquire load */
+			if (s0 != s1)
+				goto again;
+
+			/*
+			 * Stable, even, wired, clean, singleton: the frame is
+			 * resident and its identity is unchanged.  Record a
+			 * BORROWED pin (no ref taken) so __memp_fput balances
+			 * the accounting and does nothing else.
+			 */
+			if (ip != NULL) {
+				region = 0;	/* single region */
+				list = R_ADDR(env->reginfo, ip->dbth_pinlist);
+				for (lp = list;
+				    lp < &list[ip->dbth_pinmax]; lp++)
+					if (lp->b_ref == INVALID_ROFF)
+						break;
+				/*
+				 * No free slot: don't grow the pinlist here
+				 * (that needs mtx_regenv); just fall to the
+				 * slow path, which handles growth.  Rare.
+				 */
+				if (lp == &list[ip->dbth_pinmax])
+					return (DB_NOTFOUND);
+				ip->dbth_pincount++;
+				lp->b_ref =
+				    R_OFFSET(&dbmp->reginfo[0], bhp);
+				lp->region = MP_PIN_BORROW_ENCODE(region);
+			}
+#ifdef DIAGNOSTIC
+			MPOOL_SYSTEM_LOCK(env);
+			++dbmfp->pinref;
+			MPOOL_SYSTEM_UNLOCK(env);
+#endif
+			*(void **)addrp = frame;
+			return (0);
+		}
+
+		/*
+		 * Not found in the chain.  If the stamp is still the even
+		 * value we read, the page is genuinely not resident (a miss
+		 * needs the latch to allocate) -- fall to the slow path.  If
+		 * it changed, a concurrent insert may have added it; retry.
+		 */
+		s1 = atomic_read(&hp->seq);
+		if (s0 == s1)
+			return (DB_NOTFOUND);
+again:		;
+	}
+	return (DB_NOTFOUND);
+}
+
+/*
  * __memp_fget --
  *	Get a page from the file.
  *
@@ -317,6 +489,21 @@ __memp_fget(dbmfp, pgnoaddr, ip, txn, flags, addrp)
 		    mpool, map, mfp->stat.st_map, __memp_fn(dbmfp), *pgnoaddr);
 		return (0);
 	}
+
+	/*
+	 * R1 optimistic read-hit fast path (ROADMAP #2).  Try to serve a clean,
+	 * singleton, wired, cache-resident read hit with NO shared latch and NO
+	 * bhp->ref RMW, validated by the per-bucket seqlock.  Gated to pure,
+	 * non-MVCC reads; DB_PRIVATE-first (multi-process stays behind the same
+	 * kill switch once DST/soak qualifies it).  On any ambiguity this returns
+	 * DB_NOTFOUND and we fall straight through to the unchanged latched path.
+	 */
+	if (flags == 0 && read_lsnp == NULL && !dirty && !mvcc &&
+	    !IS_RECOVERING(env) && F_ISSET(env, ENV_PRIVATE) &&
+	    __memp_bhpin_enabled() &&
+	    __memp_fget_optimistic(dbmfp, *pgnoaddr, ip, mfp,
+	    mf_offset, addrp) == 0)
+		return (0);
 
 	/*
 	 * Determine the cache and hash bucket where this page lives and get
@@ -531,7 +718,9 @@ thawed:			need_free = (atomic_dec(env, &bhp->ref) == 0);
 freebuf:		MUTEX_LOCK(env, hp->mtx_hash);
 			h_locked = 1;
 			if (F_ISSET(bhp, BH_DIRTY)) {
+				MP_SEQ_ENTER(env, hp);
 				F_CLR(bhp, BH_DIRTY | BH_DIRTY_CREATE);
+				MP_SEQ_LEAVE(env, hp);
 				DB_ASSERT(env,
 				   atomic_read_relaxed(&hp->hash_page_dirty) > 0);
 				atomic_dec(env, &hp->hash_page_dirty);
@@ -554,8 +743,10 @@ freebuf:		MUTEX_LOCK(env, hp->mtx_hash);
 				 * re-creates this page while it is still in
 				 * cache will see stale data.
 				 */
+				MP_SEQ_ENTER(env, hp);
 				F_SET(bhp, BH_FREED);
 				F_CLR(bhp, BH_TRASH);
+				MP_SEQ_LEAVE(env, hp);
 			} else if (F_ISSET(bhp, BH_FROZEN)) {
 				/*
 				 * Freeing a singleton frozen buffer: just free
@@ -908,7 +1099,9 @@ alloc:		/* Allocate a new buffer header and data space. */
 		}
 
 		MUTEX_REQUIRED(env, hp->mtx_hash);
+		MP_SEQ_ENTER(env, hp);
 		SH_TAILQ_INSERT_HEAD(&hp->hash_bucket, bhp, hq, __bh);
+		MP_SEQ_LEAVE(env, hp);
 		MUTEX_UNLOCK(env, hp->mtx_hash);
 		h_locked = 0;
 
@@ -1099,10 +1292,12 @@ alloc:		/* Allocate a new buffer header and data space. */
 		    !F_ISSET(bhp, BH_DIRTY));
 		F_CLR(bhp, BH_DIRTY | BH_DIRTY_CREATE);
 		DB_ASSERT(env, !SH_CHAIN_HASNEXT(bhp, vc));
+		MP_SEQ_ENTER(env, hp);
 		SH_CHAIN_INSERT_AFTER(bhp, alloc_bhp, vc, __bh);
 		SH_TAILQ_INSERT_BEFORE(&hp->hash_bucket,
 		    bhp, alloc_bhp, hq, __bh);
 		SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
+		MP_SEQ_LEAVE(env, hp);
 		MUTEX_UNLOCK(env, hp->mtx_hash);
 		h_locked = 0;
 		DB_ASSERT(env, b_incr && BH_REFCOUNT(bhp) > 0);
@@ -1163,15 +1358,23 @@ alloc:		/* Allocate a new buffer header and data space. */
 				goto err;
 		}
 		if (!F_ISSET(bhp, BH_DIRTY)) {
-#ifdef DIAGNOSTIC
+			/*
+			 * R1: bracket the clean->dirty flag transition with the
+			 * seqlock even in production builds.  This is the moment
+			 * a resident (possibly wired, singleton) page begins to
+			 * diverge under the writer; an optimistic reader that saw
+			 * the clean flags must observe the parity change and
+			 * retry/fall back before it can return a page the caller
+			 * is about to modify.  The mtx_hash here (unconditional
+			 * now, not just DIAGNOSTIC) serializes the bump.
+			 */
 			MUTEX_LOCK(env, hp->mtx_hash);
-#endif
 			DB_ASSERT(env, !SH_CHAIN_HASNEXT(bhp, vc));
+			MP_SEQ_ENTER(env, hp);
 			atomic_inc(env, &hp->hash_page_dirty);
 			F_SET(bhp, BH_DIRTY);
-#ifdef DIAGNOSTIC
+			MP_SEQ_LEAVE(env, hp);
 			MUTEX_UNLOCK(env, hp->mtx_hash);
-#endif
 		}
 	} else if (F_ISSET(bhp, BH_EXCLUSIVE)) {
 		F_CLR(bhp, BH_EXCLUSIVE);

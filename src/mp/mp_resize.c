@@ -307,6 +307,8 @@ err:			atomic_dec(env, &bhp->ref);
 
 		DB_ASSERT(env, new_hp->mtx_hash != old_hp->mtx_hash);
 		MUTEX_LOCK(env, new_hp->mtx_hash);
+		MP_SEQ_ENTER(env, old_hp);
+		MP_SEQ_ENTER(env, new_hp);
 		SH_TAILQ_INSERT_TAIL(&new_hp->hash_bucket, new_bhp, hq);
 		if (F_ISSET(new_bhp, BH_DIRTY))
 			atomic_inc(env, &new_hp->hash_page_dirty);
@@ -315,6 +317,8 @@ err:			atomic_dec(env, &bhp->ref);
 			F_CLR(bhp, BH_DIRTY);
 			atomic_dec(env, &old_hp->hash_page_dirty);
 		}
+		MP_SEQ_LEAVE(env, new_hp);
+		MP_SEQ_LEAVE(env, old_hp);
 		MUTEX_UNLOCK(env, new_hp->mtx_hash);
 	}
 

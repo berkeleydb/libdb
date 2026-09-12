@@ -132,6 +132,32 @@ unpin:
 	hp = &hp[bhp->bucket];
 
 	/*
+	 * R1: if this thread got the page via the optimistic, refcount-free
+	 * read-hit fast path, it is recorded in the pinlist as a BORROWED slot
+	 * (region bitwise-NOT-encoded) and NO ref/latch was taken.  Detect that
+	 * here -- before the ref==0 check, which would otherwise (correctly) see
+	 * a legitimately-unpinned wired frame and panic -- clear the slot, and
+	 * return without any atomic_dec or latch release.  The DIAGNOSTIC pinref
+	 * accounting is already balanced (the probe did ++pinref, the block
+	 * above did --pinref).
+	 */
+	if (ip != NULL) {
+		PIN_LIST *blist, *blp;
+		roff_t bb_ref;
+		int enc;
+
+		blist = R_ADDR(env->reginfo, ip->dbth_pinlist);
+		bb_ref = R_OFFSET(infop, bhp);
+		enc = MP_PIN_BORROW_ENCODE((int)(infop - dbmp->reginfo));
+		for (blp = blist; blp < &blist[ip->dbth_pinmax]; blp++)
+			if (blp->b_ref == bb_ref && blp->region == enc) {
+				blp->b_ref = INVALID_ROFF;
+				ip->dbth_pincount--;
+				return (0);
+			}
+	}
+
+	/*
 	 * Check for a reference count going to zero.  This can happen if the
 	 * application returns a page twice.
 	 */
@@ -292,7 +318,15 @@ __memp_unpin_buffers(env, ip)
 	for (lp = list; lp < &list[ip->dbth_pinmax]; lp++) {
 		if (lp->b_ref == INVALID_ROFF)
 			continue;
-		rinfop = &dbmp->reginfo[lp->region];
+		/*
+		 * R1: a BORROWED slot (optimistic refcount-free get) encodes
+		 * its region as ~region (negative).  Decode it to reach the
+		 * right region; __memp_fput recognizes the borrowed slot,
+		 * clears it, and does nothing else.
+		 */
+		rinfop = MP_PIN_BORROWED(lp->region) ?
+		    &dbmp->reginfo[MP_PIN_BORROW_DECODE(lp->region)] :
+		    &dbmp->reginfo[lp->region];
 		bhp = R_ADDR(rinfop, lp->b_ref);
 		dbmf.mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
 		if ((ret = __memp_fput(&dbmf, ip,
@@ -389,6 +423,7 @@ __memp_unwire(dbmfp, pgaddr)
 {
 	BH *bhp;
 	DB_MPOOL *dbmp;
+	DB_MPOOL_HASH *hp;
 	ENV *env;
 	MPOOL *c_mp;
 
@@ -401,10 +436,29 @@ __memp_unwire(dbmfp, pgaddr)
 	if (bhp->wired == 0)
 		return (0);
 
-	bhp->wired = 0;
 	env = dbmfp->env;
 	dbmp = env->mp_handle;
 	c_mp = dbmp->reginfo[bhp->region].primary;
+
+	/*
+	 * R1 (design 7.1, the #1 dangling-frame risk): clearing "wired" drops
+	 * the residency guarantee the optimistic read-hit fast path relies on --
+	 * an unwired frame becomes evictable and its address may then dangle.
+	 * So unwire is a seqlock writer: take the bucket latch and bracket the
+	 * clear with a seq bump.  An optimistic reader that captured this frame
+	 * as wired before the bump observes the parity change on its second seq
+	 * read and retries -> sees !wired -> slow path; a reader arriving after
+	 * the bump sees !wired immediately.  Either way no reader can still be
+	 * "borrowing" this frame once it is unwired, so eviction (which also
+	 * needs mtx_hash) can never reclaim a frame a reader is holding.
+	 */
+	hp = R_ADDR(&dbmp->reginfo[bhp->region], c_mp->htab);
+	hp = &hp[bhp->bucket];
+	MUTEX_LOCK(env, hp->mtx_hash);
+	MP_SEQ_ENTER(env, hp);
+	bhp->wired = 0;
+	MP_SEQ_LEAVE(env, hp);
+	MUTEX_UNLOCK(env, hp->mtx_hash);
 	(void)atomic_dec(env, &c_mp->wired_pages);
 	return (0);
 }

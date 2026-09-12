@@ -305,12 +305,14 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 	 * freed by __memp_alloc calling __memp_bhfree (assuming no other
 	 * thread has blocked waiting for it while we were freezing).
 	 */
+	MP_SEQ_ENTER(env, hp);
 	SH_CHAIN_INSERT_AFTER(bhp, frozen_bhp, vc, __bh);
 	if (!SH_CHAIN_HASNEXT(frozen_bhp, vc)) {
 		SH_TAILQ_INSERT_BEFORE(&hp->hash_bucket,
 		    bhp, frozen_bhp, hq, __bh);
 		SH_TAILQ_REMOVE(&hp->hash_bucket, bhp, hq, __bh);
 	}
+	MP_SEQ_LEAVE(env, hp);
 	MUTEX_UNLOCK(env, hp->mtx_hash);
 	h_locked = 0;
 
@@ -564,6 +566,7 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 	 * another cache lookup to find out where the new page should live.
 	 */
 	MUTEX_REQUIRED(env, hp->mtx_hash);
+	MP_SEQ_ENTER(env, hp);
 	if (alloc_bhp != NULL) {
 		alloc_bhp->priority = MPOOL_CLOCK_DEFAULT;
 
@@ -580,6 +583,7 @@ __memp_bh_thaw(dbmp, infop, hp, frozen_bhp, alloc_bhp)
 		SH_TAILQ_REMOVE(&hp->hash_bucket, frozen_bhp, hq, __bh);
 	}
 	SH_CHAIN_REMOVE(frozen_bhp, vc, __bh);
+	MP_SEQ_LEAVE(env, hp);
 
 	if (alloc_bhp == NULL && frozen_bhp->td_off != INVALID_ROFF &&
 	    (ret = __txn_remove_buffer(env,
