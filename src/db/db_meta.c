@@ -51,6 +51,7 @@
 #include "dbinc/txn.h"
 #include "dbinc/db_am.h"
 #include "dbinc/hash.h"
+#include "dbinc/btree.h"		/* For __bam_isnap_invalidate. */
 
 static void __db_init_meta __P((DB *, void *, db_pgno_t, u_int32_t));
 #ifdef HAVE_FTRUNCATE
@@ -318,6 +319,13 @@ __db_free(dbc, h, flags)
 	 * (a B-tree internal page) clear that so the frame can be reused.
 	 */
 	(void)__memp_unwire(mpf, h);
+	/*
+	 * If a wired B-tree internal page had a multi-level snapshot copy in
+	 * this handle, drop it now: the frame is being unwired, so its cached
+	 * pointer must no longer be read (a stale slot would then fall back to
+	 * a real fetch, never yield a wrong child).
+	 */
+	(void)__bam_isnap_invalidate(dbp, PGNO(h));
 #ifdef HAVE_FTRUNCATE
 	lp = NULL;
 	nelem = 0;

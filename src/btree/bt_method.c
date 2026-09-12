@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/btree.h"
+#include "dbinc/mp.h"
 #include "dbinc/qam.h"
 
 static int __bam_set_bt_minkey __P((DB *, u_int32_t));
@@ -116,13 +117,34 @@ __bam_db_close(dbp)
 	/* Free root snapshots: the current copy and all retired copies. */
 	{
 		BAM_RSNAP *s, *snext;
+		DB_MPOOLFILE *mpf;
+		int i;
 
+		mpf = dbp->mpf;
 		for (s = t->bt_rsnap; s != NULL; s = snext) {
 			snext = s->next;
 			__os_free(dbp->env, s);
 		}
 		for (s = t->bt_rsnap_free; s != NULL; s = snext) {
 			snext = s->next;
+			__os_free(dbp->env, s);
+		}
+		/*
+		 * Free the multi-level internal-page copies (ROADMAP #2),
+		 * unwiring each copy's live frame first so the buffer becomes
+		 * evictable again (retired/invalidated copies carry frame==NULL).
+		 */
+		for (i = 0; i < BAM_ISNAP_MAX; i++)
+			for (s = t->bt_isnap[i]; s != NULL; s = snext) {
+				snext = s->next;
+				if (s->frame != NULL && mpf != NULL)
+					(void)__memp_unwire(mpf, s->frame);
+				__os_free(dbp->env, s);
+			}
+		for (s = t->bt_isnap_free; s != NULL; s = snext) {
+			snext = s->next;
+			if (s->frame != NULL && mpf != NULL)
+				(void)__memp_unwire(mpf, s->frame);
 			__os_free(dbp->env, s);
 		}
 	}

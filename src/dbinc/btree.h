@@ -59,11 +59,26 @@ struct __btree;		typedef struct __btree BTREE;
  */
 typedef struct __bam_rsnap {
 	struct __bam_rsnap *next;	/* Chain of superseded copies. */
-	DB_LSN		 lsn;		/* Root LSN this copy was taken at. */
+	void		*frame;		/* Wired live buffer, or NULL: lets the
+					 * live page LSN be read with a plain load
+					 * (as the root does).  NULL => the page
+					 * could not be wired; that level is not
+					 * skipped fetch-free. */
+	db_pgno_t	 pgno;		/* Page number this copy is of. */
+	DB_LSN		 lsn;		/* Page LSN this copy was taken at. */
 	u_int32_t	 size;		/* Page size (bytes of copy). */
-	/* The copied root page image follows immediately. */
+	/* The copied page image follows immediately. */
 } BAM_RSNAP;
 #define	BAM_RSNAP_PAGE(s)	((PAGE *)((u_int8_t *)(s) + sizeof(BAM_RSNAP)))
+
+/*
+ * BAM_ISNAP_MAX --
+ *	How many non-root upper-internal page copies a handle caches for the
+ *	multi-level snapshot descent (ROADMAP #2).  A small fixed set covers a
+ *	tall tree's hot upper levels; superseded copies are retired and freed
+ *	at handle close, exactly like the root copy.  Process-local; no locks.
+ */
+#define	BAM_ISNAP_MAX	3
 struct __cursor;	typedef struct __cursor BTREE_CURSOR;
 struct __epg;		typedef struct __epg EPG;
 
@@ -538,6 +553,27 @@ struct __btree {			/* Btree access method. */
 	void	 *bt_rsnap;		/* Current root copy (BAM_RSNAP *). */
 	DB_LSN	  bt_rsnap_lsn;		/* Root LSN at last snapshot refresh. */
 	void	 *bt_rsnap_free;	/* Superseded copies, freed at close. */
+
+	/*
+	 * Multi-level snapshot descent (ROADMAP #2, wired): a small fixed cache
+	 * of private copies of the upper NON-root internal pages, keyed by
+	 * (pgno, LSN).  Each copy also holds the WIRED live buffer it was taken
+	 * from (BAM_RSNAP.frame), so the descent reads the live page's current
+	 * LSN with a plain load and skips the internal fetch/pin entirely --
+	 * exactly as bt_rootpage does for the root.  A cached copy is trusted
+	 * to pick the next child only after its live wired-frame LSN is
+	 * confirmed to still equal the copy's LSN (identical LSN => identical
+	 * bytes => byte-identical child), so a stale copy can only fall back to
+	 * a higher (safe) start page or restart, never a wrong child.  A wired
+	 * frame is never evicted (so the pointer cannot dangle); when the page
+	 * is freed it is unwired and the slot is invalidated
+	 * (__bam_isnap_invalidate).  Superseded/invalidated copies retire to
+	 * bt_isnap_free and are freed (and any live frame unwired) at handle
+	 * close, exactly like bt_rsnap.  Process-local; no locks (cross-process
+	 * correctness comes from the live-LSN confirmation).
+	 */
+	void	 *bt_isnap[BAM_ISNAP_MAX];	/* Non-root internal copies. */
+	void	 *bt_isnap_free;	/* Superseded copies, freed at close. */
 
 	/*
 	 * !!!
