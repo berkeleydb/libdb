@@ -202,17 +202,37 @@ __memp_bhpin_enabled()
  */
 unsigned long __memp_bhpin_hits = 0;
 unsigned long __memp_bhpin_attempts = 0;
+#ifdef R1_BHPIN_BREAKDOWN
+unsigned long __memp_bhpin_notwired = 0;
+unsigned long __memp_bhpin_badflag = 0;
+unsigned long __memp_bhpin_chain = 0;
+unsigned long __memp_bhpin_flagbits = 0;
+#endif
 #endif
 
 /*
  * __memp_fget_optimistic --
  *	R1 optimistic, seqlock-validated, refcount-free read-hit fast path.
  *
- *	Returns 0 and sets *addrp to the resident frame WITHOUT taking any
- *	shared latch (mtx_hash/mtx_buf) and WITHOUT the bhp->ref RMW when the
- *	page is a clean, singleton, wired (non-evictable) read hit.  Returns
- *	DB_NOTFOUND to mean "cannot serve optimistically -- fall through to the
- *	latched slow path" (never an error; the slow path re-derives everything).
+ *	Returns 0 and sets *addrp to the resident frame taking ONLY the
+ *	bhp->ref pin (via a normal recorded pin) but NO shared latch
+ *	(mtx_hash / mtx_buf) when the page is a clean, singleton, wired
+ *	(non-evictable) read hit.  Returns DB_NOTFOUND to mean "cannot serve
+ *	optimistically -- fall through to the latched slow path" (never an
+ *	error; the slow path re-derives everything).
+ *
+ *	VARIANT: design option (c).  We STILL take bhp->ref (one atomic RMW),
+ *	so __memp_fput is UNCHANGED and can never hit the "unpinned page
+ *	returned" panic and can never mis-account or dangle.  What we remove is
+ *	the two shared-LATCH cache-line RMWs -- hp->mtx_hash rdlock and
+ *	bhp->mtx_buf rdlock -- which the seqlock replaces with two plain
+ *	acquire loads of hp->seq.  (The refcount-free variant was abandoned:
+ *	it records the borrow in ip->dbth_pinlist, but ip is NULL for every
+ *	operation in a DB_PRIVATE env that has not called set_thread_count
+ *	(ENV_ENTER sets ip=NULL when env->thr_hashtab==NULL) -- exactly the
+ *	target environment -- so with no pinlist the matching fput cannot find
+ *	the borrow sentinel and panics.  Option (c) needs no pinlist sentinel
+ *	and is correct for ip==NULL and ip!=NULL alike.)
  *
  *	The frame address is stable because the page is wired (the eviction hand
  *	skips wired buffers, __memp_alloc), and its identity/contents did not
@@ -246,7 +266,7 @@ __memp_fget_optimistic(dbmfp, pgno, ip, mfp, mf_offset, addrp)
 	void *frame;
 	atomic_value_t s0, s1;
 	u_int32_t bucket;
-	int region, retries;
+	int retries;
 
 	env = dbmfp->env;
 	dbmp = env->mp_handle;
@@ -293,14 +313,30 @@ __memp_fget_optimistic(dbmfp, pgno, ip, mfp, mf_offset, addrp)
 			 * fall-through, not an error.
 			 */
 			if (!bhp->wired)
+#ifdef R1_BHPIN_BREAKDOWN
+			{ (void)__sync_fetch_and_add(&__memp_bhpin_notwired,1);
+			  return (DB_NOTFOUND); }
+#else
 				return (DB_NOTFOUND);
+#endif
 			if (F_ISSET(bhp, BH_DIRTY | BH_EXCLUSIVE |
 			    BH_FROZEN | BH_TRASH | BH_FREED | BH_THAWED |
 			    BH_CALLPGIN))
+#ifdef R1_BHPIN_BREAKDOWN
+			{ (void)__sync_fetch_and_add(&__memp_bhpin_badflag,1);
+			  (void)__sync_fetch_and_or(&__memp_bhpin_flagbits,bhp->flags);
+			  return (DB_NOTFOUND); }
+#else
 				return (DB_NOTFOUND);
+#endif
 			if (SH_CHAIN_HASNEXT(bhp, vc) ||
 			    SH_CHAIN_HASPREV(bhp, vc))
+#ifdef R1_BHPIN_BREAKDOWN
+			{ (void)__sync_fetch_and_add(&__memp_bhpin_chain,1);
+			  return (DB_NOTFOUND); }
+#else
 				return (DB_NOTFOUND);
+#endif
 
 			frame = bhp->buf;		/* candidate */
 
@@ -315,36 +351,63 @@ __memp_fget_optimistic(dbmfp, pgno, ip, mfp, mf_offset, addrp)
 				goto again;
 
 			/*
-			 * Stable, even, wired, clean, singleton: the frame is
-			 * resident and its identity is unchanged.  Record a
-			 * BORROWED pin (no ref taken) so __memp_fput balances
-			 * the accounting and does nothing else.
+			 * Option (c): take the pin (bhp->ref) WITHOUT any latch,
+			 * then RE-VALIDATE the seqlock.  The frame is wired so its
+			 * address is stable (never reclaimed), which makes the
+			 * unlatched atomic_inc on bhp->ref safe.  But wiring can be
+			 * dropped (__memp_unwire is a seqlock writer) and the page
+			 * can be dirtied/frozen/removed (all seqlock writers), so
+			 * after incrementing we must confirm the stamp is STILL the
+			 * even value we validated: if it changed, undo the pin and
+			 * fall back.  This "increment then re-check" closes the
+			 * window between the s1 read and the inc.
+			 */
+			if (BH_REFCOUNT(bhp) == UINT16_MAX)
+				return (DB_NOTFOUND);
+			atomic_inc(env, &bhp->ref);
+			s1 = atomic_read(&hp->seq);	/* acquire load */
+			if (s0 != s1) {
+				/* Raced a bucket mutation: undo pin, retry. */
+				(void)atomic_dec(env, &bhp->ref);
+				goto again;
+			}
+
+			/*
+			 * Stable, even, wired, clean, singleton, and now pinned.
+			 * Record the pin EXACTLY as the latched slow path does
+			 * (region = buffer's region, b_ref relative to that
+			 * region's infop) so the UNCHANGED __memp_fput finds it
+			 * and decs the ref normally.  When ip == NULL there is no
+			 * pinlist (e.g. a DB_PRIVATE env with no set_thread_count):
+			 * that is fine -- __memp_fput also runs with ip == NULL
+			 * and simply decrements bhp->ref without a pinlist scan,
+			 * identical to the slow path's own ip == NULL behavior.
 			 */
 			if (ip != NULL) {
-				region = 0;	/* single region */
+				REGINFO *b_infop = &dbmp->reginfo[bhp->region];
 				list = R_ADDR(env->reginfo, ip->dbth_pinlist);
 				for (lp = list;
 				    lp < &list[ip->dbth_pinmax]; lp++)
 					if (lp->b_ref == INVALID_ROFF)
 						break;
 				/*
-				 * No free slot: don't grow the pinlist here
-				 * (that needs mtx_regenv); just fall to the
-				 * slow path, which handles growth.  Rare.
+				 * No free slot: growing the pinlist needs
+				 * mtx_regenv (a latch we are trying to avoid).
+				 * Undo the pin and fall to the slow path, which
+				 * handles growth.  Rare.
 				 */
-				if (lp == &list[ip->dbth_pinmax])
+				if (lp == &list[ip->dbth_pinmax]) {
+					(void)atomic_dec(env, &bhp->ref);
 					return (DB_NOTFOUND);
+				}
 				ip->dbth_pincount++;
-				lp->b_ref =
-				    R_OFFSET(&dbmp->reginfo[0], bhp);
-				lp->region = MP_PIN_BORROW_ENCODE(region);
+				lp->b_ref = R_OFFSET(b_infop, bhp);
+				lp->region = (int)(b_infop - dbmp->reginfo);
 			}
 #ifdef DIAGNOSTIC
 			MPOOL_SYSTEM_LOCK(env);
 			++dbmfp->pinref;
 			MPOOL_SYSTEM_UNLOCK(env);
-#endif
-#ifdef DIAGNOSTIC
 			(void)__sync_fetch_and_add(&__memp_bhpin_hits, 1);
 #endif
 			*(void **)addrp = frame;
@@ -507,14 +570,21 @@ __memp_fget(dbmfp, pgnoaddr, ip, txn, flags, addrp)
 	}
 
 	/*
-	 * R1 optimistic read-hit fast path (ROADMAP #2).  Try to serve a clean,
-	 * singleton, wired, cache-resident read hit with NO shared latch and NO
-	 * bhp->ref RMW, validated by the per-bucket seqlock.  Gated to pure,
-	 * non-MVCC reads; DB_PRIVATE-first (multi-process stays behind the same
-	 * kill switch once DST/soak qualifies it).  On any ambiguity this returns
-	 * DB_NOTFOUND and we fall straight through to the unchanged latched path.
+	 * R1 optimistic read-hit fast path (ROADMAP #2, design option (c)).
+	 * Serve a clean, singleton, wired, cache-resident read hit taking ONLY
+	 * the bhp->ref pin (no mtx_hash / mtx_buf latch), validated by the
+	 * per-bucket seqlock.  DB_PRIVATE-first; DB_NO_BHPIN kill switch.
+	 *
+	 * Accept flags==0 AND flags==DB_MPOOL_TRY: TRY only means "do not block
+	 * on the buffer latch", and the optimistic path takes NO latch, so TRY
+	 * is trivially honored.  This matters because the B-tree ROOT -- the one
+	 * page bt_search wires, and the hottest contended page -- is fetched
+	 * with DB_MPOOL_TRY on the shared-read descent (bt_search.c); gating on
+	 * flags==0 alone would exclude the root and leave R1 serving almost
+	 * nothing.  Any other flag (DIRTY/EDIT/FREE/NEW/CREATE) -> slow path.
 	 */
-	if (flags == 0 && read_lsnp == NULL && !dirty && !mvcc &&
+	if ((flags == 0 || flags == DB_MPOOL_TRY) &&
+	    read_lsnp == NULL && !dirty && !mvcc &&
 	    !IS_RECOVERING(env) && F_ISSET(env, ENV_PRIVATE) &&
 	    __memp_bhpin_enabled() &&
 	    __memp_fget_optimistic(dbmfp, *pgnoaddr, ip, mfp,

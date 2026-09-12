@@ -301,14 +301,25 @@ retry:	if (lock_mode == DB_LOCK_WRITE)
 	    TYPE(h) == P_LBTREE || TYPE(h) == P_LRECNO || TYPE(h) == P_LDUP);
 
 	/*
-	 * Wire the one common tree root so it stays resident: it is fetched by
-	 * every operation, so keeping it non-evictable removes the read-in/
-	 * eviction churn on the hottest page and lets the root snapshot refresh
-	 * cheaply.  Only the main tree root (BAM_ROOT_PGNO) is wired -- subtree
-	 * (off-page duplicate) roots and all internal pages stay evictable.
-	 * Unwired when the page is freed (__db_free) or the file closes.
+	 * Wire the resident upper tree so hot internal pages stay non-evictable:
+	 * the root and all B-tree/Recno INTERNAL pages are fetched on nearly
+	 * every descent, so keeping them wired removes read-in/eviction churn on
+	 * the hottest pages and -- crucially for R1 (ROADMAP #2) -- lets the
+	 * optimistic seqlock read-hit fast path serve them with no latch
+	 * (__memp_fget_optimistic requires bhp->wired).  Leaf pages are NOT wired
+	 * (there are far too many; they would blow the MPOOL_WIRED_MAX_PCT cap
+	 * and evict the internal set), and off-page-duplicate subtree roots are
+	 * left evictable too.  Wiring is a plain byte store, capped in
+	 * __memp_wire at 25% of the cache; over the cap it is a no-op and the
+	 * page stays evictable (served by the normal latched pin).  A wired page
+	 * is unwired when it is freed (__db_free) or the file closes.
+	 *
+	 * NB: this only WIRES the shared frame in place -- it never copies the
+	 * page (the rsnap multi-level experiment's per-handle page copy was a
+	 * measured regression; R1 deliberately does not copy).
 	 */
-	if (h->pgno == BAM_ROOT_PGNO(dbc))
+	if (h->pgno == BAM_ROOT_PGNO(dbc) ||
+	    TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO)
 		(void)__memp_wire(mpf, h, NULL);
 
 	/*

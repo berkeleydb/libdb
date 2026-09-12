@@ -132,32 +132,6 @@ unpin:
 	hp = &hp[bhp->bucket];
 
 	/*
-	 * R1: if this thread got the page via the optimistic, refcount-free
-	 * read-hit fast path, it is recorded in the pinlist as a BORROWED slot
-	 * (region bitwise-NOT-encoded) and NO ref/latch was taken.  Detect that
-	 * here -- before the ref==0 check, which would otherwise (correctly) see
-	 * a legitimately-unpinned wired frame and panic -- clear the slot, and
-	 * return without any atomic_dec or latch release.  The DIAGNOSTIC pinref
-	 * accounting is already balanced (the probe did ++pinref, the block
-	 * above did --pinref).
-	 */
-	if (ip != NULL) {
-		PIN_LIST *blist, *blp;
-		roff_t bb_ref;
-		int enc;
-
-		blist = R_ADDR(env->reginfo, ip->dbth_pinlist);
-		bb_ref = R_OFFSET(infop, bhp);
-		enc = MP_PIN_BORROW_ENCODE((int)(infop - dbmp->reginfo));
-		for (blp = blist; blp < &blist[ip->dbth_pinmax]; blp++)
-			if (blp->b_ref == bb_ref && blp->region == enc) {
-				blp->b_ref = INVALID_ROFF;
-				ip->dbth_pincount--;
-				return (0);
-			}
-	}
-
-	/*
 	 * Check for a reference count going to zero.  This can happen if the
 	 * application returns a page twice.
 	 */
@@ -318,15 +292,7 @@ __memp_unpin_buffers(env, ip)
 	for (lp = list; lp < &list[ip->dbth_pinmax]; lp++) {
 		if (lp->b_ref == INVALID_ROFF)
 			continue;
-		/*
-		 * R1: a BORROWED slot (optimistic refcount-free get) encodes
-		 * its region as ~region (negative).  Decode it to reach the
-		 * right region; __memp_fput recognizes the borrowed slot,
-		 * clears it, and does nothing else.
-		 */
-		rinfop = MP_PIN_BORROWED(lp->region) ?
-		    &dbmp->reginfo[MP_PIN_BORROW_DECODE(lp->region)] :
-		    &dbmp->reginfo[lp->region];
+		rinfop = &dbmp->reginfo[lp->region];
 		bhp = R_ADDR(rinfop, lp->b_ref);
 		dbmf.mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
 		if ((ret = __memp_fput(&dbmf, ip,
@@ -388,19 +354,30 @@ __memp_wire(dbmfp, pgaddr, wiredp)
 	}
 
 	/*
-	 * Cap wiring at MPOOL_WIRED_MAX_PCT of the region's buffers so wiring
-	 * can never starve the cache.  Over the cap this is a no-op (the frame
-	 * stays evictable and the descent uses a normal pin).  The count is
-	 * approximate under races, which is fine for a cap.  Compute the limit
-	 * as (pages * PCT) / 100 so it does not round down to zero for caches
-	 * smaller than 100 buffers.
+	 * Cap wiring at MPOOL_WIRED_MAX_PCT of the region's buffer CAPACITY so
+	 * wiring can never starve the cache.  Over the cap this is a no-op (the
+	 * frame stays evictable and the descent uses a normal pin).
+	 *
+	 * Use the cache CAPACITY, not c_mp->pages: c_mp->pages counts buffers
+	 * faulted in SO FAR (it grows from ~0 as the cache warms), so capping
+	 * against it makes the limit ~1 during warmup and permanently pins the
+	 * single wired slot on whatever page is touched first -- the intended
+	 * hot pages (the B-tree root) then never wire.  Capacity is the region's
+	 * share of the configured cache: total_bytes / pagesize / nreg.
 	 */
 	env = dbmfp->env;
 	dbmp = env->mp_handle;
 	c_mp = dbmp->reginfo[bhp->region].primary;
-	if (atomic_read_relaxed(&c_mp->wired_pages) >=
-	    c_mp->pages * MPOOL_WIRED_MAX_PCT / 100)
-		return (0);
+	{
+		MPOOL *__mp = dbmp->reginfo[0].primary;
+		u_int32_t __nreg = __mp->nreg == 0 ? 1 : __mp->nreg;
+		u_int32_t __psize = __mp->pagesize == 0 ? 1 : __mp->pagesize;
+		roff_t __bufs = (((roff_t)__mp->gbytes << 30) + __mp->bytes) /
+		    __psize / __nreg;
+		if ((roff_t)atomic_read_relaxed(&c_mp->wired_pages) >=
+		    __bufs * MPOOL_WIRED_MAX_PCT / 100)
+			return (0);
+	}
 
 	bhp->wired = 1;
 	(void)atomic_inc(env, &c_mp->wired_pages);
