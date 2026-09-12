@@ -1,6 +1,6 @@
 # DO NOT EDIT: automatically built by dist/s_android.
 # Makefile for building Android.JDBC for DBSQL
-# Berkeley DB 11g Release 2, library version 11.2.5.3.28: (September  9, 2013)
+# libdb 2026.09 (Berkeley DB 11g Release 2, compat library version 11.2.5.3.37: September 10, 2026)
 #
 # This Makefile will generate 3 files:
 #   1. Static libdb_sql library. An internal library and users don't
@@ -239,9 +239,16 @@ LOCAL_SRC_FILES := \
 	$(BDB_TOP)/src/mutex/mut_tas.c \
 	$(BDB_TOP)/src/os/os_abort.c \
 	$(BDB_TOP)/src/os/os_abs.c \
+	$(BDB_TOP)/src/os/os_aio.c \
+	$(BDB_TOP)/src/os/os_aio_uring.c \
+	$(BDB_TOP)/src/os/os_aio_posix.c \
+	$(BDB_TOP)/src/os/os_aio_kqueue.c \
+	$(BDB_TOP)/src/os/os_aio_pool.c \
+	$(BDB_TOP)/src/os/os_aio_iocp.c \
 	$(BDB_TOP)/src/os/os_alloc.c \
 	$(BDB_TOP)/src/os/os_clock.c \
 	$(BDB_TOP)/src/os/os_config.c \
+	$(BDB_TOP)/src/os/os_csprng.c \
 	$(BDB_TOP)/src/os/os_cpu.c \
 	$(BDB_TOP)/src/os/os_ctime.c \
 	$(BDB_TOP)/src/os/os_dir.c \

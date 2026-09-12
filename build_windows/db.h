@@ -61,10 +61,16 @@ extern "C" {
 #define	DB_VERSION_RELEASE	2
 #define	DB_VERSION_MAJOR	2026
 #define	DB_VERSION_MINOR	0
-#define	DB_VERSION_PATCH	8
-#define	DB_CALVER	"2026.09.1"
-#define	DB_VERSION_STRING	"libdb 2026.09.1 (September 9, 2026)"
-#define	DB_VERSION_FULL_STRING	"libdb 2026.09.1 (September 9, 2026)"
+#define	DB_VERSION_PATCH	9
+/*
+ * DB_CALVER is the calver.org release identity of this fork (YYYY.0M[.MICRO]),
+ * distinct from the frozen 5.3.37 above which is only the format/ABI compat
+ * level.  Use this to identify the community fork; use the MAJOR/MINOR/PATCH
+ * triplet for format/ABI compatibility decisions.
+ */
+#define	DB_CALVER	"2026.09.2"
+#define	DB_VERSION_STRING	"libdb 2026.09.2 (September 10, 2026)"
+#define	DB_VERSION_FULL_STRING	"libdb 2026.09.2 (September 10, 2026)"
 
 /*
  * !!!
