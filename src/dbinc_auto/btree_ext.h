@@ -98,6 +98,7 @@ int __bam_adjust __P((DBC *, int32_t));
 int __bam_nrecs __P((DBC *, db_recno_t *));
 db_recno_t __bam_total __P((DB *, PAGE *));
 int __bam_get_root __P((DBC *, db_pgno_t, int, u_int32_t, int *));
+int __bam_isnap_invalidate __P((DB *, db_pgno_t));
 int __bam_search __P((DBC *, db_pgno_t, const DBT *, u_int32_t, int, db_recno_t *, int *));
 int __bam_stkrel __P((DBC *, u_int32_t));
 int __bam_stkgrow __P((ENV *, BTREE_CURSOR *));

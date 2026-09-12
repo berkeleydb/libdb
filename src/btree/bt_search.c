@@ -51,6 +51,9 @@
 
 static int __bam_rsnap_refresh __P((DBC *));
 static int __bam_rsnap_child __P((DBC *, const DBT *, db_pgno_t *, DB_LSN *));
+static int __bam_snap_child_of __P((DBC *, const DBT *, PAGE *, db_pgno_t *));
+static int __bam_snap_descend __P((DBC *, const DBT *, db_pgno_t *, DB_LSN *));
+static int __bam_isnap_store __P((DBC *, PAGE *));
 
 /*
  * __bam_rsnap_enabled --
@@ -65,6 +68,25 @@ __bam_rsnap_enabled()
 
 	if (cached == -1)
 		cached = getenv("DB_NO_RSNAP") != NULL ? 0 : 1;
+	return (cached);
+}
+
+/*
+ * __bam_isnap_enabled --
+ *	The multi-level snapshot descent (ROADMAP #2) caches upper NON-root
+ *	internal pages so the descent can start deeper than one level below the
+ *	root.  On by default; DB_NO_ISNAP disables ONLY the multi-level levels
+ *	(the single-level root snapshot still runs), so the two can be A/B'd
+ *	independently.  DB_NO_RSNAP disables both (it gates the whole path).
+ *	Read once, cached process-wide.
+ */
+static int
+__bam_isnap_enabled()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_NO_ISNAP") != NULL ? 0 : 1;
 	return (cached);
 }
 
@@ -119,6 +141,8 @@ __bam_rsnap_refresh(dbc)
 	if (wired && TYPE(h) == P_IBTREE && psize != 0 &&
 	    (ret = __os_malloc(env, sizeof(BAM_RSNAP) + psize, &snap)) == 0) {
 		snap->next = NULL;
+		snap->frame = NULL;	/* Root's wired frame is bt_rootpage. */
+		snap->pgno = root_pgno;
 		snap->lsn = lsn;
 		snap->size = psize;
 		memcpy(BAM_RSNAP_PAGE(snap), h, psize);
@@ -143,6 +167,52 @@ __bam_rsnap_refresh(dbc)
 }
 
 /*
+ * __bam_snap_child_of --
+ *	Search a P_IBTREE page image for the child that a normal descent for
+ *	"key" would take, returning that child page number.  This mirrors the
+ *	internal-page child selection in __bam_search EXACTLY (same binary
+ *	search, same __bam_cmp, same base->index rule) so the child chosen is
+ *	byte-for-byte what the live descent would choose.  The caller is
+ *	responsible for having validated that this image is a current copy of
+ *	its live page (by pgno and LSN) before trusting the result.
+ */
+static int
+__bam_snap_child_of(dbc, key, cp, childp)
+	DBC *dbc;
+	const DBT *key;
+	PAGE *cp;
+	db_pgno_t *childp;
+{
+	DB *dbp;
+	BTREE *t;
+	db_indx_t base, indx, lim;
+	int (*func) __P((DB *, const DBT *, const DBT *));
+	int cmp, ret;
+
+	dbp = dbc->dbp;
+	t = dbp->bt_internal;
+	if (TYPE(cp) != P_IBTREE || NUM_ENT(cp) == 0)
+		return (DB_NOTFOUND);
+
+	func = t->bt_compare;
+	indx = 0;
+	cmp = 1;
+	DB_BINARY_SEARCH_FOR(base, lim, NUM_ENT(cp), O_INDX) {
+		DB_BINARY_SEARCH_INCR(indx, base, lim, O_INDX);
+		if ((ret = __bam_cmp(dbc, key, cp, indx, func, &cmp)) != 0)
+			return (DB_NOTFOUND);
+		if (cmp == 0)
+			break;
+		if (cmp > 0)
+			DB_BINARY_SEARCH_SHIFT_BASE(indx, base, lim, O_INDX);
+	}
+	if (cmp != 0)
+		indx = base > 0 ? base - O_INDX : base;
+	*childp = GET_BINTERNAL(dbp, cp, indx)->pgno;
+	return (0);
+}
+
+/*
  * __bam_rsnap_child --
  *	If this handle holds a current snapshot of the root (its LSN still
  *	matches the live root), search the snapshot copy for the child that
@@ -162,9 +232,7 @@ __bam_rsnap_child(dbc, key, childp, snap_lsnp)
 	DB *dbp;
 	DB_LSN live;
 	PAGE *cp;
-	db_indx_t base, indx, lim;
-	int (*func) __P((DB *, const DBT *, const DBT *));
-	int cmp, ret;
+	int ret;
 
 	dbp = dbc->dbp;
 	t = dbp->bt_internal;
@@ -178,30 +246,282 @@ __bam_rsnap_child(dbc, key, childp, snap_lsnp)
 		return (DB_NOTFOUND);
 
 	cp = BAM_RSNAP_PAGE(snap);
-	if (TYPE(cp) != P_IBTREE)
-		return (DB_NOTFOUND);
+	if ((ret = __bam_snap_child_of(dbc, key, cp, childp)) != 0)
+		return (ret);
+	*snap_lsnp = snap->lsn;
+	return (0);
+}
+
+/*
+ * __bam_snap_descend --
+ *	Multi-level snapshot descent (ROADMAP #2, wired variant).  Starting
+ *	from the current root snapshot (validated against the live wired root
+ *	LSN), walk down through this handle's cached NON-root internal-page
+ *	copies as far as they reach, returning the deepest child page number to
+ *	begin the real (pinning) descent at, and the LSN of that start page's
+ *	parent (the deepest confirmed level) for the post-fetch re-check.
+ *
+ *	Each cached internal copy carries the WIRED live buffer it was taken
+ *	from (BAM_RSNAP.frame), so this walk reads the live page's current LSN
+ *	with a plain load and NEVER fetches/pins the internal -- exactly as the
+ *	root path reads bt_rootpage.  A wired frame is never evicted, so the
+ *	pointer cannot dangle; when the page is freed the frame is unwired and
+ *	the slot is invalidated (see __bam_isnap_invalidate), so a freed page's
+ *	copy is dropped, not trusted.
+ *
+ *	Correctness: at every level the child is read from the cached COPY only
+ *	after its live wired-frame LSN is confirmed to still equal the copy's
+ *	LSN (identical LSN => identical bytes => byte-identical child choice to
+ *	a normal descent).  A copy with no wired frame, a changed LSN, a wrong
+ *	type, or no cached slot stops the walk at the last confirmed page --
+ *	a strictly higher (safe) start page.  Thus a stale cache can only make
+ *	the descent start higher or restart -- never pick a wrong child.
+ *
+ *	Returns 0 with *childp set to the deepest start page and *snap_lsnp
+ *	set to the LSN the real descent must confirm for *childp's parent;
+ *	DB_NOTFOUND if there is no current root snapshot at all.
+ */
+static int
+__bam_snap_descend(dbc, key, childp, snap_lsnp)
+	DBC *dbc;
+	const DBT *key;
+	db_pgno_t *childp;
+	DB_LSN *snap_lsnp;
+{
+	BTREE *t;
+	BAM_RSNAP *snap;
+	DB *dbp;
+	DB_LSN start_lsn;
+	PAGE *cp;
+	db_pgno_t child;
+	int i, j, ret;
+
+	dbp = dbc->dbp;
+	t = dbp->bt_internal;
+
+	/* Level 0: the root copy (validated against the live wired root). */
+	if ((ret = __bam_rsnap_child(dbc, key, &child, &start_lsn)) != 0)
+		return (ret);
 
 	/*
-	 * Mirror the internal-page child selection in __bam_search exactly
-	 * (same binary search, same __bam_cmp, same base->index rule), so the
-	 * child chosen is identical to a normal descent.
+	 * Levels 1..N: walk cached NON-root internal copies fetch-free.  Each
+	 * step finds a cached copy of "child", reads the LIVE page's LSN through
+	 * the copy's wired frame with a plain load, and -- only if that LSN
+	 * still matches -- reads the next child from the copy and continues.
+	 * Cap the steps at BAM_ISNAP_MAX (the cache holds no more levels).
 	 */
-	func = t->bt_compare;
-	indx = 0;
-	cmp = 1;
-	DB_BINARY_SEARCH_FOR(base, lim, NUM_ENT(cp), O_INDX) {
-		DB_BINARY_SEARCH_INCR(indx, base, lim, O_INDX);
-		if ((ret = __bam_cmp(dbc, key, cp, indx, func, &cmp)) != 0)
-			return (DB_NOTFOUND);
-		if (cmp == 0)
+	if (__bam_isnap_enabled())
+		for (i = 0; i < BAM_ISNAP_MAX; i++) {
+			db_pgno_t next;
+			DB_LSN live;
+			void *frame;
+
+			/*
+			 * Find a cached copy of "child" and snapshot its wired
+			 * frame pointer in one load.  A concurrent free unwires
+			 * the page and NULLs snap->frame (see
+			 * __bam_isnap_invalidate); reading the pointer ONCE means
+			 * we never deref a NULL that a race stored after our check.
+			 */
+			snap = NULL;
+			frame = NULL;
+			for (j = 0; j < BAM_ISNAP_MAX; j++) {
+				snap = t->bt_isnap[j];
+				if (snap != NULL && snap->pgno == child) {
+					frame = snap->frame;
+					if (frame != NULL)
+						break;
+				}
+				snap = NULL;
+			}
+			if (snap == NULL || frame == NULL)
+				break;
+
+			/*
+			 * Plain-load the live LSN from the wired frame.  The frame
+			 * lives in the (never-unmapped) mpool region, so even if it
+			 * was just unwired and reused the read is to valid mapped
+			 * memory -- a stale/torn value simply fails the compare and
+			 * stops the walk; it can never fault or pick a wrong child.
+			 */
+			live = LSN((PAGE *)frame);
+			if (live.file != snap->lsn.file ||
+			    live.offset != snap->lsn.offset)
+				break;
+
+			/*
+			 * Confirmed current.  The copy's bytes equal the live
+			 * page's, so the child chosen from the copy is exactly
+			 * what a normal descent would choose.  Read it fetch-free.
+			 */
+			cp = BAM_RSNAP_PAGE(snap);
+			if (__bam_snap_child_of(dbc, key, cp, &next) != 0)
+				break;
+			start_lsn = snap->lsn;
+			child = next;
+		}
+
+	*childp = child;
+	*snap_lsnp = start_lsn;
+	return (0);
+}
+
+/*
+ * __bam_isnap_invalidate --
+ *	Drop any cached internal-page copy for "pgno" (called when the page is
+ *	about to be freed/unwired, so its wired frame must no longer be read).
+ *	Retires the copy to bt_isnap_free (freed at handle close) so a
+ *	concurrent reader still holding it is never freed underneath, and NULLs
+ *	the slot so the next descent falls back to a real fetch.  Serialized by
+ *	the handle mutex; process-local.  A no-op for non-Btree handles.
+ *
+ * PUBLIC: int __bam_isnap_invalidate __P((DB *, db_pgno_t));
+ */
+int
+__bam_isnap_invalidate(dbp, pgno)
+	DB *dbp;
+	db_pgno_t pgno;
+{
+	BTREE *t;
+	BAM_RSNAP *snap;
+	int i;
+
+	if (dbp->type != DB_BTREE || (t = dbp->bt_internal) == NULL)
+		return (0);
+	/* Cheap racy pre-check: nothing cached for this pgno, nothing to do. */
+	for (i = 0; i < BAM_ISNAP_MAX; i++) {
+		snap = t->bt_isnap[i];
+		if (snap != NULL && snap->pgno == pgno)
 			break;
-		if (cmp > 0)
-			DB_BINARY_SEARCH_SHIFT_BASE(indx, base, lim, O_INDX);
 	}
-	if (cmp != 0)
-		indx = base > 0 ? base - O_INDX : base;
-	*childp = GET_BINTERNAL(dbp, cp, indx)->pgno;
-	*snap_lsnp = snap->lsn;
+	if (i == BAM_ISNAP_MAX)
+		return (0);
+
+	MUTEX_LOCK(dbp->env, dbp->mutex);
+	for (i = 0; i < BAM_ISNAP_MAX; i++) {
+		snap = t->bt_isnap[i];
+		if (snap != NULL && snap->pgno == pgno) {
+			snap->frame = NULL;
+			snap->next = t->bt_isnap_free;
+			t->bt_isnap_free = snap;
+			t->bt_isnap[i] = NULL;
+		}
+	}
+	MUTEX_UNLOCK(dbp->env, dbp->mutex);
+	return (0);
+}
+
+/*
+ * __bam_isnap_store --
+ *	Populate the multi-level internal-page cache from a live internal page
+ *	the real descent has in hand (P_IBTREE, non-root).  WIRES the page so
+ *	its frame stays resident (via __memp_wire, which self-caps at
+ *	MPOOL_WIRED_MAX_PCT and is a no-op over the cap); ONLY if wiring took
+ *	does it cache a copy keyed by (pgno, LSN) together with the wired frame
+ *	pointer -- an unwired frame is evictable and its pointer could dangle,
+ *	so it is never cached (mirrors the root path's wired-only invariant).
+ *	If the pgno is already cached at the same LSN it is left alone;
+ *	otherwise a slot is (re)filled, retiring any superseded copy to
+ *	bt_isnap_free (freed at handle close).  Serialized by the handle mutex;
+ *	process-local.
+ */
+static int
+__bam_isnap_store(dbc, h)
+	DBC *dbc;
+	PAGE *h;
+{
+	DB *dbp;
+	BTREE *t;
+	ENV *env;
+	DB_MPOOLFILE *mpf;
+	BAM_RSNAP *snap;
+	db_pgno_t pgno;
+	u_int32_t psize;
+	int i, slot, wired;
+
+	dbp = dbc->dbp;
+	env = dbp->env;
+	mpf = dbp->mpf;
+	t = dbp->bt_internal;
+	psize = dbp->pgsize;
+	pgno = PGNO(h);
+
+	if (psize == 0 || TYPE(h) != P_IBTREE)
+		return (0);
+	/* Never cache the root here; the root copy lives in bt_rsnap. */
+	if (pgno == t->bt_root)
+		return (0);
+
+	/* Already cached at this same LSN?  Nothing to do. */
+	for (i = 0; i < BAM_ISNAP_MAX; i++) {
+		snap = t->bt_isnap[i];
+		if (snap != NULL && snap->pgno == pgno &&
+		    snap->lsn.file == LSN(h).file &&
+		    snap->lsn.offset == LSN(h).offset)
+			return (0);
+	}
+
+	/*
+	 * Wire the frame so the cached pointer stays resident.  If wiring did
+	 * not take (mmap'd page, or the per-region wired cap was reached), do
+	 * not cache it -- an evictable frame's pointer could dangle.  This is
+	 * the same invariant the root path enforces in __bam_rsnap_refresh.
+	 */
+	wired = 0;
+	(void)__memp_wire(mpf, h, &wired);
+	if (!wired)
+		return (0);
+
+	if (__os_malloc(env, sizeof(BAM_RSNAP) + psize, &snap) != 0)
+		return (0);
+	snap->next = NULL;
+	snap->frame = h;
+	snap->pgno = pgno;
+	snap->lsn = LSN(h);
+	snap->size = psize;
+	memcpy(BAM_RSNAP_PAGE(snap), h, psize);
+
+	MUTEX_LOCK(env, dbp->mutex);
+	/*
+	 * Prefer an empty slot, else the slot already holding this pgno
+	 * (refresh in place), else evict round-robin keyed by pgno so the
+	 * choice is stable and spreads distinct pages across slots.
+	 */
+	slot = -1;
+	for (i = 0; i < BAM_ISNAP_MAX; i++)
+		if (t->bt_isnap[i] == NULL) {
+			slot = i;
+			break;
+		}
+	if (slot == -1)
+		for (i = 0; i < BAM_ISNAP_MAX; i++)
+			if (((BAM_RSNAP *)t->bt_isnap[i])->pgno == pgno) {
+				slot = i;
+				break;
+			}
+	if (slot == -1)
+		slot = (int)(pgno % BAM_ISNAP_MAX);
+	if (t->bt_isnap[slot] != NULL) {
+		BAM_RSNAP *old = t->bt_isnap[slot];
+
+		/*
+		 * Retire the superseded copy.  If it is a DIFFERENT page, this
+		 * handle no longer caches it, so unwire its frame now (promptly
+		 * returning it to the cache; __memp_unwire is a safe no-op if it
+		 * was already unwired).  If it is the SAME page (LSN refresh),
+		 * the new copy inherits the wire, so just detach the old copy's
+		 * frame pointer -- never unwire a frame two copies still name.
+		 */
+		if (old->frame != NULL) {
+			if (old->pgno != pgno)
+				(void)__memp_unwire(mpf, old->frame);
+			old->frame = NULL;
+		}
+		old->next = t->bt_isnap_free;
+		t->bt_isnap_free = old;
+	}
+	t->bt_isnap[slot] = snap;
+	MUTEX_UNLOCK(env, dbp->mutex);
 	return (0);
 }
 
@@ -470,7 +790,8 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	u_int8_t level, saved_level;
 	int from_snap;
 	db_pgno_t snap_child;
-	DB_LSN snap_lsn;
+	DB_LSN snap_lsn, root_snap_lsn;
+	int snap_ok;
 
 	if (F_ISSET(dbc, DBC_OPD))
 		LOCK_CHECK_OFF(dbc->thread_info);
@@ -503,27 +824,43 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	start_pgno = saved_pg = root_pgno;
 
 	/*
-	 * Root-snapshot fast path (option B): for a plain read lookup of the
-	 * main tree (not write/stack/parent/next/del/min/max, not OPD, not
-	 * recno/recnum, not multiversion), take the first child from this
-	 * handle's private root copy and begin the descent there, never
-	 * fetching (pinning/latching) the contended live root.  The copy's
-	 * validity is confirmed against the live root LSN here, and re-checked
-	 * after the child is fetched (below) to close the window where a
-	 * concurrent root change could make the child stale.
+	 * Snapshot fast path (option B, ROADMAP #2 multi-level): for a plain
+	 * read lookup of the main tree (not write/stack/parent/next/del/min/max,
+	 * not OPD, not recno/recnum, not multiversion), descend this handle's
+	 * private page copies -- the root copy and, when the tree is tall, the
+	 * cached upper NON-root internal copies -- to find the deepest child to
+	 * begin the real descent at, never fetching (pinning/latching) the
+	 * contended live root and never lock-coupling the skipped upper levels.
+	 * The root copy's validity is confirmed against the live root LSN by
+	 * __bam_snap_descend, and re-checked after the start page is fetched
+	 * (below) to close the window where a concurrent root change could make
+	 * the start page stale.  Each skipped NON-root internal level is
+	 * confirmed live (by pgno+LSN) inside __bam_snap_descend at the moment
+	 * its child is read, so a stale cache can only start the descent higher
+	 * (safe) or trigger a restart, never pick a wrong child.
 	 */
 	from_snap = 0;
-	if (root_pgno == PGNO_INVALID && key != NULL && slevel == LEAFLEVEL &&
+	snap_ok = root_pgno == PGNO_INVALID && key != NULL &&
+	    slevel == LEAFLEVEL &&
 	    LF_ISSET(SR_READ) && !LF_ISSET(SR_WRITE | SR_PARENT | SR_STACK |
 	    SR_NEXT | SR_DEL | SR_START | SR_BOTH | SR_MIN | SR_MAX |
 	    SR_STK_ONLY) && !F_ISSET(dbc, DBC_OPD) &&
 	    dbc->dbtype == DB_BTREE && !F_ISSET(cp, C_RECNUM) &&
 	    atomic_read(&mpf->mfp->multiversion) == 0 &&
 	    LOGGING_ON(env) && !F_ISSET(dbp, DB_AM_NOT_DURABLE) &&
-	    __bam_rsnap_enabled()) {
-		if (__bam_rsnap_child(dbc, key, &snap_child, &snap_lsn) == 0) {
+	    __bam_rsnap_enabled();
+	if (snap_ok) {
+		if (__bam_snap_descend(dbc, key, &snap_child, &snap_lsn) == 0) {
 			start_pgno = snap_child;
 			from_snap = 1;
+			/*
+			 * Remember the live root LSN as it stood when the
+			 * snapshot descent picked the start page, so the
+			 * post-fetch re-check can detect a concurrent root
+			 * change (e.g. a split adding a tree level).
+			 */
+			root_snap_lsn = t->bt_rootpage != NULL ?
+			    LSN((PAGE *)t->bt_rootpage) : snap_lsn;
 		} else
 			(void)__bam_rsnap_refresh(dbc);
 	}
@@ -575,17 +912,24 @@ retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel,
 	BT_STK_CLR(cp);
 
 	/*
-	 * Root-snapshot re-check: we began the descent at a child taken from
-	 * the root copy.  If the live root LSN no longer matches the snapshot,
-	 * the root changed (e.g. a split added a level, or a merge freed the
-	 * child) while we were fetching the child, so the child may be stale or
-	 * reused.  Release it and restart the descent from the real root.
+	 * Snapshot re-check: we began the descent at a page taken (directly or
+	 * transitively) from this handle's private page copies.  If the live
+	 * root LSN no longer matches what it was when the snapshot descent
+	 * picked the start page, the tree changed (e.g. a split added a level,
+	 * or a merge freed the start page's subtree) while we were fetching the
+	 * start page, so it may be stale or reused.  Release it and restart the
+	 * descent from the real root.  (A freed/reused start page of a bad type
+	 * is already caught by SR_SNAPSHOT in __bam_get_root and the per-level
+	 * LEVEL guard below.)
 	 */
 	if (from_snap) {
 		DB_LSN now;
 
-		now = LSN((PAGE *)t->bt_rootpage);
-		if (now.file != snap_lsn.file || now.offset != snap_lsn.offset) {
+		now = t->bt_rootpage != NULL ?
+		    LSN((PAGE *)t->bt_rootpage) : root_snap_lsn;
+		if (t->bt_rootpage == NULL ||
+		    now.file != root_snap_lsn.file ||
+		    now.offset != root_snap_lsn.offset) {
 			if ((ret = __memp_fput(mpf,
 			    dbc->thread_info, h, dbc->priority)) != 0)
 				goto err;
@@ -623,6 +967,19 @@ retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel,
 				goto lock_next;
 			}
 			adjust = O_INDX;
+			/*
+			 * Multi-level snapshot cache (ROADMAP #2, wired): this is a
+			 * populated internal page in hand during a plain read
+			 * descent.  Cache a copy of every NON-root internal page
+			 * (P_IBTREE), WIRING the frame so a later descent can read
+			 * its live LSN with a plain load and skip the fetch/pin
+			 * entirely.  __bam_isnap_store ignores the root, same-LSN
+			 * duplicates, and pages it cannot wire; a page that splits
+			 * often (a leaf parent) simply fails the live-LSN confirm on
+			 * the next descent and falls back -- never a wrong child.
+			 */
+			if (snap_ok && TYPE(h) == P_IBTREE)
+				(void)__bam_isnap_store(dbc, h);
 		}
 		inp = P_INP(dbp, h);
 		if (LF_ISSET(SR_MIN | SR_MAX)) {
