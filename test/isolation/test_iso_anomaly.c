@@ -10,10 +10,16 @@
  *				scenario, including the write-skew / G2 /
  *				read-only anomalies, MUST come out serializable.
  *	ISO_LEVEL=snapshot	DB_TXN_SNAPSHOT -- plain snapshot isolation.
- *				The SI anomalies are legal and are EXPECTED to
- *				produce a non-serializable history (they are
- *				visible again, exactly as legacy BDB behaved);
- *				non-anomaly scenarios still must be serializable.
+ *				The write-skew scenarios (cross reads/writes to
+ *				DIFFERENT keys, so no page-lock contention forces
+ *				an abort) are legal under SI and are EXPECTED to
+ *				produce a non-serializable history -- they are
+ *				visible again, exactly as legacy BDB behaved.  The
+ *				G2 / read-only scenarios write the SAME key and are
+ *				already serialized by the lock manager (first-
+ *				committer-wins / deadlock), so they stay
+ *				serializable under both levels; every non-anomaly
+ *				scenario must be serializable too.
  *
  * Running both levels is the direct demonstration of the DB_TXN_SNAPSHOT vs
  * DB_TXN_SERIALIZABLE contract: the same schedule is an anomaly under one and
@@ -1071,10 +1077,10 @@ static iso_scenario scenarios[] = {
       2, 2, 2, 0, 1, NULL, 40, sk_samebtree_trigger },
     { "g2_antidep",
       "G2-item: both txns scan for markers, both insert one",
-      1, 1, 2, 0, 1, NULL, 1, g2_antidep },
+      1, 1, 2, 0, 0, NULL, 1, g2_antidep },
     { "read_only_anomaly",
       "Fekete 3-txn: read-only txn observes a non-serializable state",
-      2, 4, 3, 0, 1, NULL, 1, read_only_anomaly },
+      2, 4, 3, 0, 0, NULL, 1, read_only_anomaly },
     { "lost_update",
       "both txns read the counter and write read+1",
       1, 1, 2, 0, 0, NULL, 1, lost_update },
