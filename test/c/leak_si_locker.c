@@ -16,7 +16,7 @@
  * the mutex region was exhausted.
  *
  * Usage: leak_si_locker [snapshot|control]   (default: snapshot)
- *   snapshot -- DB_TXN_SNAPSHOT (the trigger)
+ *   snapshot -- DB_TXN_SERIALIZABLE (the trigger)
  *   control  -- flags 0 (must be flat both before and after the fix)
  *
  * Self-bounded and deterministic: fixed transaction count, single thread.
@@ -100,7 +100,7 @@ main(int argc, char *argv[])
 		fprintf(stderr, "usage: %s [snapshot|control]\n", argv[0]);
 		return (2);
 	}
-	txn_flags = strcmp(mode, "control") == 0 ? 0 : DB_TXN_SNAPSHOT;
+	txn_flags = strcmp(mode, "control") == 0 ? 0 : DB_TXN_SERIALIZABLE;
 
 	/* The caller is expected to run this in a fresh scratch directory. */
 	(void)mkdir(HOME, 0755);

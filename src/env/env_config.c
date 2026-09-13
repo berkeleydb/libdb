@@ -189,6 +189,7 @@ static const FN config_set_flags[] = {
 	{ DB_TIME_NOTGRANTED,	"db_time_notgranted" },
 	{ DB_TXN_NOSYNC,	"db_txn_nosync" },
 	{ DB_TXN_NOWAIT,	"db_txn_nowait" },
+	{ DB_TXN_SERIALIZABLE,	"db_txn_serializable" },
 	{ DB_TXN_SNAPSHOT,	"db_txn_snapshot" },
 	{ DB_TXN_WRITE_NOSYNC,	"db_txn_write_nosync" },
 	{ DB_YIELDCPU,		"db_yieldcpu" },

@@ -1,7 +1,7 @@
 /*-
  * libdb SSI abort-rate probe.
  *
- * Serializable Snapshot Isolation (DB_TXN_SNAPSHOT) prevents write-skew
+ * Serializable Snapshot Isolation (DB_TXN_SERIALIZABLE) prevents write-skew
  * and other snapshot anomalies by aborting the pivot of a dangerous rw-
  * dependency structure.  The cost is a nonzero abort rate that grows with
  * contention, and -- because Berkeley DB tracks conflicts at PAGE granularity,
@@ -10,7 +10,7 @@
  * abort rate directly, so the page-granularity cost is measured, not asserted
  * (ROADMAP #17).
  *
- * Each thread runs a stream of short snapshot-safe transactions: read one key,
+ * Each thread runs a stream of short serializable transactions: read one key,
  * write another, commit.  Keys are drawn from a configurable hot set.  A small
  * hot set + many threads maximizes both genuine and page-sharing conflicts; a
  * large hot set approximates the low-contention floor.  We report committed vs
@@ -48,7 +48,7 @@ typedef struct {
 	long committed, aborted, deadlock, other;
 } targ_t;
 
-/* One snapshot-safe read-then-write transaction; classifies the outcome. */
+/* One serializable (SSI) read-then-write transaction; classifies the outcome. */
 static void
 one_txn(targ_t *t)
 {
@@ -60,7 +60,7 @@ one_txn(targ_t *t)
 	rk = rand_r(&t->seed) % hotkeys;
 	wk = rand_r(&t->seed) % hotkeys;
 
-	if (env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT) != 0) {
+	if (env->txn_begin(env, NULL, &txn, DB_TXN_SERIALIZABLE) != 0) {
 		t->other++;
 		return;
 	}

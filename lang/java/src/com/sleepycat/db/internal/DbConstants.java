@@ -229,6 +229,7 @@ public interface DbConstants
     int DB_TXN_NOT_DURABLE = 0x00000004;
     int DB_TXN_NOWAIT = 0x00000002;
     int DB_TXN_PRINT = 7;
+    int DB_TXN_SERIALIZABLE = 0x00200000;
     int DB_TXN_SNAPSHOT = 0x00000004;
     int DB_TXN_SYNC = 0x00000008;
     int DB_TXN_TOKEN_SIZE = 20;

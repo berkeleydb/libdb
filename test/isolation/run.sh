@@ -19,6 +19,10 @@
 #   LIBDB_BUILD   path to a built build_unix (default: ../../build_unix)
 #   ISO_TIMEOUT   seconds for the whole run (default: 300)
 #   ISO_SAN       1 => also build with ASan/UBSan (default 0)
+#   ISO_LEVEL     snapshot | serializable | both (default: both)
+#                 both runs every scenario under plain SI then SSI, proving
+#                 the anomalies are VISIBLE under DB_TXN_SNAPSHOT and PREVENTED
+#                 under DB_TXN_SERIALIZABLE.
 #
 # Run from test/isolation/ inside a `nix develop` shell.
 
@@ -57,4 +61,16 @@ echo "built $OUT/test_iso_anomaly"
 [ "${1:-}" = "build" ] && exit 0
 
 cd "$OUT"
-exec timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@"
+
+# Choose the isolation level(s) to exercise.  Default: both, so a single run
+# demonstrates the SI-anomaly-visible vs SSI-prevented contract.
+LEVELS=${ISO_LEVEL:-both}
+if [ "$LEVELS" = "both" ]; then
+	rc=0
+	echo "=== ISO_LEVEL=snapshot (plain SI: anomalies expected) ==="
+	ISO_LEVEL=snapshot timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
+	echo "=== ISO_LEVEL=serializable (SSI: anomalies prevented) ==="
+	ISO_LEVEL=serializable timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
+	exit $rc
+fi
+exec env ISO_LEVEL="$LEVELS" timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@"
