@@ -1835,12 +1835,22 @@ __lock_downgrade(env, lock, new_mode, flags)
 	if (IS_WRITELOCK(lockp->mode) && !IS_WRITELOCK(new_mode))
 		sh_locker->nwrites--;
 
-	lockp->mode = new_mode;
-	lock->mode = new_mode;
-
 	/* Get the object associated with this lock. */
 	obj = SH_OFF_TO_PTR(lockp, lockp->obj, DB_LOCKOBJ);
 	OBJECT_LOCK_NDX(lt, region, obj->indx);
+	/*
+	 * Move the holder mode-count summary from the old bucket to the new
+	 * one under the object partition mutex, in lockstep with the in-place
+	 * mode change.  lockp is a held lock on obj->holders (downgrade is only
+	 * called on granted locks), so the old-bucket count is nonzero.
+	 */
+	if (lockp->mode != new_mode) {
+		LOCK_OBJ_HELD_DEL(obj, lockp->mode);
+		LOCK_OBJ_HELD_ADD(obj, new_mode);
+	}
+	lockp->mode = new_mode;
+	lock->mode = new_mode;
+
 	STAT(lt->obj_stat[obj->indx].st_ndowngrade++);
 	ret = __lock_promote(lt, obj, NULL, flags);
 	OBJECT_UNLOCK(lt, region, obj->indx);
