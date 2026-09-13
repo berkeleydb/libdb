@@ -10,8 +10,9 @@
 # TEST	SSI's pivot check runs at commit time, but a prepared transaction
 # TEST	must be guaranteed committable (upstream panics the environment if a
 # TEST	prepared txn cannot commit).  Until SSI's conflict status is frozen at
-# TEST	prepare time, DB_TXN_SNAPSHOT_SAFE + prepare() must be refused with an
-# TEST	error -- never allowed to reach the commit-time panic path.
+# TEST	prepare time, DB_TXN_SERIALIZABLE + prepare() must be refused with an
+# TEST	error -- never allowed to reach the commit-time panic path.  A plain
+# TEST	DB_TXN_SNAPSHOT txn is unaffected and remains preparable (see ssi011).
 proc ssi003 { } {
 	source ./include.tcl
 

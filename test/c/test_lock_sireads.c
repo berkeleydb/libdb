@@ -22,7 +22,7 @@
  * The trigger needs ONE transaction holding BOTH a write lock and a SIREAD
  * lock on distinct objects, reaching the objlist-building __lock_vec call:
  *
- *   DB_TXN_SNAPSHOT txn (=> SSI => SIREAD markers on reads) on a
+ *   DB_TXN_SERIALIZABLE txn (=> SSI => SIREAD markers on reads) on a
  *   DB_MULTIVERSION btree, one put + one get on a DIFFERENT page, committed on
  *   a replication MASTER (__txn_commit passes an objlist to DB_LOCK_PUT_READ
  *   only for a logged top-level txn on a master).  A single-site master with a
@@ -148,7 +148,7 @@ run_transaction(DB_ENV *dbenv, DB *db, int with_read)
 	for (attempt = 0; attempt < MAX_RETRIES; attempt++) {
 		txn = NULL;
 		if ((ret = dbenv->txn_begin(
-		    dbenv, NULL, &txn, DB_TXN_SNAPSHOT)) != 0)
+		    dbenv, NULL, &txn, DB_TXN_SERIALIZABLE)) != 0)
 			return (fail("DB_ENV->txn_begin", ret));
 
 		ret = put_value(db, txn, "journal000001", "transfer000001");
