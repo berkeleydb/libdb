@@ -225,6 +225,7 @@ DbEnv.set_flags
 	DB_TIME_NOTGRANTED		# Return NOTGRANTED on timeout
 	DB_TXN_NOSYNC			# Do not sync log on commit
 	DB_TXN_NOWAIT			# Do not wait for locks
+	DB_TXN_SERIALIZABLE		__PIN=0x00200000	# Serializable snapshot isolation (SSI)
 	DB_TXN_SNAPSHOT			# Snapshot isolation
 	DB_TXN_WRITE_NOSYNC		# Write the log bug don't sync
 	DB_YIELDCPU			# Yield the CPU (a lot)
@@ -275,7 +276,8 @@ DbEnv.txn_begin
 	DB_TXN_NOWAIT			# Do not wait for locks
 	DB_TXN_FAMILY			# Cursors and child txns are
 					# independent but lock-compatible
-	DB_TXN_SNAPSHOT			# Serializable snapshot isolation (SSI)
+	DB_TXN_SERIALIZABLE		__PIN=0x00200000	# Serializable snapshot isolation (SSI)
+	DB_TXN_SNAPSHOT			# Snapshot isolation
 	DB_TXN_SYNC			# Always sync log on commit
 	DB_TXN_WAIT			# Always wait for locks in this txn
 	DB_TXN_WRITE_NOSYNC		# Write the log but don't sync
@@ -401,6 +403,7 @@ Db.cursor
 	DB_RECOVER			# Called from recovery (internal)
 	DB_WRITECURSOR			# Cursor can update (CDB)
 	DB_WRITELOCK			# Cursor should get write locks
+	DB_TXN_SERIALIZABLE		__PIN=0x00200000	# Serializable snapshot isolation (SSI)
 	DB_TXN_SNAPSHOT			# Snapshot isolation
 
 Db.del

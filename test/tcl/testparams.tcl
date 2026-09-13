@@ -81,7 +81,7 @@ set test_names(sdb)	[list sdb001 sdb002 sdb003 sdb004 sdb005 sdb006 \
 set test_names(sdbtest)	[list sdbtest001 sdbtest002]
 set test_names(sec)	[list sec001 sec002]
 set test_names(si)	[list si001 si002 si003 si004 si005 si006 si007 si008]
-set test_names(ssi)	[list ssi001 ssi002 ssi003 ssi004 ssi005 ssi006 ssi007 ssi008 ssi009]
+set test_names(ssi)	[list ssi001 ssi002 ssi003 ssi004 ssi005 ssi006 ssi007 ssi008 ssi009 ssi010 ssi011]
 set test_names(statprint)	[list statprint001]
 set test_names(mvcc)	[list mvcc001]
 set test_names(bt_rsnap)	[list bt_rsnap001]

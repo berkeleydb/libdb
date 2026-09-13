@@ -611,7 +611,7 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 			MUTEX_UNLOCK(env, bhp->mtx_buf);
 		} else if (nflight >= MEMP_AIO_WINDOW) {
 			t_ret = __memp_aio_drain(env, dbmp,
-			    dbmp->aio_ctx, aiow, nflight);
+			    dbmp->aio_ctx, aiow, nflight, &ret);
 			wrote_cnt += t_ret;
 			wrote_total += t_ret;
 			nflight = 0;
@@ -625,7 +625,7 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 				*interruptedp = 1;
 			if (nflight > 0) {
 				wrote_total += __memp_aio_drain(env,
-				    dbmp, dbmp->aio_ctx, aiow, nflight);
+				    dbmp, dbmp->aio_ctx, aiow, nflight, &ret);
 				nflight = 0;
 			}
 			goto err;
@@ -647,11 +647,14 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 
 done:	/*
 	 * Drain any async writes still in flight before forcing pages to
-	 * disk: the fsync below must follow all completed writes.
+	 * disk: the fsync below must follow all completed writes.  A failed
+	 * async write sets ret (via the drain), so required_write's fsync is
+	 * skipped and the checkpoint fails -- matching the synchronous path,
+	 * where a page-write error already left ret non-zero.
 	 */
 	if (nflight > 0) {
 		wrote_total += __memp_aio_drain(env,
-		    dbmp, dbmp->aio_ctx, aiow, nflight);
+		    dbmp, dbmp->aio_ctx, aiow, nflight, &ret);
 		nflight = 0;
 	}
 

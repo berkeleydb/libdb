@@ -110,7 +110,8 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 	if ((ret = __db_fchk(env,
 	    "txn_begin", flags,
 	    DB_IGNORE_LEASE |DB_READ_COMMITTED | DB_READ_UNCOMMITTED |
-	    DB_TXN_FAMILY | DB_TXN_NOSYNC | DB_TXN_SNAPSHOT | DB_TXN_SYNC |
+	    DB_TXN_FAMILY | DB_TXN_NOSYNC | DB_TXN_SERIALIZABLE |
+	    DB_TXN_SNAPSHOT | DB_TXN_SYNC |
 	    DB_TXN_WAIT | DB_TXN_WRITE_NOSYNC | DB_TXN_NOWAIT |
 	    DB_TXN_BULK)) != 0)
 		return (ret);
@@ -125,7 +126,9 @@ __txn_begin_pp(dbenv, parent, txnpp, flags)
 		    "Family transactions cannot have parents"));
 		return (EINVAL);
 	} else if (IS_REAL_TXN(parent) &&
-	    !F_ISSET(parent, TXN_SNAPSHOT) && LF_ISSET(DB_TXN_SNAPSHOT)) {
+	    ((!F_ISSET(parent, TXN_SNAPSHOT) && LF_ISSET(DB_TXN_SNAPSHOT)) ||
+	    (!F_ISSET(parent, TXN_SNAPSHOT_SAFE) &&
+	    LF_ISSET(DB_TXN_SERIALIZABLE)))) {
 		__db_errx(env, DB_STR("4522",
 		    "Child transaction snapshot setting must match parent"));
 		return (EINVAL);
@@ -230,8 +233,26 @@ __txn_begin(env, ip, parent, txnpp, flags)
 		F_SET(txn, TXN_READ_UNCOMMITTED);
 	if (LF_ISSET(DB_TXN_FAMILY))
 		F_SET(txn, TXN_FAMILY | TXN_INFAMILY | TXN_READONLY);
-	if (LF_ISSET(DB_TXN_SNAPSHOT) ||
-	    F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT) ||
+	/*
+	 * Establish the isolation level:
+	 *
+	 *   DB_TXN_SNAPSHOT     => plain snapshot isolation (MVCC substrate
+	 *                          only, TXN_SNAPSHOT).  May exhibit the
+	 *                          classic SI anomalies (write skew, the
+	 *                          read-only-transaction anomaly), exactly as
+	 *                          legacy Berkeley DB behaved.
+	 *
+	 *   DB_TXN_SERIALIZABLE => serializable snapshot isolation (SSI): the
+	 *                          snapshot substrate PLUS Cahill rw-conflict
+	 *                          detection (TXN_SNAPSHOT | TXN_SNAPSHOT_SAFE).
+	 *
+	 * A child inherits its parent's level; the env-wide defaults
+	 * DB_ENV_TXN_SNAPSHOT / DB_ENV_TXN_SERIALIZABLE supply it when neither
+	 * a flag nor a parent does.  DB_TXN_SERIALIZABLE implies the snapshot
+	 * substrate, so it also triggers the rep-client guard below.
+	 */
+	if (LF_ISSET(DB_TXN_SNAPSHOT | DB_TXN_SERIALIZABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_SNAPSHOT | DB_ENV_TXN_SERIALIZABLE) ||
 	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT))) {
 		if (IS_REP_CLIENT(env)) {
 			__db_errx(env, DB_STR("4572",
@@ -241,13 +262,16 @@ __txn_begin(env, ip, parent, txnpp, flags)
 			F_SET(txn, TXN_SNAPSHOT);
 	}
 	/*
-	 * DB_TXN_SNAPSHOT is serializable snapshot isolation (SSI): snapshot
-	 * isolation plus serializable conflict detection.  Any snapshot
-	 * transaction gets SSI -- there is no separate plain-SI mode.  (A
-	 * replication client already returned EINVAL above, so we only reach
-	 * here for a snapshot txn that is allowed to be SSI.)
+	 * SSI (serializable snapshot isolation) layers rw-antidependency
+	 * tracking on top of the snapshot substrate.  Turn it on only when the
+	 * caller explicitly asked for serializability -- via DB_TXN_SERIALIZABLE,
+	 * the DB_ENV_TXN_SERIALIZABLE env default, or a SERIALIZABLE parent.
+	 * Plain DB_TXN_SNAPSHOT gets none of it.  (TXN_SNAPSHOT is already set
+	 * above for these transactions, and a replication client has already
+	 * returned EINVAL.)
 	 */
-	if (F_ISSET(txn, TXN_SNAPSHOT) ||
+	if (LF_ISSET(DB_TXN_SERIALIZABLE) ||
+	    F_ISSET(dbenv, DB_ENV_TXN_SERIALIZABLE) ||
 	    (parent != NULL && F_ISSET(parent, TXN_SNAPSHOT_SAFE))) {
 		F_SET(txn, TXN_SNAPSHOT_SAFE);
 		/*
@@ -1400,7 +1424,7 @@ __txn_prepare(txn, gid)
 	 */
 	if (F_ISSET(txn, TXN_SNAPSHOT_SAFE)) {
 		__db_errx(env, DB_STR("4575",
-		    "DB_TXN->prepare: DB_TXN_SNAPSHOT (SSI) transactions "
+		    "DB_TXN->prepare: DB_TXN_SERIALIZABLE (SSI) transactions "
 		    "cannot be prepared for two-phase commit"));
 		ret = EINVAL;
 		goto err;

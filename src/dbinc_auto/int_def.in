@@ -1361,6 +1361,7 @@
 #define	__return_txn_pages __return_txn_pages@DB_VERSION_UNIQUE_NAME@
 #define	__memp_alloc __memp_alloc@DB_VERSION_UNIQUE_NAME@
 #define	__memp_free __memp_free@DB_VERSION_UNIQUE_NAME@
+#define	__memp_purge_obsolete __memp_purge_obsolete@DB_VERSION_UNIQUE_NAME@
 #define	__memp_backup_open __memp_backup_open@DB_VERSION_UNIQUE_NAME@
 #define	__memp_backup_mpf __memp_backup_mpf@DB_VERSION_UNIQUE_NAME@
 #define	__memp_backup_close __memp_backup_close@DB_VERSION_UNIQUE_NAME@
