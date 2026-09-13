@@ -136,6 +136,13 @@ typedef struct __sh_dbt { /* SHARED */
 #define	SH_DBT_PTR(p)	((void *)(((u_int8_t *)(p)) + (p)->off))
 
 /*
+ * Maximum number of distinct lock modes (the RIW conflict table has the most,
+ * DB_LOCK_SIREAD == 9 being the highest index).  Sizes the per-object holder
+ * mode-count summary; the live count is region->nmodes <= DB_LOCK_NMODES.
+ */
+#define	DB_LOCK_NMODES	10
+
+/*
  * Object structures;  these live in the object hash table.
  */
 typedef struct __db_lockobj { /* SHARED */
@@ -147,12 +154,37 @@ typedef struct __db_lockobj { /* SHARED */
 	SH_TAILQ_HEAD(__waitl) waiters;	/* List of waiting locks. */
 	SH_TAILQ_HEAD(__holdl) holders;	/* List of held locks. */
 	SH_TAILQ_HEAD(__sil) sireaders;	/* List of SSI snapshot readers. */
+	/*
+	 * O(1) conflict summary for the read-lock fast path.  nheld[m] counts
+	 * the granted locks currently on the holders list whose mode == m
+	 * (SIREAD markers live on the sireaders list and are NOT counted --
+	 * they never participate in holders conflicts).  Maintained under the
+	 * object's partition mutex at every holders insert/remove/mode-change,
+	 * so it stays exactly consistent with the holders list.  Lets
+	 * __lock_get_internal decide "no conflicting holder" in O(nmodes)
+	 * instead of walking the O(N) holders list on the hot read path.
+	 */
+	u_int32_t	nheld[DB_LOCK_NMODES];
 					/* Declare room in the object to hold
 					 * typical DB lock structures so that
 					 * we do not have to allocate them from
 					 * shalloc at run-time. */
 	u_int8_t objdata[sizeof(struct __db_ilock)];
 } DB_LOCKOBJ;
+
+/*
+ * Maintain the per-object holder mode-count summary (nheld[]).  These MUST be
+ * called under the object's partition mutex, paired one-for-one with every
+ * insertion/removal on sh_obj->holders and with every in-place mode change of
+ * a lock that is on the holders list.  A missed update silently corrupts the
+ * summary and can mis-grant a lock, so the fast path only trusts nheld[] for
+ * the plain read-lock case and otherwise falls back to the full holders walk.
+ */
+#define	LOCK_OBJ_HELD_ADD(obj, m)	((obj)->nheld[(int)(m)]++)
+#define	LOCK_OBJ_HELD_DEL(obj, m)	do {				\
+	DB_ASSERT(env, (obj)->nheld[(int)(m)] > 0);			\
+	(obj)->nheld[(int)(m)]--;					\
+} while (0)
 
 /*
  * Locker structures; these live in the locker hash table.

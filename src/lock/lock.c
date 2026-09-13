@@ -853,6 +853,7 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	DB_THREAD_INFO *ip;
 	u_int32_t ndx, part_id;
 	int did_abort, ihold, grant_dirty, no_dd, ret, rwconf, safe_si, t_ret;
+	int fast_grant, m;
 	roff_t holder, sh_off;
 
 	/*
@@ -983,6 +984,68 @@ again:	if (obj == NULL) {
 		lp = SH_TAILQ_FIRST(&sh_obj->holders, __db_lock);
 
 	sh_off = R_OFFSET(&lt->reginfo, sh_locker);
+
+	/*
+	 * O(1) read-lock fast path.  The general decision below walks the
+	 * entire holders list (O(N)); on a hot object with N compatible
+	 * readers that is O(N) hold time under the partition mutex and O(N^2)
+	 * aggregate, which is the measured lock-manager bottleneck.
+	 *
+	 * When this is a plain lock get -- not an upgrade, switch, wait-queue
+	 * insert, diagnostic check, or SSI snapshot-safe acquire -- we can
+	 * decide grant in O(nmodes) using the per-object holder mode-count
+	 * summary (nheld[]) instead of the walk, PROVIDED:
+	 *   (1) no held mode conflicts with lock_mode (checked against the
+	 *       same CONFLICTS matrix the walk uses -- covers writers,
+	 *       intent locks, was-written, everything), and
+	 *   (2) there are no waiters at all (preserves the writer-starvation
+	 *       rule: a reader must not jump ahead of a waiting writer; the
+	 *       existing walk enforces this with the waiters scan, and an
+	 *       empty waiters list trivially satisfies it).
+	 * The self-hold/upgrade exception, dirty-reader placement, family
+	 * conflicts, DB_LOCK_UPGRADE/WAIT/SWITCH, CDB, and SSI all fall
+	 * through to the unchanged O(N) walk below.
+	 *
+	 * If we already hold a compatible lock of the SAME mode on this
+	 * object we still refcount it rather than allocate a new one, exactly
+	 * as the walk's self-hold branch does; the locker's own heldby list
+	 * is short (a locker holds few locks) so this stays cheap.  If the
+	 * summary cannot prove condition (1)/(2) we fall through to the walk
+	 * -- correctness over speed.
+	 */
+	fast_grant = 0;
+	if (lock_mode != DB_LOCK_WAIT && !safe_si &&
+	    !LF_ISSET(DB_LOCK_UPGRADE | DB_LOCK_SWITCH | DB_LOCK_CHECK) &&
+	    SH_TAILQ_FIRST(&sh_obj->waiters, __db_lock) == NULL) {
+		fast_grant = 1;
+		for (m = 0; m < region->nmodes; m++)
+			if (sh_obj->nheld[m] != 0 &&
+			    CONFLICTS(lt, region, m, lock_mode)) {
+				fast_grant = 0;
+				break;
+			}
+	}
+	if (fast_grant) {
+		/*
+		 * No conflicting holder and no waiter: grant is immediate.
+		 * First reuse an existing same-mode held lock of ours, matching
+		 * the walk's refcount branch (self-hold, same mode, HELD).
+		 */
+		SH_LIST_FOREACH(lp, &sh_locker->heldby, locker_links, __db_lock)
+			if (lp->holder == sh_off && lp->mode == lock_mode &&
+			    lp->status == DB_LSTAT_HELD &&
+			    SH_OFF_TO_PTR(lp, lp->obj, DB_LOCKOBJ) == sh_obj) {
+				lp->refcount++;
+				lock->off = R_OFFSET(&lt->reginfo, lp);
+				lock->gen = lp->gen;
+				lock->mode = lp->mode;
+				goto done;
+			}
+		lp = NULL;
+		action = GRANT;
+		goto fastgrant;
+	}
+
 	for (; lp != NULL; lp = SH_TAILQ_NEXT(lp, links, __db_lock)) {
 		if (sh_off == lp->holder) {
 			if (lp->mode == lock_mode &&
@@ -1264,7 +1327,7 @@ again:	if (obj == NULL) {
 			goto err;
 		}
 		/* FALLTHROUGH */
-	case GRANT:
+fastgrant:	case GRANT:
 		part_id = LOCK_PART(region, ndx);
 		/* Allocate a new lock. */
 		if ((newl = SH_TAILQ_FIRST(
@@ -1322,6 +1385,20 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 		DB_ASSERT(env, lock->gen == lp->gen);
 		if (IS_WRITELOCK(lock_mode) && !IS_WRITELOCK(lp->mode))
 			sh_locker->nwrites++;
+		/*
+		 * lp is a granted lock on sh_obj->holders (a held/pending lock
+		 * being upgraded), unless it is a SIREAD marker (sireaders list,
+		 * not counted).  Move its holder mode-count from the old bucket
+		 * to the new one so the O(1) summary stays exact.  OBJ_LINKS_VALID
+		 * confirms it is still linked on a list; if it was already pulled
+		 * off holders (e.g. the DB_LSTAT_PENDING removal below) there is
+		 * nothing to adjust.
+		 */
+		if (lp->mode != lock_mode && lp->mode != DB_LOCK_SIREAD &&
+		    OBJ_LINKS_VALID(lp)) {
+			LOCK_OBJ_HELD_DEL(sh_obj, lp->mode);
+			LOCK_OBJ_HELD_ADD(sh_obj, lock_mode);
+		}
 		lp->mode = lock_mode;
 		/* If we are upgrading to a WAIT we must wait. */
 		if (lock_mode != DB_LOCK_WAIT)
@@ -1335,6 +1412,7 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 			DB_ASSERT(env, lp->status == DB_LSTAT_PENDING);
 			SH_TAILQ_REMOVE(
 			    &sh_obj->holders, newl, links, __db_lock);
+			LOCK_OBJ_HELD_DEL(sh_obj, newl->mode);
 			newl->links.stqe_prev = -1;
 			goto done;
 		}
@@ -1358,8 +1436,10 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 				(void)atomic_inc(env,
 				    &LOCKER_TD(env, sh_locker)->si_ref);
 			(void)atomic_inc(env, &region->nsireaders);	/* SSI GC hint. */
-		} else
+		} else {
 			SH_TAILQ_INSERT_TAIL(&sh_obj->holders, newl, links);
+			LOCK_OBJ_HELD_ADD(sh_obj, newl->mode);
+		}
 		break;
 	case UPGRADE:
 		DB_ASSERT(env, lock_mode == DB_LOCK_WAIT);
@@ -1553,6 +1633,7 @@ expired:		ret = __lock_put_internal(lt, newl,
 				 */
 				SH_TAILQ_REMOVE(
 				    &sh_obj->holders, newl, links, __db_lock);
+				LOCK_OBJ_HELD_DEL(sh_obj, newl->mode);
 				/*
 				 * Ensure the object is not believed to be on
 				 * the object's lists, if we're traversing by
@@ -1848,9 +1929,11 @@ __lock_put_internal(lt, lockp, obj_ndx, flags)
 		if (lockp->mode == DB_LOCK_SIREAD)
 			SH_TAILQ_REMOVE(&sh_obj->sireaders,
 			    lockp, links, __db_lock);
-		else
+		else {
 			SH_TAILQ_REMOVE(&sh_obj->holders,
 			    lockp, links, __db_lock);
+			LOCK_OBJ_HELD_DEL(sh_obj, lockp->mode);
+		}
 		lockp->links.stqe_prev = -1;
 	}
 
@@ -2086,6 +2169,14 @@ retry:	SH_TAILQ_FOREACH(sh_obj, &lt->obj_tab[ndx], links, __db_lockobj) {
 		SH_TAILQ_INIT(&sh_obj->waiters);
 		SH_TAILQ_INIT(&sh_obj->holders);
 		SH_TAILQ_INIT(&sh_obj->sireaders);	/* SSI snapshot readers. */
+		/*
+		 * Zero the holder mode-count summary.  A reclaimed object always
+		 * has an empty holders list (put_internal frees it only when
+		 * holders/waiters/sireaders are all empty), so nheld is already
+		 * zero; clear it explicitly so the invariant is self-evident and
+		 * survives any future free-path change.
+		 */
+		memset(sh_obj->nheld, 0, sizeof(sh_obj->nheld));
 		sh_obj->lockobj.size = obj->size;
 		sh_obj->lockobj.off =
 		    (roff_t)SH_PTR_TO_OFF(&sh_obj->lockobj, p);
@@ -2243,6 +2334,7 @@ __lock_inherit_locks(lt, sh_locker, flags)
 			/* Remove lock from object list and free it. */
 			DB_ASSERT(env, lp->status == DB_LSTAT_HELD);
 			SH_TAILQ_REMOVE(&obj->holders, lp, links, __db_lock);
+			LOCK_OBJ_HELD_DEL(obj, lp->mode);
 			(void)__lock_freelock(lt, lp, sh_locker, DB_LOCK_FREE);
 		} else {
 			/* Just move lock to parent chains. */
@@ -2365,6 +2457,7 @@ __lock_promote(lt, obj, state_changedp, flags)
 		SH_TAILQ_REMOVE(&obj->waiters, lp_w, links, __db_lock);
 		lp_w->status = DB_LSTAT_PENDING;
 		SH_TAILQ_INSERT_TAIL(&obj->holders, lp_w, links);
+		LOCK_OBJ_HELD_ADD(obj, lp_w->mode);
 
 		/* Wake up waiter. */
 		MUTEX_UNLOCK(lt->env, lp_w->mtx_lock);
@@ -2543,15 +2636,18 @@ __lock_change(env, old_lock, new_lock)
 	    lp != NULL;
 	    lp = SH_TAILQ_FIRST(&old_obj->holders, __db_lock)) {
 		SH_TAILQ_REMOVE(&old_obj->holders, lp, links, __db_lock);
+		LOCK_OBJ_HELD_DEL(old_obj, lp->mode);
 		if (lp == old_lp)
 			continue;
 		SH_TAILQ_INSERT_TAIL(&new_obj->holders, lp, links);
+		LOCK_OBJ_HELD_ADD(new_obj, lp->mode);
 		lp->indx = new_obj->indx;
 		lp->obj = (roff_t)SH_PTR_TO_OFF(lp, new_obj);
 	}
 
 	/* Put the lock back in and call put so the object goes away too. */
 	SH_TAILQ_INSERT_TAIL(&old_obj->holders, old_lp, links);
+	LOCK_OBJ_HELD_ADD(old_obj, old_lp->mode);
 	ret = __lock_put_internal(lt, old_lp, old_obj->indx,
 	     DB_LOCK_UNLINK | DB_LOCK_FREE | DB_LOCK_NOPROMOTE);
 
