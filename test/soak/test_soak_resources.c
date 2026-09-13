@@ -314,7 +314,7 @@ soak_put(DB_TXN *txn, long i, int v)
 
 /*
  * ro_snapshot -- the #137 shape.
- *	A read-only DB_TXN_SNAPSHOT transaction, begun and committed with no
+ *	A read-only DB_TXN_SERIALIZABLE transaction, begun and committed with no
  *	write at all.  #137 reports that the SIREAD cleanup does not reclaim
  *	the committed reader's locker, so each such transaction consumes
  *	region resources permanently and txn_begin eventually returns ENOMEM.
@@ -326,7 +326,7 @@ wl_ro_snapshot(soak_workload *w, long i)
 	int rc, v;
 
 	(void)w;
-	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT)) != 0) {
+	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SERIALIZABLE)) != 0) {
 		if (soak_resource_rc(rc)) {
 			soak_note_enomem("txn_begin", i);
 			return (0);
@@ -363,7 +363,7 @@ wl_mvcc_retained(soak_workload *w, long i)
 	int j, rc, v;
 
 	(void)w;
-	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT)) != 0) {
+	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SERIALIZABLE)) != 0) {
 		if (soak_resource_rc(rc)) {
 			soak_note_enomem("txn_begin", i);
 			return (0);
@@ -426,7 +426,7 @@ wl_aborted(soak_workload *w, long i)
 	int rc;
 
 	(void)w;
-	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT)) != 0) {
+	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SERIALIZABLE)) != 0) {
 		if (soak_resource_rc(rc)) {
 			soak_note_enomem("txn_begin", i);
 			return (0);
@@ -500,7 +500,7 @@ wl_cursor_churn(soak_workload *w, long i)
 
 static soak_workload workloads[] = {
     { "ro_snapshot",
-      "read-only DB_TXN_SNAPSHOT txns, no write (the #137 shape)",
+      "read-only DB_TXN_SERIALIZABLE txns, no write (the #137 shape)",
       wl_ro_snapshot, 0, NULL, 0, 0 },
     { "mvcc_retained",
       "snapshot txns that read and write, details MVCC-retained (#138)",

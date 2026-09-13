@@ -370,10 +370,20 @@ __db_cursor(dbp, ip, txn, dbcp, flags)
 
 	env = dbp->env;
 
-	if (MULTIVERSION(dbp) && txn == NULL && (LF_ISSET(DB_TXN_SNAPSHOT) ||
-	    F_ISSET(env->dbenv, DB_ENV_TXN_SNAPSHOT))) {
+	if (MULTIVERSION(dbp) && txn == NULL &&
+	    (LF_ISSET(DB_TXN_SNAPSHOT | DB_TXN_SERIALIZABLE) ||
+	    F_ISSET(env->dbenv, DB_ENV_TXN_SNAPSHOT | DB_ENV_TXN_SERIALIZABLE))) {
+		/*
+		 * Auto-create a snapshot txn for the cursor at the isolation
+		 * level requested: SERIALIZABLE (SSI) if asked for explicitly or
+		 * defaulted by the env, otherwise plain snapshot isolation.
+		 */
+		u_int32_t txnflags =
+		    (LF_ISSET(DB_TXN_SERIALIZABLE) ||
+		    F_ISSET(env->dbenv, DB_ENV_TXN_SERIALIZABLE)) ?
+		    DB_TXN_SERIALIZABLE : DB_TXN_SNAPSHOT;
 		if ((ret =
-		    __txn_begin(env, ip, NULL, &txn, DB_TXN_SNAPSHOT)) != 0)
+		    __txn_begin(env, ip, NULL, &txn, txnflags)) != 0)
 			return (ret);
 		F_SET(txn, TXN_PRIVATE);
 	}
@@ -440,7 +450,8 @@ __db_cursor_arg(dbp, flags)
 	}
 
 	LF_CLR(DB_CURSOR_BULK |
-	    DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_TXN_SNAPSHOT);
+	    DB_READ_COMMITTED | DB_READ_UNCOMMITTED |
+	    DB_TXN_SNAPSHOT | DB_TXN_SERIALIZABLE);
 
 	/* Check for invalid function flags. */
 	if (LF_ISSET(DB_WRITECURSOR)) {

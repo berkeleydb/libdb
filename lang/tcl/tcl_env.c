@@ -2108,6 +2108,7 @@ tcl_EnvSetFlags(interp, dbenv, which, onoff)
 		"-nosync",
 		"-overwrite",
 		"-panic",
+		"-serializable",
 		"-snapshot",
 		"-time_notgranted",
 		"-wrnosync",
@@ -2125,6 +2126,7 @@ tcl_EnvSetFlags(interp, dbenv, which, onoff)
 		ENVSF_NOSYNC,
 		ENVSF_OVERWRITE,
 		ENVSF_PANIC,
+		ENVSF_SERIALIZABLE,
 		ENVSF_SNAPSHOT,
 		ENVSF_TIME_NOTGRANTED,
 		ENVSF_WRNOSYNC,
@@ -2179,6 +2181,9 @@ tcl_EnvSetFlags(interp, dbenv, which, onoff)
 		break;
 	case ENVSF_SNAPSHOT:
 		wh = DB_TXN_SNAPSHOT;
+		break;
+	case ENVSF_SERIALIZABLE:
+		wh = DB_TXN_SERIALIZABLE;
 		break;
 	case ENVSF_TIME_NOTGRANTED:
 		wh = DB_TIME_NOTGRANTED;
@@ -2844,6 +2849,7 @@ env_GetFlags(interp, objc, objv, dbenv)
 		{ DB_TIME_NOTGRANTED, "-time_notgranted" },
 		{ DB_TXN_NOSYNC, "-nosync" },
 		{ DB_TXN_NOWAIT, "-nowait" },
+		{ DB_TXN_SERIALIZABLE, "-serializable" },
 		{ DB_TXN_SNAPSHOT, "-snapshot" },
 		{ DB_TXN_WRITE_NOSYNC, "-wrnosync" },
 		{ DB_YIELDCPU, "-yield" },

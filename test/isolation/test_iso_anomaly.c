@@ -2,9 +2,22 @@
  * test/isolation/test_iso_anomaly.c --
  *	Tier B1: isolation / anomaly checker.
  *
- * Runs concurrent transaction schedules under DB_TXN_SNAPSHOT (which in this
- * fork means serializable snapshot isolation) and VALIDATES the committed
- * outcome against some serial order of the committed transactions.
+ * Runs concurrent transaction schedules at a configurable isolation level and
+ * VALIDATES the committed outcome against some serial order of the committed
+ * transactions.  The level is chosen by ISO_LEVEL:
+ *
+ *	ISO_LEVEL=serializable	(default) DB_TXN_SERIALIZABLE -- SSI.  Every
+ *				scenario, including the write-skew / G2 /
+ *				read-only anomalies, MUST come out serializable.
+ *	ISO_LEVEL=snapshot	DB_TXN_SNAPSHOT -- plain snapshot isolation.
+ *				The SI anomalies are legal and are EXPECTED to
+ *				produce a non-serializable history (they are
+ *				visible again, exactly as legacy BDB behaved);
+ *				non-anomaly scenarios still must be serializable.
+ *
+ * Running both levels is the direct demonstration of the DB_TXN_SNAPSHOT vs
+ * DB_TXN_SERIALIZABLE contract: the same schedule is an anomaly under one and
+ * prevented under the other.
  *
  * The verdict is COMPUTED, never hard-coded: every scenario declares, per
  * transaction, a `model' function -- the transaction's semantics as a pure
@@ -85,6 +98,15 @@ typedef struct iso_scenario {
 	int	    nslots;		/* Total slots (DB + observation). */
 	int	    ntxn;
 	int	    expect_fail;	/* Known-broken on master. */
+	int	    si_anomaly;		/*
+					 * A snapshot-isolation anomaly: this
+					 * schedule is NON-serializable under plain
+					 * DB_TXN_SNAPSHOT and MUST be prevented
+					 * (serializable) under DB_TXN_SERIALIZABLE.
+					 * The runner turns this into the per-level
+					 * expect_fail: fail-expected under SI,
+					 * pass-required under SSI.
+					 */
 	const char *issue;		/* Issue it reproduces, if any. */
 	/*
 	 * How many times to run the schedule.  Single-threaded schedules are
@@ -110,6 +132,21 @@ static DB	*dbs[ISO_MAX_DB];
 static int	 ndbs;
 static char	 iso_home[512];
 static int	 verbose;
+
+/*
+ * The isolation level every transaction in a scenario runs at.  The whole
+ * point of the DB_TXN_SNAPSHOT-vs-DB_TXN_SERIALIZABLE split is visible here:
+ *   DB_TXN_SNAPSHOT     => plain snapshot isolation.  Write skew, the G2
+ *                          anti-dependency cycle and the read-only anomaly
+ *                          are ALL legal under SI, so they show up as
+ *                          non-serializable histories (expect_fail).
+ *   DB_TXN_SERIALIZABLE => SSI.  The same schedules must be forced
+ *                          serializable -- exactly one of the dangerous pair
+ *                          aborts, no anomaly survives.
+ * Set from ISO_LEVEL=snapshot|serializable (default: serializable, matching
+ * the historical tier expectation).
+ */
+static u_int32_t iso_level = DB_TXN_SERIALIZABLE;
 
 static void iso_die(const char *, int) __attribute__((noreturn));
 
@@ -461,7 +498,7 @@ sk_t2_thread(void *arg)
 	int alice, rc;
 
 	(void)arg;
-	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT)) != 0)
+	if ((rc = env->txn_begin(env, NULL, &txn, iso_level)) != 0)
 		iso_die("T2 txn_begin", rc);
 	if ((rc = iso_get(sk_alice_db, txn, sk_alice_key, &alice)) != 0)
 		iso_die("T2 read alice", rc);
@@ -566,7 +603,7 @@ sk_run_common(iso_scenario *sc, iso_state *initial, iso_txn *t,
 	if ((rc = pthread_create(&t2, NULL, sk_t2_thread, NULL)) != 0)
 		iso_die("pthread_create", rc);
 
-	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT)) != 0)
+	if ((rc = env->txn_begin(env, NULL, &txn, iso_level)) != 0)
 		iso_die("T1 txn_begin", rc);
 	if ((rc = iso_get(sk_bob_db, txn, sk_bob_key, &bob)) != 0)
 		iso_die("T1 read bob", rc);
@@ -743,8 +780,8 @@ g2_antidep(iso_scenario *sc, iso_state *st, iso_txn *t)
 	memset(&st[0], 0, sizeof(st[0]));
 	st[0].v[0] = 0;			/* no markers */
 
-	if ((rc = env->txn_begin(env, NULL, &txn1, DB_TXN_SNAPSHOT)) != 0 ||
-	    (rc = env->txn_begin(env, NULL, &txn2, DB_TXN_SNAPSHOT)) != 0)
+	if ((rc = env->txn_begin(env, NULL, &txn1, iso_level)) != 0 ||
+	    (rc = env->txn_begin(env, NULL, &txn2, iso_level)) != 0)
 		iso_die("txn_begin", rc);
 
 	/* Both predicate reads happen before either write. */
@@ -849,7 +886,7 @@ read_only_anomaly(iso_scenario *sc, iso_state *st, iso_txn *t)
 	memset(&st[0], 0, sizeof(st[0]));
 
 	/* Twdw takes its snapshot first and reads both balances. */
-	if ((rc = env->txn_begin(env, NULL, &twdw, DB_TXN_SNAPSHOT)) != 0)
+	if ((rc = env->txn_begin(env, NULL, &twdw, iso_level)) != 0)
 		iso_die("Twdw txn_begin", rc);
 	if ((rc = iso_get(dbs[0], twdw, "bal", &wx)) != 0 ||
 	    (rc = iso_get(dbs[1], twdw, "bal", &wy)) != 0)
@@ -857,7 +894,7 @@ read_only_anomaly(iso_scenario *sc, iso_state *st, iso_txn *t)
 	iso_note(&t[1], "read x=%d y=%d", wx, wy);
 
 	/* Tdep deposits and commits. */
-	if ((rc = env->txn_begin(env, NULL, &tdep, DB_TXN_SNAPSHOT)) != 0)
+	if ((rc = env->txn_begin(env, NULL, &tdep, iso_level)) != 0)
 		iso_die("Tdep txn_begin", rc);
 	if ((rc = iso_get(dbs[1], tdep, "bal", &y)) != 0)
 		iso_die("Tdep read", rc);
@@ -866,7 +903,7 @@ read_only_anomaly(iso_scenario *sc, iso_state *st, iso_txn *t)
 	iso_finish(&t[0], tdep, rc_dep);
 
 	/* Tro starts AFTER Tdep committed and BEFORE Twdw commits. */
-	if ((rc = env->txn_begin(env, NULL, &tro, DB_TXN_SNAPSHOT)) != 0)
+	if ((rc = env->txn_begin(env, NULL, &tro, iso_level)) != 0)
 		iso_die("Tro txn_begin", rc);
 	if ((rc = iso_get(dbs[0], tro, "bal", &st[1].v[RO_OX])) != 0 ||
 	    (rc = iso_get(dbs[1], tro, "bal", &st[1].v[RO_OY])) != 0)
@@ -925,8 +962,8 @@ lost_update(iso_scenario *sc, iso_state *st, iso_txn *t)
 		iso_die("initial put", rc);
 	memset(&st[0], 0, sizeof(st[0]));
 
-	if ((rc = env->txn_begin(env, NULL, &txn1, DB_TXN_SNAPSHOT)) != 0 ||
-	    (rc = env->txn_begin(env, NULL, &txn2, DB_TXN_SNAPSHOT)) != 0)
+	if ((rc = env->txn_begin(env, NULL, &txn1, iso_level)) != 0 ||
+	    (rc = env->txn_begin(env, NULL, &txn2, iso_level)) != 0)
 		iso_die("txn_begin", rc);
 	if ((rc = iso_get(dbs[0], txn1, "n", &n1)) != 0 ||
 	    (rc = iso_get(dbs[0], txn2, "n", &n2)) != 0)
@@ -986,7 +1023,7 @@ read_your_writes(iso_scenario *sc, iso_state *st, iso_txn *t)
 		iso_die("initial put", rc);
 	memset(&st[0], 0, sizeof(st[0]));
 
-	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT)) != 0)
+	if ((rc = env->txn_begin(env, NULL, &txn, iso_level)) != 0)
 		iso_die("txn_begin", rc);
 	if ((rc = iso_put(dbs[0], txn, "k", 7)) != 0)
 		iso_die("put", rc);
@@ -1019,31 +1056,31 @@ read_your_writes(iso_scenario *sc, iso_state *st, iso_txn *t)
 static iso_scenario scenarios[] = {
     { "write_skew_trigger",
       "two one-page DBs; T2's write lands while T1 is inside commit",
-      2, 2, 2, 0, NULL, 40, sk_trigger },
+      2, 2, 2, 0, 1, NULL, 40, sk_trigger },
     { "write_skew_control",
       "two one-page DBs; T2 writes and commits before T1 commits",
-      2, 2, 2, 0, NULL, 5, sk_control },
+      2, 2, 2, 0, 1, NULL, 5, sk_control },
     { "write_skew_late",
       "two one-page DBs; T2 writes after T1's commit returned",
-      2, 2, 2, 0, NULL, 5, sk_late },
+      2, 2, 2, 0, 1, NULL, 5, sk_late },
     { "write_skew_samebtree_control",
       "two records on DIFFERENT pages of ONE btree; control timing",
-      2, 2, 2, 0, NULL, 5, sk_samebtree_control },
+      2, 2, 2, 0, 1, NULL, 5, sk_samebtree_control },
     { "write_skew_samebtree_trigger",
       "two records on DIFFERENT pages of ONE btree; trigger timing",
-      2, 2, 2, 0, NULL, 40, sk_samebtree_trigger },
+      2, 2, 2, 0, 1, NULL, 40, sk_samebtree_trigger },
     { "g2_antidep",
       "G2-item: both txns scan for markers, both insert one",
-      1, 1, 2, 0, NULL, 1, g2_antidep },
+      1, 1, 2, 0, 1, NULL, 1, g2_antidep },
     { "read_only_anomaly",
       "Fekete 3-txn: read-only txn observes a non-serializable state",
-      2, 4, 3, 0, NULL, 1, read_only_anomaly },
+      2, 4, 3, 0, 1, NULL, 1, read_only_anomaly },
     { "lost_update",
       "both txns read the counter and write read+1",
-      1, 1, 2, 0, NULL, 1, lost_update },
+      1, 1, 2, 0, 0, NULL, 1, lost_update },
     { "read_your_writes",
       "sanity: a txn must observe its own uncommitted write",
-      1, 2, 1, 0, NULL, 1, read_your_writes },
+      1, 2, 1, 0, 0, NULL, 1, read_your_writes },
 };
 #define	NSCENARIOS ((int)(sizeof(scenarios) / sizeof(scenarios[0])))
 
@@ -1109,6 +1146,21 @@ run_one_attempt(iso_scenario *sc, int attempt, int report)
 }
 
 /*
+ * iso_expect_fail --
+ *	The effective "a non-serializable history is expected" verdict for the
+ *	current isolation level.  A snapshot-isolation anomaly (si_anomaly) is
+ *	expected to reproduce under plain DB_TXN_SNAPSHOT and is required to be
+ *	prevented under DB_TXN_SERIALIZABLE.  A scenario's own expect_fail (a
+ *	known engine bug on master, level-independent) is OR'd in.
+ */
+static int
+iso_expect_fail(const iso_scenario *sc)
+{
+	return (sc->expect_fail ||
+	    (sc->si_anomaly && iso_level == DB_TXN_SNAPSHOT));
+}
+
+/*
  * run_scenario --
  *	Returns 0 if the outcome matched the expectation, 1 if not.
  *
@@ -1121,8 +1173,9 @@ run_one_attempt(iso_scenario *sc, int attempt, int report)
 static int
 run_scenario(iso_scenario *sc)
 {
-	int a, ok, r, violations;
+	int a, expect_fail, ok, r, violations;
 
+	expect_fail = iso_expect_fail(sc);
 	printf("== %s ==\n    shape: %s\n", sc->name, sc->shape);
 	if (sc->attempts > 1)
 		printf("    %d attempts (the interleaving is racy; any single "
@@ -1143,7 +1196,7 @@ run_scenario(iso_scenario *sc)
 			 * scenario; keep going otherwise so the report shows
 			 * how reproducible a surprise violation is.
 			 */
-			if (sc->expect_fail) {
+			if (expect_fail) {
 				a++;
 				break;
 			}
@@ -1154,23 +1207,28 @@ run_scenario(iso_scenario *sc)
 		    "history\n", violations, a);
 
 	ok = (violations == 0);
-	if (ok == sc->expect_fail) {
+	if (ok == expect_fail) {
 		/* Outcome disagrees with the recorded expectation. */
-		if (sc->expect_fail)
-			printf("    UNEXPECTED PASS: %s is marked as "
-			    "reproducing %s but no attempt produced a "
-			    "non-serializable history -- the issue looks "
-			    "FIXED; clear expect_fail for this scenario.\n\n",
-			    sc->name, sc->issue);
+		if (expect_fail)
+			printf("    UNEXPECTED PASS: %s is expected to produce "
+			    "a non-serializable history at this isolation "
+			    "level%s%s, but none did -- if the referenced issue "
+			    "is fixed clear expect_fail, otherwise the anomaly "
+			    "is being (incorrectly) prevented.\n\n",
+			    sc->name, sc->issue ? " reproducing " : "",
+			    sc->issue ? sc->issue : "");
 		else
 			printf("    FAIL: no serial order of the committed "
 			    "transactions produces the observed state -- "
 			    "this history is NOT serializable.\n\n");
 		return (1);
 	}
-	if (sc->expect_fail)
-		printf("    XFAIL (reproduces %s): the committed history is "
-		    "not serializable, as the issue reports.\n\n", sc->issue);
+	if (expect_fail)
+		printf("    XFAIL (%s%s): the committed history is not "
+		    "serializable -- expected under this isolation level.\n\n",
+		    sc->si_anomaly && iso_level == DB_TXN_SNAPSHOT ?
+		    "SI anomaly under DB_TXN_SNAPSHOT" : "reproduces",
+		    sc->issue ? sc->issue : "");
 	else
 		printf("    PASS\n\n");
 	return (0);
@@ -1183,15 +1241,31 @@ main(int argc, char **argv)
 
 	if (getenv("ISO_VERBOSE") != NULL)
 		verbose = 1;
+	{
+		const char *lvl = getenv("ISO_LEVEL");
+		if (lvl != NULL && strcmp(lvl, "snapshot") == 0)
+			iso_level = DB_TXN_SNAPSHOT;
+		else if (lvl != NULL && strcmp(lvl, "serializable") == 0)
+			iso_level = DB_TXN_SERIALIZABLE;
+		else if (lvl != NULL) {
+			fprintf(stderr, "ISO_LEVEL must be snapshot or "
+			    "serializable\n");
+			return (2);
+		}
+	}
 	if (argc == 2 && strcmp(argv[1], "--list") == 0) {
 		for (i = 0; i < NSCENARIOS; i++)
 			printf("%s%s\n", scenarios[i].name,
-			    scenarios[i].expect_fail ? "\t(expect-fail)" : "");
+			    iso_expect_fail(&scenarios[i]) ?
+			    "\t(expect-fail)" : "");
 		return (0);
 	}
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	printf("%s\n\n", db_version(NULL, NULL, NULL));
+	printf("%s\n", db_version(NULL, NULL, NULL));
+	printf("isolation level: %s\n\n",
+	    iso_level == DB_TXN_SERIALIZABLE ?
+	    "DB_TXN_SERIALIZABLE (SSI)" : "DB_TXN_SNAPSHOT (plain SI)");
 
 	failures = ran = 0;
 	if (argc == 1) {
