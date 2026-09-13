@@ -5,7 +5,7 @@
  * mutex-slot leak in __txn_reap_si_details (GitHub issue #138).
  *
  * Drives the trigger sequence with public APIs only: each cycle runs a
- * DB_TXN_SNAPSHOT transaction that READS one multiversion database (creating
+ * DB_TXN_SERIALIZABLE transaction that READS one multiversion database (creating
  * a SIREAD marker, so the committed detail's si_ref is nonzero) and WRITES
  * another (so the detail also has mvcc_ref > 0 and gets parked on the
  * mvcc_txn list by __txn_end).  Later the last MVCC buffer is evicted while
@@ -127,7 +127,7 @@ cycle_txn(int with_read, int cycle, char *databuf)
 	for (;;) {
 		txn = NULL;
 		if ((ret = env->txn_begin(env,
-		    NULL, &txn, DB_TXN_SNAPSHOT)) == ENOMEM)
+		    NULL, &txn, DB_TXN_SERIALIZABLE)) == ENOMEM)
 			return (ret);
 		if (retryable(ret))
 			continue;

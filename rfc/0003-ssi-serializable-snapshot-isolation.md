@@ -9,23 +9,33 @@
 
 ---
 
-> **Amendment (2026, post-implementation):** the public API was simplified. SSI
-> is no longer a separate `DB_TXN_SNAPSHOT_SAFE` flag — that flag was **removed**
-> and its behavior folded into **`DB_TXN_SNAPSHOT`**, which is now always
-> serializable. There is no separate plain (non-serializable) snapshot-isolation
-> mode in the public API. This is a deliberate ABI break, accepted to avoid the
-> awkward `_SAFE` flag name. Everything below describing `DB_TXN_SNAPSHOT_SAFE`
-> now applies to `DB_TXN_SNAPSHOT`; the internal `TXN_SNAPSHOT_SAFE` state and
-> the SSI machinery are unchanged.
+> **Amendment (2026, post-implementation):** the public flag naming was
+> revised twice. SSI first shipped under a separate `DB_TXN_SNAPSHOT_SAFE`
+> flag; that flag was then removed and SSI was folded into `DB_TXN_SNAPSHOT`
+> (making every snapshot transaction serializable). That second step silently
+> strengthened `DB_TXN_SNAPSHOT` and dropped legacy plain snapshot isolation,
+> which was the wrong trade. The **final** design restores the original
+> contract: **`DB_TXN_SNAPSHOT` means plain (non-serializable) snapshot
+> isolation** exactly as legacy Berkeley DB, and **SSI is a new, additive
+> public flag `DB_TXN_SERIALIZABLE`** (`= DB_TXN_SNAPSHOT` substrate plus the
+> SSI conflict-detection layer). This is an additive ABI change, not a break:
+> `DB_TXN_SNAPSHOT` keeps its value and semantics, and `DB_TXN_SERIALIZABLE`
+> takes a previously-unused public flag bit. Everything below describing the
+> SSI mode applies to `DB_TXN_SERIALIZABLE`; the internal `TXN_SNAPSHOT_SAFE`
+> state and the SSI machinery are unchanged — they are simply no longer forced
+> on for a plain `DB_TXN_SNAPSHOT` transaction. Environments can default to SSI
+> with `DB_ENV->set_flags(DB_TXN_SERIALIZABLE, 1)`. *Migration:* code that
+> relied on `DB_TXN_SNAPSHOT` meaning SSI must now pass `DB_TXN_SERIALIZABLE`.
 
 ## Summary
 
-The `DB_TXN_SNAPSHOT` transaction mode provides full
+The `DB_TXN_SERIALIZABLE` transaction mode provides full
 serializable isolation on top of MVCC snapshot isolation, using Michael
 Cahill's Serializable Snapshot Isolation algorithm: detect the dangerous
 read/write dependency structures that let snapshot isolation admit
 non-serializable schedules, and abort the pivot transaction with
-`DB_SNAPSHOT_CONFLICT`.
+`DB_SNAPSHOT_CONFLICT`.  Plain `DB_TXN_SNAPSHOT` remains non-serializable
+snapshot isolation and does not pay the SSI tracking cost.
 
 ## Motivation
 
@@ -45,9 +55,10 @@ without a server and without giving up embedded operation.
 - Multi-process correctness: SIREAD markers/lockers live in the shared lock
   region; the concurrent-writer lifetime is hardened (see the M2/M4 notes) and
   guarded by `ssi009` (multi-process stress).
-- On-disk/log/region/ABI: no on-disk or log format change. `DB_TXN_SNAPSHOT`
-  is now the SSI mode (the separate `DB_TXN_SNAPSHOT_SAFE` flag was removed — a
-  deliberate ABI break); `prepare()`/2PC rejects an SSI transaction.
+- On-disk/log/region/ABI: no on-disk or log format change. `DB_TXN_SERIALIZABLE`
+  is the SSI mode (an additive public flag; `DB_TXN_SNAPSHOT` keeps its legacy
+  plain-SI meaning and value); `prepare()`/2PC rejects an SSI transaction but
+  accepts a plain snapshot transaction.
 
 ## Design
 
