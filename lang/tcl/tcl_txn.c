@@ -266,12 +266,12 @@ get_timeout:		if (i >= objc) {
 			break;
 		case TXNSNAPSHOTSAFE:
 			/*
-			 * DB_TXN_SNAPSHOT is now serializable snapshot isolation
-			 * (SSI); the separate DB_TXN_SNAPSHOT_SAFE flag was
-			 * removed.  Keep -snapshot_safe as a compatibility alias
-			 * for -snapshot so existing SSI tests keep working.
+			 * -snapshot_safe requests serializable snapshot
+			 * isolation (SSI).  -snapshot is plain snapshot
+			 * isolation.  These are distinct public flags again
+			 * (DB_TXN_SNAPSHOT vs DB_TXN_SERIALIZABLE).
 			 */
-			flag |= DB_TXN_SNAPSHOT;
+			flag |= DB_TXN_SERIALIZABLE;
 			break;
 		case TXNSYNC:
 			flag |= DB_TXN_SYNC;

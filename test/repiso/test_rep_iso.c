@@ -388,7 +388,7 @@ run_master(const char *home, int port)
 
 	/*
 	 * The replicated database.  DB_MULTIVERSION is required for the
-	 * trigger: it is what makes a DB_TXN_SNAPSHOT read take a
+	 * trigger: it is what makes a DB_TXN_SERIALIZABLE read take a
 	 * DB_LOCK_SIREAD marker (src/db/db_meta.c:__db_lget) instead of no
 	 * lock at all, and the SIREAD marker is what truncated the list.
 	 */
@@ -475,7 +475,7 @@ run_master(const char *home, int port)
 	/*
 	 * THE TRIGGER TRANSACTION.
 	 *
-	 * A logged, top-level DB_TXN_SNAPSHOT transaction on a
+	 * A logged, top-level DB_TXN_SERIALIZABLE transaction on a
 	 * DB_MULTIVERSION database that WRITES one key and then READS another
 	 * on a different page.  At commit it retains WRITE(wkey page) and
 	 * SIREAD(rkey page); the SIREAD, granted last, sits at the head of
@@ -488,8 +488,8 @@ run_master(const char *home, int port)
 	 */
 	vlog("master: running trigger txn (put %s, get %s)",
 	    RISO_WKEY, RISO_RKEY);
-	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SNAPSHOT)) != 0)
-		die("txn_begin(SNAPSHOT)", rc);
+	if ((rc = env->txn_begin(env, NULL, &txn, DB_TXN_SERIALIZABLE)) != 0)
+		die("txn_begin(SERIALIZABLE)", rc);
 	if ((rc = riso_put(db, txn, RISO_WKEY, RISO_NEWVAL)) != 0)
 		die("trigger put", rc);
 	if ((rc = riso_get(db, txn, RISO_RKEY, &v)) != 0)

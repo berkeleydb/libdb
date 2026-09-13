@@ -8,6 +8,7 @@ extern "C" {
 
 int __memp_alloc __P((DB_MPOOL *, REGINFO *, MPOOLFILE *, size_t, roff_t *, void *));
 void __memp_free __P((REGINFO *, void *));
+int __memp_purge_obsolete __P((ENV *));
 int __memp_backup_open __P((ENV *, DB_MPOOLFILE *, const char *, const char *, u_int32_t, DB_FH **, void**));
 int __memp_backup_mpf __P((ENV *, DB_MPOOLFILE *, DB_THREAD_INFO *, db_pgno_t, db_pgno_t, DB_FH *, void *,  u_int32_t));
 int __memp_backup_close __P((ENV *, DB_MPOOLFILE *, const char *, DB_FH *, void *HANDLE));
@@ -15,7 +16,7 @@ int __memp_failchk __P((ENV *));
 int __memp_bhwrite __P((DB_MPOOL *, DB_MPOOL_HASH *, MPOOLFILE *, BH *, int));
 int __memp_pgread __P((DB_MPOOLFILE *, BH *, int));
 int __memp_bhwrite_async __P((DB_MPOOL *, DB_MPOOL_HASH *, MPOOLFILE *, BH *, struct __db_aio_context *, MEMP_AIO_W *, int *));
-int __memp_aio_drain __P((ENV *, DB_MPOOL *, struct __db_aio_context *, MEMP_AIO_W *, int));
+int __memp_aio_drain __P((ENV *, DB_MPOOL *, struct __db_aio_context *, MEMP_AIO_W *, int, int *));
 int __memp_pg __P((DB_MPOOLFILE *, db_pgno_t, void *, int));
 int __memp_bhfree __P((DB_MPOOL *, REGINFO *, MPOOLFILE *, DB_MPOOL_HASH *, BH *, u_int32_t));
 int __memp_fget_pp __P((DB_MPOOLFILE *, db_pgno_t *, DB_TXN *, u_int32_t, void *));

@@ -37,7 +37,7 @@ LIBS=$(sed -n 's/^LIBS=[[:space:]]*//p' "$BUILD/Makefile" | head -1)
 
 mkdir -p "$RUNDIR"
 rc=0
-for t in leak_si_locker leak_si_mvcc_mtx; do
+for t in leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible; do
 	echo "=== building $t"
 	# shellcheck disable=SC2086
 	$CC -g -O1 -Wall -Wextra -Wno-unused-parameter \
@@ -68,6 +68,25 @@ run leak_si_locker control
 run leak_si_locker snapshot
 run leak_si_mvcc_mtx no-read
 run leak_si_mvcc_mtx read
+
+# #138 correctness gate: the proactive purge must never free a version an
+# active snapshot reader can still see.  No mode argument.
+mvcc_run() {
+	t=mvcc_purge_visible; dir="$RUNDIR/$t"
+	if [ -d "$dir" ]; then
+		find "$dir" -mindepth 1 -delete
+	else
+		mkdir -p "$dir"
+	fi
+	echo "=== running $t"
+	if ( cd "$dir" && timeout "$TIMEOUT" "$RUNDIR/$t" ); then
+		echo "--- $t: PASS"
+	else
+		echo "--- $t: FAIL (exit $?)"
+		rc=1
+	fi
+}
+mvcc_run
 
 [ "$rc" = 0 ] && echo "ALL LEAK TESTS PASS" || echo "LEAK TESTS FAILED"
 exit "$rc"

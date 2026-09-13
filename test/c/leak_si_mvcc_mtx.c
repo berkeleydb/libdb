@@ -2,17 +2,26 @@
  * See the file LICENSE for redistribution information.
  *
  * leak_si_mvcc_mtx.c -- resource-accounting regression test for the MVCC
- * mutex-slot leak in __txn_reap_si_details (GitHub issue #138).
+ * detail/mutex-slot retention in the SI/MVCC txn path (GitHub issue #138).
  *
  * Drives the trigger sequence with public APIs only: each cycle runs a
- * DB_TXN_SNAPSHOT transaction that READS one multiversion database (creating
+ * DB_TXN_SERIALIZABLE transaction that READS one multiversion database (creating
  * a SIREAD marker, so the committed detail's si_ref is nonzero) and WRITES
  * another (so the detail also has mvcc_ref > 0 and gets parked on the
- * mvcc_txn list by __txn_end).  Later the last MVCC buffer is evicted while
- * the marker is still live, so the detail is finally reclaimed by the SIREAD
- * reaper __txn_reap_si_details -- which freed the detail WITHOUT releasing
- * td->mvcc_mtx, leaking one mutex slot per reaped detail until the mutex
- * region was exhausted (ENOMEM from a later valid operation).
+ * mvcc_txn list by __txn_end).  The detail (and its retained mvcc_mtx) is
+ * freed only when its MVCC version buffers become BH_OBSOLETE and are
+ * reclaimed AND its SIREAD marker is gone.  Reclamation used to happen only
+ * under cache-allocation pressure (__memp_alloc scanning a bucket for an
+ * eviction victim), so with a large cache and a wide keyspace the details
+ * and their mvcc_mtx slots accumulated once per cycle until the mutex region
+ * was exhausted (ENOMEM from a later valid operation).  The fix
+ * (__memp_purge_obsolete, driven from txn_checkpoint) reclaims obsolete
+ * versions proactively, so the counts now plateau.
+ *
+ * NB: the three TXN_DETAIL free paths (__txn_end, __txn_remove_buffer,
+ * __txn_reap_si_details) all already __mutex_free the mvcc_mtx before freeing
+ * the detail; #138 was never a free-without-freeing-the-mutex bug but a
+ * retention bug -- the detail was simply never reached for freeing.
  *
  * Usage: leak_si_mvcc_mtx [read|no-read]   (default: read)
  *   read     -- the trigger: the snapshot txn reads accounts.db
@@ -127,7 +136,7 @@ cycle_txn(int with_read, int cycle, char *databuf)
 	for (;;) {
 		txn = NULL;
 		if ((ret = env->txn_begin(env,
-		    NULL, &txn, DB_TXN_SNAPSHOT)) == ENOMEM)
+		    NULL, &txn, DB_TXN_SERIALIZABLE)) == ENOMEM)
 			return (ret);
 		if (retryable(ret))
 			continue;
