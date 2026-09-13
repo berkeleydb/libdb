@@ -682,25 +682,33 @@ __memp_bhwrite_async(dbmp, hp, mfp, bhp, aioc, w, deferredp)
  * __memp_aio_drain --
  *	Reap all "n" outstanding async checkpoint writes, run each completion
  *	(BH_DIRTY clear + file-handle release), and release each buffer pin.
- *	Returns the number of writes completed (n).
+ *	Returns the number of writes completed (n).  If any write FAILED, the
+ *	first non-zero error is stored through errp (if non-NULL) so the sync
+ *	caller can fail the checkpoint exactly as the synchronous path does --
+ *	a silently dropped async write is lost data / a false durable frontier.
+ *	The failed page is left BH_DIRTY by __memp_pgwrite_finish, so it is not
+ *	lost from cache and a later sync retries it.
  *
  * PUBLIC: int __memp_aio_drain __P((ENV *, DB_MPOOL *,
- * PUBLIC:     struct __db_aio_context *, MEMP_AIO_W *, int));
+ * PUBLIC:     struct __db_aio_context *, MEMP_AIO_W *, int, int *));
  */
 int
-__memp_aio_drain(env, dbmp, aioc, w, n)
+__memp_aio_drain(env, dbmp, aioc, w, n, errp)
 	ENV *env;
 	DB_MPOOL *dbmp;
 	struct __db_aio_context *aioc;
 	MEMP_AIO_W *w;
 	int n;
+	int *errp;
 {
-	int got, j;
+	int got, j, t_ret;
 
 	for (got = 0; got < n; )
 		got += __os_aio_reap(env, aioc, -1, 1);
 	for (j = 0; j < n; j++) {
-		(void)__memp_aio_writeback_finish(dbmp, &w[j]);
+		if ((t_ret = __memp_aio_writeback_finish(dbmp, &w[j])) != 0 &&
+		    errp != NULL && *errp == 0)
+			*errp = t_ret;
 		DB_ASSERT(env, atomic_read(&w[j].bhp->ref) > 0);
 		atomic_dec(env, &w[j].bhp->ref);
 		MUTEX_UNLOCK(env, w[j].bhp->mtx_buf);

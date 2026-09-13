@@ -15,7 +15,7 @@ int __memp_failchk __P((ENV *));
 int __memp_bhwrite __P((DB_MPOOL *, DB_MPOOL_HASH *, MPOOLFILE *, BH *, int));
 int __memp_pgread __P((DB_MPOOLFILE *, BH *, int));
 int __memp_bhwrite_async __P((DB_MPOOL *, DB_MPOOL_HASH *, MPOOLFILE *, BH *, struct __db_aio_context *, MEMP_AIO_W *, int *));
-int __memp_aio_drain __P((ENV *, DB_MPOOL *, struct __db_aio_context *, MEMP_AIO_W *, int));
+int __memp_aio_drain __P((ENV *, DB_MPOOL *, struct __db_aio_context *, MEMP_AIO_W *, int, int *));
 int __memp_pg __P((DB_MPOOLFILE *, db_pgno_t, void *, int));
 int __memp_bhfree __P((DB_MPOOL *, REGINFO *, MPOOLFILE *, DB_MPOOL_HASH *, BH *, u_int32_t));
 int __memp_fget_pp __P((DB_MPOOLFILE *, db_pgno_t *, DB_TXN *, u_int32_t, void *));
