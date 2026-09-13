@@ -2263,7 +2263,7 @@ struct __db_qam_stat { /* SHARED */
 /*******************************************************
  * Environment.
  *******************************************************/
-#define	DB_REGION_MAGIC	0x120897	/* Environment magic number. */
+#define	DB_REGION_MAGIC	0x120898	/* Environment magic number. */
 
 /*
  * Database environment structure.
