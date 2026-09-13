@@ -347,10 +347,25 @@ wl_ro_snapshot(soak_workload *w, long i)
  *	A snapshot transaction that both READS (creating SIREAD markers, so
  *	__txn_end parks its detail on the mvcc_txn list with TXN_DTL_SNAPSHOT
  *	rather than freeing it) and WRITES (creating MVCC buffer versions, so
- *	mvcc_ref is nonzero too).  Once the markers are garbage-collected and
- *	the MVCC pages evicted, the detail is reclaimed by
- *	__txn_reap_si_details -- which per #138 frees the detail without
- *	freeing its mvcc_mtx, leaking one mutex slot per reaped detail.
+ *	mvcc_ref is nonzero too).
+ *
+ *	The #138 mechanism is unbounded MVCC-version RETENTION, not a
+ *	free-without-freeing-the-mutex bug (all three TXN_DETAIL free paths
+ *	already __mutex_free the mvcc_mtx).  A committed snapshot txn that
+ *	wrote parks its detail on region->mvcc_txn with mvcc_ref > 0 and KEEPS
+ *	its mvcc_mtx; the detail (and its mutex slot) is freed only when
+ *	mvcc_ref drops to 0, which happens when its version buffers become
+ *	BH_OBSOLETE and are reclaimed.  Obsolete-version reclamation used to
+ *	happen ONLY under cache-allocation pressure (__memp_alloc scanning a
+ *	bucket for an eviction victim), so with a large cache and a wide
+ *	keyspace that never fills it, obsolete versions were never revisited,
+ *	never reclaimed -- details + mutexes accumulated without bound.
+ *
+ *	The fix (__memp_purge_obsolete, driven from the checkpoint path)
+ *	proactively reclaims obsolete versions, so this workload's slope is
+ *	now bounded PROVIDED a checkpoint runs periodically -- which this
+ *	harness does (see run_workload), exactly as a long-running deployment
+ *	runs a checkpoint thread.
  *
  *	Driving that path needs cache turnover, so the workload spreads its
  *	writes over a keyspace far wider than the ro_snapshot one and reads a
@@ -622,6 +637,19 @@ run_workload(soak_workload *w)
 
 		if (rc != 0)
 			soak_die("workload transaction", rc);
+		/*
+		 * Checkpoint periodically, as any long-running deployment does
+		 * (a dedicated checkpoint thread, or DB_ENV->txn_checkpoint on
+		 * a timer).  Besides flushing the cache, a checkpoint is where
+		 * obsolete MVCC versions are proactively reclaimed
+		 * (__memp_purge_obsolete, the #138 fix): without a periodic
+		 * checkpoint the mvcc_retained shape retains version buffers --
+		 * and the committed-snapshot details + mvcc_mtx slots they pin
+		 * -- until cache-allocation pressure happens to revisit their
+		 * bucket, which a large cache with a wide keyspace never does.
+		 */
+		if (i % 500 == 0)
+			(void)env->txn_checkpoint(env, 0, 0, DB_FORCE);
 		if (i % every == 0 && nsample < SOAK_MAX_SAMPLE)
 			soak_sample_now(&s[nsample++], i);
 	}

@@ -283,6 +283,21 @@ do_ckp:
 	}
 
 	/*
+	 * #138: proactively reclaim obsolete MVCC version buffers now that the
+	 * cache is flushed.  Without this, an obsolete version is freed only
+	 * when __memp_alloc happens to hunt an eviction victim in its bucket;
+	 * a large cache with a wide keyspace never revisits it, so the
+	 * committed snapshot TXN_DETAIL its version pins (and that detail's
+	 * mvcc_mtx slot) is retained without bound.  __memp_purge_obsolete
+	 * frees exactly the versions eviction would free as obsolete, using
+	 * the same visibility frontier, the same BH_OBSOLETE test, and the
+	 * same __txn_remove_buffer free path -- so it can never free a version
+	 * any live reader's snapshot can still see.  Best effort.
+	 */
+	if (MPOOL_ON(env))
+		(void)__memp_purge_obsolete(env);
+
+	/*
 	 * The client won't have more dirty pages to flush from its cache than
 	 * the master did, but there may be differences between the hardware,
 	 * I/O configuration and workload on the master and the client that

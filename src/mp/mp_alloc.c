@@ -749,3 +749,182 @@ __memp_free(infop, buf)
 {
 	__env_alloc_free(infop, buf);
 }
+
+/*
+ * __memp_purge_obsolete --
+ *	Proactively reclaim obsolete MVCC version buffers -- those that no
+ *	active reader's snapshot can ever see again -- so the committed
+ *	snapshot TXN_DETAILs their versions pin (parked on region->mvcc_txn
+ *	with TXN_DTL_SNAPSHOT and their mvcc_mtx retained) get freed without
+ *	waiting for cache-allocation pressure to revisit the bucket.
+ *
+ *	Why this exists: __memp_alloc frees obsolete versions ONLY when it is
+ *	hunting an eviction victim in a bucket.  With a large cache and a wide
+ *	keyspace that never fills it, an obsolete version's bucket is never
+ *	rescanned, so its detail (and mvcc_mtx slot) is retained without bound
+ *	(#138).  This routine, called from the checkpoint path, walks every
+ *	bucket once and frees exactly the buffers __memp_alloc would have
+ *	freed as obsolete -- reusing the SAME BH_OBSOLETE test, the SAME
+ *	hp->old_reader advance, and the SAME __memp_bhfree/__txn_remove_buffer
+ *	free path.  It introduces NO new reclamation protocol and NO new lock
+ *	ordering.
+ *
+ *	CORRECTNESS INVARIANT: a version is freed only when BH_OBSOLETE says
+ *	its successor version is already visible to the oldest reader -- i.e.
+ *	no live reader can ever read this version again.  We compute the
+ *	oldest-reader frontier once up front and only advance hp->old_reader
+ *	toward it (never past a value some reader might still need), exactly
+ *	as __memp_alloc does.  We never free a version any active snapshot can
+ *	still see.
+ *
+ *	This is best effort: any buffer that is busy (referenced, dirty,
+ *	frozen, or momentarily latched by another thread) is simply skipped;
+ *	it will be revisited at the next checkpoint or by eviction.
+ *
+ * PUBLIC: int __memp_purge_obsolete __P((ENV *));
+ */
+int
+__memp_purge_obsolete(env)
+	ENV *env;
+{
+	BH *bhp, *current_bhp, *oldest_bhp;
+	DB_LSN oldest_reader, vlsn;
+	DB_MPOOL *dbmp;
+	DB_MPOOL_HASH *hp;
+	MPOOL *c_mp, *mp;
+	MPOOLFILE *bh_mfp;
+	REGINFO *infop;
+	u_int32_t bucket;
+	u_int i;
+	int ret;
+
+	if (!MPOOL_ON(env) || !TXN_ON(env))
+		return (0);
+
+	dbmp = env->mp_handle;
+	mp = dbmp->reginfo[0].primary;
+	ret = 0;
+	ZERO_LSN(vlsn);
+
+	/*
+	 * The visibility frontier.  A version is reclaimable only if the
+	 * next-newer version is already visible to this LSN -- i.e. no active
+	 * reader could ever see the older version.  Computed once; each bucket
+	 * advances its cached hp->old_reader toward it under mtx_hash, mirroring
+	 * __memp_alloc.
+	 */
+	if ((ret = __txn_oldest_reader(env, &oldest_reader)) != 0)
+		return (ret);
+
+	for (i = 0; i < mp->nreg; ++i) {
+		infop = &dbmp->reginfo[i];
+		c_mp = infop->primary;
+		hp = R_ADDR(infop, c_mp->htab);
+		for (bucket = 0; bucket < c_mp->htab_buckets; ++hp, ++bucket) {
+			/* Cheap unlocked skip of empty buckets. */
+			if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) == NULL)
+				continue;
+
+retry_bucket:			MUTEX_LOCK(env, hp->mtx_hash);
+
+			/*
+			 * Advance this bucket's cached oldest-reader LSN toward
+			 * the frontier -- never past it.  Same guarded advance
+			 * __memp_alloc performs.
+			 */
+			if (LOG_COMPARE(&oldest_reader, &hp->old_reader) > 0)
+				hp->old_reader = oldest_reader;
+
+			/*
+			 * Find an obsolete buffer at the END of an MVCC chain --
+			 * the only kind __memp_alloc frees as obsolete.  We free
+			 * at most one per lock acquisition, then re-lock, because
+			 * __memp_bhfree drops mtx_hash while freeing.
+			 */
+			bhp = NULL;
+			SH_TAILQ_FOREACH(current_bhp,
+			    &hp->hash_bucket, hq, __bh) {
+				/* Singletons are handled by normal eviction. */
+				if (SH_CHAIN_SINGLETON(current_bhp, vc))
+					continue;
+				/* Walk to the oldest (last) version in the chain. */
+				for (oldest_bhp = current_bhp;
+				    SH_CHAIN_HASPREV(oldest_bhp, vc);
+				    oldest_bhp =
+				    SH_CHAIN_PREV(oldest_bhp, vc, __bh))
+					continue;
+				if (BH_REFCOUNT(oldest_bhp) != 0 ||
+				    F_ISSET(oldest_bhp,
+				    BH_DIRTY | BH_FROZEN | BH_EXCLUSIVE))
+					continue;
+				if (!BH_OBSOLETE(oldest_bhp,
+				    hp->old_reader, vlsn))
+					continue;
+				bhp = oldest_bhp;
+				break;
+			}
+
+			if (bhp == NULL) {
+				MUTEX_UNLOCK(env, hp->mtx_hash);
+				continue;
+			}
+
+			/*
+			 * Claim the buffer exclusively, mirroring __memp_alloc:
+			 * take a reference, drop mtx_hash, trylock mtx_buf (never
+			 * block -- a caller may hold locks), re-lock mtx_hash, and
+			 * re-verify the buffer is still the free-able obsolete
+			 * oldest version before calling __memp_bhfree.
+			 */
+			atomic_inc(env, &bhp->ref);
+			MUTEX_UNLOCK(env, hp->mtx_hash);
+
+			if ((ret = MUTEX_TRYLOCK(env, bhp->mtx_buf)) != 0) {
+				atomic_dec(env, &bhp->ref);
+				if (ret != DB_LOCK_NOTGRANTED)
+					return (ret);
+				ret = 0;
+				continue;
+			}
+			F_SET(bhp, BH_EXCLUSIVE);
+			MUTEX_LOCK(env, hp->mtx_hash);
+
+			/*
+			 * Re-verify under both latches: another thread may have
+			 * referenced, dirtied, frozen, extended, or already freed
+			 * (making it a singleton) this buffer, or a new reader may
+			 * have made it no longer obsolete.  Any of those and we
+			 * release and move on -- exactly __memp_alloc's re-checks.
+			 */
+			if (BH_REFCOUNT(bhp) != 1 ||
+			    F_ISSET(bhp, BH_DIRTY | BH_FROZEN) ||
+			    SH_CHAIN_HASPREV(bhp, vc) ||
+			    !SH_CHAIN_HASNEXT(bhp, vc) ||
+			    !BH_OBSOLETE(bhp, hp->old_reader, vlsn)) {
+				atomic_dec(env, &bhp->ref);
+				F_CLR(bhp, BH_EXCLUSIVE);
+				MUTEX_UNLOCK(env, bhp->mtx_buf);
+				MUTEX_UNLOCK(env, hp->mtx_hash);
+				continue;
+			}
+
+			bh_mfp = R_ADDR(dbmp->reginfo, bhp->mf_offset);
+
+			/*
+			 * Free the buffer for real.  __memp_bhfree unlinks it from
+			 * the version chain, calls __txn_remove_buffer (which drops
+			 * the owning detail's mvcc_ref and frees the detail + its
+			 * mvcc_mtx when it reaches 0 -- the reclamation we want),
+			 * releases mtx_hash and mtx_buf, and returns the memory.
+			 */
+			if ((ret = __memp_bhfree(dbmp, infop,
+			    bh_mfp, hp, bhp, BH_FREE_FREEMEM)) != 0)
+				return (ret);
+
+			/* Bucket may hold more obsolete versions; rescan it. */
+			goto retry_bucket;
+		}
+	}
+
+	return (ret);
+}
