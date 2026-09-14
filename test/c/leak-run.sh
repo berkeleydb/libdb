@@ -1,5 +1,6 @@
 #!/bin/sh
-# test/c/leak-run.sh -- build and run the SSI resource-accounting leak tests.
+# test/c/leak-run.sh -- build and run the SSI resource-accounting leak tests
+# and the operator deployment-health signal test.
 #
 # Regression gate for GitHub issues #137 (committed-reader lockers never
 # reclaimed) and #138 (MVCC mutex slot leaked by __txn_reap_si_details).
@@ -37,7 +38,7 @@ LIBS=$(sed -n 's/^LIBS=[[:space:]]*//p' "$BUILD/Makefile" | head -1)
 
 mkdir -p "$RUNDIR"
 rc=0
-for t in leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible; do
+for t in leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible health_stats; do
 	echo "=== building $t"
 	# shellcheck disable=SC2086
 	$CC -g -O1 -Wall -Wextra -Wno-unused-parameter \
@@ -68,6 +69,13 @@ run leak_si_locker control
 run leak_si_locker snapshot
 run leak_si_mvcc_mtx no-read
 run leak_si_mvcc_mtx read
+
+# Operator health signal: the utilization / retention counters must track the
+# #137 and #138 retention shapes (rise, come back down, stay bounded), and the
+# control must stay flat so the movement is attributable to the retention.
+run health_stats control
+run health_stats si137
+run health_stats si138
 
 # #138 correctness gate: the proactive purge must never free a version an
 # active snapshot reader can still see.  No mode argument.

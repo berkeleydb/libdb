@@ -821,6 +821,7 @@
 #define	__env_stat_print_pp __env_stat_print_pp@DB_VERSION_UNIQUE_NAME@
 #define	__db_print_fh __db_print_fh@DB_VERSION_UNIQUE_NAME@
 #define	__db_print_fileid __db_print_fileid@DB_VERSION_UNIQUE_NAME@
+#define	__db_util_pct __db_util_pct@DB_VERSION_UNIQUE_NAME@
 #define	__db_dl __db_dl@DB_VERSION_UNIQUE_NAME@
 #define	__db_dl_pct __db_dl_pct@DB_VERSION_UNIQUE_NAME@
 #define	__db_dlbytes __db_dlbytes@DB_VERSION_UNIQUE_NAME@

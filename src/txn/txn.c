@@ -58,17 +58,9 @@
 		DB_LOG_WRNOSYNC : 0)))
 
 /*
- * SI_CLEANUP_TRIGGER_DIV --
- *	The committed-reader SIREAD marker sweep (__lock_sicleanup) fires from
- *	txn_begin when live markers exceed st_objects / SI_CLEANUP_TRIGGER_DIV.
- *	This makes the marker/locker/detail footprint a bounded sawtooth whose
- *	ceiling is that fraction of the lock-object table, independent of the
- *	transaction count -- the mechanism that keeps a long-lived, no-checkpoint
- *	read-only SSI workload from exhausting the lock region (issue #137).
- *	8 was chosen over 2 empirically: it lowers the steady state ~4x and also
- *	speeds the common path (shorter sireaders lists, smaller sweeps).
+ * SI_CLEANUP_TRIGGER_DIV lives in dbinc/lock.h: it bounds a lock-region
+ * population, and DB_ENV->lock_stat_print reports the ceiling it implies.
  */
-#define	SI_CLEANUP_TRIGGER_DIV	8
 
 /*
  * __txn_isvalid enumerated types.  We cannot simply use the transaction
@@ -1933,6 +1925,27 @@ __txn_end(txn, is_commit)
 			SH_TAILQ_INSERT_HEAD(&region->mvcc_txn,
 			    td, links, __txn_detail);
 			F_SET(td, TXN_DTL_SNAPSHOT);
+#ifdef HAVE_STATISTICS
+			/*
+			 * st_nsnapshot counts details parked on mvcc_txn, so it
+			 * must be incremented here too -- this is the second of
+			 * the two park sites (the mvcc_ref one above is the
+			 * first), and BOTH reap paths (__txn_reap_si_details,
+			 * __txn_remove_buffer) decrement it unconditionally.
+			 * Without this increment every committed SSI reader
+			 * decremented a count it never contributed to, and
+			 * st_nsnapshot underflowed past zero and wrapped (it is
+			 * u_int32_t), which made the one statistic an operator
+			 * would alarm on for issues #137/#138 read ~4.29e9.
+			 */
+			STAT_INC(env, txn,
+			    nsnapshot, region->stat.st_nsnapshot, txn->txnid);
+			if (region->stat.st_nsnapshot >
+			    region->stat.st_maxnsnapshot)
+				STAT_SET(env, txn, maxnsnapshot,
+				    region->stat.st_maxnsnapshot,
+				    region->stat.st_nsnapshot, txn->txnid);
+#endif
 		}
 	}
 

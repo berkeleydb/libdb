@@ -677,6 +677,49 @@ __db_print_fileid(env, id, suffix)
 }
 
 /*
+ * __db_util_pct --
+ *	Display a "deployment health" utilization line for one statically-sized
+ *	shared-region resource: how much of its configured maximum is currently
+ *	in use.  This is the operator-facing signal for the resource-exhaustion
+ *	failure mode, whose symptom is otherwise a hard ENOMEM on some later,
+ *	perfectly legitimate operation (issues #137, #138).
+ *
+ *	The utilization is DERIVED at stat time from two counters the subsystem
+ *	already maintains -- nothing new is accounted on any hot path, and no
+ *	statistics struct grows (which would change __env_struct_sig() and so
+ *	break region attach for existing deployments).
+ *
+ *	max == 0 means "no maximum configured": the resource grows on demand
+ *	until the region itself is exhausted, so no meaningful ratio exists and
+ *	we say so rather than print a fabricated 0%.  Callers that can supply a
+ *	region-derived bound (the SSI marker sweep ceiling, for example) should
+ *	pass that as max instead of 0.
+ *
+ * PUBLIC: void __db_util_pct
+ * PUBLIC:     __P((ENV *, const char *, u_long, u_long));
+ */
+void
+__db_util_pct(env, msg, inuse, max)
+	ENV *env;
+	const char *msg;
+	u_long inuse, max;
+{
+	if (max == 0) {
+		__db_msg(env,
+		    "%lu/unlimited\t%s (no maximum configured)", inuse, msg);
+		return;
+	}
+	/*
+	 * Print in-use/max alongside the percentage: the ratio is what an
+	 * operator alarms on, but the raw pair is what makes the alarm
+	 * actionable (it names the value to raise).  Integer math on u_long,
+	 * so no rounding surprises and no floating point in a stat path.
+	 */
+	__db_msg(env, "%lu/%lu\t%s (%lu%% utilized)",
+	    inuse, max, msg, (inuse * 100) / max);
+}
+
+/*
  * __db_dl --
  *	Display a big value.
  *

@@ -114,6 +114,7 @@ order = [
   "transapp_filesys",
   "transapp_reclimit",
   "transapp_tune",
+  "deployment_health",
   "transapp_throughput",
   "transapp_faq",
   "rep",
