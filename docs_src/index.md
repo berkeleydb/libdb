@@ -9,6 +9,15 @@ transactional key/value storage engine. Generated from Markdown source by
 [man pages](#man). Version and copyright are single-sourced from
 `docs_src/_data/site.toml` + `dist/RELEASE`.
 
+> This reference tracks the **community fork** at
+> [github.com/berkeleydb/libdb](https://github.com/berkeleydb/libdb), which
+> ships under [CalVer](https://calver.org/) (`vYYYY.0M`). See the
+> [**releases**](https://github.com/berkeleydb/libdb/releases) for the full
+> list and per-release notes; the version this documentation was built for is
+> shown in the page header. Fork releases are a continuation of, and distinct
+> from, the Sleepycat/Oracle `5.3.x` line (the last Sleepycat-licensed release
+> was 5.3.28).
+
 ## API reference
 
 - [C API Reference](api/c/index.html) — the primary interface: `DB_ENV`, `DB`,
@@ -60,15 +69,31 @@ page, e.g. `man libdb`, `man db_get`.
 
 ## <a id="pdf"></a>PDF downloads
 
-Each book is also available as a PDF (see the release assets / `docs-build/pdf/`):
-`api_c.pdf`, `api_stl.pdf`, `guides_programmer_reference.pdf`,
-`guides_gsg.pdf`, `guides_gsg_txn.pdf`, `guides_gsg_db_rep.pdf`,
-`guides_gsg_cxx.pdf`, `guides_gsg_java.pdf`,
-`guides_gsg_txn_cxx.pdf`, `guides_gsg_txn_java.pdf`,
-`guides_gsg_db_rep_cxx.pdf`, `guides_gsg_db_rep_java.pdf`,
-`guides_collections.pdf`, `guides_bdb-sql.pdf`, `guides_installation.pdf`,
-`guides_upgrading.pdf`, `guides_porting.pdf`,
-`guides_articles_inmemory.pdf`, `guides_articles_mssgtxt.pdf`.
+Each book is also available as a PDF:
+
+| Book | PDF |
+|------|-----|
+| C API reference | [`api_c.pdf`](pdf/api_c.pdf) |
+| C++/STL API reference | [`api_stl.pdf`](pdf/api_stl.pdf) |
+| Programmer's Reference Guide | [`guides_programmer_reference.pdf`](pdf/guides_programmer_reference.pdf) |
+| Getting Started with Data Storage | [`guides_gsg.pdf`](pdf/guides_gsg.pdf) |
+| Getting Started with Transactions | [`guides_gsg_txn.pdf`](pdf/guides_gsg_txn.pdf) |
+| Getting Started with Replication | [`guides_gsg_db_rep.pdf`](pdf/guides_gsg_db_rep.pdf) |
+| Getting Started with Data Storage (C++) | [`guides_gsg_cxx.pdf`](pdf/guides_gsg_cxx.pdf) |
+| Getting Started with Data Storage (Java) | [`guides_gsg_java.pdf`](pdf/guides_gsg_java.pdf) |
+| Getting Started with Transactions (C++) | [`guides_gsg_txn_cxx.pdf`](pdf/guides_gsg_txn_cxx.pdf) |
+| Getting Started with Transactions (Java) | [`guides_gsg_txn_java.pdf`](pdf/guides_gsg_txn_java.pdf) |
+| Getting Started with Replication (C++) | [`guides_gsg_db_rep_cxx.pdf`](pdf/guides_gsg_db_rep_cxx.pdf) |
+| Getting Started with Replication (Java) | [`guides_gsg_db_rep_java.pdf`](pdf/guides_gsg_db_rep_java.pdf) |
+| Collections tutorial (Java) | [`guides_collections.pdf`](pdf/guides_collections.pdf) |
+| Berkeley DB SQL interface | [`guides_bdb-sql.pdf`](pdf/guides_bdb-sql.pdf) |
+| Installation | [`guides_installation.pdf`](pdf/guides_installation.pdf) |
+| Upgrading | [`guides_upgrading.pdf`](pdf/guides_upgrading.pdf) |
+| Porting | [`guides_porting.pdf`](pdf/guides_porting.pdf) |
+| Article: In-Memory databases | [`guides_articles_inmemory.pdf`](pdf/guides_articles_inmemory.pdf) |
+| Article: Message-text handling | [`guides_articles_mssgtxt.pdf`](pdf/guides_articles_mssgtxt.pdf) |
+
+The same PDFs are attached to each [GitHub release](https://github.com/berkeleydb/libdb/releases).
 
 ---
 

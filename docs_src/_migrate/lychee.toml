@@ -37,6 +37,13 @@ exclude = [
   # (a Java API example in the deferred java tree; the filename is even
   # malformed). Dead in the source too -- not a migration regression.
   "second.javas",
+  # The per-book reference PDFs linked from index.html live at
+  # reference/pdf/<book>.pdf on the PUBLISHED site (gh-pages), where they ARE
+  # present. The fast PR gate builds HTML with --no-pdf (the weasyprint pass
+  # runs in the separate `pdf` job / at publish), so pdf/*.pdf is absent here
+  # and would otherwise dangle. Excluded from the offline gate; the `pdf`
+  # job's validate_pdf.py verifies the PDFs actually exist and are valid.
+  "/pdf/",
 ]
 
 # Internal-only run: skip all network schemes so a PR gate never depends on the
