@@ -48,8 +48,8 @@
 
 <section id="get">
   <h2>Get it</h2>
-  <p>Latest release: <a href="https://github.com/berkeleydb/libdb/releases/latest"><strong>v5.3.33</strong></a>
-     (<a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.33">notes</a>).</p>
+  <p>Latest release: <a href="https://github.com/berkeleydb/libdb/releases/latest"><strong>v2026.09.4</strong></a>
+     (<a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.4">notes</a>).</p>
   <pre><code>git clone https://github.com/berkeleydb/libdb.git
 cd libdb/build_unix
 ../dist/configure &amp;&amp; make</code></pre>
@@ -62,10 +62,17 @@ cd libdb/build_unix
   <table>
     <thead><tr><th>Version</th><th>Notes</th></tr></thead>
     <tbody>
-      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.33">v5.3.33</a></td><td>Testing depth: DST fault-class parity + formal verification (CBMC), PBT hardening</td></tr>
-      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.32">v5.3.32</a></td><td>Coverage &amp; correctness: full-suite coverage to the mid-70s, several bug fixes</td></tr>
-      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.31">v5.3.31</a></td><td>Testing &amp; hardening: fuzzing, malloc-injection, 10 bug fixes</td></tr>
-      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.30">v5.3.30</a></td><td>SSI (serializable snapshot isolation) hardening, build hygiene</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.4">v2026.09.4</a></td><td>#137 locker accounting (bounded), <code>ssi_abort_bench</code> SI/SSI distinction, versioning covenant</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.3">v2026.09.3</a></td><td><code>DB_TXN_SNAPSHOT</code> restored to plain SI + new <code>DB_TXN_SERIALIZABLE</code>; os_aio durability fix; #138 MVCC-retention purge</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.2">v2026.09.2</a></td><td>Cursor-queue sharding (concurrent read scaling); two-site replication-isolation harness</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.1">v2026.09.1</a></td><td>Queue cursor read-path DoS bound</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09">v2026.09</a></td><td>Correctness: SSI commit-window write skew (#136), IV entropy from OS CSPRNG, heap OOB write (#140)</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.08">v2026.08</a></td><td>Serializable snapshot isolation available by default</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.07.3">v2026.07.3</a></td><td>Testing depth: DST fault-class parity + formal verification (CBMC), PBT hardening</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.07.2">v2026.07.2</a></td><td>Coverage &amp; correctness: full-suite coverage to the mid-70s, several bug fixes</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.07.1">v2026.07.1</a></td><td>Testing &amp; hardening: fuzzing, malloc-injection, 10 bug fixes</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.07">v2026.07</a></td><td>SSI hardening, build hygiene</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.04">v2026.04</a></td><td>First community fork release</td></tr>
       <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v5.3.28">v5.3.28</a></td><td>Berkeley DB 11gR2 (11.2.5.3.28) — the last Oracle open-source release</td></tr>
       <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v4.6.21-SSI">v4.6.21-SSI</a></td><td>Cahill SSI prototype (SIGMOD 2008), historical</td></tr>
     </tbody>
@@ -84,7 +91,7 @@ cd libdb/build_unix
      guides (data storage, transactions, replication), installation, upgrading,
      porting, and Berkeley DB SQL. Generated from Markdown, it is also available
      as <a href="reference/#pdf">PDF</a> and
-     <a href="reference/libdb-man-5.3.33.tar.gz">man pages</a>
+     <a href="reference/libdb-man-2026.09.4.tar.gz">man pages</a>
      (<code>man libdb</code>, <code>man db_get</code>, &hellip;).</p>
   <ul class="docs">
     <li><a href="reference/api/c/index.html">C API Reference</a> &middot;
@@ -98,8 +105,9 @@ cd libdb/build_unix
         <a href="reference/guides/upgrading/index.html">Upgrading</a> &middot;
         <a href="reference/guides/bdb-sql/index.html">Berkeley DB SQL</a></li>
   </ul>
-  <p class="note">The manuals apply to the current <strong>5.3.33</strong> release;
-     the on-disk, log, and API formats are stable across the 5.3 line.</p>
+  <p class="note">The manuals track the current <strong>2026.09.4</strong> release;
+     the on-disk, log, and API formats are stable (the format/ABI compatibility
+     level is frozen at 5.3.37 — see the versioning covenant in the README).</p>
   <h3>Historical archive</h3>
   <p class="note">The original Oracle DocBook manuals are kept for reference:
      <a href="docs/db/5.3.28/">Berkeley DB 5.3.28</a> &middot;
