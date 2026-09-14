@@ -72,7 +72,12 @@ run leak_si_mvcc_mtx read
 # #138 correctness gate: the proactive purge must never free a version an
 # active snapshot reader can still see.  No mode argument.
 mvcc_run() {
-	t=mvcc_purge_visible; dir="$RUNDIR/$t"
+	# NB: the run directory needs a suffix.  $RUNDIR/$t is the compiled
+	# DRIVER, so an unsuffixed "$RUNDIR/$t" collides with it: [ -d ] is
+	# false, mkdir -p fails with "File exists", and the run is skipped
+	# while the script still reports rc=1 with no failing test named.
+	# (The two runs above are already suffixed with their mode.)
+	t=mvcc_purge_visible; dir="$RUNDIR/$t-run"
 	if [ -d "$dir" ]; then
 		find "$dir" -mindepth 1 -delete
 	else
