@@ -3588,11 +3588,11 @@ DB_VERSION_MINOR="0"
 
 DB_VERSION_PATCH="9"
 
-DB_CALVER="2026.09.3"
+DB_CALVER="2026.09.4"
 
-DB_VERSION_STRING='"libdb 2026.09.3 (September 13, 2026)"'
+DB_VERSION_STRING='"libdb 2026.09.4 (September 14, 2026)"'
 
-DB_VERSION_FULL_STRING='"libdb 2026.09.3 (September 13, 2026)"'
+DB_VERSION_FULL_STRING='"libdb 2026.09.4 (September 14, 2026)"'
 
 
 # Process all options before using them.
