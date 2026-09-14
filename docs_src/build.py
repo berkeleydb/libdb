@@ -58,14 +58,15 @@ SKIP_DIRS = {"_data", "_templates", "_migrate"}
 
 
 def load_version():
-    """DB_VERSION from dist/RELEASE -> e.g. '5.3.33'. Single source of truth."""
+    """DB_CALVER from dist/RELEASE -> e.g. '2026.09.4'. The fork's release
+    identity (calver.org), single source of truth for the docs. The internal
+    DB_VERSION_MAJOR.MINOR.PATCH triplet is the frozen format/ABI compatibility
+    level, not the release version, so it is deliberately NOT used here."""
     txt = RELEASE.read_text()
-    def g(k):
-        m = re.search(rf"^{k}=(\d+)", txt, re.M)
-        if not m:
-            sys.exit(f"cannot read {k} from {RELEASE}")
-        return m.group(1)
-    return f"{g('DB_VERSION_MAJOR')}.{g('DB_VERSION_MINOR')}.{g('DB_VERSION_PATCH')}"
+    m = re.search(r'^DB_CALVER="([^"]+)"', txt, re.M)
+    if not m:
+        sys.exit(f"cannot read DB_CALVER from {RELEASE}")
+    return m.group(1)
 
 
 def load_site():

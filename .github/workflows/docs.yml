@@ -226,8 +226,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ver=$(sed -n 's/^DB_VERSION_PATCH=//p' dist/RELEASE)
-          full="5.3.$ver"
+          full=$(sed -n 's/^DB_CALVER="\([^"]*\)"/\1/p' dist/RELEASE)
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           tar czf "/tmp/libdb-man-$full.tar.gz" -C docs-build/man man3
