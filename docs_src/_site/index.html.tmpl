@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>libdb — Berkeley DB, continued</title>
+<meta name="description" content="libdb: a maintained, modernized continuation of Berkeley DB — the embedded transactional (ACID, WAL, recovery) key/value store. Source, releases, and documentation.">
+<link rel="canonical" href="https://libdb.org/">
+<meta property="og:title" content="libdb — Berkeley DB, continued">
+<meta property="og:description" content="A maintained continuation of Berkeley DB: embedded, transactional, no server. Source, releases, docs.">
+<meta property="og:url" content="https://libdb.org/">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+<!-- GoatCounter (privacy-friendly, no cookies) -->
+<script data-goatcounter="https://stats.burd.me/count" async src="//stats.burd.me/count.js"></script>
+</head>
+<body>
+<header>
+  <h1>libdb</h1>
+  <p class="tagline">Berkeley DB, continued — an embedded, transactional key/value store.</p>
+  <nav>
+    <a href="https://github.com/berkeleydb/libdb">Source</a>
+    <a href="https://github.com/berkeleydb/libdb/releases">Releases</a>
+    <a href="#docs">Docs</a>
+    <a href="https://github.com/berkeleydb/libdb/actions">CI</a>
+    <a href="https://github.com/berkeleydb/libdb/issues">Issues</a>
+  </nav>
+</header>
+
+<main>
+
+<section id="about">
+  <p><strong>libdb</strong> is a community continuation of Berkeley DB, maintained by a
+  former member of Sleepycat Software and Oracle's Berkeley DB team. It keeps Berkeley
+  DB what it has always been — a small, fast, <em>embedded</em> library (no server, no
+  daemon) that links directly into your process — while modernizing the build, the
+  tests, and the code.</p>
+
+  <p class="what">What it is:
+    <span class="tag">ACID transactions</span>
+    <span class="tag">write-ahead log + crash recovery</span>
+    <span class="tag">B-tree · Hash · Queue · Recno</span>
+    <span class="tag">concurrent multi-process</span>
+    <span class="tag">C / C++ / SQL</span>
+    <span class="tag">tiny footprint</span>
+  </p>
+</section>
+
+<section id="get">
+  <h2>Get it</h2>
+  <p>Latest release: <a href="https://github.com/berkeleydb/libdb/releases/latest"><strong>v{{version}}</strong></a>
+     (<a href="https://github.com/berkeleydb/libdb/releases/tag/v{{version}}">notes</a>).</p>
+  <pre><code>git clone https://github.com/berkeleydb/libdb.git
+cd libdb/build_unix
+../dist/configure &amp;&amp; make</code></pre>
+  <p class="note">Also builds with Meson/Ninja (<code>meson setup build &amp;&amp; ninja -C build</code>)
+     and ships a Nix flake (<code>nix build github:berkeleydb/libdb</code>).</p>
+</section>
+
+<section id="releases">
+  <h2>Releases</h2>
+  <table>
+    <thead><tr><th>Version</th><th>Notes</th></tr></thead>
+    <tbody>
+{{releases_rows}}
+    </tbody>
+  </table>
+  <p class="note"><a href="https://github.com/berkeleydb/libdb/releases">All releases &rarr;</a> ·
+     Oracle's original tarballs mirror at
+     <a href="https://ftp.osuosl.org/pub/blfs/conglomeration/db/">osuosl.org</a> ·
+     FreeBSD keeps <a href="https://ftp.tw.freebsd.org/distfiles/bdb/">a full source+patch archive</a>.</p>
+</section>
+
+<section id="docs">
+  <h2>Documentation</h2>
+  <p>The <strong><a href="reference/">Berkeley DB Reference</a></strong> is the
+     modernized, single-sourced manual for the current release &mdash; the C and
+     C++/STL API reference, the Programmer's Reference, the Getting Started
+     guides (data storage, transactions, replication), installation, upgrading,
+     porting, and Berkeley DB SQL. Generated from Markdown, it is also available
+     as <a href="reference/#pdf">PDF</a> and
+     <a href="reference/libdb-man-{{version}}.tar.gz">man pages</a>
+     (<code>man libdb</code>, <code>man db_get</code>, &hellip;).</p>
+  <ul class="docs">
+    <li><a href="reference/api/c/index.html">C API Reference</a> &middot;
+        <a href="reference/api/stl/index.html">C++ / STL API</a></li>
+    <li><a href="reference/guides/programmer_reference/index.html">Programmer's Reference</a></li>
+    <li>Getting Started:
+        <a href="reference/guides/gsg/index.html">Data Storage</a> &middot;
+        <a href="reference/guides/gsg_txn/index.html">Transactions</a> &middot;
+        <a href="reference/guides/gsg_db_rep/index.html">Replication</a></li>
+    <li><a href="reference/guides/installation/index.html">Installation &amp; Build</a> &middot;
+        <a href="reference/guides/upgrading/index.html">Upgrading</a> &middot;
+        <a href="reference/guides/bdb-sql/index.html">Berkeley DB SQL</a></li>
+  </ul>
+  <p class="note">The manuals track the current <strong>{{version}}</strong> release;
+     the on-disk, log, and API formats are stable (the format/ABI compatibility
+     level is frozen at 5.3.37 — see the versioning covenant in the README).</p>
+  <h3>Historical archive</h3>
+  <p class="note">The original Oracle DocBook manuals are kept for reference:
+     <a href="docs/db/5.3.28/">Berkeley DB 5.3.28</a> &middot;
+     <a href="docs/db/5.3.21/">5.3.21 (11gR2)</a> &middot;
+     <a href="docs/dbxml/2.5.16/">Berkeley DB XML 2.5.16</a>. The C#/Java
+     language-binding docs are archived separately.</p>
+</section>
+
+<section id="status">
+  <h2>Project status</h2>
+  <p>Actively maintained. The single-node transactional core is production-grade and,
+     by the fork's own measure, better-tested than the last Oracle release: unit tests,
+     deterministic simulation testing (crash / torn-write / corruption / disk-full /
+     clock-skew / crash-during-recovery / multi-process failchk / buggify),
+     property-based tests, fuzzing, malloc-fault injection, static analysis + ABI
+     checks, and CBMC formal verification — all run in
+     <a href="https://github.com/berkeleydb/libdb/actions">CI</a> across Linux, macOS,
+     32-bit, and multiple compilers and mutex backends.</p>
+  <p class="note">License: the historical Sleepycat license for the original code;
+     see the repository for details on newer contributions.</p>
+</section>
+
+</main>
+
+<footer>
+  <p>libdb.org — a partial, GPL-free archive and continuation of Berkeley DB.
+     Not affiliated with Oracle. Berkeley DB is a trademark of Oracle.</p>
+  <p><a href="https://github.com/berkeleydb/libdb">github.com/berkeleydb/libdb</a></p>
+</footer>
+</body>
+</html>
