@@ -56,12 +56,15 @@
  *
  * THE GC PRESSURE (step 5, and interleaved throughout)
  *	Three independent triggers, all of them the real ones:
- *	  (a) MANY LOCK OBJECTS + MANY COMMITTED READERS.  Each iteration runs a
- *	      batch of short read-only SERIALIZABLE transactions over a wide
- *	      filler keyspace.  Every one leaves a committed-reader marker, so
- *	      the live-marker count crosses st_objects / SI_CLEANUP_TRIGGER_DIV
- *	      repeatedly and the txn_begin pressure sweep fires again and again
- *	      -- including inside the window between step 4 and step 6.
+ *	  (a) THE txn_begin PRESSURE SWEEP.  Each iteration runs batches of short
+ *	      read-only SERIALIZABLE transactions over a wide filler keyspace.
+ *	      Every one leaves a committed-reader marker behind, so the live
+ *	      marker count crosses st_objects / SI_CLEANUP_TRIGGER_DIV and the
+ *	      sweep fires -- repeatedly, and inside the window between step 4 and
+ *	      step 6.  The batch size (SSI_GC_FILLER) is chosen so the live count
+ *	      demonstrably passes that threshold: the run prints the threshold
+ *	      and the observed peak, and FAILS if the peak never reached it, so
+ *	      the test cannot silently stop applying pressure.
  *	  (b) EXPLICIT CHECKPOINTS.  __txn_checkpoint calls __lock_sicleanup
  *	      directly.  We force one (or several) between the reads and the
  *	      writes, i.e. squarely inside the window where T1's marker is the
@@ -94,7 +97,7 @@
  * Env:
  *	ISO_LEVEL=serializable (default) | snapshot
  *	SSI_GC_ITER		iterations (default 120; argv overrides)
- *	SSI_GC_FILLER		filler read txns per iteration (default 48)
+ *	SSI_GC_FILLER		filler read txns per iteration (default 220)
  *	SSI_GC_VERBOSE=1	per-iteration trace
  *
  * Exit: 0 = expectation met, 1 = expectation violated, 2 = harness error.
@@ -111,11 +114,22 @@
 
 #define	HOME		"TESTDIR_ssi_gc_pressure"
 #define	NFILLER_KEYS	512		/* width of the filler keyspace */
+#define	GC_TRIGGER_DIV	8u		/* mirrors SI_CLEANUP_TRIGGER_DIV */
 
 static DB_ENV	*env;
 static DB	*db_a, *db_b, *db_f;
 static int	 verbose;
 static u_int32_t iso_level = DB_TXN_SERIALIZABLE;
+static u_int32_t nobjects = 200;	/*
+					 * Requested lock-object table size.
+					 * __lock_region_size floors this at
+					 * lk_partitions * 5, so the effective
+					 * st_objects (and hence the sweep
+					 * threshold) is usually larger; the run
+					 * prints both and checks the threshold
+					 * was actually crossed.
+					 */
+static u_int32_t peak_locks;		/* high-water live lock/marker count */
 
 static void
 die(const char *what, int ret)
@@ -210,6 +224,15 @@ env_open(void)
 
 	if ((rc = db_env_create(&env, 0)) != 0)
 		die("db_env_create", rc);
+	/*
+	 * Small lock-object table (GC pressure (a) above): the txn_begin sweep
+	 * fires at st_objects / SI_CLEANUP_TRIGGER_DIV live markers, so a small
+	 * table means a modest filler batch crosses the threshold repeatedly
+	 * inside the decisive window.  The table still grows on demand
+	 * (__lock_allocobj), so this cannot starve the run.
+	 */
+	if ((rc = env->set_memory_init(env, DB_MEM_LOCKOBJECT, nobjects)) != 0)
+		die("set_memory_init(DB_MEM_LOCKOBJECT)", rc);
 	if ((rc = env->set_lk_detect(env, DB_LOCK_DEFAULT)) != 0)
 		die("set_lk_detect", rc);
 	if ((rc = env->set_timeout(env, 2000000, DB_SET_LOCK_TIMEOUT)) != 0)
@@ -273,6 +296,25 @@ filler_reads(int n, unsigned int *cursor)
 }
 
 /*
+ * Track the high-water live lock count.  A committed reader's SIREAD marker IS
+ * a live lock, so this is the marker population plus a small working set: the
+ * observable that shows the run really drove the sweep threshold (peak near
+ * st_objects / GC_TRIGGER_DIV) instead of never reaching it.
+ */
+static void
+sample_locks(void)
+{
+	DB_LOCK_STAT *ls;
+	int rc;
+
+	if ((rc = env->lock_stat(env, &ls, 0)) != 0)
+		die("lock_stat", rc);
+	if (ls->st_nlocks > peak_locks)
+		peak_locks = ls->st_nlocks;
+	free(ls);
+}
+
+/*
  * The one bit that matters.  Returns 1 if this iteration committed the write
  * skew (A == 0 && B == 0), which is a serializability violation under SSI and
  * the expected outcome under plain snapshot isolation.
@@ -303,6 +345,7 @@ run_iteration(int iter, unsigned int *cursor, int nfiller, int *t1_ok,
 
 	/* Some pressure before the schedule starts. */
 	filler_reads(nfiller / 2, cursor);
+	sample_locks();
 
 	/* 1. T2 reads B. */
 	if ((rc = env->txn_begin(env, NULL, &t2, iso_level)) != 0)
@@ -345,9 +388,11 @@ run_iteration(int iter, unsigned int *cursor, int nfiller, int *t1_ok,
 	 * and one or more forced checkpoints.
 	 */
 	filler_reads(nfiller, cursor);
+	sample_locks();
 	if ((rc = env->txn_checkpoint(env, 0, 0, DB_FORCE)) != 0)
 		die("checkpoint (window)", rc);
 	filler_reads(nfiller, cursor);
+	sample_locks();
 	if ((iter & 1) != 0 &&
 	    (rc = env->txn_checkpoint(env, 0, 0, DB_FORCE)) != 0)
 		die("checkpoint (window 2)", rc);
@@ -386,10 +431,11 @@ main(int argc, char *argv[])
 	DB_LOCK_STAT *lstat;
 	const char *level;
 	unsigned int cursor;
+	u_int32_t gc_threshold;
 	int i, iter, nfiller, nskew, rc, t1_ok, t2_ok, both, neither;
 
 	iter = 120;
-	nfiller = 48;
+	nfiller = 220;
 	cursor = 0;
 	nskew = both = neither = 0;
 
@@ -408,6 +454,8 @@ main(int argc, char *argv[])
 		iter = atoi(getenv("SSI_GC_ITER"));
 	if (getenv("SSI_GC_FILLER") != NULL)
 		nfiller = atoi(getenv("SSI_GC_FILLER"));
+	if (getenv("SSI_GC_OBJECTS") != NULL)
+		nobjects = (u_int32_t)atoi(getenv("SSI_GC_OBJECTS"));
 	if (getenv("SSI_GC_VERBOSE") != NULL)
 		verbose = 1;
 	if (argc > 1)
@@ -416,9 +464,10 @@ main(int argc, char *argv[])
 		return (2);
 
 	printf("=== SSI marker-GC correctness: write skew under GC pressure\n");
-	printf("    level=%s iterations=%d filler-txns/iter=%d\n",
+	printf("    level=%s iterations=%d filler-txns/iter=%d"
+	    " lock-objects=%lu\n",
 	    iso_level == DB_TXN_SERIALIZABLE ? "serializable" : "snapshot",
-	    iter, nfiller);
+	    iter, nfiller, (u_long)nobjects);
 
 	(void)mkdir(HOME, 0755);
 	rmtree(HOME);
@@ -449,10 +498,13 @@ main(int argc, char *argv[])
 
 	if ((rc = env->lock_stat(env, &lstat, 0)) != 0)
 		die("lock_stat", rc);
-	printf("    lock region: st_objects=%lu st_nobjects=%lu"
-	    " st_nlockers=%lu st_nlocks=%lu\n",
-	    (u_long)lstat->st_objects, (u_long)lstat->st_nobjects,
-	    (u_long)lstat->st_nlockers, (u_long)lstat->st_nlocks);
+	gc_threshold = lstat->st_objects / GC_TRIGGER_DIV;
+	printf("    lock region: st_objects=%lu (sweep threshold %lu markers)"
+	    " st_nobjects=%lu st_nlockers=%lu st_nlocks=%lu"
+	    " peak-live-locks=%lu\n",
+	    (u_long)lstat->st_objects, (u_long)gc_threshold,
+	    (u_long)lstat->st_nobjects, (u_long)lstat->st_nlockers,
+	    (u_long)lstat->st_nlocks, (u_long)peak_locks);
 	free(lstat);
 	env_close();
 
@@ -460,6 +512,21 @@ main(int argc, char *argv[])
 	    "  write-skews=%d\n", iter, both, neither, nskew);
 
 	if (iso_level == DB_TXN_SERIALIZABLE) {
+		/*
+		 * Anti-vacuity #1: the run must actually have applied GC
+		 * pressure.  If the live-marker population never reached the
+		 * txn_begin sweep threshold, only the checkpoint path swept and
+		 * the test is a weaker test than it claims to be -- say so
+		 * rather than pass quietly.
+		 */
+		if (peak_locks <= gc_threshold) {
+			printf("FAIL: peak live locks %lu never reached the"
+			    " txn_begin sweep threshold %lu -- raise"
+			    " SSI_GC_FILLER; the pressure trigger was not"
+			    " exercised\n",
+			    (u_long)peak_locks, (u_long)gc_threshold);
+			return (1);
+		}
 		if (nskew != 0) {
 			printf("FAIL: %d of %d iterations committed a write"
 			    " skew under DB_TXN_SERIALIZABLE -- a SIREAD"
@@ -486,7 +553,9 @@ main(int argc, char *argv[])
 		}
 		printf("PASS: 0 write skews in %d iterations under heavy"
 		    " SIREAD-marker GC pressure (every skew pair had an"
-		    " abort)\n", iter);
+		    " abort; peak live markers %lu > sweep threshold %lu, so"
+		    " the txn_begin sweep did fire)\n",
+		    iter, (u_long)peak_locks, (u_long)gc_threshold);
 		return (0);
 	}
 
