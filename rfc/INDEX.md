@@ -11,3 +11,12 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0004](0004-funnel-sparse-hash.md) | Funnel-sparse HASH: bounded-probe overflow cascade, sparsehash-dense pages, sparsemap free-space | Draft | Prospective |
 
 <!-- Add a row per RFC. Keep the number 4-digit zero-padded and monotonic. -->
+
+## Cross-subsystem design notes
+
+Normative notes about the composition of already-shipped subsystems (not
+proposals). See [`README.md`](README.md) § "Cross-subsystem design notes".
+
+| Note | Status | Subject |
+|------|--------|---------|
+| [`docs/design/global-invariants.md`](../docs/design/global-invariants.md) | Normative | Global invariants across the lock manager (+SSI), txn region, mpool/MVCC, WAL, checkpoint, failchk, recovery, rsnap and cursor sharding — at a checkpoint, at a crash, at a region re-attach; the global lock order; the dangerous subsystem pairs; audit coverage and named gaps |

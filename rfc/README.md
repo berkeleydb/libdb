@@ -17,6 +17,17 @@ record of what we decided and why.
 - `0000-template.md` — copy this to start a new RFC.
 - `INDEX.md` — the register: every RFC, its status, one line.
 
+## Cross-subsystem design notes
+
+Not every design document is a proposal. Where the risk is the *interaction*
+between already-shipped subsystems rather than any single change,
+[`docs/design/`](../docs/design) holds normative notes describing current
+`master`:
+
+| Note | What it states |
+|---|---|
+| [`global-invariants.md`](../docs/design/global-invariants.md) | The invariants that hold **across** subsystems (lock manager + SSI, txn region, mpool/MVCC, WAL, checkpoint, failchk, recovery, rsnap, cursor sharding) at a checkpoint, at a crash, and at a region re-attach — plus the global lock order, the dangerous subsystem pairs, and where coverage is thin. |
+
 ## RFC lifecycle / status
 
 Each RFC carries a `Status:` in its header. The allowed states and the
