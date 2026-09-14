@@ -29,6 +29,19 @@ your application — no server process.
 | `vX.Y.Z-NC` tags | "No-Crypto" export variants, branched from their base release. |
 | `v4.6.21-SSI` | Michael Cahill's SIGMOD-2008 **Serializable Snapshot Isolation** research prototype, reproduced verbatim on 4.6.21. |
 | `v5.3.21/28`, `v5.3.29` | The maintained 5.3.x line that `master` builds on. |
+| `vYYYY.0M[.MICRO]` tags | **Fork releases**, versioned with [CalVer](https://calver.org/) (`v2026.09`, `v2026.09.1`, …). |
+
+### Versioning covenant
+
+Fork releases use **CalVer** (`vYYYY.0M`, with `.MICRO` for a same-month
+re-release) to keep the community continuation unmistakably distinct from the
+Sleepycat/Oracle `5.3.x` artifacts. Two promises hold from `v2026.09` onward:
+published tags are **immutable** — never moved, deleted, or force-rewritten
+(the one-time SemVer→CalVer history rewrite that established this scheme was the
+last such event) — and the on-disk/log/region formats and the shared-object
+soname (`libdb-2026.0`) change **only** through an announced, ABI-gated break,
+never silently. The internal `DB_VERSION_MAJOR.MINOR.PATCH` compatibility level
+is frozen and is not the release version; see [`VERSIONING.md`](VERSIONING.md).
 
 ### Browsing the archive
 
