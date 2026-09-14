@@ -56,6 +56,31 @@ git diff v4.2.52 v4.2.52-NC          # what the no-crypto variant strips
 See the [`historical` branch README](https://github.com/berkeleydb/libdb/tree/historical)
 for full provenance and the per-version index.
 
+### Known-missing versions and patches
+
+The archive aims to be a complete record of Berkeley DB up to the last release
+under the original Sleepycat license (**5.3.28**). A few historical artifacts
+are not yet imported. **If you have an authentic copy of any of these — an
+original `db-X.Y.Z.tar.gz` or an official `patch.*` file — please
+[open an issue](https://github.com/berkeleydb/libdb/issues/new) with a link to
+or a copy of the source** so it can be verified (SHA-256) and added to the
+archive:
+
+- **The 5.2 line** — `5.2.28` and `5.2.36` (raw tarballs exist on the `vendor`
+  branch but are not yet imported as tagged, patch-tracked releases).
+- **Early 5.3 point releases** before `5.3.21` (`5.3.0`–`5.3.15`).
+- **Late 4.6.21 patches** beyond `4.6.21.4`, if any shipped.
+- **Pre-3.x point releases** — many 2.x releases between the tagged
+  `2.3.16` / `2.4.14` / `2.7.7` (e.g. `2.1.0`, `2.2.6`, `2.5.9`, `2.6.4`) and
+  minor 3.x/4.x point releases not listed above.
+
+**Deliberately excluded:** every Berkeley DB release from **6.0 (2013) onward**
+is licensed by Oracle under the **AGPLv3**, which is incompatible with
+redistributing them under this project's Sleepycat-license terms. Those
+releases are therefore *intentionally* absent and are **not** on the
+known-missing list. If Oracle ever relicenses the 6.x+ line under compatible
+terms, they will be imported and the archive extended forward accordingly.
+
 ## What's new on the living fork
 
 - **Serializable Snapshot Isolation (SSI)** — the `DB_TXN_SERIALIZABLE`
@@ -193,6 +218,36 @@ See [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md). PRs target `master`,
 are built across the [CI matrix](.github/workflows/ci.yml) (Linux/macOS/Windows,
 multiple compilers and configure options), and are reviewed by maintainers and
 the automated OCR reviewer.
+
+## Design proposals (RFCs)
+
+Non-trivial changes — a new access method, an on-disk/log/region/ABI format
+change, a performance subsystem, a durability-model change — are written down as
+an **RFC** in [`rfc/`](rfc/) *before* large implementation effort, so the
+reasoning survives and the decision is explicit. The register is
+[`rfc/INDEX.md`](rfc/INDEX.md); the full process is in
+[`rfc/README.md`](rfc/README.md). In brief:
+
+1. **Open** — copy [`rfc/0000-template.md`](rfc/0000-template.md) to the next
+   free `NNNN-title.md`, fill in Summary / Motivation / Design / Alternatives /
+   Risks, set `Status: Draft`, and add a row to `INDEX.md`.
+2. **Review** — judged first against the north star: a proposal is **rejected
+   outright** if it breaks embedded/no-server operation, ACID, crash recovery,
+   any access method, multi-process correctness, or on-disk/log/region/ABI
+   format stability — *unless* it argues a versioned, backward-compatible
+   migration. Past that gate, review weighs correctness risk, **measured** (not
+   asserted) performance evidence from [`test/bench`](test/bench), maintenance
+   cost, and scope.
+3. **Decide** — the maintainer records the decision in the RFC, flipping
+   `Status:` to `Accepted` or `Rejected` with a dated rationale. A rejected RFC
+   is never deleted — the "no" and its reasons are the value.
+4. **Implement** — an accepted RFC drives the work and flips to `Implemented`,
+   linking the PRs.
+
+**RFCs welcome.** Open a PR that adds a new `Status: Draft` RFC, or one that
+updates or supersedes an existing one — a measured result that changes an
+assumption, an amendment to an accepted design, or a fresh proposal. Small,
+obvious, or purely-internal changes do not need an RFC.
 
 ## License
 
