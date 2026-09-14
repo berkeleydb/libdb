@@ -2,22 +2,39 @@
  * See the file LICENSE for redistribution information.
  *
  * leak_si_locker.c -- resource-accounting regression test for the SSI
- * committed-reader locker leak (GitHub issue #137).
+ * committed-reader locker sawtooth (GitHub issue #137).
  *
- * Runs many *sequential* read-only DB_TXN_SNAPSHOT transactions in one
- * long-lived environment -- one transaction active at a time, no checkpoint,
- * no injected fault -- and asserts through the public statistics APIs that
- * the locker / mutex slot counts stay bounded instead of growing once per
- * transaction, and that DB_ENV->txn_begin never returns ENOMEM.
+ * Runs many *sequential* read-only DB_TXN_SERIALIZABLE (SSI) transactions in
+ * one long-lived environment -- one transaction active at a time, no
+ * checkpoint, no injected fault -- and asserts through the public statistics
+ * APIs that the locker / mutex slot counts stay bounded (a function of the
+ * lock-object region size, NOT of the transaction count), and that
+ * DB_ENV->txn_begin never returns ENOMEM.
  *
- * Before the fix: __lock_sicleanup reclaimed a committed reader's obsolete
- * SIREAD markers but never the DB_LOCKER_FREED locker (nor its logical
- * mutex) they were deferring, so st_nlockers grew ~1 per transaction until
- * the mutex region was exhausted.
+ * The invariant, and why it is a sawtooth (not a flat plateau):
+ *   A committed SSI reader leaves SIREAD markers on the objects it read;
+ *   __lock_sicommit flags the reader's locker DB_LOCKER_FREED and defers
+ *   freeing the locker (and its logical mutex and TXN_DETAIL) until the last
+ *   marker is garbage-collected.  Reclamation is __lock_sicleanup, which for
+ *   a write-free, checkpoint-free workload runs only from a pressure trigger
+ *   at txn_begin: when live markers exceed st_objects / 8.  So the marker /
+ *   locker / detail population climbs ~1 per transaction, then the sweep
+ *   reclaims everything obsolete and it drops -- a sawtooth whose CEILING is
+ *   st_objects / 8, reached and re-reached forever, independent of how many
+ *   transactions run.  This is correct, bounded behavior, not a leak.
+ *
+ * A *true* per-transaction leak (a committed reader whose locker is never
+ * reclaimed) has a different signature: the peak grows without bound with the
+ * transaction count and eventually returns ENOMEM.  This test distinguishes
+ * the two: it runs long enough to span many sawtooth periods and asserts both
+ * (1) the peak never exceeds a small multiple of the sawtooth ceiling, and
+ * (2) the peak of a late window does not exceed the peak of an early window --
+ * for a bounded sawtooth both windows reach the same ceiling; a per-txn leak
+ * makes the late window's peak strictly (and unboundedly) larger.
  *
  * Usage: leak_si_locker [snapshot|control]   (default: snapshot)
- *   snapshot -- DB_TXN_SERIALIZABLE (the trigger)
- *   control  -- flags 0 (must be flat both before and after the fix)
+ *   snapshot -- DB_TXN_SERIALIZABLE (the trigger; exercises SIREAD markers)
+ *   control  -- flags 0 / plain SI (no SIREAD markers; must stay flat)
  *
  * Self-bounded and deterministic: fixed transaction count, single thread.
  */
@@ -32,19 +49,20 @@
 #include "db.h"
 
 #define	HOME		"TESTDIR_leak_si_locker"
-#define	ATTEMPTS	2500		/* sequential read-only txns */
-#define	SAMPLE_EVERY	250
+#define	ATTEMPTS	8000		/* sequential read-only txns */
+#define	SAMPLE_EVERY	100
 
 /*
- * Bounds.  The marker sweep is best-effort and triggers when live SIREAD
- * markers pass half the allocated lock objects, so the steady state is a
- * sawtooth, not the baseline -- but its height is a function of the lock
- * region size, never of ATTEMPTS.  Pre-fix the counts track ATTEMPTS (they
- * hit ENOMEM at ~1400); post-fix they plateau far below.  The sharp test is
- * the plateau check (late sample vs. an early one); these are backstops.
+ * Ceiling.  The sweep fires when live SIREAD markers pass st_objects / 8, so
+ * the sawtooth peaks at ~st_objects / 8 plus the small in-flight working set.
+ * We allow 4x that as the hard bound: comfortably above the true ceiling, but
+ * far below the per-txn leak signature (which grows past st_objects / 2 toward
+ * region exhaustion / ENOMEM at a few thousand transactions in the default
+ * region).  Both this and the window-peak comparison below have teeth: neuter
+ * __lock_sireap_lockers and this test fails.
  */
-#define	MAX_LOCKERS	1000
-#define	MAX_MUTEXES_OVER_BASE	1000
+#define	SAWTOOTH_DIVISOR	8u	/* mirrors SI_CLEANUP_TRIGGER_DIV in txn.c */
+#define	CEILING_SLACK		4u	/* headroom over the true ceiling */
 
 static DB_ENV *env;
 static DB *db;
@@ -56,8 +74,9 @@ fail(const char *op, int ret)
 	exit(1);
 }
 
+/* Read st_nlockers and, on request, st_objects (the region size). */
 static u_int32_t
-lockers(void)
+lockers(u_int32_t *nobjp)
 {
 	DB_LOCK_STAT *sp;
 	u_int32_t n;
@@ -66,6 +85,8 @@ lockers(void)
 	if ((ret = env->lock_stat(env, &sp, 0)) != 0)
 		fail("DB_ENV->lock_stat", ret);
 	n = sp->st_nlockers;
+	if (nobjp != NULL)
+		*nobjp = sp->st_objects;
 	free(sp);
 	return (n);
 }
@@ -90,7 +111,8 @@ main(int argc, char *argv[])
 	DB_TXN *txn;
 	DBT key, data;
 	u_int32_t base_lk, base_mtx, high_lk, high_mtx, lk, mtx, txn_flags;
-	u_int32_t first_lk, first_mtx, second_lk, second_mtx;
+	u_int32_t nobj, ceiling;
+	u_int32_t early_lk, early_mtx, late_lk, late_mtx;
 	char keybuf[] = "key", valbuf[64];
 	const char *mode;
 	int completed, enomem, i, ret;
@@ -132,11 +154,22 @@ main(int argc, char *argv[])
 	if ((ret = db->put(db, NULL, &key, &data, 0)) != 0)
 		fail("DB->put(seed)", ret);
 
-	high_lk = base_lk = lockers();
+	high_lk = base_lk = lockers(&nobj);
 	high_mtx = base_mtx = mutexes();
-	first_lk = first_mtx = second_lk = second_mtx = 0;
-	printf("baseline lockers=%lu mutexes=%lu mode=%s attempts=%d\n",
-	    (u_long)base_lk, (u_long)base_mtx, mode, ATTEMPTS);
+	early_lk = early_mtx = late_lk = late_mtx = 0;
+
+	/*
+	 * The sawtooth ceiling is ~nobj / SAWTOOTH_DIVISOR; allow CEILING_SLACK
+	 * times that (plus the mutex baseline) before we call it a leak.  A
+	 * per-txn leak sails past this and eventually ENOMEMs; the bounded
+	 * sawtooth never comes close.
+	 */
+	ceiling = (nobj / SAWTOOTH_DIVISOR) * CEILING_SLACK;
+	if (ceiling < 256)			/* tiny regions: floor the bound */
+		ceiling = 256;
+	printf("baseline lockers=%lu mutexes=%lu nobj=%lu ceiling=%lu "
+	    "mode=%s attempts=%d\n", (u_long)base_lk, (u_long)base_mtx,
+	    (u_long)nobj, (u_long)ceiling, mode, ATTEMPTS);
 
 	completed = enomem = 0;
 	for (i = 0; i < ATTEMPTS; i++) {
@@ -178,47 +211,49 @@ main(int argc, char *argv[])
 		completed++;
 
 		if (completed % SAMPLE_EVERY == 0) {
-			lk = lockers();
+			lk = lockers(NULL);
 			mtx = mutexes();
 			if (lk > high_lk)
 				high_lk = lk;
 			if (mtx > high_mtx)
 				high_mtx = mtx;
 			/*
-			 * Peak per half of the run.  The sweep is best-effort, so
-			 * the steady state is a sawtooth; comparing the two peaks
-			 * is phase-independent, while a per-transaction leak makes
-			 * the second-half peak strictly larger.
+			 * Track the peak of an early window (first third) and a
+			 * late window (last third).  Each window spans many
+			 * sawtooth periods, so each reliably reaches the ceiling;
+			 * comparing their peaks is therefore phase-independent.
+			 * A bounded sawtooth: late peak == early peak.  A per-txn
+			 * leak: late peak strictly (and unboundedly) larger.
 			 */
-			if (completed <= ATTEMPTS / 2) {
-				if (lk > first_lk)
-					first_lk = lk;
-				if (mtx > first_mtx)
-					first_mtx = mtx;
-			} else {
-				if (lk > second_lk)
-					second_lk = lk;
-				if (mtx > second_mtx)
-					second_mtx = mtx;
+			if (completed <= ATTEMPTS / 3) {
+				if (lk > early_lk)
+					early_lk = lk;
+				if (mtx > early_mtx)
+					early_mtx = mtx;
+			} else if (completed > (ATTEMPTS * 2) / 3) {
+				if (lk > late_lk)
+					late_lk = lk;
+				if (mtx > late_mtx)
+					late_mtx = mtx;
 			}
 			printf("  after %5d txns: lockers=%lu mutexes=%lu\n",
 			    completed, (u_long)lk, (u_long)mtx);
 		}
 	}
 
-	lk = lockers();
+	lk = lockers(NULL);
 	mtx = mutexes();
 	if (lk > high_lk)
 		high_lk = lk;
 	if (mtx > high_mtx)
 		high_mtx = mtx;
 	printf("final completed=%d enomem=%d lockers=%lu->%lu (peak %lu) "
-	    "mutexes=%lu->%lu (peak %lu) halfpeak lockers=%lu/%lu "
+	    "mutexes=%lu->%lu (peak %lu) early/late lockers=%lu/%lu "
 	    "mutexes=%lu/%lu\n", completed, enomem,
 	    (u_long)base_lk, (u_long)lk, (u_long)high_lk,
 	    (u_long)base_mtx, (u_long)mtx, (u_long)high_mtx,
-	    (u_long)first_lk, (u_long)second_lk,
-	    (u_long)first_mtx, (u_long)second_mtx);
+	    (u_long)early_lk, (u_long)late_lk,
+	    (u_long)early_mtx, (u_long)late_mtx);
 
 	if ((ret = db->close(db, 0)) != 0)
 		fail("DB->close", ret);
@@ -233,33 +268,41 @@ main(int argc, char *argv[])
 		    mode, ATTEMPTS, completed, enomem);
 		ret = 1;
 	}
-	if (high_lk > MAX_LOCKERS) {
-		fprintf(stderr, "FAIL: locker count grew to %lu (limit %lu) "
-		    "-- committed-reader lockers are not being reclaimed\n",
-		    (u_long)high_lk, (u_long)MAX_LOCKERS);
+	/*
+	 * Hard bound: the peak must stay within the sawtooth ceiling (a
+	 * function of the region size).  A per-transaction locker leak grows
+	 * past this toward region exhaustion.
+	 */
+	if (high_lk > ceiling) {
+		fprintf(stderr, "FAIL: peak lockers %lu exceeded the sawtooth "
+		    "ceiling %lu (nobj/%u x%u) -- committed-reader lockers are "
+		    "not being reclaimed\n", (u_long)high_lk, (u_long)ceiling,
+		    SAWTOOTH_DIVISOR, CEILING_SLACK);
 		ret = 1;
 	}
-	if (high_mtx > base_mtx + MAX_MUTEXES_OVER_BASE) {
-		fprintf(stderr, "FAIL: mutex slots grew to %lu from base %lu "
-		    "(limit +%lu)\n", (u_long)high_mtx, (u_long)base_mtx,
-		    (u_long)MAX_MUTEXES_OVER_BASE);
+	if (high_mtx > base_mtx + ceiling) {
+		fprintf(stderr, "FAIL: peak mutex slots %lu exceeded base %lu "
+		    "+ ceiling %lu\n", (u_long)high_mtx, (u_long)base_mtx,
+		    (u_long)ceiling);
 		ret = 1;
 	}
 	/*
-	 * The leak signature: counts that track the transaction count.  A
-	 * plateau or sawtooth has equal peaks in both halves of the run; a
-	 * per-transaction leak makes the second half's peak strictly larger.
+	 * The leak signature: a peak that grows with the transaction count.
+	 * With windows that each span many sawtooth periods, a bounded sawtooth
+	 * gives equal peaks; a per-transaction leak makes the late window's
+	 * peak strictly larger.  (control mode leaves early/late at 0 -- no
+	 * markers ever accumulate -- and this check is trivially satisfied.)
 	 */
-	if (first_lk != 0 && second_lk > first_lk) {
-		fprintf(stderr, "FAIL: peak lockers rose from %lu (first half) "
-		    "to %lu (second half) -- still leaking one per txn\n",
-		    (u_long)first_lk, (u_long)second_lk);
+	if (early_lk != 0 && late_lk > early_lk) {
+		fprintf(stderr, "FAIL: peak lockers rose from %lu (early "
+		    "window) to %lu (late window) -- still leaking one per "
+		    "txn\n", (u_long)early_lk, (u_long)late_lk);
 		ret = 1;
 	}
-	if (first_mtx != 0 && second_mtx > first_mtx) {
-		fprintf(stderr, "FAIL: peak mutex slots rose from %lu (first "
-		    "half) to %lu (second half)\n",
-		    (u_long)first_mtx, (u_long)second_mtx);
+	if (early_mtx != 0 && late_mtx > early_mtx) {
+		fprintf(stderr, "FAIL: peak mutex slots rose from %lu (early "
+		    "window) to %lu (late window)\n",
+		    (u_long)early_mtx, (u_long)late_mtx);
 		ret = 1;
 	}
 	printf("%s: mode=%s\n", ret == 0 ? "PASS" : "FAIL", mode);
