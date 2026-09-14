@@ -1,0 +1,30 @@
+# Release notes for the landing page (libdb.org/) release table.
+#
+# The LIST of releases and the "latest" pointer are derived automatically from
+# git tags at docs build time (build.py build_site: every tag matching v2026.*
+# plus the two historical anchors below, newest first). This file supplies the
+# one-line note shown next to each. A release with no entry here still appears
+# in the table with an empty note, so a new tag can never silently drop off the
+# page -- but add its line here when you cut it.
+#
+# Order within the table is by tag (CalVer sorts correctly); the two non-CalVer
+# historical anchors are pinned to the bottom via `historical`.
+
+# Historical (non-CalVer) anchors pinned to the bottom of the table, in order.
+historical = ["v5.3.28", "v4.6.21-SSI"]
+
+[notes]
+"v2026.09.4" = "#137 locker accounting (bounded), <code>ssi_abort_bench</code> SI/SSI distinction, versioning covenant"
+"v2026.09.3" = "<code>DB_TXN_SNAPSHOT</code> restored to plain SI + new <code>DB_TXN_SERIALIZABLE</code>; os_aio durability fix; #138 MVCC-retention purge"
+"v2026.09.2" = "Cursor-queue sharding (concurrent read scaling); two-site replication-isolation harness"
+"v2026.09.1" = "Queue cursor read-path DoS bound"
+"v2026.09"   = "Correctness: SSI commit-window write skew (#136), IV entropy from OS CSPRNG, heap OOB write (#140)"
+"v2026.08"   = "Serializable snapshot isolation available by default"
+"v2026.07.3" = "Testing depth: DST fault-class parity + formal verification (CBMC), PBT hardening"
+"v2026.07.2" = "Coverage &amp; correctness: full-suite coverage to the mid-70s, several bug fixes"
+"v2026.07.1" = "Testing &amp; hardening: fuzzing, malloc-injection, 10 bug fixes"
+"v2026.07"   = "SSI hardening, build hygiene"
+"v2026.04"   = "First community fork release"
+"v5.3.28"    = "Berkeley DB 11gR2 (11.2.5.3.28) &mdash; the last Oracle open-source release"
+"v4.6.21-SSI" = "Cahill SSI prototype (SIGMOD 2008), historical"
+
