@@ -16,6 +16,25 @@ extern "C" {
 #define	DB_LOCK_DEFAULT_N	1000	/* Default # of locks in region. */
 
 /*
+ * SI_CLEANUP_TRIGGER_DIV --
+ *	The committed-reader SIREAD marker sweep (__lock_sicleanup) fires from
+ *	txn_begin when live markers (region->nsireaders) exceed
+ *	st_objects / SI_CLEANUP_TRIGGER_DIV.  This makes the marker/locker/detail
+ *	footprint a bounded sawtooth whose ceiling is that fraction of the
+ *	lock-object table, independent of the transaction count -- the mechanism
+ *	that keeps a long-lived, no-checkpoint read-only SSI workload from
+ *	exhausting the lock region (issue #137).
+ *	8 was chosen over 2 empirically: it lowers the steady state ~4x and also
+ *	speeds the common path (shorter sireaders lists, smaller sweeps).
+ *
+ *	Defined here rather than in txn.c because it is a property of the lock
+ *	region, and DB_ENV->lock_stat_print reports the ceiling it implies as the
+ *	operator-facing bound on the SIREAD marker population.  One definition,
+ *	so the documented bound cannot drift from the trigger that enforces it.
+ */
+#define	SI_CLEANUP_TRIGGER_DIV	8
+
+/*
  * Number of striped shared latches guarding the locker hash table.  A power
  * of two so the stripe index is a mask of the locker id.  Readers (the
  * lock-get hot path) take one stripe shared; writers take all stripes

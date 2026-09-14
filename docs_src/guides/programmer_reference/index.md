@@ -459,6 +459,8 @@ To obtain a copy of this document's original source code, please submit a reques
 
 <span class="sect1"> [Transaction tuning](transapp_tune.md) </span>
 
+<span class="sect1"> [Deployment health: what to alarm on](deployment_health.md) </span>
+
 <span class="sect1"> [Transaction throughput](transapp_throughput.md) </span>
 
 <span class="sect1"> [Transaction FAQ](transapp_faq.md) </span>

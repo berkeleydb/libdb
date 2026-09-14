@@ -423,6 +423,44 @@ __lock_print_stats(env, flags)
 	__db_dl(env, "Maximum hash bucket length",
 	    (u_long)sp->st_hash_len);
 
+	/*
+	 * Deployment health: utilization of the statically-sized lock-region
+	 * resources, plus the SSI committed-reader marker population that
+	 * issues #137/#138 were about.  These are the numbers to alarm on --
+	 * the failure mode they predict is a hard ENOMEM on a later legitimate
+	 * operation, and every other line above tells you about it only in
+	 * hindsight.  All four are DERIVED here from counters already
+	 * maintained; no hot path does extra work and no struct grew.
+	 * See the "Deployment health" section of the Programmer's Reference.
+	 */
+	__db_msg(env, "%s", "Deployment health (alarm on these):");
+	__db_util_pct(env, "Locker slots in use",
+	    (u_long)sp->st_nlockers, (u_long)sp->st_maxlockers);
+	__db_util_pct(env, "Lock object slots in use",
+	    (u_long)sp->st_nobjects, (u_long)sp->st_maxobjects);
+	__db_util_pct(env, "Lock slots in use",
+	    (u_long)sp->st_nlocks, (u_long)sp->st_maxlocks);
+	/*
+	 * Live SIREAD markers held by COMMITTED SSI readers: the leading
+	 * indicator for #137.  Read straight from the region rather than from a
+	 * new DB_LOCK_STAT field, because growing that struct would change
+	 * __env_struct_sig() and stop existing deployments attaching to their
+	 * own regions.  region->nsireaders is a db_atomic_t read exactly as the
+	 * lock-get hot path reads it (relaxed, no region lock), and it is a
+	 * deliberately approximate GC hint -- treat it as a trend, not an exact
+	 * population.  Its bound is not a configured maximum but the sweep
+	 * trigger (st_objects / SI_CLEANUP_TRIGGER_DIV), so report it against
+	 * that ceiling: near or over 100% means the sweep is not keeping up,
+	 * which is the actual #137 signature.  Programmatic equivalents for
+	 * this signal are st_nlockers (committed readers retain their locker
+	 * until their last marker is reclaimed) and DB_TXN_STAT.st_nsnapshot
+	 * (the details those markers pin).
+	 */
+	__db_util_pct(env, "SSI committed-reader SIREAD markers live",
+	    (u_long)atomic_read_relaxed(&((DB_LOCKREGION *)
+	    ((DB_LOCKTAB *)env->lk_handle)->reginfo.primary)->nsireaders),
+	    (u_long)(sp->st_objects / SI_CLEANUP_TRIGGER_DIV));
+
 	__os_ufree(env, sp);
 
 	return (0);
