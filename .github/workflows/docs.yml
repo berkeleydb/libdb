@@ -237,6 +237,11 @@ jobs:
           cp -r docs-build/html/* /tmp/ghp/reference/
           cp docs-build/pdf/*.pdf /tmp/ghp/reference/pdf/
           cp "/tmp/libdb-man-$full.tar.gz" "/tmp/ghp/reference/libdb-man-$full.tar.gz"
+          # Landing page (gh-pages ROOT): now GENERATED from docs_src/_site by
+          # build.py, so it tracks the current release automatically. Copy the
+          # rendered index.html + style.css + CNAME over the hand-maintained
+          # ones. (docs/ historical archive and reference/ are left as-is.)
+          cp docs-build/site/* /tmp/ghp/
           ( cd /tmp/ghp && git add -A && \
-            git commit -m "Publish documentation reference ($full) [ci]" && \
+            git commit -m "Publish documentation + landing page ($full) [ci]" && \
             git push origin HEAD:gh-pages )
