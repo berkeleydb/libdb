@@ -21,10 +21,15 @@ PDF_DIR = REPO / "docs-build/pdf"
 
 
 def load_version():
+    # Match build.py: the fork's release identity is DB_CALVER (calver.org),
+    # which is what the PDF title page carries -- NOT the frozen 5.3-era
+    # MAJOR.MINOR.PATCH compatibility triplet.
     txt = (REPO / "dist/RELEASE").read_text()
     import re
-    g = lambda k: re.search(rf"^{k}=(\d+)", txt, re.M).group(1)
-    return f"{g('DB_VERSION_MAJOR')}.{g('DB_VERSION_MINOR')}.{g('DB_VERSION_PATCH')}"
+    m = re.search(r'^DB_CALVER="([^"]+)"', txt, re.M)
+    if not m:
+        raise SystemExit("cannot read DB_CALVER from dist/RELEASE")
+    return m.group(1)
 
 
 def pages(pdf):
