@@ -52,6 +52,47 @@
 #include "sim_inject.h"			/* DST planted-bug harness. */
 #endif
 
+#ifdef DIAGNOSTIC
+/*
+ * __txn_ssi_crash --
+ *	DIAGNOSTIC-ONLY crash hook for the SSI commit-window durability test
+ *	(test/isolation/test_ssi_crash_pivot.c).  Cahill's SSI has no crash
+ *	model: the pivot check is a live-execution argument, so the question "can
+ *	a pivot become DURABLE because the crash landed inside its commit
+ *	window?" is not answered by the algorithm, and it cannot be asked from
+ *	userspace -- the interesting points (pivot decided but TXN_DTL_SICHECKED
+ *	not yet published; check done, commit record not yet written; commit
+ *	record written and flushed) are all INSIDE one library call.
+ *
+ *	When SSI_CRASH_AT names a point and this transaction is the marked victim
+ *	(DB_TXN->set_name("ssi-pivot")), the process dies right there with
+ *	SIGKILL: no atexit, no unwinding, no flush, exactly as a power loss.
+ *
+ *	Compiles to NOTHING outside --enable-diagnostic, and even in a diagnostic
+ *	build it is inert unless BOTH the env var is set AND the transaction was
+ *	explicitly named.  Production builds are unaffected.
+ */
+static void
+__txn_ssi_crash(txn, point)
+	DB_TXN *txn;
+	int point;
+{
+	char *v;
+
+	if (txn->name == NULL || strcmp(txn->name, "ssi-pivot") != 0)
+		return;
+	if ((v = getenv("SSI_CRASH_AT")) == NULL || atoi(v) != point)
+		return;
+	(void)fprintf(stderr, "[child] SSI_CRASH_AT=%d reached, SIGKILL\n",
+	    point);
+	(void)fflush(stderr);
+	(void)raise(SIGKILL);
+}
+#define	SSI_CRASH_POINT(txn, n)	__txn_ssi_crash(txn, n)
+#else
+#define	SSI_CRASH_POINT(txn, n)	NOP_STATEMENT
+#endif
+
 #define	LOG_FLAGS(txn)						\
 		(DB_LOG_COMMIT | (F_ISSET(txn, TXN_SYNC) ?	\
 		DB_FLUSH : (F_ISSET(txn, TXN_WRITE_NOSYNC) ?	\
@@ -820,10 +861,14 @@ __txn_commit(txn, flags)
 			TXN_SYSTEM_LOCK(env);
 		is_pivot = F_ISSET(td, TXN_DTL_WCONF) &&
 		    F_ISSET(td, TXN_DTL_RCONF);
+		/* Crash point 1: pivot decided, SICHECKED not yet published. */
+		SSI_CRASH_POINT(txn, 1);
 		if (!is_pivot)
 			F_SET(td, TXN_DTL_SICHECKED);
 		if (TXN_ON(env))
 			TXN_SYSTEM_UNLOCK(env);
+		/* Crash point 2: check done, SICHECKED published. */
+		SSI_CRASH_POINT(txn, 2);
 		if (is_pivot) {
 			ret = DB_SNAPSHOT_CONFLICT;
 			goto err;
@@ -939,12 +984,25 @@ __txn_commit(txn, flags)
 
 			if (ret == 0 && !IS_ZERO_LSN(td->last_lsn)) {
 				ret = __txn_flush_fe_files(txn);
+				/*
+				 * Crash point 3: read locks released, commit
+				 * record not yet written -- nothing durable.
+				 */
+				SSI_CRASH_POINT(txn, 3);
 				if (ret == 0)
 					ret = __txn_regop_log(env, txn,
 					    &td->visible_lsn, LOG_FLAGS(txn),
 					    TXN_COMMIT,
 					    (int32_t)time(NULL), id,
 					    request.obj);
+				/*
+				 * Crash point 4: the commit record is written and
+				 * (under DB_TXN_SYNC) flushed.  A transaction that
+				 * reaches here IS durable and recovery WILL redo
+				 * it -- which is precisely why a pivot must never
+				 * be allowed to get this far.
+				 */
+				SSI_CRASH_POINT(txn, 4);
 				if (ret == 0)
 					token_lsn = td->last_lsn =
 					    td->visible_lsn;
