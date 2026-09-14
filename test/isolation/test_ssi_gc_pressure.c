@@ -513,20 +513,12 @@ main(int argc, char *argv[])
 
 	if (iso_level == DB_TXN_SERIALIZABLE) {
 		/*
-		 * Anti-vacuity #1: the run must actually have applied GC
-		 * pressure.  If the live-marker population never reached the
-		 * txn_begin sweep threshold, only the checkpoint path swept and
-		 * the test is a weaker test than it claims to be -- say so
-		 * rather than pass quietly.
+		 * THE assertion.  Reported first and unconditionally: a
+		 * committed skew is the real finding, and it must never be
+		 * masked by the secondary pressure check below (a neutered GC
+		 * reaps markers so eagerly that the live population also drops,
+		 * which would otherwise report the wrong reason).
 		 */
-		if (peak_locks <= gc_threshold) {
-			printf("FAIL: peak live locks %lu never reached the"
-			    " txn_begin sweep threshold %lu -- raise"
-			    " SSI_GC_FILLER; the pressure trigger was not"
-			    " exercised\n",
-			    (u_long)peak_locks, (u_long)gc_threshold);
-			return (1);
-		}
 		if (nskew != 0) {
 			printf("FAIL: %d of %d iterations committed a write"
 			    " skew under DB_TXN_SERIALIZABLE -- a SIREAD"
@@ -549,6 +541,21 @@ main(int argc, char *argv[])
 		if (neither == iter) {
 			printf("FAIL: no iteration committed anything -- the"
 			    " schedule is not exercising the engine\n");
+			return (1);
+		}
+		/*
+		 * Anti-vacuity: the run must actually have applied pressure.
+		 * If the live-marker population never reached the txn_begin
+		 * sweep threshold, only the checkpoint path swept and this is a
+		 * weaker test than it claims to be -- say so rather than pass
+		 * quietly.  Checked AFTER the skew assertion above.
+		 */
+		if (peak_locks <= gc_threshold) {
+			printf("FAIL: peak live locks %lu never reached the"
+			    " txn_begin sweep threshold %lu -- raise"
+			    " SSI_GC_FILLER; the pressure trigger was not"
+			    " exercised\n",
+			    (u_long)peak_locks, (u_long)gc_threshold);
 			return (1);
 		}
 		printf("PASS: 0 write skews in %d iterations under heavy"
