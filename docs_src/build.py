@@ -26,6 +26,10 @@ HERE = Path(__file__).resolve().parent          # docs_src/
 REPO = HERE.parent
 SRC = HERE
 OUT = REPO / "docs-build/html"
+SITE_OUT = REPO / "docs-build/site"
+SITE_TMPL = HERE / "_site/index.html.tmpl"
+SITE_DATA = HERE / "_site"
+RELEASES_TOML = HERE / "_data/releases.toml"
 TEMPLATE = HERE / "_templates/page.html.tmpl"
 MAN_TEMPLATE = HERE / "_templates/man.tmpl"
 SITE_TOML = HERE / "_data/site.toml"
@@ -54,7 +58,7 @@ JAVA_PACKAGES = [
 API_DIRS = [HERE / "api/c", HERE / "api/stl"]
 
 # Directories under docs_src/ that are machinery/data, not content.
-SKIP_DIRS = {"_data", "_templates", "_migrate"}
+SKIP_DIRS = {"_data", "_templates", "_migrate", "_site"}
 
 
 def load_version():
@@ -588,6 +592,70 @@ def _selfcheck():
     print("selfcheck ok")
 
 
+def _release_tags():
+    """CalVer fork release tags (v2026.*) newest-first, from git. Empty if git
+    is unavailable (e.g. a source tarball build) -- build_site then falls back
+    to the notes table's own order so the page is still produced."""
+    try:
+        out = subprocess.run(["git", "-C", str(REPO), "tag", "--list", "v2026.*"],
+                             capture_output=True, text=True, check=True).stdout
+    except Exception:
+        return []
+    tags = [t.strip() for t in out.splitlines() if t.strip()]
+    # CalVer sorts correctly as version tuples; newest first.
+    def key(t):
+        return [int(x) if x.isdigit() else 0
+                for x in t.lstrip("v").replace("-", ".").split(".")]
+    return sorted(tags, key=key, reverse=True)
+
+
+def _releases_rows():
+    """Build the landing-page release-table rows. The LIST comes from git tags
+    (so a new release can never silently drop off the page); the one-line notes
+    come from _data/releases.toml; the two non-CalVer historical anchors are
+    pinned to the bottom in the order that file names."""
+    data = {}
+    if RELEASES_TOML.exists():
+        with RELEASES_TOML.open("rb") as f:
+            data = tomllib.load(f)
+    notes = data.get("notes", {})
+    historical = data.get("historical", [])
+
+    calver = _release_tags()
+    if not calver:  # git-less build: fall back to the notes table's own tags
+        calver = [t for t in notes if t not in historical]
+    ordered = calver + [t for t in historical if t not in calver]
+
+    base = "https://github.com/berkeleydb/libdb/releases/tag/"
+    rows = []
+    for tag in ordered:
+        note = notes.get(tag, "")
+        rows.append(
+            f'      <tr><td><a href="{base}{tag}">{tag}</a></td>'
+            f'<td>{note}</td></tr>')
+    return "\n".join(rows)
+
+
+def build_site(version):
+    """Render the standalone landing page (libdb.org/) from _site/ into
+    docs-build/site/, filling {{version}} and {{releases_rows}}. Copies the
+    static assets (style.css, CNAME) alongside. The publish workflow deploys
+    docs-build/site/* to the gh-pages ROOT, so the landing page is generated
+    from source and can never go stale against the current release again."""
+    if not SITE_TMPL.exists():
+        return None
+    SITE_OUT.mkdir(parents=True, exist_ok=True)
+    tmpl = SITE_TMPL.read_text(encoding="utf-8")
+    html_out = (tmpl
+                .replace("{{version}}", version)
+                .replace("{{releases_rows}}", _releases_rows()))
+    (SITE_OUT / "index.html").write_text(html_out, encoding="utf-8")
+    for asset in SITE_DATA.iterdir():
+        if asset.name != "index.html.tmpl":
+            shutil.copy2(asset, SITE_OUT / asset.name)
+    return SITE_OUT
+
+
 def main(build_pdf_too=True):
     if not TEMPLATE.exists():
         sys.exit(f"missing template {TEMPLATE}")
@@ -596,6 +664,9 @@ def main(build_pdf_too=True):
     tmpl = TEMPLATE.read_text()
     n = build_html(version, site, tmpl)
     print(f"built {n} HTML pages -> {OUT}  (version {version})")
+    sdir = build_site(version)
+    if sdir:
+        print(f"built landing page -> {sdir}  (version {version})")
     m = build_man(version, site)
     print(f"built {m} man pages -> {MAN_OUT}  (version {version})")
     jdir = build_java_api(version, site)
