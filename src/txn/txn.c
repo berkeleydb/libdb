@@ -58,6 +58,19 @@
 		DB_LOG_WRNOSYNC : 0)))
 
 /*
+ * SI_CLEANUP_TRIGGER_DIV --
+ *	The committed-reader SIREAD marker sweep (__lock_sicleanup) fires from
+ *	txn_begin when live markers exceed st_objects / SI_CLEANUP_TRIGGER_DIV.
+ *	This makes the marker/locker/detail footprint a bounded sawtooth whose
+ *	ceiling is that fraction of the lock-object table, independent of the
+ *	transaction count -- the mechanism that keeps a long-lived, no-checkpoint
+ *	read-only SSI workload from exhausting the lock region (issue #137).
+ *	8 was chosen over 2 empirically: it lowers the steady state ~4x and also
+ *	speeds the common path (shorter sireaders lists, smaller sweeps).
+ */
+#define	SI_CLEANUP_TRIGGER_DIV	8
+
+/*
  * __txn_isvalid enumerated types.  We cannot simply use the transaction
  * statuses, because different statuses need to be handled differently
  * depending on the caller.
@@ -278,29 +291,40 @@ __txn_begin(env, ip, parent, txnpp, flags)
 		 * SSI: committed readers' SIREAD markers persist until GC, which
 		 * otherwise runs only at checkpoint -- so between checkpoints the
 		 * marker count (and the committed-reader locker/detail structs it
-		 * pins) can grow unbounded, exhausting the statically sized lock
-		 * region in a long-lived process.  Bound it: when the live-marker
-		 * count crosses half the currently allocated lock objects, run the
-		 * best-effort sweep now, before we begin (and allocate more).
-		 * No region lock is held here, so __lock_sicleanup's
-		 * txn-system-lock-first ordering is respected.
+		 * pins) can grow until the next sweep, exhausting the statically
+		 * sized lock region in a long-lived process with no checkpoint
+		 * (a pure read-only SSI workload writes nothing, so checkpoint
+		 * never runs).  Bound it with a pressure trigger at txn_begin:
+		 * when the live-marker count crosses a fraction of the currently
+		 * allocated lock objects, run the best-effort sweep now, before we
+		 * begin (and allocate more).  No region lock is held here, so
+		 * __lock_sicleanup's txn-system-lock-first ordering is respected.
 		 */
 		if (parent == NULL && LOCKING_ON(env)) {
 			DB_LOCKREGION *lkreg =
 			    env->lk_handle->reginfo.primary;
 			/*
-			 * Trigger the marker sweep when live SIREAD markers pass
-			 * half the allocated lock objects, so the committed-reader
-			 * marker footprint stays bounded instead of growing until
-			 * the next checkpoint.  The sweep also reclaims the
-			 * committed-reader locker and detail structs the markers
-			 * were pinning (__lock_sireap_lockers /
+			 * The sweep fires when live SIREAD markers pass
+			 * st_objects / SI_CLEANUP_TRIGGER_DIV, so the
+			 * committed-reader footprint is a bounded sawtooth whose
+			 * ceiling is that fraction of the lock-object table --
+			 * independent of transaction count.  The sweep also
+			 * reclaims the committed-reader locker and detail structs
+			 * the markers were pinning (__lock_sireap_lockers /
 			 * __txn_reap_si_details), so those do not accumulate
 			 * either.  st_objects is always non-zero, so the bound
 			 * holds whether or not a max is configured.
+			 *
+			 * Divisor 8 (rather than 2) keeps the steady state low:
+			 * measured on a read-only SSI soak it lowers the ceiling
+			 * ~4x AND runs the common path faster, because a shorter
+			 * sireaders list is cheaper to walk per lock_get and a
+			 * smaller marker population is cheaper to sweep -- the
+			 * more-frequent sweep more than pays for itself.
 			 */
 			u_int32_t nobj = lkreg->stat.st_objects;
-			if (nobj != 0 && atomic_read_relaxed(&lkreg->nsireaders) > nobj / 2)
+			if (nobj != 0 && atomic_read_relaxed(&lkreg->nsireaders) >
+			    nobj / SI_CLEANUP_TRIGGER_DIV)
 				(void)__lock_sicleanup(env);
 		}
 	}
