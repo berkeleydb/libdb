@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DB_MPOOLFILE-&gt;get() — Berkeley DB 5.3.35</title>
+  <title>DB_MPOOLFILE-&gt;get() — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -86,6 +86,8 @@
 <p>If the <code>DB_MPOOL_NEW</code> flag was set, and the source file was not opened for writing; more than one of <code>DB_MPOOL_CREATE</code>, <code>DB_MPOOL_LAST</code>, and <code>DB_MPOOL_NEW</code> was set; or if an invalid flag value or parameter was specified.</p>
 <h4 id="db_lock_deadlock">DB_LOCK_DEADLOCK</h4>
 <p>For transactions configured with <a href="txnbegin.html#txnbegin_DB_TXN_SNAPSHOT" class="link">DB_TXN_SNAPSHOT</a>, the page has been modified since the transaction began.</p>
+<h4 id="db_snapshot_conflict">DB_SNAPSHOT_CONFLICT</h4>
+<p>For a transaction begun with <a href="txnbegin.html#txnbegin_DB_TXN_SNAPSHOT" class="link">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), this read skipped newer versions of the page created by concurrent snapshot transactions and recording the resulting read/write anti-dependency would make this transaction the pivot of a dependency structure that could produce a non-serializable schedule. The transaction must be aborted, and may then be retried. See <a href="../../guides/programmer_reference/program_errorret.html" class="olink">Error Returns to Applications</a>.</p>
 <h4 id="enomem">ENOMEM</h4>
 <p>The cache is full, and no more pages will fit in the cache.</p>
 <h3 id="class">Class</h3>
@@ -96,7 +98,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

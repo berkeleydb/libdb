@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Berkeley DB Documentation — Berkeley DB 5.3.35</title>
+  <title>Berkeley DB Documentation — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,12 +37,15 @@
 <body>
   <header class="site">
     <span class="brand"><a href="index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="index.html">Home</a></nav>
   <main>
 <h1 id="berkeley-db-documentation">Berkeley DB Documentation</h1>
 <p>The complete reference for <strong>libdb</strong> (Berkeley DB) — the embedded, transactional key/value storage engine. Generated from Markdown source by <code>docs_src/build.py</code>; available as HTML (here), <a href="#pdf">PDF</a>, and <a href="#man">man pages</a>. Version and copyright are single-sourced from <code>docs_src/_data/site.toml</code> + <code>dist/RELEASE</code>.</p>
+<blockquote>
+<p>This reference tracks the <strong>community fork</strong> at <a href="https://github.com/berkeleydb/libdb">github.com/berkeleydb/libdb</a>, which ships under <a href="https://calver.org/">CalVer</a> (<code>vYYYY.0M</code>). See the <a href="https://github.com/berkeleydb/libdb/releases"><strong>releases</strong></a> for the full list and per-release notes; the version this documentation was built for is shown in the page header. Fork releases are a continuation of, and distinct from, the Sleepycat/Oracle <code>5.3.x</code> line (the last Sleepycat-licensed release was 5.3.28).</p>
+</blockquote>
 <h2 id="api-reference">API reference</h2>
 <ul>
 <li><a href="api/c/index.html">C API Reference</a> — the primary interface: <code>DB_ENV</code>, <code>DB</code>, <code>DBC</code> (cursor), <code>DBT</code>, transactions, locking, logging, replication, and the command-line utilities.</li>
@@ -65,14 +68,101 @@
 <h2 id="man-pages"><a id="man"></a>Man pages</h2>
 <p>Every public API has a section-3 man page, plus a library overview (<strong><code>libdb(3)</code></strong>). They are built to <code>docs-build/man/man3/</code> (787 pages) and shipped in the release man-page tarball. Install and use like any system man page, e.g. <code>man libdb</code>, <code>man db_get</code>.</p>
 <h2 id="pdf-downloads"><a id="pdf"></a>PDF downloads</h2>
-<p>Each book is also available as a PDF (see the release assets / <code>docs-build/pdf/</code>): <code>api_c.pdf</code>, <code>api_stl.pdf</code>, <code>guides_programmer_reference.pdf</code>, <code>guides_gsg.pdf</code>, <code>guides_gsg_txn.pdf</code>, <code>guides_gsg_db_rep.pdf</code>, <code>guides_gsg_cxx.pdf</code>, <code>guides_gsg_java.pdf</code>, <code>guides_gsg_txn_cxx.pdf</code>, <code>guides_gsg_txn_java.pdf</code>, <code>guides_gsg_db_rep_cxx.pdf</code>, <code>guides_gsg_db_rep_java.pdf</code>, <code>guides_collections.pdf</code>, <code>guides_bdb-sql.pdf</code>, <code>guides_installation.pdf</code>, <code>guides_upgrading.pdf</code>, <code>guides_porting.pdf</code>, <code>guides_articles_inmemory.pdf</code>, <code>guides_articles_mssgtxt.pdf</code>.</p>
+<p>Each book is also available as a PDF:</p>
+<table>
+<thead>
+<tr>
+<th>Book</th>
+<th>PDF</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C API reference</td>
+<td><a href="pdf/api_c.pdf"><code>api_c.pdf</code></a></td>
+</tr>
+<tr>
+<td>C++/STL API reference</td>
+<td><a href="pdf/api_stl.pdf"><code>api_stl.pdf</code></a></td>
+</tr>
+<tr>
+<td>Programmer's Reference Guide</td>
+<td><a href="pdf/guides_programmer_reference.pdf"><code>guides_programmer_reference.pdf</code></a></td>
+</tr>
+<tr>
+<td>Getting Started with Data Storage</td>
+<td><a href="pdf/guides_gsg.pdf"><code>guides_gsg.pdf</code></a></td>
+</tr>
+<tr>
+<td>Getting Started with Transactions</td>
+<td><a href="pdf/guides_gsg_txn.pdf"><code>guides_gsg_txn.pdf</code></a></td>
+</tr>
+<tr>
+<td>Getting Started with Replication</td>
+<td><a href="pdf/guides_gsg_db_rep.pdf"><code>guides_gsg_db_rep.pdf</code></a></td>
+</tr>
+<tr>
+<td>Getting Started with Data Storage (C++)</td>
+<td><a href="pdf/guides_gsg_cxx.pdf"><code>guides_gsg_cxx.pdf</code></a></td>
+</tr>
+<tr>
+<td>Getting Started with Data Storage (Java)</td>
+<td><a href="pdf/guides_gsg_java.pdf"><code>guides_gsg_java.pdf</code></a></td>
+</tr>
+<tr>
+<td>Getting Started with Transactions (C++)</td>
+<td><a href="pdf/guides_gsg_txn_cxx.pdf"><code>guides_gsg_txn_cxx.pdf</code></a></td>
+</tr>
+<tr>
+<td>Getting Started with Transactions (Java)</td>
+<td><a href="pdf/guides_gsg_txn_java.pdf"><code>guides_gsg_txn_java.pdf</code></a></td>
+</tr>
+<tr>
+<td>Getting Started with Replication (C++)</td>
+<td><a href="pdf/guides_gsg_db_rep_cxx.pdf"><code>guides_gsg_db_rep_cxx.pdf</code></a></td>
+</tr>
+<tr>
+<td>Getting Started with Replication (Java)</td>
+<td><a href="pdf/guides_gsg_db_rep_java.pdf"><code>guides_gsg_db_rep_java.pdf</code></a></td>
+</tr>
+<tr>
+<td>Collections tutorial (Java)</td>
+<td><a href="pdf/guides_collections.pdf"><code>guides_collections.pdf</code></a></td>
+</tr>
+<tr>
+<td>Berkeley DB SQL interface</td>
+<td><a href="pdf/guides_bdb-sql.pdf"><code>guides_bdb-sql.pdf</code></a></td>
+</tr>
+<tr>
+<td>Installation</td>
+<td><a href="pdf/guides_installation.pdf"><code>guides_installation.pdf</code></a></td>
+</tr>
+<tr>
+<td>Upgrading</td>
+<td><a href="pdf/guides_upgrading.pdf"><code>guides_upgrading.pdf</code></a></td>
+</tr>
+<tr>
+<td>Porting</td>
+<td><a href="pdf/guides_porting.pdf"><code>guides_porting.pdf</code></a></td>
+</tr>
+<tr>
+<td>Article: In-Memory databases</td>
+<td><a href="pdf/guides_articles_inmemory.pdf"><code>guides_articles_inmemory.pdf</code></a></td>
+</tr>
+<tr>
+<td>Article: Message-text handling</td>
+<td><a href="pdf/guides_articles_mssgtxt.pdf"><code>guides_articles_mssgtxt.pdf</code></a></td>
+</tr>
+</tbody>
+</table>
+<p>The same PDFs are attached to each <a href="https://github.com/berkeleydb/libdb/releases">GitHub release</a>.</p>
 <hr />
 <p><em>The C# language-binding manual (Sandcastle, not DocBook) is archived separately and is not part of this Markdown-sourced tree. The Java API reference above is regenerated from source by javadoc rather than migrated from DocBook.</em></p>
 
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

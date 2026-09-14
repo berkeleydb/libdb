@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Partitioning databases — Berkeley DB 5.3.35</title>
+  <title>Partitioning databases — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
   <main>
@@ -46,8 +46,6 @@
 <p><span class="sect2"> <a href="am_partition.html#am_partition_function">Partitioning callback</a> </span></p>
 <p><span class="sect2"> <a href="am_partition.html#partition_file_placement">Placing partition files</a> </span></p>
 <p>You can improve concurrency on your database reads and writes by splitting access to a single database into multiple databases. This helps to avoid contention for internal database pages, as well as allowing you to spread your databases across multiple disks, which can help to improve disk I/O.</p>
-<h3 id="note">Note</h3>
-<p>Database partitions are not supported by the C# and Java APIs at this time.</p>
 <p>While you can manually do this by creating and using more than one database for your data, DB is capable of partitioning your database for you. When you use DB's built-in database partitioning feature, your access to your data is performed in exactly the same way as if you were only using one database; all the work of knowing which database to use to access a particular record is handled for you under the hood.</p>
 <p>Only the BTree and Hash access methods are supported for partitioned databases.</p>
 <p>You indicate that you want your database to be partitioned by calling <a href="../../api/c/dbset_partition.html" class="olink">DB-&gt;set_partition()</a> before opening your database the first time. You can indicate the directory in which each partition is contained using the <a href="../../api/c/dbset_partition_dirs.html" class="olink">DB-&gt;set_partition_dirs()</a> method.</p>
@@ -55,7 +53,7 @@
 <p>There are two ways to indicate what key/data pairs should go on which partition. The first is by specifying an array of <a href="../../api/c/dbt.html" class="olink">DBT</a>s that indicate the minimum key value for a given partition. The second is by providing a callback that returns the number of the partition on which a specified key is placed.</p>
 <h3 id="specifying-partition-keys">Specifying partition keys</h3>
 <p>For simple cases, you can partition your database by providing an array of <a href="../../api/c/dbt.html" class="olink">DBT</a>s, each element of which provides the minimum key value to be placed on a partition. There must be one fewer elements in this array than you have partitions. The first element of the array indicates the minimum key value for the second partition in your database. Key values that are less than the first key value provided in this array are placed on the first partition (partition 0).</p>
-<h3 id="note-1">Note</h3>
+<h3 id="note">Note</h3>
 <p>You can use partition keys only if you are using the Btree access method.</p>
 <p>For example, suppose you had a database of fruit, and you want three partitions for your database. Then you need a <a href="../../api/c/dbt.html" class="olink">DBT</a> array of size two. The first element in this array indicates the minimum keys that should be placed on partition 1. The second element in this array indicates the minimum key value placed on partition 2. Keys that compare less than the first <a href="../../api/c/dbt.html" class="olink">DBT</a> in the array are placed on partition 0.</p>
 <p>All comparisons are performed according to the lexicographic comparison used by your platform.</p>
@@ -66,7 +64,7 @@
 <li><p>'q' - 'z' to go on partition 2.</p></li>
 </ul>
 <p>Then you would accomplish this with the following code fragment:</p>
-<h3 id="note-2">Note</h3>
+<h3 id="note-1">Note</h3>
 <p>The <a href="../../api/c/dbset_partition.html" class="olink">DB-&gt;set_partition()</a> partition callback parameter must be <code>NULL</code> if you are using an array of <a href="../../api/c/dbt.html" class="olink">DBT</a>s to partition your database.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>DB <span class="op">*</span>dbp <span class="op">=</span> NULL<span class="op">;</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    DB_ENV <span class="op">*</span>envp <span class="op">=</span> NULL<span class="op">;</span></span>
@@ -140,7 +138,7 @@
 <span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> ret_number<span class="op">;</span></span>
 <span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a><span class="op">}</span> </span></code></pre></div>
 <p>You then cause your partition callback to be used by providing it to the <a href="../../api/c/dbset_partition.html" class="olink">DB-&gt;set_partition()</a> method, as illustrated by the following code fragment.</p>
-<h3 id="note-3">Note</h3>
+<h3 id="note-2">Note</h3>
 <p>The <a href="../../api/c/dbset_partition.html" class="olink">DB-&gt;set_partition()</a> <a href="../../api/c/dbt.html" class="olink">DBT</a> array parameter must be <code>NULL</code> if you are using a partition call back to partition your database.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>DB <span class="op">*</span>dbp <span class="op">=</span> NULL<span class="op">;</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    DB_ENV <span class="op">*</span>envp <span class="op">=</span> NULL<span class="op">;</span></span>
@@ -193,7 +191,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

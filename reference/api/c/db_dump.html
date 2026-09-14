@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>db_dump — Berkeley DB 5.3.35</title>
+  <title>db_dump — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,13 +37,13 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
 <h2 id="db_dump">db_dump</h2>
-<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_dump <span class="op">[-</span>klNpRrV<span class="op">]</span> <span class="op">[-</span>b blob_dir<span class="op">]</span> <span class="op">[-</span>d ahr<span class="op">]</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>f output<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> <span class="op">[-</span>s database<span class="op">]</span> <span class="op">[-</span>D bytes<span class="op">]</span> file</span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_dump <span class="op">[-</span>klNpRrV<span class="op">]</span> <span class="op">[-</span>d ahr<span class="op">]</span> <span class="op">[-</span>f output<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>s database<span class="op">]</span> <span class="op">[-</span>D bytes<span class="op">]</span> <span class="op">[-</span>F first<span class="op">-</span>page<span class="op">]</span> <span class="op">[-</span>L last<span class="op">-</span>page<span class="op">]</span> file</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>db_dump <span class="op">[-</span>kNpV<span class="op">]</span> <span class="op">[-</span>d ahr<span class="op">]</span> <span class="op">[-</span>f output<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">-</span>m database</span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
@@ -52,8 +52,6 @@
 <p>The <span class="command"><strong>db_dump185</strong></span> utility is similar to the <span class="command"><strong>db_dump</strong></span> utility, except that it reads databases in the format used by Berkeley DB versions 1.85 and 1.86.</p>
 <p>The options are as follows:</p>
 <ul>
-<li><p><strong>-b</strong></p>
-<p>Specifies the directory where BLOB data is stored for the database you are dumping.</p></li>
 <li><p><strong>-d</strong></p>
 <p>Dump the specified database in a format helpful for debugging the Berkeley DB library routines.</p>
 <ul>
@@ -69,12 +67,16 @@
 <p>Specifies the maximum number of bytes to dump for each key/data item found in the specified database. This option is only valid when <strong>-da</strong> is also specified. This option overrides the value set for the "set_data_len" parameter in your DB_CONFIG file, if any.</p></li>
 <li><p><strong>-f</strong></p>
 <p>Write to the specified file instead of to the standard output.</p></li>
+<li><p><strong>-F</strong></p>
+<p>With <strong>-d</strong>, begin the debugging dump at the specified page number instead of at the first page. Only valid in combination with the <strong>-d</strong> option.</p></li>
 <li><p><strong>-h</strong></p>
 <p>Specify a home directory for the database environment; by default, the current working directory is used.</p></li>
 <li><p><strong>-k</strong></p>
 <p>Dump record numbers from Queue and Recno databases as keys.</p></li>
 <li><p><strong>-l</strong></p>
 <p>List the databases stored in the file.</p></li>
+<li><p><strong>-L</strong></p>
+<p>With <strong>-d</strong>, stop the debugging dump after the specified page number instead of at the last page. Only valid in combination with the <strong>-d</strong> option.</p></li>
 <li><p><strong>-m</strong></p>
 <p>Specify a named in-memory database to dump. In this case the <strong>file</strong> argument must be omitted.</p></li>
 <li><p><strong>-N</strong></p>
@@ -111,7 +113,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

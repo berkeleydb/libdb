@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DB_ENV-&gt;txn_begin() — Berkeley DB 5.3.35</title>
+  <title>DB_ENV-&gt;txn_begin() — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -79,14 +79,19 @@
 <p>If a lock is unavailable for any Berkeley DB operation performed in the context of this transaction, cause the operation to return <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_DEADLOCK" class="olink">DB_LOCK_DEADLOCK</a> (or <a href="../../guides/programmer_reference/program_errorret.html#program_errorret.DB_LOCK_NOTGRANTED" class="olink">DB_LOCK_NOTGRANTED</a> if the database environment has been configured using the <a href="envset_flags.html#envset_flags_DB_TIME_NOTGRANTED" class="link">DB_TIME_NOTGRANTED</a> flag).</p>
 <p>This behavior may be set for a Berkeley DB environment using the <a href="envset_flags.html" class="xref" title="DB_ENV-&gt;set_flags()">DB_ENV-&gt;set_flags()</a> method. Any value specified to this method overrides that setting.</p></li>
 <li><p><code>DB_TXN_SNAPSHOT</code></p>
-<p>This transaction will execute with <strong>serializable snapshot isolation</strong> (SSI): snapshot isolation plus serializable conflict detection (the Cahill SSI algorithm). For databases with the <a href="dbopen.html#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> flag set, data values are read as they are when the transaction begins, without taking read locks; for databases without DB_MULTIVERSION, read locks are acquired. On top of that consistent snapshot, Berkeley DB tracks read/write anti-dependencies between concurrent snapshot transactions and, when it detects a dependency structure that could produce a non-serializable schedule, aborts one of the transactions so the committed history is equivalent to some serial order.</p>
-<p>A transaction that hits such a potential anomaly is aborted with one of two Berkeley DB-specific error returns instead of committing: <a href="../../guides/programmer_reference/program_errorret.html" class="olink">DB_SNAPSHOT_UNSAFE</a> (a potential serializable-snapshot anomaly was detected via a read/write anti-dependency) or <a href="../../guides/programmer_reference/program_errorret.html" class="olink">DB_SNAPSHOT_CONFLICT</a> (a conflicting snapshot update was detected). On either return the application must abort the transaction and may retry it. The error <code>DB_LOCK_DEADLOCK</code> may also be returned from update operations if a snapshot transaction attempts to update data modified after it read the snapshot.</p>
-<p>A <code>DB_TXN_SNAPSHOT</code> (SSI) transaction <strong>cannot be prepared for two-phase commit</strong>: <a href="txnprepare.html" class="xref" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a> returns <code>EINVAL</code> for such a transaction, because SSI's conflict status is not frozen at prepare time and a later-detected anomaly could not be honored after the transaction had entered the prepared state.</p>
+<p>This transaction will execute with <strong>snapshot isolation</strong>. For databases with the <a href="dbopen.html#dbopen_DB_MULTIVERSION" class="link">DB_MULTIVERSION</a> flag set, data values are read as they are when the transaction begins, without taking read locks; for databases without DB_MULTIVERSION, read locks are acquired.</p>
+<p>Snapshot isolation is <strong>not serializable</strong>: because reads take a consistent snapshot but writes commit under first-committer-wins, a set of concurrent snapshot transactions can produce a non-serializable schedule. In particular, snapshot isolation admits <em>write skew</em> (two transactions each read a datum the other writes and both commit) and the <em>read-only-transaction anomaly</em>. This is the behavior of <code>DB_TXN_SNAPSHOT</code> in stock Oracle Berkeley DB, and is exactly what this flag provides. If you require serializability, use <code>DB_TXN_SERIALIZABLE</code> instead.</p>
+<p>The error <code>DB_LOCK_DEADLOCK</code> may be returned from an update operation if a snapshot transaction attempts to update data that was modified after the transaction read its snapshot (a first-committer-wins conflict); <code>DB_SNAPSHOT_UNSAFE</code> may be returned if the snapshot cannot be maintained (for example, the cache is too small to retain the required versions).</p>
+<p>A plain <code>DB_TXN_SNAPSHOT</code> transaction <strong>can be prepared</strong> for two-phase commit, exactly as in legacy Berkeley DB.</p>
 <blockquote>
-<p><strong>Note:</strong> In this fork, <code>DB_TXN_SNAPSHOT</code> provides <em>serializable</em> snapshot isolation. In stock Oracle Berkeley DB, <code>DB_TXN_SNAPSHOT</code> provided only plain (non-serializable) snapshot isolation, and the earlier <code>DB_TXN_SNAPSHOT_SAFE</code> flag has been removed — there is no separate non-serializable snapshot mode.</p>
-</blockquote>
+<p><strong>Note:</strong> In earlier releases of this fork, <code>DB_TXN_SNAPSHOT</code> was silently strengthened to mean <em>serializable</em> snapshot isolation. It now means plain (non-serializable) snapshot isolation again, matching stock Oracle Berkeley DB. Applications that relied on the fork's SSI-by-default behavior must switch to <code>DB_TXN_SERIALIZABLE</code>.</p>
+</blockquote></li>
+<li><p><code>DB_TXN_SERIALIZABLE</code></p>
+<p>This transaction will execute with <strong>serializable snapshot isolation</strong> (SSI): snapshot isolation plus serializable conflict detection (the Cahill SSI algorithm). It reads a consistent snapshot exactly as <code>DB_TXN_SNAPSHOT</code> does, and additionally Berkeley DB tracks read/write anti-dependencies between concurrent snapshot transactions and, when it detects a dependency structure that could produce a non-serializable schedule, aborts one of the transactions so the committed history is equivalent to some serial order. Write skew and the read-only-transaction anomaly that <code>DB_TXN_SNAPSHOT</code> admits are prevented under <code>DB_TXN_SERIALIZABLE</code>.</p>
+<p>A transaction that hits such a potential anomaly is aborted with one of two Berkeley DB-specific error returns instead of committing: <a href="../../guides/programmer_reference/program_errorret.html" class="olink">DB_SNAPSHOT_UNSAFE</a> (a potential serializable-snapshot anomaly was detected via a read/write anti-dependency) or <a href="../../guides/programmer_reference/program_errorret.html" class="olink">DB_SNAPSHOT_CONFLICT</a> (a conflicting snapshot update was detected). On either return the application must abort the transaction and may retry it. The error <code>DB_LOCK_DEADLOCK</code> may also be returned from update operations if a serializable transaction attempts to update data modified after it read the snapshot.</p>
+<p>A <code>DB_TXN_SERIALIZABLE</code> (SSI) transaction <strong>cannot be prepared for two-phase commit</strong>: <a href="txnprepare.html" class="xref" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a> returns <code>EINVAL</code> for such a transaction, because SSI's conflict status is not frozen at prepare time and a later-detected anomaly could not be honored after the transaction had entered the prepared state.</p>
 <blockquote>
-<p><strong>Fixed after 5.3.34.</strong> Release 5.3.34 had two defects affecting this flag, both now fixed: a write skew could commit when the second transaction's write landed while the first was inside <a href="txncommit.html" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a> (issue #136), and long-lived environments running many snapshot transactions could exhaust the mutex region with <code>ENOMEM</code> because reader bookkeeping was not fully reclaimed (issues #137, #138). Each fix is covered by a regression test that runs in continuous integration. If you are using 5.3.34, upgrade.</p>
+<p><strong>Fixed after 5.3.34.</strong> Release 5.3.34 had two defects affecting serializable snapshot isolation, both now fixed: a write skew could commit when the second transaction's write landed while the first was inside <a href="txncommit.html" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a> (issue #136), and long-lived environments running many serializable transactions could exhaust the mutex region with <code>ENOMEM</code> because reader bookkeeping was not fully reclaimed (issues #137, #138). Each fix is covered by a regression test that runs in continuous integration.</p>
 </blockquote></li>
 <li><p><code>DB_TXN_SYNC</code></p>
 <p>Synchronously flush the log when this transaction commits or prepares. This means the transaction will exhibit all of the ACID (atomicity, consistency, isolation, and durability) properties.</p>
@@ -110,7 +115,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>db_deadlock — Berkeley DB 5.3.35</title>
+  <title>db_deadlock — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,13 +37,14 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
 <h2 id="db_deadlock">db_deadlock</h2>
 <div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_deadlock <span class="op">[-</span>Vv<span class="op">]</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>a e <span class="op">|</span> m <span class="op">|</span> n <span class="op">|</span> o <span class="op">|</span> W <span class="op">|</span> w <span class="op">|</span> y<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>L file<span class="op">]</span> <span class="op">[-</span>t sec<span class="op">.</span>usec<span class="op">]</span>  </span></code></pre></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>a e <span class="op">|</span> m <span class="op">|</span> n <span class="op">|</span> o <span class="op">|</span> W <span class="op">|</span> w <span class="op">|</span> y<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>L file<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>t sec<span class="op">.</span>usec<span class="op">]</span>  </span></code></pre></div>
 <p>The <span class="command"><strong>db_deadlock</strong></span> utility traverses the database environment lock region, and aborts a lock request each time it detects a deadlock or a lock request that has timed out. By default, in the case of a deadlock, a random lock request is chosen to be aborted.</p>
 <p>This utility should be run as a background daemon, or the underlying Berkeley DB deadlock detection interfaces should be called in some other way, whenever there are multiple threads or processes accessing a database and at least one of them is modifying it.</p>
 <p>The options are as follows:</p>
@@ -72,6 +73,8 @@
 <p>Log the execution of the <span class="command"><strong>db_deadlock</strong></span> utility to the specified file in the following format, where <span class="emphasis"><em>###</em></span> is the process ID, and the date is the time the utility was started.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>         db_deadlock<span class="op">:</span> ### Wed Jun <span class="dv">15</span> <span class="bn">01</span><span class="op">:</span><span class="dv">23</span><span class="op">:</span><span class="dv">45</span> EDT <span class="dv">1995</span> </span></code></pre></div>
 <p>This file will be removed if the <span class="command"><strong>db_deadlock</strong></span> utility exits gracefully.</p></li>
+<li><p><strong>-P</strong></p>
+<p>Specify an environment password. Although Berkeley DB utilities overwrite password strings as soon as possible, be aware there may be a window of vulnerability on systems where unprivileged users can see command-line arguments or where utilities are not able to overwrite the memory containing the command-line arguments.</p></li>
 <li><p><strong>-t</strong></p>
 <p>Check the database environment every <strong>sec</strong> seconds plus <strong>usec</strong> microseconds to see if a process has been forced to wait for a lock; if one has, review the database environment lock structures.</p></li>
 <li><p><strong>-V</strong></p>
@@ -91,7 +94,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

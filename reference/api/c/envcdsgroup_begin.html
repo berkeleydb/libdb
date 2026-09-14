@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DB_ENV-&gt;cdsgroup_begin() — Berkeley DB 5.3.35</title>
+  <title>DB_ENV-&gt;cdsgroup_begin() — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -48,10 +48,13 @@
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>DB_ENV<span class="op">-&gt;</span>cdsgroup_begin<span class="op">(</span>DB_ENV <span class="op">*</span>dbenv<span class="op">,</span> DB_TXN <span class="op">**</span>tid<span class="op">);</span>  </span></code></pre></div>
 <p>The <code>DB_ENV-&gt;cdsgroup_begin()</code> method allocates a locker ID in an environment configured for Berkeley DB Concurrent Data Store applications. It copies a pointer to a <a href="txn.html" class="link" title="Chapter 12.  The DB_TXN Handle">DB_TXN</a> that uniquely identifies the locker ID into the memory to which <strong>tid</strong> refers. Calling the <a href="txncommit.html" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a> method will discard the allocated locker ID.</p>
 <p>See <a href="../../guides/programmer_reference/cam.html#cam_intro" class="olink">Berkeley DB Concurrent Data Store applications</a> for more information about when this is required.</p>
+<p>The <a href="txn.html" class="link" title="Chapter 12.  The DB_TXN Handle">DB_TXN</a> handle returned by <code>DB_ENV-&gt;cdsgroup_begin()</code> is not a transaction handle: it names a CDS locker group, and a CDS environment has no transaction subsystem. Only <a href="txnabort.html" class="xref" title="DB_TXN-&gt;abort()">DB_TXN-&gt;abort()</a>, <a href="txncommit.html" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a>, <a href="txndiscard.html" class="xref" title="DB_TXN-&gt;discard()">DB_TXN-&gt;discard()</a> and <a href="txnid.html" class="xref" title="DB_TXN-&gt;id()">DB_TXN-&gt;id()</a> are meaningful on it. Every other <code>DB_TXN</code> method — <a href="txnprepare.html" class="xref" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a>, <a href="txnget_name.html" class="xref" title="DB_TXN-&gt;get_name()">DB_TXN-&gt;get_name()</a>, <a href="txnset_name.html" class="xref" title="DB_TXN-&gt;set_name()">DB_TXN-&gt;set_name()</a>, <a href="txnset_timeout.html" class="xref" title="DB_TXN-&gt;set_timeout()">DB_TXN-&gt;set_timeout()</a>, <a href="txnget_priority.html" class="xref" title="DB_TXN-&gt;get_priority()">DB_TXN-&gt;get_priority()</a>, <a href="txnset_priority.html" class="xref" title="DB_TXN-&gt;set_priority()">DB_TXN-&gt;set_priority()</a> and <a href="txnset_commit_token.html" class="xref" title="DB_TXN-&gt;set_commit_token()">DB_TXN-&gt;set_commit_token()</a> — returns <code>DB_OPNOTSUP</code> when called on a CDS group handle. (In releases before 5.3.35 the last three of these were unimplemented slots and calling one crashed the application rather than returning an error.)</p>
 <p>The <code>DB_ENV-&gt;cdsgroup_begin()</code> method may be called at any time during the life of the application.</p>
 <p>The <code>DB_ENV-&gt;cdsgroup_begin()</code> method returns a non-zero error value on failure and 0 on success.</p>
 <h3 id="errors">Errors</h3>
 <p>The <code>DB_ENV-&gt;cdsgroup_begin()</code> method may fail and return one of the following non-zero errors:</p>
+<h4 id="einval">EINVAL</h4>
+<p>The environment was not configured for Berkeley DB Concurrent Data Store, that is, it was opened without the <a href="envopen.html#envopen_DB_INIT_CDB" class="link">DB_INIT_CDB</a> flag.</p>
 <h4 id="enomem">ENOMEM</h4>
 <p>The maximum number of lockers has been reached.</p>
 <h3 id="class">Class</h3>
@@ -62,7 +65,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

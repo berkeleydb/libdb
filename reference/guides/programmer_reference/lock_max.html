@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Configuring locking: sizing the system — Berkeley DB 5.3.35</title>
+  <title>Configuring locking: sizing the system — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
   <main>
@@ -66,7 +66,7 @@
 <p>Specifies the number of locks that can be simultaneously requested in the system.</p></li>
 <li><p><code>DB_MEM_LOCKER</code></p>
 <p>Specifies the number of lockers that can simultaneously request locks in the system.</p></li>
-<li><p><code>DB_MEM_LOCKOBJECTS</code></p>
+<li><p><code>DB_MEM_LOCKOBJECT</code></p>
 <p>Specifies the number of objects that can simultaneously be locked in the system.</p></li>
 </ul>
 <p>In addition to the above structures, sizing your locking subsystem also requires specifying the number of lock table partitions. You do this using the <a href="../../api/c/envset_lk_partitions.html" class="olink">DB_ENV-&gt;set_lk_partitions()</a> method. Each partition may be accessed independently by a thread. More partitions can lead to higher levels of concurrency. The default is to set the number of partitions to be 10 times the number of cpus that the operating system reports at the time the environment is created. Having more than one partition when there is only one cpu is not beneficial because the locking system is more efficient when there is a single partition. Some operating systems (Linux, Solaris) may report thread contexts as cpus, and so it may be necessary to override the default to force a single partition on a single hyperthreaded cpu system. Objects and locks are divided among the partitions so it is best to allocate several locks and objects per partition. The system will force there to be at least one per partition. If a partition runs out of locks or objects it will steal what is needed from the other partitions. This operation could impact performance if it occurs too often. The final values specified for the locks and lock objects should be more than or equal to the number of lock table partitions.</p>
@@ -74,7 +74,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

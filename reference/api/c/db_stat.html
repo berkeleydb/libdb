@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>db_stat — Berkeley DB 5.3.35</title>
+  <title>db_stat — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,18 +37,20 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
 <h2 id="db_stat">db_stat</h2>
 <div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_stat <span class="op">-</span>d file <span class="op">[-</span>fN<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> <span class="op">[-</span>s database<span class="op">]</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>db_stat <span class="op">[-</span>cEelmNrtVxZ<span class="op">]</span> <span class="op">[-</span>C Aclop<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>L A<span class="op">]</span> <span class="op">[-</span>M Ah<span class="op">]</span> <span class="op">[-</span>R A<span class="op">]</span> </span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">[-</span>P password<span class="op">]</span>  </span></code></pre></div>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>db_stat <span class="op">[-</span>acEelmNrtVxZ<span class="op">]</span> <span class="op">[-</span>C Aclop<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>L A<span class="op">]</span> <span class="op">[-</span>M Ah<span class="op">]</span> <span class="op">[-</span>R A<span class="op">]</span> </span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">[-</span>X A<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span>  </span></code></pre></div>
 <p>The <span class="command"><strong>db_stat</strong></span> utility displays statistics for Berkeley DB environments.</p>
 <p>The options are as follows:</p>
 <ul>
+<li><p><strong>-a</strong></p>
+<p>Display the shared-region allocation lists in addition to the requested statistics. This option only has an effect in combination with one of the uppercase subsystem options (which imply "display all information"); given on its own it is an error. The output is voluminous and is intended for debugging the library's region allocator.</p></li>
 <li><p><strong>-C</strong></p>
 <p>Display detailed information about the locking subsystem.</p>
 <ul>
@@ -114,6 +116,12 @@
 <p>Write the library version number to the standard output, and exit.</p></li>
 <li><p><strong>-x</strong></p>
 <p>Display mutex subsystem statistics, as described in the <a href="mutexstat.html" class="xref" title="DB_ENV-&gt;mutex_stat()">DB_ENV-&gt;mutex_stat()</a> method.</p></li>
+<li><p><strong>-X</strong></p>
+<p>Display detailed information about the mutex subsystem.</p>
+<ul>
+<li><p><strong>A</strong></p>
+<p>Display all information.</p></li>
+</ul></li>
 <li><p><strong>-Z</strong></p>
 <p>Reset the statistics after reporting them; valid only with the <strong>-C</strong>, <strong>-c</strong>, <strong>-E</strong>, <strong>-e</strong>, <strong>-L</strong>, <strong>-l</strong>, <strong>-M</strong>, <strong>-m</strong>, <strong>-R</strong>, <strong>-r</strong>, and <strong>-t</strong> options.</p></li>
 </ul>
@@ -128,7 +136,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

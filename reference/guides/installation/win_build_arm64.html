@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Building Berkeley DB for Windows on ARM64 — Berkeley DB 2026.09.4</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 2026.09.4</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / installation</nav>
+  <main>
+<h2 id="building-berkeley-db-for-windows-on-arm64">Building Berkeley DB for Windows on ARM64</h2>
+<p>The bundled solution <code>build_windows\Berkeley_DB_vs2010.sln</code> provides <code>ARM64</code> configurations (<code>Debug|ARM64</code>, <code>Release|ARM64</code>, <code>Static Debug|ARM64</code>, <code>Static Release|ARM64</code>) for the library and for the C command-line utilities. Output goes to <code>build_windows\ARM64\&lt;Configuration&gt;\</code>, mirroring the <code>x64</code> layout described in <a href="win_build64.html" class="xref" title="Building Berkeley DB for 64-bit Windows">Building Berkeley DB for 64-bit Windows</a>.</p>
+<h3 id="requirements">Requirements</h3>
+<p>Visual Studio 2022 (or the standalone Build Tools) with:</p>
+<ul>
+<li>the <strong>Desktop development with C++</strong> workload,</li>
+<li><strong>MSVC v143 - VS 2022 C++ ARM64 build tools</strong> (<code>Microsoft.VisualStudio.Component.VC.Tools.ARM64</code>),</li>
+<li>a <strong>Windows 10 or 11 SDK</strong>.</li>
+</ul>
+<h3 id="building">Building</h3>
+<p>The solution is a VS2010-era project and declares no <code>&lt;PlatformToolset&gt;</code>, so the toolset and SDK version must be supplied on the command line; otherwise msbuild defaults to the VS2010 toolset and fails with <code>MSB8020</code>. From a shell where the ARM64 cross-tools are active (<code>vcvarsall.bat x64_arm64</code>, or the "ARM64 Native/Cross Tools Command Prompt"):</p>
+<pre><code>cd build_windows
+msbuild Berkeley_DB_vs2010.sln /m /t:db ^
+    /p:Configuration=Release /p:Platform=ARM64 ^
+    /p:PlatformToolset=v143 /p:WindowsTargetPlatformVersion=10.0</code></pre>
+<p>Substitute a utility name for <code>db</code> to build a single tool, or omit <code>/t:</code> to build everything the <code>ARM64</code> solution configuration covers. Building from the IDE works too: select <code>ARM64</code> in the Platform dropdown, and retarget the solution when prompted.</p>
+<p>Because ARM64 build tools are available on x64 hosts, this cross-compiles from an ordinary x64 machine as well as building natively on Windows-on-ARM.</p>
+<p>Verify what you produced with <code>dumpbin</code>; an ARM64 image reports <code>AA64</code>:</p>
+<pre><code>dumpbin /headers build_windows\ARM64\Release\libdb53.dll | findstr machine
+            AA64 machine (ARM64)</code></pre>
+<h3 id="scope-and-status">Scope and status</h3>
+<p>The <code>ARM64</code> configurations cover the library (<code>db</code>) and these utilities: <code>db_archive</code>, <code>db_checkpoint</code>, <code>db_deadlock</code>, <code>db_dump</code>, <code>db_hotbackup</code>, <code>db_load</code>, <code>db_log_verify</code>, <code>db_printlog</code>, <code>db_recover</code>, <code>db_replicate</code>, <code>db_stat</code>, <code>db_tuner</code>, <code>db_upgrade</code>, <code>db_verify</code>.</p>
+<p>The Java, Tcl, SQL, PHP, C++ STL and example projects remain x64-only; they depend on external SDKs that are not part of a cross-build.</p>
+<blockquote>
+<p><strong>Note</strong></p>
+<p>The ARM64 configurations are verified to <strong>build</strong>, and the resulting binaries are confirmed to be genuine ARM64 images (<code>AA64</code>), but they have <strong>not been exercised at runtime</strong> and no test suite has been run against them. Treat Windows ARM64 as untested: validate it in your own environment before relying on it. In particular, Berkeley DB's mutex and memory-ordering code has not been tested on a weakly-ordered Windows machine.</p>
+</blockquote>
+<h3 id="maintaining-the-configurations">Maintaining the configurations</h3>
+<p><code>dist/win_arm64_configs.py</code> generates the ARM64 configurations by duplicating each <code>x64</code> configuration in the solution, the affected <code>.vcxproj</code> files and <code>VS10\library.props</code> / <code>VS10\application.props</code>, substituting <code>/machine:arm64</code> for <code>/machine:x64</code>. After adding a project that should build for ARM64, add its name to <code>ARM64_PROJECTS</code> in that script and re-run it:</p>
+<pre><code>python3 dist/win_arm64_configs.py</code></pre>
+<p><code>python3 dist/win_arm64_configs.py --check</code> reports whether any file is missing its ARM64 configurations without modifying anything.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

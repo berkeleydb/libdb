@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DB_TXN-&gt;commit() — Berkeley DB 5.3.35</title>
+  <title>DB_TXN-&gt;commit() — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -58,6 +58,10 @@
 <p>You attempted to open a database handle that is configured for no waiting exclusive locking, but the exclusive lock could not be immediately obtained. See <a href="dbset_lk_exclusive.html" class="xref" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a> for more information.</p>
 <h4 id="db_rep_lease_expired">DB_REP_LEASE_EXPIRED</h4>
 <p>The operation failed because the site's replication master lease has expired.</p>
+<h4 id="db_snapshot_conflict">DB_SNAPSHOT_CONFLICT</h4>
+<p>The transaction was begun with <a href="txnbegin.html#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation) and was found at commit time to be the pivot of a dependency structure that could produce a non-serializable schedule. The transaction has been aborted and may be retried. See <a href="../../guides/programmer_reference/program_errorret.html" class="olink">Error Returns to Applications</a>.</p>
+<h4 id="db_snapshot_unsafe">DB_SNAPSHOT_UNSAFE</h4>
+<p>The transaction was begun with <a href="txnbegin.html#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation) and a potential serializability anomaly was detected through a read/write anti-dependency. The transaction has been aborted and may be retried. See <a href="../../guides/programmer_reference/program_errorret.html" class="olink">Error Returns to Applications</a>.</p>
 <h4 id="einval">EINVAL</h4>
 <p>If the cursor is already closed; or if an invalid flag value or parameter was specified.</p>
 <h3 id="parameters">Parameters</h3>
@@ -83,7 +87,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

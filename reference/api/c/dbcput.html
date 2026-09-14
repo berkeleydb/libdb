@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DBcursor-&gt;put() — Berkeley DB 5.3.35</title>
+  <title>DBcursor-&gt;put() — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -102,6 +102,10 @@
 <p>When a client synchronizes with the master, it is possible for committed transactions to be rolled back. This invalidates all the database and cursor handles opened in the replication environment. Once this occurs, an attempt to use such a handle will return <code>DB_REP_HANDLE_DEAD</code>. The application will need to discard the handle and open a new one in order to continue processing.</p>
 <h4 id="db_rep_lockout">DB_REP_LOCKOUT</h4>
 <p>The operation was blocked by client/master synchronization.</p>
+<h4 id="db_snapshot_conflict">DB_SNAPSHOT_CONFLICT</h4>
+<p>For a transaction begun with <a href="txnbegin.html#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), a conflicting snapshot update was detected. The transaction must be aborted, and may then be retried. See <a href="../../guides/programmer_reference/program_errorret.html" class="olink">Error Returns to Applications</a>.</p>
+<h4 id="db_snapshot_unsafe">DB_SNAPSHOT_UNSAFE</h4>
+<p>For a transaction begun with <a href="txnbegin.html#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), a potential serializability anomaly was detected through a read/write anti-dependency. The transaction must be aborted, and may then be retried. See <a href="../../guides/programmer_reference/program_errorret.html" class="olink">Error Returns to Applications</a>.</p>
 <h4 id="eacces">EACCES</h4>
 <p>An attempt was made to modify a read-only database.</p>
 <h4 id="einval">EINVAL</h4>
@@ -116,7 +120,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>db_verify — Berkeley DB 5.3.35</title>
+  <title>db_verify — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,17 +37,19 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
 <h2 id="db_verify">db_verify</h2>
-<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_verify <span class="op">[-</span>NoqV<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> file <span class="op">...</span>  </span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_verify <span class="op">[-</span>mNoqV<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> file <span class="op">...</span>  </span></code></pre></div>
 <p>The <span class="command"><strong>db_verify</strong></span> utility verifies the structure of one or more files and the databases they contain.</p>
 <p>The options are as follows:</p>
 <ul>
 <li><p><strong>-h</strong></p>
 <p>Specify a home directory for the database environment; by default, the current working directory is used.</p></li>
+<li><p><strong>-m</strong></p>
+<p>Verify a named in-memory database rather than a file on disk. When this option is given, the remaining argument names the in-memory database.</p></li>
 <li><p><strong>-o</strong></p>
 <p>Skip the database checks for btree and duplicate sort order and for hashing.</p>
 <p>If the file being verified contains databases with non-default comparison or hashing configurations, calling the <span class="command"><strong>db_verify</strong></span> utility without the <strong>-o</strong> flag will usually return failure. The <strong>-o</strong> flag causes <span class="command"><strong>db_verify</strong></span> to ignore database sort or hash ordering and allows <span class="command"><strong>db_verify</strong></span> to be used on these files. To fully verify these files, verify them explicitly using the <a href="dbverify.html" class="xref" title="DB-&gt;verify()">DB-&gt;verify()</a> method, after configuring the correct comparison or hashing functions.</p></li>
@@ -70,7 +72,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

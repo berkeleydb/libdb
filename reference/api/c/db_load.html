@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>db_load — Berkeley DB 5.3.35</title>
+  <title>db_load — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,13 +37,13 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
 <h2 id="db_load">db_load</h2>
-<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_load <span class="op">[-</span>nTV<span class="op">]</span> <span class="op">[-</span>b blob_dir<span class="op">]</span> <span class="op">[-</span>c name<span class="op">=</span>value<span class="op">]</span> <span class="op">[-</span>f file<span class="op">]</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> <span class="op">[-</span>o blob_threshold<span class="op">]</span> </span>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>db_load <span class="op">[-</span>nTV<span class="op">]</span> <span class="op">[-</span>c name<span class="op">=</span>value<span class="op">]</span> <span class="op">[-</span>f file<span class="op">]</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="op">[-</span>t btree <span class="op">|</span> hash <span class="op">|</span> queue <span class="op">|</span> recno<span class="op">]</span> file</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>db_load <span class="op">[-</span>r lsn <span class="op">|</span> fileid<span class="op">]</span> <span class="op">[-</span>h home<span class="op">]</span> <span class="op">[-</span>P password<span class="op">]</span> file  </span></code></pre></div>
@@ -51,8 +51,6 @@
 <p>The input to <span class="command"><strong>db_load</strong></span> must be in the output format specified by the <a href="db_dump.html" class="xref" title="db_dump">db_dump</a> utility or as specified by the <strong>-T</strong> option below.</p>
 <p>The options are as follows:</p>
 <ul>
-<li><p><strong>-b</strong></p>
-<p>Identifies the directory where BLOB data is stored. If this option is not specified, then BLOB data is placed in a subdirectory within the DB's environment. See also the <strong>-o</strong> option.</p></li>
 <li><p><strong>-c</strong></p>
 <p>Specify configuration options ignoring any value they may have based on the input. The command-line format is <strong>name=value</strong>. See the Supported Keywords section below for a list of keywords supported by the <strong>-c</strong> option.</p></li>
 <li><p><strong>-f</strong></p>
@@ -62,8 +60,6 @@
 <p>If a home directory is specified, the database environment is opened using the <a href="envopen.html#envopen_DB_INIT_LOCK" class="link">DB_INIT_LOCK</a>, <a href="envopen.html#envopen_DB_INIT_LOG" class="link">DB_INIT_LOG</a>, <a href="envopen.html#envopen_DB_INIT_MPOOL" class="link">DB_INIT_MPOOL</a>, <a href="envopen.html#envopen_DB_INIT_TXN" class="link">DB_INIT_TXN</a>, and <a href="envopen.html#envopen_DB_USE_ENVIRON" class="link">DB_USE_ENVIRON</a> flags to <a href="envopen.html" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> (This means that <span class="command"><strong>db_load</strong></span> can be used to load data into databases while they are in use by other processes.) If the <a href="envopen.html" class="xref" title="DB_ENV-&gt;open()">DB_ENV-&gt;open()</a> call fails, or if no home directory is specified, the database is still updated, but the environment is ignored; for example, no locking is done.</p></li>
 <li><p><strong>-n</strong></p>
 <p>Do not overwrite existing keys in the database when loading into an already existing database. If a key/data pair cannot be loaded into the database for this reason, a warning message is displayed on the standard error output, and the key/data pair are skipped.</p></li>
-<li><p><strong>-o</strong></p>
-<p>Identifies the BLOB threshold in bytes. This threshold determines when a data item will be stored as a BLOB. Data items sized less than this threshold are stored as normal data within the database. Data items larger than this size are stored on-disk in a subdirectory set aside for the purpose. Use the <strong>-b</strong> command line option to identify where BLOB data is stored.</p></li>
 <li><p><strong>-P</strong></p>
 <p>Specify an environment password. Although Berkeley DB utilities overwrite password strings as soon as possible, be aware there may be a window of vulnerability on systems where unprivileged users can see command-line arguments or where utilities are not able to overwrite the memory containing the command-line arguments.</p></li>
 <li><p><strong>-r</strong></p>
@@ -134,7 +130,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

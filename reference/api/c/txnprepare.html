@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DB_TXN-&gt;prepare() — Berkeley DB 5.3.35</title>
+  <title>DB_TXN-&gt;prepare() — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -50,6 +50,7 @@
 <p>In a distributed transaction environment, Berkeley DB can be used as a local transaction manager. In this case, the distributed transaction manager must send <span class="emphasis"><em>prepare</em></span> messages to each local manager. The local manager must then issue a <code>DB_TXN-&gt;prepare()</code> and await its successful return before responding to the distributed transaction manager. Only after the distributed transaction manager receives successful responses from all of its <span class="emphasis"><em>prepare</em></span> messages should it issue any <span class="emphasis"><em>commit</em></span> messages.</p>
 <p>In the case of nested transactions, preparing the parent causes all unresolved children of the parent transaction to be committed. Child transactions should never be explicitly prepared. Their fate will be resolved along with their parent's during global recovery.</p>
 <p>All open cursors in the transaction are closed and the first cursor close error will be returned.</p>
+<p>A transaction running under serializable snapshot isolation — one begun with the <a href="txnbegin.html#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> flag, or begun in an environment configured with <code>DB_TXN_SNAPSHOT</code> — <strong>cannot be prepared</strong>: <code>DB_TXN-&gt;prepare()</code> returns <code>EINVAL</code> for such a transaction. SSI's serializability check runs at commit time and can still abort the transaction after prepare would have returned, so the combination is refused rather than allowing a prepared transaction to become uncommittable. Applications that need two-phase commit must run those transactions without <code>DB_TXN_SNAPSHOT</code>.</p>
 <p>The <code>DB_TXN-&gt;prepare()</code> method returns a non-zero error value on failure and 0 on success. The errors that this method returns include the error values of <code>DBcursor-&gt;close()</code> and the following:</p>
 <h4 id="db_lock_deadlock">DB_LOCK_DEADLOCK</h4>
 <p>A transactional database environment operation was selected to resolve a deadlock.</p>
@@ -57,7 +58,7 @@
 <p>A Berkeley DB Concurrent Data Store database environment configured for lock timeouts was unable to grant a lock in the allowed time.</p>
 <p>You attempted to open a database handle that is configured for no waiting exclusive locking, but the exclusive lock could not be immediately obtained. See <a href="dbset_lk_exclusive.html" class="xref" title="DB-&gt;set_lk_exclusive()">DB-&gt;set_lk_exclusive()</a> for more information.</p>
 <h4 id="einval">EINVAL</h4>
-<p>If the cursor is already closed; or if an invalid flag value or parameter was specified.</p>
+<p>If the transaction was begun with <a href="txnbegin.html#txnbegin_DB_TXN_SNAPSHOT" class="olink">DB_TXN_SNAPSHOT</a> (serializable snapshot isolation), which cannot be prepared for two-phase commit; if the cursor is already closed; or if an invalid flag value or parameter was specified.</p>
 <h3 id="parameters">Parameters</h3>
 <h4 id="gid">gid</h4>
 <p>The <strong>gid</strong> parameter specifies the global transaction ID by which this transaction will be known. This global transaction ID will be returned in calls to <a href="txnrecover.html" class="xref" title="DB_ENV-&gt;txn_recover()">DB_ENV-&gt;txn_recover()</a> telling the application which global transactions must be resolved.</p>
@@ -69,7 +70,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

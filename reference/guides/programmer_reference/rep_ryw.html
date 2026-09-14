@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Read your writes consistency — Berkeley DB 5.3.35</title>
+  <title>Read your writes consistency — Berkeley DB 2026.09.4</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 5.3.35</span>
+    <span class="ver">Version 2026.09.4</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
   <main>
@@ -53,7 +53,7 @@
 <h3 id="getting-a-token">Getting a token</h3>
 <p>In order to get a token, the application must supply a small memory buffer, using the <a href="../../api/c/txnset_commit_token.html" class="olink">DB_TXN-&gt;set_commit_token()</a> method.</p>
 <p>Note that a token is generated only upon a successful commit operation, and therefore the token buffer content is valid only after a successful commit. Also, if a transaction does not perform any update operations it does not generate a useful token.</p>
-<p>In the Berkeley DB Java and C# API, getting a token is simpler. The application need only invoke the <a href="../java/com/sleepycat/db/Transaction.html#getCommitToken()" class="ulink" target="_top">Transaction.getCommitToken()</a> method, after the transaction has committed.</p>
+<p>In the Berkeley DB Java API, getting a token is simpler. The application need only invoke the <a href="../java/com/sleepycat/db/Transaction.html#getCommitToken()" class="ulink" target="_top">Transaction.getCommitToken()</a> method, after the transaction has committed.</p>
 <h3 id="token-handling">Token handling</h3>
 <p>The application should not try to interpret the content of the token buffer, but may store and/or transmit it freely between systems. However, since the buffer contains binary data it may be necessary to apply some encoding for transmission (e.g., base 64).</p>
 <p>The data is resilient to differences in byte order between different systems. It does not expire: it may be retained indefinitely for later use, even across Berkeley DB version upgrades.</p>
@@ -67,7 +67,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 5.3.35 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>
