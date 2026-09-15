@@ -689,7 +689,7 @@ __memp_bhwrite_async(dbmp, hp, mfp, bhp, aioc, w, deferredp)
  *	The failed page is left BH_DIRTY by __memp_pgwrite_finish, so it is not
  *	lost from cache and a later sync retries it.
  *
- *	The caller must hold dbmp->mtx_aio, giving it exclusive use of the
+ *	The caller must hold aioc->mtx_aio, giving it exclusive use of the
  *	context: reaping drains the backend's shared completion queue, so a
  *	second concurrent submitter's completions could otherwise satisfy this
  *	drain's count and we would "complete" our own still-in-flight writes.
@@ -730,8 +730,8 @@ __memp_aio_drain(env, dbmp, aioc, w, n, errp)
 			t_ret = __memp_aio_writeback_finish(dbmp, &w[j]);
 		else {
 			/*
-			 * Never observed with mtx_aio held; this is the
-			 * assertion that the exclusive-use discipline is
+			 * Never observed with the context's mtx_aio held; this
+			 * is the assertion that the exclusive-use discipline is
 			 * actually in force.  Report the write as failed so
 			 * the page stays dirty and the checkpoint fails.
 			 */
