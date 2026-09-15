@@ -327,18 +327,29 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	 * writes that have not reached the disk.  That is exactly the false
 	 * durable frontier the async error propagation exists to prevent.
 	 *
-	 * So take mtx_aio, and take it with TRYLOCK, never blocking: any
-	 * caller that does not win it (checkpoint vs trickle vs a
-	 * DB_SYNC_ALLOC from eviction) falls back to synchronous writeback,
+	 * So take the context's mtx_aio, and take it with TRYLOCK, never
+	 * blocking: any caller that does not win it (checkpoint vs trickle vs
+	 * a DB_SYNC_ALLOC from eviction) falls back to synchronous writeback,
 	 * which is the reference behaviour and always correct.  Never
 	 * waiting also means this latch cannot deadlock: it is held across
 	 * page writes that acquire hp->mtx_hash, bhp->mtx_buf and
 	 * dbmp->mutex, but since no thread ever sleeps to acquire it, it can
 	 * never be the blocking edge of a cycle.
+	 *
+	 * The latch lives in the aio context, not in DB_MPOOL: env_sig.c
+	 * hashes sizeof(struct __db_mpool) into the build signature, which
+	 * __env_region_attach checks, so growing DB_MPOOL would make every
+	 * existing environment fail to attach (see dbinc/os_aio.h).
+	 *
+	 * KNOWN ISSUE (opt-in path): with DB_MPOOL_AIO on, this sync loop
+	 * stalls permanently in ~3 of 67 runs of test/c/aio_concurrent_sync
+	 * "aio" mode (sync mode 0/84).  Distinct from and milder than the
+	 * cross-reap corruption this latch fixes -- lost=0, db_verify clean
+	 * after recovery -- and DB_MPOOL_AIO is default-OFF.
 	 */
 	use_aio = 0;
 	if (dbmp->aio_ctx != NULL && __os_aio_ctx_available(dbmp->aio_ctx) &&
-	    MUTEX_TRYLOCK(env, dbmp->mtx_aio) == 0)
+	    MUTEX_TRYLOCK(env, dbmp->aio_ctx->mtx_aio) == 0)
 		use_aio = 1;
 
 	if (wrote_totalp != NULL)
@@ -365,7 +376,7 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	if ((ret =
 	    __os_malloc(env, ar_max * sizeof(BH_TRACK), &bharray)) != 0) {
 		if (use_aio)
-			MUTEX_UNLOCK(env, dbmp->mtx_aio);
+			MUTEX_UNLOCK(env, dbmp->aio_ctx->mtx_aio);
 		return (ret);
 	}
 
@@ -736,7 +747,7 @@ err:	__os_free(env, bharray);
 	 */
 	DB_ASSERT(env, nflight == 0);
 	if (use_aio)
-		MUTEX_UNLOCK(env, dbmp->mtx_aio);
+		MUTEX_UNLOCK(env, dbmp->aio_ctx->mtx_aio);
 	if (wrote_totalp != NULL)
 		*wrote_totalp = wrote_total;
 

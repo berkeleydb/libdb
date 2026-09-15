@@ -38,16 +38,18 @@ LIBS=$(sed -n 's/^LIBS=[[:space:]]*//p' "$BUILD/Makefile" | head -1)
 
 mkdir -p "$RUNDIR"
 rc=0
-for t in leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible health_stats; do
+for t in leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible health_stats \
+    aio_concurrent_sync; do
 	echo "=== building $t"
 	# shellcheck disable=SC2086
 	$CC -g -O1 -Wall -Wextra -Wno-unused-parameter \
 		-I"$BUILD" "$HERE/$t.c" "$BUILD/libdb.a" \
-		$LDF $LIBS -ldl -o "$RUNDIR/$t"
+		$LDF $LIBS -ldl -lpthread -o "$RUNDIR/$t"
 done
 
 run() {
 	t=$1; mode=$2; dir="$RUNDIR/$t-$mode"
+	shift 2
 	# Start from an empty directory: the driver creates its environment in a
 	# TESTDIR_* subdir, and stale region files would carry over state (a
 	# previous run's exhausted mutex region) into the new run.
@@ -56,8 +58,8 @@ run() {
 	else
 		mkdir -p "$dir"
 	fi
-	echo "=== running $t $mode"
-	if ( cd "$dir" && timeout "$TIMEOUT" "$RUNDIR/$t" "$mode" ); then
+	echo "=== running $t $mode $*"
+	if ( cd "$dir" && timeout "$TIMEOUT" "$RUNDIR/$t" "$mode" "$@" ); then
 		echo "--- $t $mode: PASS"
 	else
 		echo "--- $t $mode: FAIL (exit $?)"
@@ -100,6 +102,22 @@ mvcc_run() {
 	fi
 }
 mvcc_run
+
+# os_aio cross-reap gate.  Runs checkpoint + trickle + memp_sync + DB->sync +
+# eviction pressure against one environment at once and audits that every
+# DB_TXN_SYNC-committed record survives.  Both modes must agree: "sync" is the
+# reference synchronous path, "aio" opts in to DB_MPOOL_AIO (default-OFF) and
+# is the path the exclusive-use latch protects.  Without the latch this aborts
+# in __memp_aio_drain's DB_ASSERT(w[j].done) on a diagnostic build.
+#
+# KNOWN ISSUE: "aio" mode stalls permanently in roughly 3 runs in 67 (sync
+# mode 0/84).  It is a sync-loop stall, not the cross-reap corruption -- lost=0
+# and db_verify is clean on recovery -- so it is timed out and reported rather
+# than allowed to wedge the suite.  AIO_SECONDS keeps the run well inside
+# TIMEOUT so a stall is reported as a timeout, not as an ambiguous hang.
+AIO_SECONDS=${AIO_SECONDS:-20}
+run aio_concurrent_sync sync "$AIO_SECONDS"
+run aio_concurrent_sync aio "$AIO_SECONDS"
 
 [ "$rc" = 0 ] && echo "ALL LEAK TESTS PASS" || echo "LEAK TESTS FAILED"
 exit "$rc"

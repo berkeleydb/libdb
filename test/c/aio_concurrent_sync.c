@@ -28,7 +28,8 @@
  * and (b) memory corruption: a write-after-free of the page copy and a
  * BH_DIRTY/refcount race on a live buffer.
  *
- * The fix under test is an exclusive-use latch (DB_MPOOL's mtx_aio, taken with
+ * The fix under test is an exclusive-use latch (the aio context's mtx_aio,
+ * taken with
  * MUTEX_TRYLOCK in __memp_sync_int): one sync call owns the context from its
  * first submit to its final drain, and any caller that does not win the latch
  * writes synchronously -- the reference behaviour, always correct, never
