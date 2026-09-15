@@ -309,6 +309,7 @@ libdb_srcnames = [
   'src/mp/mp_sync.c',
   'src/mp/mp_trickle.c',
   'src/mutex/mut_alloc.c',
+  'src/mutex/mut_order.c',
   'src/mutex/mut_failchk.c',
   'src/mutex/mut_method.c',
   'src/mutex/mut_pthread.c',

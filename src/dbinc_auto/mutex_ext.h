@@ -40,6 +40,18 @@ atomic_value_t __atomic_dec __P((ENV *, db_atomic_t *));
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
 int atomic_compare_exchange __P((ENV *, db_atomic_t *, atomic_value_t, atomic_value_t));
 #endif
+#ifdef DIAGNOSTIC
+int __db_lo_rank __P((int));
+#endif
+#ifdef DIAGNOSTIC
+void __db_lo_check __P((ENV *, db_mutex_t, const char *, int));
+#endif
+#ifdef DIAGNOSTIC
+void __db_lo_acquire __P((ENV *, db_mutex_t, const char *, int));
+#endif
+#ifdef DIAGNOSTIC
+void __db_lo_release __P((ENV *, db_mutex_t));
+#endif
 int __db_pthread_mutex_init __P((ENV *, db_mutex_t, u_int32_t));
 #ifndef HAVE_MUTEX_HYBRID
 int __db_pthread_mutex_lock __P((ENV *, db_mutex_t, db_timeout_t));
