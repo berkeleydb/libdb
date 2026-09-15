@@ -100,6 +100,26 @@
  *                    like this, not like the ring.
  *   SSI_READS=N      reads per rmw txn (default 4).
  *   SSI_ZIPF=1       rmw draws keys Zipf(theta=0.99) instead of uniform.
+ *   SSI_WSTRIDE=S    THE realistic false-abort probe (default 0 = off).  In rmw
+ *                    mode the write key is forced to a multiple of S and the
+ *                    read keys are forced to NON-multiples of S.  Nobody writes
+ *                    a key any transaction reads, so -- exactly as with
+ *                    SSI_READ_OFF -- the logical conflict graph is EMPTY and a
+ *                    key-granularity SSI would abort zero transactions, while
+ *                    the access pattern stays random/Zipfian rather than a
+ *                    contrived ring.  NOTE: S does NOT control co-location.
+ *                    Reads land on non-multiples including write_key+1, so the
+ *                    two classes interleave in key order at every S and always
+ *                    share leaves.  Use SSI_WSPLIT for the uncolocated control.
+ *   SSI_WSPLIT=1     the ROW-GRANULARITY IDEAL control for rmw: writes are
+ *                    drawn from the lower half of the key space and reads from
+ *                    the upper half, preserving each draw's distribution shape
+ *                    within its half.  The logical conflict graph is empty AND
+ *                    the two classes are separated in key order, so only the
+ *                    single boundary leaf can be shared.  Whatever aborts
+ *                    remain here are the irreducible floor that page
+ *                    granularity does NOT explain -- the baseline the
+ *                    interleaved decoy's excess is measured against.
  *   SSI_CSV=1        additionally emit one machine-readable CSV row per run,
  *                    prefixed "CSV,", including the measured records-per-leaf
  *                    (db->stat: bt_ndata / bt_leaf_pg) so the granularity
@@ -148,6 +168,8 @@ static int read_off;		/* SSI_READ_OFF: 0 = genuine ring */
 static const char *env_home = "/tmp/ssi_abort_env";
 static int rmw_mode;		/* SSI_WORKLOAD=rmw */
 static int rmw_reads = 4;
+static int wstride;		/* SSI_WSTRIDE: 0 = off (genuine conflicts) */
+static int wsplit;		/* SSI_WSPLIT: disjoint key ranges */
 static int use_zipf;
 static int emit_csv;
 static double *zipf_cdf;	/* [hotkeys], built once when use_zipf */
@@ -327,6 +349,43 @@ build_zipf(double theta)
  * own; page granularity adds to that rate rather than creating it from nothing.
  * This is the shape a user's workload has, and the ring is its worst case.
  */
+/*
+ * With SSI_WSTRIDE=S the key space is partitioned by residue: writes go ONLY to
+ * multiples of S, reads ONLY to non-multiples.  No transaction ever reads a key
+ * any transaction writes, so the logical rw-conflict graph is empty and a
+ * key-granularity SSI aborts nothing -- yet the two classes interleave in key
+ * order, so they share leaf pages whenever S <= records-per-leaf.  Every abort
+ * observed is then a page-granularity false abort, measured on a random (or
+ * Zipfian) access pattern rather than a contrived ring.
+ */
+static int
+draw_write_key(targ_t *t)
+{
+	int k;
+
+	if (wsplit)			/* lower half only */
+		return (draw_key(t) / 2);
+	if (wstride == 0)
+		return (draw_key(t));
+	k = draw_key(t) / wstride * wstride;
+	return (k < hotkeys ? k : 0);
+}
+
+static int
+draw_read_key(targ_t *t)
+{
+	int k;
+
+	if (wsplit)			/* upper half only */
+		return (hotkeys / 2 + draw_key(t) / 2);
+	if (wstride == 0)
+		return (draw_key(t));
+	k = draw_key(t);
+	if (k % wstride == 0)		/* nudge off the write residue */
+		k = (k + 1) % hotkeys;
+	return (k % wstride == 0 ? (k + 1) % hotkeys : k);
+}
+
 static void
 rmw_txn(targ_t *t)
 {
@@ -342,7 +401,7 @@ rmw_txn(targ_t *t)
 	for (i = 0; i < rmw_reads; i++) {
 		memset(&key, 0, sizeof(key));
 		memset(&data, 0, sizeof(data));
-		slot_key(kbuf, sizeof(kbuf), draw_key(t));
+		slot_key(kbuf, sizeof(kbuf), draw_read_key(t));
 		key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
 		data.flags = DB_DBT_MALLOC;
 		ret = db->get(db, txn, &key, &data, 0);
@@ -352,7 +411,7 @@ rmw_txn(targ_t *t)
 		} else if (ret == DB_LOCK_DEADLOCK || IS_SSI_ABORT(ret))
 			goto conflict;
 	}
-	wkey = draw_key(t);
+	wkey = draw_write_key(t);
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 	slot_key(kbuf, sizeof(kbuf), wkey);
@@ -435,7 +494,11 @@ run(int nthreads, int secs)
 	if (emit_csv)
 		printf("CSV,%s,%s,%u,%d,%d,%d,%d,%d,%d,%u,%u,%.2f,%ld,%ld,%ld,"
 		    "%ld,%.0f,%d\n",
-		    rmw_mode ? (use_zipf ? "rmw-zipf" : "rmw-uniform") :
+		    rmw_mode ? (use_zipf ?
+			(wsplit ? "rmw-zipf-split" :
+			    wstride ? "rmw-zipf-decoy" : "rmw-zipf") :
+			(wsplit ? "rmw-uniform-split" :
+			    wstride ? "rmw-uniform-decoy" : "rmw-uniform")) :
 			(read_off ? "ring-decoy" : "ring"),
 		    iso_level_name, pagesize, valsz, hotkeys, nthreads, spread,
 		    read_off, secs, ndata, leaf_pg, recs_per_leaf, c, a, d, o,
@@ -628,6 +691,20 @@ parse_knobs(void)
 	}
 	if ((s = getenv("SSI_ZIPF")) != NULL && atoi(s) != 0)
 		use_zipf = 1;
+	if ((s = getenv("SSI_WSTRIDE")) != NULL) {
+		wstride = atoi(s);
+		if (wstride < 0) {
+			fprintf(stderr, "SSI_WSTRIDE must be >= 0\n");
+			return (-1);
+		}
+		if (wstride == 1) {
+			fprintf(stderr, "SSI_WSTRIDE=1 leaves no non-multiple "
+			    "keys to read\n");
+			return (-1);
+		}
+	}
+	if ((s = getenv("SSI_WSPLIT")) != NULL && atoi(s) != 0)
+		wsplit = 1;
 	if ((s = getenv("SSI_CSV")) != NULL && atoi(s) != 0)
 		emit_csv = 1;
 	return (0);
@@ -764,10 +841,10 @@ main(int argc, char **argv)
 		    "ssi_abort,deadlock,other,txn_per_sec,panicked\n");
 	else
 		printf("# pagesize=%u valsz=%d ndata=%u leaf_pg=%u "
-		    "recs_per_leaf=%.2f workload=%s read_off=%d\n", pagesize,
-		    valsz, ndata, leaf_pg, recs_per_leaf,
+		    "recs_per_leaf=%.2f workload=%s read_off=%d wstride=%d\n",
+		    pagesize, valsz, ndata, leaf_pg, recs_per_leaf,
 		    rmw_mode ? (use_zipf ? "rmw-zipf" : "rmw-uniform") : "ring",
-		    read_off);
+		    read_off, wstride);
 
 	if (do_selfcheck) {
 		ret = selfcheck();
