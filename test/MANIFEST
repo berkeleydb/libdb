@@ -137,3 +137,17 @@ tcl	txn001
 tcl	test001
 tcl	ssi001
 tcl	ssi002
+
+# ---------------------------------------------------------------------------
+# DST fault-class capstones, one per fault class.   test/sim/run_capstones.sh
+# Hard gate in ci.yml's dst job.  The old inline loop used `set -e`, so the
+# FIRST failure ended the run and the remaining capstones produced no signal at
+# all -- indistinguishable from never having been listed.
+# ---------------------------------------------------------------------------
+sim	test_sim_crash_recover
+sim	test_sim_crash_in_recovery
+sim	test_sim_clockskew_backward
+sim	test_sim_buggify
+sim	test_sim_torn
+sim	test_sim_stale
+sim	test_sim_enospc

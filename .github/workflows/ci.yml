@@ -327,17 +327,17 @@ jobs:
         run: |
           ../dist/configure --enable-debug --enable-dst
           make -j$(nproc)
+      # The capstone list lives in test/MANIFEST and run_capstones.sh reads it
+      # from there, so the workflow and the expectation cannot drift.  It also
+      # runs ALL of them: the old `set -e` loop stopped at the first failure, so
+      # the rest produced no signal -- indistinguishable from never listed.
       - name: Fault-class smoke (one capstone per class)
         working-directory: build_unix
-        run: |
-          set -e
-          for t in test_sim_crash_recover test_sim_crash_in_recovery \
-                   test_sim_clockskew_backward test_sim_buggify \
-                   test_sim_torn test_sim_stale test_sim_enospc; do
-            make "$t"
-            echo "--- $t ---"
-            timeout 240 "./$t"
-          done
+        run: sh ../test/sim/run_capstones.sh
+
+      - name: Manifest gate (assert every DST capstone produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier sim
       # The multi-process failchk pilot spawns + kill -9's real processes
       # sharing a real region. That is inherently timing-sensitive on shared
       # CI runners (a survivor can stall waiting on a dead peer's slot), so it
