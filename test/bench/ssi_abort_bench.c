@@ -68,6 +68,43 @@
  *
  *   e.g.  ISO_LEVEL=serializable ./ssi_abort_bench 16 5 4 8 16 32
  *
+ * FALSE-ABORT-RATE KNOBS (all optional environment variables; every default
+ * reproduces the historical behaviour of this bench exactly):
+ *   SSI_PAGESIZE=N   btree page size (default 1024).  THE granularity lever:
+ *                    bigger pages pack more records per leaf, so the same
+ *                    key-disjoint schedule shares more leaf pages.  Changes
+ *                    nothing about the key distribution or the logical
+ *                    conflict graph -- only the physical co-location.
+ *   SSI_VALSZ=N      value padding (default 200).  Second granularity lever.
+ *   SSI_SPREAD=N     force the ring spread instead of hotkeys/threads.  N < 8
+ *                    deliberately co-locates write keys (page-level ww).
+ *   SSI_ENV=path     environment directory (default /tmp/ssi_abort_env).  Pass
+ *                    a FRESH unique directory per run: a recovered/reused env
+ *                    has previously produced a phantom ssi_abort > 0.
+ *   SSI_READ_OFF=N   THE false-abort probe (default 0 = the genuine ring,
+ *                    historical behaviour).  With N > 0 each worker reads key
+ *                    ((i+1) mod N_thr)*SP + N instead of the neighbour's write
+ *                    key.  That read key is written by NOBODY, so the LOGICAL
+ *                    conflict graph is EMPTY and a key/row-granularity SSI
+ *                    implementation would abort exactly zero transactions.
+ *                    Every abort observed with SSI_READ_OFF > 0 is therefore a
+ *                    100%% FALSE abort caused by the read key sharing a leaf
+ *                    page with the neighbour's write key.  Raise SSI_READ_OFF
+ *                    past records-per-leaf (or shrink the page) and the false
+ *                    aborts must vanish; that decay curve IS the measurement.
+ *   SSI_WORKLOAD=ring|rmw   ring (default) is the write-skew ring above.  rmw
+ *                    is a realistic read-modify-write: read SSI_READS random
+ *                    keys, write one random key = sum+1.  Not key-disjoint by
+ *                    construction, so it has a genuine conflict rate of its
+ *                    own -- the point of it is that a user's workload looks
+ *                    like this, not like the ring.
+ *   SSI_READS=N      reads per rmw txn (default 4).
+ *   SSI_ZIPF=1       rmw draws keys Zipf(theta=0.99) instead of uniform.
+ *   SSI_CSV=1        additionally emit one machine-readable CSV row per run,
+ *                    prefixed "CSV,", including the measured records-per-leaf
+ *                    (db->stat: bt_ndata / bt_leaf_pg) so the granularity
+ *                    x-axis is measured rather than assumed.
+ *
  * NOT a TPC benchmark and not comparable to any TPC result.
  */
 #include <sys/types.h>
@@ -79,6 +116,7 @@
 #include <string.h>
 #include <time.h>
 #include "db.h"
+#include <math.h>
 #include <stdatomic.h>
 
 /*
@@ -89,6 +127,7 @@
  */
 #define	SSI_PAGESIZE	1024
 #define	SSI_PAD		200	/* inline; ~3 records per 1024-byte leaf */
+#define	SSI_PAD_MAX	8192	/* ceiling for the SSI_VALSZ knob */
 
 /*
  * Minimum index spread between two workers' write keys.  The btree packs ~3
@@ -102,6 +141,18 @@ static DB *db;
 static int hotkeys;		/* size of the contiguous hot key set */
 static u_int32_t iso_level = DB_TXN_SERIALIZABLE;
 static const char *iso_level_name = "serializable";
+static u_int32_t pagesize = SSI_PAGESIZE;
+static int valsz = SSI_PAD;	/* value padding, bytes */
+static int spread_override;	/* 0 = auto (hotkeys / threads) */
+static int read_off;		/* SSI_READ_OFF: 0 = genuine ring */
+static const char *env_home = "/tmp/ssi_abort_env";
+static int rmw_mode;		/* SSI_WORKLOAD=rmw */
+static int rmw_reads = 4;
+static int use_zipf;
+static int emit_csv;
+static double *zipf_cdf;	/* [hotkeys], built once when use_zipf */
+static double recs_per_leaf;	/* measured after seeding */
+static u_int32_t leaf_pg, ndata;
 static atomic_int stop;
 static atomic_int go;
 static atomic_int panicked;	/* set on DB_RUNRECOVERY: stop, don't spin */
@@ -122,7 +173,7 @@ slot_key(char *kbuf, size_t sz, int i)
 	snprintf(kbuf, sz, "k%08d", i);
 }
 
-/* Build the value string val, padded to SSI_PAD so ~2 records per leaf. */
+/* Build the value string val, padded to valsz so ~2..3 records per leaf. */
 static void
 make_value(char *vbuf, size_t vsz, int newval)
 {
@@ -143,6 +194,8 @@ make_value(char *vbuf, size_t vsz, int newval)
  */
 #define	IS_SSI_ABORT(r)	((r) == DB_SNAPSHOT_CONFLICT || (r) == DB_SNAPSHOT_UNSAFE)
 
+static void rmw_txn(targ_t *);
+
 /*
  * One write-skew transaction, RING form.  Worker at ring position p (0..N-1)
  * OWNS write key index p*spread and READS the next position's write key index
@@ -157,11 +210,18 @@ one_txn(targ_t *t)
 {
 	DB_TXN *txn;
 	DBT key, data;
-	char kbuf[32], vbuf[SSI_PAD + 1];
+	char kbuf[32], vbuf[SSI_PAD_MAX + 1];
 	int wkey, rkey, ret, val;
 
+	if (rmw_mode) {
+		rmw_txn(t);
+		return;
+	}
+
 	wkey = t->idx * t->spread;
-	rkey = ((t->idx + 1) % t->nthreads) * t->spread;
+	rkey = ((t->idx + 1) % t->nthreads) * t->spread + read_off;
+	if (rkey >= hotkeys)		/* stay inside the seeded hot set */
+		rkey %= hotkeys;
 
 	if (env->txn_begin(env, NULL, &txn, iso_level) != 0) {
 		t->other++;
@@ -185,7 +245,7 @@ one_txn(targ_t *t)
 
 	/* Write own key = f(neighbour): a real read/write antidependency. */
 	slot_key(kbuf, sizeof(kbuf), wkey);
-	make_value(vbuf, sizeof(vbuf), val + 1);
+	make_value(vbuf, (size_t)valsz + 1, val + 1);
 	memset(&data, 0, sizeof(data));
 	key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
 	data.data = vbuf; data.size = (u_int32_t)strlen(vbuf) + 1;
@@ -213,6 +273,114 @@ conflict:
 	else t->deadlock++;
 }
 
+/*
+ * xorshift32 -- per-thread, no shared state (rand_r would still be fine but a
+ * shared-nothing generator keeps the measured contention purely libdb's).
+ */
+static unsigned
+next_rand(targ_t *t)
+{
+	unsigned x = t->seed;
+	x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+	return ((t->seed = x));
+}
+
+/* Draw a hot-set index: uniform, or Zipf(theta) via the prebuilt CDF. */
+static int
+draw_key(targ_t *t)
+{
+	double u;
+	int lo, hi, mid;
+
+	if (!use_zipf || zipf_cdf == NULL)
+		return ((int)(next_rand(t) % (unsigned)hotkeys));
+	u = (double)next_rand(t) / 4294967296.0;
+	lo = 0; hi = hotkeys - 1;
+	while (lo < hi) {		/* first index with cdf >= u */
+		mid = lo + (hi - lo) / 2;
+		if (zipf_cdf[mid] < u) lo = mid + 1; else hi = mid;
+	}
+	return (lo);
+}
+
+static void
+build_zipf(double theta)
+{
+	double sum = 0, acc = 0;
+	int i;
+
+	if ((zipf_cdf = calloc((size_t)hotkeys, sizeof(*zipf_cdf))) == NULL)
+		return;
+	for (i = 0; i < hotkeys; i++)
+		sum += 1.0 / pow((double)(i + 1), theta);
+	for (i = 0; i < hotkeys; i++) {
+		acc += (1.0 / pow((double)(i + 1), theta)) / sum;
+		zipf_cdf[i] = acc;
+	}
+	zipf_cdf[hotkeys - 1] = 1.0;
+}
+
+/*
+ * A REALISTIC read-modify-write transaction: read SSI_READS keys drawn from the
+ * key space, then write ONE key (also drawn) to sum+1.  Unlike the ring this is
+ * NOT key-disjoint by construction, so it has a genuine conflict rate of its
+ * own; page granularity adds to that rate rather than creating it from nothing.
+ * This is the shape a user's workload has, and the ring is its worst case.
+ */
+static void
+rmw_txn(targ_t *t)
+{
+	DB_TXN *txn;
+	DBT key, data;
+	char kbuf[32], vbuf[SSI_PAD_MAX + 1];
+	int i, ret, sum = 0, wkey;
+
+	if (env->txn_begin(env, NULL, &txn, iso_level) != 0) {
+		t->other++;
+		return;
+	}
+	for (i = 0; i < rmw_reads; i++) {
+		memset(&key, 0, sizeof(key));
+		memset(&data, 0, sizeof(data));
+		slot_key(kbuf, sizeof(kbuf), draw_key(t));
+		key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
+		data.flags = DB_DBT_MALLOC;
+		ret = db->get(db, txn, &key, &data, 0);
+		if (ret == 0 && data.data != NULL) {
+			sum += atoi((char *)data.data);
+			free(data.data);
+		} else if (ret == DB_LOCK_DEADLOCK || IS_SSI_ABORT(ret))
+			goto conflict;
+	}
+	wkey = draw_key(t);
+	memset(&key, 0, sizeof(key));
+	memset(&data, 0, sizeof(data));
+	slot_key(kbuf, sizeof(kbuf), wkey);
+	make_value(vbuf, (size_t)valsz + 1, sum + 1);
+	key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
+	data.data = vbuf; data.size = (u_int32_t)strlen(vbuf) + 1;
+	ret = db->put(db, txn, &key, &data, 0);
+	if (ret == DB_LOCK_DEADLOCK || IS_SSI_ABORT(ret))
+		goto conflict;
+	if (ret != 0) {
+		(void)txn->abort(txn);
+		if (ret == DB_RUNRECOVERY) atomic_store(&panicked, 1);
+		t->other++;
+		return;
+	}
+	ret = txn->commit(txn, 0);
+	if (ret == 0) { t->committed++; return; }
+	if (IS_SSI_ABORT(ret)) { t->aborted++; return; }
+	if (ret == DB_LOCK_DEADLOCK) { t->deadlock++; return; }
+	if (ret == DB_RUNRECOVERY) atomic_store(&panicked, 1);
+	t->other++;
+	return;
+conflict:
+	(void)txn->abort(txn);
+	if (IS_SSI_ABORT(ret)) t->aborted++;
+	else t->deadlock++;
+}
+
 static void *
 worker(void *arg)
 {
@@ -230,7 +398,8 @@ run(int nthreads, int secs)
 	int i, spread;
 	long c = 0, a = 0, d = 0, o = 0, total;
 
-	spread = hotkeys / nthreads;	/* index gap between adjacent write keys */
+	spread = spread_override > 0 ?
+	    spread_override : hotkeys / nthreads;
 
 	ta = calloc((size_t)nthreads, sizeof(*ta));
 	atomic_store(&stop, 0); atomic_store(&go, 0); atomic_store(&panicked, 0);
@@ -256,8 +425,21 @@ run(int nthreads, int secs)
 	    iso_level_name, nthreads, hotkeys, spread, c, a, d, o,
 	    total ? 100.0 * (double)(a + d) / (double)total : 0.0,
 	    (double)total / secs,
-	    spread < SSI_MIN_SPREAD ? "  [SPREAD TOO SMALL -- deadlocks expected]" : "",
+	    (!rmw_mode && spread < SSI_MIN_SPREAD) ?
+		"  [SPREAD TOO SMALL -- deadlocks expected]" : "",
 	    atomic_load(&panicked) ? "  [ENV PANIC -- see note]" : "");
+	if (!rmw_mode && read_off > 0 && read_off % spread == 0)
+		printf("  [INVALID: read_off %d is a multiple of spread %d -- "
+		    "the read key IS another worker's write key, so the "
+		    "logical conflict graph is NOT empty]\n", read_off, spread);
+	if (emit_csv)
+		printf("CSV,%s,%s,%u,%d,%d,%d,%d,%d,%d,%u,%u,%.2f,%ld,%ld,%ld,"
+		    "%ld,%.0f,%d\n",
+		    rmw_mode ? (use_zipf ? "rmw-zipf" : "rmw-uniform") :
+			(read_off ? "ring-decoy" : "ring"),
+		    iso_level_name, pagesize, valsz, hotkeys, nthreads, spread,
+		    read_off, secs, ndata, leaf_pg, recs_per_leaf, c, a, d, o,
+		    (double)total / secs, atomic_load(&panicked));
 	free(ta);
 }
 
@@ -287,12 +469,12 @@ static int
 write_key(DB_TXN *txn, int i, int newval)
 {
 	DBT key, data;
-	char kbuf[32], vbuf[SSI_PAD + 1];
+	char kbuf[32], vbuf[SSI_PAD_MAX + 1];
 
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 	slot_key(kbuf, sizeof(kbuf), i);
-	make_value(vbuf, sizeof(vbuf), newval);
+	make_value(vbuf, (size_t)valsz + 1, newval);
 	key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
 	data.data = vbuf; data.size = (u_int32_t)strlen(vbuf) + 1;
 	return (db->put(db, txn, &key, &data, 0));
@@ -387,13 +569,95 @@ parse_iso_level(void)
 	return (0);
 }
 
+/*
+ * The false-abort-rate knobs.  Every one defaults to the historical value, so
+ * an invocation with no new environment variables behaves exactly as before.
+ */
+static int
+parse_knobs(void)
+{
+	const char *s;
+
+	if ((s = getenv("SSI_PAGESIZE")) != NULL) {
+		pagesize = (u_int32_t)atoi(s);
+		if (pagesize < 512 || pagesize > 65536 ||
+		    (pagesize & (pagesize - 1)) != 0) {
+			fprintf(stderr, "SSI_PAGESIZE must be a power of two "
+			    "in [512,65536]\n");
+			return (-1);
+		}
+	}
+	if ((s = getenv("SSI_VALSZ")) != NULL) {
+		valsz = atoi(s);
+		if (valsz < 8 || valsz > SSI_PAD_MAX) {
+			fprintf(stderr, "SSI_VALSZ must be in [8,%d]\n",
+			    SSI_PAD_MAX);
+			return (-1);
+		}
+	}
+	if ((s = getenv("SSI_SPREAD")) != NULL) {
+		spread_override = atoi(s);
+		if (spread_override < 1) {
+			fprintf(stderr, "SSI_SPREAD must be >= 1\n");
+			return (-1);
+		}
+	}
+	if ((s = getenv("SSI_READ_OFF")) != NULL) {
+		read_off = atoi(s);
+		if (read_off < 0) {
+			fprintf(stderr, "SSI_READ_OFF must be >= 0\n");
+			return (-1);
+		}
+	}
+	if ((s = getenv("SSI_ENV")) != NULL && *s != '\0')
+		env_home = s;
+	if ((s = getenv("SSI_WORKLOAD")) != NULL) {
+		if (strcmp(s, "rmw") == 0)
+			rmw_mode = 1;
+		else if (strcmp(s, "ring") != 0) {
+			fprintf(stderr, "SSI_WORKLOAD must be ring or rmw\n");
+			return (-1);
+		}
+	}
+	if ((s = getenv("SSI_READS")) != NULL) {
+		rmw_reads = atoi(s);
+		if (rmw_reads < 1 || rmw_reads > 256) {
+			fprintf(stderr, "SSI_READS must be in [1,256]\n");
+			return (-1);
+		}
+	}
+	if ((s = getenv("SSI_ZIPF")) != NULL && atoi(s) != 0)
+		use_zipf = 1;
+	if ((s = getenv("SSI_CSV")) != NULL && atoi(s) != 0)
+		emit_csv = 1;
+	return (0);
+}
+
+/*
+ * Measure records-per-leaf EMPIRICALLY rather than assuming ~3: DB->stat gives
+ * bt_ndata (data items) and bt_leaf_pg (leaf pages), and their ratio is the
+ * granularity x-axis every false-abort number is plotted against.
+ */
+static void
+measure_fill(void)
+{
+	DB_BTREE_STAT *sp = NULL;
+
+	if (db->stat(db, NULL, &sp, DB_FAST_STAT) != 0 || sp == NULL)
+		return;
+	ndata = sp->bt_ndata;
+	leaf_pg = sp->bt_leaf_pg;
+	recs_per_leaf = leaf_pg ? (double)ndata / (double)leaf_pg : 0.0;
+	free(sp);
+}
+
 int
 main(int argc, char **argv)
 {
 	DB_TXN *txn;
 	int i, secs, ret, do_selfcheck = 0;
 
-	if (parse_iso_level() != 0)
+	if (parse_iso_level() != 0 || parse_knobs() != 0)
 		return (2);
 
 	/* --selfcheck runs the deterministic two-txn sanity and exits. */
@@ -420,11 +684,17 @@ main(int argc, char **argv)
 		 * Grow the hot set so the spread SP = hotkeys/threads stays
 		 * >= SSI_MIN_SPREAD for the LARGEST thread count -- otherwise
 		 * adjacent workers' write keys share a leaf page and deadlock.
+		 * SSI_SPREAD (the false-abort sweep) opts out deliberately: it
+		 * exists precisely to co-locate keys, so it sizes the hot set
+		 * to the ring instead.  rmw needs the whole key space as-is.
 		 */
 		for (j = 3; j < argc; j++)
 			if (atoi(argv[j]) > maxthreads)
 				maxthreads = atoi(argv[j]);
-		if (maxthreads > 0 &&
+		if (spread_override > 0) {
+			if (!rmw_mode && hotkeys < maxthreads * spread_override)
+				hotkeys = maxthreads * spread_override;
+		} else if (!rmw_mode && maxthreads > 0 &&
 		    hotkeys < maxthreads * SSI_MIN_SPREAD) {
 			hotkeys = maxthreads * SSI_MIN_SPREAD;
 			fprintf(stderr,
@@ -434,7 +704,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	(void)mkdir("/tmp/ssi_abort_env", 0755);
+	(void)mkdir(env_home, 0755);
 	if ((ret = db_env_create(&env, 0)) != 0) goto err;
 	env->set_cachesize(env, 0, 64 * 1024 * 1024, 1);
 	/* Size the lock region generously so exhaustion isn't the variable. */
@@ -456,12 +726,12 @@ main(int argc, char **argv)
 	 * leaving a dirty region.  Always run recovery on open so a stale
 	 * environment is cleaned rather than hanging or crashing the next run.
 	 */
-	if ((ret = env->open(env, "/tmp/ssi_abort_env",
+	if ((ret = env->open(env, env_home,
 	    DB_CREATE | DB_RECOVER | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
 	    DB_INIT_TXN | DB_THREAD | DB_MULTIVERSION, 0644)) != 0) goto err;
 	if ((ret = db_create(&db, env, 0)) != 0) goto err;
-	/* Small pages + padded values so the btree packs ~3 records per leaf. */
-	if ((ret = db->set_pagesize(db, SSI_PAGESIZE)) != 0) goto err;
+	/* Page size is THE granularity lever (SSI_PAGESIZE); 1024 by default. */
+	if ((ret = db->set_pagesize(db, pagesize)) != 0) goto err;
 	if ((ret = db->open(db, NULL, "ssi.db", NULL, DB_BTREE,
 	    DB_CREATE | DB_AUTO_COMMIT | DB_THREAD | DB_MULTIVERSION,
 	    0644)) != 0) goto err;
@@ -479,6 +749,19 @@ main(int argc, char **argv)
 			(void)write_key(txn, i, 0);
 	}
 	txn->commit(txn, 0);
+	measure_fill();
+	if (use_zipf && !do_selfcheck)
+		build_zipf(0.99);
+	if (emit_csv)
+		printf("CSV,workload,level,pagesize,valsz,hotkeys,threads,"
+		    "spread,read_off,secs,ndata,leaf_pg,recs_per_leaf,commit,"
+		    "ssi_abort,deadlock,other,txn_per_sec,panicked\n");
+	else
+		printf("# pagesize=%u valsz=%d ndata=%u leaf_pg=%u "
+		    "recs_per_leaf=%.2f workload=%s read_off=%d\n", pagesize,
+		    valsz, ndata, leaf_pg, recs_per_leaf,
+		    rmw_mode ? (use_zipf ? "rmw-zipf" : "rmw-uniform") : "ring",
+		    read_off);
 
 	if (do_selfcheck) {
 		ret = selfcheck();
@@ -492,6 +775,7 @@ main(int argc, char **argv)
 
 	db->close(db, 0);
 	env->close(env, 0);
+	free(zipf_cdf);
 	return (0);
 err:
 	fprintf(stderr, "error: %s\n", db_strerror(ret));
