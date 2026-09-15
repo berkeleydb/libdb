@@ -342,22 +342,38 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	 * existing environment fail to attach (see dbinc/os_aio.h).
 	 *
 	 * KNOWN ISSUE (opt-in path only, not a default-path defect).  With
-	 * DB_MPOOL_AIO on, THIS loop is where the aio-mode stall lands:
-	 * measured 2 hangs in 40 runs of test/c/aio_concurrent_sync "aio"
-	 * mode (sync mode 0/84), permanent, not slow.  Captured stacks show
-	 * all three async-capable sync callers (checkpoint, memp_sync,
-	 * DB->sync) parked in the required_write retry below -- which by
-	 * design never gives up on a BH_EXCLUSIVE buffer -- while every
-	 * writer thread is blocked in __lock_get_internal on the metadata
-	 * page lock for a btree split.  No thread waits on mtx_aio (it is
-	 * TRYLOCK-only, so it cannot be a blocking edge).
+	 * DB_MPOOL_AIO on, this function DEADLOCKS in roughly 5% of runs of
+	 * test/c/aio_concurrent_sync "aio" mode (measured 2/40; sync mode
+	 * 0/84).  It is permanent, not slow.  The cycle, from a bt-full
+	 * capture, is aio-specific and structural rather than a timing
+	 * coincidence:
 	 *
-	 * It is NOT the cross-reap corruption this latch fixes: lost=0 and
-	 * db_recover + db_verify are clean on every stalled run, whereas the
-	 * unlatched path SEGVs in __aio_uring_reap.  DB_MPOOL_AIO is
-	 * default-OFF, so no default path is affected.  Before that default
-	 * could flip, the BH_EXCLUSIVE holder must be identified and
-	 * required_write's unbounded retry reconsidered.
+	 *  1) The caller that WON this latch is below at the
+	 *     MUTEX_READLOCK(bhp->mtx_buf) for its next buffer, blocking --
+	 *     while it already holds the pins (ref + shared mtx_buf) of
+	 *     several deferred async writes.  The deferred path intentionally
+	 *     holds each pin until the write completes, and only drains when
+	 *     nflight reaches MEMP_AIO_WINDOW, so with a partly-full window it
+	 *     blocks while holding buffers hostage (observed: nflight == 5 of
+	 *     16, all five aiow[] slots still done == 0).
+	 *  2) A writer thread needs one of those pinned buffers EXCLUSIVE, via
+	 *     __memp_fget under __bam_split, so it blocks on the same mtx_buf.
+	 *  3) That writer holds the PGNO_BASE_MD write lock, so the remaining
+	 *     writers pile up in __lock_get_internal behind it.
+	 *
+	 * The other sync callers are victims, not participants: they show
+	 * use_aio == 0 (they lost the trylock and are on the synchronous
+	 * path) and merely spin in the required_write retry.  Nothing waits on
+	 * mtx_aio itself -- it is TRYLOCK-only and cannot be a blocking edge.
+	 *
+	 * This is NOT the cross-reap corruption this latch fixes.  lost=0 and
+	 * db_recover + db_verify are clean every time, whereas the unlatched
+	 * path SEGVs in __aio_uring_reap.  DB_MPOOL_AIO is default-OFF, so no
+	 * default path is affected.  The two candidate fixes, neither taken
+	 * here because this is a release-blocker fix and aio is opt-in: drain
+	 * the window before blocking on a new buffer, or use
+	 * MUTEX_TRY_READLOCK at that acquire and defer the buffer on failure
+	 * (the loop already knows how to come back to a buffer).
 	 */
 	use_aio = 0;
 	if (dbmp->aio_ctx != NULL && __os_aio_ctx_available(dbmp->aio_ctx) &&
