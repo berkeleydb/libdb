@@ -643,7 +643,13 @@ measure_fill(void)
 {
 	DB_BTREE_STAT *sp = NULL;
 
-	if (db->stat(db, NULL, &sp, DB_FAST_STAT) != 0 || sp == NULL)
+	/*
+	 * A FULL stat (flags 0), not DB_FAST_STAT: bt_ndata and bt_leaf_pg are
+	 * only filled by an actual tree traversal, and DB_FAST_STAT reports 0
+	 * for both.  The hot set is small, so the traversal is cheap and it runs
+	 * once, before the measured window.
+	 */
+	if (db->stat(db, NULL, &sp, 0) != 0 || sp == NULL)
 		return;
 	ndata = sp->bt_ndata;
 	leaf_pg = sp->bt_leaf_pg;
