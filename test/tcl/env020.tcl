@@ -196,6 +196,12 @@ proc env020_init { } {
 		"The number of object queue operations that required waiting"
 		"The number of locker allocations that required waiting"
 		"Maximum hash bucket length"
+		# Deployment health lines -- operator alarm signals
+		"Deployment health"
+		"Locker slots in use"
+		"Lock object slots in use"
+		"Lock slots in use"
+		"SSI committed-reader SIREAD markers live"
 	}
 
 	set lk_statprt_pattern_params {
@@ -440,6 +446,9 @@ proc env020_init { } {
 		"Mutex free count"
 		"Mutex in-use count"
 		"Mutex maximum in-use count"
+		# Deployment health lines -- operator alarm signals
+		"Deployment health"
+		"Mutex slots in use"
 		"Mutex counts"
 		"Unallocated"
 		# Mutex type
@@ -656,6 +665,10 @@ proc env020_init { } {
 		"Number of transactions restored"
 		"Region size"
 		"The number of region locks that required waiting"
+		# Deployment health lines -- operator alarm signals
+		"Deployment health"
+		"Active transaction slots in use"
+		"Snapshot txn details retained"
 		# Information for Active transactions
 		"Active transactions"
 		"running.*begin LSN"
