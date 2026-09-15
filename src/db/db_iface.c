@@ -956,6 +956,195 @@ err:		return (__db_ferr(env, "DB->get", 0));
 }
 
 /*
+ * db_get_multiple --
+ *	Fetch N scattered keys in one API crossing.
+ *
+ *	Semantically identical to calling DB->get() once per key: each key is
+ *	looked up by its own B-tree descent, with its own page read lock (or
+ *	SIREAD marker under DB_TXN_SERIALIZABLE), and per-key results land in
+ *	data[i]/ret[i] exactly as the individual call would return them.  What
+ *	is amortized is only the PER-CALL overhead: one ENV_ENTER/ENV_LEAVE,
+ *	one replication-block check, one transaction-consistency check, and
+ *	above all ONE cursor allocate/free pair (cursor-queue partition mutex
+ *	acquisitions) instead of N.
+ *
+ *	This is a free function rather than a DB method because adding a method
+ *	pointer to struct __db would change both sizeof(DB) (public ABI) and
+ *	__env_struct_sig() (src/env/env_sig.c hashes struct __db), and the
+ *	latter makes env_region.c refuse to attach existing environments.
+ *
+ *	On return every rets[i] holds that key's individual return code (0,
+ *	DB_NOTFOUND, DB_BUFFER_SMALL, ...).  The function's own return value is
+ *	0 if every key succeeded or was merely not found, otherwise the first
+ *	non-0/non-DB_NOTFOUND per-key code -- and lookups stop at the first
+ *	such error, exactly where a caller looping over DB->get() and breaking
+ *	on error would stop.  rets may be NULL if the caller does not need
+ *	per-key codes.
+ *
+ * EXTERN: int db_get_multiple __P((DB *, DB_TXN *,
+ * EXTERN:     DBT *, DBT *, int *, u_int32_t, u_int32_t));
+ */
+int
+db_get_multiple(dbp, txn, keys, datas, rets, nkeys, flags)
+	DB *dbp;
+	DB_TXN *txn;
+	DBT *keys, *datas;
+	int *rets;
+	u_int32_t nkeys, flags;
+{
+	DBC *dbc;
+	DB_THREAD_INFO *ip;
+	ENV *env;
+	u_int32_t i, mode;
+	int handle_check, ignore_lease, ret, t_ret;
+
+	env = dbp->env;
+	dbc = NULL;
+	ret = 0;
+
+	STRIP_AUTO_COMMIT(flags);
+	DB_ILLEGAL_BEFORE_OPEN(dbp, "db_get_multiple");
+
+	if (keys == NULL || datas == NULL)
+		return (EINVAL);
+	if (nkeys == 0)
+		return (0);
+
+	ignore_lease = LF_ISSET(DB_IGNORE_LEASE) ? 1 : 0;
+	LF_CLR(DB_IGNORE_LEASE);
+
+	/*
+	 * Only the read flags that are meaningful per-key and cheap to hold
+	 * constant across the batch are accepted.  DB_MULTIPLE, DB_CONSUME*,
+	 * DB_SET_RECNO and the positioning flags are deliberately rejected:
+	 * they either change the cursor's position semantics (which the batch
+	 * resets between keys) or return bulk buffers, and supporting them here
+	 * would not be equivalent to the per-key path.
+	 */
+	if (LF_ISSET(~(DB_READ_COMMITTED |
+	    DB_READ_UNCOMMITTED | DB_RMW | DB_GET_BOTH)) != 0)
+		return (__db_ferr(env, "db_get_multiple", 0));
+	if (LF_ISSET(DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW) &&
+	    !LOCKING_ON(env))
+		return (__db_fnl(env, "db_get_multiple"));
+	if ((ret = __db_fcchk(env, "db_get_multiple",
+	    flags, DB_READ_UNCOMMITTED, DB_READ_COMMITTED)) != 0)
+		return (ret);
+
+	/* Per-key argument checks, before any state is entered. */
+	for (i = 0; i < nkeys; i++) {
+		if ((ret = __dbt_ferr(dbp,
+		    "key", &keys[i], DB_RETURNS_A_KEY(dbp, flags))) != 0)
+			return (ret);
+		if (F_ISSET(&datas[i], DB_DBT_READONLY)) {
+			__db_errx(env, DB_STR("0584",
+			    "DB_DBT_READONLY should not be set on data DBT."));
+			return (EINVAL);
+		}
+		if ((ret = __dbt_ferr(dbp, "data", &datas[i], 1)) != 0)
+			return (ret);
+	}
+
+	/*
+	 * Realize any DB_DBT_USERCOPY key/data up front, as DB->get's argument
+	 * checking does, and free them all on exit.  Doing this before
+	 * ENV_ENTER matches DB->get, whose __db_get_arg runs outside the
+	 * environment.
+	 */
+	for (i = 0; i < nkeys; i++) {
+		if (LF_ISSET(DB_GET_BOTH) &&
+		    (ret = __dbt_usercopy(env, &datas[i])) != 0)
+			goto ufree;
+		if ((ret = __dbt_usercopy(env, &keys[i])) != 0)
+			goto ufree;
+	}
+
+	ENV_ENTER(env, ip);
+	XA_CHECK_TXN(ip, txn);
+
+	/* Check for replication block -- once for the whole batch. */
+	handle_check = IS_ENV_REPLICATED(env);
+	if (handle_check &&
+	    (ret = __db_rep_enter(dbp, 1, 0, IS_REAL_TXN(txn))) != 0) {
+		handle_check = 0;
+		goto err;
+	}
+
+	/* Check for consistent transaction usage -- once for the batch. */
+	if ((ret = __db_check_txn(dbp, txn, DB_LOCK_INVALIDID,
+	    LF_ISSET(DB_RMW) ? 0 : 1)) != 0)
+		goto err;
+
+	/*
+	 * Open one cursor for the whole batch.  DB_CURSOR_TRANSIENT is what
+	 * DB->get uses: it says this cursor does no position restoration on
+	 * error, which is what lets __dbc_iget operate on the cursor itself
+	 * rather than a duplicate.  Every key is a fresh DB_SET search, and
+	 * __bamc_search's DISCARD_CUR drops the previous key's page and (per
+	 * __TLPUT) its read lock when there is no transaction -- identical to
+	 * what closing and reopening the cursor did.
+	 */
+	mode = DB_CURSOR_TRANSIENT;
+	if (LF_ISSET(DB_READ_UNCOMMITTED))
+		mode |= DB_READ_UNCOMMITTED;
+	else if (LF_ISSET(DB_READ_COMMITTED))
+		mode |= DB_READ_COMMITTED;
+	if ((ret = __db_cursor(dbp, ip, txn, &dbc, mode)) != 0)
+		goto err;
+	F_SET(dbc, DBC_FROM_DB_GET);
+	SET_RET_MEM(dbc, dbp);
+
+	for (i = 0; i < nkeys; i++) {
+		u_int32_t kflags;
+
+		kflags = (flags & (DB_RMW | DB_GET_BOTH));
+		if (!LF_ISSET(DB_GET_BOTH))
+			kflags |= DB_SET;
+
+		DEBUG_LREAD(dbc, txn, "db_get_multiple", &keys[i], NULL, flags);
+#ifdef HAVE_PARTITION
+		if (F_ISSET(dbc, DBC_PARTITIONED))
+			t_ret = __partc_get(dbc, &keys[i], &datas[i], kflags);
+		else
+#endif
+			t_ret = __dbc_get(dbc, &keys[i], &datas[i], kflags);
+		if (rets != NULL)
+			rets[i] = t_ret;
+		if (t_ret != 0 && t_ret != DB_NOTFOUND) {
+			/*
+			 * Stop where a caller looping over DB->get() and
+			 * breaking on error would stop.  Any remaining rets[]
+			 * entries are left as the caller supplied them.
+			 */
+			ret = t_ret;
+			break;
+		}
+	}
+
+	/*
+	 * Master-lease check: one per call, as DB->get does.  A lease covers
+	 * the reads performed under it, so checking once after the batch is the
+	 * same guarantee N calls would give -- with the batch, a lease that
+	 * expires mid-batch fails the whole batch.
+	 */
+	if (ret == 0 &&
+	    IS_REP_MASTER(env) && IS_USING_LEASES(env) && !ignore_lease)
+		ret = __rep_lease_check(env, 1);
+
+err:	if (dbc != NULL && (t_ret = __dbc_close(dbc)) != 0 && ret == 0)
+		ret = t_ret;
+
+	/* Release replication block. */
+	if (handle_check && (t_ret = __env_db_rep_exit(env)) != 0 && ret == 0)
+		ret = t_ret;
+
+	ENV_LEAVE(env, ip);
+ufree:	for (i = 0; i < nkeys; i++)
+		__dbt_userfree(env, &keys[i], NULL, &datas[i]);
+	return (ret);
+}
+
+/*
  * __db_join_pp --
  *	DB->join pre/post processing.
  *
