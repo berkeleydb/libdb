@@ -40,6 +40,10 @@ set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$HERE"
 
+# Verdict emission for the test-execution manifest gate (test/MANIFEST).
+. "$HERE/../harness.sh"
+hi_init isolation "$HERE/.."
+
 CC=${CC:-cc}
 LIBDB_BUILD=${LIBDB_BUILD:-"$HERE/../../build_unix"}
 ISO_TIMEOUT=${ISO_TIMEOUT:-300}
@@ -96,40 +100,73 @@ run_ssi_gates() {
 	echo "--- SSI gate: marker GC must not drop a marker early"\
 	    "(ISO_LEVEL=$_lvl)"
 	mkdir -p "gc-$_lvl"
-	( cd "gc-$_lvl" && ISO_LEVEL="$_lvl" \
-	    timeout "$ISO_TIMEOUT" ../test_ssi_gc_pressure ) || _rc=$?
+	if ( cd "gc-$_lvl" && ISO_LEVEL="$_lvl" \
+	    timeout "$ISO_TIMEOUT" ../test_ssi_gc_pressure ); then
+		hi_emit "ssi_gc_pressure@$_lvl" pass
+	else
+		_rc=$?
+		hi_emit "ssi_gc_pressure@$_lvl" fail
+	fi
 
 	if [ "$_lvl" = "serializable" ]; then
 		echo "--- SSI gate: a pivot must not survive a crash in its"\
 		    "commit window"
 		if [ "$have_diagnostic" = "1" ]; then
 			mkdir -p crash
-			( cd crash &&
-			    timeout "$ISO_TIMEOUT" ../test_ssi_crash_pivot ) ||
-			    _rc=$?
+			if ( cd crash && timeout "$ISO_TIMEOUT" \
+			    ../test_ssi_crash_pivot ); then
+				hi_emit ssi_crash_pivot pass
+			else
+				_rc=$?
+				hi_emit ssi_crash_pivot fail
+			fi
 		else
 			echo "    SKIP: library was not built with"\
 			    "--enable-diagnostic, so the in-commit crash"\
 			    "points are unreachable"
+			# Record the SKIP as a verdict.  "Not built for it" and
+			# "nobody invoked it" must not look the same to the gate.
+			hi_emit ssi_crash_pivot skip
 		fi
 	fi
 	return $_rc
 }
 
+# hi_run_anomaly LEVEL -- run the anomaly driver at LEVEL, capture its output
+# to a log (NOT through a pipe: `sh` has no pipefail, so `driver | tee` would
+# report tee's status and hide a failing driver -- the same class of defect the
+# manifest gate exists to catch), then translate its per-scenario verdicts.
+hi_run_anomaly() {
+	_lvl=$1; shift
+	_log="iso-$_lvl.log"
+	_r=0
+	ISO_LEVEL="$_lvl" timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" \
+	    > "$_log" 2>&1 || _r=$?
+	cat "$_log"
+	hi_scan "$_log" "$_lvl"
+	return $_r
+}
+
 # Choose the isolation level(s) to exercise.  Default: both, so a single run
 # demonstrates the SI-anomaly-visible vs SSI-prevented contract.
+#
+# The anomaly driver's per-scenario verdicts are translated into RESULT lines by
+# hi_scan rather than by teaching the driver a second output format: it already
+# prints "== NAME ==" and an indented PASS/FAIL/XFAIL/SKIP, which is all the
+# gate needs.  The level is part of the recorded name, so losing one whole
+# isolation level (trap 3's shape) fails the gate.
 LEVELS=${ISO_LEVEL:-both}
 if [ "$LEVELS" = "both" ]; then
 	rc=0
 	echo "=== ISO_LEVEL=snapshot (plain SI: anomalies expected) ==="
-	ISO_LEVEL=snapshot timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
+	hi_run_anomaly snapshot "$@" || rc=$?
 	run_ssi_gates snapshot || rc=$?
 	echo "=== ISO_LEVEL=serializable (SSI: anomalies prevented) ==="
-	ISO_LEVEL=serializable timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
+	hi_run_anomaly serializable "$@" || rc=$?
 	run_ssi_gates serializable || rc=$?
 	exit $rc
 fi
 rc=0
-env ISO_LEVEL="$LEVELS" timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
+hi_run_anomaly "$LEVELS" "$@" || rc=$?
 run_ssi_gates "$LEVELS" || rc=$?
 exit $rc

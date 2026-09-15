@@ -1,0 +1,139 @@
+# test/MANIFEST -- the test-execution manifest.
+#
+# THE SOURCE OF TRUTH for "which tests are expected to actually run".
+# test/check_manifest.sh compares this against the RESULT lines the tier
+# runners emit (see test/harness.sh) and FAILS when a listed test produced no
+# verdict.  A test that nobody invoked is a vacuous green; this file is what
+# makes that state detectable instead of indistinguishable from success.
+#
+# FORMAT (deliberately not TOML/YAML/JSON):
+#
+#     <tier> <name> [optional]
+#
+# One flat, line-oriented, comment-friendly file.  Chosen over MANIFEST.toml
+# and over per-tier EXPECTED files because:
+#   - the checker must run in POSIX sh + awk on every CI runner and in the
+#     autoconf build, with no import of tomllib (absent before python 3.11) and
+#     no new build-time dependency, which the brief forbids;
+#   - one file means one place to look and one place to grep.  The historical
+#     bugs were all "two lists drifted apart" (LEAK_TESTS vs leak-run.sh,
+#     $subs vs the ssi test files).  Adding 24 more per-tier lists to keep in
+#     step would recreate exactly that failure mode;
+#   - `optional` on the third field means "run it if the tier ran at all, but
+#     an absent verdict is not a failure" -- for cases that depend on a build
+#     flag (a DIAGNOSTIC-only crash hook) or on a tier CI does not schedule on
+#     every trigger.  Everything without it is MANDATORY.
+#
+# HOW TO ADD A TEST: add the line here AND make the runner emit its verdict.
+# The gate exists so that doing only one of the two fails loudly.
+
+# ---------------------------------------------------------------------------
+# Tier B1 -- isolation / anomaly checker.   test/isolation/run.sh
+# Hard gate on every push/PR (.github/workflows/test-tiers.yml).
+#
+# Every scenario runs at BOTH isolation levels, and the level is part of the
+# expectation: "@snapshot" proves the anomaly is VISIBLE under plain SI, which
+# is what makes the "@serializable" clean run non-vacuous.  Losing one level
+# (the shape of trap 3: half the suite silently not sourced) fails here.
+# ---------------------------------------------------------------------------
+isolation	write_skew_trigger@snapshot
+isolation	write_skew_trigger@serializable
+isolation	write_skew_control@snapshot
+isolation	write_skew_control@serializable
+isolation	write_skew_late@snapshot
+isolation	write_skew_late@serializable
+isolation	write_skew_samebtree_control@snapshot
+isolation	write_skew_samebtree_control@serializable
+isolation	write_skew_samebtree_trigger@snapshot
+isolation	write_skew_samebtree_trigger@serializable
+isolation	g2_antidep@snapshot
+isolation	g2_antidep@serializable
+isolation	read_only_anomaly@snapshot
+isolation	read_only_anomaly@serializable
+isolation	lost_update@snapshot
+isolation	lost_update@serializable
+isolation	read_your_writes@snapshot
+isolation	read_your_writes@serializable
+# The two SSI mechanism gates.  ssi_gc_pressure runs at both levels (the
+# snapshot pass is the anti-vacuity control).  ssi_crash_pivot needs a
+# DIAGNOSTIC build for its in-commit crash hook, so it is optional -- but the
+# runner emits `skip` when the hook is absent, so "it did not run" is still
+# recorded rather than inferred.
+isolation	ssi_gc_pressure@snapshot
+isolation	ssi_gc_pressure@serializable
+isolation	ssi_crash_pivot	optional
+
+# ---------------------------------------------------------------------------
+# Tier B2 -- resource-accounting soak.   test/soak/run.sh
+# Scheduled/dispatch only, so every entry is optional: on a push trigger the
+# tier legitimately does not run.  What is NOT optional is the shape -- if the
+# soak runs and produces a partial set, the missing workloads fail the gate.
+# (Enforced by check_manifest.sh: a tier with SOME verdicts must have ALL its
+# mandatory ones; optional entries are only excused when the whole tier is
+# absent.)
+# ---------------------------------------------------------------------------
+soak	ro_snapshot	optional
+soak	mvcc_retained	optional
+soak	rw_plain	optional
+soak	aborted	optional
+soak	cursor_churn	optional
+
+# ---------------------------------------------------------------------------
+# Tier B3 -- lock-mode matrix under ASan.   test/lockmatrix/run.sh
+# Hard gate.  Three sections, each a real verdict.
+# ---------------------------------------------------------------------------
+lockmatrix	modes
+lockmatrix	conflicts
+lockmatrix	list
+
+# ---------------------------------------------------------------------------
+# Resource-accounting / correctness leak drivers.   test/c/leak-run.sh
+#
+# THIS IS WHERE THREE OF THE FOUR HISTORICAL TRAPS LIVED.  The list below is
+# the union of dist/Makefile.in's LEAK_TESTS and the modes leak-run.sh actually
+# runs; keeping it here means a driver added to LEAK_TESTS but never invoked
+# (trap 1) fails the gate, and a driver dropped from the runner (trap 2) does
+# too.
+#
+# FINDING: this tier is invoked by NO workflow (see the report).  It is wired
+# into ci.yml by this change, which is why the entries are mandatory.
+# ---------------------------------------------------------------------------
+leak	leak_si_locker@control
+leak	leak_si_locker@snapshot
+leak	leak_si_mvcc_mtx@no-read
+leak	leak_si_mvcc_mtx@read
+leak	health_stats@control
+leak	health_stats@si137
+leak	health_stats@si138
+leak	mvcc_purge_visible
+leak	aio_concurrent_sync@sync
+# "aio" mode has a documented known deadlock (DB_MPOOL_AIO is default-OFF); the
+# runner records it as `skip`, which is still a verdict -- the point is that the
+# line must EXIST.
+leak	aio_concurrent_sync@aio
+
+# ---------------------------------------------------------------------------
+# test/db/ single-bug regression runners.   Invoked directly from ci.yml's
+# build matrix (config == default).  Each script prints "<name>: PASS|FAIL".
+# ---------------------------------------------------------------------------
+db	run_hash_unsorted_cmp
+db	run_recd_compact
+db	run_recd_handlers
+db	run_upgrade
+db	run_lock_priority_nullderef
+db	run_null_method_slots
+db	run_qam_extent_vrfy
+db	run_db_verify_multifile
+db	run_qam_readpath_bound
+
+# ---------------------------------------------------------------------------
+# TCL suite.  The targeted per-push subset only (the full run_std suite is
+# ci-extended.yml and enumerating ~400 TCL tests here would be a second list
+# to drift).  These five are the ones ci.yml claims to run; trap 3 was `ssi`
+# not being sourced at all, so ssi001/ssi002 being present here is the point.
+# ---------------------------------------------------------------------------
+tcl	lock001
+tcl	txn001
+tcl	test001
+tcl	ssi001
+tcl	ssi002
