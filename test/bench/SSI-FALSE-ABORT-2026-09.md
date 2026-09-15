@@ -81,6 +81,18 @@ And because plain ≈ decoy at every page size (artifact fraction 0.94–1.04 fo
 uniform, 0.75–1.05 for Zipfian), the *genuine* edges in the realistic workload
 contribute almost nothing next to the artifact.
 
+Re-run independently after the sweeps completed, as a fresh 3-rep A/B at the
+decisive point (pagesize 32 768, uniform, 8 threads, 5 s), on a fresh environment
+per run:
+
+| arm | reps | ssi_abort median | [min..max] | abort rate |
+|---|---:|---:|---:|---:|
+| decoy (co-located) | 3 | 2 218 | 2 164..2 221 | **11.266%** |
+| split (separated) | 3 | 0 | 0..1 | **0.000%** |
+
+Same binary, same empty logical conflict graph, same records-per-leaf (370.37).
+The only difference is whether the read keys and the write keys share leaves.
+
 ### The mechanism, isolated
 
 The clearest single result is the read-offset decay on the write-skew ring. Each
