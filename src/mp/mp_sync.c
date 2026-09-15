@@ -341,11 +341,23 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	 * __env_region_attach checks, so growing DB_MPOOL would make every
 	 * existing environment fail to attach (see dbinc/os_aio.h).
 	 *
-	 * KNOWN ISSUE (opt-in path): with DB_MPOOL_AIO on, this sync loop
-	 * stalls permanently in ~3 of 67 runs of test/c/aio_concurrent_sync
-	 * "aio" mode (sync mode 0/84).  Distinct from and milder than the
-	 * cross-reap corruption this latch fixes -- lost=0, db_verify clean
-	 * after recovery -- and DB_MPOOL_AIO is default-OFF.
+	 * KNOWN ISSUE (opt-in path only, not a default-path defect).  With
+	 * DB_MPOOL_AIO on, THIS loop is where the aio-mode stall lands:
+	 * measured 2 hangs in 40 runs of test/c/aio_concurrent_sync "aio"
+	 * mode (sync mode 0/84), permanent, not slow.  Captured stacks show
+	 * all three async-capable sync callers (checkpoint, memp_sync,
+	 * DB->sync) parked in the required_write retry below -- which by
+	 * design never gives up on a BH_EXCLUSIVE buffer -- while every
+	 * writer thread is blocked in __lock_get_internal on the metadata
+	 * page lock for a btree split.  No thread waits on mtx_aio (it is
+	 * TRYLOCK-only, so it cannot be a blocking edge).
+	 *
+	 * It is NOT the cross-reap corruption this latch fixes: lost=0 and
+	 * db_recover + db_verify are clean on every stalled run, whereas the
+	 * unlatched path SEGVs in __aio_uring_reap.  DB_MPOOL_AIO is
+	 * default-OFF, so no default path is affected.  Before that default
+	 * could flip, the BH_EXCLUSIVE holder must be identified and
+	 * required_write's unbounded retry reconsidered.
 	 */
 	use_aio = 0;
 	if (dbmp->aio_ctx != NULL && __os_aio_ctx_available(dbmp->aio_ctx) &&
