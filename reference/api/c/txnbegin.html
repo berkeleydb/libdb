@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DB_ENV-&gt;txn_begin() — Berkeley DB 2026.09.4</title>
+  <title>DB_ENV-&gt;txn_begin() — Berkeley DB 2026.09.5</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 2026.09.4</span>
+    <span class="ver">Version 2026.09.5</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -89,6 +89,7 @@
 <li><p><code>DB_TXN_SERIALIZABLE</code></p>
 <p>This transaction will execute with <strong>serializable snapshot isolation</strong> (SSI): snapshot isolation plus serializable conflict detection (the Cahill SSI algorithm). It reads a consistent snapshot exactly as <code>DB_TXN_SNAPSHOT</code> does, and additionally Berkeley DB tracks read/write anti-dependencies between concurrent snapshot transactions and, when it detects a dependency structure that could produce a non-serializable schedule, aborts one of the transactions so the committed history is equivalent to some serial order. Write skew and the read-only-transaction anomaly that <code>DB_TXN_SNAPSHOT</code> admits are prevented under <code>DB_TXN_SERIALIZABLE</code>.</p>
 <p>A transaction that hits such a potential anomaly is aborted with one of two Berkeley DB-specific error returns instead of committing: <a href="../../guides/programmer_reference/program_errorret.html" class="olink">DB_SNAPSHOT_UNSAFE</a> (a potential serializable-snapshot anomaly was detected via a read/write anti-dependency) or <a href="../../guides/programmer_reference/program_errorret.html" class="olink">DB_SNAPSHOT_CONFLICT</a> (a conflicting snapshot update was detected). On either return the application must abort the transaction and may retry it. The error <code>DB_LOCK_DEADLOCK</code> may also be returned from update operations if a serializable transaction attempts to update data modified after it read the snapshot.</p>
+<p>Conflict detection is at <strong>page granularity</strong>, not row granularity: an anti-dependency is recorded between two transactions when they touch the same <em>page</em>, so two transactions operating on different keys that happen to share a B-tree leaf page can be reported as conflicting and one of them aborted. This is a false positive with respect to the keys, but it is a semantic property of the implementation, not a defect — page granularity can only ever cause <em>extra</em> aborts, never a missed conflict, so the committed history is still equivalent to some serial order. Applications that see avoidable retries from this can spread contending keys across different pages (a larger key spread, a smaller page size, or separate databases).</p>
 <p>A <code>DB_TXN_SERIALIZABLE</code> (SSI) transaction <strong>cannot be prepared for two-phase commit</strong>: <a href="txnprepare.html" class="xref" title="DB_TXN-&gt;prepare()">DB_TXN-&gt;prepare()</a> returns <code>EINVAL</code> for such a transaction, because SSI's conflict status is not frozen at prepare time and a later-detected anomaly could not be honored after the transaction had entered the prepared state.</p>
 <blockquote>
 <p><strong>Fixed after 5.3.34.</strong> Release 5.3.34 had two defects affecting serializable snapshot isolation, both now fixed: a write skew could commit when the second transaction's write landed while the first was inside <a href="txncommit.html" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a> (issue #136), and long-lived environments running many serializable transactions could exhaust the mutex region with <code>ENOMEM</code> because reader bookkeeping was not fully reclaimed (issues #137, #138). Each fix is covered by a regression test that runs in continuous integration.</p>
@@ -115,7 +116,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.5 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>

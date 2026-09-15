@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deployment health: what to alarm on — Berkeley DB 2026.09.5</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 2026.09.5</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / guides / programmer_reference</nav>
+  <main>
+<h2 id="deployment-health-what-to-alarm-on">Deployment health: what to alarm on</h2>
+<p>Berkeley DB holds several of its resources in <strong>statically-sized shared regions</strong>. When one of them is exhausted, the failure does not appear where the resource was consumed: it appears later, as a bare <code>ENOMEM</code> returned by some unrelated but perfectly legitimate operation — a <code>DB_ENV-&gt;txn_begin()</code>, a <code>DB-&gt;put()</code>, a cursor open. By then the deployment is already broken, and the statistics that would have explained it describe a state that no longer exists.</p>
+<p>This section names the small set of numbers that predict that failure <strong>before</strong> it happens, where to read each one, what bounds it, and what to do when it moves. Every number below is available through the existing statistics APIs and printed by <a href="../../api/c/db_stat.html" class="olink">db_stat</a>; none of them requires a special build, a debug library, or a restart to observe.</p>
+<h3 id="the-one-number-per-resource-utilization">The one number per resource: utilization</h3>
+<p>For each statically-sized resource, the signal is a ratio:</p>
+<pre><code>utilization = in-use / configured-maximum</code></pre>
+<p>Reading it requires that a maximum actually be <strong>configured</strong>. If you have not set one, the resource grows on demand until the region itself is exhausted, there is no denominator, and the health lines say so explicitly (<code>no maximum configured</code>) rather than printing a misleading <code>0%</code>. <strong>Configuring the maxima is therefore step one of making a deployment alarmable</strong>, not merely a tuning nicety:</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Configure with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lockers</td>
+<td><a href="../../api/c/envset_lk_max_lockers.html" class="olink">DB_ENV-&gt;set_lk_max_lockers()</a></td>
+</tr>
+<tr>
+<td>Lock objects</td>
+<td><a href="../../api/c/envset_lk_max_objects.html" class="olink">DB_ENV-&gt;set_lk_max_objects()</a></td>
+</tr>
+<tr>
+<td>Locks</td>
+<td><a href="../../api/c/envset_lk_max_locks.html" class="olink">DB_ENV-&gt;set_lk_max_locks()</a></td>
+</tr>
+<tr>
+<td>Transactions</td>
+<td><a href="../../api/c/envset_tx_max.html" class="olink">DB_ENV-&gt;set_tx_max()</a></td>
+</tr>
+<tr>
+<td>Mutexes</td>
+<td><a href="../../api/c/mutexset_max.html" class="olink">DB_ENV-&gt;mutex_set_max()</a></td>
+</tr>
+</tbody>
+</table>
+<p>For sizing guidance see <a href="lock_max.html" class="xref" title="Configuring locking: sizing the system">Configuring locking: sizing the system</a> and <a href="env_size.html" class="xref" title="Sizing a database environment">Sizing a database environment</a>.</p>
+<h3 id="the-signals">The signals</h3>
+<p>Each row gives the programmatic source (stable, part of the statistics API), the human-readable <code>db_stat</code> line, and the bound that makes the number meaningful.</p>
+<p><span class="term">Locker slots</span> <code>DB_LOCK_STAT.st_nlockers</code> / <code>st_maxlockers</code>, from <a href="../../api/c/lockstat.html" class="olink">DB_ENV-&gt;lock_stat()</a>. <code>db_stat -c</code>: <strong><code>Locker slots in use</code></strong>. One locker per active transaction, per non-transactional cursor, and per open database handle — plus, under serializable snapshot isolation, per <em>committed</em> reader whose SIREAD markers have not yet been garbage-collected (see below). Exhaustion returns <code>ENOMEM</code> from the next operation that needs a locker.</p>
+<p><span class="term">Lock object slots</span> <code>DB_LOCK_STAT.st_nobjects</code> / <code>st_maxobjects</code>. <code>db_stat -c</code>: <strong><code>Lock object slots in use</code></strong>. One per distinct page (or record, for Queue) under lock.</p>
+<p><span class="term">Lock slots</span> <code>DB_LOCK_STAT.st_nlocks</code> / <code>st_maxlocks</code>. <code>db_stat -c</code>: <strong><code>Lock slots in use</code></strong>.</p>
+<p><span class="term">Mutex slots</span> <code>DB_MUTEX_STAT.st_mutex_inuse</code> / <code>st_mutex_max</code>, from <a href="../../api/c/mutexstat.html" class="olink">DB_ENV-&gt;mutex_stat()</a>. <code>db_stat -x</code>: <strong><code>Mutex slots in use</code></strong>. This is the resource most likely to be exhausted <em>first</em> by the retention effects described below, because every retained locker and every retained transaction detail holds one. Note the denominator: <code>st_mutex_max</code> is the ceiling the region will grow to, whereas <code>st_mutex_cnt</code> is merely what has been allocated so far — utilization against <code>st_mutex_cnt</code> will look alarming while being perfectly healthy.</p>
+<p><span class="term">Active transaction slots</span> <code>DB_TXN_STAT.st_nactive</code> / <code>st_maxtxns</code>, from <a href="../../api/c/txnstat.html" class="olink">DB_ENV-&gt;txn_stat()</a>. <code>db_stat -t</code>: <strong><code>Active transaction slots in use</code></strong>.</p>
+<h3 id="the-leading-indicators-snapshot-and-ssi-retention">The leading indicators: snapshot and SSI retention</h3>
+<p>The two signals below are the ones worth watching most closely, because they move <strong>before</strong> the utilization ratios do, and because they are the ones that grow as a function of <em>application behaviour</em> rather than of concurrency.</p>
+<p>Under snapshot isolation a committed transaction's resources cannot always be released at commit time:</p>
+<ul>
+<li>A committed transaction that <strong>wrote</strong> leaves MVCC versions in the cache. Its <code>TXN_DETAIL</code> (and the mutex it holds) must be retained until those versions become obsolete — that is, until no active reader's snapshot can still see them.</li>
+<li>A committed <strong>serializable</strong> (SSI) reader leaves SIREAD markers on the objects it read, which are needed for conflict detection against transactions still running. Its locker, its mutex, and its <code>TXN_DETAIL</code> are all retained until the last marker is reclaimed.</li>
+</ul>
+<p>Both populations are reclaimed, and both are <strong>bounded</strong> — but the healthy steady state is a <strong>sawtooth</strong>, not a flat line. Reclamation is triggered (at checkpoint, and for SIREAD markers when the live marker count passes a fraction of the lock-object table), so the population climbs, is swept, and climbs again. <strong>A sawtooth is health. A staircase is the problem.</strong></p>
+<p><span class="term">Retained snapshot transaction details</span> <code>DB_TXN_STAT.st_nsnapshot</code>, with <code>st_maxnsnapshot</code> as the high-water mark. <code>db_stat -t</code>: <strong><code>Snapshot txn details retained (MVCC/SSI)</code></strong>. This counts transaction details parked awaiting reclamation, from either cause above. It is reported against <code>st_maxtxns</code> because it consumes the same transaction-region and mutex-region slots that active transactions do. <strong>A value that rises monotonically across checkpoints is the signature to act on</strong>; a value that oscillates within a band is the expected shape.</p>
+<p><span class="term">Live SSI SIREAD markers</span> <code>db_stat -c</code>: <strong><code>SSI committed-reader SIREAD markers live</code></strong>. Reported against its sweep threshold rather than a configured maximum, because that threshold — a fraction of the allocated lock objects — <em>is</em> its bound. This is a deliberately approximate count maintained as a garbage-collection hint, so read it as a trend, not an exact population. Programmatically, track <code>st_nlockers</code> and <code>st_nsnapshot</code>, which move with it and are exact.</p>
+<h3 id="recommended-alarms-and-remedies">Recommended alarms and remedies</h3>
+<p>Sample every scrape interval (a minute is ample; these are cheap reads). Alarm on <strong>sustained</strong> values, not on single samples: the sawtooth means an instantaneous reading near a peak is normal.</p>
+<table>
+<thead>
+<tr>
+<th>Alarm</th>
+<th>Condition</th>
+<th>What it means</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Warning</td>
+<td>any utilization &gt; 0.8 sustained over several intervals</td>
+<td>Headroom is nearly gone; the next burst may fail</td>
+<td>Raise the corresponding maximum. If it is lockers or mutexes, first check for a long-lived snapshot transaction (below)</td>
+</tr>
+<tr>
+<td>Critical</td>
+<td>any utilization &gt; 0.95, or trending up across intervals</td>
+<td>Exhaustion is imminent; <code>ENOMEM</code> is close</td>
+<td>Raise the maximum now; plan a restart if the region cannot be grown in place</td>
+</tr>
+<tr>
+<td>Critical</td>
+<td><code>st_nsnapshot</code> rises monotonically across three or more checkpoints</td>
+<td>Retained details are not being reclaimed: almost always one long-lived snapshot or SSI transaction holding back the oldest-reader frontier</td>
+<td>Find and end the long-lived transaction (see below). Checkpoint more often as mitigation, not as a fix</td>
+</tr>
+<tr>
+<td>Warning</td>
+<td>SIREAD markers sustained near or above 100% of the sweep threshold</td>
+<td>The marker sweep is not keeping up with the SSI read rate</td>
+<td>Increase the lock-object allocation (which raises the sweep threshold proportionally), or reduce the rate of serializable read-only transactions</td>
+</tr>
+<tr>
+<td>Warning</td>
+<td><code>st_maxnlockers</code> / <code>st_maxnsnapshot</code> (high-water marks) approach the configured maxima even while current values look fine</td>
+<td>A past burst nearly exhausted the region</td>
+<td>Size for the burst, not the average</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Finding the long-lived transaction.</strong> This is the single most common root cause behind retention alarms, because <em>one</em> forgotten open snapshot transaction pins every version and marker newer than its snapshot:</p>
+<pre><code>db_stat -h &lt;home&gt; -t</code></pre>
+<p>Read the <code>Active transactions:</code> list. A transaction whose <code>begin LSN</code> is far behind the current log position, or one carrying a large <code>mvcc refcount</code>, is the culprit. Long-running read-only reporting queries under <code>DB_TXN_SNAPSHOT</code> or <code>DB_TXN_SERIALIZABLE</code> are the usual source. The remedy is in the application: commit it, or break it into shorter transactions. Note that raising the maxima only buys time against this cause — the retention is proportional to how long the transaction stays open.</p>
+<p><strong>A note on <code>DB_STAT_CLEAR</code>.</strong> Reading these values with <code>DB_STAT_CLEAR</code> resets the high-water marks (<code>st_maxnlockers</code>, <code>st_maxnsnapshot</code>, <code>st_mutex_inuse_max</code>) that several of the alarms above depend on. Monitoring should read <strong>without</strong> <code>DB_STAT_CLEAR</code> so that it does not destroy the history it is meant to be watching, and so that two independent monitors do not blind each other. The current-value counters are unaffected either way.</p>
+<h3 id="cost">Cost</h3>
+<p>These are counters the subsystems already maintain; the utilization ratios are derived when statistics are read, not accumulated on any operation path. Reading them is a region-lock-protected copy, the same cost as any other statistics call, and it does not perturb what it measures. Scraping once a minute is free at any realistic scale.</p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 2026.09.5 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>

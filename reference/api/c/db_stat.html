@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>db_stat — Berkeley DB 2026.09.4</title>
+  <title>db_stat — Berkeley DB 2026.09.5</title>
   <style>
     :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
 <body>
   <header class="site">
     <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
-    <span class="ver">Version 2026.09.4</span>
+    <span class="ver">Version 2026.09.5</span>
   </header>
   <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
   <main>
@@ -126,6 +126,26 @@
 <p>Reset the statistics after reporting them; valid only with the <strong>-C</strong>, <strong>-c</strong>, <strong>-E</strong>, <strong>-e</strong>, <strong>-L</strong>, <strong>-l</strong>, <strong>-M</strong>, <strong>-m</strong>, <strong>-R</strong>, <strong>-r</strong>, and <strong>-t</strong> options.</p></li>
 </ul>
 <p>Values normally displayed in quantities of bytes are displayed as a combination of gigabytes (GB), megabytes (MB), kilobytes (KB), and bytes (B). Otherwise, values smaller than 10 million are displayed without any special notation, and values larger than 10 million are displayed as a number followed by "M".</p>
+<h3 id="deployment-health-lines">Deployment health lines</h3>
+<p>The <strong>-c</strong> (locking), <strong>-t</strong> (transaction), and <strong>-x</strong> (mutex) outputs each end with a <code>Deployment health (alarm on these):</code> block. These are the lines to monitor for shared-region resource exhaustion — a failure that otherwise surfaces only as a bare <code>ENOMEM</code> from a later, unrelated operation:</p>
+<pre><code>$ db_stat -h ENV -c | tail -5
+Deployment health (alarm on these):
+194/4000    Locker slots in use (4% utilized)
+11/4000     Lock object slots in use (0% utilized)
+194/4000    Lock slots in use (4% utilized)
+194/300     SSI committed-reader SIREAD markers live (64% utilized)
+
+$ db_stat -h ENV -t | grep -A3 &#39;Deployment health&#39;
+Deployment health (alarm on these):
+0/2000      Active transaction slots in use (0% utilized)
+213/2000    Snapshot txn details retained (MVCC/SSI) (10% utilized)
+
+$ db_stat -h ENV -x | grep -A2 &#39;Deployment health&#39;
+Deployment health (alarm on these):
+845/10000   Mutex slots in use (8% utilized)</code></pre>
+<p>Each line reports <em>in-use</em>/<em>maximum</em> followed by the utilization percentage. A resource for which no maximum has been configured reports <code>&lt;n&gt;/unlimited ... (no maximum configured)</code>: it will grow until the region itself is exhausted, so no meaningful ratio exists. Configuring the maxima is a prerequisite for alarming on these numbers.</p>
+<p>The same values are available programmatically, without parsing this output, through <a href="lockstat.html" class="xref" title="DB_ENV-&gt;lock_stat()">DB_ENV-&gt;lock_stat()</a>, <a href="txnstat.html" class="xref" title="DB_ENV-&gt;txn_stat()">DB_ENV-&gt;txn_stat()</a>, and <a href="mutexstat.html" class="xref" title="DB_ENV-&gt;mutex_stat()">DB_ENV-&gt;mutex_stat()</a>. Note that <strong>-Z</strong> (<code>DB_STAT_CLEAR</code>) resets the high-water marks these alarms rely on; monitoring should not use it.</p>
+<p>For the recommended thresholds, what each signal means, and the remedy for each, see the <em>Deployment health: what to alarm on</em> section of the Berkeley DB Programmer's Reference Guide.</p>
 <p>The <span class="command"><strong>db_stat</strong></span> utility may be used with a Berkeley DB environment (as described for the <strong>-h</strong> option, the environment variable <strong>DB_HOME</strong>, or because the utility was run in a directory containing a Berkeley DB environment). In order to avoid environment corruption when using a Berkeley DB environment, <span class="command"><strong>db_stat</strong></span> should always be given the chance to detach from the environment and exit gracefully. To cause <span class="command"><strong>db_stat</strong></span> to release all environment resources and exit cleanly, send it an interrupt signal (SIGINT).</p>
 <p>The <span class="command"><strong>db_stat</strong></span> utility exits 0 on success, and &gt;0 if an error occurs.</p>
 <p>For information on the statistics feature for Berkeley DB SQL interface, see <a href="dbsql.html#dbsql_command_feature" class="xref" title="Command Line Features Unique to dbsql">Command Line Features Unique to dbsql</a>.</p>
@@ -136,7 +156,7 @@
   </main>
   <footer class="site">
     <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
-    <p>Berkeley DB 2026.09.4 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+    <p>Berkeley DB 2026.09.5 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
   </footer>
 </body>
 </html>
