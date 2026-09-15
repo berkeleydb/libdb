@@ -14,6 +14,13 @@
 #                   (continue-on-error) by default; the ONE blocking sub-check is
 #                   the header-regen drift gate (hand-edited generated headers).
 #
+#   region-sig   -- __env_struct_sig() drift.  BLOCKING, with an explicit-token
+#                   escape hatch, exactly like the ABI gate above.  This closes
+#                   the third of the three gates a struct-field addition has to
+#                   clear, and the only one nothing in CI used to check: a
+#                   signature change makes src/env/env_region.c REFUSE to attach
+#                   existing environments, and abidiff cannot see it.
+#
 # Coccinelle is complementary early warning at the source level; libabigail/nm
 # is the real ABI contract.  See dist/cocci/README.md.
 #
@@ -332,3 +339,96 @@ jobs:
         run: timeout 2400 sh test/c/chk.locksireads
         env:
           CC: clang
+
+  # ---------------------------------------------------------------------------
+  # __env_struct_sig() REGION-SIGNATURE GATE (blocking, token-gated).
+  #
+  # THE HOLE THIS CLOSES.  src/env/env_sig.c hashes the sizeof of ~137 structs
+  # into a build signature, and src/env/env_region.c refuses to attach an
+  # existing environment when it changes:
+  #
+  #     "BDB1539 Build signature doesn't match environment" -> DB_VERSION_MISMATCH
+  #
+  # Every existing deployment's environment therefore becomes unattachable --
+  # upgrade-in-place breaks.  And abidiff CANNOT SEE IT: the public ABI (sizeof
+  # DB / DBC / DB_ENV / DB_TXN) is unchanged, so the abi-drift job above goes
+  # GREEN.  This nearly shipped in v2026.09.5: the os_aio fix added a
+  # `db_mutex_t mtx_aio` to struct __db_mpool and its commit message claimed
+  # "process-private, so no ABI change" -- but env_sig.c does __ADD(__db_mpool)
+  # unconditionally, so the signature moved 0xb86f77f0 -> 0x97e7d288.  A human
+  # caught it, not CI.
+  #
+  # So: adding a field to a struct is a THREE-gate question -- public ABI
+  # (abidiff), shared-region layout (majver/minver), and this signature.  This
+  # job is the third gate.
+  #
+  # Escape hatch mirrors ABI-BREAK-INTENDED exactly: put the literal token
+  # REGION-SIG-CHANGE-INTENDED in the PR body or the head commit message.  It
+  # must be explicit, so an accidental change cannot pass as an intended one.
+  # ---------------------------------------------------------------------------
+  region-sig:
+    name: region signature (__env_struct_sig)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need the merge base
+
+      - name: Compute the signature on the PR head and on the base
+        id: sig
+        run: |
+          set -eu
+          # The base is the merge base with the PR's target branch, or master's
+          # previous commit on a push.  Either way it is "what a deployed
+          # environment was created by".
+          if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            BASE=$(git merge-base "$BASE" HEAD)
+          else
+            BASE=$(git rev-parse 'HEAD^' 2>/dev/null || echo "")
+          fi
+          echo "base commit: ${BASE:-<none>}"
+
+          HEAD_SIG=$(sh dist/env_sig_print.sh .)
+          echo "head_sig=$HEAD_SIG" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$BASE" ]; then
+            echo "No base commit to compare against; nothing to gate."
+            echo "base_sig=$HEAD_SIG" >> "$GITHUB_OUTPUT"
+          else
+            git worktree add /tmp/sigbase "$BASE" >/dev/null
+            BASE_SIG=$(sh /tmp/sigbase/dist/env_sig_print.sh /tmp/sigbase)
+            echo "base_sig=$BASE_SIG" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Print BOTH values in the log unconditionally: when this gate fires,
+          # the two numbers are the first thing a reader needs.
+          echo "----------------------------------------------------------"
+          echo "__env_struct_sig()  base (${BASE:-n/a}): ${BASE_SIG:-$HEAD_SIG}"
+          echo "__env_struct_sig()  head (${GITHUB_SHA}): $HEAD_SIG"
+          echo "----------------------------------------------------------"
+
+      - name: Region signature gate
+        if: always()
+        env:
+          HEAD_SIG: ${{ steps.sig.outputs.head_sig }}
+          BASE_SIG: ${{ steps.sig.outputs.base_sig }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          echo "base __env_struct_sig(): $BASE_SIG"
+          echo "head __env_struct_sig(): $HEAD_SIG"
+          if [ "$HEAD_SIG" = "$BASE_SIG" ]; then
+            echo "::notice title=Region signature::Unchanged ($HEAD_SIG) -- existing environments still attach."
+            exit 0
+          fi
+          if printf '%s' "$PR_BODY" | grep -q 'REGION-SIG-CHANGE-INTENDED' ||
+             git log -1 --format=%B | grep -q 'REGION-SIG-CHANGE-INTENDED'; then
+            echo "::warning title=Region signature::__env_struct_sig() changed $BASE_SIG -> $HEAD_SIG, declared intentional via REGION-SIG-CHANGE-INTENDED."
+            exit 0
+          fi
+          echo "::error title=Region signature::__env_struct_sig() changed $BASE_SIG -> $HEAD_SIG."
+          echo "::error::src/env/env_region.c will REFUSE to attach any environment created by the base build (BDB1539 / DB_VERSION_MISMATCH), so upgrade-in-place is broken for every existing deployment."
+          echo "::error::abidiff CANNOT see this -- the public ABI is unchanged, so the abi-drift job is green and this is the only gate that catches it."
+          echo "::error::Most likely cause: a field added to a struct that src/env/env_sig.c hashes (there are ~137, including the PROCESS-PRIVATE struct __db_mpool). Prefer DERIVING a new observable at read time over storing a new field."
+          echo "::error::If this is deliberate, put REGION-SIG-CHANGE-INTENDED in the PR body or commit message and say why."
+          exit 1
