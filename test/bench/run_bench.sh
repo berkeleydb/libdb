@@ -219,7 +219,7 @@ bench_lock() {
 	note_stderr "lock_bench/$mode" "$rep" "$ERRDIR/lock_$mode"
 }
 
-# ssi_abort_bench: prints "threads=N hot=H ... (NNN txn/s)"
+# ssi_abort_bench: prints "level=L threads=N hot=H ... (NNN txn/s)"
 bench_ssi() {
 	rep=$1
 	# The driver hardcodes /tmp/ssi_abort_env and opens with DB_RECOVER.
@@ -229,9 +229,19 @@ bench_ssi() {
 	    2>"$ERRDIR/ssi" |
 	awk -v b=ssi_abort_bench -v c="hot$SSI_HOTKEYS" -v r="$rep" '
 	    /txn\/s/ {
-		t = $1; sub(/^threads=/, "", t)
-		for (i = 1; i <= NF; i++)
+		# Match threads= BY NAME.  The driver prints level= first, so
+		# the old positional $1 recorded "level=serializable" in the
+		# thread column -- every thread point collapsed onto one label
+		# and the ssi_abort_bench/hot64/tN rows that NOISE.md and
+		# GATE-VERIFICATION.md quote could not be produced at all.
+		t = ""
+		for (i = 1; i <= NF; i++) {
+			if ($i ~ /^threads=/) {
+				t = $i; sub(/^threads=/, "", t)
+			}
 			if ($i ~ /txn\/s\)/) { v = $(i-1); sub(/^\(/, "", v) }
+		}
+		if (t == "") next
 		printf "%s\t%s\t%s\ttxn_per_sec\ttxn/s\t%s\t%.0f\n", b, c, t, r, v
 	    }' | emit
 }
