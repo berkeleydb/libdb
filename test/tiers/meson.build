@@ -12,6 +12,8 @@
 # `ninja -C build` is unaffected; build them explicitly:
 #
 #   ninja -C build test/tiers/test_iso_anomaly \
+#                  test/tiers/test_ssi_gc_pressure \
+#                  test/tiers/test_ssi_crash_pivot \
 #                  test/tiers/test_soak_resources \
 #                  test/tiers/test_lock_matrix
 #
@@ -19,6 +21,7 @@
 # two are in separate suites because on current master they legitimately fail:
 #
 #   meson test -C build --suite tiers        # B1, gating
+#   meson test -C build --suite tiers-diag   # B1 crash gate, needs DIAGNOSTIC
 #   meson test -C build --suite tiers-xfail  # B3, reproduces #140
 #   meson test -C build --suite tiers-slow   # B2, minutes-long soak
 #
@@ -33,6 +36,18 @@
 tiers_tests = [
   # name                  source dir     source file             suite args
   ['iso_anomaly',    'isolation',  'test_iso_anomaly.c',    'tiers',       []],
+  # The two SSI mechanism gates.  Both are gating: they are seconds long and
+  # their assertions are exact single bits (a committed write skew / a
+  # recovered state that only a committed pivot can produce).
+  #
+  # test_ssi_crash_pivot needs the DIAGNOSTIC-only crash hook in src/txn/txn.c
+  # to reach the in-commit kill points, so it is only meaningful in a build
+  # configured with -Ddiagnostic=true; in a non-diagnostic build the driver
+  # reports that no crash was reached and fails, which is the honest outcome
+  # (it must not report a vacuous pass).  Run it via test/isolation/run.sh for
+  # the automatic skip.
+  ['ssi_gc_pressure', 'isolation', 'test_ssi_gc_pressure.c', 'tiers',      []],
+  ['ssi_crash_pivot', 'isolation', 'test_ssi_crash_pivot.c', 'tiers-diag', []],
   # B3 aborts on current master: that abort IS the #140 reproduction, so it
   # lives in its own suite rather than failing the gating one.  Move it to
   # 'tiers' in the same PR that fixes #140.

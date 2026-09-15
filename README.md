@@ -249,6 +249,21 @@ updates or supersedes an existing one — a measured result that changes an
 assumption, an amendment to an accepted design, or a fresh proposal. Small,
 obvious, or purely-internal changes do not need an RFC.
 
+### Cross-subsystem design notes
+
+Where the risk is the *interaction* between already-shipped subsystems rather
+than any single change, the reasoning lives in [`docs/design/`](docs/design) as a
+normative note about current `master` rather than as a proposal:
+
+- [`docs/design/global-invariants.md`](docs/design/global-invariants.md) — the
+  invariants that hold **across** the lock manager (+SSI), the transaction
+  region, mpool/MVCC, the WAL, checkpoint, failchk, recovery, the btree
+  root-snapshot read path and cursor sharding: what must be true **at a
+  checkpoint**, **at a crash / during recovery**, and **at a region
+  re-attach**, with the global lock order stated as one partial order, the
+  subsystem pairs that must not be composed naively, and an honest map of which
+  test tier enforces each invariant and where coverage is thin.
+
 ## License
 
 Berkeley DB is distributed under its original license; see

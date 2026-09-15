@@ -80,9 +80,44 @@ struct __db_mpool {
 	 * Per-process asynchronous-I/O context for buffer-pool writeback
 	 * (checkpoint/sync).  NULL if no async backend is available, in which
 	 * case writeback is synchronous.  Owned by this process.
+	 *
+	 * The exclusive-use latch that serializes concurrent __memp_sync_int
+	 * callers on this context is ctx->mtx_aio, INSIDE the context (see
+	 * dbinc/os_aio.h), deliberately not a field here.  DB_MPOOL is a
+	 * process-private handle, but env_sig.c hashes sizeof(struct
+	 * __db_mpool) unconditionally into the build signature, and
+	 * __env_region_attach refuses any environment whose stored signature
+	 * differs ("BDB1539 Build signature doesn't match environment",
+	 * DB_VERSION_MISMATCH).  Growing this struct would therefore break
+	 * upgrade-in-place against an existing environment -- a break that
+	 * libabigail does not see, because no public type changes.  Keep new
+	 * per-process mpool state in a struct env_sig.c does not hash.
 	 */
 	struct __db_aio_context *aio_ctx;
 };
+
+/*
+ * DB_MPOOL's size feeds __env_struct_sig(), which __env_region_attach
+ * compares against the signature stored in an existing region: any change to
+ * this struct's size makes every previously-created environment unattachable
+ * with DB_VERSION_MISMATCH.  Pin it, so that failure surfaces at build time
+ * here instead of at a customer's region attach.  If you are intentionally
+ * breaking region compatibility, update these numbers in the same commit.
+ */
+/*
+ * DB_MPOOL's size feeds __env_struct_sig(), which __env_region_attach
+ * compares against the signature stored in an existing region: any change to
+ * this struct's size makes every previously-created environment unattachable
+ * with DB_VERSION_MISMATCH.  Pin it, so that failure surfaces at build time
+ * here instead of at a customer's region attach.  If you are intentionally
+ * breaking region compatibility, update this expression in the same commit.
+ *
+ * Negative-array-size idiom rather than _Static_assert: this header is
+ * compiled as C89 and as C++, by every supported compiler.
+ */
+#define	DB_MPOOL_SIG_SIZE	(8 * sizeof(void *))
+typedef char __db_mpool_size_is_signature_stable[
+    sizeof(struct __db_mpool) == DB_MPOOL_SIG_SIZE ? 1 : -1];
 
 /*
  * DB_MPREG --

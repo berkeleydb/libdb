@@ -195,7 +195,12 @@ __mutex_print_summary(env)
 	}
 	__db_msg(env, "Mutex counts");
 	__db_msg(env, "%d\tUnallocated", counts[0]);
-	for (alloc_id = 1; alloc_id <= MTX_TXN_REGION + 1; alloc_id++)
+	/*
+	 * Walk the whole ID space (was hardcoded to MTX_TXN_REGION + 1, which
+	 * silently omitted any ID added after it); counts[] is already sized
+	 * MTX_MAX_ENTRY + 2, the +1 slot being the out-of-range bucket.
+	 */
+	for (alloc_id = 1; alloc_id <= MTX_MAX_ENTRY + 1; alloc_id++)
 		if (counts[alloc_id] != 0)
 			__db_msg(env, "%lu\t%s",
 			    (u_long)counts[alloc_id],
@@ -237,6 +242,20 @@ __mutex_print_stats(env, flags)
 	STAT_ULONG("Mutex free count", sp->st_mutex_free);
 	STAT_ULONG("Mutex in-use count", sp->st_mutex_inuse);
 	STAT_ULONG("Mutex maximum in-use count", sp->st_mutex_inuse_max);
+
+	/*
+	 * Deployment health: mutex slots are the resource both #137 and #138
+	 * actually exhausted (every retained locker and every retained snapshot
+	 * TXN_DETAIL holds one), and mutex allocation failure is reported as a
+	 * bare ENOMEM from an unrelated later call.  Alarm on this.  Note the
+	 * denominator: st_mutex_max is the hard ceiling the region will grow to,
+	 * while st_mutex_cnt is what has been allocated so far -- utilization
+	 * against the former is what predicts exhaustion.  See the "Deployment
+	 * health" section of the Programmer's Reference.
+	 */
+	__db_msg(env, "%s", "Deployment health (alarm on these):");
+	__db_util_pct(env, "Mutex slots in use",
+	    (u_long)sp->st_mutex_inuse, (u_long)sp->st_mutex_max);
 
 	__os_ufree(env, sp);
 
@@ -475,6 +494,7 @@ __mutex_print_id(alloc_id)
 	case MTX_MPOOL_FH:		return ("mpool filehandle");
 	case MTX_MPOOL_FILE_BUCKET:	return ("mpool file bucket");
 	case MTX_MPOOL_HANDLE:		return ("mpool handle");
+	case MTX_MPOOL_AIO:		return ("mpool aio writeback");
 	case MTX_MPOOL_HASH_BUCKET:	return ("mpool hash bucket");
 	case MTX_MPOOL_REGION:		return ("mpool region");
 	case MTX_MUTEX_REGION:		return ("mutex region");

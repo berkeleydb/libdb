@@ -178,6 +178,14 @@ __memp_open(env, create_ok)
 	 * so there is no behavior change unless AIO is explicitly turned on
 	 * (and on platforms with no AIO backend, creation fails and writeback
 	 * stays synchronous regardless).  Failure is non-fatal.
+	 *
+	 * The exclusive-use latch that serializes concurrent __memp_sync_int
+	 * callers on the context lives inside the context itself
+	 * (ctx->mtx_aio; see dbinc/os_aio.h) and is allocated by
+	 * __os_aio_create, which fails rather than hand back an unserialized
+	 * context.  It is deliberately NOT a DB_MPOOL field: env_sig.c hashes
+	 * sizeof(struct __db_mpool) into the build signature, so growing
+	 * DB_MPOOL would make every existing environment unattachable.
 	 */
 	if (F_ISSET(env->dbenv, DB_ENV_MPOOL_AIO))
 		(void)__os_aio_create(env, 0, &dbmp->aio_ctx);

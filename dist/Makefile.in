@@ -219,7 +219,8 @@ SIM_OBJS=	sim_core@o@ sim_os_hooks@o@
 FI_OBJS=	fi_alloc@o@
 
 # SSI resource-accounting leak tests -- test/c/.  Compile rules below.
-LEAK_TESTS=	leak_si_locker leak_si_mvcc_mtx
+LEAK_TESTS=	leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible \
+		aio_concurrent_sync health_stats
 
 BTREE_OBJS=\
 	bt_compare@o@ bt_compress@o@ bt_conv@o@ bt_curadj@o@ bt_cursor@o@ \
@@ -1573,9 +1574,19 @@ test_mutex: test_mutex@o@ $(DEF_LIB)
 # Regression gates for the SIREAD cleanup resource leaks (issues #137, #138).
 # They assert through the public statistics APIs that locker / mutex / detail
 # slot counts stay bounded across thousands of sequential snapshot txns.
-# `make leak_tests` builds them; test/c/leak-run.sh builds+runs both modes.
+# `make leak_tests` builds them; test/c/leak-run.sh builds+runs every member of
+# LEAK_TESTS in every mode.  Keep the two lists in step: a driver that is in
+# LEAK_TESTS but not in leak-run.sh compiles and is never executed, which is a
+# vacuous green (this happened to mvcc_purge_visible and aio_concurrent_sync).
 ##################################################
 leak_tests: $(LEAK_TESTS)
+
+mvcc_purge_visible@o@: $(testdir)/c/mvcc_purge_visible.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+mvcc_purge_visible: mvcc_purge_visible@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) mvcc_purge_visible@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
 
 leak_si_locker@o@: $(testdir)/c/leak_si_locker.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $<
@@ -1589,6 +1600,35 @@ leak_si_mvcc_mtx@o@: $(testdir)/c/leak_si_mvcc_mtx.c
 leak_si_mvcc_mtx: leak_si_mvcc_mtx@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) leak_si_mvcc_mtx@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+# Operator "deployment health" signal: proves the utilization / retention
+# counters an operator alarms on actually track the #137 and #138 shapes.
+health_stats@o@: $(testdir)/c/health_stats.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+health_stats: health_stats@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) health_stats@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+##################################################
+# os_aio concurrent-writeback test -- test/c/.
+#
+# Runs checkpoint + trickle + memp_sync + DB->sync + eviction pressure against
+# one environment simultaneously, in both writeback modes, and audits that
+# every DB_TXN_SYNC-committed record survives.  It exists to close the
+# cross-reap residual: with the mtx_aio exclusive-use latch removed it aborts
+# in __memp_aio_drain's DB_ASSERT(w[j].done) (diagnostic build).
+#
+# NOTE: needs -luring in LIBS when io_uring is configured; on a box without
+# pkg-config, configure leaves EXTRALIBS empty, so pass LIBS=-luring to
+# configure.
+##################################################
+aio_concurrent_sync@o@: $(testdir)/c/aio_concurrent_sync.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+aio_concurrent_sync: aio_concurrent_sync@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) aio_concurrent_sync@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 ##################################################

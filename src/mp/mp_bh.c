@@ -689,6 +689,16 @@ __memp_bhwrite_async(dbmp, hp, mfp, bhp, aioc, w, deferredp)
  *	The failed page is left BH_DIRTY by __memp_pgwrite_finish, so it is not
  *	lost from cache and a later sync retries it.
  *
+ *	The caller must hold aioc->mtx_aio, giving it exclusive use of the
+ *	context: reaping drains the backend's shared completion queue, so a
+ *	second concurrent submitter's completions could otherwise satisfy this
+ *	drain's count and we would "complete" our own still-in-flight writes.
+ *	We verify that rather than assume it -- every slot must have had its
+ *	completion callback run (w->done) before we finish it.  A slot that
+ *	comes back undone is a mis-attributed or lost completion: we must NOT
+ *	clear BH_DIRTY for it (that is precisely the false durable frontier),
+ *	so it is reported as an I/O error, failing this caller's checkpoint.
+ *
  * PUBLIC: int __memp_aio_drain __P((ENV *, DB_MPOOL *,
  * PUBLIC:     struct __db_aio_context *, MEMP_AIO_W *, int, int *));
  */
@@ -703,11 +713,35 @@ __memp_aio_drain(env, dbmp, aioc, w, n, errp)
 {
 	int got, j, t_ret;
 
-	for (got = 0; got < n; )
-		got += __os_aio_reap(env, aioc, -1, 1);
+	/*
+	 * Reap until every one of our n ops has completed.  A reap that
+	 * returns 0 with nothing left in flight cannot make progress (a
+	 * completion was lost); stop rather than spin forever -- the
+	 * per-slot done check below turns it into an error.
+	 */
+	for (got = 0; got < n; ) {
+		if ((t_ret = __os_aio_reap(env, aioc, -1, 1)) == 0 &&
+		    aioc->inflight == 0)
+			break;
+		got += t_ret;
+	}
 	for (j = 0; j < n; j++) {
-		if ((t_ret = __memp_aio_writeback_finish(dbmp, &w[j])) != 0 &&
-		    errp != NULL && *errp == 0)
+		if (w[j].done)
+			t_ret = __memp_aio_writeback_finish(dbmp, &w[j]);
+		else {
+			/*
+			 * Never observed with the context's mtx_aio held; this
+			 * is the assertion that the exclusive-use discipline is
+			 * actually in force.  Report the write as failed so
+			 * the page stays dirty and the checkpoint fails.
+			 */
+			DB_ASSERT(env, w[j].done);
+			w[j].io_ret = EIO;
+			t_ret = __memp_aio_writeback_finish(dbmp, &w[j]);
+			if (t_ret == 0)
+				t_ret = EIO;
+		}
+		if (t_ret != 0 && errp != NULL && *errp == 0)
 			*errp = t_ret;
 		DB_ASSERT(env, atomic_read(&w[j].bhp->ref) > 0);
 		atomic_dec(env, &w[j].bhp->ref);

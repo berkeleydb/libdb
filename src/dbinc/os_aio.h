@@ -60,12 +60,74 @@ typedef struct __db_aio_backend {
  * AIO context.  Owned by the process that created it.  A NULL backend
  * means the synchronous fallback (see os_aio.c); a platform backend
  * installs its vtable and per-context state via priv.
+ *
+ * mtx_aio serializes USE of this context among the concurrent
+ * __memp_sync_int callers in this process (checkpoint, trickle,
+ * memp_sync/fsync, and DB_SYNC_ALLOC from eviction).  A single sync call
+ * must be the context's only submitter for the whole span from its first
+ * submit to its final drain, for three reasons:
+ *
+ *  1) __memp_aio_drain must not consume another caller's completions.
+ *     Reaping is a shared-queue operation (io_uring drains whatever CQEs
+ *     are ready); if a second caller's completions could satisfy the first
+ *     caller's drain, the first caller would run the write completion --
+ *     clearing BH_DIRTY, unpinning the buffer, and freeing the pgout page
+ *     copy -- for writes still in flight.  That is a false durable
+ *     frontier AND a write-after-free.
+ *  2) Each caller's MEMP_AIO_W window is a stack array in its own
+ *     __memp_sync_int frame, and is the cookie of its in-flight ops.  A
+ *     caller that returned while its ops were outstanding would leave the
+ *     backend holding pointers into a dead stack frame.
+ *  3) The backend submission queues are not themselves thread-safe (an
+ *     io_uring SQE ring has no internal locking, and the POSIX aio slot
+ *     table is scanned unlocked), and inflight is a plain counter.
+ *     Exclusive use makes all three single-threaded.
+ *
+ * It is acquired with MUTEX_TRYLOCK and never waited on: a caller that does
+ * not get it simply writes synchronously, which is the reference behaviour.
+ * Because it is never blocked on, it cannot participate in a deadlock cycle
+ * and adds no lock-ordering rule.
+ *
+ * It lives HERE, not in DB_MPOOL, on purpose.  Both structs are
+ * process-private, but env_sig.c hashes sizeof(struct __db_mpool)
+ * unconditionally into the build signature, and __env_region_attach rejects
+ * any environment whose stored signature differs (BDB1539, returning
+ * DB_VERSION_MISMATCH) -- so a field added to DB_MPOOL breaks
+ * upgrade-in-place against every existing environment, silently as far as
+ * libabigail is concerned.  The COMMITTED src/env/env_sig.c has no
+ * __ADD(__db_aio_context), so putting the latch here leaves the signature
+ * byte-identical to master's.
+ *
+ * Caveat, deliberately recorded: dist/s_sig scans ../src/dbinc/*.h, which
+ * includes this header, so a REGEN would add __ADD(__db_aio_context) (along
+ * with 6 other structs env_sig.c is already stale for on master -- __cq_part,
+ * __bam_rsnap, __memp_pgw, __memp_aio_w, __db_aio_op, __db_aio_backend).
+ * env_sig.c is a checked-in generated file that CI does not regenerate (only
+ * s_include is gated, in .github/workflows/cocci.yml), so this is stable in
+ * practice.  But whoever next runs dist/s_sig MUST treat the resulting
+ * signature change as a deliberate region-compatibility break, because it is
+ * one for every struct in that stale list, not just this field.
+ *
+ * KNOWN ISSUE (opt-in path only).  With DB_MPOOL_AIO on and this latch in
+ * place, test/c/aio_concurrent_sync in "aio" mode deadlocks in roughly 5% of
+ * runs (measured 2/40 here; independently reported 3/67), while "sync" mode is
+ * 0/84.  The cycle is in __memp_sync_int, not in the aio backend and not on
+ * this latch: the latch WINNER blocks acquiring a new buffer's mtx_buf while
+ * still holding the pins of a partly-full deferred-write window, and a writer
+ * doing a btree split needs one of those buffers exclusively.  The full cycle
+ * and the two candidate fixes are documented at that acquire in mp_sync.c.
+ *
+ * It is not the cross-reap corruption this latch fixes: lost=0 and
+ * db_recover + db_verify are clean every time, whereas master SEGVs in
+ * __aio_uring_reap on the same test.  DB_MPOOL_AIO is default-OFF, so no
+ * default path is affected.
  */
 struct __db_aio_context {
 	const DB_AIO_BACKEND *backend;	/* NULL = synchronous fallback. */
 	void		*priv;		/* Backend-private state. */
 	u_int32_t	 depth;		/* Requested queue depth. */
 	u_int32_t	 inflight;	/* Ops submitted, not yet reaped. */
+	db_mutex_t	 mtx_aio;	/* Exclusive-use latch; see above. */
 };
 
 /*
