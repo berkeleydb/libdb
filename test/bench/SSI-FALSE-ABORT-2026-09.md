@@ -26,14 +26,14 @@ rate is a page-granularity artifact — and the abort rate itself ranges from
 | pagesize | records/leaf | SSI aborts (uniform) | of which false |
 |---:|---:|---:|---:|
 | 512 | 4.00 | 0.006% | ~100% |
-| 1 024 | 10.00 | 0.024% | ~100% |
-| 4 096 | 44.94 | 0.341% | ~100% |
-| 8 192 | 90.91 | 1.096% | ~99% |
-| 16 384 | 183.49 | 3.919% | ~100% |
+| 1 024 | 10.00 | 0.018% | ~100% |
+| 4 096 | 44.94 | 0.294% | ~100% |
+| 8 192 | 90.91 | 1.101% | ~100% |
+| 16 384 | 183.49 | 3.880% | ~100% |
 | 32 768 | 370.37 | 11.352% | ~100% |
 
 The abort rate scales with records-per-leaf across **three orders of magnitude**
-(0.006% → 11.4%, a 1900× range) on a workload whose *logical* conflict structure
+(0.006% → 11.4%, a ~1900× range) on a workload whose *logical* conflict structure
 never changes. The "of which false" column is not an estimate from a model: it is
 a directly measured control (below).
 
@@ -65,17 +65,19 @@ sit on the same leaf pages. Measured (uniform, 8 threads, 20 000 keys, 5 s):
 
 | pagesize | records/leaf | decoy (co-located) | split (separated) |
 |---:|---:|---:|---:|
-| 512 | 4.00 | 0.009% | 0.000% |
-| 4 096 | 44.94 | 0.333% | 0.000% |
-| 8 192 | 90.91 | 1.117% | 0.006% |
-| 16 384 | 183.49 | 3.707% | 0.012% |
-| 32 768 | 370.37 | 11.445% | 0.006% |
+| 512 | 4.00 | 0.006% | 0.000% |
+| 1 024 | 10.00 | 0.017% | 0.000% |
+| 4 096 | 44.94 | 0.304% | 0.000% |
+| 8 192 | 90.91 | 1.071% | 0.000% |
+| 16 384 | 183.49 | 3.753% | 0.000% |
+| 32 768 | 370.37 | 11.367% | 0.006% |
 
-The split arm is essentially zero everywhere. So the aborts in the decoy arm are
-not some residual property of SSI, of MVCC bookkeeping, or of the harness — they
-are page sharing, and nothing else. And because plain ≈ decoy at every page size
-(artifact fraction 0.95–1.02 for uniform, 0.71–1.11 for Zipfian), the *genuine*
-edges in the realistic workload contribute almost nothing next to the artifact.
+The split arm is **0.000% at five of the six page sizes** and 0.006% at the
+sixth. So the aborts in the decoy arm are not some residual property of SSI, of
+MVCC bookkeeping, or of the harness — they are page sharing, and nothing else.
+And because plain ≈ decoy at every page size (artifact fraction 0.94–1.04 for
+uniform, 0.75–1.05 for Zipfian), the *genuine* edges in the realistic workload
+contribute almost nothing next to the artifact.
 
 ### The mechanism, isolated
 
@@ -88,12 +90,13 @@ pagesize 4 096, records-per-leaf 44.77:
 
 | read_off | off/recs-per-leaf | SSI abort rate |
 |---:|---:|---:|
-| 1 | 0.02 | 96.87% |
-| 8 | 0.18 | 96.85% |
+| 1 | 0.02 | 96.89% |
+| 8 | 0.18 | 96.92% |
 | 16 | 0.36 | 96.27% |
 | 32 | 0.71 | 92.72% |
 | **64** | **1.43** | **0.000%** |
 | 128 | 2.86 | 0.000% |
+| 256 | 5.72 | 0.000% |
 | 512 | 11.44 | 0.000% |
 
 pagesize 32 768, records-per-leaf 356.17:
@@ -101,18 +104,21 @@ pagesize 32 768, records-per-leaf 356.17:
 | read_off | off/recs-per-leaf | SSI abort rate |
 |---:|---:|---:|
 | 1 | 0.00 | 96.96% |
-| 64 | 0.18 | 96.89% |
-| 128 | 0.36 | 96.36% |
-| 256 | 0.72 | 92.81% |
+| 32 | 0.09 | 96.90% |
+| 64 | 0.18 | 96.94% |
+| 128 | 0.36 | 96.29% |
+| 256 | 0.72 | 93.01% |
 | **512** | **1.44** | **0.000%** |
 
 The two curves are the *same curve* in units of records-per-leaf: flat near 97%
-while the read key is closer than one leaf, then a hard collapse to exactly zero
-once it is further away. The transition sits between off/rpl 0.72 and 1.43 in
-both, at page sizes 8× apart. That is not a correlation with page size, it is the
-mechanism: **the false-abort rate is a function of records-per-leaf, and it is
-0 the moment the keys stop sharing a leaf.** Nothing else in the configuration
-changed — same key distribution, same schedule, same thread count.
+while the read key is closer than one leaf, a first dip at off/rpl ≈ 0.36, a
+larger one at ≈ 0.72, then a hard collapse to exactly zero once the offset
+exceeds one leaf. The transition sits between off/rpl 0.72 and 1.43 in both, at
+page sizes 8× apart and absolute offsets 8× apart. That is not a correlation with
+page size, it is the mechanism: **the false-abort rate is a function of
+records-per-leaf, and it is 0 the moment the keys stop sharing a leaf.** Nothing
+else in the configuration changed — same key distribution, same schedule, same
+thread count, `deadlock == 0` at every point.
 
 `records-per-leaf` is measured, not assumed: `DB->stat` (full stat, not
 `DB_FAST_STAT`) gives `bt_ndata / bt_leaf_pg` per run and it is a column in the
@@ -123,10 +129,10 @@ therefore `SSI_MIN_SPREAD = 8`.
 ## The ring saturates — an honest limit on one arm
 
 The write-skew ring cannot produce a meaningful artifact *fraction*, and reporting
-one would be misleading. Its abort rate is **saturated**: genuine 96.90%, decoy
-96.84% at pagesize 32 768, artifact fraction 0.999–1.000 at every page size. Both
-arms are pinned near the ceiling, so the ratio is 1.0 by saturation, not by
-measurement. Thread count does not rescue it (pagesize 4096, 3 s):
+one would be misleading. Its abort rate is **saturated**: genuine 96.91%, decoy
+96.88% at pagesize 32 768, artifact fraction **1.000 at every one of the six page
+sizes**. Both arms are pinned near the ceiling, so the ratio is 1.0 by saturation,
+not by measurement. Thread count does not rescue it (pagesize 4096, 3 s):
 
 | threads | ring | decoy |
 |---:|---:|---:|
@@ -152,11 +158,11 @@ graph, uniform):
 
 | pagesize | SSI false aborts | deadlocks |
 |---:|---:|---:|
-| 512 | 0.009% | 0.060% |
-| 4 096 | 0.333% | 0.310% |
-| 32 768 | 11.445% | 1.787% |
+| 512 | 0.006% | 0.073% |
+| 4 096 | 0.304% | 0.339% |
+| 32 768 | 11.367% | 1.787% |
 
-Under Zipfian access the deadlock rate dominates outright (39.8% at pagesize
+Under Zipfian access the deadlock rate dominates outright (40.1% at pagesize
 32 768 vs 12.8% SSI aborts) — and the `split` control shows the same deadlock
 growth with `ssi_abort = 0`, so it is page ww conflict, independent of SSI. Any
 future evaluation of RFC 0005 must keep these separate: **key-precise SSI edges
@@ -175,9 +181,9 @@ Reading the numbers rather than hoping for them:
    premise is confirmed, not weakened, by measurement.
 
 2. **But the user already has the lever, and it is one line.** `DB->set_pagesize`
-   moves the false-abort rate over a 1900× range. At 512-byte pages the realistic
-   workload's SSI abort rate is 0.006% — three orders of magnitude below the
-   32 KB figure and low enough that key-precise edges would buy nothing
+   moves the false-abort rate over a ~1900× range. At 512-byte pages the
+   realistic workload's SSI abort rate is 0.006% — three orders of magnitude
+   below the 32 KB figure and low enough that key-precise edges would buy nothing
    measurable. Anyone hurting from false aborts today is hurting because they
    run large pages, and the fix costs them a configuration change, not a new
    conflict-tracking subsystem. RFC 0005's own "Alternatives considered" listed
@@ -197,8 +203,8 @@ Reading the numbers rather than hoping for them:
    claim it does.
 
 4. **On a Zipfian workload RFC 0005 addresses the minority cost.** Deadlocks from
-   page-level ww conflict exceed SSI false aborts by ~3× there, and key-precise
-   edges do not touch them. A proposal that fixed only the edges would leave most
+   page-level ww conflict exceed SSI false aborts by ~3× there (40.1% vs 12.8% at
+   32 KB pages), and key-precise edges do not touch them. A proposal that fixed only the edges would leave most
    of the measured page-granularity tax in place for skewed workloads.
 
 **Recommendation: do not build RFC 0005 on the strength of this number alone.**
@@ -220,9 +226,9 @@ mechanism.
 | build | `dist/configure --enable-shared --disable-static LIBS=-luring`, no diagnostic |
 | driver | `test/bench/ssi_abort_bench.c` + `false_abort_sweep.sh` / `false_abort_rmw.sh` |
 | analysis | `false_abort_report.py` (medians, min/max, artifact fraction) |
-| reps | 5 per point (some points 2–3; the `n` column in the raw report is authoritative) |
+| reps | **5 per point, all 117 points** (`n` column in the report output) |
 | window | 5 s measured per point, 8 threads |
-| raw data | `results/ssi-false-abort-2026-09-c7i.csv` |
+| raw data | `results/ssi-false-abort-2026-09-c7i.csv` (585 rows, 0 failures) |
 
 **Instrument verified before use.** The deterministic two-transaction
 `--selfcheck` passes at both levels on this build: `ISO_LEVEL=snapshot` commits
@@ -230,11 +236,11 @@ both transactions to the skewed state `A==B==1` (SI permits write skew) and
 `ISO_LEVEL=serializable` aborts exactly one with `DB_SNAPSHOT_CONFLICT`. The
 measurement rests on a tool whose behaviour was re-confirmed, not assumed.
 
-**SI controls: 13/13 clean.** Every configuration was also run at
+**SI controls: 37/37 clean.** Every configuration was also run at
 `ISO_LEVEL=snapshot`, where `ssi_abort` **must** be 0 — a nonzero value would mean
-the counter rather than the mechanism was being measured. All were 0. The
-deadlock counter was nonzero in the same runs, which is the point: it separates
-page ww loss from SSI aborts.
+the counter rather than the mechanism was being measured. All 37 control points
+(5 reps each) reported exactly 0. The deadlock counter was nonzero in the same
+runs, which is the point: it separates page ww loss from SSI aborts.
 
 **Fresh environment per run.** A reused or recovered environment has previously
 produced a phantom `ssi_abort > 0` in this codebase. Every single run gets its own
@@ -242,7 +248,8 @@ unique `SSI_ENV` directory, and it is removed afterwards *even when the run
 fails*, so no point can inherit another's state. No run in the reported data
 panicked (`panicked` column, 0 throughout) and no run timed out.
 
-**Every invocation under `timeout`.** One hung point costs one point.
+**Every invocation under `timeout`.** One hung point costs one point. **585 of 585
+planned runs completed; zero timeouts, zero failures, zero panics.**
 
 ### The overflow trap, found by measurement
 
@@ -268,38 +275,44 @@ quantified rather than avoided by convention.
 
 Stated plainly, because several of them bound the conclusion:
 
-1. **The split baseline is a baseline, not a proof of zero.** It shows
-   ~0.00–0.01% aborts (uniform) and up to 1.0% (Zipfian, 32 KB pages). The
-   Zipfian residual is not negligible and its origin is not established here —
-   the boundary leaf between the two key halves is shared by construction, and
-   under Zipf the hottest keys sit at low indices, i.e. all in the write half, so
-   the arms are not perfectly matched in access intensity. Treat the Zipfian
-   artifact fractions (0.71–1.11) as approximate; the uniform ones are much
-   better conditioned.
-2. **Artifact fractions slightly above 1.0** (up to 1.11) are not physical — they
+1. **The split baseline is a baseline, not a proof of zero.** For the uniform
+   workload it is 0.000% at five of six page sizes and 0.006% at the sixth, which
+   is as clean as this kind of control gets. For **Zipfian** it is not: 0.149% at
+   8 KB, 0.198% at 16 KB and **1.070%** at 32 KB. That residual is not negligible
+   and its origin is not established here. The likely cause is that the split
+   control is not perfectly matched under skew — Zipf puts the hottest keys at low
+   indices, i.e. entirely inside the write half, so the write half is far hotter
+   than the read half and the shared boundary leaf is not the only asymmetry.
+   Treat the Zipfian artifact fractions (0.75–1.05) as approximate; the uniform
+   ones are much better conditioned.
+2. **Artifact fractions slightly above 1.0** (up to 1.05) are not physical — they
    mean the decoy arm measured a marginally *higher* rate than the genuine arm,
-   which is run-to-run variation at 2–5 reps, not a real excess. Read them as
+   which is run-to-run variation, not a real excess. Read them as
    "indistinguishable from 1.0", i.e. the genuine edges contribute little enough
-   to be lost in the noise.
+   to be lost in the noise. The uniform 512-byte point reports `nan` because the
+   genuine arm's median abort count was 0 (0.000%) while the decoy's was 0.006%;
+   at that page size both are so close to zero that the ratio is meaningless and
+   the honest statement is "both ≈ 0".
 3. **The ring arm's artifact fraction is uninformative** (saturation), as stated
-   above. It is reported for completeness, not as evidence.
-4. **Reps are uneven.** The target was 5 per point; some points have 2–3 because
-   the sweeps were run under a wall-clock budget on a shared machine. The `n`
-   column is in the report output and the raw CSV has every row.
-5. **One machine, one thread count for the main matrix** (8 threads, 96 vCPU box
+   above. It is reported for completeness, not as evidence. Its *offset decay* is
+   the load-bearing ring result.
+4. **One machine, one thread count for the main matrix** (8 threads, 96 vCPU box
    shared with other agents). The thread sensitivity check above covers 2–16 for
    the ring only. Absolute throughputs on a shared box are not trustworthy;
    *ratios between arms run back to back* are what this study rests on, and that
    is why the arms are alternated rather than batched.
-6. **The cost of small pages is not measured here.** The recommendation leans on
+5. **The cost of small pages is not measured here.** The recommendation leans on
    "use smaller pages" being cheap, and this study does not establish that. Tree
    height, I/O amplification and cache-efficiency costs of 512-byte pages are the
-   obvious next measurement, and without it point 3 of the RFC 0005 discussion is
+   obvious next measurement, and without it point 2 of the RFC 0005 discussion is
    a judgement, not a result.
-7. **Two synthetic workloads.** A ring and a read-modify-write over 20 000 keys.
-   Real applications have range scans, mixed transaction sizes and secondary
-   indices; phantom behaviour under scans (which RFC 0005 flags as its blocking
-   correctness question) is not exercised at all.
+6. **Two synthetic workloads.** A ring and a read-modify-write over 20 000 keys,
+   both in cache. Real applications have range scans, mixed transaction sizes and
+   secondary indices; phantom behaviour under scans (which RFC 0005 flags as its
+   blocking correctness question) is not exercised at all.
+7. **`other` is 0 in every row.** No transaction failed for a reason outside
+   {commit, SSI abort, deadlock}, so no abort class is being silently absorbed —
+   worth stating because a nonzero `other` would undermine every percentage here.
 
 ## Reproducing
 
