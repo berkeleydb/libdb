@@ -94,12 +94,19 @@ typedef struct __db_aio_backend {
  * any environment whose stored signature differs (BDB1539, returning
  * DB_VERSION_MISMATCH) -- so a field added to DB_MPOOL breaks
  * upgrade-in-place against every existing environment, silently as far as
- * libabigail is concerned.  env_sig.c does not hash this struct (dist/s_sig
- * emits __ADD only for structs reachable from the headers it scans, and
- * os_aio.h is not one of them), so per-process aio state belongs here.
- * dist/s_sig output must stay byte-identical to master's env_sig.c: if a
- * regen ever adds __ADD(__db_aio_context), this field's home is no longer
- * signature-neutral and must move again.
+ * libabigail is concerned.  The COMMITTED src/env/env_sig.c has no
+ * __ADD(__db_aio_context), so putting the latch here leaves the signature
+ * byte-identical to master's.
+ *
+ * Caveat, deliberately recorded: dist/s_sig scans ../src/dbinc/*.h, which
+ * includes this header, so a REGEN would add __ADD(__db_aio_context) (along
+ * with 6 other structs env_sig.c is already stale for on master -- __cq_part,
+ * __bam_rsnap, __memp_pgw, __memp_aio_w, __db_aio_op, __db_aio_backend).
+ * env_sig.c is a checked-in generated file that CI does not regenerate (only
+ * s_include is gated, in .github/workflows/cocci.yml), so this is stable in
+ * practice.  But whoever next runs dist/s_sig MUST treat the resulting
+ * signature change as a deliberate region-compatibility break, because it is
+ * one for every struct in that stale list, not just this field.
  *
  * KNOWN ISSUE (opt-in path only).  With DB_MPOOL_AIO on and this latch in
  * place, test/c/aio_concurrent_sync in "aio" mode hangs in roughly 3 runs in
