@@ -120,15 +120,100 @@ with its own ops still in flight, leaving the backend holding `op.cookie`
 pointers into a dead stack frame.  The completion then writes `w->done` through
 freed stack.
 
-## Reproduction status (honest)
+## Reproduction: cross-reap OBSERVED, not just argued
 
-Not reproduced by a run.  A cross-reap needs two syncs overlapping on the same
-context with real device latency; it is a race whose window is exactly the
-in-flight period, and the observable damage (a lost page) needs a crash to
-surface.  The verdict rests on the code, which is unambiguous: a drain-by-count
-against a shared, untagged completion queue with no serialization *is* a
-cross-reap.  I did not have budget to build a probabilistic crash harness, and
-say so rather than claim a reproduction I do not have.
+The verdict was reached by code reading, then confirmed by a run.
+`test/c/aio_concurrent_sync` drives all four sync callers plus eviction
+pressure against one environment simultaneously.  With the latch **neutered**
+(`mtx_aio` deliberately not allocated, so it stays `MUTEX_INVALID` and
+`MUTEX_TRYLOCK` returns 0 for every caller — exactly the pre-fix unserialized
+behaviour), on a `--enable-diagnostic` build:
+
+```
+######## TEETH: aio mode with latch NEUTERED ########
+aio_concurrent_sync: mode=aio (ASYNC writeback), 8.0s, 6 writers + ckp + trickle + memp_sync + db->sync
+aio_conc: BDB0059 assert failure: ../../aio2_wt/src/mp/mp_bh.c/738: "w[j].done"
+aio_conc: ...libdb-2026.0.so(__memp_aio_drain+0x17b)
+aio_conc: ...libdb-2026.0.so(__memp_sync_int+0xe73)
+aio_conc: ...libdb-2026.0.so(__memp_sync+0x153)
+aio_conc: ...libdb-2026.0.so(__memp_sync_pp+0x158)
+Aborted
+```
+
+That is the cross-reap caught in the act: a `memp_sync` caller's drain counted
+its `n` completions and reached a slot whose *own* completion callback had
+never run.  Pre-fix, that slot would have been finished with `io_ret == 0` —
+BH_DIRTY cleared and the page declared durable while its write was still in
+flight.  With the latch restored, the same binary and workload are clean
+(below).
+
+What is *not* reproduced: the end-to-end lost record after a power cut.  That
+needs a crash harness, which was out of scope.  The assert is the tighter
+signal anyway — it fires on the mis-attribution itself rather than on one of
+its downstream consequences.
+
+## Test results (real output)
+
+`test/c/aio_concurrent_sync [aio|sync] <seconds>`: 6 writers doing
+`DB_TXN_SYNC` commits over a 60000-key space in a deliberately small 2 MB
+cache (so `__memp_alloc` reaches its aggressive `DB_SYNC_ALLOC` sync — the
+fourth concurrent caller, which an application cannot invoke directly), with
+checkpoint, trickle, `memp_sync` and `DB->sync` threads all running.  Every
+committed key is then audited through a fresh environment, and `db_verify` is
+run.
+
+With the fix in place, 8s per mode:
+
+```
+######## sync (reference, aio OFF) ########
+drivers: commits=2805 ckp=28(err 0) trickle=1602(err 0) memp_sync=32(err 0) db_sync=28(err 0)
+audit: lost=0 stale-but-present=0
+sync: PASS (0 failures)
+######## aio (DB_MPOOL_AIO on, latch under test) ########
+drivers: commits=1282 ckp=347(err 0) trickle=4285(err 0) memp_sync=352(err 0) db_sync=173(err 0)
+audit: lost=0 stale-but-present=0
+aio: PASS (0 failures)
+```
+
+Five `aio`-mode runs and four `sync`-mode runs, all `lost=0`, all
+`stale-but-present=0`, `db_verify` clean, no sync/checkpoint call returning an
+error.  Not a performance measurement, and not offered as one.
+
+### Three harness bugs found and fixed on the way (all mode-independent)
+
+The test as inherited from the failed attempt could not have distinguished
+anything; each of these reproduced *identically with aio OFF*, which is how I
+know they were harness bugs and not findings:
+
+1. **No deadlock detector.**  All six writers blocked forever in
+   `__lock_get_internal` and the test hung (this is what a 17-hour run looks
+   like).  The writers' key ranges are disjoint by *value* (stride `NWRITER`)
+   but not by *page* — adjacent keys share a btree leaf, so they genuinely
+   ww-conflict.  Fix: `set_lk_detect(DB_LOCK_DEFAULT)`; the writer loop already
+   retried `DB_LOCK_DEADLOCK`.
+2. **Ledger written before commit.**  Keys were recorded "provisionally" at
+   `put` time and never rolled back, so once aborts existed, every aborted
+   txn's keys were reported LOST — 8840 phantom losses in `sync` mode, 10595 in
+   `aio` mode.  Fix: buffer the txn's writes and publish to the ledger only
+   after `commit` returns 0.
+3. **`DB->verify` on an open handle** → `BDB1565 method not permitted after
+   handle's open method`.  Fix: verify through a fresh handle.
+
+## pkg-config workaround
+
+`pkg-config` is absent on this box, so configure's liburing probe leaves
+`EXTRALIBS` empty and `-luring` never reaches the link line, leaving
+`io_uring_*` undefined in `libdb`.  Workaround: pass `LIBS=-luring` to
+configure, which puts it in `LIBS` for the library *and* every test binary:
+
+```
+../../aio2_wt/dist/configure --enable-diagnostic --with-mutex=POSIX/pthreads LIBS=-luring
+```
+
+Verified: `objdump -p libdb-2026.0.so | grep NEEDED` → `liburing.so.2`, and
+`HAVE_IO_URING 1` in `db_config.h`, so the io_uring backend is the one actually
+exercised above (not the synchronous fallback).  This is a harness gap on this
+box, not a code bug — no build file was changed for it.
 
 ## The fix
 
@@ -172,20 +257,39 @@ the better long-term answer; it is strictly larger (a tag in `DB_AIO_OP`, an
 owner field in every backend's op record, and an owner-filtered reap in all
 five backends) and is not needed to close the residual.
 
-## Default recommendation: leave `DB_MPOOL_AIO` OFF
+## Default recommendation: leave `DB_MPOOL_AIO` OFF (off-until-measured)
 
-Off, and off for two independent reasons:
+**Off**, and off for two independent reasons:
 
-1. **Unmeasured.**  No A/B was run (explicitly out of scope here, and the
-   attempt that tried it is what burned 17 hours).  A default must not change
-   on an unmeasured benefit.
+1. **Unmeasured.**  No A/B was run (explicitly out of scope, and it is what
+   burned the previous attempt).  A default must not change on an unmeasured
+   benefit.
 2. **The residual is closed, not the whole question.**  With the latch, aio is
-   *safe*; but it also means concurrent syncs now silently fall back to
+   *safe*; but the latch also means concurrent syncs silently fall back to
    synchronous writeback, so the performance profile under real concurrency is
-   exactly the thing nobody has measured.  Flipping the default would ship an
-   unmeasured change to the durability-critical path.
+   exactly the thing nobody has measured.  The test's own driver counts hint
+   that this matters: in `aio` mode the sync callers complete far more
+   iterations (trickle 4285 vs 1602, ckp 347 vs 28) while writers commit *less*
+   (1282 vs 2805).  That is a suggestive shape, not a measurement — different
+   dirty-page volumes, one run each — and it is precisely the wrong basis for a
+   default change in either direction.
 
 The honest label is **safe but unmeasured**.  The next step, if aio is to be
-default-on, is a measured A/B of checkpoint latency with the latch in place
-(and a count of how often the trylock fails, which is the real question the
-latch raises).
+default-on, is a measured A/B of checkpoint latency with the latch in place,
+plus a counter for how often the trylock is *lost* — that number is the real
+question the latch raises, and it is currently unknown.
+
+## What I did not do
+
+- No aio-ON vs aio-OFF equivalence sweep across all backends (only the
+  io_uring backend was exercised; the thread-pool and POSIX backends are
+  covered by the code argument, not by a run).
+- No multi-rep performance A/B.
+- No crash/recovery harness for the end-to-end lost-record consequence.
+- No change to `dist/RELEASE`, version files, or `.agent*/`.
+- The failed attempt's tree also contained an out-of-scope `DB_MPOOL_NO_AIO`
+  default-flip (`dist/api_flags`, `src/dbinc/db.in`, `env_method.c`,
+  `env_config.c`, regenerated `build_windows/db.h` + `build_android/db.h`).  I
+  extracted only the latch and dropped the flip, so `DB_MPOOL_AIO` keeps its
+  existing opt-in semantics and there is no header regeneration or flag-space
+  change to qualify.
