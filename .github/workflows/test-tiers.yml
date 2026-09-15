@@ -6,7 +6,10 @@
 # and (b) long-running resource accounting.  Five external bug reports
 # (#136-#140) landed on v5.3.34 through that gap.
 #
-#   B1  test/isolation/  serializability checker -- would have caught #136
+#   B1  test/isolation/  serializability checker -- would have caught #136,
+#                        plus two SSI mechanism gates (marker-GC missed
+#                        conflict, and pivot durability across a crash in the
+#                        commit window)
 #   B2  test/soak/       resource-accounting soak -- would have caught #137/#138
 #   B3  test/lockmatrix/ lock-mode matrix under ASan -- would have caught #140
 #
@@ -72,13 +75,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y liburing-dev
 
-      - name: Build libdb (debug, so DB_ASSERTs are live)
+      # --enable-diagnostic (not just --enable-debug): the SSI commit-window
+      # crash gate reaches its in-commit kill points through a DIAGNOSTIC-only
+      # hook in src/txn/txn.c.  Without it run.sh reports SKIP for that gate
+      # and the pivot-durability property goes untested.
+      - name: Build libdb (diagnostic, so DB_ASSERTs and the SSI crash hook are live)
         working-directory: build_unix
         run: |
-          ../dist/configure --enable-debug
+          ../dist/configure --enable-debug --enable-diagnostic
           make -j"$(nproc)"
 
-      - name: Run the anomaly scenarios
+      # Runs the anomaly scenarios at both isolation levels AND the two SSI
+      # mechanism gates: marker GC must not drop a SIREAD marker early (a
+      # MISSED conflict, silent non-serializable commit) and a pivot must not
+      # survive a crash inside its commit window.
+      - name: Run the anomaly scenarios and the SSI mechanism gates
         working-directory: test/isolation
         run: ISO_TIMEOUT=600 ./run.sh
 
@@ -87,7 +98,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: isolation-artifacts
-          path: test/isolation/build/ISODIR.*/**
+          path: |
+            test/isolation/build/ISODIR.*/**
+            test/isolation/build/gc-*/**
+            test/isolation/build/crash/**
           if-no-files-found: ignore
 
   # --------------------------------------------------------------------------

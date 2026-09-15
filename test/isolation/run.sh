@@ -23,6 +23,15 @@
 #                 both runs every scenario under plain SI then SSI, proving
 #                 the anomalies are VISIBLE under DB_TXN_SNAPSHOT and PREVENTED
 #                 under DB_TXN_SERIALIZABLE.
+#   ISO_SSI_GATES 1 => also run the two SSI mechanism gates (default 1):
+#                 test_ssi_gc_pressure  -- marker GC must never drop a SIREAD
+#                     marker early (a MISSED conflict, not a leak).  Run at
+#                     both levels; under plain SI the skew MUST appear, which
+#                     is what proves the serializable run is not vacuous.
+#                 test_ssi_crash_pivot  -- a pivot must not survive a crash
+#                     inside its commit window.  Needs a DIAGNOSTIC build
+#                     (the crash hook is #ifdef DIAGNOSTIC); skipped with a
+#                     notice otherwise.
 #
 # Run from test/isolation/ inside a `nix develop` shell.
 
@@ -52,15 +61,60 @@ CFLAGS="-g -O1 -Wall -Wextra -Wno-unused-parameter -I$LIBDB_BUILD -I$HERE"
 	exit 2
 }
 
+ISO_SSI_GATES=${ISO_SSI_GATES:-1}
+
 mkdir -p "$OUT"
-# shellcheck disable=SC2086
-$CC $CFLAGS "$HERE/test_iso_anomaly.c" "$LIBDBA" $LDLIBS \
-	-o "$OUT/test_iso_anomaly"
-echo "built $OUT/test_iso_anomaly"
+for t in test_iso_anomaly test_ssi_gc_pressure test_ssi_crash_pivot; do
+	# shellcheck disable=SC2086
+	$CC $CFLAGS "$HERE/$t.c" "$LIBDBA" $LDLIBS -o "$OUT/$t"
+	echo "built $OUT/$t"
+done
 
 [ "${1:-}" = "build" ] && exit 0
 
 cd "$OUT"
+
+# Does the library have the DIAGNOSTIC-only crash hook?  test_ssi_crash_pivot
+# needs it to reach the in-commit kill points; without it the sweep would run
+# but never actually crash, which the driver itself reports as a failure.  So
+# check up front and skip with a notice instead.
+have_diagnostic=0
+if grep -q '^#define[[:space:]]*DIAGNOSTIC' "$LIBDB_BUILD/db_config.h" \
+    2>/dev/null; then
+	have_diagnostic=1
+fi
+
+# run_ssi_gates LEVEL -- the two SSI mechanism gates.  Returns non-zero if
+# either failed.  The GC gate runs at the caller's level; the crash gate is
+# level-independent (it hard-codes DB_TXN_SERIALIZABLE, since a pivot only
+# exists under SSI) so it runs once, from the serializable pass.
+run_ssi_gates() {
+	_lvl=$1
+	_rc=0
+	[ "$ISO_SSI_GATES" = "1" ] || return 0
+
+	echo "--- SSI gate: marker GC must not drop a marker early"\
+	    "(ISO_LEVEL=$_lvl)"
+	mkdir -p "gc-$_lvl"
+	( cd "gc-$_lvl" && ISO_LEVEL="$_lvl" \
+	    timeout "$ISO_TIMEOUT" ../test_ssi_gc_pressure ) || _rc=$?
+
+	if [ "$_lvl" = "serializable" ]; then
+		echo "--- SSI gate: a pivot must not survive a crash in its"\
+		    "commit window"
+		if [ "$have_diagnostic" = "1" ]; then
+			mkdir -p crash
+			( cd crash &&
+			    timeout "$ISO_TIMEOUT" ../test_ssi_crash_pivot ) ||
+			    _rc=$?
+		else
+			echo "    SKIP: library was not built with"\
+			    "--enable-diagnostic, so the in-commit crash"\
+			    "points are unreachable"
+		fi
+	fi
+	return $_rc
+}
 
 # Choose the isolation level(s) to exercise.  Default: both, so a single run
 # demonstrates the SI-anomaly-visible vs SSI-prevented contract.
@@ -69,8 +123,13 @@ if [ "$LEVELS" = "both" ]; then
 	rc=0
 	echo "=== ISO_LEVEL=snapshot (plain SI: anomalies expected) ==="
 	ISO_LEVEL=snapshot timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
+	run_ssi_gates snapshot || rc=$?
 	echo "=== ISO_LEVEL=serializable (SSI: anomalies prevented) ==="
 	ISO_LEVEL=serializable timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
+	run_ssi_gates serializable || rc=$?
 	exit $rc
 fi
-exec env ISO_LEVEL="$LEVELS" timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@"
+rc=0
+env ISO_LEVEL="$LEVELS" timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
+run_ssi_gates "$LEVELS" || rc=$?
+exit $rc
