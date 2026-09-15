@@ -109,12 +109,14 @@ typedef struct __db_aio_backend {
  * one for every struct in that stale list, not just this field.
  *
  * KNOWN ISSUE (opt-in path only).  With DB_MPOOL_AIO on and this latch in
- * place, test/c/aio_concurrent_sync in "aio" mode hangs in roughly 3 runs in
- * 67 (>900s, permanent), while "sync" mode is 0/84.  It is a sync-loop stall,
- * not the cross-reap corruption this latch fixes: lost=0 and db_verify is
- * clean on every recovered run, and on master the same test SEGVs in
- * __aio_uring_reap.  DB_MPOOL_AIO is default-OFF, so no default path is
- * affected.  See /tmp/os-aio-abi-fix-report.md in the fix commit's notes.
+ * place, test/c/aio_concurrent_sync in "aio" mode stalls permanently in
+ * roughly 5% of runs (measured 2/40 here; independently reported 3/67), while
+ * "sync" mode is 0/84.  The stall is in __memp_sync_int's required_write retry
+ * loop, not in the aio code and not on this latch -- see the comment there for
+ * the captured stacks.  It is not the cross-reap corruption this latch fixes:
+ * lost=0 and db_recover + db_verify are clean on every stalled run, whereas
+ * master SEGVs in __aio_uring_reap on the same test.  DB_MPOOL_AIO is
+ * default-OFF, so no default path is affected.
  */
 struct __db_aio_context {
 	const DB_AIO_BACKEND *backend;	/* NULL = synchronous fallback. */
