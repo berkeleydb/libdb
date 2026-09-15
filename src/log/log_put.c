@@ -962,6 +962,32 @@ __log_flush_pp(dbenv, lsn)
 	    (lp)->s_lsn.offset > (lsnp)->offset))
 
 /*
+ * __log_group_commit_enabled --
+ *	Group commit (the leader/followers batching of commit-record flushes
+ *	in __log_flush_int) is on by default; setting DB_NO_GROUP_COMMIT in
+ *	the environment disables the waiter queue, so each committer performs
+ *	its own flush.  Read once, cached process-wide.
+ *
+ *	This exists to make the value of group commit measurable from a single
+ *	binary (A/B the same build with and without the variable) and to give
+ *	a bisect switch if the coordination is ever suspected in a bug.  It
+ *	does NOT weaken durability in either position: with the queue disabled
+ *	every committer flushes for itself, which is strictly more flushing,
+ *	and the "is my LSN durable" test at the top of the flush block is
+ *	unchanged.  Same reasoning and same shape as DB_NO_RSNAP in
+ *	src/btree/bt_search.c.
+ */
+static int
+__log_group_commit_enabled()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_NO_GROUP_COMMIT") != NULL ? 0 : 1;
+	return (cached);
+}
+
+/*
  * __log_flush --
  *	ENV->log_flush
  *
@@ -1048,8 +1074,16 @@ __log_flush_int(dblp, lsnp, release)
 	/*
 	 * If a flush is in progress and we're allowed to do so, drop
 	 * the region lock and block waiting for the next flush.
+	 *
+	 * This is group commit: the thread that is already flushing acts as
+	 * the leader and, when its fsync completes, wakes every queued waiter
+	 * whose commit LSN that fsync made durable (the LOG_COMPARE against
+	 * lp->s_lsn in the wake pass below).  A waiter therefore only returns
+	 * success after the durable watermark has been observed to cover its
+	 * own LSN -- it never infers coverage from the mere fact that a flush
+	 * happened.
 	 */
-	if (release && lp->in_flush != 0) {
+	if (release && lp->in_flush != 0 && __log_group_commit_enabled()) {
 		if ((commit = SH_TAILQ_FIRST(
 		    &lp->free_commits, __db_commit)) == NULL) {
 			if ((ret = __env_alloc(&dblp->reginfo,
@@ -1096,8 +1130,41 @@ __log_flush_int(dblp, lsnp, release)
 		if (do_flush) {
 			lp->in_flush--;
 			flush_lsn = lp->t_lsn;
-		} else
+		} else if (ALREADY_FLUSHED(lp, &flush_lsn))
+			/*
+			 * We were woken as a follower of somebody else's
+			 * flush, and the durable watermark lp->s_lsn now
+			 * covers our own commit LSN, so our record is on
+			 * stable storage and we may report success.
+			 *
+			 * The waker only unlocks a waiter's mtx_txnwait after
+			 * testing that same coverage (the LOG_COMPARE against
+			 * lp->s_lsn in the wake pass at the end of this
+			 * function), and it does so holding the region lock,
+			 * which we have just reacquired.  s_lsn only ever
+			 * moves forward, so coverage once established cannot
+			 * be lost, and this test is expected to pass.
+			 *
+			 * We verify it rather than assume it.  This return is
+			 * the single place where a transaction whose commit
+			 * record might not be durable could be reported
+			 * committed, so a bug anywhere in the wake path would
+			 * become silent data loss instead of a detectable
+			 * failure.  Testing the watermark here makes the
+			 * durability of the return value depend only on
+			 * lp->s_lsn, never on having been woken correctly.
+			 */
 			return (0);
+		else {
+			/*
+			 * Unreachable by the argument above: we were woken
+			 * without the baton and without coverage.  Rather than
+			 * return a commit we cannot prove is durable, fall
+			 * through and flush for ourselves.  Loud in a
+			 * DIAGNOSTIC build, correct in any build.
+			 */
+			DB_ASSERT(env, ALREADY_FLUSHED(lp, &flush_lsn));
+		}
 	}
 
 	/*
