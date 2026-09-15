@@ -138,6 +138,7 @@
 #include <unistd.h>
 
 #include "db.h"
+#include "iso_knobs.h"
 
 #define	HOME	"TESTDIR_ssi_crash_pivot"
 
@@ -240,6 +241,9 @@ env_open(DB_ENV **envp, DB **ap, DB **bp, u_int32_t extra)
 
 	if ((rc = db_env_create(&env, 0)) != 0)
 		die("db_env_create", rc);
+	/* See iso_knobs.h: at 1 partition the lock and txn latches are one. */
+	if ((rc = iso_set_partitions(env)) != 0)
+		die("set_lk_partitions", rc);
 	if ((rc = env->set_lk_detect(env, DB_LOCK_DEFAULT)) != 0)
 		die("set_lk_detect", rc);
 	if ((rc = env->set_timeout(env, 2000000, DB_SET_LOCK_TIMEOUT)) != 0)
@@ -464,6 +468,12 @@ main(int argc, char *argv[])
 	printf("=== SSI commit-window durability: a pivot must not survive a"
 	    " crash\n");
 	printf("    kill points=%s seeds/point=%d\n", pointspec, nseeds);
+	/*
+	 * A hang must fail with a name.  alarm() is cleared across fork(), so
+	 * this covers only the parent's sweep loop -- the children are killed
+	 * deliberately and reaped with waitpid.  See iso_knobs.h.
+	 */
+	iso_watchdog("test_ssi_crash_pivot", 600);
 
 	for (i = 0; i < npoints; i++) {
 	    p = points[i];

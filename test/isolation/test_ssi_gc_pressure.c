@@ -111,6 +111,7 @@
 #include <string.h>
 
 #include "db.h"
+#include "iso_knobs.h"
 
 #define	HOME		"TESTDIR_ssi_gc_pressure"
 #define	NFILLER_KEYS	512		/* width of the filler keyspace */
@@ -224,6 +225,9 @@ env_open(void)
 
 	if ((rc = db_env_create(&env, 0)) != 0)
 		die("db_env_create", rc);
+	/* See iso_knobs.h: at 1 partition the lock and txn latches are one. */
+	if ((rc = iso_set_partitions(env)) != 0)
+		die("set_lk_partitions", rc);
 	/*
 	 * Small lock-object table (GC pressure (a) above): the txn_begin sweep
 	 * fires at st_objects / SI_CLEANUP_TRIGGER_DIV live markers, so a small
@@ -242,6 +246,7 @@ env_open(void)
 	if ((rc = env->open(env, HOME, DB_CREATE | DB_INIT_LOCK |
 	    DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_THREAD, 0600)) != 0)
 		die("DB_ENV->open", rc);
+	iso_report_partitions(env);
 	open_one(&db_a, "alice.db");
 	open_one(&db_b, "bob.db");
 	open_one(&db_f, "filler.db");
@@ -471,6 +476,8 @@ main(int argc, char *argv[])
 
 	(void)mkdir(HOME, 0755);
 	rmtree(HOME);
+	/* A hang must fail with a name, not time the job out.  See iso_knobs.h. */
+	iso_watchdog("test_ssi_gc_pressure", 600);
 	env_open();
 
 	/* Populate the filler keyspace so the lock-object table is wide. */

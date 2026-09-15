@@ -23,6 +23,29 @@
 #                 both runs every scenario under plain SI then SSI, proving
 #                 the anomalies are VISIBLE under DB_TXN_SNAPSHOT and PREVENTED
 #                 under DB_TXN_SERIALIZABLE.
+#   ISO_PARTS     lock-partition counts to sweep, space separated
+#                 (default: "default 1").  "default" means "whatever the
+#                 library picks"; a number is passed through to
+#                 DB_ENV->set_lk_partitions.
+#
+#                 1 IS A REGRESSION GATE, NOT TUNING.  The lock, txn and log
+#                 "regions" all live in the environment region and set their
+#                 mtx_region to the SAME mutex (renv->mtx_regenv), and
+#                 LOCK_SYSTEM_LOCK actually acquires it only when
+#                 part_t_size == 1.  So at exactly one partition
+#                 LOCK_SYSTEM_LOCK and TXN_SYSTEM_LOCK are one non-recursive
+#                 latch and any path that nests them hangs a thread against
+#                 itself.  The SSI rw-conflict branch in __lock_get_internal
+#                 did precisely that; every SSI schedule in this tier drives
+#                 that branch, so the tier is a gate on it -- but only if it
+#                 runs at 1 partition, which is why both counts run.  1 is
+#                 supported (DB_ENV->set_lk_partitions) and is the DEFAULT on
+#                 a single-CPU machine, so it is user-reachable.
+#   ISO_WATCHDOG  per-driver alarm(2) seconds; 0 disables (default: built in).
+#                 A self-deadlock hangs rather than failing, and a hung driver
+#                 is indistinguishable from a slow one, so each driver arms a
+#                 watchdog that converts the hang into a NAMED failing verdict
+#                 inside the tier's own timeout.
 #   ISO_SSI_GATES 1 => also run the two SSI mechanism gates (default 1):
 #                 test_ssi_gc_pressure  -- marker GC must never drop a SIREAD
 #                     marker early (a MISSED conflict, not a leak).  Run at
@@ -62,6 +85,7 @@ CFLAGS="-g -O1 -Wall -Wextra -Wno-unused-parameter -I$LIBDB_BUILD -I$HERE"
 }
 
 ISO_SSI_GATES=${ISO_SSI_GATES:-1}
+ISO_PARTS=${ISO_PARTS:-"default 1"}
 
 mkdir -p "$OUT"
 for t in test_iso_anomaly test_ssi_gc_pressure test_ssi_crash_pivot; do
@@ -94,17 +118,17 @@ run_ssi_gates() {
 	[ "$ISO_SSI_GATES" = "1" ] || return 0
 
 	echo "--- SSI gate: marker GC must not drop a marker early"\
-	    "(ISO_LEVEL=$_lvl)"
-	mkdir -p "gc-$_lvl"
-	( cd "gc-$_lvl" && ISO_LEVEL="$_lvl" \
+	    "(ISO_LEVEL=$_lvl, parts=$PARTS_LABEL)"
+	mkdir -p "gc-$_lvl-$PARTS_LABEL"
+	( cd "gc-$_lvl-$PARTS_LABEL" && ISO_LEVEL="$_lvl" \
 	    timeout "$ISO_TIMEOUT" ../test_ssi_gc_pressure ) || _rc=$?
 
 	if [ "$_lvl" = "serializable" ]; then
 		echo "--- SSI gate: a pivot must not survive a crash in its"\
-		    "commit window"
+		    "commit window (parts=$PARTS_LABEL)"
 		if [ "$have_diagnostic" = "1" ]; then
-			mkdir -p crash
-			( cd crash &&
+			mkdir -p "crash-$PARTS_LABEL"
+			( cd "crash-$PARTS_LABEL" &&
 			    timeout "$ISO_TIMEOUT" ../test_ssi_crash_pivot ) ||
 			    _rc=$?
 		else
@@ -116,20 +140,47 @@ run_ssi_gates() {
 	return $_rc
 }
 
+# run_levels -- the level sweep, at the partition count already exported.
+run_levels() {
+	_rc=0
+	if [ "$LEVELS" = "both" ]; then
+		echo "=== ISO_LEVEL=snapshot (plain SI: anomalies expected),"\
+		    "parts=$PARTS_LABEL ==="
+		ISO_LEVEL=snapshot timeout "$ISO_TIMEOUT" \
+		    ./test_iso_anomaly "$@" || _rc=$?
+		run_ssi_gates snapshot || _rc=$?
+		echo "=== ISO_LEVEL=serializable (SSI: anomalies prevented),"\
+		    "parts=$PARTS_LABEL ==="
+		ISO_LEVEL=serializable timeout "$ISO_TIMEOUT" \
+		    ./test_iso_anomaly "$@" || _rc=$?
+		run_ssi_gates serializable || _rc=$?
+		return $_rc
+	fi
+	env ISO_LEVEL="$LEVELS" timeout "$ISO_TIMEOUT" \
+	    ./test_iso_anomaly "$@" || _rc=$?
+	run_ssi_gates "$LEVELS" || _rc=$?
+	return $_rc
+}
+
 # Choose the isolation level(s) to exercise.  Default: both, so a single run
 # demonstrates the SI-anomaly-visible vs SSI-prevented contract.
 LEVELS=${ISO_LEVEL:-both}
-if [ "$LEVELS" = "both" ]; then
-	rc=0
-	echo "=== ISO_LEVEL=snapshot (plain SI: anomalies expected) ==="
-	ISO_LEVEL=snapshot timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
-	run_ssi_gates snapshot || rc=$?
-	echo "=== ISO_LEVEL=serializable (SSI: anomalies prevented) ==="
-	ISO_LEVEL=serializable timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
-	run_ssi_gates serializable || rc=$?
-	exit $rc
-fi
+
+# Outer sweep: lock-partition counts.  See ISO_PARTS above -- the 1-partition
+# pass is what makes this tier a gate on the region-latch aliasing, since that
+# is the only configuration where LOCK_SYSTEM_LOCK and TXN_SYSTEM_LOCK are the
+# same physical mutex.
 rc=0
-env ISO_LEVEL="$LEVELS" timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" || rc=$?
-run_ssi_gates "$LEVELS" || rc=$?
+for parts in $ISO_PARTS; do
+	if [ "$parts" = "default" ]; then
+		PARTS_LABEL=default
+		unset ISO_LK_PARTITIONS
+	else
+		PARTS_LABEL=$parts
+		ISO_LK_PARTITIONS=$parts
+		export ISO_LK_PARTITIONS
+	fi
+	echo "########## lk_partitions=$PARTS_LABEL ##########"
+	run_levels "$@" || rc=$?
+done
 exit $rc

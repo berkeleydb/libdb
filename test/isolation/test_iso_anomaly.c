@@ -76,6 +76,7 @@
 #include <unistd.h>
 
 #include "db.h"
+#include "iso_knobs.h"
 
 #define	ISO_MAX_SLOT	8
 #define	ISO_MAX_TXN	4
@@ -226,6 +227,15 @@ iso_env_open(u_int32_t create, int n, const char *const *names,
 
 	if ((rc = db_env_create(&env, 0)) != 0)
 		iso_die("db_env_create", rc);
+	/*
+	 * Optional lock-partition override (ISO_LK_PARTITIONS).  At 1 the lock
+	 * and txn region latches are ONE non-recursive mutex, which is the only
+	 * configuration in which a nested acquisition self-deadlocks; see
+	 * iso_knobs.h.  Every SSI schedule here drives the nesting site, so
+	 * this makes the whole tier a gate on it.
+	 */
+	if ((rc = iso_set_partitions(env)) != 0)
+		iso_die("set_lk_partitions", rc);
 	if ((rc = env->set_lk_detect(env, DB_LOCK_DEFAULT)) != 0)
 		iso_die("set_lk_detect", rc);
 	/*
@@ -248,6 +258,7 @@ iso_env_open(u_int32_t create, int n, const char *const *names,
 	if ((rc = env->open(env, iso_home, create | DB_INIT_LOCK |
 	    DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_THREAD, 0600)) != 0)
 		iso_die("DB_ENV->open", rc);
+	iso_report_partitions(env);
 
 	ndbs = n;
 	for (i = 0; i < n; i++) {
@@ -1268,6 +1279,13 @@ main(int argc, char **argv)
 	}
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
+	/*
+	 * A self-deadlock HANGS instead of failing, and a hung driver is
+	 * indistinguishable from a slow one -- CI would report a job timeout
+	 * naming no test.  Turn it into a named failure well inside the tier's
+	 * own timeout.  Generous: the whole scenario list, every attempt.
+	 */
+	iso_watchdog("test_iso_anomaly", 240);
 	printf("%s\n", db_version(NULL, NULL, NULL));
 	printf("isolation level: %s\n\n",
 	    iso_level == DB_TXN_SERIALIZABLE ?
