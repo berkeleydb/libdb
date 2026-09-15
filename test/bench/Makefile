@@ -11,7 +11,8 @@ INCLUDES = -I$(BDB)
 # describes that library instead of this build tree.
 LIBS = -L$(BDB)/.libs -ldb-5.3 -Wl,-rpath,$(abspath $(BDB)/.libs)
 
-BENCHES = scale_bench scale_iso tproc_c tproc_b tproc_h lock_bench ssi_abort_bench
+BENCHES = scale_bench scale_iso tproc_c tproc_b tproc_h lock_bench ssi_abort_bench \
+	  commit_bench fsync_probe
 
 all: $(BENCHES)
 
@@ -23,6 +24,16 @@ scale_iso: scale_iso.c
 
 lock_bench: lock_bench.c
 	$(CC) $(CFLAGS) $(INCLUDES) lock_bench.c $(LIBS) -o $@
+
+# commit_bench measures durable-commit throughput, fsyncs-per-commit and
+# commit-latency percentiles; fsync_probe measures the bare device fsync
+# latency, which is the denominator commit_bench's flush-round rate is
+# compared against.
+commit_bench: commit_bench.c
+	$(CC) $(CFLAGS) $(INCLUDES) commit_bench.c $(LIBS) -o $@
+
+fsync_probe: fsync_probe.c
+	$(CC) $(CFLAGS) fsync_probe.c -o $@
 
 ssi_abort_bench: ssi_abort_bench.c
 	$(CC) $(CFLAGS) $(INCLUDES) ssi_abort_bench.c $(LIBS) -o $@
