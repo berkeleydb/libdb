@@ -219,7 +219,7 @@ SIM_OBJS=	sim_core@o@ sim_os_hooks@o@
 FI_OBJS=	fi_alloc@o@
 
 # SSI resource-accounting leak tests -- test/c/.  Compile rules below.
-LEAK_TESTS=	leak_si_locker leak_si_mvcc_mtx
+LEAK_TESTS=	leak_si_locker leak_si_mvcc_mtx aio_concurrent_sync
 
 BTREE_OBJS=\
 	bt_compare@o@ bt_compress@o@ bt_conv@o@ bt_curadj@o@ bt_cursor@o@ \
@@ -1589,6 +1589,26 @@ leak_si_mvcc_mtx@o@: $(testdir)/c/leak_si_mvcc_mtx.c
 leak_si_mvcc_mtx: leak_si_mvcc_mtx@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) leak_si_mvcc_mtx@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+##################################################
+# os_aio concurrent-writeback test -- test/c/.
+#
+# Runs checkpoint + trickle + memp_sync + DB->sync + eviction pressure against
+# one environment simultaneously, in both writeback modes, and audits that
+# every DB_TXN_SYNC-committed record survives.  It exists to close the
+# cross-reap residual: with the mtx_aio exclusive-use latch removed it aborts
+# in __memp_aio_drain's DB_ASSERT(w[j].done) (diagnostic build).
+#
+# NOTE: needs -luring in LIBS when io_uring is configured; on a box without
+# pkg-config, configure leaves EXTRALIBS empty, so pass LIBS=-luring to
+# configure.
+##################################################
+aio_concurrent_sync@o@: $(testdir)/c/aio_concurrent_sync.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+aio_concurrent_sync: aio_concurrent_sync@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) aio_concurrent_sync@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 ##################################################
