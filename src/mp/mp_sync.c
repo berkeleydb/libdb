@@ -314,7 +314,32 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	last_mf_offset = INVALID_ROFF;
 	filecnt = wrote_total = 0;
 	nflight = 0;
-	use_aio = dbmp->aio_ctx != NULL && __os_aio_ctx_available(dbmp->aio_ctx);
+
+	/*
+	 * Async writeback requires EXCLUSIVE use of the per-process aio
+	 * context for the whole span from our first submit to our final
+	 * drain: our completion window (aiow) lives in this stack frame and
+	 * is the cookie of our in-flight ops, and a drain reaps whatever the
+	 * shared completion queue holds.  Two concurrent __memp_sync_int
+	 * callers sharing one context would cross-reap -- caller A's
+	 * drain-by-count satisfied by caller B's completions, so A runs the
+	 * write completion (clear BH_DIRTY, unpin, free the pgout copy) for
+	 * writes that have not reached the disk.  That is exactly the false
+	 * durable frontier the async error propagation exists to prevent.
+	 *
+	 * So take mtx_aio, and take it with TRYLOCK, never blocking: any
+	 * caller that does not win it (checkpoint vs trickle vs a
+	 * DB_SYNC_ALLOC from eviction) falls back to synchronous writeback,
+	 * which is the reference behaviour and always correct.  Never
+	 * waiting also means this latch cannot deadlock: it is held across
+	 * page writes that acquire hp->mtx_hash, bhp->mtx_buf and
+	 * dbmp->mutex, but since no thread ever sleeps to acquire it, it can
+	 * never be the blocking edge of a cycle.
+	 */
+	use_aio = 0;
+	if (dbmp->aio_ctx != NULL && __os_aio_ctx_available(dbmp->aio_ctx) &&
+	    MUTEX_TRYLOCK(env, dbmp->mtx_aio) == 0)
+		use_aio = 1;
 
 	if (wrote_totalp != NULL)
 		*wrote_totalp = 0;
@@ -338,8 +363,11 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	/* Assume one dirty page per bucket. */
 	ar_max = mp->nreg * mp->htab_buckets;
 	if ((ret =
-	    __os_malloc(env, ar_max * sizeof(BH_TRACK), &bharray)) != 0)
+	    __os_malloc(env, ar_max * sizeof(BH_TRACK), &bharray)) != 0) {
+		if (use_aio)
+			MUTEX_UNLOCK(env, dbmp->mtx_aio);
 		return (ret);
+	}
 
 	/*
 	 * Walk each cache's list of buffers and mark all dirty buffers to be
@@ -698,6 +726,17 @@ done:	/*
 		ret = t_ret;
 
 err:	__os_free(env, bharray);
+	/*
+	 * Every exit path passes here, and no async write may outlive this
+	 * frame: aiow (the ops' cookie) and w->ctx (holding the pgout page
+	 * copy and the mfp writer count) are stack state, so a completion
+	 * running after we return would write through a dead frame.  The
+	 * drains above cover the normal and interrupt paths; this assert
+	 * catches any future early-exit that forgets one.
+	 */
+	DB_ASSERT(env, nflight == 0);
+	if (use_aio)
+		MUTEX_UNLOCK(env, dbmp->mtx_aio);
 	if (wrote_totalp != NULL)
 		*wrote_totalp = wrote_total;
 

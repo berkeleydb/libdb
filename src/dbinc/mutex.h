@@ -77,8 +77,14 @@ extern "C" {
 #define	MTX_TXN_COMMIT		36
 #define	MTX_TXN_MVCC		37
 #define	MTX_TXN_REGION		38
+/*
+ * Appended, not inserted in alphabetical order: these IDs are the index
+ * space of the mutex-region allocation statistics, so renumbering the
+ * existing entries would silently relabel every historical stat dump.
+ */
+#define	MTX_MPOOL_AIO		39
 
-#define	MTX_MAX_ENTRY		38
+#define	MTX_MAX_ENTRY		39
 
 /* The following macros are defined on some platforms, e.g. QNX. */
 #undef __mutex_init

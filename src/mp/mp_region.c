@@ -178,9 +178,20 @@ __memp_open(env, create_ok)
 	 * so there is no behavior change unless AIO is explicitly turned on
 	 * (and on platforms with no AIO backend, creation fails and writeback
 	 * stays synchronous regardless).  Failure is non-fatal.
+	 *
+	 * mtx_aio gives one __memp_sync_int caller exclusive use of the
+	 * context for the span of its submissions and drains; see the comment
+	 * on DB_MPOOL's mtx_aio in dbinc/mp.h.  If the mutex cannot be
+	 * allocated we do NOT create the context: an unserialized context
+	 * cross-reaps between concurrent sync callers, which is a false
+	 * durable frontier, so no async writeback is the safe answer.
 	 */
-	if (F_ISSET(env->dbenv, DB_ENV_MPOOL_AIO))
+	if (F_ISSET(env->dbenv, DB_ENV_MPOOL_AIO)) {
+		if ((ret = __mutex_alloc(env, MTX_MPOOL_AIO,
+		    DB_MUTEX_PROCESS_ONLY, &dbmp->mtx_aio)) != 0)
+			goto err;
 		(void)__os_aio_create(env, 0, &dbmp->aio_ctx);
+	}
 
 	return (0);
 
@@ -194,6 +205,7 @@ err:	env->mp_handle = NULL;
 	}
 
 	(void)__mutex_free(env, &dbmp->mutex);
+	(void)__mutex_free(env, &dbmp->mtx_aio);
 	__os_free(env, dbmp);
 	return (ret);
 }
@@ -534,6 +546,7 @@ __memp_env_refresh(env)
 		(void)__os_aio_destroy(env, dbmp->aio_ctx);
 		dbmp->aio_ctx = NULL;
 	}
+	(void)__mutex_free(env, &dbmp->mtx_aio);
 	nreg = mp->nreg;
 	hp = R_ADDR(&dbmp->reginfo[0], mp->htab);
 
