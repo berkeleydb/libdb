@@ -33,11 +33,10 @@ on a leaf.**
 | 16 384 | 183.49 | 3.880% | ~100% |
 | 32 768 | 370.37 | 11.352% | ~100% |
 
-The abort rate scales with records-per-leaf across **three orders of magnitude**
-(0.018% → 11.4% over the range where it is measurable at all, ~630×; the
-512-byte point rounds to zero aborts entirely) on a workload whose *logical*
-conflict structure never changes. The "of which false" column is not an estimate from a model: it is
-a directly measured control (below).
+The abort rate spans **~630×** over the range where it is measurable at all
+(0.018% → 11.4%), and the 512-byte point rounds to zero aborts entirely — on a
+workload whose *logical* conflict structure never changes. The "of which false"
+column is not an estimate from a model: it is a directly measured control (below).
 
 ## What makes "false" measurable rather than asserted
 
