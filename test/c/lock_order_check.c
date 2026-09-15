@@ -1,0 +1,213 @@
+/*-
+ * See the file LICENSE for redistribution information.
+ *
+ * lock_order_check --- gate for the DIAGNOSTIC lock-order checker (gap G9).
+ *
+ * This is the TEETH test for src/mutex/mut_order.c, and it is written as an
+ * A/B so that it cannot go vacuously green.
+ *
+ * The subject is a REAL, pre-existing self-deadlock, not a synthetic reversal.
+ * docs/design/global-invariants.md A3 draws an edge
+ * "object partition -> TXN_SYSTEM_LOCK", but those are the SAME latch: the
+ * lock, txn and log regions all alias renv->mtx_regenv (lock_region.c:179,
+ * txn_region.c:118, log.c:224).  With lk_partitions == 1, LOCK_SYSTEM_LOCK is
+ * live (dbinc/lock.h:340) and __lock_get_internal's SSI branch then takes
+ * TXN_SYSTEM_LOCK -- the same non-recursive latch -- at lock.c:1119.
+ *
+ * The two arms:
+ *   lk_partitions = 4  (CONTROL)  LOCK_SYSTEM_LOCK is a no-op, so the nesting
+ *                                 never happens.  MUST complete cleanly.  If
+ *                                 this arm ever fires the checker, the model
+ *                                 has a false positive.
+ *   lk_partitions = 1  (SUBJECT)  MUST be reported by the checker.  On a build
+ *                                 without the checker this arm HANGS, which is
+ *                                 the bug the checker converts into a
+ *                                 diagnosis.
+ *
+ * Because the checker aborts by design, the subject arm is run in a CHILD
+ * process and the parent inspects how it died.  Run with DB_LOCK_ORDER_WARN=1
+ * to see the report without the abort.
+ *
+ * Verdict lines are explicit ("PASS:" / "FAIL:") so a harness can assert a
+ * real verdict was produced rather than trusting the exit status alone.
+ */
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "db.h"
+
+#define	HOME_PREFIX	"LOCK_ORDER_CHECK"
+#define	NSEED		400
+
+static int
+ck(int ret, const char *what, int line)
+{
+	if (ret != 0) {
+		fprintf(stderr, "%s:%d: %s: %s\n",
+		    __FILE__, line, what, db_strerror(ret));
+		exit(3);
+	}
+	return (ret);
+}
+#define	CK(call)	ck((call), #call, __LINE__)
+
+/*
+ * workload --
+ *	Form one SSI rw-antidependency: a serializable reader leaves a SIREAD
+ *	marker on a key, then a writer write-locks that same key.  The writer's
+ *	__lock_get_internal walks sh_obj->sireaders, finds the marker, and takes
+ *	TXN_SYSTEM_LOCK to record the edge.  That acquisition is the subject.
+ *
+ *	DB_TXN_SERIALIZABLE is essential.  Plain DB_TXN_SNAPSHOT arms none of
+ *	the rw-antidependency tracking (txn.c:319-322), so a probe written with
+ *	DB_TXN_SNAPSHOT alone passes at every partition count and proves nothing.
+ */
+static void
+workload(u_int32_t nparts)
+{
+	DB_ENV *env;
+	DB *db;
+	DB_TXN *seed, *rdr, *wtr;
+	DBT key, data;
+	char home[64];
+	int i, k, v;
+
+	(void)snprintf(home, sizeof(home), "%s_%lu",
+	    HOME_PREFIX, (u_long)nparts);
+	{
+		char cmd[256];
+		(void)snprintf(cmd, sizeof(cmd),
+		    "find %s -type f -delete 2>/dev/null; mkdir -p %s",
+		    home, home);
+		(void)system(cmd);
+	}
+
+	CK(db_env_create(&env, 0));
+	CK(env->set_lk_partitions(env, nparts));
+	env->set_errfile(env, stderr);
+	env->set_errpfx(env, "lock_order_check");
+	CK(env->open(env, home, DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
+	    DB_INIT_MPOOL | DB_INIT_TXN | DB_MULTIVERSION, 0644));
+
+	CK(db_create(&db, env, 0));
+	CK(db->open(db, NULL, "lo.db", NULL, DB_BTREE,
+	    DB_CREATE | DB_AUTO_COMMIT | DB_MULTIVERSION, 0644));
+
+	memset(&key, 0, sizeof(key));
+	memset(&data, 0, sizeof(data));
+	key.data = &k;
+	key.size = sizeof(k);
+
+	/* Seed enough keys that the read and write keys are real records. */
+	CK(env->txn_begin(env, NULL, &seed, 0));
+	for (i = 0; i < NSEED; i++) {
+		k = i;
+		v = 0;
+		data.data = &v;
+		data.size = sizeof(v);
+		CK(db->put(db, seed, &key, &data, 0));
+	}
+	CK(seed->commit(seed, 0));
+
+	/* Reader: serializable snapshot read -> leaves a SIREAD marker. */
+	CK(env->txn_begin(env, NULL, &rdr,
+	    DB_TXN_SNAPSHOT | DB_TXN_SERIALIZABLE));
+	k = 0;
+	v = -1;
+	data.data = &v;
+	data.ulen = sizeof(v);
+	data.flags = DB_DBT_USERMEM;
+	CK(db->get(db, rdr, &key, &data, 0));
+	data.flags = 0;
+
+	/* Writer: write-locks the same key.  This is the acquisition. */
+	CK(env->txn_begin(env, NULL, &wtr,
+	    DB_TXN_SNAPSHOT | DB_TXN_SERIALIZABLE));
+	k = 0;
+	v = 1;
+	data.data = &v;
+	data.size = sizeof(v);
+	CK(db->put(db, wtr, &key, &data, 0));
+
+	(void)wtr->abort(wtr);
+	(void)rdr->abort(rdr);
+	CK(db->close(db, 0));
+	CK(env->close(env, 0));
+}
+
+int
+main(int argc, char **argv)
+{
+	pid_t pid;
+	int status, fails;
+
+	/*
+	 * Child mode: run one arm and let it die however it dies.  argv[1] is
+	 * the partition count.
+	 */
+	if (argc == 3 && strcmp(argv[1], "--arm") == 0) {
+		workload((u_int32_t)atoi(argv[2]));
+		printf("ARM_COMPLETED\n");
+		return (0);
+	}
+
+	fails = 0;
+
+#ifndef DIAGNOSTIC
+	printf("SKIP: lock_order_check requires a --enable-diagnostic build "
+	    "(the checker is #ifdef DIAGNOSTIC)\n");
+	return (0);
+#endif
+
+	/* ---- CONTROL: lk_partitions=4 must complete with no report. ---- */
+	if ((pid = fork()) == 0) {
+		execl(argv[0], argv[0], "--arm", "4", (char *)NULL);
+		_exit(127);
+	}
+	(void)waitpid(pid, &status, 0);
+	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+		printf("PASS (control): lk_partitions=4 completed -- "
+		    "the checker did not fire on a legal schedule\n");
+	else {
+		printf("FAIL (control): lk_partitions=4 did not complete "
+		    "cleanly (status 0x%x) -- the lock-order model has a "
+		    "false positive\n", status);
+		fails++;
+	}
+
+	/* ---- SUBJECT: lk_partitions=1 must be caught, not hang. ---- */
+	if ((pid = fork()) == 0) {
+		execl(argv[0], argv[0], "--arm", "1", (char *)NULL);
+		_exit(127);
+	}
+	(void)waitpid(pid, &status, 0);
+	if (WIFSIGNALED(status) &&
+	    (WTERMSIG(status) == SIGABRT || WTERMSIG(status) == SIGIOT))
+		printf("PASS: lk_partitions=1 was caught by the lock-order "
+		    "checker (SIGABRT) instead of hanging -- "
+		    "lock.c:801 then lock.c:1119 on the same latch\n");
+	else if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+		/*
+		 * Completed cleanly.  Either the underlying self-deadlock was
+		 * fixed (in which case this test should be retired and A3
+		 * updated) or the checker stopped detecting it.  Both need a
+		 * human, so this is a failure, not a pass.
+		 */
+		printf("FAIL: lk_partitions=1 completed without a report.  "
+		    "Either lock.c:1119's nesting was fixed (retire this test "
+		    "and update A3) or the checker regressed.\n");
+		fails++;
+	} else {
+		printf("FAIL: lk_partitions=1 ended unexpectedly "
+		    "(status 0x%x); a hang here means the checker did not "
+		    "validate before acquiring\n", status);
+		fails++;
+	}
+
+	printf("%s: lock_order_check\n", fails == 0 ? "PASS" : "FAIL");
+	return (fails == 0 ? 0 : 1);
+}
