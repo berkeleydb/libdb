@@ -201,8 +201,16 @@ phase1_values(u_int32_t nkeys)
 
 /*
  * Phase 2 -- read-set equivalence under DB_TXN_SERIALIZABLE, measured via the
- * lock-region SIREAD marker population.  A batch that skipped markers would
- * leave measurably fewer than the individual path.
+ * lock-region object population.  A batch that skipped SIREAD markers would
+ * leave measurably fewer objects behind than the individual path.
+ *
+ * The two arms MUST read DISJOINT key ranges.  Lock objects are shared and
+ * reused, so if both arms read the same keys the first arm creates the objects
+ * and the second arm's delta is 0 -- which looks exactly like a skipped read
+ * set but is only measurement aliasing.  (That is precisely how the first
+ * version of this phase produced a false "isolation weakened" report.)  Each
+ * arm reads its own equally-sized, equally-spread, non-overlapping range, so
+ * the object deltas are directly comparable.
  */
 static void
 phase2_readset(u_int32_t nkeys)
@@ -213,20 +221,21 @@ phase2_readset(u_int32_t nkeys)
 	u_int32_t kb[MAXBATCH];
 	char buf[MAXBATCH][VALSZ + 8];
 	int rets[MAXBATCH];
-	u_int32_t base_i, base_b, i, n, spread;
+	u_int32_t base_i, base_b, i, n, spread, half;
 	u_int32_t after_i, after_b;
-	int ret;
+	int d_i, d_b, ret;
 
-	n = 64;
-	/* Spread keys so each lands on its own leaf page (~3 recs/leaf). */
-	spread = nkeys / (n + 2);
+	n = 32;
+	/*
+	 * Split the key space in half: arm A reads the low half, arm B the
+	 * high half, both with the same stride so both touch n distinct leaves.
+	 */
+	half = nkeys / 2;
+	spread = half / (n + 2);
 	if (spread < 8)
 		spread = 8;
 
-	/* Arm A: N individual gets inside one SSI txn. */
-	if ((ret = env->lock_stat(env, &lk, DB_STAT_CLEAR)) != 0)
-		DIE(ret, "lock_stat");
-	free(lk);
+	/* Arm A: N individual gets inside one SSI txn, low half. */
 	if ((ret = env->txn_begin(env, NULL, &txn, DB_TXN_SERIALIZABLE)) != 0)
 		DIE(ret, "txn_begin");
 	if ((ret = env->lock_stat(env, &lk, 0)) != 0)
@@ -247,7 +256,7 @@ phase2_readset(u_int32_t nkeys)
 	if ((ret = txn->commit(txn, 0)) != 0)
 		DIE(ret, "phase2 indiv commit");
 
-	/* Arm B: the same read set as one batched call in one SSI txn. */
+	/* Arm B: one batched call inside one SSI txn, high half (disjoint). */
 	if ((ret = env->txn_begin(env, NULL, &txn, DB_TXN_SERIALIZABLE)) != 0)
 		DIE(ret, "txn_begin");
 	if ((ret = env->lock_stat(env, &lk, 0)) != 0)
@@ -255,7 +264,7 @@ phase2_readset(u_int32_t nkeys)
 	base_b = lk->st_nobjects;
 	free(lk);
 	for (i = 0; i < n; i++) {
-		fill_key(&keys[i], &kb[i], (i + 1) * spread);
+		fill_key(&keys[i], &kb[i], half + (i + 1) * spread);
 		fill_out(&datas[i], buf[i], sizeof(buf[i]));
 		rets[i] = 12345;
 	}
@@ -269,102 +278,117 @@ phase2_readset(u_int32_t nkeys)
 	if ((ret = txn->commit(txn, 0)) != 0)
 		DIE(ret, "phase2 batch commit");
 
-	/*
-	 * The two arms read the same keys, so the objects the read set touches
-	 * must match.  Objects are shared/reused across the two arms, so
-	 * compare the DELTA each arm produced, and require the batch's delta to
-	 * be no smaller -- a skipped marker shows up as a smaller delta.
-	 * (Anti-vacuity: if BOTH deltas are 0 the probe measured nothing and
-	 * that is itself a failure, not a pass.)
-	 */
-	printf("VERDICT phase2-readset: indiv objects %u->%u (delta %d), "
-	    "batch %u->%u (delta %d)\n",
-	    base_i, after_i, (int)after_i - (int)base_i,
-	    base_b, after_b, (int)after_b - (int)base_b);
-	CHECK((int)after_i - (int)base_i > 0 ||
-	    (int)after_b - (int)base_b > 0,
-	    "read-set probe measured nothing in either arm (vacuous)");
-	CHECK((int)after_b - (int)base_b >= (int)after_i - (int)base_i,
-	    "batch read set SMALLER than individual read set: "
-	    "batch delta %d < indiv delta %d -- isolation weakened",
-	    (int)after_b - (int)base_b, (int)after_i - (int)base_i);
+	d_i = (int)after_i - (int)base_i;
+	d_b = (int)after_b - (int)base_b;
+	printf("VERDICT phase2-readset: %u keys/arm, disjoint ranges ; indiv "
+	    "objects %u->%u (delta %d), batch %u->%u (delta %d)\n",
+	    n, base_i, after_i, d_i, base_b, after_b, d_b);
 	phase_verdicts++;
+
+	/* Anti-vacuity: if neither arm moved the count, the probe measured
+	 * nothing and that is a failure, not a pass. */
+	CHECK(d_i > 0 || d_b > 0,
+	    "read-set probe measured nothing in either arm (vacuous)");
+	CHECK(d_b >= d_i,
+	    "batch read set SMALLER than individual read set: batch delta %d < "
+	    "indiv delta %d -- isolation weakened", d_b, d_i);
 }
 
 /*
- * Phase 3 -- isolation equivalence with teeth: the write-skew pivot.
+ * Phase 3 -- isolation equivalence with teeth: the CROSSED write-skew pivot.
  *
- * T1 reads key A (arm-dependent), T2 writes A and commits, T1 writes B.  At
- * DB_TXN_SERIALIZABLE, T1's write must be refused with DB_SNAPSHOT_CONFLICT
- * (an rw-antidependency pivot).  At plain snapshot isolation the same schedule
- * must COMMIT -- that control is what proves the schedule is really armed, so
- * a "both arms conflicted" result cannot come from an accident.
+ * The schedule is the one this repo's ssi_abort_bench proved actually produces
+ * an SSI abort rather than a lock conflict:
  *
- * Returns the code T1's write/commit produced.
+ *   T1 reads A            (via the arm under test)
+ *   T2 reads B            (always via DB->get -- only T1's read is the variable)
+ *   T1 writes B
+ *   T2 writes A
+ *
+ * Both transactions read what the other is about to write, so under
+ * DB_TXN_SERIALIZABLE exactly ONE must fail with an SSI conflict, and under
+ * plain DB_TXN_SNAPSHOT both must commit into the skewed state -- which is the
+ * anti-vacuity control that proves the schedule really is armed.
+ *
+ * Two things this schedule requires, both learned the hard way in this repo:
+ *   - the keys must be spread FAR APART IN KEY ORDER, not merely named apart:
+ *     page-granularity write locking puts ~3 records on a leaf, so adjacent
+ *     keys share a leaf and the detector resolves a ww page conflict BEFORE
+ *     SSI ever sees a pivot (which is why the naive schedule scored 0/20).
+ *   - the environment MUST run a deadlock detector.  Without one, the crossed
+ *     writes simply block forever (the earlier version of this test hung here,
+ *     in BOTH arms, which is how it was known not to be a batch bug).
+ *
+ * Returns the two transactions' outcomes through rc1p/rc2p.
  */
-static int
-pivot_once(int use_batch, u_int32_t iso_flag, u_int32_t keyA, u_int32_t keyB)
+static void
+pivot_pair(int use_batch, u_int32_t iso_flag, u_int32_t keyA, u_int32_t keyB,
+    int *rc1p, int *rc2p)
 {
 	DB_TXN *t1, *t2;
 	DBT k, d;
-	u_int32_t kbuf;
-	char out[VALSZ + 8], val[VALSZ];
-	int rets[1], ret, t1ret;
+	u_int32_t kbuf1, kbuf2;
+	char out1[VALSZ + 8], out2[VALSZ + 8], val[VALSZ];
+	int rets[1], rc1, rc2, ret;
 
 	memset(val, 'w', sizeof(val));
 
 	if ((ret = env->txn_begin(env, NULL, &t1, iso_flag)) != 0)
 		DIE(ret, "pivot t1 begin");
+	if ((ret = env->txn_begin(env, NULL, &t2, iso_flag)) != 0)
+		DIE(ret, "pivot t2 begin");
 
-	/* T1 reads A -- via the arm under test. */
-	fill_key(&k, &kbuf, keyA);
-	fill_out(&d, out, sizeof(out));
+	/* T1 reads A -- THE ARM UNDER TEST. */
+	fill_key(&k, &kbuf1, keyA);
+	fill_out(&d, out1, sizeof(out1));
 	if (use_batch) {
 		rets[0] = 12345;
 		ret = db_get_multiple(db, t1, &k, &d, rets, 1, 0);
-		if (ret != 0 && ret != DB_NOTFOUND)
-			DIE(ret, "pivot batch read");
-	} else {
+	} else
 		ret = db->get(db, t1, &k, &d, 0);
-		if (ret != 0 && ret != DB_NOTFOUND)
-			DIE(ret, "pivot indiv read");
+	if (ret != 0 && ret != DB_NOTFOUND) {
+		(void)t1->abort(t1); (void)t2->abort(t2);
+		*rc1p = ret; *rc2p = 0;
+		return;
 	}
 
-	/* T2 writes A and commits -- creating the rw-antidependency into T1. */
-	if ((ret = env->txn_begin(env, NULL, &t2, iso_flag)) != 0)
-		DIE(ret, "pivot t2 begin");
-	fill_key(&k, &kbuf, keyA);
-	memset(&d, 0, sizeof(d));
-	d.data = val; d.size = sizeof(val);
-	ret = db->put(db, t2, &k, &d, 0);
-	if (ret != 0) {
-		(void)t2->abort(t2);
-		(void)t1->abort(t1);
-		return (ret);
-	}
-	if ((ret = t2->commit(t2, 0)) != 0) {
-		(void)t1->abort(t1);
-		return (ret);
+	/* T2 reads B -- always the individual path; only T1's read varies. */
+	fill_key(&k, &kbuf2, keyB);
+	fill_out(&d, out2, sizeof(out2));
+	ret = db->get(db, t2, &k, &d, 0);
+	if (ret != 0 && ret != DB_NOTFOUND) {
+		(void)t1->abort(t1); (void)t2->abort(t2);
+		*rc1p = 0; *rc2p = ret;
+		return;
 	}
 
-	/* T1 now writes B -- this is where the pivot must be refused. */
-	fill_key(&k, &kbuf, keyB);
+	/* Crossed writes: T1 writes B, T2 writes A. */
+	fill_key(&k, &kbuf2, keyB);
 	memset(&d, 0, sizeof(d));
 	d.data = val; d.size = sizeof(val);
-	t1ret = db->put(db, t1, &k, &d, 0);
-	if (t1ret == 0)
-		t1ret = t1->commit(t1, 0);
-	else
-		(void)t1->abort(t1);
-	return (t1ret);
+	rc1 = db->put(db, t1, &k, &d, 0);
+
+	fill_key(&k, &kbuf1, keyA);
+	memset(&d, 0, sizeof(d));
+	d.data = val; d.size = sizeof(val);
+	rc2 = db->put(db, t2, &k, &d, 0);
+
+	if (rc1 == 0) rc1 = t1->commit(t1, 0); else (void)t1->abort(t1);
+	if (rc2 == 0) rc2 = t2->commit(t2, 0); else (void)t2->abort(t2);
+	*rc1p = rc1;
+	*rc2p = rc2;
 }
+
+/* An SSI refusal, in either of the two shapes the engine can report. */
+#define	IS_SSI_ABORT(r)	((r) == DB_SNAPSHOT_CONFLICT)
 
 static void
 phase3_isolation(u_int32_t nkeys)
 {
 	const char *only;
-	u_int32_t base, keyA, keyB, spread;
-	int i, iter, do_batch, do_indiv, s_i, s_b, n_i, n_b;
+	u_int32_t keyA, keyB, spread;
+	int i, iter, do_batch, do_indiv, rc1, rc2;
+	int ssi_i, ssi_b, si_i, si_b;
 
 	/*
 	 * BATCH_DIFF_ARM restricts phase 3 to one arm.  This is the control
@@ -376,70 +400,93 @@ phase3_isolation(u_int32_t nkeys)
 	do_indiv = (only == NULL || strcmp(only, "indiv") == 0);
 	do_batch = (only == NULL || strcmp(only, "batch") == 0);
 
-	spread = nkeys / 64;
-	if (spread < 8)
-		spread = 8;
-	iter = 20;
-	s_i = s_b = n_i = n_b = 0;
+	/*
+	 * Spread so every key in a pivot pair lands on its own leaf page.
+	 * ssi_abort_bench measured that SP >= 8 is enough at ~3 records/leaf;
+	 * use a much larger stride here since there are only a few pairs.
+	 */
+	iter = 10;
+	spread = nkeys / (8 * (u_int32_t)iter + 8);
+	if (spread < 16)
+		spread = 16;
+	ssi_i = ssi_b = si_i = si_b = 0;
 
 	for (i = 0; i < iter; i++) {
-		/* Fresh key pair each iteration so versions never collide. */
-		base = (u_int32_t)(i * 4 + 1);
+		/* A distinct, widely-separated key pair per arm per iteration. */
 		if (do_indiv) {
-			keyA = base * spread;
-			keyB = (base + 1) * spread;
-			if (pivot_once(0, DB_TXN_SERIALIZABLE, keyA, keyB) ==
-			    DB_SNAPSHOT_CONFLICT)
-				s_i++;
+			keyA = (u_int32_t)(i * 8 + 1) * spread;
+			keyB = (u_int32_t)(i * 8 + 3) * spread;
+			pivot_pair(0, DB_TXN_SERIALIZABLE, keyA, keyB,
+			    &rc1, &rc2);
+			if (IS_SSI_ABORT(rc1) + IS_SSI_ABORT(rc2) == 1 &&
+			    (rc1 == 0) + (rc2 == 0) == 1)
+				ssi_i++;
 		}
 		if (do_batch) {
-			keyA = (base + 2) * spread;
-			keyB = (base + 3) * spread;
-			if (pivot_once(1, DB_TXN_SERIALIZABLE, keyA, keyB) ==
-			    DB_SNAPSHOT_CONFLICT)
-				s_b++;
+			keyA = (u_int32_t)(i * 8 + 5) * spread;
+			keyB = (u_int32_t)(i * 8 + 7) * spread;
+			pivot_pair(1, DB_TXN_SERIALIZABLE, keyA, keyB,
+			    &rc1, &rc2);
+			if (IS_SSI_ABORT(rc1) + IS_SSI_ABORT(rc2) == 1 &&
+			    (rc1 == 0) + (rc2 == 0) == 1)
+				ssi_b++;
 		}
 
-		/* Anti-vacuity control: plain SI must COMMIT the same shape. */
+		/*
+		 * Anti-vacuity control: the SAME schedule at plain snapshot
+		 * isolation must commit BOTH transactions (write skew allowed).
+		 * If this does not happen the schedule is not really arming and
+		 * the SERIALIZABLE comparison above proves nothing.
+		 */
 		if (do_indiv) {
-			keyA = (base + 128) * spread;
-			keyB = (base + 129) * spread;
-			if (pivot_once(0, DB_TXN_SNAPSHOT, keyA, keyB) == 0)
-				n_i++;
+			keyA = (u_int32_t)(i * 8 + 2) * spread + 1;
+			keyB = (u_int32_t)(i * 8 + 4) * spread + 1;
+			pivot_pair(0, DB_TXN_SNAPSHOT, keyA, keyB, &rc1, &rc2);
+			if (rc1 == 0 && rc2 == 0)
+				si_i++;
 		}
 		if (do_batch) {
-			keyA = (base + 130) * spread;
-			keyB = (base + 131) * spread;
-			if (pivot_once(1, DB_TXN_SNAPSHOT, keyA, keyB) == 0)
-				n_b++;
+			keyA = (u_int32_t)(i * 8 + 6) * spread + 1;
+			keyB = (u_int32_t)(i * 8 + 8) * spread + 1;
+			pivot_pair(1, DB_TXN_SNAPSHOT, keyA, keyB, &rc1, &rc2);
+			if (rc1 == 0 && rc2 == 0)
+				si_b++;
 		}
-		printf("    phase3 iter %d done (s_i=%d s_b=%d)\n", i, s_i, s_b);
-		fflush(stdout);
 	}
 
-	printf("VERDICT phase3-isolation: arm=%s SERIALIZABLE pivots refused "
-	    "indiv=%d/%d batch=%d/%d ; snapshot-control commits "
-	    "indiv=%d/%d batch=%d/%d\n",
-	    only == NULL ? "both" : only,
-	    s_i, do_indiv ? iter : 0, s_b, do_batch ? iter : 0,
-	    n_i, do_indiv ? iter : 0, n_b, do_batch ? iter : 0);
+	printf("VERDICT phase3-isolation: arm=%s iters=%d ; SERIALIZABLE "
+	    "write-skew prevented indiv=%d batch=%d ; snapshot control "
+	    "(skew allowed) indiv=%d batch=%d\n",
+	    only == NULL ? "both" : only, iter, ssi_i, ssi_b, si_i, si_b);
 	phase_verdicts++;
 
-	/*
-	 * The equivalence claim: whatever the individual path does, the batch
-	 * must do.  And the control must show the schedule is really armed,
-	 * otherwise "0 == 0" would pass vacuously.  Only assert the comparison
-	 * when both arms actually ran.
-	 */
+	/* Anti-vacuity: plain snapshot MUST allow the skew, or nothing armed. */
 	if (do_indiv)
-		CHECK(s_i == iter,
-		    "control broken: individual SSI path refused only %d/%d "
-		    "pivots -- the schedule is not arming, so the batch "
-		    "comparison is vacuous", s_i, iter);
+		CHECK(si_i == iter,
+		    "control broken: at plain snapshot the individual path "
+		    "allowed the skew only %d/%d times -- the schedule is not "
+		    "arming, so the SERIALIZABLE comparison is vacuous",
+		    si_i, iter);
+	if (do_batch)
+		CHECK(si_b == iter,
+		    "control broken: at plain snapshot the BATCHED path "
+		    "allowed the skew only %d/%d times -- schedule not arming",
+		    si_b, iter);
+
+	/* The teeth: SSI must refuse, and both arms must refuse identically. */
+	if (do_indiv)
+		CHECK(ssi_i == iter,
+		    "individual SSI path prevented only %d/%d write skews",
+		    ssi_i, iter);
+	if (do_batch)
+		CHECK(ssi_b == iter,
+		    "BATCHED SSI path prevented only %d/%d write skews -- "
+		    "isolation weakened by the batch", ssi_b, iter);
 	if (do_indiv && do_batch)
-		CHECK(s_b == s_i,
-		    "ISOLATION NOT EQUIVALENT: batch refused %d/%d pivots but "
-		    "individual refused %d/%d", s_b, iter, s_i, iter);
+		CHECK(ssi_b == ssi_i,
+		    "ISOLATION NOT EQUIVALENT: batch prevented %d/%d skews "
+		    "but individual prevented %d/%d",
+		    ssi_b, iter, ssi_i, iter);
 }
 
 int
@@ -465,6 +512,17 @@ main(int argc, char **argv)
 	env->set_errfile(env, stderr);
 	env->set_errpfx(env, "batch_diff");
 	(void)env->set_cachesize(env, 0, 128 * 1024 * 1024, 1);
+	/*
+	 * A deadlock detector is MANDATORY here, not optional: phase 3's
+	 * crossed writes are a genuine lock cycle, and with no detector the
+	 * pair simply blocks forever.  (An earlier version of this test omitted
+	 * it and hung in BOTH arms -- the same trap that produced a 17-hour
+	 * hang elsewhere in this repo.)
+	 */
+	if ((ret = env->set_lk_detect(env, DB_LOCK_MINWRITE)) != 0) {
+		fprintf(stderr, "set_lk_detect: %s\n", db_strerror(ret));
+		return (2);
+	}
 	if ((ret = env->open(env, home,
 	    DB_CREATE | DB_INIT_MPOOL | DB_INIT_LOCK | DB_INIT_TXN |
 	    DB_INIT_LOG | DB_THREAD | DB_RECOVER, 0)) != 0)
