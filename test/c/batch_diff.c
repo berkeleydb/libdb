@@ -291,17 +291,29 @@ phase2_readset(u_int32_t nkeys)
 	d_first_b = readset_delta(1, n, spread, half);
 
 	printf("VERDICT phase2-readset: %u keys/range, same stride %u ; "
-	    "first-touch object delta: indiv-range %d, batch-range %d\n",
+	    "first-touch object delta: indiv-range %d, batch-range %d "
+	    "(IN-PROCESS, CONFOUNDED -- see the READSET probe for the "
+	    "real comparison)\n",
 	    n, spread, d_first_i, d_first_b);
 	phase_verdicts++;
 
-	/* Anti-vacuity: if neither arm moved the count, the probe measured
-	 * nothing and that is a failure, not a pass. */
+	/*
+	 * Anti-vacuity only.  The two numbers above are NOT a valid arm-vs-arm
+	 * comparison and this phase deliberately does not assert on their
+	 * relative size: the ranges sit at different depths and share leaves
+	 * differently, and lock objects created by the first range are still
+	 * present when the second is read, so the second range's delta is
+	 * systematically smaller REGARDLESS OF WHICH ARM READS IT.  That was
+	 * confirmed by swapping the arms (BATCH_DIFF_ARM=indiv vs =batch): the
+	 * 32/10 split followed the RANGE, not the arm.
+	 *
+	 * The real read-set comparison is the `readset` subcommand, run once per
+	 * (arm, range) in a fresh process against a fresh environment so each
+	 * run is a first-toucher; leak-run.sh drives it and compares arms
+	 * WITHIN a range.
+	 */
 	CHECK(d_first_i > 0 || d_first_b > 0,
 	    "read-set probe measured nothing in either arm (vacuous)");
-	CHECK(d_first_b >= d_first_i,
-	    "batch read set SMALLER than individual read set: batch delta %d < "
-	    "indiv delta %d -- isolation weakened", d_first_b, d_first_i);
 }
 
 /*
@@ -413,8 +425,10 @@ phase3_isolation(u_int32_t nkeys)
 	 * shared engine code, not in db_get_multiple.
 	 */
 	only = getenv("BATCH_DIFF_ARM");
-	do_indiv = (only == NULL || strcmp(only, "indiv") == 0);
-	do_batch = (only == NULL || strcmp(only, "batch") == 0);
+	do_indiv = (only == NULL || strcmp(only, "both") == 0 ||
+	    strcmp(only, "indiv") == 0);
+	do_batch = (only == NULL || strcmp(only, "both") == 0 ||
+	    strcmp(only, "batch") == 0);
 
 	/*
 	 * Spread so every key in a pivot pair lands on its own leaf page.
@@ -544,9 +558,24 @@ main(int argc, char **argv)
 	u_int32_t i, kb, nkeys;
 	char val[VALSZ];
 	const char *home;
-	int ret;
+	int ret, rs_mode, rs_batch;
+	u_int32_t rs_base;
 
-	nkeys = argc > 1 ? (u_int32_t)atoi(argv[1]) : 2000;
+	/*
+	 * "readset <indiv|batch> <base>" is the fresh-process read-set probe.
+	 * Phase 2 cannot compare the two arms inside ONE process, because lock
+	 * objects are shared: whichever arm touches a range first creates its
+	 * objects and the second arm then measures ~0.  So the harness runs this
+	 * subcommand once per (arm, range) in a SEPARATE process against a
+	 * SEPARATE environment, making each run a first-toucher, and compares
+	 * arms WITHIN a range -- which is the only comparison in which geometry
+	 * is held constant.
+	 */
+	rs_mode = (argc > 3 && strcmp(argv[1], "readset") == 0);
+	rs_batch = rs_mode && strcmp(argv[2], "batch") == 0;
+	rs_base = rs_mode ? (u_int32_t)atoi(argv[3]) : 0;
+
+	nkeys = (argc > 1 && !rs_mode) ? (u_int32_t)atoi(argv[1]) : 4000;
 	if (nkeys < 512)
 		nkeys = 512;
 	if ((home = getenv("BATCH_DIFF_HOME")) == NULL)
@@ -591,6 +620,23 @@ main(int argc, char **argv)
 			DIE(ret, "load");
 	}
 	printf("# batch_diff: %u keys loaded in %s\n", nkeys, home);
+
+	if (rs_mode) {
+		/*
+		 * Fresh-process read-set probe: 32 keys at the same stride,
+		 * starting at the requested base, read by the requested arm.
+		 * The stride matches phase 2's so the two agree.
+		 */
+		u_int32_t spread = (nkeys / 2) / 34;
+		if (spread < 8)
+			spread = 8;
+		printf("READSET arm=%s base=%u stride=%u delta=%d\n",
+		    rs_batch ? "batch" : "indiv", rs_base, spread,
+		    readset_delta(rs_batch, 32, spread, rs_base));
+		(void)db->close(db, 0);
+		(void)env->close(env, 0);
+		return (0);
+	}
 
 	phase1_values(nkeys);
 	phase2_readset(nkeys);
