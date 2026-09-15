@@ -853,6 +853,7 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	DB_THREAD_INFO *ip;
 	u_int32_t ndx, part_id;
 	int did_abort, ihold, grant_dirty, no_dd, ret, rwconf, safe_si, t_ret;
+	int si_txn_lock;
 	roff_t holder, sh_off;
 
 	/*
@@ -890,6 +891,57 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	LF_CLR(DB_LOCK_SNAPSHOT_SAFE);
 	if (safe_si)
 		DB_ASSERT(env, sh_locker->td_off != INVALID_ROFF);
+
+	/*
+	 * Must the SSI branch below acquire the txn-region latch itself, or does
+	 * our caller already hold that very latch?
+	 *
+	 * The lock, txn and log "regions" are not separate regions: each lives
+	 * in the environment region and sets its own mtx_region to the SAME
+	 * mutex, ((REGENV *)env->reginfo->primary)->mtx_regenv -- see
+	 * __lock_region_init (lock_region.c), __txn_init (txn_region.c) and
+	 * __log_init (log.c).  TXN_SYSTEM_LOCK and LOCK_SYSTEM_LOCK therefore
+	 * name ONE physical mutex, and LOCK_SYSTEM_LOCK actually acquires it in
+	 * exactly one case: a single lock partition (lock.h -- with more than
+	 * one partition it is a no-op and the per-partition mutex serializes
+	 * instead).
+	 *
+	 * Every caller of this function holds LOCK_SYSTEM_LOCK across the call
+	 * (__lock_get, __lock_get_api, __lock_vec, __lock_get_list).  So with
+	 * one partition the txn-region latch is ALREADY held by this thread on
+	 * entry, and re-acquiring a non-recursive latch would hang this thread
+	 * against itself forever -- a real self-deadlock for the supported
+	 * DB_ENV->set_lk_partitions(1) configuration (and the default on a
+	 * single-CPU machine, __lock_env_create).  Skip the redundant
+	 * acquisition, and the matching release with it.
+	 *
+	 * Mutual exclusion is a property of the latch being HELD, not of who
+	 * called MUTEX_LOCK: in the skipped case the flag read-modify-write
+	 * below is covered by the caller's hold, whose interval strictly
+	 * CONTAINS the interval we would otherwise have carved out, so the
+	 * serialization against __txn_commit's pivot check + TXN_DTL_SICHECKED
+	 * publish, __txn_end's status store and __memp_si_rwconflict (issue
+	 * #136) is preserved -- indeed widened, never narrowed.
+	 *
+	 * This is the same idiom the surrounding code already uses for the very
+	 * same aliasing (see the region->part_t_size != 1 guards around
+	 * LOCK_REGION_LOCK in __lock_put_internal and __lock_getobj, and the
+	 * part_t_size == 1 "goto alloc" in lock_alloc.incl); the SSI branch was
+	 * the one site that omitted it.
+	 */
+	si_txn_lock = TXN_ON(env) && region->part_t_size != 1;
+	if (safe_si && TXN_ON(env) && region->part_t_size == 1) {
+		/*
+		 * Teeth for the reasoning above, in DIAGNOSTIC builds only: the
+		 * two latches really are one mutex, and it really is held here.
+		 * If a future change stops aliasing them, or stops holding
+		 * LOCK_SYSTEM_LOCK across this call, this fires instead of
+		 * silently dropping the #136 serialization.
+		 */
+		DB_ASSERT(env, region->mtx_region == ((DB_TXNREGION *)
+		    env->tx_handle->reginfo.primary)->mtx_region);
+		MUTEX_REQUIRED(env, region->mtx_region);
+	}
 
 	/* Check that the lock mode is valid.  */
 	if (lock_mode >= (db_lockmode_t)region->nmodes) {
@@ -1054,6 +1106,12 @@ again:	if (obj == NULL) {
 		 * change (which the partition mutex already protects) and never
 		 * across a goto, so it cannot nest with per-lock or region
 		 * mutexes.  Ordering partition -> txn-region is non-circular.
+		 *
+		 * With a SINGLE partition there is no partition mutex; the caller
+		 * already holds the lock-region mutex, which IS the txn-region
+		 * mutex (both are renv->mtx_regenv), so it is that hold which
+		 * serializes the flag ops and si_txn_lock is 0 -- see the long
+		 * comment where si_txn_lock is computed.
 		 */
 		for (sireadlp = SH_TAILQ_FIRST(&sh_obj->sireaders, __db_lock);
 		    sireadlp != NULL; sireadlp = next_lock) {
@@ -1115,7 +1173,7 @@ again:	if (obj == NULL) {
 				 * already happened and both transactions committed a
 				 * write skew (#136).
 				 */
-				if (TXN_ON(env))
+				if (si_txn_lock)
 					TXN_SYSTEM_LOCK(env);
 				if (F_ISSET(LOCK_OWNER(env, sireadlp),
 				    TXN_DTL_WCONF) &&
@@ -1144,7 +1202,7 @@ again:	if (obj == NULL) {
 						F_SET(LOCK_OWNER(env, sireadlp),
 						    TXN_DTL_RCONF);
 				}
-				if (TXN_ON(env))
+				if (si_txn_lock)
 					TXN_SYSTEM_UNLOCK(env);
 				if (ret != 0)
 					goto err;
