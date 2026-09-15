@@ -20,12 +20,13 @@ lever that controls records-per-leaf is already public API (`DB->set_pagesize`).
 ## The answer, up front
 
 **On a realistic read-modify-write workload, essentially the entire SSI abort
-rate is a page-granularity artifact — and the abort rate itself ranges from
-0.006% to 12% depending purely on how many records fit on a leaf.**
+rate is a page-granularity artifact — and the abort rate itself ranges from zero
+measured aborts to 11.4% of transactions depending purely on how many records fit
+on a leaf.**
 
 | pagesize | records/leaf | SSI aborts (uniform) | of which false |
 |---:|---:|---:|---:|
-| 512 | 4.00 | 0.006% | ~100% |
+| 512 | 4.00 | 0.000% | n/a (nothing to attribute) |
 | 1 024 | 10.00 | 0.018% | ~100% |
 | 4 096 | 44.94 | 0.294% | ~100% |
 | 8 192 | 90.91 | 1.101% | ~100% |
@@ -33,8 +34,9 @@ rate is a page-granularity artifact — and the abort rate itself ranges from
 | 32 768 | 370.37 | 11.352% | ~100% |
 
 The abort rate scales with records-per-leaf across **three orders of magnitude**
-(0.006% → 11.4%, a ~1900× range) on a workload whose *logical* conflict structure
-never changes. The "of which false" column is not an estimate from a model: it is
+(0.018% → 11.4% over the range where it is measurable at all, ~630×; the
+512-byte point rounds to zero aborts entirely) on a workload whose *logical*
+conflict structure never changes. The "of which false" column is not an estimate from a model: it is
 a directly measured control (below).
 
 ## What makes "false" measurable rather than asserted
@@ -181,14 +183,13 @@ Reading the numbers rather than hoping for them:
    premise is confirmed, not weakened, by measurement.
 
 2. **But the user already has the lever, and it is one line.** `DB->set_pagesize`
-   moves the false-abort rate over a ~1900× range. At 512-byte pages the
-   realistic workload's SSI abort rate is 0.006% — three orders of magnitude
-   below the 32 KB figure and low enough that key-precise edges would buy nothing
-   measurable. Anyone hurting from false aborts today is hurting because they
-   run large pages, and the fix costs them a configuration change, not a new
-   conflict-tracking subsystem. RFC 0005's own "Alternatives considered" listed
-   this as the baseline every option must beat with numbers; **it now has the
-   numbers, and the bar is high.**
+   moves the false-abort rate from 11.4% to *zero measured aborts*. At 512-byte
+   pages the realistic workload's SSI abort rate rounds to 0.000% — low enough
+   that key-precise edges would buy nothing measurable. Anyone hurting from false
+   aborts today is hurting because they run large pages, and the fix costs them a
+   configuration change, not a new conflict-tracking subsystem. RFC 0005's own
+   "Alternatives considered" listed this as the baseline every option must beat
+   with numbers; **it now has the numbers, and the bar is high.**
 
 3. **Smaller pages are not free, and that is the real trade.** They cost tree
    height, I/O amplification and cache efficiency — which this measurement did
@@ -216,6 +217,26 @@ false-abort rate to be its real bottleneck. Cahill's instruction was to measure
 before building; the measurement's verdict is that the cheap lever is
 unexpectedly effective, so the expensive change needs a use case, not just a
 mechanism.
+
+## Incidental find: the regression gate was crashing on this bench
+
+Validating that the new knobs did not disturb the shipped bench turned up a
+pre-existing harness bug. `run_bench.sh` took `ssi_abort_bench`'s thread count
+from `$1`, but commit `b3e3f669c` ("rework ssi_abort_bench to distinguish SI from
+SSI") added a `level=` field *in front of* `threads=`. Since then the harness has
+emitted
+
+```
+ssi_abort_bench  hot64  level=serializable  txn_per_sec ...
+```
+
+so every thread point collapses onto one label, and `bench_cmp.py`'s
+`int(r["threads"])` raises an **uncaught `ValueError`** — the gate crashes on any
+run that includes this bench, and the `ssi_abort_bench/hot64/t1|t8|t32|t96` rows
+quoted in `NOISE.md` and `GATE-VERIFICATION.md` cannot be produced at all. Same
+shape as the `mvcc_purge_visible` skip: a documented gate case that silently
+stopped running, with nothing failing to say so. Fixed here by matching
+`threads=` by name; verified in both directions.
 
 ## Method
 
