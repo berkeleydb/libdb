@@ -254,7 +254,7 @@ LOG_VRFY_OBJS=\
 	log_verify_auto@o@ 
 
 MUTEX_OBJS=\
-	mut_alloc@o@ mut_failchk@o@ mut_method@o@ mut_region@o@ mut_stat@o@
+	mut_alloc@o@ mut_failchk@o@ mut_method@o@ mut_order@o@ mut_region@o@ mut_stat@o@
 REP_OBJS=\
 	rep_automsg@o@ rep_backup@o@ rep_elect@o@ rep_lease@o@ rep_log@o@ \
 	rep_method@o@ rep_record@o@ rep_region@o@ rep_stat@o@ \
@@ -2773,6 +2773,8 @@ mp_trickle@o@: $(srcdir)/mp/mp_trickle.c
 mt19937db@o@: $(srcdir)/crypto/mersenne/mt19937db.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_alloc@o@: $(srcdir)/mutex/mut_alloc.c
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
+mut_order@o@: $(srcdir)/mutex/mut_order.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_failchk@o@: $(srcdir)/mutex/mut_failchk.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<

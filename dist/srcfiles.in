@@ -211,6 +211,7 @@ src/mp/mp_stat.c	android
 src/mp/mp_sync.c	android
 src/mp/mp_trickle.c	android
 src/mutex/mut_alloc.c	android
+src/mutex/mut_order.c	android
 src/mutex/mut_failchk.c	android
 src/mutex/mut_fcntl.c
 src/mutex/mut_method.c	android

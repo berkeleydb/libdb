@@ -1492,6 +1492,18 @@
 #if !defined(HAVE_ATOMIC_SUPPORT) && defined(HAVE_MUTEX_SUPPORT)
 #define	atomic_compare_exchange atomic_compare_exchange@DB_VERSION_UNIQUE_NAME@
 #endif
+#ifdef DIAGNOSTIC
+#define	__db_lo_rank __db_lo_rank@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef DIAGNOSTIC
+#define	__db_lo_check __db_lo_check@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef DIAGNOSTIC
+#define	__db_lo_acquire __db_lo_acquire@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef DIAGNOSTIC
+#define	__db_lo_release __db_lo_release@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_pthread_mutex_init __db_pthread_mutex_init@DB_VERSION_UNIQUE_NAME@
 #ifndef HAVE_MUTEX_HYBRID
 #define	__db_pthread_mutex_lock __db_pthread_mutex_lock@DB_VERSION_UNIQUE_NAME@
