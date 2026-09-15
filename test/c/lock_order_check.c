@@ -33,6 +33,7 @@
  */
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +43,12 @@
 
 #define	HOME_PREFIX	"LOCK_ORDER_CHECK"
 #define	NSEED		400
+/*
+ * Seconds to wait for the subject arm.  Generous: the arm does a few hundred
+ * puts before the interesting acquisition, and a loaded machine must not turn
+ * a PASS into a spurious "HUNG".
+ */
+#define	SUBJECT_TIMEOUT	60
 
 static int
 ck(int ret, const char *what, int line)
@@ -143,7 +150,7 @@ int
 main(int argc, char **argv)
 {
 	pid_t pid;
-	int status, fails;
+	int status, fails, waited;
 
 	/*
 	 * Child mode: run one arm and let it die however it dies.  argv[1] is
@@ -157,11 +164,18 @@ main(int argc, char **argv)
 
 	fails = 0;
 
-#ifndef DIAGNOSTIC
-	printf("SKIP: lock_order_check requires a --enable-diagnostic build "
-	    "(the checker is #ifdef DIAGNOSTIC)\n");
-	return (0);
-#endif
+	/*
+	 * Is the checker present?  DIAGNOSTIC is a build-internal macro that is
+	 * NOT exported through db.h, so a test that keyed off #ifdef DIAGNOSTIC
+	 * would silently self-skip even in a diagnostic build -- which it did,
+	 * and which is exactly the vacuous green this tree keeps producing.
+	 *
+	 * Detect it by BEHAVIOUR instead: run the subject arm and classify how
+	 * it ends.  SIGABRT means the checker caught it.  A clean exit means
+	 * either no checker or a fixed bug.  A timeout/hang means a checker that
+	 * validates too late.  This cannot go vacuously green because the
+	 * "nothing happened" outcome is a FAIL, not a skip.
+	 */
 
 	/* ---- CONTROL: lk_partitions=4 must complete with no report. ---- */
 	if ((pid = fork()) == 0) {
@@ -184,22 +198,41 @@ main(int argc, char **argv)
 		execl(argv[0], argv[0], "--arm", "1", (char *)NULL);
 		_exit(127);
 	}
-	(void)waitpid(pid, &status, 0);
-	if (WIFSIGNALED(status) &&
+	/*
+	 * Bound the wait.  Without the checker this arm blocks forever on a
+	 * latch it already holds, and a test that inherits that hang is useless
+	 * -- it reports nothing and burns the harness timeout instead.
+	 */
+	for (waited = 0; waited < SUBJECT_TIMEOUT; waited++) {
+		if (waitpid(pid, &status, WNOHANG) == pid)
+			break;
+		(void)sleep(1);
+	}
+	if (waited >= SUBJECT_TIMEOUT) {
+		(void)kill(pid, SIGKILL);
+		(void)waitpid(pid, &status, 0);
+		printf("FAIL: lk_partitions=1 HUNG for %ds.  The self-deadlock "
+		    "is real but nothing reported it -- either this is not an "
+		    "--enable-diagnostic build, or the checker validates AFTER "
+		    "acquiring instead of before.\n", SUBJECT_TIMEOUT);
+		fails++;
+	} else if (WIFSIGNALED(status) &&
 	    (WTERMSIG(status) == SIGABRT || WTERMSIG(status) == SIGIOT))
 		printf("PASS: lk_partitions=1 was caught by the lock-order "
 		    "checker (SIGABRT) instead of hanging -- "
 		    "lock.c:801 then lock.c:1119 on the same latch\n");
 	else if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
 		/*
-		 * Completed cleanly.  Either the underlying self-deadlock was
-		 * fixed (in which case this test should be retired and A3
-		 * updated) or the checker stopped detecting it.  Both need a
-		 * human, so this is a failure, not a pass.
+		 * Completed cleanly.  Three possibilities, all needing a human:
+		 * this is not a DIAGNOSTIC build (so there is no checker and
+		 * this test is not meaningful -- configure with
+		 * --enable-diagnostic), or lock.c:1119's nesting was fixed (so
+		 * retire this test and update A3), or the checker regressed.
 		 */
 		printf("FAIL: lk_partitions=1 completed without a report.  "
-		    "Either lock.c:1119's nesting was fixed (retire this test "
-		    "and update A3) or the checker regressed.\n");
+		    "Either this is not an --enable-diagnostic build, or "
+		    "lock.c:1119's nesting was fixed (retire this test and "
+		    "update A3), or the checker regressed.\n");
 		fails++;
 	} else {
 		printf("FAIL: lk_partitions=1 ended unexpectedly "
