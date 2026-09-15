@@ -220,7 +220,7 @@ FI_OBJS=	fi_alloc@o@
 
 # SSI resource-accounting leak tests -- test/c/.  Compile rules below.
 LEAK_TESTS=	leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible \
-		aio_concurrent_sync health_stats
+		aio_concurrent_sync health_stats batch_diff
 
 BTREE_OBJS=\
 	bt_compare@o@ bt_compress@o@ bt_conv@o@ bt_curadj@o@ bt_cursor@o@ \
@@ -1609,6 +1609,17 @@ health_stats@o@: $(testdir)/c/health_stats.c
 health_stats: health_stats@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) health_stats@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+# Differential equivalence gate for db_get_multiple(): the batched point-read
+# path must return EXACTLY what N individual DB->get calls return, INCLUDING
+# the SSI read set and the resulting rw-antidependency aborts.  Carries its own
+# anti-vacuity control (plain snapshot must commit the same schedule).
+batch_diff@o@: $(testdir)/c/batch_diff.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+batch_diff: batch_diff@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) batch_diff@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 ##################################################
