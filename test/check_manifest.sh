@@ -142,15 +142,18 @@ while read -r t n opt; do
 done < "$MANIFEST"
 
 for t in $notrun; do
-	# Does the tier have any mandatory entry?
-	if awk -v t="$t" '$1 == t && $3 != "optional" && $1 !~ /^#/ { found = 1 }
+	# --tier T means "CI just ran T, assert it produced evidence".  An absent
+	# results file then means the runner produced NOTHING, which is fatal
+	# regardless of whether the entries are optional: `optional` excuses a
+	# tier that was not SCHEDULED, not one that was scheduled and silent.
+	if [ -n "${only_tier:-}" ]; then
+		echo "NOT RUN    $t: asserted with --tier but produced no results file."
+		echo "           The runner did not even start (lost exec bit, build"
+		echo "           failure, wrong path?).  That is not a pass."
+		rc=1
+	elif awk -v t="$t" '$1 == t && $3 != "optional" && $1 !~ /^#/ { found = 1 }
 	    END { exit !found }' "$MANIFEST"; then
-		if [ -n "${only_tier:-}" ]; then
-			echo "NOT RUN    $t: asserted with --tier but produced no results file."
-			rc=1
-		else
-			echo "not run    $t: no results file (tier not scheduled on this trigger)."
-		fi
+		echo "not run    $t: no results file (tier not scheduled on this trigger)."
 	else
 		echo "not run    $t: no results file (all entries optional)."
 	fi
