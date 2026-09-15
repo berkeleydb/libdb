@@ -414,7 +414,7 @@ static void
 phase3_isolation(u_int32_t nkeys)
 {
 	const char *only;
-	u_int32_t keyA, keyB, spread;
+	u_int32_t armspan, keyA, keyB, spread;
 	int i, iter, do_batch, do_indiv, rc1, rc2;
 	int ssi_i, ssi_b, si_i, si_b, dl_i, dl_b, armed_i, armed_b;
 
@@ -439,26 +439,35 @@ phase3_isolation(u_int32_t nkeys)
 	 * pairs are spread differently from the other's they can hit different
 	 * amounts of page sharing and the comparison measures the geometry
 	 * rather than the code.  Each iteration therefore uses the SAME pair
-	 * offsets for both arms, separated only by a large per-arm base.
+	 * offsets for both arms, separated only by a per-arm base.
+	 *
+	 * Every key must also stay INSIDE the loaded range.  Four arm-blocks of
+	 * `iter` pairs must fit, so the stride is sized from nkeys/4 and each
+	 * arm's base is a quarter of the key space.  (An earlier version used
+	 * fixed bases of 0/1000/2000/3000 multiplied by the stride, which ran
+	 * far past the end of the database: both transactions then inserted
+	 * BRAND NEW adjacent keys into the same empty region, which is a
+	 * genuine ww page conflict -- a real lock cycle, and with the pair
+	 * committed in lockstep it deadlocked instead of testing isolation.)
 	 */
 	iter = 10;
-	spread = nkeys / (4 * (u_int32_t)iter + 8);
-	if (spread < 16)
-		spread = 16;
+	spread = nkeys / (4 * ((u_int32_t)iter * 4 + 4));
+	if (spread < 8)
+		spread = 8;
+	armspan = (u_int32_t)iter * 4 + 4;
 	ssi_i = ssi_b = si_i = si_b = dl_i = dl_b = 0;
 	armed_i = armed_b = 0;
 
-#define	PAIR(armbase, it)						\
-	keyA = ((armbase) + (u_int32_t)(it) * 4 + 1) * spread,		\
-	keyB = ((armbase) + (u_int32_t)(it) * 4 + 3) * spread
+#define	PAIR(armno, it)							\
+	keyA = ((armno) * armspan + (u_int32_t)(it) * 4 + 1) * spread,	\
+	keyB = ((armno) * armspan + (u_int32_t)(it) * 4 + 3) * spread
 
 	for (i = 0; i < iter; i++) {
 		/* SERIALIZABLE: the skew must be prevented. */
 		if (do_indiv) {
 			PAIR(0, i);
 			pivot_pair(0, DB_TXN_SERIALIZABLE, keyA, keyB,
-			    &rc1, &rc2);
-			if (IS_LOCK_ABORT(rc1) || IS_LOCK_ABORT(rc2))
+			    &rc1, &rc2);			if (IS_LOCK_ABORT(rc1) || IS_LOCK_ABORT(rc2))
 				dl_i++;		/* never reached the pivot */
 			else {
 				armed_i++;
@@ -467,7 +476,7 @@ phase3_isolation(u_int32_t nkeys)
 			}
 		}
 		if (do_batch) {
-			PAIR(1000, i);
+			PAIR(1, i);
 			pivot_pair(1, DB_TXN_SERIALIZABLE, keyA, keyB,
 			    &rc1, &rc2);
 			if (IS_LOCK_ABORT(rc1) || IS_LOCK_ABORT(rc2))
@@ -486,13 +495,13 @@ phase3_isolation(u_int32_t nkeys)
 		 * the SERIALIZABLE comparison above proves nothing.
 		 */
 		if (do_indiv) {
-			PAIR(2000, i);
+			PAIR(2, i);
 			pivot_pair(0, DB_TXN_SNAPSHOT, keyA, keyB, &rc1, &rc2);
 			if (rc1 == 0 && rc2 == 0)
 				si_i++;
 		}
 		if (do_batch) {
-			PAIR(3000, i);
+			PAIR(3, i);
 			pivot_pair(1, DB_TXN_SNAPSHOT, keyA, keyB, &rc1, &rc2);
 			if (rc1 == 0 && rc2 == 0)
 				si_b++;
@@ -600,6 +609,14 @@ main(int argc, char **argv)
 		fprintf(stderr, "set_lk_detect: %s\n", db_strerror(ret));
 		return (2);
 	}
+	/*
+	 * Belt and braces: a lock timeout so that even a cycle the detector
+	 * somehow does not resolve becomes a reported DB_LOCK_NOTGRANTED rather
+	 * than a silent hang.  A hanging test produces no verdict at all, which
+	 * is the worst possible outcome for a correctness gate.
+	 */
+	(void)env->set_timeout(env, 10 * 1000000, DB_SET_LOCK_TIMEOUT);
+	(void)env->set_timeout(env, 20 * 1000000, DB_SET_TXN_TIMEOUT);
 	if ((ret = env->open(env, home,
 	    DB_CREATE | DB_INIT_MPOOL | DB_INIT_LOCK | DB_INIT_TXN |
 	    DB_INIT_LOG | DB_THREAD | DB_RECOVER, 0)) != 0)
