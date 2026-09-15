@@ -80,8 +80,36 @@ struct __db_mpool {
 	 * Per-process asynchronous-I/O context for buffer-pool writeback
 	 * (checkpoint/sync).  NULL if no async backend is available, in which
 	 * case writeback is synchronous.  Owned by this process.
+	 *
+	 * mtx_aio serializes USE of aio_ctx among the concurrent
+	 * __memp_sync_int callers in this process (checkpoint, trickle,
+	 * memp_sync/fsync, and DB_SYNC_ALLOC from eviction).  A single sync
+	 * call must be the context's only submitter for the whole span from
+	 * its first submit to its final drain, for three reasons:
+	 *
+	 *  1) __memp_aio_drain must not consume another caller's completions.
+	 *     Reaping is a shared-queue operation (io_uring drains whatever
+	 *     CQEs are ready); if a second caller's completions could satisfy
+	 *     the first caller's drain, the first caller would run the write
+	 *     completion -- clearing BH_DIRTY, unpinning the buffer, and
+	 *     freeing the pgout page copy -- for writes still in flight.
+	 *     That is a false durable frontier AND a write-after-free.
+	 *  2) Each caller's MEMP_AIO_W window is a stack array in its own
+	 *     __memp_sync_int frame, and is the cookie of its in-flight ops.
+	 *     A caller that returned while its ops were outstanding would
+	 *     leave the backend holding pointers into a dead stack frame.
+	 *  3) The backend submission queues are not themselves thread-safe
+	 *     (an io_uring SQE ring has no internal locking, and the POSIX
+	 *     aio slot table is scanned unlocked), and ctx->inflight is a
+	 *     plain counter.  Exclusive use makes all three single-threaded.
+	 *
+	 * It is acquired with MUTEX_TRYLOCK and never waited on: a caller
+	 * that does not get it simply writes synchronously, which is the
+	 * reference behaviour.  Because it is never blocked on, it cannot
+	 * participate in a deadlock cycle and adds no lock-ordering rule.
 	 */
 	struct __db_aio_context *aio_ctx;
+	db_mutex_t mtx_aio;		/* Exclusive-use latch for aio_ctx. */
 };
 
 /*
