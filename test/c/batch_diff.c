@@ -362,8 +362,19 @@ pivot_once(int use_batch, u_int32_t iso_flag, u_int32_t keyA, u_int32_t keyB)
 static void
 phase3_isolation(u_int32_t nkeys)
 {
+	const char *only;
 	u_int32_t base, keyA, keyB, spread;
-	int i, iter, s_i, s_b, n_i, n_b;
+	int i, iter, do_batch, do_indiv, s_i, s_b, n_i, n_b;
+
+	/*
+	 * BATCH_DIFF_ARM restricts phase 3 to one arm.  This is the control
+	 * knob: if "indiv" alone reproduces a hang or a wrong verdict, the
+	 * batched path is exonerated and the fault is in the schedule or in
+	 * shared engine code, not in db_get_multiple.
+	 */
+	only = getenv("BATCH_DIFF_ARM");
+	do_indiv = (only == NULL || strcmp(only, "indiv") == 0);
+	do_batch = (only == NULL || strcmp(only, "batch") == 0);
 
 	spread = nkeys / 64;
 	if (spread < 8)
@@ -374,47 +385,61 @@ phase3_isolation(u_int32_t nkeys)
 	for (i = 0; i < iter; i++) {
 		/* Fresh key pair each iteration so versions never collide. */
 		base = (u_int32_t)(i * 4 + 1);
-		keyA = base * spread;
-		keyB = (base + 1) * spread;
-
-		if (pivot_once(0, DB_TXN_SERIALIZABLE, keyA, keyB) ==
-		    DB_SNAPSHOT_CONFLICT)
-			s_i++;
-		keyA = (base + 2) * spread;
-		keyB = (base + 3) * spread;
-		if (pivot_once(1, DB_TXN_SERIALIZABLE, keyA, keyB) ==
-		    DB_SNAPSHOT_CONFLICT)
-			s_b++;
+		if (do_indiv) {
+			keyA = base * spread;
+			keyB = (base + 1) * spread;
+			if (pivot_once(0, DB_TXN_SERIALIZABLE, keyA, keyB) ==
+			    DB_SNAPSHOT_CONFLICT)
+				s_i++;
+		}
+		if (do_batch) {
+			keyA = (base + 2) * spread;
+			keyB = (base + 3) * spread;
+			if (pivot_once(1, DB_TXN_SERIALIZABLE, keyA, keyB) ==
+			    DB_SNAPSHOT_CONFLICT)
+				s_b++;
+		}
 
 		/* Anti-vacuity control: plain SI must COMMIT the same shape. */
-		keyA = (base + 128) * spread;
-		keyB = (base + 129) * spread;
-		if (pivot_once(0, DB_TXN_SNAPSHOT, keyA, keyB) == 0)
-			n_i++;
-		keyA = (base + 130) * spread;
-		keyB = (base + 131) * spread;
-		if (pivot_once(1, DB_TXN_SNAPSHOT, keyA, keyB) == 0)
-			n_b++;
+		if (do_indiv) {
+			keyA = (base + 128) * spread;
+			keyB = (base + 129) * spread;
+			if (pivot_once(0, DB_TXN_SNAPSHOT, keyA, keyB) == 0)
+				n_i++;
+		}
+		if (do_batch) {
+			keyA = (base + 130) * spread;
+			keyB = (base + 131) * spread;
+			if (pivot_once(1, DB_TXN_SNAPSHOT, keyA, keyB) == 0)
+				n_b++;
+		}
+		printf("    phase3 iter %d done (s_i=%d s_b=%d)\n", i, s_i, s_b);
+		fflush(stdout);
 	}
 
-	printf("VERDICT phase3-isolation: SERIALIZABLE pivots refused "
+	printf("VERDICT phase3-isolation: arm=%s SERIALIZABLE pivots refused "
 	    "indiv=%d/%d batch=%d/%d ; snapshot-control commits "
 	    "indiv=%d/%d batch=%d/%d\n",
-	    s_i, iter, s_b, iter, n_i, iter, n_b, iter);
+	    only == NULL ? "both" : only,
+	    s_i, do_indiv ? iter : 0, s_b, do_batch ? iter : 0,
+	    n_i, do_indiv ? iter : 0, n_b, do_batch ? iter : 0);
 	phase_verdicts++;
 
 	/*
 	 * The equivalence claim: whatever the individual path does, the batch
 	 * must do.  And the control must show the schedule is really armed,
-	 * otherwise "0 == 0" would pass vacuously.
+	 * otherwise "0 == 0" would pass vacuously.  Only assert the comparison
+	 * when both arms actually ran.
 	 */
-	CHECK(s_i == iter,
-	    "control broken: individual SSI path refused only %d/%d pivots -- "
-	    "the schedule is not arming, so the batch comparison is vacuous",
-	    s_i, iter);
-	CHECK(s_b == s_i,
-	    "ISOLATION NOT EQUIVALENT: batch refused %d/%d pivots but "
-	    "individual refused %d/%d", s_b, iter, s_i, iter);
+	if (do_indiv)
+		CHECK(s_i == iter,
+		    "control broken: individual SSI path refused only %d/%d "
+		    "pivots -- the schedule is not arming, so the batch "
+		    "comparison is vacuous", s_i, iter);
+	if (do_indiv && do_batch)
+		CHECK(s_b == s_i,
+		    "ISOLATION NOT EQUIVALENT: batch refused %d/%d pivots but "
+		    "individual refused %d/%d", s_b, iter, s_i, iter);
 }
 
 int
