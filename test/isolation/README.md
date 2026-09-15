@@ -48,6 +48,68 @@ The state vector has two kinds of slot:
 | `lost_update` | both txns read the counter and write read+1 | PASS |
 | `read_your_writes` | sanity: a txn must observe its own uncommitted write | PASS |
 
+## The two SSI mechanism gates
+
+`run.sh` also builds and runs two drivers that test the SSI *mechanisms*
+rather than schedules. Both were added because the existing coverage of those
+mechanisms was about resources and lifetimes, never about a missed conflict.
+
+### `test_ssi_gc_pressure` — marker GC must not drop a marker early
+
+`test/c/leak_si_locker.c` covers the resource side of SIREAD-marker GC (the
+committed-reader footprint is a bounded sawtooth) and the marker-lifetime
+hardening covers use-after-free. Neither can see the *correctness* failure of
+the same machinery: if `__lock_sicleanup` frees a marker while a still-active
+transaction could still form the other end of the edge it records, the
+conflict is **missed** and a non-serializable schedule commits *silently* — no
+crash, no corrupt page, no sanitizer report, no `ENOMEM`.
+
+The driver runs a deterministic single-threaded write skew whose only
+remaining evidence at the decisive moment is one committed reader's SIREAD
+marker, interleaved with all three real GC triggers: the `txn_begin` pressure
+sweep (`nsireaders > st_objects / SI_CLEANUP_TRIGGER_DIV`), forced
+`txn_checkpoint` calls inside the window, and a long-lived concurrent snapshot
+reader holding the oldest-reader frontier back. The assertion is one exact
+bit: the final state `(A,B) == (0,0)` is reachable only if both transactions
+committed.
+
+Two anti-vacuity checks: it fails if the live-marker peak never crossed the
+sweep threshold (the pressure trigger was not exercised), and at
+`ISO_LEVEL=snapshot` it asserts the *opposite* — plain SI takes no SIREAD
+markers, so the skew MUST appear, which is what makes a clean serializable run
+meaningful. Teeth: neutering the oldest-reader predicate in
+`__lock_siclean_obj` makes every iteration commit the skew.
+
+### `test_ssi_crash_pivot` — a pivot must not survive a crash
+
+Issue #136 fixed the *live* race in the pivot's commit window. Cahill's SSI
+has no crash model — the pivot argument is about a live execution — so "can a
+pivot become durable because the crash landed inside its commit window?" was
+unanswered. A child drives a write skew in which T2 reaches its commit-time
+pivot check holding both conflict ends while T1's write is already durable,
+then dies with `SIGKILL` at one of four points inside `DB_TXN->commit`. The
+parent reopens with `DB_RECOVER` and asserts the recovered state is never
+`(0,0)`.
+
+The in-commit kill points are unreachable from userspace (all inside one
+library call), so they are reached by a **DIAGNOSTIC-only** hook in
+`src/txn/txn.c` (`__txn_ssi_crash` / `SSI_CRASH_POINT`), inert unless
+`SSI_CRASH_AT` is set *and* the transaction is named `ssi-pivot` via
+`DB_TXN->set_name`. It compiles to nothing in a production build.
+
+The observed answer is stronger than "no skew seen": the pivot never reaches
+kill point 3 or 4 at all, because `DB_SNAPSHOT_CONFLICT` returns upstream of
+the log write — no commit record for a pivot is ever produced. Since "the hook
+never fired" is also what a broken hook looks like, the sweep re-runs every
+point with the *legal* non-pivot transaction armed; those do die at 3 and 4,
+and recovery correctly redoes the flushed commit (point 4) and undoes the
+unflushed one (point 3). Teeth: neutering the commit-time pivot check makes
+point 4 recover to `(0,0)` — the pivot's commit record was flushed and
+recovery redid it.
+
+`ISO_SSI_GATES=0` skips both gates. The crash gate is skipped with a notice if
+the library was not built `--enable-diagnostic`.
+
 `read_your_writes` exists so a *vacuously* passing checker is detectable: if
 the harness ever stops driving the engine, that scenario fails.
 
@@ -103,7 +165,12 @@ ISO_VERBOSE=1 ./run.sh write_skew_samebtree_control
 ```
 
 Environment: `CC`, `LIBDB_BUILD` (default `../../build_unix`), `ISO_TIMEOUT`
-(default 300s), `ISO_SAN=1` to add ASan.
+(default 300s), `ISO_SAN=1` to add ASan, `ISO_SSI_GATES=0` to skip the two SSI
+mechanism gates.
+
+The SSI gates take their own knobs: `SSI_GC_ITER` / `SSI_GC_FILLER` /
+`SSI_GC_VERBOSE` for the GC gate, and `SSI_PIVOT_SEEDS` / `SSI_PIVOT_POINTS` /
+`SSI_PIVOT_VERBOSE` for the crash gate.
 
 ## Exit status
 

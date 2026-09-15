@@ -263,6 +263,29 @@ __txn_print_stats(env, flags)
 	    (u_long)sp->st_region_wait, DB_PCT(sp->st_region_wait,
 	    sp->st_region_wait + sp->st_region_nowait), NULL);
 
+	/*
+	 * Deployment health: utilization of the statically-sized transaction
+	 * region resources, and the MVCC/SSI retention counter behind issue
+	 * #138.  Alarm on these; see the "Deployment health" section of the
+	 * Programmer's Reference for thresholds and remedies.
+	 */
+	__db_msg(env, "%s", "Deployment health (alarm on these):");
+	__db_util_pct(env, "Active transaction slots in use",
+	    (u_long)sp->st_nactive, (u_long)sp->st_maxtxns);
+	/*
+	 * Committed snapshot transactions whose TXN_DETAIL (and its mvcc_mtx
+	 * slot) is still parked on region->mvcc_txn -- retained either by MVCC
+	 * versions still in cache (#138) or by SIREAD markers of a committed SSI
+	 * reader (#137).  This is the direct retention signal: it is what grows
+	 * if reclamation stops, and it consumes the very same txn-region and
+	 * mutex-region slots st_nactive competes for, which is why it is
+	 * reported against st_maxtxns as well.  Bounded, not zero, in steady
+	 * state: reclamation is driven by checkpoint (__memp_purge_obsolete) and
+	 * by the SIREAD sweep, so the healthy shape is a sawtooth.
+	 */
+	__db_util_pct(env, "Snapshot txn details retained (MVCC/SSI)",
+	    (u_long)sp->st_nsnapshot, (u_long)sp->st_maxtxns);
+
 	qsort(sp->st_txnarray,
 	    sp->st_nactive, sizeof(sp->st_txnarray[0]), __txn_compare);
 	__db_msg(env, "Active transactions:");

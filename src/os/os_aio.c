@@ -36,6 +36,18 @@ __os_aio_create(env, depth, ctxp)
 	ctx->inflight = 0;
 
 	/*
+	 * The exclusive-use latch (see dbinc/os_aio.h).  If it cannot be
+	 * allocated we do NOT return a context: an unserialized context
+	 * cross-reaps between concurrent __memp_sync_int callers, which is a
+	 * false durable frontier, so no async writeback is the safe answer.
+	 */
+	if ((ret = __mutex_alloc(env,
+	    MTX_MPOOL_AIO, DB_MUTEX_PROCESS_ONLY, &ctx->mtx_aio)) != 0) {
+		__os_free(env, ctx);
+		return (ret);
+	}
+
+	/*
 	 * Probe and install a platform backend in preference order; on
 	 * failure the context stays on the synchronous fallback
 	 * (backend == NULL).  Native file-completion engines first
@@ -130,6 +142,7 @@ __os_aio_destroy(env, ctx)
 		return (0);
 	if (ctx->backend != NULL && ctx->backend->destroy != NULL)
 		ret = ctx->backend->destroy(env, ctx);
+	(void)__mutex_free(env, &ctx->mtx_aio);
 	__os_free(env, ctx);
 	return (ret);
 }
