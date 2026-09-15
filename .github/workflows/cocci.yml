@@ -374,6 +374,14 @@ jobs:
         with:
           fetch-depth: 0   # need the merge base
 
+      # The manifest checker is what decides whether the whole suite is
+      # trustworthy, so it gets its own test: a checker that passes everything
+      # is itself the vacuous green.  Synthetic manifest + synthetic results,
+      # no libdb build, under a second -- so it rides along in this job rather
+      # than paying for a runner of its own.
+      - name: Self-check the manifest checker
+        run: sh test/check_manifest_test.sh
+
       - name: Compute the signature on the PR head and on the base
         id: sig
         run: |
