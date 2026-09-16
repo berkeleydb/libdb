@@ -181,6 +181,30 @@ struct __db_txnmgr {
 	REGINFO	 reginfo;		/* Region information. */
 };
 
+/*
+ * The environment build signature (src/env/env_sig.c) hashes
+ * sizeof(struct __db_txnmgr), and src/env/env_region.c refuses to ATTACH an
+ * existing environment whose stored signature differs:
+ *
+ *	"BDB1539 Build signature doesn't match environment" -> DB_VERSION_MISMATCH
+ *
+ * So silently changing this struct's size makes every previously-created
+ * environment unattachable.  The public ABI (sizeof DB / DBC / DB_ENV / DB_TXN)
+ * does NOT move when this struct changes, so abidiff stays green and the CI ABI
+ * gate cannot see the break -- it was demonstrated to shift the signature
+ * 0xfc785a20 -> 0x31b29838 with every public size unchanged.  Pin it, so that
+ * failure surfaces at build time here instead of at a customer's region attach.
+ * If you are intentionally breaking region compatibility, update this
+ * expression in the same commit.
+ *
+ * Negative-array-size idiom rather than _Static_assert: this header is compiled
+ * as C89 and as C++, by every supported compiler.  Expressed in pointer units
+ * so it holds on both 32- and 64-bit builds (the struct is an exact multiple).
+ */
+#define	DB_TXNMGR_SIG_SIZE	(18 * sizeof(void *))
+typedef char __db_txnmgr_size_is_signature_stable[
+    sizeof(struct __db_txnmgr) == DB_TXNMGR_SIG_SIZE ? 1 : -1];
+
 /* Macros to lock/unlock the transaction region as a whole. */
 #define	TXN_SYSTEM_LOCK(env)						\
 	MUTEX_LOCK(env, ((DB_TXNREGION *)				\
