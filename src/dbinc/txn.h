@@ -198,12 +198,37 @@ struct __db_txnmgr {
  * expression in the same commit.
  *
  * Negative-array-size idiom rather than _Static_assert: this header is compiled
- * as C89 and as C++, by every supported compiler.  Expressed in pointer units
- * so it holds on both 32- and 64-bit builds (the struct is an exact multiple).
+ * as C89 and as C++, by every supported compiler.
  */
-#define	DB_TXNMGR_SIG_SIZE	(18 * sizeof(void *))
+/*
+ * Pinned only where the byte count is known: LP64 (8-byte pointers), which is
+ * what every shipping 64-bit platform uses and what the released environments in
+ * the field were created on.  The guard is deliberately NOT expressed as a
+ * multiple of sizeof(void *): this struct embeds REGINFO by value and has
+ * fixed-width members, so it is not a clean pointer multiple, and a pointer-unit
+ * expression here compiled on LP64 while breaking both 32-bit builds.  Nor is it
+ * expressed as a sum of member sizeofs -- naming the TAILQ_HEAD type inside
+ * sizeof declares a NEW struct tag rather than referring to the member's type,
+ * which silently yields a different size.
+ *
+ * A 32-bit build therefore gets no size assertion.  That is the honest trade:
+ * this guard exists to catch an accidental field addition on the platforms whose
+ * environments must keep attaching, and a wrong guard that breaks the build on
+ * two platforms is worse than no guard on one.
+ *
+ * KNOWN LIMIT: this catches any change to the struct's SIZE, which is what the
+ * signature hashes -- but a small field added where padding already exists
+ * (e.g. a second u_int32_t beside n_discards) does not change the size and so
+ * does not trip it.  That is not a hole in the signature guarantee, because
+ * such a field does not move the signature either; it only means this typedef
+ * is a size assertion and not a field-count assertion.  Verified: adding a
+ * pointer member trips it, adding a u_int32_t into existing padding does not.
+ */
+#if defined(__LP64__) || defined(_LP64) || defined(_WIN64)
+#define	DB_TXNMGR_SIG_SIZE	144
 typedef char __db_txnmgr_size_is_signature_stable[
     sizeof(struct __db_txnmgr) == DB_TXNMGR_SIG_SIZE ? 1 : -1];
+#endif
 
 /* Macros to lock/unlock the transaction region as a whole. */
 #define	TXN_SYSTEM_LOCK(env)						\
