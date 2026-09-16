@@ -166,6 +166,10 @@ waits instead of only when full.
 | fixed, sharpened | HEAD, `WIN=64` | **0 / 384** (96 + 288) |
 | sync-mode control | HEAD, sync writeback | 0 / 96 |
 
+All 864 fixed-arm runs also reported `NONZERO-NONHANG: 0`, i.e. no crash and no
+assertion firing was miscounted as "not a stall" — the two outcomes are scored
+separately by design.
+
 What the counts buy, stated as the probability of seeing zero stalls if the
 defect were in fact untouched:
 
@@ -250,7 +254,7 @@ script, both values required non-empty, and an empty value treated as a hard
 failure rather than a match. `sizeof(struct __db_mpool)` and
 `sizeof(struct __db_txnmgr)` compile-time guards are untouched and still pass.
 
-## 7. Harness change: the excuse branch is gone
+## 7. Harness change: the excuse branch is gone, and it has teeth
 
 `test/c/leak-run.sh` used to treat exit 124 on the `aio` arm as `KNOWN ISSUE ...
 not counted as a failure` and emit a `skip` verdict. With the stall fixed, the
@@ -259,6 +263,36 @@ vacuous-green shape this repo has shipped repeatedly. A timeout on that arm is
 now a hard `FAIL`, with the diagnosis pointer inline: check whether the
 `use_aio == 1` frame is blocked at the `mtx_buf` readlock (variant A) or spinning
 in the retry loop with `nflight > 0` (variant B).
+
+Verified two ways, since "the gate is now strict" is itself a claim that can be
+vacuous.
+
+**The tier passes for real,** run exactly as `.github/workflows/test-tiers.yml`
+invokes it (`working-directory: test/c`, `TIMEOUT=300 AIO_SECONDS=20`,
+`--enable-debug --enable-diagnostic`):
+
+```
+--- aio_concurrent_sync sync: PASS      audit: lost=0   sync: PASS (0 failures)
+--- aio_concurrent_sync aio:  PASS      audit: lost=0   aio:  PASS (0 failures)
+ALL LEAK TESTS PASS                     leak-run rc=0
+manifest gate: OK   (14 verdict lines)
+RESULT leak aio_concurrent_sync@sync pass
+RESULT leak aio_concurrent_sync@aio  pass
+```
+
+**And it fails when it should.** `leak-run.sh` recompiles its drivers from
+`libdb.a` at startup, so faking a binary would give a false PASS — the teeth test
+therefore patches the driver *source* to stall on demand:
+
+```
+--- aio_concurrent_sync sync: PASS
+--- aio_concurrent_sync aio: FAIL (STALLED, timed out after 25s)
+    This is the os_aio deferred-pin stall REGRESSING. ...
+LEAK TESTS FAILED                       leak-run rc=1
+RESULT leak aio_concurrent_sync@aio  fail
+```
+
+Before this change that same input produced `skip` and an overall pass.
 
 ## 8. Residual risk
 
