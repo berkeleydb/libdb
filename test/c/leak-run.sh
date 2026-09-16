@@ -44,7 +44,7 @@ LIBS=$(sed -n 's/^LIBS=[[:space:]]*//p' "$BUILD/Makefile" | head -1)
 mkdir -p "$RUNDIR"
 rc=0
 for t in leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible health_stats \
-    aio_concurrent_sync; do
+    aio_concurrent_sync lock_order_check; do
 	echo "=== building $t"
 	# shellcheck disable=SC2086
 	$CC -g -O1 -Wall -Wextra -Wno-unused-parameter \
@@ -92,6 +92,11 @@ run leak_si_mvcc_mtx read
 run health_stats control
 run health_stats si137
 run health_stats si138
+
+# Lock-order checker gate (gap G9).  Self-skips on a non-DIAGNOSTIC build.  The
+# driver runs both arms itself (lk_partitions=4 control, lk_partitions=1
+# subject) and prints its own PASS/FAIL verdict line.
+run lock_order_check gate
 
 # #138 correctness gate: the proactive purge must never free a version an
 # active snapshot reader can still see.  No mode argument.
