@@ -6,10 +6,32 @@
 BDB ?= ../../build_unix
 CFLAGS ?= -O2 -pthread
 INCLUDES = -I$(BDB)
-# -rpath is not optional: without it the loader silently picks up a
-# system-installed libdb-5.3 (e.g. /lib64/libdb-5.3.so) and every measurement
-# describes that library instead of this build tree.
-LIBS = -L$(BDB)/.libs -ldb-5.3 -Wl,-rpath,$(abspath $(BDB)/.libs)
+# Link the build tree's shared object BY PATH, discovered from the tree itself.
+#
+# This used to read "-L$(BDB)/.libs -ldb-5.3".  That spelled the library's
+# version into the harness, and when 2bad51f4f renamed the fork's soname to
+# libdb-2026.0.so the name -ldb-5.3 stopped matching anything in the build
+# tree -- so it resolved to the *distro* /lib/x86_64-linux-gnu/libdb-5.3.so
+# (Berkeley DB 5.3.28, 2013) instead, silently, with -rpath powerless because
+# the soname recorded in the binary was the system library's.  Every number
+# published by commit_bench described Oracle's 2013 code, not this fork.
+#
+# A wildcard cannot name the wrong library: it can only find what this build
+# tree actually produced, and if the tree produced nothing the build fails
+# loudly instead of falling back to whatever the system has installed.
+# -rpath is still required so the runtime lookup stays inside the tree.
+BDB_SO := $(wildcard $(BDB)/.libs/libdb-*.so)
+LIBS = $(BDB_SO) -Wl,-rpath,$(abspath $(BDB)/.libs)
+
+ifeq ($(BDB_SO),)
+$(error no libdb-*.so in $(BDB)/.libs -- build libdb first (cd $(BDB) && \
+  ../dist/configure && make).  Refusing to fall back to a system libdb, \
+  which is how the 5.3.28 measurement leak happened)
+endif
+ifneq ($(words $(BDB_SO)),1)
+$(error $(words $(BDB_SO)) candidate libraries in $(BDB)/.libs ($(BDB_SO)) -- \
+  ambiguous; clean the build tree so the measured library is unambiguous)
+endif
 
 BENCHES = scale_bench scale_iso tproc_c tproc_b tproc_h lock_bench ssi_abort_bench \
 	  commit_bench fsync_probe
