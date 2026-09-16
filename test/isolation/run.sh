@@ -162,12 +162,16 @@ run_ssi_gates() {
 # manifest gate exists to catch), then translate its per-scenario verdicts.
 hi_run_anomaly() {
 	_lvl=$1; shift
-	_log="iso-$_lvl.log"
+	_log="iso-$_lvl-$PARTS_LABEL.log"
 	_r=0
 	ISO_LEVEL="$_lvl" timeout "$ISO_TIMEOUT" ./test_iso_anomaly "$@" \
 	    > "$_log" 2>&1 || _r=$?
 	cat "$_log"
-	hi_scan "$_log" "$_lvl"
+	# Suffix with LEVEL-PARTSLABEL, not just LEVEL: the outer sweep runs each
+	# level once per lock-partition count, so a level-only suffix would emit
+	# duplicate names and losing an entire partition pass would not fail the
+	# manifest gate.
+	hi_scan "$_log" "$_lvl-$PARTS_LABEL"
 	return $_r
 }
 
