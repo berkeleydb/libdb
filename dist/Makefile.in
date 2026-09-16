@@ -1703,6 +1703,13 @@ test_sim_ckp_crash: test_sim_ckp_crash@o@ $(DEF_LIB)
 	    $(LDFLAGS) test_sim_ckp_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
+test_sim_group_commit@o@: $(testdir)/sim/test_sim_group_commit.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_group_commit: test_sim_group_commit@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_group_commit@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
 test_sim_torn_log@o@: $(testdir)/sim/test_sim_torn_log.c
 	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
 test_sim_torn_log: test_sim_torn_log@o@ $(DEF_LIB)
@@ -1988,7 +1995,7 @@ dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_recovery_redo_crash test_sim_recovery_ckp_crash \
 	test_sim_buggify \
 	test_sim_clockskew_timeout test_sim_clockskew_ckp \
-	test_sim_clockskew_backward
+	test_sim_clockskew_backward test_sim_group_commit
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.
