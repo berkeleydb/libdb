@@ -35,8 +35,10 @@ commit_bench: commit_bench.c
 fsync_probe: fsync_probe.c
 	$(CC) $(CFLAGS) fsync_probe.c -o $@
 
+# -lm: the Zipfian generator uses pow().  glibc's libm is not linked by default
+# on GCC/Linux, and the undefined `pow` broke the harness-smoke job.
 ssi_abort_bench: ssi_abort_bench.c
-	$(CC) $(CFLAGS) $(INCLUDES) ssi_abort_bench.c $(LIBS) -o $@
+	$(CC) $(CFLAGS) $(INCLUDES) ssi_abort_bench.c $(LIBS) -lm -o $@
 
 tproc_c: tproc_c.c bdb_bench.h
 	$(CC) $(CFLAGS) $(INCLUDES) tproc_c.c $(LIBS) -o $@
