@@ -14,6 +14,8 @@
 historical = ["v5.3.28", "v4.6.21-SSI"]
 
 [notes]
+"v2026.09.6" = "<code>lk_partitions=1</code> self-deadlock (default on 1-CPU hosts); <code>db_get_multiple()</code> 2.47&times; concurrent reads; harness-integrity + region-signature gates"
+"v2026.09.5" = "os_aio cross-reap durability fix, <code>st_nsnapshot</code> underflow, operator health signals, global-invariants note"
 "v2026.09.4" = "#137 locker accounting (bounded), <code>ssi_abort_bench</code> SI/SSI distinction, versioning covenant"
 "v2026.09.3" = "<code>DB_TXN_SNAPSHOT</code> restored to plain SI + new <code>DB_TXN_SERIALIZABLE</code>; os_aio durability fix; #138 MVCC-retention purge"
 "v2026.09.2" = "Cursor-queue sharding (concurrent read scaling); two-site replication-isolation harness"
