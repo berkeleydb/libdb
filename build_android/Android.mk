@@ -1,6 +1,6 @@
 # DO NOT EDIT: automatically built by dist/s_android.
 # Makefile for building a drop-in replacement of SQLite using
-# libdb 2026.09.5 (September 15, 2026)
+# libdb 2026.09.6 (September 16, 2026)
 ###################################################################
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
@@ -158,6 +158,7 @@ LOCAL_SRC_FILES := \
 	$(BDB_TOP)/src/mp/mp_sync.c \
 	$(BDB_TOP)/src/mp/mp_trickle.c \
 	$(BDB_TOP)/src/mutex/mut_alloc.c \
+	$(BDB_TOP)/src/mutex/mut_order.c \
 	$(BDB_TOP)/src/mutex/mut_failchk.c \
 	$(BDB_TOP)/src/mutex/mut_method.c \
 	$(BDB_TOP)/src/mutex/mut_region.c \
