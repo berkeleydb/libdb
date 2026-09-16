@@ -23,6 +23,21 @@
 #                (default $TMPDIR/libdb-bench).
 #
 # See README.md for how to interpret the output and run the gate.
+#
+# WARNING FOR DB_PRIVATE COMPARISONS.  On at least one c7i.24xlarge, DB_PRIVATE
+# throughput is BIMODAL IN MEMORY LAYOUT: a 1.65x step selected by something as
+# incidental as the LENGTH of the environment-home path (38 chars -> 4.8M ops/s,
+# 42 -> 7.9M; same-length different-content lands in the same mode; ASLR was off,
+# so it is deterministic region placement).  Spread WITHIN a mode is ~0%, so each
+# arm looks tight and trustworthy while the cross-arm ratio is pure layout.
+#
+# Consequence: if you give each arm its own directory -- the obvious, tidy thing
+# to do -- a DB_PRIVATE A/B can report a 1.65x "win" that is not code at all.
+# This invalidated part of one sweep and is suspected in perf/bhpin-r1's original
+# measurements.  The only unconfounded form is ONE binary, ONE directory reused by
+# both arms, with only a runtime switch varying, repeated at a path length drawn
+# from each mode.  Shared-env numbers were NOT affected.
+# See test/bench/PIN-REMEASURE-2026-09.md section 7 and NOISE.md.
 
 set -e
 
