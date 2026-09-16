@@ -4,6 +4,7 @@
 #define	_DB_EXT_DEF_IN_
 
 #define	db_copy db_copy@DB_VERSION_UNIQUE_NAME@
+#define	db_get_multiple db_get_multiple@DB_VERSION_UNIQUE_NAME@
 #define	db_create db_create@DB_VERSION_UNIQUE_NAME@
 #define	db_strerror db_strerror@DB_VERSION_UNIQUE_NAME@
 #define	db_env_set_func_assert db_env_set_func_assert@DB_VERSION_UNIQUE_NAME@
