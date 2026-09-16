@@ -29,6 +29,15 @@ from that release text, it means `T1`/`T2`/`T3`.
 | **S1** | `os_aio` stall under concurrent checkpoint/trickle/sync. Opt-in `DB_MPOOL_AIO`, **default OFF**. **FIXED** — the deferred-write path held buffer pins (ref + shared `mtx_buf`) across a wait, because it drained only at `nflight >= MEMP_AIO_WINDOW`. Measured baseline 11/192 (5.7%, 95% CI 3.2–10.0%); sharpened to 18/96 with a larger window. gdb showed **two** variants, correcting the original one-variant diagnosis: (A) 6/18 — the winner blocks in `MUTEX_READLOCK(bhp->mtx_buf)` for a new buffer while a splitting writer needs a pinned buffer exclusive; (B) 12/18 — the winner never blocks, every remaining buffer is `BH_EXCLUSIVE` held by the writer that is itself waiting on one of *its* pins, so it spins the `required_write` retry loop forever while RUNNABLE, with no mutex wait in its own backtrace. Fix: never wait holding deferred pins — drain before the retry-loop yield, and `MUTEX_TRY_READLOCK` + drain before the blocking acquire. Both needed. Post-fix 0/384 sharpened and 0/384 at the shipped window. `lost=0`, recovery + `db_verify` clean throughout, and a write error still surfaces. See `docs/design/os-aio-deadlock-fix.md`. | **fixed**, still default-off |
 | **S5** | A second, independent `lk_partitions=1` failure in multi-process locker teardown (`ssi009` / `BDB2047`). **Not** fixed by the v2026.09.6 latch-alias fix, which addressed a different nesting. | open |
 
+## Known defects on unmerged branches
+
+Not shipped, so not release issues — recorded because the branch still exists and
+someone may pick it up.
+
+| id | issue | status |
+|----|-------|--------|
+| **B1** | `perf/bhpin-r1` has a **latent correctness bug**, independent of its throughput. Its option (c) returns a buffer frame without taking `bhp->mtx_buf`, but `__memp_fput` is unchanged and unlocks it unconditionally at `mp_fput.c:197`. A DIAGNOSTIC build panics (`BDB2031 shared unlock N already unlocked`). **A production build does not check**: the `DB_ASSERT(env, sharecount > 0)` in `mut_tas.c` is DIAGNOSTIC-only, so `atomic_dec` runs regardless and silently drives another reader's share count toward zero — and since exclusive acquisition CASes against `sharecount == 0`, a writer can be granted the exclusive latch while a reader still holds a share. Silent data corruption under a race, not a crash. Controls: only bhpin+DIAGNOSTIC+private panics; base clean in the same config; both production and both shared-env arms clean. **Do not merge this branch on correctness grounds, regardless of any throughput number.** Its measured "neutral" verdict was also vacuous — 0 hits in 9M attempts, because the load left every page `BH_DIRTY` and shared envs never attempt the path (gated on `ENV_PRIVATE`). Full analysis: `test/bench/PIN-REMEASURE-2026-09.md`. | open, branch not merged |
+
 ## Why this file exists
 
 Each of these was, at some point, rediscovered from scratch by someone who could
