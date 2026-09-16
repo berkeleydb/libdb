@@ -232,6 +232,17 @@ close/reopen with `DB_RECOVER`, over 768 fixed-arm runs plus the controls.
 the changed code is unreachable — `nflight` is always 0 when `use_aio == 0`, so
 both new branches collapse to the original `MUTEX_READLOCK`.
 
+**No regression in the wider suite,** run as the workflows invoke it:
+
+| tier | invocation | result |
+|---|---|---|
+| `db` (regression runners) | `sh ../test/db/run_all.sh` from `build_unix`, `--enable-debug` | 0 failures, manifest gate OK |
+| `tcl` (targeted) | `sh ../test/tcl/run_targeted.sh`, `--enable-test --with-tcl` | 5/5 pass (`lock001`, `ssi001`, `ssi002`, `test001`, `txn001`), 0 failures |
+| `leak` | `TIMEOUT=300 AIO_SECONDS=20 sh ./leak-run.sh` from `test/c`, diagnostic | all pass, incl. both aio arms |
+
+Every tier's verdict count was checked with `./test/check_manifest.sh --tier ...`
+(28 verdict lines total), so "it passed" is not the same claim as "it ran".
+
 ## 6. Region-signature and ABI proofs
 
 Both are byte-identical to master. The fix changes function bodies and adds one
