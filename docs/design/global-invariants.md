@@ -480,8 +480,25 @@ trap for the next reader.
 2. **The `object partition → TXN_SYSTEM_LOCK` edge is unsatisfiable as drawn.**
    Because of (1) it is the same latch on both ends. With `lk_partitions > 1`
    `LOCK_SYSTEM_LOCK` is a no-op so the nesting never happens; with
-   `lk_partitions == 1` it self-deadlocks at `lock.c:1119`. That is the
+   `lk_partitions == 1` it self-deadlocked at `lock.c:1119`. That was the
    previously-unexplained "`lk_partitions=1` hangs" report.
+
+   **This is FIXED as of v2026.09.6.** The SSI `TXN_SYSTEM_LOCK` acquisition in
+   `__lock_get_internal` is now guarded on `part_t_size == 1` (the `si_txn_lock`
+   local), matching three neighbouring sites that already used that guard, so the
+   latch is never taken twice. The #136 commit-window property is preserved by
+   interval containment: the caller's existing hold `[lock.c:801, 803]` strictly
+   contains the window `[1119, 1148]` that was removed, so the state published
+   under the latch is unchanged. Worth recording *why* this was user-reachable
+   rather than a corner case: `lock_method.c:42` sets
+   `lk_partitions = ncpu > 1 ? 10 * ncpu : 1`, so **1 partition is the default on
+   any single-CPU machine**. `test/c/lock_order_check.c` is now a regression gate
+   on the fix — it requires a clean completion at `lk_partitions=1` and treats a
+   checker report there as a failure, meaning the nesting returned.
+
+   Still open, and *not* addressed by that fix: a second, independent
+   `lk_partitions=1` failure in multi-process locker teardown (`ssi009` /
+   `BDB2047`), tracked as **S5**.
 3. **`mtx_buf` is a page pin, not an ordered latch.** `__memp_fget` *returns*
    holding it — that is what "pinned" means — and the caller then acquires
    record locks (`lock.c:911`) and other buckets while holding it. A3's mpool
@@ -544,7 +561,7 @@ table.
 | **R3** region-only vs. logged | Implicitly by every `test/sim` scenario (regions are recreated on recover) plus `test_sim_recover_idempotent` | **Weak as a stated invariant** — see **G6**: nothing asserts that no *new* piece of region state became load-bearing for recovery. The table in §3 is currently the only artifact. |
 | **A1** region compat gate | `__env_struct_sig` is mechanical and self-enforcing; the CI `abi-drift` gate covers the header/ABI side | **Adequate but untested end to end** — see **G7**: no test attaches a deliberately mismatched region and asserts `DB_VERSION_MISMATCH`. |
 | **A2** failchk contract | `test/sim/mp_failchk_pilot` + `test/sim/mp-failchk.sh` (two real processes, shared non-`DB_PRIVATE` region, victim killed while holding a write lock, survivor runs `failchk`), `ssi009` (multi-process) | **This is the fork's only executable multi-process fault test.** Good that it exists; narrow — one kill point, one fault, uncontrolled interleaving (its own header says so). See **G8**. |
-| **A3** global lock order | `src/mutex/mut_order.c` — a `DIAGNOSTIC`-only per-thread checker over this order (gap **G9**), plus `test/lockmatrix` for lock *modes* and `mvcc_purge_stress` under TSan | **Mechanically enforced for the region-level latches**, which are the ones whose misordering hangs multiple processes. Found one real violation (the `lk_partitions=1` self-deadlock) and corrected five errors in the order as documented — see the corrections under §4. **Not** covered: `mtx_buf` (a pin, not a latch), so the os_aio deadlock class is still unguarded; see **G9**. |
+| **A3** global lock order | `src/mutex/mut_order.c` — a `DIAGNOSTIC`-only per-thread checker over this order (gap **G9**), plus `test/lockmatrix` for lock *modes* and `mvcc_purge_stress` under TSan | **Mechanically enforced for the region-level latches**, which are the ones whose misordering hangs multiple processes. Found one real violation (the `lk_partitions=1` self-deadlock, **since fixed in v2026.09.6** and now covered by a regression gate) and corrected five errors in the order as documented — see the corrections under §4. **Not** covered: `mtx_buf` (a pin, not a latch), so the os_aio deadlock class is still unguarded; see **G9**. |
 | **D5** rsnap | Correctness rides on the whole read path: TCL suite, `test/sim` btree scenarios, `db_verify`. `DB_NO_RSNAP` gives an A/B switch (`bt_search.c:56-70`) | **Indirect.** See **G10**: no test targets the specific race (root change between LSN check and child fetch), and no test asserts the `DB_NO_RSNAP` A/B produces identical results. |
 | **D6** wired frames | `mp_alloc` skips wired singletons; the cap is arithmetic. `test/bench` covers the throughput side | **Weak.** See **G4**. |
 | **D7** cursor sharding | TCL suite exercises cursors heavily; whole-handle iteration paths are exercised by `db_close` / `associate` / `partition` tests | **Weak for the specific hazard.** See **G11**. |
