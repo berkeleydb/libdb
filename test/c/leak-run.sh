@@ -44,7 +44,7 @@ LIBS=$(sed -n 's/^LIBS=[[:space:]]*//p' "$BUILD/Makefile" | head -1)
 mkdir -p "$RUNDIR"
 rc=0
 for t in leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible health_stats \
-    aio_concurrent_sync lock_order_check; do
+    aio_concurrent_sync lock_order_check batch_diff; do
 	echo "=== building $t"
 	# shellcheck disable=SC2086
 	$CC -g -O1 -Wall -Wextra -Wno-unused-parameter \
@@ -125,6 +125,88 @@ mvcc_run() {
 	fi
 }
 mvcc_run
+
+# db_get_multiple() equivalence gate.  The batched point-read path must return
+# exactly what N individual DB->get calls return, and must record the SAME SSI
+# read set (so the same rw-antidependency pivots abort).  The driver carries its
+# own anti-vacuity control -- plain snapshot must COMMIT the very schedule that
+# SERIALIZABLE refuses -- and this wrapper refuses to accept rc=0 as a verdict:
+# it requires the PASS line and all four VERDICT lines to have been printed, so
+# a run that silently did nothing fails instead of going vacuously green.
+batch_diff_run() {
+	t=batch_diff; dir="$RUNDIR/$t-run"
+	if [ -d "$dir" ]; then
+		find "$dir" -mindepth 1 -delete
+	else
+		mkdir -p "$dir"
+	fi
+	echo "=== running $t"
+	out="$dir/out.txt"
+	bd_rc=0
+	( cd "$dir" && timeout "$TIMEOUT" "$RUNDIR/$t" ) >"$out" 2>&1 || bd_rc=$?
+	sed -n 's/^/    /p' "$out"
+	nv=$(grep -c '^VERDICT ' "$out" || true)
+	if [ "$bd_rc" != 0 ]; then
+		echo "--- $t: FAIL (exit $bd_rc)"
+		rc=1
+	elif grep -q '^PASS: 0 failure' "$out" && [ "$nv" -ge 4 ]; then
+		echo "--- $t: PASS ($nv verdicts)"
+	else
+		echo "--- $t: FAIL (exit 0 but $nv verdicts / no PASS line --" \
+		    "vacuous run)"
+		rc=1
+	fi
+}
+batch_diff_run
+
+# READ-SET EQUIVALENCE, the part that cannot be measured inside one process.
+# Lock objects are shared, so whichever arm touches a key range FIRST creates
+# its objects and any later arm measures ~0 on that range -- an artifact that
+# looks exactly like a skipped SIREAD read set.  (Two in-process versions of
+# this check each reported a false "isolation weakened"; swapping the arms
+# showed the asymmetry followed the RANGE, not the arm.)
+#
+# So run the probe once per (arm, range) in a FRESH process against a FRESH
+# environment -- every run is a first-toucher -- and compare the two arms
+# WITHIN a range, where the geometry is identical by construction.  A batch that
+# skipped markers gives a strictly smaller delta on the same range.
+readset_probe() {
+	rs_rc=0
+	for base in 0 997; do
+		di= ; dbt=
+		for arm in indiv batch; do
+			dir="$RUNDIR/batch_diff-rs-$arm-$base"
+			if [ -d "$dir" ]; then
+				find "$dir" -mindepth 1 -delete
+			else
+				mkdir -p "$dir"
+			fi
+			line=$( cd "$dir" && BATCH_DIFF_HOME="$dir" \
+			    timeout "$TIMEOUT" "$RUNDIR/batch_diff" \
+			    readset "$arm" "$base" 2>&1 | grep '^READSET ' )
+			echo "    $line"
+			d=$(printf '%s\n' "$line" | sed -n 's/.*delta=\(-*[0-9]*\).*/\1/p')
+			if [ "$arm" = indiv ]; then di=$d; else dbt=$d; fi
+		done
+		if [ -z "$di" ] || [ -z "$dbt" ]; then
+			echo "--- readset base=$base: FAIL (no delta reported)"
+			rs_rc=1
+		elif [ "$di" -le 0 ]; then
+			echo "--- readset base=$base: FAIL (individual arm read set" \
+			    "delta $di -- probe measured nothing, vacuous)"
+			rs_rc=1
+		elif [ "$dbt" -lt "$di" ]; then
+			echo "--- readset base=$base: FAIL (batch delta $dbt <" \
+			    "indiv delta $di -- ISOLATION WEAKENED)"
+			rs_rc=1
+		else
+			echo "--- readset base=$base: PASS (indiv $di, batch $dbt)"
+		fi
+	done
+	[ "$rs_rc" = 0 ] || rc=1
+}
+echo "=== running batch_diff read-set probe (fresh process per arm/range)"
+readset_probe
 
 # os_aio cross-reap gate.  Runs checkpoint + trickle + memp_sync + DB->sync +
 # eviction pressure against one environment at once and audits that every
