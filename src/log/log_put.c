@@ -12,6 +12,7 @@
 #include "dbinc/crypto.h"
 #include "dbinc/hmac.h"
 #include "dbinc/log.h"
+#include "dbinc/log_handoff_trace.h"
 #include "dbinc/txn.h"
 #include "dbinc/db_page.h"
 #include "dbinc_auto/db_ext.h"
@@ -1032,11 +1033,16 @@ __log_flush_int(dblp, lsnp, release)
 	size_t b_off;
 	u_int32_t ncommit, w_off;
 	int do_flush, first, ret;
+	DB_HOFF_DECL_WAIT;
+	DB_HOFF_DECL_ROUND;
 
 	env = dblp->env;
 	lp = dblp->reginfo.primary;
 	ncommit = 0;
 	ret = 0;
+#ifdef HAVE_HANDOFF_TRACE
+	__db_hoff_init();
+#endif
 
 	if (lp->db_log_inmemory) {
 		lp->s_lsn = lp->lsn;
@@ -1112,10 +1118,13 @@ __log_flush_int(dblp, lsnp, release)
 		commit->lsn = flush_lsn;
 		SH_TAILQ_INSERT_HEAD(
 		    &lp->commits, commit, links, __db_commit);
+		DB_HOFF_WAIT_ENQUEUE(env, lp);
 		LOG_SYSTEM_UNLOCK(env);
 		/* Wait here for the in-progress flush to finish. */
 		MUTEX_LOCK(env, commit->mtx_txnwait);
+		DB_HOFF_WAIT_WOKEN(env);
 		LOG_SYSTEM_LOCK(env);
+		DB_HOFF_WAIT_DONE(env, lp);
 
 		lp->ncommit--;
 		/*
@@ -1218,10 +1227,12 @@ flush:	MUTEX_LOCK(env, lp->mtx_flush);
 	w_off = lp->w_off;
 	f_lsn = lp->f_lsn;
 	lp->in_flush++;
+	DB_HOFF_LEAD_BEGIN(env);
 	if (release)
 		LOG_SYSTEM_UNLOCK(env);
 
 	/* Sync all writes to disk. */
+	DB_HOFF_FSYNC_BEGIN(env);
 #if defined(HAVE_DST)
 #if DB_DST_BUG(1)
 	/*
@@ -1260,6 +1271,7 @@ flush:	MUTEX_LOCK(env, lp->mtx_flush);
 	 * we can move up to write point since the first lsn is not
 	 * set for the new buffer.
 	 */
+	DB_HOFF_FSYNC_END(env);
 	lp->s_lsn = f_lsn;
 	if (b_off == 0)
 		lp->s_lsn.offset = w_off;
@@ -1285,6 +1297,7 @@ done:
 				SH_TAILQ_REMOVE(
 				    &lp->commits, commit, links, __db_commit);
 				ncommit++;
+				DB_HOFF_WOKE_ONE;
 			} else if (first == 1) {
 				F_SET(commit, DB_COMMIT_FLUSH);
 				MUTEX_UNLOCK(env, commit->mtx_txnwait);
@@ -1298,8 +1311,10 @@ done:
 				 */
 				lp->in_flush++;
 				first = 0;
+				DB_HOFF_BATON_ONE;
 			}
 	}
+	DB_HOFF_LEAD_END(env, lp);
 #ifdef HAVE_STATISTICS
 	if (lp->stat.st_maxcommitperflush < ncommit)
 		lp->stat.st_maxcommitperflush = ncommit;

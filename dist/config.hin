@@ -201,6 +201,9 @@
 /* Define to 1 if you have the 'getuid' function. */
 #undef HAVE_GETUID
 
+/* Define to 1 to instrument the group-commit handoff in __log_flush_int. */
+#undef HAVE_HANDOFF_TRACE
+
 /* Define to 1 if building Hash access method. */
 #undef HAVE_HASH
 
