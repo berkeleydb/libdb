@@ -89,9 +89,20 @@ jobs:
       # mechanism gates: marker GC must not drop a SIREAD marker early (a
       # MISSED conflict, silent non-serializable commit) and a pivot must not
       # survive a crash inside its commit window.
+      #
+      # ISO_PARTS sweeps the lock-partition count, and the 1-partition pass is
+      # a regression gate rather than tuning: the lock, txn and log "regions"
+      # all set mtx_region to the SAME mutex (renv->mtx_regenv), and
+      # LOCK_SYSTEM_LOCK acquires it only at part_t_size == 1 -- so that is the
+      # one configuration where LOCK_SYSTEM_LOCK and TXN_SYSTEM_LOCK are one
+      # non-recursive latch and a nested acquisition self-deadlocks.  The SSI
+      # rw-conflict branch in __lock_get_internal did exactly that; every SSI
+      # schedule here drives it.  1 partition is supported and is the default
+      # on a single-CPU machine, so it is user-reachable.  The drivers arm a
+      # watchdog so a hang FAILS by name instead of timing the job out.
       - name: Run the anomaly scenarios and the SSI mechanism gates
         working-directory: test/isolation
-        run: ISO_TIMEOUT=600 ./run.sh
+        run: ISO_TIMEOUT=600 ISO_PARTS="default 1" ./run.sh
 
       # ---------------------------------------------------------------------
       # DID THE TESTS THIS TIER PROMISES ACTUALLY RUN?  test/MANIFEST lists
@@ -122,7 +133,7 @@ jobs:
           path: |
             test/isolation/build/ISODIR.*/**
             test/isolation/build/gc-*/**
-            test/isolation/build/crash/**
+            test/isolation/build/crash-*/**
           if-no-files-found: ignore
 
   # --------------------------------------------------------------------------
