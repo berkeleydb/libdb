@@ -51,6 +51,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # _release_tags() in build.py derives the landing-page release list
+          # from `git tag --list v2026.*`. The default checkout is shallow and
+          # carries NO TAGS, so the newest release could never appear on the
+          # site -- v2026.09.6 was missing until this was fixed.
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Install Nix (flakes enabled)
         uses: cachix/install-nix-action@v27
@@ -215,6 +222,13 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # _release_tags() in build.py derives the landing-page release list
+          # from `git tag --list v2026.*`. The default checkout is shallow and
+          # carries NO TAGS, so the newest release could never appear on the
+          # site -- v2026.09.6 was missing until this was fixed.
+          fetch-depth: 0
+          fetch-tags: true
       - name: Install Nix (flakes enabled)
         uses: cachix/install-nix-action@v27
         with:
