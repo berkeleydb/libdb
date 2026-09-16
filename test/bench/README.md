@@ -11,6 +11,11 @@ Two things live here:
   gate). The harness runs a *fixed* subset of what the drivers can do, so that
   two runs of it are comparable. This is the measurement gate that has to
   exist before any scalability claim is believable.
+* **the studies** — write-ups that answer one question with committed raw data
+  under `results/`: `CROSS-ENGINE-2026-09.md` (libdb vs WiredTiger) and
+  `SSI-FALSE-ABORT-2026-09.md` (what fraction of `DB_TXN_SERIALIZABLE` aborts
+  are page-granularity artifacts, driven by `false_abort_sweep.sh` /
+  `false_abort_rmw.sh` / `false_abort_report.py`).
 
 Nothing here is a TPC benchmark. `tproc_*` are HammerDB-*style* workloads,
 independently implemented, producing no TPC-comparable numbers.
