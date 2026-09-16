@@ -36,32 +36,58 @@
 # is what makes the "@serializable" clean run non-vacuous.  Losing one level
 # (the shape of trap 3: half the suite silently not sourced) fails here.
 # ---------------------------------------------------------------------------
-isolation	write_skew_trigger@snapshot
-isolation	write_skew_trigger@serializable
-isolation	write_skew_control@snapshot
-isolation	write_skew_control@serializable
-isolation	write_skew_late@snapshot
-isolation	write_skew_late@serializable
-isolation	write_skew_samebtree_control@snapshot
-isolation	write_skew_samebtree_control@serializable
-isolation	write_skew_samebtree_trigger@snapshot
-isolation	write_skew_samebtree_trigger@serializable
-isolation	g2_antidep@snapshot
-isolation	g2_antidep@serializable
-isolation	read_only_anomaly@snapshot
-isolation	read_only_anomaly@serializable
-isolation	lost_update@snapshot
-isolation	lost_update@serializable
-isolation	read_your_writes@snapshot
-isolation	read_your_writes@serializable
+# isolation: the tier sweeps LEVEL x LOCK-PARTITION-COUNT (see ISO_PARTS in
+# test/isolation/run.sh).  Verdict names are SCENARIO@LEVEL-PARTS so that
+# dropping an entire partition pass fails this gate rather than silently
+# emitting duplicate names.  The parts=1 pass is the gate on the region-latch
+# aliasing self-deadlock (LOCK_SYSTEM_LOCK and TXN_SYSTEM_LOCK are one mutex).
+isolation	write_skew_trigger@snapshot-default
+isolation	write_skew_trigger@snapshot-1
+isolation	write_skew_trigger@serializable-default
+isolation	write_skew_trigger@serializable-1
+isolation	write_skew_control@snapshot-default
+isolation	write_skew_control@snapshot-1
+isolation	write_skew_control@serializable-default
+isolation	write_skew_control@serializable-1
+isolation	write_skew_late@snapshot-default
+isolation	write_skew_late@snapshot-1
+isolation	write_skew_late@serializable-default
+isolation	write_skew_late@serializable-1
+isolation	write_skew_samebtree_control@snapshot-default
+isolation	write_skew_samebtree_control@snapshot-1
+isolation	write_skew_samebtree_control@serializable-default
+isolation	write_skew_samebtree_control@serializable-1
+isolation	write_skew_samebtree_trigger@snapshot-default
+isolation	write_skew_samebtree_trigger@snapshot-1
+isolation	write_skew_samebtree_trigger@serializable-default
+isolation	write_skew_samebtree_trigger@serializable-1
+isolation	g2_antidep@snapshot-default
+isolation	g2_antidep@snapshot-1
+isolation	g2_antidep@serializable-default
+isolation	g2_antidep@serializable-1
+isolation	read_only_anomaly@snapshot-default
+isolation	read_only_anomaly@snapshot-1
+isolation	read_only_anomaly@serializable-default
+isolation	read_only_anomaly@serializable-1
+isolation	lost_update@snapshot-default
+isolation	lost_update@snapshot-1
+isolation	lost_update@serializable-default
+isolation	lost_update@serializable-1
+isolation	read_your_writes@snapshot-default
+isolation	read_your_writes@snapshot-1
+isolation	read_your_writes@serializable-default
+isolation	read_your_writes@serializable-1
+isolation	ssi_gc_pressure@snapshot-default
+isolation	ssi_gc_pressure@snapshot-1
+isolation	ssi_gc_pressure@serializable-default
+isolation	ssi_gc_pressure@serializable-1
+isolation	ssi_crash_pivot-default	optional
+isolation	ssi_crash_pivot-1	optional
 # The two SSI mechanism gates.  ssi_gc_pressure runs at both levels (the
 # snapshot pass is the anti-vacuity control).  ssi_crash_pivot needs a
 # DIAGNOSTIC build for its in-commit crash hook, so it is optional -- but the
 # runner emits `skip` when the hook is absent, so "it did not run" is still
 # recorded rather than inferred.
-isolation	ssi_gc_pressure@snapshot
-isolation	ssi_gc_pressure@serializable
-isolation	ssi_crash_pivot	optional
 
 # ---------------------------------------------------------------------------
 # Tier B2 -- resource-accounting soak.   test/soak/run.sh

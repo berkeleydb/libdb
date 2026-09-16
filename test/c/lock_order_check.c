@@ -24,9 +24,13 @@
  *                                 the bug the checker converts into a
  *                                 diagnosis.
  *
- * Because the checker aborts by design, the subject arm is run in a CHILD
- * process and the parent inspects how it died.  Run with DB_LOCK_ORDER_WARN=1
- * to see the report without the abort.
+ * The subject arm runs in a CHILD process and the parent inspects how it ended.
+ * NOTE: the nesting this test was written against (lock.c:801 taking the
+ * region latch, then lock.c:1119 taking the same latch again via
+ * TXN_SYSTEM_LOCK) has since been FIXED, so the subject arm now asserts a
+ * CLEAN completion at lk_partitions=1 and is a regression gate on that fix.
+ * A checker abort here means the nesting came back.  Run with
+ * DB_LOCK_ORDER_WARN=1 to see a report without aborting.
  *
  * Verdict lines are explicit ("PASS:" / "FAIL:") so a harness can assert a
  * real verdict was produced rather than trusting the exit status alone.
@@ -216,23 +220,36 @@ main(int argc, char **argv)
 		    "--enable-diagnostic build, or the checker validates AFTER "
 		    "acquiring instead of before.\n", SUBJECT_TIMEOUT);
 		fails++;
-	} else if (WIFSIGNALED(status) &&
-	    (WTERMSIG(status) == SIGABRT || WTERMSIG(status) == SIGIOT))
-		printf("PASS: lk_partitions=1 was caught by the lock-order "
-		    "checker (SIGABRT) instead of hanging -- "
-		    "lock.c:801 then lock.c:1119 on the same latch\n");
-	else if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+	} else if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
 		/*
-		 * Completed cleanly.  Three possibilities, all needing a human:
-		 * this is not a DIAGNOSTIC build (so there is no checker and
-		 * this test is not meaningful -- configure with
-		 * --enable-diagnostic), or lock.c:1119's nesting was fixed (so
-		 * retire this test and update A3), or the checker regressed.
+		 * The expected outcome NOW.  lock.c:1119's nesting was the
+		 * subject of this test and it has since been FIXED: the SSI
+		 * branch no longer re-acquires the txn-region latch when it is
+		 * already held (one lock partition means LOCK_SYSTEM_LOCK and
+		 * TXN_SYSTEM_LOCK are the same physical mutex).  So a clean
+		 * completion at lk_partitions=1 is exactly what we want, and
+		 * this arm is now a REGRESSION GATE on that fix rather than a
+		 * demonstration of the checker.
+		 *
+		 * The checker's own teeth are demonstrated separately by
+		 * reverting src/lock/lock.c and observing SIGABRT naming
+		 * lock.c:801 -> lock.c:1119 (see the lock-order report); that
+		 * cannot be asserted from inside a normal test run because it
+		 * requires a differently-built library.
 		 */
-		printf("FAIL: lk_partitions=1 completed without a report.  "
-		    "Either this is not an --enable-diagnostic build, or "
-		    "lock.c:1119's nesting was fixed (retire this test and "
-		    "update A3), or the checker regressed.\n");
+		printf("PASS: lk_partitions=1 completed cleanly -- the SSI "
+		    "branch no longer nests TXN_SYSTEM_LOCK inside a held "
+		    "LOCK_SYSTEM_LOCK (regression gate on that fix)\n");
+	else if (WIFSIGNALED(status) &&
+	    (WTERMSIG(status) == SIGABRT || WTERMSIG(status) == SIGIOT)) {
+		/*
+		 * The checker fired, which means the nesting is BACK: either
+		 * the lock.c fix was reverted/regressed, or a new site nests
+		 * two aliased region latches.  This is a real failure now.
+		 */
+		printf("FAIL: lk_partitions=1 aborted -- the lock-order "
+		    "checker fired, so an aliased-region-latch nesting has "
+		    "returned (lock.c:801 -> lock.c:1119 was the original).\n");
 		fails++;
 	} else {
 		printf("FAIL: lk_partitions=1 ended unexpectedly "
