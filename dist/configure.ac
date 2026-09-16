@@ -162,6 +162,19 @@ if test "$db_cv_faultinject" = "yes"; then
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(FI_OBJS)"
 	CPPFLAGS="$CPPFLAGS -I\$(topdir)/test/faultinject"
 fi
+
+# Group-commit handoff instrumentation (see src/dbinc/log_handoff_trace.h).
+# MEASUREMENT ONLY.  This adds a counter field to the shared LOG region, so it
+# changes the region layout and src/env/env_sig.c's signature -- which is the
+# point: an instrumented library will refuse to open a stock environment and
+# vice versa, rather than silently misreading it.  Never enable in production.
+# When off (the default) every macro in log_handoff_trace.h is a no-op, no
+# field is added, and the library is bit-for-bit the stock one.
+if test "$db_cv_handoff_trace" = "yes"; then
+	AC_DEFINE(HAVE_HANDOFF_TRACE)
+	AH_TEMPLATE(HAVE_HANDOFF_TRACE,
+    [Define to 1 to instrument the group-commit handoff in __log_flush_int.])
+fi
 if test "$db_cv_debug_rop" = "yes"; then
 	AC_DEFINE(DEBUG_ROP)
 	AH_TEMPLATE(DEBUG_ROP,

@@ -348,6 +348,19 @@ struct __log { /* SHARED */
 	SH_TAILQ_HEAD(__commit) commits;/* list of txns waiting to commit. */
 	SH_TAILQ_HEAD(__free) free_commits;/* free list of commit structs. */
 
+#ifdef HAVE_HANDOFF_TRACE
+	/*
+	 * Monotonic flush-round counter, bumped under mtx_region by whichever
+	 * thread completes a flush and its wake pass.  A waiter reads it when
+	 * it enqueues and again when it has the region lock back, and the
+	 * difference is exactly how many rounds it sat through -- the fairness
+	 * metric.  Present only in an --enable-handoff-trace build, which
+	 * deliberately changes this region's env_sig signature so an
+	 * instrumented library cannot be mixed with a stock one.
+	 */
+	u_int64_t hoff_round;
+#endif
+
 	/*
 	 * In-memory logs maintain a list of the start positions of all log
 	 * files currently active in the in-memory buffer.  This is to make the

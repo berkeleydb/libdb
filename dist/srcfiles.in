@@ -185,6 +185,7 @@ src/log/log_archive.c	android
 src/log/log_compare.c	android
 src/log/log_debug.c	android
 src/log/log_get.c	android
+src/log/log_handoff_trace.c	android
 src/log/log_method.c	android
 src/log/log_print.c	android
 src/log/log_put.c	android
