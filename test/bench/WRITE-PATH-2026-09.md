@@ -49,7 +49,7 @@ pulled.
 > own instrument rather than to libdb. `test/bench/WRITE-TAIL-2026-09.md`
 > measures the handoff directly and finds: the waiter queue **is** fair
 > (rounds-waited p50 = p99 = p99.9 = 2, so no waiter is overtaken repeatedly);
-> software handoff is **13 µs** per round, not 700 µs (item 2's subtraction
+> software handoff is **14 µs** per round, not 700 µs (item 2's subtraction
 > differences two incomparable fsyncs and is not even sign-correct on that
 > hardware); and the 272 ms tail is in `db->put`, not the commit — the commit
 > phase's own p99 is 5.7 ms against a 3.7 ms p50. `commit_bench` had timed
@@ -63,7 +63,7 @@ them is the fsync count:
 
 1. **Throughput ceilings and then regresses** — ~4,100 ops/s at 32 threads,
    falling to 3,623 at 96.
-2. **~~Software handoff dominates each round.~~ REFUTED — see the banner above; the real figure is 13 µs, measured inside the leader.** The system completes only ~507
+2. **~~Software handoff dominates each round.~~ REFUTED — see the banner above; the real figure is 14 µs, measured inside the leader.** The system completes only ~507
    fsync *rounds*/second, i.e. ~2.0 ms per round, against a device `fsync`
    measured at ~1.2 ms single-threaded (`fsync_probe`). That leaves **~0.7 ms
    per round of pure software handoff** — the wake chain, the region-lock hold,
