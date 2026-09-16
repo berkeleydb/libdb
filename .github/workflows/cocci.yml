@@ -405,7 +405,15 @@ jobs:
             echo "base_sig=$HEAD_SIG" >> "$GITHUB_OUTPUT"
           else
             git worktree add /tmp/sigbase "$BASE" >/dev/null
-            BASE_SIG=$(sh /tmp/sigbase/dist/env_sig_print.sh /tmp/sigbase)
+            # Run the HEAD's copy of the script against the BASE's SOURCE.
+            # The script is the measuring INSTRUMENT, not part of the measured
+            # artifact -- and it must be, because it was itself added on the
+            # branch that introduced this gate, so /tmp/sigbase/dist/
+            # env_sig_print.sh does not exist for any base older than that:
+            #     sh: 0: cannot open /tmp/sigbase/dist/env_sig_print.sh
+            # Using one instrument on both sides is also the only way the two
+            # numbers are comparable at all.
+            BASE_SIG=$(sh dist/env_sig_print.sh /tmp/sigbase)
             echo "base_sig=$BASE_SIG" >> "$GITHUB_OUTPUT"
           fi
 
