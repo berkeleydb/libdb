@@ -220,7 +220,7 @@ FI_OBJS=	fi_alloc@o@
 
 # SSI resource-accounting leak tests -- test/c/.  Compile rules below.
 LEAK_TESTS=	leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible \
-		aio_concurrent_sync health_stats
+		aio_concurrent_sync health_stats lock_order_check batch_diff
 
 BTREE_OBJS=\
 	bt_compare@o@ bt_compress@o@ bt_conv@o@ bt_curadj@o@ bt_cursor@o@ \
@@ -254,7 +254,7 @@ LOG_VRFY_OBJS=\
 	log_verify_auto@o@ 
 
 MUTEX_OBJS=\
-	mut_alloc@o@ mut_failchk@o@ mut_method@o@ mut_region@o@ mut_stat@o@
+	mut_alloc@o@ mut_failchk@o@ mut_method@o@ mut_order@o@ mut_region@o@ mut_stat@o@
 REP_OBJS=\
 	rep_automsg@o@ rep_backup@o@ rep_elect@o@ rep_lease@o@ rep_log@o@ \
 	rep_method@o@ rep_record@o@ rep_region@o@ rep_stat@o@ \
@@ -1581,6 +1581,16 @@ test_mutex: test_mutex@o@ $(DEF_LIB)
 ##################################################
 leak_tests: $(LEAK_TESTS)
 
+# Lock-order checker gate (gap G9).  A/B: lk_partitions=4 must run clean (no
+# false positive) and lk_partitions=1 must be REPORTED rather than hang.  Needs
+# --enable-diagnostic; it self-skips otherwise.
+lock_order_check@o@: $(testdir)/c/lock_order_check.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+lock_order_check: lock_order_check@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) lock_order_check@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
 mvcc_purge_visible@o@: $(testdir)/c/mvcc_purge_visible.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 mvcc_purge_visible: mvcc_purge_visible@o@ $(DEF_LIB)
@@ -1609,6 +1619,17 @@ health_stats@o@: $(testdir)/c/health_stats.c
 health_stats: health_stats@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) health_stats@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+# Differential equivalence gate for db_get_multiple(): the batched point-read
+# path must return EXACTLY what N individual DB->get calls return, INCLUDING
+# the SSI read set and the resulting rw-antidependency aborts.  Carries its own
+# anti-vacuity control (plain snapshot must commit the same schedule).
+batch_diff@o@: $(testdir)/c/batch_diff.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+batch_diff: batch_diff@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) batch_diff@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 ##################################################
@@ -1691,6 +1712,13 @@ test_sim_ckp_crash@o@: $(testdir)/sim/test_sim_ckp_crash.c
 test_sim_ckp_crash: test_sim_ckp_crash@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ \
 	    $(LDFLAGS) test_sim_ckp_crash@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_group_commit@o@: $(testdir)/sim/test_sim_group_commit.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $<
+test_sim_group_commit: test_sim_group_commit@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_group_commit@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
 test_sim_torn_log@o@: $(testdir)/sim/test_sim_torn_log.c
@@ -1978,7 +2006,7 @@ dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_recovery_redo_crash test_sim_recovery_ckp_crash \
 	test_sim_buggify \
 	test_sim_clockskew_timeout test_sim_clockskew_ckp \
-	test_sim_clockskew_backward
+	test_sim_clockskew_backward test_sim_group_commit
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.
@@ -2773,6 +2801,8 @@ mp_trickle@o@: $(srcdir)/mp/mp_trickle.c
 mt19937db@o@: $(srcdir)/crypto/mersenne/mt19937db.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_alloc@o@: $(srcdir)/mutex/mut_alloc.c
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
+mut_order@o@: $(srcdir)/mutex/mut_order.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_failchk@o@: $(srcdir)/mutex/mut_failchk.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<

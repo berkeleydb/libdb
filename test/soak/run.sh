@@ -34,6 +34,10 @@ set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$HERE"
 
+# Verdict emission for the test-execution manifest gate (test/MANIFEST).
+. "$HERE/../harness.sh"
+hi_init soak "$HERE/.."
+
 CC=${CC:-cc}
 LIBDB_BUILD=${LIBDB_BUILD:-"$HERE/../../build_unix"}
 SOAK_N=${SOAK_N:-2000}
@@ -68,4 +72,13 @@ cd "$OUT"
 if [ "${1:-}" = "--list" ]; then
 	exec ./test_soak_resources --list
 fi
-exec timeout "$SOAK_TIMEOUT" ./test_soak_resources -n "$SOAK_N" "$@"
+# Not `driver | tee`: sh has no pipefail, so the pipeline's status would be
+# tee's and a failing soak would read as a pass.  Capture to a log, print it,
+# then translate the driver's existing per-workload "== NAME ==" + indented
+# verdict into RESULT lines for the manifest gate.
+rc=0
+timeout "$SOAK_TIMEOUT" ./test_soak_resources -n "$SOAK_N" "$@" \
+    > soak-run.log 2>&1 || rc=$?
+cat soak-run.log
+hi_scan soak-run.log
+exit $rc

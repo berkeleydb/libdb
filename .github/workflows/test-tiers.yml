@@ -89,9 +89,41 @@ jobs:
       # mechanism gates: marker GC must not drop a SIREAD marker early (a
       # MISSED conflict, silent non-serializable commit) and a pivot must not
       # survive a crash inside its commit window.
+      #
+      # ISO_PARTS sweeps the lock-partition count, and the 1-partition pass is
+      # a regression gate rather than tuning: the lock, txn and log "regions"
+      # all set mtx_region to the SAME mutex (renv->mtx_regenv), and
+      # LOCK_SYSTEM_LOCK acquires it only at part_t_size == 1 -- so that is the
+      # one configuration where LOCK_SYSTEM_LOCK and TXN_SYSTEM_LOCK are one
+      # non-recursive latch and a nested acquisition self-deadlocks.  The SSI
+      # rw-conflict branch in __lock_get_internal did exactly that; every SSI
+      # schedule here drives it.  1 partition is supported and is the default
+      # on a single-CPU machine, so it is user-reachable.  The drivers arm a
+      # watchdog so a hang FAILS by name instead of timing the job out.
       - name: Run the anomaly scenarios and the SSI mechanism gates
         working-directory: test/isolation
-        run: ISO_TIMEOUT=600 ./run.sh
+        run: ISO_TIMEOUT=600 ISO_PARTS="default 1" ./run.sh
+
+      # ---------------------------------------------------------------------
+      # DID THE TESTS THIS TIER PROMISES ACTUALLY RUN?  test/MANIFEST lists
+      # them; the runner emits a RESULT line per test it executed.  A missing
+      # line fails here.  Four vacuous-green defects landed in one release
+      # cycle because an exit status cannot tell "passed" from "never ran".
+      # `--tier isolation` makes the tier's own ABSENCE fatal too: this step
+      # only runs because the tier just ran, so no results file means the
+      # runner produced no evidence at all.
+      # ---------------------------------------------------------------------
+      - name: Manifest gate (assert every expected test produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier isolation
+
+      - name: Upload verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolation-verdicts
+          path: test/.results/*.results
+          if-no-files-found: ignore
 
       - name: Upload scenario databases on failure
         if: failure()
@@ -101,7 +133,7 @@ jobs:
           path: |
             test/isolation/build/ISODIR.*/**
             test/isolation/build/gc-*/**
-            test/isolation/build/crash/**
+            test/isolation/build/crash-*/**
           if-no-files-found: ignore
 
   # --------------------------------------------------------------------------
@@ -130,6 +162,14 @@ jobs:
           set -o pipefail
           CC=clang LOCK_TIMEOUT=900 ./run.sh 2>&1 | tee matrix.log
 
+      # An ASan abort kills the driver mid-section.  Without the manifest gate
+      # a section that never got to run is indistinguishable from one that
+      # passed; run.sh now invokes each section separately and emits a verdict
+      # per section, so this names which of the three is missing.
+      - name: Manifest gate (assert every section produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier lockmatrix
+
       - name: Summarise
         if: always()
         working-directory: test/lockmatrix
@@ -146,7 +186,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lock-matrix-log
-          path: test/lockmatrix/matrix.log
+          path: |
+            test/lockmatrix/matrix.log
+            test/.results/*.results
           if-no-files-found: ignore
 
   # --------------------------------------------------------------------------
@@ -186,10 +228,66 @@ jobs:
           echo "== slopes that exceeded tolerance =="
           grep -E 'GROWING|ENOMEM' soak.log || echo "(none)"
 
+      # The soak tier is scheduled/dispatch-only, so its manifest entries are
+      # `optional` -- but once it HAS run, a partial set of workloads is a real
+      # finding, and --tier makes a missing results file fatal here (this step
+      # only exists on the path where the tier just ran).
+      - name: Manifest gate (assert every workload produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier soak
+
       - name: Upload growth curves
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: soak-growth-curves
-          path: test/soak/soak.log
+          path: |
+            test/soak/soak.log
+            test/.results/*.results
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # Resource-accounting / correctness leak drivers (test/c/leak-run.sh).
+  #
+  # FINDING: this tier was invoked by NO workflow.  Its five drivers -- the #137
+  # locker-reclaim gate, the #138 mutex-slot gate, the #138 mvcc_purge_visible
+  # CORRECTNESS gate, the operator health signals, and the os_aio cross-reap
+  # durability gate -- were built by `make leak_tests` and run only by hand.
+  # Three of the four historical vacuous-green traps lived in this one script.
+  # --------------------------------------------------------------------------
+  leak:
+    name: resource-accounting + correctness leak drivers
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y liburing-dev
+
+      # --enable-diagnostic: without it the os_aio cross-reap gate cannot fire
+      # __memp_aio_drain's DB_ASSERT(w[j].done), which is the assertion that
+      # actually reproduced the durability bug.
+      - name: Build libdb (diagnostic)
+        working-directory: build_unix
+        run: |
+          ../dist/configure --enable-debug --enable-diagnostic
+          make -j"$(nproc)"
+
+      - name: Run the leak / correctness drivers
+        working-directory: test/c
+        run: TIMEOUT=300 AIO_SECONDS=20 sh ./leak-run.sh
+
+      - name: Manifest gate (assert every driver+mode produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier leak
+
+      - name: Upload verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: leak-verdicts
+          path: test/.results/*.results
           if-no-files-found: ignore

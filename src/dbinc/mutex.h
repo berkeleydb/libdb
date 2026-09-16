@@ -202,6 +202,59 @@ static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
 #endif
 
 /*
+ * DIAGNOSTIC-only lock-order checking.  Hooked here, at the __mutex_*
+ * redirection layer, rather than at the MUTEX_* macros below, because this is
+ * the single narrowest waist that every acquisition passes through: all five
+ * MUTEX_* macros expand to these, and so do the direct __mutex_* callers in
+ * mut_region.c (the region self-test) and mut_method.c (the public
+ * DB_ENV->mutex_lock).  Hooking the macros instead would have missed those and
+ * would have needed five hook sites instead of two.
+ *
+ * The order is VALIDATED BEFORE the acquisition and RECORDED AFTER it succeeds.
+ * Validating first is not a detail -- it is the whole reason the checker has
+ * teeth.  A self-deadlock (the same non-recursive latch twice on one thread)
+ * never returns from the acquire call, so a checker that only looked after a
+ * successful acquisition would hang in exactly the case it exists to diagnose.
+ * Recording only on success keeps the held-set honest when a trylock fails.
+ *
+ * See src/dbinc/lock_order.h for the order itself.
+ */
+#include "dbinc/lock_order.h"
+
+#ifdef DIAGNOSTIC
+#define	DB_LO_LOCK(fn, env, mutex)					\
+	(__db_lo_check(env, mutex, __FILE__, __LINE__),			\
+	 __db_lo_wrap_acq(env, mutex, fn(env, mutex), __FILE__, __LINE__))
+#define	DB_LO_UNLOCK(fn, env, mutex)					\
+	(__db_lo_release(env, mutex), fn(env, mutex))
+
+/*
+ * An inline helper rather than a statement macro: this sits inside expressions
+ * (MUTEX_TRYLOCK is used as a value), so it must be an expression itself.
+ */
+static inline int
+__db_lo_wrap_acq(ENV *env, db_mutex_t mutex, int ret,
+    const char *file, int line)
+{
+	if (ret == 0)
+		__db_lo_acquire(env, mutex, file, line);
+	return (ret);
+}
+
+#define	__mutex_lock_ck(env, m)		DB_LO_LOCK(__mutex_lock, env, m)
+#define	__mutex_rdlock_ck(env, m)	DB_LO_LOCK(__mutex_rdlock, env, m)
+#define	__mutex_trylock_ck(env, m)	DB_LO_LOCK(__mutex_trylock, env, m)
+#define	__mutex_tryrdlock_ck(env, m)	DB_LO_LOCK(__mutex_tryrdlock, env, m)
+#define	__mutex_unlock_ck(env, m)	DB_LO_UNLOCK(__mutex_unlock, env, m)
+#else
+#define	__mutex_lock_ck(env, m)		__mutex_lock(env, m)
+#define	__mutex_rdlock_ck(env, m)	__mutex_rdlock(env, m)
+#define	__mutex_trylock_ck(env, m)	__mutex_trylock(env, m)
+#define	__mutex_tryrdlock_ck(env, m)	__mutex_tryrdlock(env, m)
+#define	__mutex_unlock_ck(env, m)	__mutex_unlock(env, m)
+#endif
+
+/*
  * Lock/unlock a mutex.  If the mutex was never required, the thread of
  * control can proceed without it.
  *
@@ -212,7 +265,7 @@ static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
 #ifdef HAVE_MUTEX_SUPPORT
 #define	MUTEX_LOCK(env, mutex) do {					\
 	if ((mutex) != MUTEX_INVALID &&					\
-	    __mutex_lock(env, mutex) != 0)				\
+	    __mutex_lock_ck(env, mutex) != 0)				\
 		return (DB_RUNRECOVERY);				\
 } while (0)
 
@@ -221,22 +274,22 @@ static inline int __db_pthread_mutex_tryreadlock(ENV *env, db_mutex_t mutex)
  * or DB_LOCK_NOTGRANTED, or possibly DB_RUNRECOVERY for failchk.
  */
 #define	MUTEX_TRYLOCK(env, mutex)					\
-	(((mutex) == MUTEX_INVALID) ? 0 : __mutex_trylock(env, mutex))
+	(((mutex) == MUTEX_INVALID) ? 0 : __mutex_trylock_ck(env, mutex))
 
 /*
  * Acquire a DB_MUTEX_SHARED "mutex" in shared mode.
  */
 #define	MUTEX_READLOCK(env, mutex) do {					\
 	if ((mutex) != MUTEX_INVALID &&					\
-	    __mutex_rdlock(env, mutex) != 0)				\
+	    __mutex_rdlock_ck(env, mutex) != 0)				\
 		return (DB_RUNRECOVERY);				\
 } while (0)
 #define	MUTEX_TRY_READLOCK(env, mutex)					\
-	((mutex) != MUTEX_INVALID ? __mutex_tryrdlock(env, mutex) : 0)
+	((mutex) != MUTEX_INVALID ? __mutex_tryrdlock_ck(env, mutex) : 0)
 
 #define	MUTEX_UNLOCK(env, mutex) do {					\
 	if ((mutex) != MUTEX_INVALID &&					\
-	    __mutex_unlock(env, mutex) != 0)				\
+	    __mutex_unlock_ck(env, mutex) != 0)				\
 		return (DB_RUNRECOVERY);				\
 } while (0)
 

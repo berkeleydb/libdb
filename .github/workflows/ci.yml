@@ -92,19 +92,20 @@ jobs:
       # They were previously orphaned: no CI job and no make target invoked them,
       # so a regression would have gone unnoticed. They all follow the same
       # BUILD=${BUILD:-.} convention and expect to run from the build directory.
+      #
+      # The runner list used to be an inline `for r in ...` loop here.  It now
+      # lives in test/MANIFEST and test/db/run_all.sh READS IT FROM THERE, so
+      # the two cannot drift: adding a runner to one list and forgetting the
+      # other is the shape that made aio_concurrent_sync and mvcc_purge_visible
+      # never run.  run_all.sh also emits a RESULT verdict per runner.
       - name: Regression runners (test/db)
         if: matrix.config == 'default'
         working-directory: build_unix
-        run: |
-          set -e
-          for r in run_hash_unsorted_cmp run_recd_compact run_recd_handlers run_upgrade \
-                   run_lock_priority_nullderef run_null_method_slots \
-                   run_qam_extent_vrfy run_db_verify_multifile \
-                   run_qam_readpath_bound; do
-            echo "::group::$r"
-            bash "../test/db/$r.sh"
-            echo "::endgroup::"
-          done
+        run: sh ../test/db/run_all.sh
+
+      - name: Manifest gate (assert every test/db runner produced a verdict)
+        if: always() && matrix.config == 'default'
+        run: ./test/check_manifest.sh --tier db
 
   # ----------------------------------------------------------------------------
   # 32-bit build on Linux (pointer-size / portability coverage).
@@ -280,20 +281,22 @@ jobs:
           source ../test/tcl/test.tcl
           run_std
           TCL
+            timeout 3600 tclsh /tmp/run.tcl 2>&1 | tee /tmp/out.txt
+            ! grep -qE "^FAIL|FAIL:" /tmp/out.txt
           else
-            cat > /tmp/run.tcl <<'TCL'
-          source ../test/tcl/test.tcl
-          foreach t {lock001 txn001 test001 ssi001 ssi002} {
-            source ../test/tcl/$t.tcl
-            set a {}
-            if {$t eq "test001"} { set a btree }
-            if {[catch {eval $t $a} res]} { puts "FAIL $t: $res"; exit 1 }
-            puts "PASS $t"
-          }
-          TCL
+            # The targeted subset's test list lives in test/MANIFEST, and
+            # run_targeted.sh reads it from there and emits a RESULT verdict per
+            # test.  It used to be an inline heredoc that exited on the first
+            # failure, so every test after that one produced neither a pass nor
+            # a fail -- indistinguishable from never having been listed, which
+            # is exactly how `ssi` went unsourced and the job exited 0 having
+            # tested nothing.
+            sh ../test/tcl/run_targeted.sh
           fi
-          timeout 3600 tclsh /tmp/run.tcl 2>&1 | tee /tmp/out.txt
-          ! grep -qE "^FAIL|FAIL:" /tmp/out.txt
+
+      - name: Manifest gate (assert every targeted TCL test produced a verdict)
+        if: always() && github.event.inputs.full_tcl != 'true'
+        run: ./test/check_manifest.sh --tier tcl
 
   # ----------------------------------------------------------------------------
   # Deterministic Simulation Testing (DST): build --enable-dst, run one capstone
@@ -324,17 +327,17 @@ jobs:
         run: |
           ../dist/configure --enable-debug --enable-dst
           make -j$(nproc)
+      # The capstone list lives in test/MANIFEST and run_capstones.sh reads it
+      # from there, so the workflow and the expectation cannot drift.  It also
+      # runs ALL of them: the old `set -e` loop stopped at the first failure, so
+      # the rest produced no signal -- indistinguishable from never listed.
       - name: Fault-class smoke (one capstone per class)
         working-directory: build_unix
-        run: |
-          set -e
-          for t in test_sim_crash_recover test_sim_crash_in_recovery \
-                   test_sim_clockskew_backward test_sim_buggify \
-                   test_sim_torn test_sim_stale test_sim_enospc; do
-            make "$t"
-            echo "--- $t ---"
-            timeout 240 "./$t"
-          done
+        run: sh ../test/sim/run_capstones.sh
+
+      - name: Manifest gate (assert every DST capstone produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier sim
       # The multi-process failchk pilot spawns + kill -9's real processes
       # sharing a real region. That is inherently timing-sensitive on shared
       # CI runners (a survivor can stall waiting on a dead peer's slot), so it
