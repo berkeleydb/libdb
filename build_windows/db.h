@@ -68,9 +68,9 @@ extern "C" {
  * level.  Use this to identify the community fork; use the MAJOR/MINOR/PATCH
  * triplet for format/ABI compatibility decisions.
  */
-#define	DB_CALVER	"2026.09.5"
-#define	DB_VERSION_STRING	"libdb 2026.09.5 (September 15, 2026)"
-#define	DB_VERSION_FULL_STRING	"libdb 2026.09.5 (September 15, 2026)"
+#define	DB_CALVER	"2026.09.6"
+#define	DB_VERSION_STRING	"libdb 2026.09.6 (September 16, 2026)"
+#define	DB_VERSION_FULL_STRING	"libdb 2026.09.6 (September 16, 2026)"
 
 /*
  * !!!
@@ -3129,6 +3129,7 @@ extern "C" {
 #endif
 
 int db_copy __P((DB_ENV *, const char *, const char *, const char *));
+int db_get_multiple __P((DB *, DB_TXN *, DBT *, DBT *, int *, u_int32_t, u_int32_t));
 int db_create __P((DB **, DB_ENV *, u_int32_t));
 char *db_strerror __P((int));
 int db_env_set_func_assert __P((void (*)(const char *, const char *, int)));
