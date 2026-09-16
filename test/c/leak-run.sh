@@ -27,6 +27,11 @@ CC=${CC:-cc}
 TIMEOUT=${TIMEOUT:-300}
 RUNDIR="$HERE/leak-run"
 
+# Verdict emission for the test-execution manifest gate (test/MANIFEST).
+# THREE of the four historical vacuous-green traps lived in this file.
+. "$HERE/../harness.sh"
+hi_init leak "$HERE/.."
+
 [ -f "$BUILD/libdb.a" ] || {
 	echo "error: $BUILD/libdb.a not found -- build libdb first:" >&2
 	echo "    (cd $BUILD && ../dist/configure && make -j8 libdb.a)" >&2
@@ -53,16 +58,25 @@ run() {
 	# Start from an empty directory: the driver creates its environment in a
 	# TESTDIR_* subdir, and stale region files would carry over state (a
 	# previous run's exhausted mutex region) into the new run.
+	#
+	# A mkdir failure here used to SKIP the run silently (trap 2).  It is now
+	# a hard error: no directory means no run, and no run must never look
+	# like a pass.  The manifest gate catches it too (no verdict line), but
+	# failing at the point of the fault names the cause.
 	if [ -d "$dir" ]; then
 		find "$dir" -mindepth 1 -delete
-	else
-		mkdir -p "$dir"
+	elif ! mkdir -p "$dir"; then
+		echo "--- $t $mode: HARNESS ERROR (cannot create $dir)"
+		rc=1
+		return
 	fi
 	echo "=== running $t $mode $*"
 	if ( cd "$dir" && timeout "$TIMEOUT" "$RUNDIR/$t" "$mode" "$@" ); then
 		echo "--- $t $mode: PASS"
+		hi_emit "$t@$mode" pass
 	else
 		echo "--- $t $mode: FAIL (exit $?)"
+		hi_emit "$t@$mode" fail
 		rc=1
 	fi
 }
@@ -90,14 +104,18 @@ mvcc_run() {
 	t=mvcc_purge_visible; dir="$RUNDIR/$t-run"
 	if [ -d "$dir" ]; then
 		find "$dir" -mindepth 1 -delete
-	else
-		mkdir -p "$dir"
+	elif ! mkdir -p "$dir"; then
+		echo "--- $t: HARNESS ERROR (cannot create $dir)"
+		rc=1
+		return
 	fi
 	echo "=== running $t"
 	if ( cd "$dir" && timeout "$TIMEOUT" "$RUNDIR/$t" ); then
 		echo "--- $t: PASS"
+		hi_emit "$t" pass
 	else
 		echo "--- $t: FAIL (exit $?)"
+		hi_emit "$t" fail
 		rc=1
 	fi
 }
@@ -134,8 +152,9 @@ run aio_concurrent_sync sync "$AIO_SECONDS"
 aio_dir="$RUNDIR/aio_concurrent_sync-aio"
 if [ -d "$aio_dir" ]; then
 	find "$aio_dir" -mindepth 1 -delete
-else
-	mkdir -p "$aio_dir"
+elif ! mkdir -p "$aio_dir"; then
+	echo "--- aio_concurrent_sync aio: HARNESS ERROR (cannot create $aio_dir)"
+	rc=1
 fi
 echo "=== running aio_concurrent_sync aio $AIO_SECONDS"
 aio_rc=0
@@ -143,15 +162,20 @@ aio_rc=0
     "$RUNDIR/aio_concurrent_sync" aio "$AIO_SECONDS" ) || aio_rc=$?
 if [ "$aio_rc" = 0 ]; then
 	echo "--- aio_concurrent_sync aio: PASS"
+	hi_emit aio_concurrent_sync@aio pass
 elif [ "$aio_rc" = 124 ]; then
 	echo "--- aio_concurrent_sync aio: KNOWN ISSUE (deadlock, timed out" \
 	    "after ${TIMEOUT}s) -- not counted as a failure."
 	echo "    Opt-in path only (DB_MPOOL_AIO is default-OFF); no data loss." \
 	    "See the comment at the MUTEX_READLOCK in __memp_sync_int."
+	# `skip` is still a VERDICT: the manifest gate needs the line to exist,
+	# so "excused known issue" stays distinguishable from "never ran".
+	hi_emit aio_concurrent_sync@aio skip
 else
 	echo "--- aio_concurrent_sync aio: FAIL (exit $aio_rc)"
 	echo "    NOT the known deadlock (that is exit 124).  This is a real" \
 	    "cross-reap/durability failure."
+	hi_emit aio_concurrent_sync@aio fail
 	rc=1
 fi
 
