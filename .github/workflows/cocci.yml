@@ -425,6 +425,22 @@ jobs:
         run: |
           echo "base __env_struct_sig(): $BASE_SIG"
           echo "head __env_struct_sig(): $HEAD_SIG"
+          # An EMPTY signature is not a match, it is a broken measurement.
+          # This step is `if: always()` so that a real signature change is
+          # always reported even if a later step dies -- but that also means it
+          # runs when the compute step FAILED, and then both variables are
+          # empty, compare equal, and the gate says "Unchanged ()" and exits 0.
+          # That is the vacuous green this repo keeps finding.  Demand a
+          # plausible 0x%08x from both sides first.
+          for v in "$BASE_SIG" "$HEAD_SIG"; do
+            case "$v" in
+              0x[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
+              *)
+                echo "::error title=Region signature::signature not measured (base='$BASE_SIG' head='$HEAD_SIG')."
+                echo "::error::The gate cannot compare what it did not compute; see the 'Compute the signature' step above for the reason.  This is NOT evidence the signature is unchanged."
+                exit 1;;
+            esac
+          done
           if [ "$HEAD_SIG" = "$BASE_SIG" ]; then
             echo "::notice title=Region signature::Unchanged ($HEAD_SIG) -- existing environments still attach."
             exit 0

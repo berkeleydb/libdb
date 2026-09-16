@@ -38,20 +38,36 @@
 set -eu
 
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-SRC=${1:-$(CDPATH= cd -- "$HERE/.." && pwd)}
+# Absolutize both paths BEFORE anything cd's.  `dist/env_sig_print.sh .` is the
+# documented usage (and what the CI gate uses), and with a relative SRC the
+# configure below ran "./dist/configure" from INSIDE ./build_unix, where no such
+# file exists -- the script then reported "configure failed" for a tree that is
+# perfectly fine.  That is what made the region-signature gate red on a branch
+# whose signature had not changed at all.
+SRC=${1:-"$HERE/.."}
+SRC=$(CDPATH= cd -- "$SRC" && pwd) || {
+	echo "env_sig_print.sh: no such source directory: ${1:-$HERE/..}" >&2
+	exit 1
+}
 CC=${CC:-cc}
 BUILD_DIR=${BUILD_DIR:-"$SRC/build_unix"}
 
 if [ ! -f "$BUILD_DIR/db_config.h" ]; then
 	# A bare configure is enough: db_config.h plus the generated db.h is all
 	# env_sig.c's include chain needs.  Quiet, because the caller wants one
-	# hex value on stdout and nothing else.
+	# hex value on stdout and nothing else.  On failure show the tail of the
+	# log: "configure failed" with no reason cost one CI cycle to diagnose.
 	mkdir -p "$BUILD_DIR"
-	( cd "$BUILD_DIR" && "$SRC/dist/configure" >/dev/null 2>&1 ) || {
+	BUILD_DIR=$(CDPATH= cd -- "$BUILD_DIR" && pwd)
+	( cd "$BUILD_DIR" && "$SRC/dist/configure" \
+	    >"$BUILD_DIR/env_sig_configure.log" 2>&1 ) || {
 		echo "env_sig_print.sh: configure failed in $BUILD_DIR" >&2
+		echo "--- last 20 lines of $BUILD_DIR/env_sig_configure.log:" >&2
+		tail -20 "$BUILD_DIR/env_sig_configure.log" >&2 || true
 		exit 1
 	}
 fi
+BUILD_DIR=$(CDPATH= cd -- "$BUILD_DIR" && pwd)
 
 tmpd=$(mktemp -d) || exit 1
 trap 'rm -f "$tmpd"/sig_main.c "$tmpd"/sigprint; rmdir "$tmpd" 2>/dev/null' \
