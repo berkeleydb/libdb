@@ -454,6 +454,57 @@ the comment at `lock.c:294-307`); and `LOCK_LOCKERS` acquires all stripes in a
 fixed order, stripe 0 first (`dbinc/lock.h:381-390`), so the striping itself
 cannot deadlock.
 
+#### Corrections to the diagram above, from building the mechanical checker
+
+The table and diagram were written by reading the code. Turning them into an
+executable model (`src/mutex/mut_order.c`, gap **G9**) falsified five things.
+They are recorded here rather than silently fixed above, because each one is a
+trap for the next reader.
+
+1. **The lock, txn and log "regions" are ONE latch, not three.** All three
+   alias the env region latch, explicitly and by design:
+   `region->mtx_region = renv->mtx_regenv` at `lock_region.c:179`,
+   `txn_region.c:118` and `log.c:224`, each with the comment "We share the
+   region so we need the same mutex"; `mtx_regenv` is allocated once as
+   `MTX_ENV_REGION` (`env_region.c:713`). Measured on a live environment,
+   `LOCK_SYSTEM_LOCK`, `TXN_SYSTEM_LOCK` and `LOG_SYSTEM_LOCK` are all mutex
+   index 2. Only mpool's region latch is genuinely separate.
+   Consequently the diagram's edges *between* those three nodes are edges from
+   a node to itself, and **a rank per `MTX_*` id cannot express this order** —
+   node identity has to be the mutex index. The env region latch also cannot be
+   ranked at all, because it appears at three different depths: as
+   `infop->mtx_alloc` it is an innermost allocator latch (`env_open.c:1122`,
+   asserted at `env_alloc.c:219`), as `LOCK_SYSTEM_LOCK` it is outermost, and as
+   `TXN_SYSTEM_LOCK` it sits in the middle (taken while `mtx_filelist` is held,
+   `dbreg.c:283` → `log_put.c:174`).
+2. **The `object partition → TXN_SYSTEM_LOCK` edge is unsatisfiable as drawn.**
+   Because of (1) it is the same latch on both ends. With `lk_partitions > 1`
+   `LOCK_SYSTEM_LOCK` is a no-op so the nesting never happens; with
+   `lk_partitions == 1` it self-deadlocks at `lock.c:1119`. That is the
+   previously-unexplained "`lk_partitions=1` hangs" report.
+3. **`mtx_buf` is a page pin, not an ordered latch.** `__memp_fget` *returns*
+   holding it — that is what "pinned" means — and the caller then acquires
+   record locks (`lock.c:911`) and other buckets while holding it. A3's mpool
+   rule ("take the bucket, take a ref, **drop the bucket**, then latch the
+   buffer") is really a rule about `mtx_hash`; `mtx_buf`'s deadlock freedom
+   comes from the ref/pin protocol, not from a global order.
+4. **The mpool region latch is an allocator latch**, in the same innermost tier
+   as `MUTEX_SYSTEM_LOCK`, not a peer of the env region. It *is*
+   `infop->mtx_alloc` (`mp_region.c:160`, `:361`) and every caller takes it
+   innermost and drops it at once, including while holding `mtx_hash`
+   (`mp_alloc.c:725`) and a file bucket (`mp_method.c:800`). A3 says "anything →
+   mutex region" but omits this latch.
+5. **"handle mutex" at the top of the diagram is right for `dbp->mutex` and
+   wrong for the process-local list latches.** `mfp->mutex` is a leaf counter
+   latch despite its name (take, bump `block_cnt`, release — `mp_fget.c:962`),
+   taken *inside* `mtx_buf`. And the `DB_MUTEX_PROCESS_ONLY` latches are a
+   separate domain that resists ranking in both directions at once: some are
+   leaves taken under a region latch (`mp_sync.c:60` → `:837`,
+   `mp_fopen.c:350` → `os_handle.c:43`), while `env->mtx_dblist` is an outer
+   latch held across work that then takes region latches (`db.c:964` →
+   `mp_fopen.c:1009`, `db.c:1381` → `mp_mvcc.c:92`). Being process-local they
+   cannot cause the multi-process hang this order exists to prevent.
+
 ---
 
 ## 5. The dangerous interactions
@@ -493,7 +544,7 @@ table.
 | **R3** region-only vs. logged | Implicitly by every `test/sim` scenario (regions are recreated on recover) plus `test_sim_recover_idempotent` | **Weak as a stated invariant** — see **G6**: nothing asserts that no *new* piece of region state became load-bearing for recovery. The table in §3 is currently the only artifact. |
 | **A1** region compat gate | `__env_struct_sig` is mechanical and self-enforcing; the CI `abi-drift` gate covers the header/ABI side | **Adequate but untested end to end** — see **G7**: no test attaches a deliberately mismatched region and asserts `DB_VERSION_MISMATCH`. |
 | **A2** failchk contract | `test/sim/mp_failchk_pilot` + `test/sim/mp-failchk.sh` (two real processes, shared non-`DB_PRIVATE` region, victim killed while holding a write lock, survivor runs `failchk`), `ssi009` (multi-process) | **This is the fork's only executable multi-process fault test.** Good that it exists; narrow — one kill point, one fault, uncontrolled interleaving (its own header says so). See **G8**. |
-| **A3** global lock order | No dedicated test. `test/lockmatrix` covers lock *modes*, not orderings. `mvcc_purge_stress` under TSan covers one path. Deadlocks would surface as hangs in `test/soak` / `ssi009` / DST timeouts | **Thinnest area in the note.** See **G9**. |
+| **A3** global lock order | `src/mutex/mut_order.c` — a `DIAGNOSTIC`-only per-thread checker over this order (gap **G9**), plus `test/lockmatrix` for lock *modes* and `mvcc_purge_stress` under TSan | **Mechanically enforced for the region-level latches**, which are the ones whose misordering hangs multiple processes. Found one real violation (the `lk_partitions=1` self-deadlock) and corrected five errors in the order as documented — see the corrections under §4. **Not** covered: `mtx_buf` (a pin, not a latch), so the os_aio deadlock class is still unguarded; see **G9**. |
 | **D5** rsnap | Correctness rides on the whole read path: TCL suite, `test/sim` btree scenarios, `db_verify`. `DB_NO_RSNAP` gives an A/B switch (`bt_search.c:56-70`) | **Indirect.** See **G10**: no test targets the specific race (root change between LSN check and child fetch), and no test asserts the `DB_NO_RSNAP` A/B produces identical results. |
 | **D6** wired frames | `mp_alloc` skips wired singletons; the cap is arithmetic. `test/bench` covers the throughput side | **Weak.** See **G4**. |
 | **D7** cursor sharding | TCL suite exercises cursors heavily; whole-handle iteration paths are exercised by `db_close` / `associate` / `partition` tests | **Weak for the specific hazard.** See **G11**. |
@@ -554,14 +605,34 @@ table.
   mutex, which must produce `DB_RUNRECOVERY` and must not hang. That path
   (`mut_pthread.c:247-273`) is the difference between "failchk recovered it" and
   "you must run recovery", and it is the one an operator will hit.
-- **G9 — no lock-order enforcement.** A3 is a documented partial order with no
-  mechanical check. TSan on `mvcc_purge_stress` covers one path; a violation
-  introduced on a colder path (say a new reclaim helper taking `mvcc_mtx` then
-  `TXN_SYSTEM_LOCK`) would show up as an intermittent production hang, not a
-  test failure. Options that would fit this codebase: a `DIAGNOSTIC`-only
-  per-thread mutex-order tracker keyed on the existing `MTX_*` alloc ids
-  (`dbinc/mutex.h:42-81`), or a Coccinelle rule over the nesting patterns.
-  Neither exists.
+- **G9 — lock-order enforcement now exists, partially.** A3 is a documented
+  partial order; as of `src/mutex/mut_order.c` there is a `DIAGNOSTIC`-only
+  per-thread checker over it (hooked at the `__mutex_*` redirection layer in
+  `dbinc/mutex.h`, so all five `MUTEX_*` macros and the direct callers in
+  `mut_region.c` / `mut_method.c` are covered by two hook sites). It validates
+  *before* each acquisition — checking afterwards cannot work, because a
+  self-deadlock never returns from the acquire call. Zero cost in production
+  (`cc -E` shows `do { } while (0)`, no new symbol or string, `__env_struct_sig()`
+  byte-identical); ~32% slower in a diagnostic build.
+
+  Building it corrected five things in A3 — see the note under §4 — the largest
+  being that the lock, txn and log "regions" are **one latch**, so a rank per
+  `MTX_*` id cannot express the order at all.
+
+  It found one real violation, the previously-unexplained `lk_partitions=1`
+  hang: with a single partition `LOCK_SYSTEM_LOCK` is live
+  (`dbinc/lock.h:340`) and `__lock_get_internal`'s SSI branch then takes
+  `TXN_SYSTEM_LOCK` — the same latch — at `lock.c:1119`.
+
+  **Still not covered:** `mtx_buf` ordering, because `mtx_buf` is a page *pin*
+  held across arbitrary caller work rather than an ordered latch (`__memp_fget`
+  returns holding it). So the checker would **not** by itself have caught the
+  shipped os_aio deadlock, whose shape is hold-and-block-on-a-pin, not a latch
+  misordering. Catching that class needs pin-aware accounting: a rule like "do
+  not block on a new `mtx_buf` while holding deferred-write pins". Also not
+  covered: cross-*process* ordering (the checker is per-thread, per-process),
+  and the process-local `DB_MUTEX_PROCESS_ONLY` latches, which are tracked for
+  self-deadlock but not rank-ordered.
 - **G10 — rsnap's race window is untested.** D5's second LSN check
   (`bt_search.c:577-599`) exists to close the gap between "snapshot looked
   valid" and "child fetched". Nothing forces that interleaving. Cheapest useful

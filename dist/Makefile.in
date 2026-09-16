@@ -220,7 +220,7 @@ FI_OBJS=	fi_alloc@o@
 
 # SSI resource-accounting leak tests -- test/c/.  Compile rules below.
 LEAK_TESTS=	leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible \
-		aio_concurrent_sync health_stats
+		aio_concurrent_sync health_stats lock_order_check
 
 BTREE_OBJS=\
 	bt_compare@o@ bt_compress@o@ bt_conv@o@ bt_curadj@o@ bt_cursor@o@ \
@@ -254,7 +254,7 @@ LOG_VRFY_OBJS=\
 	log_verify_auto@o@ 
 
 MUTEX_OBJS=\
-	mut_alloc@o@ mut_failchk@o@ mut_method@o@ mut_region@o@ mut_stat@o@
+	mut_alloc@o@ mut_failchk@o@ mut_method@o@ mut_order@o@ mut_region@o@ mut_stat@o@
 REP_OBJS=\
 	rep_automsg@o@ rep_backup@o@ rep_elect@o@ rep_lease@o@ rep_log@o@ \
 	rep_method@o@ rep_record@o@ rep_region@o@ rep_stat@o@ \
@@ -1581,6 +1581,16 @@ test_mutex: test_mutex@o@ $(DEF_LIB)
 ##################################################
 leak_tests: $(LEAK_TESTS)
 
+# Lock-order checker gate (gap G9).  A/B: lk_partitions=4 must run clean (no
+# false positive) and lk_partitions=1 must be REPORTED rather than hang.  Needs
+# --enable-diagnostic; it self-skips otherwise.
+lock_order_check@o@: $(testdir)/c/lock_order_check.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $<
+lock_order_check: lock_order_check@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) lock_order_check@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
 mvcc_purge_visible@o@: $(testdir)/c/mvcc_purge_visible.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $<
 mvcc_purge_visible: mvcc_purge_visible@o@ $(DEF_LIB)
@@ -2773,6 +2783,8 @@ mp_trickle@o@: $(srcdir)/mp/mp_trickle.c
 mt19937db@o@: $(srcdir)/crypto/mersenne/mt19937db.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_alloc@o@: $(srcdir)/mutex/mut_alloc.c
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
+mut_order@o@: $(srcdir)/mutex/mut_order.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 mut_failchk@o@: $(srcdir)/mutex/mut_failchk.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
