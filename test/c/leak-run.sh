@@ -227,27 +227,23 @@ readset_probe
 # is the path the exclusive-use latch protects.  Without the latch this aborts
 # in __memp_aio_drain's DB_ASSERT(w[j].done) on a diagnostic build.
 #
-# KNOWN ISSUE: "aio" mode stalls permanently in roughly 3 runs in 67 (sync
-# mode 0/84).  It is a sync-loop stall, not the cross-reap corruption -- lost=0
-# and db_verify is clean on recovery -- so it is timed out and reported rather
-# than allowed to wedge the suite.  AIO_SECONDS keeps the run well inside
-# TIMEOUT so a stall is reported as a timeout, not as an ambiguous hang.
+# KNOWN ISSUE (FIXED, kept here as the reason this arm is now a HARD gate):
+# "aio" mode used to stall permanently in roughly 5% of runs (11/192 measured;
+# sync mode 0/96), because the deferred-write path held buffer pins across a
+# wait.  __memp_sync_int now drains the window before either wait, so a timeout
+# here is a REGRESSION, not an excuse.  AIO_SECONDS keeps the run well inside
+# TIMEOUT so a stall is reported as a timeout rather than an ambiguous hang.
 AIO_SECONDS=${AIO_SECONDS:-20}
 run aio_concurrent_sync sync "$AIO_SECONDS"
 
-# "aio" mode is run with the KNOWN-ISSUE deadlock split out from real failures,
-# rather than either skipped (vacuous) or hard-failed (a gate that goes red ~5%
-# of the time for a documented reason is a gate people learn to ignore).
+# "aio" mode now fails hard on ANY non-zero exit, INCLUDING a timeout.  The
+# excuse branch that used to absolve exit 124 is deliberately gone: the stall it
+# excused is fixed, so the only thing that branch could do now is hide the
+# regression.  A gate that excuses the one failure mode it was built to catch is
+# the vacuous-green shape this repo keeps re-shipping.
 #
-# A TIMEOUT (exit 124) is the known deadlock: the exclusive-use latch's winner
-# blocks on a new buffer's mtx_buf while holding a partly-full deferred-write
-# window's pins, and a writer needs one of those buffers exclusively.  Data is
-# never lost or corrupted by it (lost=0, db_verify clean), and DB_MPOOL_AIO is
-# default-OFF.  Reported loudly, does not fail the suite.
-#
-# ANY OTHER non-zero exit still fails hard -- that is the cross-reap gate this
-# test exists to be.  A lost record, a failed sync, or the drain's
-# DB_ASSERT(w[j].done) firing all land here, and none of them may be excused.
+# So: exit 124 (stall) = FAIL, and so is a lost record, a failed sync, or the
+# drain's DB_ASSERT(w[j].done) firing.  None of them may be excused.
 aio_dir="$RUNDIR/aio_concurrent_sync-aio"
 if [ -d "$aio_dir" ]; then
 	find "$aio_dir" -mindepth 1 -delete
@@ -263,17 +259,19 @@ if [ "$aio_rc" = 0 ]; then
 	echo "--- aio_concurrent_sync aio: PASS"
 	hi_emit aio_concurrent_sync@aio pass
 elif [ "$aio_rc" = 124 ]; then
-	echo "--- aio_concurrent_sync aio: KNOWN ISSUE (deadlock, timed out" \
-	    "after ${TIMEOUT}s) -- not counted as a failure."
-	echo "    Opt-in path only (DB_MPOOL_AIO is default-OFF); no data loss." \
-	    "See the comment at the MUTEX_READLOCK in __memp_sync_int."
-	# `skip` is still a VERDICT: the manifest gate needs the line to exist,
-	# so "excused known issue" stays distinguishable from "never ran".
-	hi_emit aio_concurrent_sync@aio skip
+	echo "--- aio_concurrent_sync aio: FAIL (STALLED, timed out after" \
+	    "${TIMEOUT}s)"
+	echo "    This is the os_aio deferred-pin stall REGRESSING.  It was" \
+	    "fixed by draining the async window before either wait in"
+	echo "    __memp_sync_int; see docs/design/os-aio-deadlock-fix.md." \
+	    "Capture 'thread apply all bt full' and check whether the"
+	echo "    use_aio==1 frame is blocked at the mtx_buf readlock or" \
+	    "spinning in the retry loop with nflight > 0."
+	hi_emit aio_concurrent_sync@aio fail
+	rc=1
 else
 	echo "--- aio_concurrent_sync aio: FAIL (exit $aio_rc)"
-	echo "    NOT the known deadlock (that is exit 124).  This is a real" \
-	    "cross-reap/durability failure."
+	echo "    A real cross-reap/durability failure (a stall would be 124)."
 	hi_emit aio_concurrent_sync@aio fail
 	rc=1
 fi

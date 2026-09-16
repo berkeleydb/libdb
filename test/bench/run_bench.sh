@@ -88,21 +88,70 @@ LIBDB_CONFIGURE="--enable-o_direct"
 log "building drivers against $BDB"
 make -s BDB="$BDB" CFLAGS="$CFLAGS_BENCH" >&2
 
-# Guard against measuring the WRONG library.  The Makefile sets -rpath, but a
-# stale binary, a LD_LIBRARY_PATH, or a system libdb-5.3 in the default search
-# path would otherwise silently redirect every driver at another build -- which
-# produced a reproducible SIGSEGV in ssi_abort_bench against a distro
-# libdb-5.3.28 during development, i.e. this failure mode is not theoretical.
-for _b in lock_bench scale_bench scale_iso ssi_abort_bench tproc_b tproc_c tproc_h; do
-	_resolved=$(ldd "$here/$_b" 2>/dev/null | awk '/libdb-5\.3/{print $3}')
+# Guard against measuring the WRONG library.  The Makefile links the build
+# tree's .so by path, but a stale binary or a LD_LIBRARY_PATH could still
+# redirect a driver at another build -- which produced a reproducible SIGSEGV
+# in ssi_abort_bench against a distro libdb-5.3.28 during development, i.e.
+# this failure mode is not theoretical.
+#
+# This guard used to match the literal soname "libdb-5.3".  That made it BLIND
+# in exactly the case it existed to catch: after 2bad51f4f renamed the fork's
+# soname to libdb-2026.0.so, the drivers began resolving -ldb-5.3 to the
+# system's 2013 Berkeley DB 5.3.28 while this loop looked for a libdb-5.3
+# inside $BDB/.libs.  It also never listed commit_bench or fsync_probe, so the
+# two newest drivers were unguarded, and that is where the leak surfaced.
+#
+# So: never name a version.  Match any libdb soname, require the resolved path
+# to be inside the tree under test, and cross-check what the loaded library
+# says about itself at RUNTIME against the header in the same tree -- a stale
+# .so at the right path passes a path check but fails this one.
+_want_ver=$(sed -n 's/^#define[[:space:]]*DB_VERSION_STRING[[:space:]]*"\(.*\)"$/\1/p' \
+    "$BDB/db.h" 2>/dev/null)
+if [ -z "$_want_ver" ]; then
+	log "FATAL: no DB_VERSION_STRING in $BDB/db.h -- cannot verify which"
+	log "       library the drivers load; refusing to publish numbers."
+	exit 2
+fi
+for _b in lock_bench scale_bench scale_iso ssi_abort_bench tproc_b tproc_c \
+    tproc_h commit_bench; do
+	_resolved=$(ldd "$here/$_b" 2>/dev/null | awk '/libdb-/{print $3}')
 	case $_resolved in
 	"$BDB"/.libs/*) ;;
-	*) log "FATAL: $_b resolves libdb-5.3 to '${_resolved:-<none>}',"
-	   log "       expected $BDB/.libs/ -- refusing to publish numbers for"
-	   log "       a library that is not the one under test."
+	*) log "FATAL: $_b resolves libdb to '${_resolved:-<none>}', expected"
+	   log "       $BDB/.libs/ -- refusing to publish numbers for a"
+	   log "       library that is not the one under test."
 	   exit 2 ;;
 	esac
 done
+# fsync_probe deliberately links no libdb (it measures the bare device).  If it
+# ever grows a libdb dependency this assertion says so rather than letting a
+# second unguarded driver appear.
+if ldd "$here/fsync_probe" 2>/dev/null | grep -q 'libdb-'; then
+	log "FATAL: fsync_probe now links libdb; add it to the guard loop above."
+	exit 2
+fi
+# Runtime identity of the library the drivers actually load.
+_vsrc=${TMPDIR:-/tmp}/bench_vprobe_$$.c
+_vbin=${TMPDIR:-/tmp}/bench_vprobe_$$
+cat > "$_vsrc" <<'_EOF'
+#include <stdio.h>
+#include "db.h"
+int main(void) { int a, b, c; printf("%s\n", db_version(&a, &b, &c)); return (0); }
+_EOF
+_bdb_so=$(ls "$BDB"/.libs/libdb-*.so 2>/dev/null | head -1)
+if ! ${CC:-cc} -O0 -I"$BDB" "$_vsrc" "$_bdb_so" \
+    -Wl,-rpath,"$(cd "$BDB/.libs" && pwd)" -o "$_vbin" 2>/dev/null; then
+	log "FATAL: cannot build the library-identity probe against $BDB."
+	rm -f "$_vsrc" "$_vbin"; exit 2
+fi
+_got_ver=$("$_vbin")
+rm -f "$_vsrc" "$_vbin"
+if [ "$_got_ver" != "$_want_ver" ]; then
+	log "FATAL: loaded library reports '$_got_ver' but $BDB/db.h declares"
+	log "       '$_want_ver' -- the measured library is not this tree."
+	exit 2
+fi
+log "library under test verified: $_got_ver"
 
 # ----------------------------------------------------------- provenance ----
 emit() { if [ -n "$OUT" ]; then cat >> "$OUT"; else cat; fi; }

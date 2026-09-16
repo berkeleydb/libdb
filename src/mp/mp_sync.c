@@ -305,7 +305,7 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	roff_t last_mf_offset;
 	u_int32_t ar_cnt, ar_max, i, n_cache, remaining, wrote_total;
 	int32_t wrote_cnt;
-	int dirty, filecnt, maxopenfd, required_write, ret, t_ret;
+	int dirty, filecnt, maxopenfd, required_write, ret, t_ret, trylock_err;
 	MEMP_AIO_W aiow[MEMP_AIO_WINDOW];	/* async writeback window */
 	int deferred, nflight, use_aio;
 
@@ -341,39 +341,55 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	 * __env_region_attach checks, so growing DB_MPOOL would make every
 	 * existing environment fail to attach (see dbinc/os_aio.h).
 	 *
-	 * KNOWN ISSUE (opt-in path only, not a default-path defect).  With
-	 * DB_MPOOL_AIO on, this function DEADLOCKS in roughly 5% of runs of
-	 * test/c/aio_concurrent_sync "aio" mode (measured 2/40; sync mode
-	 * 0/84).  It is permanent, not slow.  The cycle, from a bt-full
-	 * capture, is aio-specific and structural rather than a timing
-	 * coincidence:
+	 * FIXED (was a ~5% hang in test/c/aio_concurrent_sync "aio" mode).  A
+	 * deferred async write holds its buffer's pin (ref + shared mtx_buf)
+	 * until the write is reaped, and the window used to be reaped only
+	 * when nflight reached MEMP_AIO_WINDOW.  That made the deferred path
+	 * hold pins across waits, which produced two distinct permanent
+	 * stalls, both measured with gdb (see docs/design/os-aio-deadlock-fix.md):
 	 *
-	 *  1) The caller that WON this latch is below at the
-	 *     MUTEX_READLOCK(bhp->mtx_buf) for its next buffer, blocking --
-	 *     while it already holds the pins (ref + shared mtx_buf) of
-	 *     several deferred async writes.  The deferred path intentionally
-	 *     holds each pin until the write completes, and only drains when
-	 *     nflight reaches MEMP_AIO_WINDOW, so with a partly-full window it
-	 *     blocks while holding buffers hostage (observed: nflight == 5 of
-	 *     16, all five aiow[] slots still done == 0).
-	 *  2) A writer thread needs one of those pinned buffers EXCLUSIVE, via
-	 *     __memp_fget under __bam_split, so it blocks on the same mtx_buf.
-	 *  3) That writer holds the PGNO_BASE_MD write lock, so the remaining
-	 *     writers pile up in __lock_get_internal behind it.
+	 *  A) HOLD-AND-BLOCK.  The latch winner blocked in
+	 *     MUTEX_READLOCK(bhp->mtx_buf) below for a NEW buffer while
+	 *     holding a partly-full window's pins.  A writer wanted one of
+	 *     those pinned buffers exclusively (__memp_fget under __bam_split
+	 *     -> __db_new), so it blocked on that mtx_buf while holding the
+	 *     PGNO_BASE_MD write lock, and the other writers piled up behind
+	 *     it in __lock_get_internal.  A true cycle.
 	 *
-	 * The other sync callers are victims, not participants: they show
-	 * use_aio == 0 (they lost the trylock and are on the synchronous
-	 * path) and merely spin in the required_write retry.  Nothing waits on
-	 * mtx_aio itself -- it is TRYLOCK-only and cannot be a blocking edge.
+	 *  B) HOLD-AND-SPIN.  The latch winner never blocked at all: its
+	 *     remaining tracked buffers were all BH_EXCLUSIVE (held by the
+	 *     writer that is itself blocked on one of OUR pinned buffers), so
+	 *     with required_write set it spun the retry loop at the __os_yield
+	 *     above forever, still holding the window's pins.  No mutex wait
+	 *     to see in the winner's backtrace -- the winner is RUNNABLE and
+	 *     the cycle closes through the pins it holds.  This variant is the
+	 *     more common of the two here (4 of 6 captures).
 	 *
-	 * This is NOT the cross-reap corruption this latch fixes.  lost=0 and
-	 * db_recover + db_verify are clean every time, whereas the unlatched
-	 * path SEGVs in __aio_uring_reap.  DB_MPOOL_AIO is default-OFF, so no
-	 * default path is affected.  The two candidate fixes, neither taken
-	 * here because this is a release-blocker fix and aio is opt-in: drain
-	 * the window before blocking on a new buffer, or use
-	 * MUTEX_TRY_READLOCK at that acquire and defer the buffer on failure
-	 * (the loop already knows how to come back to a buffer).
+	 * Both are the same defect -- pins held across a wait the pin holder
+	 * cannot end -- so both need the same rule: NEVER wait while holding
+	 * deferred pins.  This function now enforces it in two places, and
+	 * both are needed because there are two waits:
+	 *
+	 *   - before the blocking MUTEX_READLOCK(bhp->mtx_buf) below, we
+	 *     MUTEX_TRY_READLOCK first, and on failure drain the window (which
+	 *     releases every pin) before blocking.  That kills variant A.
+	 *   - before the retry-loop __os_yield above, we drain the window.
+	 *     That kills variant B and, because the drain also lets the
+	 *     writer's own progress resume, ends the spin.
+	 *
+	 * The drain is the completion path, not a shortcut: it reaps the real
+	 * completions, runs __memp_pgwrite_finish for each, and propagates the
+	 * first error through "ret", exactly as the full-window drain does.
+	 * Draining early only shortens the window; it never skips a write, and
+	 * it never clears BH_DIRTY for a write that has not completed.
+	 *
+	 * Side effect worth noting: both blocking MUTEX_READLOCKs of mtx_buf
+	 * below are now reached only with nflight == 0, so the macro's bare
+	 * "return (DB_RUNRECOVERY)" can no longer abandon a live window.
+	 *
+	 * This was never the cross-reap corruption this latch fixes: lost=0
+	 * and db_recover + db_verify were clean on every occurrence, whereas
+	 * the unlatched path SEGVs in __aio_uring_reap.
 	 */
 	use_aio = 0;
 	if (dbmp->aio_ctx != NULL && __os_aio_ctx_available(dbmp->aio_ctx) &&
@@ -556,6 +572,24 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	for (i = wrote_cnt = 0, remaining = ar_cnt; remaining > 0; ++i) {
 		if (i >= ar_cnt) {
 			i = 0;
+			/*
+			 * We are about to sleep and come back for buffers we
+			 * could not get this pass.  Deferred async writes hold
+			 * their buffers' pins, and the reason we could not get
+			 * those buffers may BE a thread that is itself blocked
+			 * on one of our pinned buffers (stall variant B, above:
+			 * the winner spins here forever while a writer waits on
+			 * a pin we hold).  Reap the window first so we sleep
+			 * holding nothing.  The drain propagates write errors
+			 * into ret exactly as the full-window drain does.
+			 */
+			if (nflight > 0) {
+				t_ret = __memp_aio_drain(env, dbmp,
+				    dbmp->aio_ctx, aiow, nflight, &ret);
+				wrote_cnt += t_ret;
+				wrote_total += t_ret;
+				nflight = 0;
+			}
 			__os_yield(env, 1, 0);
 		}
 		if ((hp = bharray[i].track_hp) == NULL)
@@ -599,7 +633,40 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 		/* Pin the buffer into memory. */
 		atomic_inc(env, &bhp->ref);
 		MUTEX_UNLOCK(env, mutex);
-		MUTEX_READLOCK(env, bhp->mtx_buf);
+		/*
+		 * Do not block here while holding deferred pins (stall variant
+		 * A, above).  Try first; if the latch is busy and we are
+		 * holding a partly-full window, reap it -- releasing every pin
+		 * we hold -- and only then block.  After the drain the thread
+		 * we would have deadlocked against can proceed, so the blocking
+		 * acquire below is safe: we hold no buffer hostage.
+		 */
+		if (nflight > 0 &&
+		    (t_ret = MUTEX_TRY_READLOCK(env, bhp->mtx_buf)) != 0) {
+			/*
+			 * Busy, or a failchk error.  EITHER WAY reap the window
+			 * first: we must not wait while holding pins, and no
+			 * async write may outlive this frame -- the err label
+			 * asserts nflight == 0 because aiow and w->ctx are stack
+			 * state, so an error exit with a live window would let a
+			 * completion write through a dead frame.
+			 */
+			trylock_err =
+			    t_ret == DB_LOCK_NOTGRANTED ? 0 : t_ret;
+			t_ret = __memp_aio_drain(env, dbmp,
+			    dbmp->aio_ctx, aiow, nflight, &ret);
+			wrote_cnt += t_ret;
+			wrote_total += t_ret;
+			nflight = 0;
+			if (trylock_err != 0) {
+				atomic_dec(env, &bhp->ref);
+				if (ret == 0)
+					ret = trylock_err;
+				goto err;
+			}
+			MUTEX_READLOCK(env, bhp->mtx_buf);
+		} else if (nflight == 0)
+			MUTEX_READLOCK(env, bhp->mtx_buf);
 		DB_ASSERT(env, !F_ISSET(bhp, BH_EXCLUSIVE));
 
 		/*

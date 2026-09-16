@@ -108,19 +108,28 @@ typedef struct __db_aio_backend {
  * signature change as a deliberate region-compatibility break, because it is
  * one for every struct in that stale list, not just this field.
  *
- * KNOWN ISSUE (opt-in path only).  With DB_MPOOL_AIO on and this latch in
- * place, test/c/aio_concurrent_sync in "aio" mode deadlocks in roughly 5% of
- * runs (measured 2/40 here; independently reported 3/67), while "sync" mode is
- * 0/84.  The cycle is in __memp_sync_int, not in the aio backend and not on
- * this latch: the latch WINNER blocks acquiring a new buffer's mtx_buf while
- * still holding the pins of a partly-full deferred-write window, and a writer
- * doing a btree split needs one of those buffers exclusively.  The full cycle
- * and the two candidate fixes are documented at that acquire in mp_sync.c.
+ * FIXED (was a ~5% hang on the opt-in path).  With DB_MPOOL_AIO on and this
+ * latch in place, test/c/aio_concurrent_sync in "aio" mode used to stall
+ * permanently in roughly 5% of runs (11/192 measured on a 96-vCPU box; sync
+ * mode 0/96).  The cycle was never on this latch and never in the aio backend:
+ * the deferred-write path held each buffer's pin (ref + shared mtx_buf) until
+ * the write was reaped, and reaped only at nflight >= MEMP_AIO_WINDOW, so the
+ * latch winner waited while holding a partly-full window's pins.  Two variants,
+ * both measured (18 sharpened captures: 12 spin, 6 block):
+ *   A) it blocked in MUTEX_READLOCK(bhp->mtx_buf) for a new buffer, and a
+ *      writer doing a btree split needed one of the pinned buffers exclusive;
+ *   B) it did not block at all -- every remaining buffer was BH_EXCLUSIVE, held
+ *      by the writer that was itself waiting on one of ITS pins -- so it spun
+ *      the required_write retry loop forever, RUNNABLE, with no mutex wait in
+ *      its own backtrace.
+ * Fixed in __memp_sync_int by never waiting while holding deferred pins: drain
+ * the window before the retry-loop yield, and MUTEX_TRY_READLOCK + drain before
+ * the blocking mtx_buf acquire.  Both are needed; each alone leaves one variant.
+ * See docs/design/os-aio-deadlock-fix.md and the comment at that acquire.
  *
- * It is not the cross-reap corruption this latch fixes: lost=0 and
- * db_recover + db_verify are clean every time, whereas master SEGVs in
- * __aio_uring_reap on the same test.  DB_MPOOL_AIO is default-OFF, so no
- * default path is affected.
+ * It was never the cross-reap corruption this latch fixes: lost=0 and
+ * db_recover + db_verify were clean every time, whereas master SEGVs in
+ * __aio_uring_reap on the same test.
  */
 struct __db_aio_context {
 	const DB_AIO_BACKEND *backend;	/* NULL = synchronous fallback. */
