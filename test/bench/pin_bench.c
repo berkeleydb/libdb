@@ -314,6 +314,25 @@ main(int argc, char **argv)
 			env->err(env, ret, "load"); return (1);
 		}
 	}
+	/*
+	 * Clean the pages before measuring.  The load dirties every page it
+	 * touches, and with DB_TXN_NOSYNC and no checkpoint they STAY dirty for
+	 * the whole run -- which silently disarms perf/bhpin-r1: its optimistic
+	 * fast path refuses any buffer with BH_DIRTY set, so its own DIAGNOSTIC
+	 * counters showed 0 hits in 5.6M attempts (bail reason: badflag,
+	 * flagbits 0x6 = BH_DIRTY|BH_DIRTY_CREATE) until this checkpoint was
+	 * added.  A read benchmark measured on a dirty buffer pool is not a
+	 * read benchmark, so this is a correctness property of the harness, not
+	 * a favour to one arm.
+	 */
+	if ((ret = env->txn_checkpoint(env, 0, 0, DB_FORCE)) != 0) {
+		env->err(env, ret, "txn_checkpoint"); return (1);
+	}
+	{
+		int nwrote = 0;
+		(void)env->memp_trickle(env, 100, &nwrote);
+	}
+
 	printf("# tag=%s loaded %u keys mode=%s batch=%d env=%s cache=%dMB\n",
 	    g_tag, g_nkeys, argv[1], g_batchsz, private ? "private" : "shared",
 	    cache_mb);

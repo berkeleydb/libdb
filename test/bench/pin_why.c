@@ -1,5 +1,5 @@
 /*-
- * pin_fires: does the perf/bhpin-r1 optimistic fast path FIRE on the workload
+ * pin_why: WHY does the perf/bhpin-r1 optimistic fast path FIRE on the workload
  * we are benchmarking?  A "neutral" result from a code path that never executes
  * is not a measurement of that path, so this is a gate on the whole R1 arm.
  *
@@ -22,6 +22,10 @@
 
 extern unsigned long __memp_bhpin_hits;
 extern unsigned long __memp_bhpin_attempts;
+extern unsigned long __memp_bhpin_notwired;
+extern unsigned long __memp_bhpin_badflag;
+extern unsigned long __memp_bhpin_chain;
+extern unsigned long __memp_bhpin_flagbits;
 
 static DB_ENV *env;
 static DB *db;
@@ -76,6 +80,7 @@ main(int argc, char **argv)
 	char vbuf[VALSZ];
 	const char *home;
 	unsigned long h0, a0, h1, a1;
+	unsigned long nw0, bf0, ch0, nw1, bf1, ch1;
 	int ret, nthreads, secs, private;
 	struct timespec sl;
 
@@ -148,6 +153,8 @@ main(int argc, char **argv)
 
 	/* Counters are read AFTER the load, so only read traffic is counted. */
 	h0 = __memp_bhpin_hits; a0 = __memp_bhpin_attempts;
+	nw0 = __memp_bhpin_notwired; bf0 = __memp_bhpin_badflag;
+	ch0 = __memp_bhpin_chain;
 	stop = 0; go = 0;
 	for (i = 0; i < (unsigned)nthreads; i++)
 		(void)pthread_create(&th[i], NULL, worker, (void *)(size_t)i);
@@ -158,20 +165,24 @@ main(int argc, char **argv)
 	for (i = 0; i < (unsigned)nthreads; i++)
 		(void)pthread_join(th[i], NULL);
 	h1 = __memp_bhpin_hits; a1 = __memp_bhpin_attempts;
+	nw1 = __memp_bhpin_notwired; bf1 = __memp_bhpin_badflag;
+	ch1 = __memp_bhpin_chain;
 
 	(void)db->close(db, 0);
 	(void)env->close(env, 0);
 
 	if (g_reads == 0) {
-		printf("FAIL mode=%s env=%s no reads performed\n",
+		printf("FAIL bhpin-why mode=%s env=%s no reads performed\n",
 		    argv[1], private ? "private" : "shared");
 		return (1);
 	}
-	printf("VERDICT bhpin-fires mode=%s env=%s reads=%llu attempts=%lu "
-	    "hits=%lu hit_rate=%.1f%% hits_per_read=%.3f\n",
+	printf("VERDICT bhpin-why mode=%s env=%s reads=%llu attempts=%lu "
+	    "hits=%lu notwired=%lu badflag=%lu chain=%lu flagbits=0x%lx "
+	    "unaccounted=%ld\n",
 	    argv[1], private ? "private" : "shared", g_reads,
-	    a1 - a0, h1 - h0,
-	    (a1 - a0) == 0 ? 0.0 : 100.0 * (double)(h1 - h0) / (double)(a1 - a0),
-	    (double)(h1 - h0) / (double)g_reads);
+	    a1 - a0, h1 - h0, nw1 - nw0, bf1 - bf0, ch1 - ch0,
+	    __memp_bhpin_flagbits,
+	    (long)((a1 - a0) - (h1 - h0) - (nw1 - nw0) - (bf1 - bf0) -
+	    (ch1 - ch0)));
 	return (0);
 }
