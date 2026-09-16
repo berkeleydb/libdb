@@ -1,0 +1,392 @@
+# final A/B start 2026-09-16T16:19:58+00:00 reps=6 secs=5
+# rep=1 order=on off
+# tag=r1on-len38/private/rep1 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep1 mode=indiv thr=1 batch=16 keys_per_sec=771901 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep1 mode=indiv thr=32 batch=16 keys_per_sec=3945906 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/private/rep1 mode=indiv thr=96 batch=16 keys_per_sec=2177176 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/private/rep1 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep1 mode=batch thr=1 batch=16 keys_per_sec=919183 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep1 mode=batch thr=32 batch=16 keys_per_sec=5342857 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len38/private/rep1 mode=batch thr=96 batch=16 keys_per_sec=7331833 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len38/shared/rep1 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep1 mode=indiv thr=1 batch=16 keys_per_sec=746650 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep1 mode=indiv thr=32 batch=16 keys_per_sec=3331818 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep1 mode=indiv thr=96 batch=16 keys_per_sec=2104296 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/shared/rep1 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep1 mode=batch thr=1 batch=16 keys_per_sec=868355 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep1 mode=batch thr=32 batch=16 keys_per_sec=3482131 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep1 mode=batch thr=96 batch=16 keys_per_sec=4769733 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len38/private/rep1 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep1 mode=indiv thr=1 batch=16 keys_per_sec=751775 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep1 mode=indiv thr=32 batch=16 keys_per_sec=3184073 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep1 mode=indiv thr=96 batch=16 keys_per_sec=2073347 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/private/rep1 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep1 mode=batch thr=1 batch=16 keys_per_sec=858035 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep1 mode=batch thr=32 batch=16 keys_per_sec=3345918 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep1 mode=batch thr=96 batch=16 keys_per_sec=4950743 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len38/shared/rep1 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep1 mode=indiv thr=1 batch=16 keys_per_sec=734598 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep1 mode=indiv thr=32 batch=16 keys_per_sec=3112378 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep1 mode=indiv thr=96 batch=16 keys_per_sec=2069842 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/shared/rep1 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep1 mode=batch thr=1 batch=16 keys_per_sec=859305 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep1 mode=batch thr=32 batch=16 keys_per_sec=3476630 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep1 mode=batch thr=96 batch=16 keys_per_sec=4793278 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1on-len42/private/rep1 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep1 mode=indiv thr=1 batch=16 keys_per_sec=782958 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep1 mode=indiv thr=32 batch=16 keys_per_sec=3755990 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/private/rep1 mode=indiv thr=96 batch=16 keys_per_sec=1963842 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/private/rep1 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep1 mode=batch thr=1 batch=16 keys_per_sec=918310 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep1 mode=batch thr=32 batch=16 keys_per_sec=7257344 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len42/private/rep1 mode=batch thr=96 batch=16 keys_per_sec=10937870 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len42/shared/rep1 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep1 mode=indiv thr=1 batch=16 keys_per_sec=745358 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep1 mode=indiv thr=32 batch=16 keys_per_sec=3177714 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep1 mode=indiv thr=96 batch=16 keys_per_sec=2147632 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/shared/rep1 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep1 mode=batch thr=1 batch=16 keys_per_sec=868713 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep1 mode=batch thr=32 batch=16 keys_per_sec=3355003 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep1 mode=batch thr=96 batch=16 keys_per_sec=4818505 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len42/private/rep1 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep1 mode=indiv thr=1 batch=16 keys_per_sec=750137 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep1 mode=indiv thr=32 batch=16 keys_per_sec=3913519 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/private/rep1 mode=indiv thr=96 batch=16 keys_per_sec=1973824 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/private/rep1 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep1 mode=batch thr=1 batch=16 keys_per_sec=875740 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep1 mode=batch thr=32 batch=16 keys_per_sec=5604256 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1off-len42/private/rep1 mode=batch thr=96 batch=16 keys_per_sec=7807030 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1off-len42/shared/rep1 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep1 mode=indiv thr=1 batch=16 keys_per_sec=746952 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep1 mode=indiv thr=32 batch=16 keys_per_sec=3015460 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep1 mode=indiv thr=96 batch=16 keys_per_sec=2179137 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/shared/rep1 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep1 mode=batch thr=1 batch=16 keys_per_sec=863629 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep1 mode=batch thr=32 batch=16 keys_per_sec=3662916 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep1 mode=batch thr=96 batch=16 keys_per_sec=4824010 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# rep=2 order=off on
+# tag=r1off-len38/private/rep2 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep2 mode=indiv thr=1 batch=16 keys_per_sec=753114 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep2 mode=indiv thr=32 batch=16 keys_per_sec=3085394 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep2 mode=indiv thr=96 batch=16 keys_per_sec=2250071 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/private/rep2 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep2 mode=batch thr=1 batch=16 keys_per_sec=859810 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep2 mode=batch thr=32 batch=16 keys_per_sec=3582334 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep2 mode=batch thr=96 batch=16 keys_per_sec=4770193 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len38/shared/rep2 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep2 mode=indiv thr=1 batch=16 keys_per_sec=746639 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep2 mode=indiv thr=32 batch=16 keys_per_sec=3244492 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep2 mode=indiv thr=96 batch=16 keys_per_sec=2142924 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/shared/rep2 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep2 mode=batch thr=1 batch=16 keys_per_sec=870172 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep2 mode=batch thr=32 batch=16 keys_per_sec=3276471 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep2 mode=batch thr=96 batch=16 keys_per_sec=4759469 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1on-len38/private/rep2 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep2 mode=indiv thr=1 batch=16 keys_per_sec=779144 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep2 mode=indiv thr=32 batch=16 keys_per_sec=4017915 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/private/rep2 mode=indiv thr=96 batch=16 keys_per_sec=2046390 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/private/rep2 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep2 mode=batch thr=1 batch=16 keys_per_sec=921052 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep2 mode=batch thr=32 batch=16 keys_per_sec=5313372 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len38/private/rep2 mode=batch thr=96 batch=16 keys_per_sec=7354268 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len38/shared/rep2 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep2 mode=indiv thr=1 batch=16 keys_per_sec=746577 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep2 mode=indiv thr=32 batch=16 keys_per_sec=3146011 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep2 mode=indiv thr=96 batch=16 keys_per_sec=1995776 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/shared/rep2 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep2 mode=batch thr=1 batch=16 keys_per_sec=854359 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep2 mode=batch thr=32 batch=16 keys_per_sec=3531502 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep2 mode=batch thr=96 batch=16 keys_per_sec=4694770 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len42/private/rep2 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep2 mode=indiv thr=1 batch=16 keys_per_sec=751931 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep2 mode=indiv thr=32 batch=16 keys_per_sec=3906782 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/private/rep2 mode=indiv thr=96 batch=16 keys_per_sec=2085836 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/private/rep2 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep2 mode=batch thr=1 batch=16 keys_per_sec=863132 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep2 mode=batch thr=32 batch=16 keys_per_sec=5632679 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1off-len42/private/rep2 mode=batch thr=96 batch=16 keys_per_sec=7978251 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1off-len42/shared/rep2 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep2 mode=indiv thr=1 batch=16 keys_per_sec=746130 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep2 mode=indiv thr=32 batch=16 keys_per_sec=3169152 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep2 mode=indiv thr=96 batch=16 keys_per_sec=2083655 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/shared/rep2 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep2 mode=batch thr=1 batch=16 keys_per_sec=855133 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep2 mode=batch thr=32 batch=16 keys_per_sec=3239020 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep2 mode=batch thr=96 batch=16 keys_per_sec=4704915 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1on-len42/private/rep2 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep2 mode=indiv thr=1 batch=16 keys_per_sec=783849 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep2 mode=indiv thr=32 batch=16 keys_per_sec=3883773 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/private/rep2 mode=indiv thr=96 batch=16 keys_per_sec=2087011 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/private/rep2 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep2 mode=batch thr=1 batch=16 keys_per_sec=920339 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep2 mode=batch thr=32 batch=16 keys_per_sec=6429784 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len42/private/rep2 mode=batch thr=96 batch=16 keys_per_sec=10272598 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len42/shared/rep2 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep2 mode=indiv thr=1 batch=16 keys_per_sec=736289 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep2 mode=indiv thr=32 batch=16 keys_per_sec=3303513 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep2 mode=indiv thr=96 batch=16 keys_per_sec=2058951 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/shared/rep2 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep2 mode=batch thr=1 batch=16 keys_per_sec=867756 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep2 mode=batch thr=32 batch=16 keys_per_sec=3381023 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep2 mode=batch thr=96 batch=16 keys_per_sec=4685652 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# rep=3 order=on off
+# tag=r1on-len38/private/rep3 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep3 mode=indiv thr=1 batch=16 keys_per_sec=783148 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep3 mode=indiv thr=32 batch=16 keys_per_sec=3812959 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/private/rep3 mode=indiv thr=96 batch=16 keys_per_sec=2102302 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/private/rep3 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep3 mode=batch thr=1 batch=16 keys_per_sec=905268 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep3 mode=batch thr=32 batch=16 keys_per_sec=5119503 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len38/private/rep3 mode=batch thr=96 batch=16 keys_per_sec=7434996 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len38/shared/rep3 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep3 mode=indiv thr=1 batch=16 keys_per_sec=747223 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep3 mode=indiv thr=32 batch=16 keys_per_sec=3024767 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep3 mode=indiv thr=96 batch=16 keys_per_sec=2055857 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/shared/rep3 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep3 mode=batch thr=1 batch=16 keys_per_sec=869387 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep3 mode=batch thr=32 batch=16 keys_per_sec=3135730 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep3 mode=batch thr=96 batch=16 keys_per_sec=4621971 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len38/private/rep3 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep3 mode=indiv thr=1 batch=16 keys_per_sec=753785 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep3 mode=indiv thr=32 batch=16 keys_per_sec=3329202 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep3 mode=indiv thr=96 batch=16 keys_per_sec=2147391 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/private/rep3 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep3 mode=batch thr=1 batch=16 keys_per_sec=876259 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep3 mode=batch thr=32 batch=16 keys_per_sec=3329201 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep3 mode=batch thr=96 batch=16 keys_per_sec=4736237 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len38/shared/rep3 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep3 mode=indiv thr=1 batch=16 keys_per_sec=747896 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep3 mode=indiv thr=32 batch=16 keys_per_sec=3270972 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep3 mode=indiv thr=96 batch=16 keys_per_sec=2068265 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/shared/rep3 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep3 mode=batch thr=1 batch=16 keys_per_sec=856774 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep3 mode=batch thr=32 batch=16 keys_per_sec=3514609 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep3 mode=batch thr=96 batch=16 keys_per_sec=4708308 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1on-len42/private/rep3 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep3 mode=indiv thr=1 batch=16 keys_per_sec=780114 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep3 mode=indiv thr=32 batch=16 keys_per_sec=3907707 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/private/rep3 mode=indiv thr=96 batch=16 keys_per_sec=1992711 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/private/rep3 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep3 mode=batch thr=1 batch=16 keys_per_sec=916939 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep3 mode=batch thr=32 batch=16 keys_per_sec=6887540 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len42/private/rep3 mode=batch thr=96 batch=16 keys_per_sec=10853080 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len42/shared/rep3 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep3 mode=indiv thr=1 batch=16 keys_per_sec=745904 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep3 mode=indiv thr=32 batch=16 keys_per_sec=3110677 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep3 mode=indiv thr=96 batch=16 keys_per_sec=2113172 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/shared/rep3 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep3 mode=batch thr=1 batch=16 keys_per_sec=852872 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep3 mode=batch thr=32 batch=16 keys_per_sec=3478502 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep3 mode=batch thr=96 batch=16 keys_per_sec=4759350 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len42/private/rep3 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep3 mode=indiv thr=1 batch=16 keys_per_sec=750336 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep3 mode=indiv thr=32 batch=16 keys_per_sec=3970178 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/private/rep3 mode=indiv thr=96 batch=16 keys_per_sec=2168583 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/private/rep3 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep3 mode=batch thr=1 batch=16 keys_per_sec=874192 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep3 mode=batch thr=32 batch=16 keys_per_sec=5774696 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1off-len42/private/rep3 mode=batch thr=96 batch=16 keys_per_sec=7903820 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1off-len42/shared/rep3 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep3 mode=indiv thr=1 batch=16 keys_per_sec=746334 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep3 mode=indiv thr=32 batch=16 keys_per_sec=3309286 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep3 mode=indiv thr=96 batch=16 keys_per_sec=2119000 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/shared/rep3 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep3 mode=batch thr=1 batch=16 keys_per_sec=869166 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep3 mode=batch thr=32 batch=16 keys_per_sec=3155383 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep3 mode=batch thr=96 batch=16 keys_per_sec=4622456 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# rep=4 order=off on
+# tag=r1off-len38/private/rep4 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep4 mode=indiv thr=1 batch=16 keys_per_sec=740857 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep4 mode=indiv thr=32 batch=16 keys_per_sec=3184764 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep4 mode=indiv thr=96 batch=16 keys_per_sec=2148891 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/private/rep4 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep4 mode=batch thr=1 batch=16 keys_per_sec=877296 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep4 mode=batch thr=32 batch=16 keys_per_sec=3286044 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep4 mode=batch thr=96 batch=16 keys_per_sec=4906749 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len38/shared/rep4 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep4 mode=indiv thr=1 batch=16 keys_per_sec=746244 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep4 mode=indiv thr=32 batch=16 keys_per_sec=3077061 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep4 mode=indiv thr=96 batch=16 keys_per_sec=2044070 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/shared/rep4 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep4 mode=batch thr=1 batch=16 keys_per_sec=852319 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep4 mode=batch thr=32 batch=16 keys_per_sec=3244496 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep4 mode=batch thr=96 batch=16 keys_per_sec=4748705 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1on-len38/private/rep4 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep4 mode=indiv thr=1 batch=16 keys_per_sec=771973 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep4 mode=indiv thr=32 batch=16 keys_per_sec=3999172 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/private/rep4 mode=indiv thr=96 batch=16 keys_per_sec=2100108 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/private/rep4 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep4 mode=batch thr=1 batch=16 keys_per_sec=915387 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep4 mode=batch thr=32 batch=16 keys_per_sec=5234739 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len38/private/rep4 mode=batch thr=96 batch=16 keys_per_sec=7221626 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len38/shared/rep4 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep4 mode=indiv thr=1 batch=16 keys_per_sec=745858 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep4 mode=indiv thr=32 batch=16 keys_per_sec=3178943 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep4 mode=indiv thr=96 batch=16 keys_per_sec=2080533 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/shared/rep4 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep4 mode=batch thr=1 batch=16 keys_per_sec=854022 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep4 mode=batch thr=32 batch=16 keys_per_sec=3614424 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep4 mode=batch thr=96 batch=16 keys_per_sec=4678856 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len42/private/rep4 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep4 mode=indiv thr=1 batch=16 keys_per_sec=748950 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep4 mode=indiv thr=32 batch=16 keys_per_sec=3927323 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/private/rep4 mode=indiv thr=96 batch=16 keys_per_sec=2054351 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/private/rep4 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep4 mode=batch thr=1 batch=16 keys_per_sec=870566 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep4 mode=batch thr=32 batch=16 keys_per_sec=5816318 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1off-len42/private/rep4 mode=batch thr=96 batch=16 keys_per_sec=8000733 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1off-len42/shared/rep4 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep4 mode=indiv thr=1 batch=16 keys_per_sec=745798 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep4 mode=indiv thr=32 batch=16 keys_per_sec=3347012 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep4 mode=indiv thr=96 batch=16 keys_per_sec=2144478 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/shared/rep4 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep4 mode=batch thr=1 batch=16 keys_per_sec=868473 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep4 mode=batch thr=32 batch=16 keys_per_sec=3489171 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep4 mode=batch thr=96 batch=16 keys_per_sec=4743353 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1on-len42/private/rep4 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep4 mode=indiv thr=1 batch=16 keys_per_sec=773618 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep4 mode=indiv thr=32 batch=16 keys_per_sec=3930475 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/private/rep4 mode=indiv thr=96 batch=16 keys_per_sec=1968856 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/private/rep4 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep4 mode=batch thr=1 batch=16 keys_per_sec=901602 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep4 mode=batch thr=32 batch=16 keys_per_sec=6922480 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len42/private/rep4 mode=batch thr=96 batch=16 keys_per_sec=10760979 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len42/shared/rep4 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep4 mode=indiv thr=1 batch=16 keys_per_sec=748972 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep4 mode=indiv thr=32 batch=16 keys_per_sec=3248706 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep4 mode=indiv thr=96 batch=16 keys_per_sec=2153924 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/shared/rep4 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep4 mode=batch thr=1 batch=16 keys_per_sec=869041 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep4 mode=batch thr=32 batch=16 keys_per_sec=3502582 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep4 mode=batch thr=96 batch=16 keys_per_sec=4674256 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# rep=5 order=on off
+# tag=r1on-len38/private/rep5 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep5 mode=indiv thr=1 batch=16 keys_per_sec=771372 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep5 mode=indiv thr=32 batch=16 keys_per_sec=3835157 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/private/rep5 mode=indiv thr=96 batch=16 keys_per_sec=2090054 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/private/rep5 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep5 mode=batch thr=1 batch=16 keys_per_sec=900441 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep5 mode=batch thr=32 batch=16 keys_per_sec=5446430 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len38/private/rep5 mode=batch thr=96 batch=16 keys_per_sec=7431572 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len38/shared/rep5 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep5 mode=indiv thr=1 batch=16 keys_per_sec=735843 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep5 mode=indiv thr=32 batch=16 keys_per_sec=3115048 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep5 mode=indiv thr=96 batch=16 keys_per_sec=2051166 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/shared/rep5 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep5 mode=batch thr=1 batch=16 keys_per_sec=856575 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep5 mode=batch thr=32 batch=16 keys_per_sec=3674520 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep5 mode=batch thr=96 batch=16 keys_per_sec=4749008 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len38/private/rep5 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep5 mode=indiv thr=1 batch=16 keys_per_sec=743038 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep5 mode=indiv thr=32 batch=16 keys_per_sec=2997499 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep5 mode=indiv thr=96 batch=16 keys_per_sec=2182997 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/private/rep5 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep5 mode=batch thr=1 batch=16 keys_per_sec=876810 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep5 mode=batch thr=32 batch=16 keys_per_sec=3333661 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep5 mode=batch thr=96 batch=16 keys_per_sec=4758820 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len38/shared/rep5 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep5 mode=indiv thr=1 batch=16 keys_per_sec=745662 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep5 mode=indiv thr=32 batch=16 keys_per_sec=3111196 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep5 mode=indiv thr=96 batch=16 keys_per_sec=2149872 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/shared/rep5 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep5 mode=batch thr=1 batch=16 keys_per_sec=867022 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep5 mode=batch thr=32 batch=16 keys_per_sec=3241639 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep5 mode=batch thr=96 batch=16 keys_per_sec=4718824 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1on-len42/private/rep5 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep5 mode=indiv thr=1 batch=16 keys_per_sec=783329 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep5 mode=indiv thr=32 batch=16 keys_per_sec=3968269 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/private/rep5 mode=indiv thr=96 batch=16 keys_per_sec=2172786 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/private/rep5 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep5 mode=batch thr=1 batch=16 keys_per_sec=917537 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep5 mode=batch thr=32 batch=16 keys_per_sec=6802202 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len42/private/rep5 mode=batch thr=96 batch=16 keys_per_sec=10781065 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len42/shared/rep5 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep5 mode=indiv thr=1 batch=16 keys_per_sec=735170 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep5 mode=indiv thr=32 batch=16 keys_per_sec=3311786 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep5 mode=indiv thr=96 batch=16 keys_per_sec=2111250 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/shared/rep5 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep5 mode=batch thr=1 batch=16 keys_per_sec=855695 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep5 mode=batch thr=32 batch=16 keys_per_sec=3405475 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep5 mode=batch thr=96 batch=16 keys_per_sec=4661699 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len42/private/rep5 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep5 mode=indiv thr=1 batch=16 keys_per_sec=740270 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep5 mode=indiv thr=32 batch=16 keys_per_sec=4076898 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/private/rep5 mode=indiv thr=96 batch=16 keys_per_sec=2013231 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/private/rep5 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep5 mode=batch thr=1 batch=16 keys_per_sec=875070 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep5 mode=batch thr=32 batch=16 keys_per_sec=5847816 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1off-len42/private/rep5 mode=batch thr=96 batch=16 keys_per_sec=7909279 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1off-len42/shared/rep5 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep5 mode=indiv thr=1 batch=16 keys_per_sec=745849 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep5 mode=indiv thr=32 batch=16 keys_per_sec=3223182 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep5 mode=indiv thr=96 batch=16 keys_per_sec=2048165 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/shared/rep5 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep5 mode=batch thr=1 batch=16 keys_per_sec=869356 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep5 mode=batch thr=32 batch=16 keys_per_sec=3349077 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep5 mode=batch thr=96 batch=16 keys_per_sec=4501406 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# rep=6 order=off on
+# tag=r1off-len38/private/rep6 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep6 mode=indiv thr=1 batch=16 keys_per_sec=740354 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep6 mode=indiv thr=32 batch=16 keys_per_sec=3111729 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep6 mode=indiv thr=96 batch=16 keys_per_sec=2191941 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/private/rep6 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len38/private/rep6 mode=batch thr=1 batch=16 keys_per_sec=875237 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/private/rep6 mode=batch thr=32 batch=16 keys_per_sec=3368564 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/private/rep6 mode=batch thr=96 batch=16 keys_per_sec=4776211 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len38/shared/rep6 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep6 mode=indiv thr=1 batch=16 keys_per_sec=745676 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep6 mode=indiv thr=32 batch=16 keys_per_sec=3151779 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep6 mode=indiv thr=96 batch=16 keys_per_sec=2096215 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len38/shared/rep6 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len38/shared/rep6 mode=batch thr=1 batch=16 keys_per_sec=857463 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len38/shared/rep6 mode=batch thr=32 batch=16 keys_per_sec=3639533 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len38/shared/rep6 mode=batch thr=96 batch=16 keys_per_sec=4742323 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1on-len38/private/rep6 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep6 mode=indiv thr=1 batch=16 keys_per_sec=782894 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep6 mode=indiv thr=32 batch=16 keys_per_sec=4035557 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/private/rep6 mode=indiv thr=96 batch=16 keys_per_sec=2070916 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/private/rep6 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=38 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len38/private/rep6 mode=batch thr=1 batch=16 keys_per_sec=900333 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/private/rep6 mode=batch thr=32 batch=16 keys_per_sec=5260395 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len38/private/rep6 mode=batch thr=96 batch=16 keys_per_sec=7417089 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len38/shared/rep6 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep6 mode=indiv thr=1 batch=16 keys_per_sec=742339 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep6 mode=indiv thr=32 batch=16 keys_per_sec=3189831 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep6 mode=indiv thr=96 batch=16 keys_per_sec=2178234 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len38/shared/rep6 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=38 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len38/shared/rep6 mode=batch thr=1 batch=16 keys_per_sec=866755 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len38/shared/rep6 mode=batch thr=32 batch=16 keys_per_sec=3437325 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len38/shared/rep6 mode=batch thr=96 batch=16 keys_per_sec=4801427 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1off-len42/private/rep6 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep6 mode=indiv thr=1 batch=16 keys_per_sec=750275 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep6 mode=indiv thr=32 batch=16 keys_per_sec=3812754 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/private/rep6 mode=indiv thr=96 batch=16 keys_per_sec=2122295 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/private/rep6 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1off-len42/private/rep6 mode=batch thr=1 batch=16 keys_per_sec=875826 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/private/rep6 mode=batch thr=32 batch=16 keys_per_sec=5828520 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1off-len42/private/rep6 mode=batch thr=96 batch=16 keys_per_sec=8048655 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1off-len42/shared/rep6 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep6 mode=indiv thr=1 batch=16 keys_per_sec=747177 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep6 mode=indiv thr=32 batch=16 keys_per_sec=3160066 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep6 mode=indiv thr=96 batch=16 keys_per_sec=2025514 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1off-len42/shared/rep6 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1off-len42/shared/rep6 mode=batch thr=1 batch=16 keys_per_sec=869948 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1off-len42/shared/rep6 mode=batch thr=32 batch=16 keys_per_sec=3465081 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1off-len42/shared/rep6 mode=batch thr=96 batch=16 keys_per_sec=4684430 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=r1on-len42/private/rep6 loaded 200000 keys mode=indiv batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep6 mode=indiv thr=1 batch=16 keys_per_sec=769737 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep6 mode=indiv thr=32 batch=16 keys_per_sec=3818466 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/private/rep6 mode=indiv thr=96 batch=16 keys_per_sec=2239311 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/private/rep6 loaded 200000 keys mode=batch batch=16 env=private cache=512MB homelen=42 anon_map=0x7ffff569d000 size=37MB map_mod2M=0x9d000
+RESULT tag=r1on-len42/private/rep6 mode=batch thr=1 batch=16 keys_per_sec=917924 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/private/rep6 mode=batch thr=32 batch=16 keys_per_sec=7034537 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0
+RESULT tag=r1on-len42/private/rep6 mode=batch thr=96 batch=16 keys_per_sec=10579528 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=r1on-len42/shared/rep6 loaded 200000 keys mode=indiv batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep6 mode=indiv thr=1 batch=16 keys_per_sec=733703 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep6 mode=indiv thr=32 batch=16 keys_per_sec=3038654 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep6 mode=indiv thr=96 batch=16 keys_per_sec=2044066 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0
+# tag=r1on-len42/shared/rep6 loaded 200000 keys mode=batch batch=16 env=shared cache=512MB homelen=42 anon_map=0x7ffff7df4000 size=0MB map_mod2M=0x1f4000
+RESULT tag=r1on-len42/shared/rep6 mode=batch thr=1 batch=16 keys_per_sec=857521 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0
+RESULT tag=r1on-len42/shared/rep6 mode=batch thr=32 batch=16 keys_per_sec=3612752 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+RESULT tag=r1on-len42/shared/rep6 mode=batch thr=96 batch=16 keys_per_sec=4708403 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# final A/B done 2026-09-16T16:56:31+00:00
