@@ -133,6 +133,11 @@ mvcc_run
 # SERIALIZABLE refuses -- and this wrapper refuses to accept rc=0 as a verdict:
 # it requires the PASS line and all four VERDICT lines to have been printed, so
 # a run that silently did nothing fails instead of going vacuously green.
+# batch_diff and the read-set probe do NOT go through run(), so they need their
+# own hi_emit calls -- and the first version of both forgot, which is why the
+# manifest gate reported "MISSING leak batch_diff" while the runner printed
+# PASS.  The gate was right: an unrecorded verdict is indistinguishable from a
+# test that never ran.  Any future check added outside run() must emit too.
 batch_diff_run() {
 	t=batch_diff; dir="$RUNDIR/$t-run"
 	if [ -d "$dir" ]; then
@@ -148,12 +153,15 @@ batch_diff_run() {
 	nv=$(grep -c '^VERDICT ' "$out" || true)
 	if [ "$bd_rc" != 0 ]; then
 		echo "--- $t: FAIL (exit $bd_rc)"
+		hi_emit "$t" fail
 		rc=1
 	elif grep -q '^PASS: 0 failure' "$out" && [ "$nv" -ge 4 ]; then
 		echo "--- $t: PASS ($nv verdicts)"
+		hi_emit "$t" pass
 	else
 		echo "--- $t: FAIL (exit 0 but $nv verdicts / no PASS line --" \
 		    "vacuous run)"
+		hi_emit "$t" fail
 		rc=1
 	fi
 }
@@ -190,17 +198,21 @@ readset_probe() {
 		done
 		if [ -z "$di" ] || [ -z "$dbt" ]; then
 			echo "--- readset base=$base: FAIL (no delta reported)"
+			hi_emit "batch_diff@readset-$base" fail
 			rs_rc=1
 		elif [ "$di" -le 0 ]; then
 			echo "--- readset base=$base: FAIL (individual arm read set" \
 			    "delta $di -- probe measured nothing, vacuous)"
+			hi_emit "batch_diff@readset-$base" fail
 			rs_rc=1
 		elif [ "$dbt" -lt "$di" ]; then
 			echo "--- readset base=$base: FAIL (batch delta $dbt <" \
 			    "indiv delta $di -- ISOLATION WEAKENED)"
+			hi_emit "batch_diff@readset-$base" fail
 			rs_rc=1
 		else
 			echo "--- readset base=$base: PASS (indiv $di, batch $dbt)"
+			hi_emit "batch_diff@readset-$base" pass
 		fi
 	done
 	[ "$rs_rc" = 0 ] || rc=1
