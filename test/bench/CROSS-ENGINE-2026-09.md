@@ -150,8 +150,16 @@ refinement, not a refutation.
 
 - Concurrent reads at scale: 6–58× behind WT, widening with thread count. Root
   cause is the buffer-header pin, unaddressed by 5.3.37.
-- Writes (A/B/D): fsync-per-commit and no group commit; WT's async, batched
-  durability is 20–48× ahead at high thread counts.
+- Writes (A/B/D): 20–48× behind WT at high thread counts. **The explanation
+  originally given here — "fsync-per-commit and no group commit" — was wrong and
+  has been retracted.** Berkeley DB has had leader/follower group commit since
+  the Sleepycat code (`__log_flush_int`), and it works: measured fsyncs per
+  commit fall from 1.0 to 0.12 (up to 31 commits per flush). The measured
+  limiter is round-to-round **leader-handoff latency and wait-queue
+  unfairness** — ~0.7 ms per round of software handoff on top of a ~1.2 ms
+  device fsync, with p99 reaching 272 ms against a flat ~3.8 ms p50. See
+  [`WRITE-PATH-2026-09.md`](WRITE-PATH-2026-09.md). The *gap* stands as
+  measured; only its cause changed.
 - Cross-socket: at least as penalized as WT, from NUMA-oblivious shared regions.
 
 ## Where libdb is now competitive

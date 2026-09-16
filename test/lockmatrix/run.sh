@@ -35,6 +35,10 @@ set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$HERE"
 
+# Verdict emission for the test-execution manifest gate (test/MANIFEST).
+. "$HERE/../harness.sh"
+hi_init lockmatrix "$HERE/.."
+
 CC=${CC:-clang}
 LIBDB_ASAN=${LIBDB_ASAN:-1}
 LOCK_TIMEOUT=${LOCK_TIMEOUT:-600}
@@ -84,4 +88,24 @@ echo "built $OUT/test_lock_matrix"
 [ "${1:-}" = "build" ] && exit 0
 
 cd "$OUT"
-exec timeout "$LOCK_TIMEOUT" ./test_lock_matrix "$@"
+
+# One invocation PER SECTION rather than one run of all three.
+#
+# The driver already exits non-zero iff any check failed, so a per-section
+# invocation yields a per-section verdict from the exit status alone -- no
+# output parsing, and no second output format to keep in step with the driver.
+# (An ASan abort in one section also no longer hides whether the others ran:
+# each has its own RESULT line, or visibly lacks one.)
+rc=0
+for sec in ${*:-modes conflicts list}; do
+	echo "=== lockmatrix section: $sec"
+	if timeout "$LOCK_TIMEOUT" ./test_lock_matrix "$sec"; then
+		hi_emit "$sec" pass
+	else
+		src=$?
+		echo "--- lockmatrix $sec: FAIL (exit $src)"
+		hi_emit "$sec" fail
+		rc=$src
+	fi
+done
+exit $rc
