@@ -137,6 +137,8 @@ leak	aio_concurrent_sync@sync
 # runner records it as `skip`, which is still a verdict -- the point is that the
 # line must EXIST.
 leak	aio_concurrent_sync@aio
+leak	lock_order_check@gate
+leak	batch_diff
 
 # ---------------------------------------------------------------------------
 # test/db/ single-bug regression runners.   Invoked directly from ci.yml's
