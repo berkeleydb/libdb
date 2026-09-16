@@ -1,0 +1,29 @@
+=== arm=base mode=batch env=private
+RESULT tag=prof-base/private/p mode=batch thr=96 batch=16 keys_per_sec=5365885 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+--- self time (top 25)
+    33.97%  pin_bench-base  libdb-2026.0.so    [.] __os_atomic_read
+                                     0
+    28.33%  pin_bench-base  libdb-2026.0.so    [.] __memp_fget
+                                     0
+     8.95%  pin_bench-base  libdb-2026.0.so    [.] __bam_cmp
+                          0
+     8.93%  pin_bench-base  libdb-2026.0.so    [.] __os_atomic_dec
+     6.00%  pin_bench-base  libdb-2026.0.so    [.] __memp_fput
+                          0
+     2.70%  pin_bench-base  libdb-2026.0.so    [.] __db_tas_mutex_readlock_int
+                                     0
+     2.27%  pin_bench-base  libdb-2026.0.so    [.] __db_tas_mutex_unlock
+                                     0
+     1.28%  pin_bench-base  libdb-2026.0.so    [.] __bam_search
+                                     0
+     1.28%  pin_bench-base  libdb-2026.0.so    [.] __lock_get_internal
+                          0
+     1.27%  pin_bench-base  libdb-2026.0.so    [.] __lock_getobj
+                          0
+     1.09%  pin_bench-base  libdb-2026.0.so    [.] __db_tas_mutex_lock_int
+                          0
+     0.80%  pin_bench-base  libdb-2026.0.so    [.] __os_atomic_cas
+                                                0
+     0.34%  pin_bench-base  libdb-2026.0.so    [.] __bam_defcmp
+                          0
+VERDICT profile arm=base mode=batch env=private pin_share=72.43% mutex_share=6.09% accounted=99.88%
