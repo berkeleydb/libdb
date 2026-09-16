@@ -63,12 +63,12 @@ them is the fsync count:
 
 1. **Throughput ceilings and then regresses** — ~4,100 ops/s at 32 threads,
    falling to 3,623 at 96.
-2. **Software handoff dominates each round.** The system completes only ~507
+2. **~~Software handoff dominates each round.~~ REFUTED — see the banner above; the real figure is 13 µs, measured inside the leader.** The system completes only ~507
    fsync *rounds*/second, i.e. ~2.0 ms per round, against a device `fsync`
    measured at ~1.2 ms single-threaded (`fsync_probe`). That leaves **~0.7 ms
    per round of pure software handoff** — the wake chain, the region-lock hold,
    and the baton transfer — not device time.
-3. **Latency fairness collapses.** p50 stays flat at ~3.8 ms while p99 rises to
+3. **~~Latency fairness collapses.~~ REFUTED — see the banner above; the queue is fair (rounds-waited p50 = p99 = 2) and the tail is in `db->put`, not the commit.** p50 stays flat at ~3.8 ms while p99 rises to
    **272 ms at 96 threads, a 68× spread.** The protocol hands the leader baton
    to a freshly-woken follower between every round and the wait queue has no
    fairness property, so a subset of threads starves.
