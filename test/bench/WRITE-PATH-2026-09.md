@@ -43,6 +43,21 @@ pulled.
 
 ## Where the cost really is
 
+> **Superseded in part, 2026-09-16.** The three items below correctly identify
+> that flush coalescing is not the limiter, and that conclusion stands. But the
+> *diagnosis* in items 2 and 3 is wrong, and both errors trace to this file's
+> own instrument rather than to libdb. `test/bench/WRITE-TAIL-2026-09.md`
+> measures the handoff directly and finds: the waiter queue **is** fair
+> (rounds-waited p50 = p99 = p99.9 = 2, so no waiter is overtaken repeatedly);
+> software handoff is **13 µs** per round, not 700 µs (item 2's subtraction
+> differences two incomparable fsyncs and is not even sign-correct on that
+> hardware); and the 272 ms tail is in `db->put`, not the commit — the commit
+> phase's own p99 is 5.7 ms against a 3.7 ms p50. `commit_bench` had timed
+> begin+put+commit as one interval and never warmed up, so the numbers below
+> describe page-split lock convoying during an insert ramp. Warmed, the same
+> library does 16,244 ops/s at 96 threads with a 7.5 ms p99. Read that file
+> before acting on this section.
+
 Three things in the same measurement identify the actual limiter, and none of
 them is the fsync count:
 
@@ -62,6 +77,13 @@ So the write-path target is **round-to-round leader-handoff latency and
 wait-queue fairness**, not flush coalescing. That is a different piece of work
 from the one the gap was previously attributed to, and it is a tail-latency
 problem at least as much as a throughput one.
+
+> **Superseded, 2026-09-16.** Measured directly, neither handoff latency nor
+> wait-queue fairness is a defect: the queue is fair and the handoff is 0.65% of
+> a round. The target named here does not exist. The real one, which the convoy
+> in these unwarmed numbers was concealing, is that `db->put` holds page locks
+> across the durable commit — a B-tree lock-scope question. See
+> `WRITE-TAIL-2026-09.md`.
 
 ## What this does and does not license
 
@@ -86,3 +108,11 @@ counted at the syscall boundary; `DB_TXN_SYNC` explicitly set so no run silently
 benefited from `NOSYNC`. The p99 figures are the important ones and are the
 least stable across reps — treat the tail numbers as order-of-magnitude, the
 flush/commit ratio as solid.
+
+> **Superseded, 2026-09-16.** "Fresh environment per run" is precisely the
+> defect: fresh meant *empty*, so every run measured a load ramp rather than
+> steady state, and the tail numbers describe page splits. The tail figures also
+> turned out to be highly *stable* (p99 CV 2.9% over 5 reps) — they were
+> reproducible measurements of the wrong thing, which is more dangerous than
+> noisy ones. `commit_bench` now prepopulates by default and reports
+> begin/put/commit separately.
