@@ -48,8 +48,8 @@
 
 <section id="get">
   <h2>Get it</h2>
-  <p>Latest release: <a href="https://github.com/berkeleydb/libdb/releases/latest"><strong>v2026.09.5</strong></a>
-     (<a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.5">notes</a>).</p>
+  <p>Latest release: <a href="https://github.com/berkeleydb/libdb/releases/latest"><strong>v2026.09.6</strong></a>
+     (<a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.6">notes</a>).</p>
   <pre><code>git clone https://github.com/berkeleydb/libdb.git
 cd libdb/build_unix
 ../dist/configure &amp;&amp; make</code></pre>
@@ -62,6 +62,8 @@ cd libdb/build_unix
   <table>
     <thead><tr><th>Version</th><th>Notes</th></tr></thead>
     <tbody>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.6">v2026.09.6</a></td><td><code>lk_partitions=1</code> self-deadlock (default on 1-CPU hosts); <code>db_get_multiple()</code> 2.47&times; concurrent reads; harness-integrity + region-signature gates</td></tr>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.5">v2026.09.5</a></td><td>os_aio cross-reap durability fix, <code>st_nsnapshot</code> underflow, operator health signals, global-invariants note</td></tr>
       <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.4">v2026.09.4</a></td><td>#137 locker accounting (bounded), <code>ssi_abort_bench</code> SI/SSI distinction, versioning covenant</td></tr>
       <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.3">v2026.09.3</a></td><td><code>DB_TXN_SNAPSHOT</code> restored to plain SI + new <code>DB_TXN_SERIALIZABLE</code>; os_aio durability fix; #138 MVCC-retention purge</td></tr>
       <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.2">v2026.09.2</a></td><td>Cursor-queue sharding (concurrent read scaling); two-site replication-isolation harness</td></tr>
@@ -91,7 +93,7 @@ cd libdb/build_unix
      guides (data storage, transactions, replication), installation, upgrading,
      porting, and Berkeley DB SQL. Generated from Markdown, it is also available
      as <a href="reference/#pdf">PDF</a> and
-     <a href="reference/libdb-man-2026.09.5.tar.gz">man pages</a>
+     <a href="reference/libdb-man-2026.09.6.tar.gz">man pages</a>
      (<code>man libdb</code>, <code>man db_get</code>, &hellip;).</p>
   <ul class="docs">
     <li><a href="reference/api/c/index.html">C API Reference</a> &middot;
@@ -105,7 +107,7 @@ cd libdb/build_unix
         <a href="reference/guides/upgrading/index.html">Upgrading</a> &middot;
         <a href="reference/guides/bdb-sql/index.html">Berkeley DB SQL</a></li>
   </ul>
-  <p class="note">The manuals track the current <strong>2026.09.5</strong> release;
+  <p class="note">The manuals track the current <strong>2026.09.6</strong> release;
      the on-disk, log, and API formats are stable (the format/ABI compatibility
      level is frozen at 5.3.37 — see the versioning covenant in the README).</p>
   <h3>Historical archive</h3>

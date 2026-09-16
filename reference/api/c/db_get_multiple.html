@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!--
+  libdb docs page shell. This ONE template replaces the per-page DocBook
+  boilerplate (navheader, libver, generator meta, the stylesheet link,
+  Prev/Next tables) that used to be hard-coded into every one of the 2703
+  generated HTML files. Placeholders ({{name}}) are filled by build.py.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>db_get_multiple() — Berkeley DB 2026.09.6</title>
+  <style>
+    :root { --fg:#1a1a1a; --muted:#666; --link:#0b5; --border:#ddd; --code:#f5f5f5; }
+    * { box-sizing: border-box; }
+    body { font: 16px/1.6 -apple-system, system-ui, "Segoe UI", sans-serif;
+           color: var(--fg); max-width: 52rem; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
+    header.site { border-bottom: 1px solid var(--border); padding-bottom: .5rem; margin-bottom: 1.5rem;
+                  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+    header.site .brand { font-weight: 700; font-size: 1.1rem; }
+    header.site .ver { color: var(--muted); font-size: .85rem; }
+    nav.crumbs { font-size: .85rem; margin-bottom: 1.5rem; }
+    nav.crumbs a { color: var(--link); }
+    h1 { font-size: 1.7rem; } h2 { font-size: 1.3rem; margin-top: 2rem;
+         border-bottom: 1px solid var(--border); padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; } code { background: var(--code); padding: .1em .3em; border-radius: 3px; }
+    pre { background: var(--code); padding: .8rem 1rem; overflow-x: auto; border-radius: 4px;
+          border: 1px solid var(--border); }
+    pre code { background: none; padding: 0; }
+    a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+    table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid var(--border); padding: .4rem .6rem; text-align: left; }
+    footer.site { border-top: 1px solid var(--border); margin-top: 3rem; padding-top: 1rem;
+                  color: var(--muted); font-size: .8rem; }
+    nav.pager { display: flex; justify-content: space-between; margin-top: 2rem; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <span class="brand"><a href="../../index.html">Berkeley DB</a> Reference</span>
+    <span class="ver">Version 2026.09.6</span>
+  </header>
+  <nav class="crumbs"><a href="../../index.html">Home</a> / api / c</nav>
+  <main>
+<h2 id="db_get_multiple">db_get_multiple()</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="pp">#include </span><span class="im">&lt;db.h&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dt">int</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>db_get_multiple<span class="op">(</span>DB <span class="op">*</span>db<span class="op">,</span> DB_TXN <span class="op">*</span>txnid<span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    DBT <span class="op">*</span>keys<span class="op">,</span> DBT <span class="op">*</span>datas<span class="op">,</span> <span class="dt">int</span> <span class="op">*</span>rets<span class="op">,</span> u_int32_t nkeys<span class="op">,</span> u_int32_t flags<span class="op">);</span></span></code></pre></div>
+<p>The <code>db_get_multiple()</code> function retrieves <strong>many scattered keys in a single API crossing</strong>. It is semantically identical to calling <a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a> once per key: each key is looked up by its own B-tree descent, takes its own page read lock (or its own SIREAD marker under <code>DB_TXN_SERIALIZABLE</code>), and its result is placed in <code>datas[i]</code> exactly as the individual call would have returned it.</p>
+<p>What the function amortizes is only the <em>per-call</em> overhead — one environment entry/exit, one replication check, one transaction-consistency check, and above all <strong>one cursor allocate/free pair instead of <code>nkeys</code></strong>. On a machine with many cores that cursor lifecycle, not the tree descent, dominates a concurrent point-read workload, so batching it is where the time is. See <a href="https://github.com/berkeleydb/libdb/blob/master/test/bench/BATCHED-READS-RESULTS.md"><code>BATCHED-READS-RESULTS.md</code></a> for the measurement.</p>
+<p><code>db_get_multiple()</code> is a <strong>free function rather than a <code>DB</code> method</strong> by design: adding a method pointer to the <code>DB</code> handle would change both <code>sizeof(DB)</code> (the public ABI) and the environment build signature, and the latter would make existing environments refuse to attach.</p>
+<h2 id="parameters">Parameters</h2>
+<p><strong>keys</strong><br />
+An array of <code>nkeys</code> <code>DBT</code>s holding the keys to retrieve.</p>
+<p><strong>datas</strong><br />
+An array of <code>nkeys</code> <code>DBT</code>s that receive the retrieved data, one per key, using the same <code>DBT</code> flags and semantics as <a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a>.</p>
+<p><strong>rets</strong><br />
+An array of <code>nkeys</code> <code>int</code>s that receives each key's <em>individual</em> return code — <code>0</code>, <code>DB_NOTFOUND</code>, <code>DB_BUFFER_SMALL</code>, and so on. May be <code>NULL</code> if the caller does not need per-key codes.</p>
+<p><strong>nkeys</strong><br />
+The number of keys. If <code>nkeys</code> is 0 the function returns 0 immediately.</p>
+<p><strong>txnid</strong><br />
+If the operation is part of a transaction, the transaction handle returned by <a href="txnbegin.html" class="xref" title="DB_ENV-&gt;txn_begin()">DB_ENV-&gt;txn_begin()</a>; otherwise <code>NULL</code>. The same transaction (and therefore the same isolation level) applies to every key in the batch.</p>
+<p><strong>flags</strong><br />
+Only the read flags that are meaningful per key are accepted; they apply to every key in the batch.</p>
+<h2 id="return-value">Return value</h2>
+<p><code>db_get_multiple()</code> returns 0 if every key either succeeded or was simply not found. Otherwise it returns the <strong>first</strong> per-key code that is neither 0 nor <code>DB_NOTFOUND</code>, and lookups stop at that key — exactly where a caller looping over <a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a> and breaking on error would have stopped. Inspect <code>rets</code> to see which keys were resolved.</p>
+<h2 id="errors">Errors</h2>
+<p><code>EINVAL</code><br />
+An invalid flag value or parameter was specified.</p>
+<p>Otherwise, the per-key errors documented for <a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a> are reported through <code>rets</code>.</p>
+<h2 id="isolation">Isolation</h2>
+<p>Because each key is looked up exactly as an individual <a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a> would be, the batch has the <em>same</em> isolation behaviour as the equivalent loop, including conflict detection and abort behaviour under <code>DB_TXN_SERIALIZABLE</code>: the same read set is recorded, so the same serialization conflicts are detected. Batching changes performance, never semantics.</p>
+<h2 id="class">Class</h2>
+<p><a href="db.html">DB</a></p>
+<h2 id="see-also">See also</h2>
+<p><a href="dbget.html" class="xref" title="DB-&gt;get()">DB-&gt;get()</a>, <a href="db.html">Database and related methods</a></p>
+
+  </main>
+  <footer class="site">
+    <p>Copyright (c) 1990, 2013 Oracle and/or its affiliates. All rights reserved.</p>
+    <p>Berkeley DB 2026.09.6 — generated from Markdown source by <code>docs_src/build.py</code>.</p>
+  </footer>
+</body>
+</html>
