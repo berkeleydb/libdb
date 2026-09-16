@@ -139,6 +139,12 @@ leak	aio_concurrent_sync@sync
 leak	aio_concurrent_sync@aio
 leak	lock_order_check@gate
 leak	batch_diff
+# The read-set equivalence probe runs OUTSIDE the batch_diff process, once per
+# key range, because lock objects are shared and whichever arm touches a range
+# first confounds an in-process measurement.  Declared per range so that
+# dropping one range cannot hide behind the other.
+leak	batch_diff@readset-0
+leak	batch_diff@readset-997
 
 # ---------------------------------------------------------------------------
 # test/db/ single-bug regression runners.   Invoked directly from ci.yml's
