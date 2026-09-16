@@ -61,10 +61,17 @@
  *	      Every one leaves a committed-reader marker behind, so the live
  *	      marker count crosses st_objects / SI_CLEANUP_TRIGGER_DIV and the
  *	      sweep fires -- repeatedly, and inside the window between step 4 and
- *	      step 6.  The batch size (SSI_GC_FILLER) is chosen so the live count
- *	      demonstrably passes that threshold: the run prints the threshold
- *	      and the observed peak, and FAILS if the peak never reached it, so
- *	      the test cannot silently stop applying pressure.
+ *	      step 6.  The run prints the threshold and the observed high-water
+ *	      mark and FAILS if the mark never reached it, so the test cannot
+ *	      silently stop applying pressure.
+ *
+ *	      The high-water mark is read from the ENGINE (st_maxnlocks), not
+ *	      sampled by the harness: sampling three times per iteration can miss
+ *	      a peak that the sweep has already collapsed by the time the next
+ *	      sample runs, so a harness-sampled peak is a lower bound that shrinks
+ *	      as GC gets BETTER.  That made the check a tuning knob -- it demanded
+ *	      that GC be slow enough to be caught in the act -- and it is what
+ *	      issue T1 recorded as "passes only in a narrow window".
  *	  (b) EXPLICIT CHECKPOINTS.  __txn_checkpoint calls __lock_sicleanup
  *	      directly.  We force one (or several) between the reads and the
  *	      writes, i.e. squarely inside the window where T1's marker is the
@@ -130,7 +137,14 @@ static u_int32_t nobjects = 200;	/*
 					 * prints both and checks the threshold
 					 * was actually crossed.
 					 */
-static u_int32_t peak_locks;		/* high-water live lock/marker count */
+static u_int32_t peak_locks;		/* harness-sampled live lock/marker count */
+static u_int32_t hwm_locks;		/*
+					 * Engine-maintained high-water mark
+					 * (st_maxnlocks): every marker grant
+					 * updates it, so unlike peak_locks it
+					 * cannot miss a peak that GC has already
+					 * collapsed between two harness samples.
+					 */
 
 static void
 die(const char *what, int ret)
@@ -301,10 +315,17 @@ filler_reads(int n, unsigned int *cursor)
 }
 
 /*
- * Track the high-water live lock count.  A committed reader's SIREAD marker IS
- * a live lock, so this is the marker population plus a small working set: the
- * observable that shows the run really drove the sweep threshold (peak near
- * st_objects / GC_TRIGGER_DIV) instead of never reaching it.
+ * Track the live lock count.  A committed reader's SIREAD marker IS a live
+ * lock, so this is the marker population plus a small working set.
+ *
+ * Two observables, and the difference between them matters:
+ *   hwm_locks  -- st_maxnlocks, maintained by the engine on every single grant
+ *		   (lock.c: part_stat.st_maxnlocks).  This is the TRUE high-water
+ *		   mark and is what the anti-vacuity check below uses.
+ *   peak_locks -- the largest value the harness happened to SAMPLE.  Reported
+ *		   only for contrast: it is a lower bound on hwm_locks, and it
+ *		   shrinks as GC gets faster, so asserting on it would penalise
+ *		   the mechanism for working (issue T1).
  */
 static void
 sample_locks(void)
@@ -316,6 +337,8 @@ sample_locks(void)
 		die("lock_stat", rc);
 	if (ls->st_nlocks > peak_locks)
 		peak_locks = ls->st_nlocks;
+	if (ls->st_maxnlocks > hwm_locks)
+		hwm_locks = ls->st_maxnlocks;
 	free(ls);
 }
 
@@ -505,13 +528,15 @@ main(int argc, char *argv[])
 
 	if ((rc = env->lock_stat(env, &lstat, 0)) != 0)
 		die("lock_stat", rc);
+	if (lstat->st_maxnlocks > hwm_locks)
+		hwm_locks = lstat->st_maxnlocks;
 	gc_threshold = lstat->st_objects / GC_TRIGGER_DIV;
 	printf("    lock region: st_objects=%lu (sweep threshold %lu markers)"
 	    " st_nobjects=%lu st_nlockers=%lu st_nlocks=%lu"
-	    " peak-live-locks=%lu\n",
+	    " hwm-live-locks=%lu sampled-peak=%lu\n",
 	    (u_long)lstat->st_objects, (u_long)gc_threshold,
 	    (u_long)lstat->st_nobjects, (u_long)lstat->st_nlockers,
-	    (u_long)lstat->st_nlocks, (u_long)peak_locks);
+	    (u_long)lstat->st_nlocks, (u_long)hwm_locks, (u_long)peak_locks);
 	free(lstat);
 	env_close();
 
@@ -552,24 +577,30 @@ main(int argc, char *argv[])
 		}
 		/*
 		 * Anti-vacuity: the run must actually have applied pressure.
-		 * If the live-marker population never reached the txn_begin
+		 * If the live-marker high-water mark never reached the txn_begin
 		 * sweep threshold, only the checkpoint path swept and this is a
 		 * weaker test than it claims to be -- say so rather than pass
 		 * quietly.  Checked AFTER the skew assertion above.
+		 *
+		 * st_maxnlocks, not a harness-sampled peak: the engine bumps it
+		 * on every grant, so it records a peak even when the sweep
+		 * collapses the population before the next sample.  A sampled
+		 * peak falls as GC improves, which turned this check into a
+		 * demand that GC be SLOW (issue T1).
 		 */
-		if (peak_locks <= gc_threshold) {
-			printf("FAIL: peak live locks %lu never reached the"
-			    " txn_begin sweep threshold %lu -- raise"
-			    " SSI_GC_FILLER; the pressure trigger was not"
-			    " exercised\n",
-			    (u_long)peak_locks, (u_long)gc_threshold);
+		if (hwm_locks <= gc_threshold) {
+			printf("FAIL: live-lock high-water mark %lu never"
+			    " reached the txn_begin sweep threshold %lu --"
+			    " raise SSI_GC_FILLER; the pressure trigger was"
+			    " not exercised\n",
+			    (u_long)hwm_locks, (u_long)gc_threshold);
 			return (1);
 		}
 		printf("PASS: 0 write skews in %d iterations under heavy"
 		    " SIREAD-marker GC pressure (every skew pair had an"
-		    " abort; peak live markers %lu > sweep threshold %lu, so"
-		    " the txn_begin sweep did fire)\n",
-		    iter, (u_long)peak_locks, (u_long)gc_threshold);
+		    " abort; live-lock high-water mark %lu > sweep threshold"
+		    " %lu, so the txn_begin sweep did fire)\n",
+		    iter, (u_long)hwm_locks, (u_long)gc_threshold);
 		return (0);
 	}
 
