@@ -48,9 +48,15 @@ lock_bench: lock_bench.c
 	$(CC) $(CFLAGS) $(INCLUDES) lock_bench.c $(LIBS) -o $@
 
 # commit_bench measures durable-commit throughput, fsyncs-per-commit and
-# commit-latency percentiles; fsync_probe measures the bare device fsync
-# latency, which is the denominator commit_bench's flush-round rate is
-# compared against.
+# per-phase latency percentiles.  Built against a library configured
+# --enable-handoff-trace it also dumps the group-commit handoff histograms; the
+# hook is a weak symbol, so the same source serves both builds.
+#
+# fsync_probe measures the bare device fsync latency.  NOTE that this is not a
+# term to subtract from commit_bench's per-round time: the probe appends to a
+# growing file while the log flush usually syncs an already-sized one, so they
+# are different operations.  Use the in-path fsync_us histogram from
+# --enable-handoff-trace for that comparison instead.
 commit_bench: commit_bench.c
 	$(CC) $(CFLAGS) $(INCLUDES) commit_bench.c $(LIBS) -o $@
 
