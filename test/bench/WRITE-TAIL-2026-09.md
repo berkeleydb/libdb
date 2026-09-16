@@ -257,6 +257,18 @@ catching phase 2 would be vacuous; both hold.
 Additionally, after a 32-thread `DB_TXN_SYNC` run: `db_verify` succeeded,
 `db_recover` completed, `db_verify` succeeded again afterwards.
 
+Tcl regression subset over the subsystems touched, built the way CI builds it
+(`build_unix`, `--enable-debug --enable-test --with-tcl`): **12/12 PASS** —
+`log001`–`log005`, `txn001`–`txn003`, `recd001`, `recd005`, `recd015`. Also
+verified that a from-scratch stock build and an `--enable-debug` build both
+succeed with the regenerated `configure`, and that `log_put.c` and
+`log_handoff_trace.c` compile with `-Wall -Wextra` at **0 warnings**.
+
+The harness fix was checked against a negative control rather than only a
+positive one: `make BDB=<empty tree>` must and does refuse with "no libdb-*.so",
+and `run_bench.sh` prints `library under test verified: libdb 2026.09.6
+(September 16, 2026)` before publishing any row.
+
 The two properties the assignment named still hold, in the same runs as the
 performance data:
 
