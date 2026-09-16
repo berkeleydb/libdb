@@ -873,6 +873,7 @@ enable_debug_wop
 enable_diagnostic
 enable_dst
 enable_faultinject
+enable_handoff_trace
 enable_dump185
 enable_java
 enable_mingw
@@ -1581,6 +1582,11 @@ Optional Features:
                           fault-injection hooks.
   --enable-faultinject    Build with SQLite-style malloc-failure injection
                           hooks at the __os_* allocation seam.
+  --enable-handoff-trace  Instrument the group-commit handoff in
+                          __log_flush_int (per-round and per-waiter latency,
+                          and rounds-waited fairness). Changes the log region
+                          layout and signature; for measurement only, never
+                          for production.
   --enable-dump185        Build db_dump185(1) to dump 1.85 databases.
   --enable-java           Build Java API.
   --enable-mingw          Build Berkeley DB for MinGW.
@@ -3965,6 +3971,20 @@ fi
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_faultinject" >&5
 printf '%s\n' "$db_cv_faultinject" >&6; }
 
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-handoff-trace option specified" >&5
+printf %s "checking if --enable-handoff-trace option specified... " >&6; }
+# Check whether --enable-handoff-trace was given.
+if test ${enable_handoff_trace+y}
+then :
+  enableval=$enable_handoff_trace; db_cv_handoff_trace="$enable_handoff_trace"
+else case e in #(
+  e) db_cv_handoff_trace="no" ;;
+esac
+fi
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_handoff_trace" >&5
+printf '%s\n' "$db_cv_handoff_trace" >&6; }
+
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-dump185 option specified" >&5
 printf %s "checking if --enable-dump185 option specified... " >&6; }
 # Check whether --enable-dump185 was given.
@@ -4588,6 +4608,19 @@ if test "$db_cv_faultinject" = "yes"; then
 
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS \$(FI_OBJS)"
 	CPPFLAGS="$CPPFLAGS -I\$(topdir)/test/faultinject"
+fi
+
+# Group-commit handoff instrumentation (see src/dbinc/log_handoff_trace.h).
+# MEASUREMENT ONLY.  This adds a counter field to the shared LOG region, so it
+# changes the region layout and src/env/env_sig.c's signature -- which is the
+# point: an instrumented library will refuse to open a stock environment and
+# vice versa, rather than silently misreading it.  Never enable in production.
+# When off (the default) every macro in log_handoff_trace.h is a no-op, no
+# field is added, and the library is bit-for-bit the stock one.
+if test "$db_cv_handoff_trace" = "yes"; then
+	printf '%s\n' "#define HAVE_HANDOFF_TRACE 1" >>confdefs.h
+
+
 fi
 if test "$db_cv_debug_rop" = "yes"; then
 	printf '%s\n' "#define DEBUG_ROP 1" >>confdefs.h
@@ -20395,7 +20428,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20398 "configure" */
+/* #line 20431 "configure" */
 public class Test {
 }
 EOF
@@ -20690,7 +20723,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20693: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20726: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20822,7 +20855,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20825 "configure" */
+/* #line 20858 "configure" */
 public class Test {
 }
 EOF
@@ -20859,7 +20892,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20862 "configure" */
+/* [#]line 20895 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);

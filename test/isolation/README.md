@@ -169,8 +169,16 @@ Environment: `CC`, `LIBDB_BUILD` (default `../../build_unix`), `ISO_TIMEOUT`
 mechanism gates.
 
 The SSI gates take their own knobs: `SSI_GC_ITER` / `SSI_GC_FILLER` /
-`SSI_GC_VERBOSE` for the GC gate, and `SSI_PIVOT_SEEDS` / `SSI_PIVOT_POINTS` /
-`SSI_PIVOT_VERBOSE` for the crash gate.
+`SSI_GC_OBJECTS` / `SSI_GC_VERBOSE` for the GC gate, and `SSI_PIVOT_SEEDS` /
+`SSI_PIVOT_POINTS` / `SSI_PIVOT_VERBOSE` for the crash gate.
+
+`SSI_GC_FILLER` is a knob, not a tuning parameter you should need to touch.
+The gate passes from 400 to 50000 with no cliff found — see
+[SSI-GC-MARGIN.md](SSI-GC-MARGIN.md), which measures both the old cliff (525,
+sharp, `BDB4525` in the **txn** region) and the current margin. If you find
+yourself raising it to get a pass, that is a regression in the marker sweep, not
+a sizing problem: check the "SSI committed-reader SIREAD markers live" and
+"Snapshot txn details retained (MVCC/SSI)" lines in `db_stat -m` / `-t` first.
 
 ## Exit status
 

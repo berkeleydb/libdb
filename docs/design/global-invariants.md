@@ -553,7 +553,7 @@ table.
 | **C1** on the *async* path | `test/sim/test_sim_aio_crash_recover` (crash with async writes outstanding; surviving set must match the synchronous run) | **Adequate for threadpool / sync-fallback.** See **G1**: io_uring bypasses the `__os_io` fault hook, so faults are not injectable there. |
 | **C2** durable frontier | `test/sim/test_sim_ckp_lsn` (planted bug 5 CKPBADLSN), `test_sim_ckp_enospc`, and for the async path `test/sim/test_sim_aio_ckp_enospc` — which asserts the return-code contract directly (`txn_checkpoint` must fail when a page write fails under AIO) | **Strong for the two backends the fault hook reaches.** |
 | **C3** `ckp_lsn` from oldest active | `test_sim_ckp_lsn`; TCL `recd*` | **Adequate**, inherited and long-exercised. |
-| **C4** SIREAD GC safety | `test/isolation` (all 9 scenarios, incl. `write_skew_trigger` / `_late` / `g2_antidep` / `read_only_anomaly`); TCL `ssi001`–`ssi009`; `test/c/leak_si_locker` for the *bound*; `test/c/test_lock_sireads` + `chk.locksireads` under ASan | **Good for the anomaly direction and the bound.** See **G2**: no test targets GC *concurrent with* edge formation as its explicit objective. |
+| **C4** SIREAD GC safety | `test/isolation` (all 9 scenarios, incl. `write_skew_trigger` / `_late` / `g2_antidep` / `read_only_anomaly`); TCL `ssi001`–`ssi011`; `test/c/leak_si_locker` for the *bound*; `test/c/test_lock_sireads` + `chk.locksireads` under ASan | **Good.** `test_ssi_gc_pressure` now targets GC concurrent with edge formation directly, with both an anti-vacuity and a tamper control (see `test/isolation/SSI-GC-MARGIN.md`). See **G2** for the part still open: the "still needed?" gate is an `old_lsn` comparison one long-lived reader can pin. |
 | **C5** MVCC purge safety | `test/c/mvcc_purge_visible` (a live snapshot must still see its version across 120 forced checkpoints) and `test/c/mvcc_purge_stress` (writers + readers + a tight `txn_checkpoint(DB_FORCE)` loop, intended for ASan **and TSan**), plus `DB->verify` | **Strong.** This is the best-covered of the new interactions: it has both a direct correctness gate and a race gate. |
 | **C6/C7/D2** detail & locker lifetime | `ssi009` (multi-process marker churn, must not crash), `test/c/leak_si_locker`, `test/c/leak_si_mvcc_mtx`, `test/soak` slope check, ASan | **Good for the crash/leak shapes.** The double-free window itself is argued from the claim protocol, not directly provoked; see **G3**. |
 | **R1** redo/undo correctness | `test/sim` (30+ scenarios: per-access-method crash, torn page/log, ENOSPC, split/merge, secondary, large txn, cursor, recovery-during-recovery, idempotent recover), `db_verify`, TCL `recd*` | **Strong**, and the planted-bug set makes it falsifiable. |
@@ -561,7 +561,7 @@ table.
 | **R3** region-only vs. logged | Implicitly by every `test/sim` scenario (regions are recreated on recover) plus `test_sim_recover_idempotent` | **Weak as a stated invariant** — see **G6**: nothing asserts that no *new* piece of region state became load-bearing for recovery. The table in §3 is currently the only artifact. |
 | **A1** region compat gate | `__env_struct_sig` is mechanical and self-enforcing; the CI `abi-drift` gate covers the header/ABI side | **Adequate but untested end to end** — see **G7**: no test attaches a deliberately mismatched region and asserts `DB_VERSION_MISMATCH`. |
 | **A2** failchk contract | `test/sim/mp_failchk_pilot` + `test/sim/mp-failchk.sh` (two real processes, shared non-`DB_PRIVATE` region, victim killed while holding a write lock, survivor runs `failchk`), `ssi009` (multi-process) | **This is the fork's only executable multi-process fault test.** Good that it exists; narrow — one kill point, one fault, uncontrolled interleaving (its own header says so). See **G8**. |
-| **A3** global lock order | `src/mutex/mut_order.c` — a `DIAGNOSTIC`-only per-thread checker over this order (gap **G9**), plus `test/lockmatrix` for lock *modes* and `mvcc_purge_stress` under TSan | **Mechanically enforced for the region-level latches**, which are the ones whose misordering hangs multiple processes. Found one real violation (the `lk_partitions=1` self-deadlock, **since fixed in v2026.09.6** and now covered by a regression gate) and corrected five errors in the order as documented — see the corrections under §4. **Not** covered: `mtx_buf` (a pin, not a latch), so the os_aio deadlock class is still unguarded; see **G9**. |
+| **A3** global lock order | `src/mutex/mut_order.c` — a `DIAGNOSTIC`-only per-thread checker over this order (gap **G9**), plus `test/lockmatrix` for lock *modes* and `mvcc_purge_stress` under TSan | **Mechanically enforced for the region-level latches**, which are the ones whose misordering hangs multiple processes. Found one real violation (the `lk_partitions=1` self-deadlock, **since fixed in v2026.09.6** and now covered by a regression gate) and corrected five errors in the order as documented — see the corrections under §4. **Not** covered: `mtx_buf` (a pin, not a latch), so the os_aio stall class is invisible to it; that defect (S1) is **fixed structurally** in `__memp_sync_int` instead, and one of its two variants stalls while RUNNABLE — acquiring nothing — so no acquisition-time checker could see it at all. See **G9** and `docs/design/os-aio-deadlock-fix.md`. |
 | **D5** rsnap | Correctness rides on the whole read path: TCL suite, `test/sim` btree scenarios, `db_verify`. `DB_NO_RSNAP` gives an A/B switch (`bt_search.c:56-70`) | **Indirect.** See **G10**: no test targets the specific race (root change between LSN check and child fetch), and no test asserts the `DB_NO_RSNAP` A/B produces identical results. |
 | **D6** wired frames | `mp_alloc` skips wired singletons; the cap is arithmetic. `test/bench` covers the throughput side | **Weak.** See **G4**. |
 | **D7** cursor sharding | TCL suite exercises cursors heavily; whole-handle iteration paths are exercised by `db_close` / `associate` / `partition` tests | **Weak for the specific hazard.** See **G11**. |
@@ -577,13 +577,29 @@ table.
   guarantee is *tested* on 2 of 5 backends and *argued* on the rest. The drain
   code is backend-agnostic, which is why this is a coverage gap rather than a
   correctness worry — but on io_uring nothing has ever forced the error path.
-- **G2 — no test targets SIREAD GC concurrent with edge formation.** `ssi009`
-  produces marker churn and GC pressure in the same workload, but its verdict is
-  "no process crashed and the DB verifies", not "no edge was lost". A test that
-  ran a forced `__lock_sicleanup` (via checkpoint) against an in-flight
-  read-then-write conflict and asserted the anomaly is still caught would close
-  D1 the way `mvcc_purge_visible` closes D3. The asymmetry is worth noting: the
-  MVCC side of the same idea got a direct visibility gate, the SSI side did not.
+- **G2 — SIREAD GC concurrent with edge formation: the *safety* direction is
+  now covered; the *visibility gate* is still an `old_lsn` comparison.**
+  `test/isolation/test_ssi_gc_pressure` closes the part this gap named: it runs
+  forced `__lock_sicleanup` (checkpoint *and* the `txn_begin` pressure sweep)
+  squarely inside the window where one committed reader's marker is the only
+  record of the edge, and asserts the anomaly is still caught — with a snapshot
+  control showing the skew *is* committable when SSI is off (120/120), and a
+  tamper control showing the assertion has teeth (40/40 skews when the safety
+  predicate is neutered). So the asymmetry with `mvcc_purge_visible` is largely
+  resolved.
+
+  What remains is the gate itself, and issue **T1** is a concrete instance:
+  `__lock_siclean_obj` decides "still needed?" by comparing the marker's LSN
+  against `__txn_oldest_reader`, which **one** long-lived transaction pins
+  indefinitely — so every later committed reader's marker was retained, the sweep
+  reclaimed nothing, and the `TXN_DETAIL`s those markers pin exhausted the txn
+  region. Fixed for the coalescible class (committed, read-only, no `WCONF`:
+  those markers are interchangeable, so one suffices — see
+  `test/isolation/SSI-GC-MARGIN.md`). For markers *outside* that class the
+  question is still answered by the pinnable comparison, so a workload holding a
+  long-lived reader while accumulating committed readers that **wrote** can still
+  retain more than it needs. Bounded there by the write rate rather than the read
+  rate, so far less severe — but the general gate is not closed.
 - **G3 — the D2 double-free window is argued, not provoked.** The
   `TXN_DTL_SNAPSHOT` claim protocol is the only thing standing between
   `__txn_remove_buffer` and `__txn_reap_si_details`. `mvcc_purge_stress` under
@@ -644,12 +660,19 @@ table.
   **Still not covered:** `mtx_buf` ordering, because `mtx_buf` is a page *pin*
   held across arbitrary caller work rather than an ordered latch (`__memp_fget`
   returns holding it). So the checker would **not** by itself have caught the
-  shipped os_aio deadlock, whose shape is hold-and-block-on-a-pin, not a latch
-  misordering. Catching that class needs pin-aware accounting: a rule like "do
-  not block on a new `mtx_buf` while holding deferred-write pins". Also not
-  covered: cross-*process* ordering (the checker is per-thread, per-process),
-  and the process-local `DB_MUTEX_PROCESS_ONLY` latches, which are tracked for
-  self-deadlock but not rank-ordered.
+  os_aio stall (S1, **since fixed** — see
+  `docs/design/os-aio-deadlock-fix.md`), whose shape is hold-and-wait-on-a-pin,
+  not a latch misordering. That fix implements exactly the rule named here — do
+  not wait while holding deferred-write pins — but enforces it *structurally in
+  `__memp_sync_int`* rather than as a checker rule, and it has to cover **two**
+  waits, not one: the blocking `mtx_buf` acquire (6 of 18 captures) and the
+  `required_write` retry-loop yield (12 of 18). The second is the reason a
+  checker alone would still not be sufficient: in that variant the stalled
+  thread is **RUNNABLE and acquires nothing**, so there is no acquisition event
+  to validate. Pin-aware accounting would need to be checked at *waits*, not at
+  acquires. Also not covered: cross-*process* ordering (the checker is
+  per-thread, per-process), and the process-local `DB_MUTEX_PROCESS_ONLY`
+  latches, which are tracked for self-deadlock but not rank-ordered.
 - **G10 — rsnap's race window is untested.** D5's second LSN check
   (`bt_search.c:577-599`) exists to close the gap between "snapshot looked
   valid" and "child fetched". Nothing forces that interleaving. Cheapest useful

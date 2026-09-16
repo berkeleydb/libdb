@@ -35,6 +35,7 @@ static int __lock_remove_waiter __P((DB_LOCKTAB *,
 static int __lock_trade __P((ENV *, DB_LOCK *, DB_LOCKER *));
 static int __lock_vec_api __P((ENV *,
 		u_int32_t, u_int32_t,  DB_LOCKREQ *, int, DB_LOCKREQ **));
+static int __lock_si_coalescible __P((ENV *, struct __db_lock *));
 static int __lock_siclean_obj __P((ENV *, DB_LOCKOBJ *, DB_LSN *));
 
 static const char __db_lock_invalid[] = "%s: Lock is no longer valid";
@@ -96,10 +97,83 @@ __lock_vec_api(env, lid, flags, list, nlist, elistp)
 }
 
 /*
+ * __lock_si_coalescible --
+ *	TRUE when this committed reader's SIREAD marker is INTERCHANGEABLE with
+ *	every other marker on the same object that also satisfies this
+ *	predicate: the effect it has on any future acquirer is identical, so
+ *	keeping ONE of them is exactly as strong as keeping ALL of them.
+ *
+ *	WHY A MARKER CAN BE REDUNDANT.  The only consumer of a marker is the
+ *	rw-antidependency branch of __lock_get_internal.  Three conditions make
+ *	this marker's contribution there a constant, independent of who acquires
+ *	and of anything that happens later:
+ *
+ *	  1. status == TXN_COMMITTED, so TXN_SI_PAST_CHECK(td) is unconditionally
+ *	     true.  That removes the ONE path in the branch whose outcome depends
+ *	     on the reader's future ("defer the edge to the reader's own pivot
+ *	     check").  TXN_ABORTED is deliberately NOT accepted: an aborted
+ *	     reader is not past-check, so it drives a different path.
+ *	  2. visible_lsn == MAX_LSN, i.e. the reader never wrote and so has no
+ *	     serialization point of its own.  The branch's guard
+ *	     LOG_COMPARE(COMMITLSN, acquirer->read_lsn) > 0 is then true for
+ *	     EVERY acquirer, because MAX_LSN exceeds every read_lsn -- the edge
+ *	     is always recorded and never skipped.  A committed reader that DID
+ *	     write has a real COMMITLSN, its guard IS acquirer-dependent, and it
+ *	     is therefore never coalesced.
+ *	  3. TXN_DTL_WCONF clear.  With WCONF set (and 1's PAST_CHECK) the branch
+ *	     returns DB_SNAPSHOT_UNSAFE instead of recording an edge -- a
+ *	     different outcome -- so those markers are never coalesced either.
+ *
+ *	With all three, the branch's entire effect is "set the ACQUIRER's WCONF
+ *	unless it already has RCONF (then DB_SNAPSHOT_UNSAFE), and set this
+ *	reader's RCONF".  That is idempotent in the acquirer, and a committed
+ *	reader's own RCONF is never read again, so N such markers on one object
+ *	do exactly what 1 does.  Keeping one loses NO conflict: every schedule
+ *	the N markers would have aborted, the surviving marker still aborts.
+ *
+ *	WHY THIS IS NEEDED.  The LSN gate in __lock_siclean_obj keeps a marker
+ *	while its snapshot is newer than the oldest ACTIVE reader.  One
+ *	long-lived transaction pins __txn_oldest_reader at its read_lsn forever,
+ *	so every later committed reader's read_lsn is newer and the gate keeps
+ *	EVERY marker: the sweep then fires on every txn_begin and reclaims
+ *	nothing, and the marker population -- plus the TXN_DETAIL each marker
+ *	pins through si_ref -- grows with the TRANSACTION count until the txn
+ *	region cannot allocate another detail (BDB4525).  Coalescing bounds the
+ *	population by the number of lock OBJECTS instead, which is the ceiling
+ *	SI_CLEANUP_TRIGGER_DIV already advertises to the operator via
+ *	DB_ENV->lock_stat_print.  It makes the documented bound TRUE.
+ *
+ *	MEMORY ORDERING.  status, visible_lsn and flags are read without
+ *	TXN_SYSTEM_LOCK, exactly as the existing status and COMMITLSN reads in
+ *	this same sweep are.  That is sound for the same reason: __txn_end
+ *	publishes status != TXN_RUNNING last, after the transaction has finished
+ *	acquiring, so observing TXN_COMMITTED means every WCONF write to this
+ *	detail has already happened.  WCONF is only ever set on an ACQUIRER's
+ *	detail and a committed transaction never acquires again, so it is stable
+ *	here.
+ */
+static int
+__lock_si_coalescible(env, lp)
+	ENV *env;
+	struct __db_lock *lp;
+{
+	DB_LOCKER *sh_locker;
+	TXN_DETAIL *td;
+
+	sh_locker = LOCK_HOLDER(env, lp);
+	if (sh_locker->td_off == INVALID_ROFF)
+		return (0);
+	td = LOCKER_TD(env, sh_locker);
+	return (td->status == TXN_COMMITTED && IS_MAX_LSN(td->visible_lsn) &&
+	    !F_ISSET(td, TXN_DTL_WCONF));
+}
+
+/*
  * __lock_siclean_obj --
  *	Garbage-collect SSI snapshot-read (SIREAD) locks on one object whose
  *	owning transactions have committed and whose snapshots are no longer
- *	visible to any active reader (old_lsnp == oldest active read LSN).
+ *	visible to any active reader (old_lsnp == oldest active read LSN), plus
+ *	the redundant duplicates identified by __lock_si_coalescible.
  *	The caller must hold the object's partition mutex.
  */
 static int
@@ -110,11 +184,25 @@ __lock_siclean_obj(env, obj, old_lsnp)
 {
 	DB_LOCKTAB *lt;
 	DB_LOCKER *sh_locker;
-	struct __db_lock *lp, *next_lock;
+	struct __db_lock *keep, *lp, *next_lock;
 	int ret;
 
 	lt = env->lk_handle;
 	ret = 0;
+
+	/*
+	 * Pass 1: elect the survivor among the interchangeable markers (see
+	 * __lock_si_coalescible).  Any one of them would do; keep the one with
+	 * the NEWEST read_lsn, which is the one the LSN gate below would have
+	 * retained longest, so the surviving marker is the same one the
+	 * uncoalesced sweep would eventually have been left with.
+	 */
+	keep = NULL;
+	SH_TAILQ_FOREACH(lp, &obj->sireaders, links, __db_lock)
+		if (__lock_si_coalescible(env, lp) && (keep == NULL ||
+		    LOG_COMPARE(&LOCK_READLSN(env, lp),
+		    &LOCK_READLSN(env, keep)) > 0))
+			keep = lp;
 
 	for (lp = SH_TAILQ_FIRST(&obj->sireaders, __db_lock);
 	    lp != NULL; lp = next_lock) {
@@ -123,6 +211,18 @@ __lock_siclean_obj(env, obj, old_lsnp)
 		/* Keep readers whose transaction is still running. */
 		if (LOCK_OWNER(env, lp)->status == TXN_RUNNING)
 			continue;
+
+		/*
+		 * Redundant duplicate: another marker on this object records
+		 * the identical edge for every possible acquirer, so dropping
+		 * this one cannot lose a conflict.  Reclaim it regardless of the
+		 * LSN gate below -- that gate is what a long-lived reader pins
+		 * open, and duplicates are precisely what it then holds.  The
+		 * survivor itself still goes through the gate, so a genuinely
+		 * obsolete population still collapses to nothing.
+		 */
+		if (lp != keep && __lock_si_coalescible(env, lp))
+			goto reclaim;
 
 		/*
 		 * Keep the marker while its snapshot may still be part of a
@@ -149,7 +249,7 @@ __lock_siclean_obj(env, obj, old_lsnp)
 		} else if (LOG_COMPARE(&LOCK_COMMITLSN(env, lp), old_lsnp) > 0)
 			continue;
 
-		SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
+reclaim:	SH_TAILQ_REMOVE(&obj->sireaders, lp, links, __db_lock);
 		sh_locker = LOCK_HOLDER(env, lp);
 		if (atomic_read_relaxed(&((DB_LOCKREGION *)lt->reginfo.primary)->nsireaders) > 0)
 			(void)atomic_dec(env,

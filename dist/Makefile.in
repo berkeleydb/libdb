@@ -290,7 +290,8 @@ DTRACE_OBJS= @ADDITIONAL_OBJS@ @REPLACEMENT_OBJS@ @CRYPTO_OBJS@ \
 	env_recover@o@ env_region@o@ env_register@o@ env_sig@o@ \
 	env_stat@o@ fileops_auto@o@ fop_basic@o@ fop_rec@o@ fop_util@o@ \
 	hash_func@o@ hmac@o@ log@o@ log_archive@o@ log_compare@o@ \
-	log_debug@o@ log_get@o@ log_method@o@ log_print@o@ log_put@o@ \
+	log_debug@o@ log_get@o@ log_handoff_trace@o@ log_method@o@ \
+	log_print@o@ log_put@o@ \
 	log_stat@o@ mkpath@o@ mp_alloc@o@ mp_backup@o@ mp_bh@o@ mp_fget@o@ \
 	mp_fmethod@o@ mp_fopen@o@ mp_fput@o@ mp_fset@o@ mp_method@o@ \
 	mp_mvcc@o@ mp_region@o@ mp_register@o@ mp_resize@o@ mp_stat@o@ \
@@ -2743,6 +2744,8 @@ log_compare@o@: $(srcdir)/log/log_compare.c
 log_debug@o@: $(srcdir)/log/log_debug.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_get@o@: $(srcdir)/log/log_get.c
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
+log_handoff_trace@o@: $(srcdir)/log/log_handoff_trace.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 log_method@o@: $(srcdir)/log/log_method.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
