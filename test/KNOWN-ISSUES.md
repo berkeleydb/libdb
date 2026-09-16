@@ -15,7 +15,7 @@ from that release text, it means `T1`/`T2`/`T3`.
 
 | id | issue | status |
 |----|-------|--------|
-| **T1** | `ssi_gc_pressure@serializable` is tuning-sensitive: the passing window is ~300–310 markers before `BDB4525 ENOMEM`, under 7% margin. `SSI_GC_FILLER=300` turns the tier green, which is what establishes it as tuning rather than defect. | open, needs a margin, not a retune |
+| **T1** | `ssi_gc_pressure@serializable` was tuning-sensitive. **FIXED** in two parts, both measured: (1) the marker sweep fired on every `txn_begin` and reclaimed *nothing*, because one long-lived transaction pins `__txn_oldest_reader` and the per-marker LSN gate then retains every committed reader's marker — each pinning a `TXN_DETAIL` until the **txn** region cannot allocate (`BDB4525` is `txn.c:516`, not the lock region, so the trigger divisor was never the lever); `__lock_siclean_obj` now coalesces provably interchangeable markers. (2) the anti-vacuity check asserted on a *harness-sampled* peak, which shrinks as GC improves, so it failed precisely when the mechanism worked; it now uses the engine's `st_maxnlocks`. Cliff was 525 (sharp, 5/5 reps each side); the gate now passes to `SSI_GC_FILLER=50000` with no cliff found, marker high-water flat at 324 across a 100× transaction-count range. See `test/isolation/SSI-GC-MARGIN.md`. | **fixed**, ≥95× margin |
 | **T2** | ASan reports a bad free in the `lockmatrix` harness. In the harness, not the engine. | open |
 | **T3** | `run_upgrade` hash-v5 fixture missing, so the upgrade pass skips. | open, needs the fixture |
 | **T4** | `cutest` aborts (exit 134, `BDB2032` unlock 632). | open, pre-existing |

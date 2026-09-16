@@ -553,7 +553,7 @@ table.
 | **C1** on the *async* path | `test/sim/test_sim_aio_crash_recover` (crash with async writes outstanding; surviving set must match the synchronous run) | **Adequate for threadpool / sync-fallback.** See **G1**: io_uring bypasses the `__os_io` fault hook, so faults are not injectable there. |
 | **C2** durable frontier | `test/sim/test_sim_ckp_lsn` (planted bug 5 CKPBADLSN), `test_sim_ckp_enospc`, and for the async path `test/sim/test_sim_aio_ckp_enospc` — which asserts the return-code contract directly (`txn_checkpoint` must fail when a page write fails under AIO) | **Strong for the two backends the fault hook reaches.** |
 | **C3** `ckp_lsn` from oldest active | `test_sim_ckp_lsn`; TCL `recd*` | **Adequate**, inherited and long-exercised. |
-| **C4** SIREAD GC safety | `test/isolation` (all 9 scenarios, incl. `write_skew_trigger` / `_late` / `g2_antidep` / `read_only_anomaly`); TCL `ssi001`–`ssi009`; `test/c/leak_si_locker` for the *bound*; `test/c/test_lock_sireads` + `chk.locksireads` under ASan | **Good for the anomaly direction and the bound.** See **G2**: no test targets GC *concurrent with* edge formation as its explicit objective. |
+| **C4** SIREAD GC safety | `test/isolation` (all 9 scenarios, incl. `write_skew_trigger` / `_late` / `g2_antidep` / `read_only_anomaly`); TCL `ssi001`–`ssi011`; `test/c/leak_si_locker` for the *bound*; `test/c/test_lock_sireads` + `chk.locksireads` under ASan | **Good.** `test_ssi_gc_pressure` now targets GC concurrent with edge formation directly, with both an anti-vacuity and a tamper control (see `test/isolation/SSI-GC-MARGIN.md`). See **G2** for the part still open: the "still needed?" gate is an `old_lsn` comparison one long-lived reader can pin. |
 | **C5** MVCC purge safety | `test/c/mvcc_purge_visible` (a live snapshot must still see its version across 120 forced checkpoints) and `test/c/mvcc_purge_stress` (writers + readers + a tight `txn_checkpoint(DB_FORCE)` loop, intended for ASan **and TSan**), plus `DB->verify` | **Strong.** This is the best-covered of the new interactions: it has both a direct correctness gate and a race gate. |
 | **C6/C7/D2** detail & locker lifetime | `ssi009` (multi-process marker churn, must not crash), `test/c/leak_si_locker`, `test/c/leak_si_mvcc_mtx`, `test/soak` slope check, ASan | **Good for the crash/leak shapes.** The double-free window itself is argued from the claim protocol, not directly provoked; see **G3**. |
 | **R1** redo/undo correctness | `test/sim` (30+ scenarios: per-access-method crash, torn page/log, ENOSPC, split/merge, secondary, large txn, cursor, recovery-during-recovery, idempotent recover), `db_verify`, TCL `recd*` | **Strong**, and the planted-bug set makes it falsifiable. |
@@ -577,13 +577,29 @@ table.
   guarantee is *tested* on 2 of 5 backends and *argued* on the rest. The drain
   code is backend-agnostic, which is why this is a coverage gap rather than a
   correctness worry — but on io_uring nothing has ever forced the error path.
-- **G2 — no test targets SIREAD GC concurrent with edge formation.** `ssi009`
-  produces marker churn and GC pressure in the same workload, but its verdict is
-  "no process crashed and the DB verifies", not "no edge was lost". A test that
-  ran a forced `__lock_sicleanup` (via checkpoint) against an in-flight
-  read-then-write conflict and asserted the anomaly is still caught would close
-  D1 the way `mvcc_purge_visible` closes D3. The asymmetry is worth noting: the
-  MVCC side of the same idea got a direct visibility gate, the SSI side did not.
+- **G2 — SIREAD GC concurrent with edge formation: the *safety* direction is
+  now covered; the *visibility gate* is still an `old_lsn` comparison.**
+  `test/isolation/test_ssi_gc_pressure` closes the part this gap named: it runs
+  forced `__lock_sicleanup` (checkpoint *and* the `txn_begin` pressure sweep)
+  squarely inside the window where one committed reader's marker is the only
+  record of the edge, and asserts the anomaly is still caught — with a snapshot
+  control showing the skew *is* committable when SSI is off (120/120), and a
+  tamper control showing the assertion has teeth (40/40 skews when the safety
+  predicate is neutered). So the asymmetry with `mvcc_purge_visible` is largely
+  resolved.
+
+  What remains is the gate itself, and issue **T1** is a concrete instance:
+  `__lock_siclean_obj` decides "still needed?" by comparing the marker's LSN
+  against `__txn_oldest_reader`, which **one** long-lived transaction pins
+  indefinitely — so every later committed reader's marker was retained, the sweep
+  reclaimed nothing, and the `TXN_DETAIL`s those markers pin exhausted the txn
+  region. Fixed for the coalescible class (committed, read-only, no `WCONF`:
+  those markers are interchangeable, so one suffices — see
+  `test/isolation/SSI-GC-MARGIN.md`). For markers *outside* that class the
+  question is still answered by the pinnable comparison, so a workload holding a
+  long-lived reader while accumulating committed readers that **wrote** can still
+  retain more than it needs. Bounded there by the write rate rather than the read
+  rate, so far less severe — but the general gate is not closed.
 - **G3 — the D2 double-free window is argued, not provoked.** The
   `TXN_DTL_SNAPSHOT` claim protocol is the only thing standing between
   `__txn_remove_buffer` and `__txn_reap_si_details`. `mvcc_purge_stress` under
