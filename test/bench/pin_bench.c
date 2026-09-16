@@ -78,6 +78,47 @@ bucket_of(uint64_t ns)
 	return (b);
 }
 
+
+/*
+ * biggest_anon_map --
+ *	Start address and size of the largest anonymous mapping, read from
+ *	/proc/self/maps.  In a DB_PRIVATE environment the mpool region is one
+ *	large malloc, so this is the region's placement.  Reported because this
+ *	box has ASLR off and the DB_PRIVATE throughput turned out to be BIMODAL
+ *	in the placement (a 1.65x step, 0% spread within each mode), selected by
+ *	something as incidental as the length of the $PIN_HOME string -- so any
+ *	A/B that does not hold placement constant can report a 1.65x "win" that
+ *	is pure layout.
+ */
+static void
+biggest_anon_map(unsigned long *startp, unsigned long *szp)
+{
+	FILE *fp;
+	char line[512], *dash;
+	unsigned long lo, hi, best = 0, bstart = 0;
+
+	*startp = *szp = 0;
+	if ((fp = fopen("/proc/self/maps", "r")) == NULL)
+		return;
+	while (fgets(line, sizeof(line), fp) != NULL) {
+		/* Anonymous: no pathname field after the inode. */
+		if (strchr(line, '/') != NULL || strstr(line, "[") != NULL)
+			continue;
+		if ((dash = strchr(line, '-')) == NULL)
+			continue;
+		*dash = '\0';
+		lo = strtoul(line, NULL, 16);
+		hi = strtoul(dash + 1, NULL, 16);
+		if (hi > lo && hi - lo > best) {
+			best = hi - lo;
+			bstart = lo;
+		}
+	}
+	(void)fclose(fp);
+	*startp = bstart;
+	*szp = best;
+}
+
 static void *
 worker(void *a)
 {
@@ -333,9 +374,16 @@ main(int argc, char **argv)
 		(void)env->memp_trickle(env, 100, &nwrote);
 	}
 
-	printf("# tag=%s loaded %u keys mode=%s batch=%d env=%s cache=%dMB\n",
-	    g_tag, g_nkeys, argv[1], g_batchsz, private ? "private" : "shared",
-	    cache_mb);
+	{
+		unsigned long mstart, msz;
+		biggest_anon_map(&mstart, &msz);
+		printf("# tag=%s loaded %u keys mode=%s batch=%d env=%s "
+		    "cache=%dMB homelen=%d anon_map=0x%lx size=%luMB "
+		    "map_mod2M=0x%lx\n",
+		    g_tag, g_nkeys, argv[1], g_batchsz,
+		    private ? "private" : "shared", cache_mb, (int)strlen(home),
+		    mstart, msz >> 20, mstart & ((1ul << 21) - 1));
+	}
 	fflush(stdout);
 
 	for (ai = 6; ai < argc; ai++)
