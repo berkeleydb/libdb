@@ -182,53 +182,40 @@ struct __db_txnmgr {
 };
 
 /*
- * The environment build signature (src/env/env_sig.c) hashes
- * sizeof(struct __db_txnmgr), and src/env/env_region.c refuses to ATTACH an
- * existing environment whose stored signature differs:
+ * NOTE ON THE ENVIRONMENT BUILD SIGNATURE
+ *
+ * src/env/env_sig.c hashes sizeof(struct __db_txnmgr) into the environment build
+ * signature, and src/env/env_region.c refuses to ATTACH an existing environment
+ * whose stored signature differs:
  *
  *	"BDB1539 Build signature doesn't match environment" -> DB_VERSION_MISMATCH
  *
- * So silently changing this struct's size makes every previously-created
- * environment unattachable.  The public ABI (sizeof DB / DBC / DB_ENV / DB_TXN)
- * does NOT move when this struct changes, so abidiff stays green and the CI ABI
- * gate cannot see the break -- it was demonstrated to shift the signature
- * 0xfc785a20 -> 0x31b29838 with every public size unchanged.  Pin it, so that
- * failure surfaces at build time here instead of at a customer's region attach.
- * If you are intentionally breaking region compatibility, update this
- * expression in the same commit.
+ * So changing this struct's size makes every previously-created environment
+ * unattachable, and abidiff CANNOT see it: this struct is not part of the public
+ * ABI, so sizeof(DB / DBC / DB_ENV / DB_TXN) do not move and the CI ABI gate
+ * stays green.  Adding a field here is a THREE-gate question -- public ABI,
+ * region layout (majver/minver), and this signature.
  *
- * Negative-array-size idiom rather than _Static_assert: this header is compiled
- * as C89 and as C++, by every supported compiler.
+ * There is deliberately NO compile-time size assertion here, unlike
+ * struct __db_mpool in mp.h.  Two forms were tried and both were wrong:
+ *   - "18 * sizeof(void *)" is true only on LP64.  This struct embeds REGINFO by
+ *     value and has fixed-width members, so it is not a clean pointer multiple;
+ *     that broke the 32-bit and Windows builds.  (mp.h gets away with the
+ *     pointer-unit form only because struct __db_mpool's members happen to all be
+ *     pointer-width -- correct by luck of composition, not by design.)
+ *   - A sum of member sizeofs is worse still: naming TAILQ_HEAD(tag, __db_txn)
+ *     inside sizeof declares a NEW struct tag instead of referring to the
+ *     member's type, silently yielding a different size.
+ *   - A literal byte count cannot be portable either, because db_mutex_t is
+ *     db_size_t or uintptr_t depending on mutex support (db.h), so the size
+ *     legitimately differs between platforms with the same word size.
+ *
+ * The signature is instead verified where it can be checked meaningfully: the
+ * "region signature" CI gate compares dist/env_sig_print.sh across the merge
+ * base, on one platform, where a like-for-like comparison is possible.  If you
+ * change this struct, expect that gate to fail and say so explicitly in the
+ * commit.
  */
-/*
- * Pinned only where the byte count is known: LP64 (8-byte pointers), which is
- * what every shipping 64-bit platform uses and what the released environments in
- * the field were created on.  The guard is deliberately NOT expressed as a
- * multiple of sizeof(void *): this struct embeds REGINFO by value and has
- * fixed-width members, so it is not a clean pointer multiple, and a pointer-unit
- * expression here compiled on LP64 while breaking both 32-bit builds.  Nor is it
- * expressed as a sum of member sizeofs -- naming the TAILQ_HEAD type inside
- * sizeof declares a NEW struct tag rather than referring to the member's type,
- * which silently yields a different size.
- *
- * A 32-bit build therefore gets no size assertion.  That is the honest trade:
- * this guard exists to catch an accidental field addition on the platforms whose
- * environments must keep attaching, and a wrong guard that breaks the build on
- * two platforms is worse than no guard on one.
- *
- * KNOWN LIMIT: this catches any change to the struct's SIZE, which is what the
- * signature hashes -- but a small field added where padding already exists
- * (e.g. a second u_int32_t beside n_discards) does not change the size and so
- * does not trip it.  That is not a hole in the signature guarantee, because
- * such a field does not move the signature either; it only means this typedef
- * is a size assertion and not a field-count assertion.  Verified: adding a
- * pointer member trips it, adding a u_int32_t into existing padding does not.
- */
-#if defined(__LP64__) || defined(_LP64) || defined(_WIN64)
-#define	DB_TXNMGR_SIG_SIZE	144
-typedef char __db_txnmgr_size_is_signature_stable[
-    sizeof(struct __db_txnmgr) == DB_TXNMGR_SIG_SIZE ? 1 : -1];
-#endif
 
 /* Macros to lock/unlock the transaction region as a whole. */
 #define	TXN_SYSTEM_LOCK(env)						\
