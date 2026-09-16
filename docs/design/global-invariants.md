@@ -561,7 +561,7 @@ table.
 | **R3** region-only vs. logged | Implicitly by every `test/sim` scenario (regions are recreated on recover) plus `test_sim_recover_idempotent` | **Weak as a stated invariant** — see **G6**: nothing asserts that no *new* piece of region state became load-bearing for recovery. The table in §3 is currently the only artifact. |
 | **A1** region compat gate | `__env_struct_sig` is mechanical and self-enforcing; the CI `abi-drift` gate covers the header/ABI side | **Adequate but untested end to end** — see **G7**: no test attaches a deliberately mismatched region and asserts `DB_VERSION_MISMATCH`. |
 | **A2** failchk contract | `test/sim/mp_failchk_pilot` + `test/sim/mp-failchk.sh` (two real processes, shared non-`DB_PRIVATE` region, victim killed while holding a write lock, survivor runs `failchk`), `ssi009` (multi-process) | **This is the fork's only executable multi-process fault test.** Good that it exists; narrow — one kill point, one fault, uncontrolled interleaving (its own header says so). See **G8**. |
-| **A3** global lock order | `src/mutex/mut_order.c` — a `DIAGNOSTIC`-only per-thread checker over this order (gap **G9**), plus `test/lockmatrix` for lock *modes* and `mvcc_purge_stress` under TSan | **Mechanically enforced for the region-level latches**, which are the ones whose misordering hangs multiple processes. Found one real violation (the `lk_partitions=1` self-deadlock, **since fixed in v2026.09.6** and now covered by a regression gate) and corrected five errors in the order as documented — see the corrections under §4. **Not** covered: `mtx_buf` (a pin, not a latch), so the os_aio deadlock class is still unguarded; see **G9**. |
+| **A3** global lock order | `src/mutex/mut_order.c` — a `DIAGNOSTIC`-only per-thread checker over this order (gap **G9**), plus `test/lockmatrix` for lock *modes* and `mvcc_purge_stress` under TSan | **Mechanically enforced for the region-level latches**, which are the ones whose misordering hangs multiple processes. Found one real violation (the `lk_partitions=1` self-deadlock, **since fixed in v2026.09.6** and now covered by a regression gate) and corrected five errors in the order as documented — see the corrections under §4. **Not** covered: `mtx_buf` (a pin, not a latch), so the os_aio stall class is invisible to it; that defect (S1) is **fixed structurally** in `__memp_sync_int` instead, and one of its two variants stalls while RUNNABLE — acquiring nothing — so no acquisition-time checker could see it at all. See **G9** and `docs/design/os-aio-deadlock-fix.md`. |
 | **D5** rsnap | Correctness rides on the whole read path: TCL suite, `test/sim` btree scenarios, `db_verify`. `DB_NO_RSNAP` gives an A/B switch (`bt_search.c:56-70`) | **Indirect.** See **G10**: no test targets the specific race (root change between LSN check and child fetch), and no test asserts the `DB_NO_RSNAP` A/B produces identical results. |
 | **D6** wired frames | `mp_alloc` skips wired singletons; the cap is arithmetic. `test/bench` covers the throughput side | **Weak.** See **G4**. |
 | **D7** cursor sharding | TCL suite exercises cursors heavily; whole-handle iteration paths are exercised by `db_close` / `associate` / `partition` tests | **Weak for the specific hazard.** See **G11**. |
@@ -660,12 +660,19 @@ table.
   **Still not covered:** `mtx_buf` ordering, because `mtx_buf` is a page *pin*
   held across arbitrary caller work rather than an ordered latch (`__memp_fget`
   returns holding it). So the checker would **not** by itself have caught the
-  shipped os_aio deadlock, whose shape is hold-and-block-on-a-pin, not a latch
-  misordering. Catching that class needs pin-aware accounting: a rule like "do
-  not block on a new `mtx_buf` while holding deferred-write pins". Also not
-  covered: cross-*process* ordering (the checker is per-thread, per-process),
-  and the process-local `DB_MUTEX_PROCESS_ONLY` latches, which are tracked for
-  self-deadlock but not rank-ordered.
+  os_aio stall (S1, **since fixed** — see
+  `docs/design/os-aio-deadlock-fix.md`), whose shape is hold-and-wait-on-a-pin,
+  not a latch misordering. That fix implements exactly the rule named here — do
+  not wait while holding deferred-write pins — but enforces it *structurally in
+  `__memp_sync_int`* rather than as a checker rule, and it has to cover **two**
+  waits, not one: the blocking `mtx_buf` acquire (6 of 18 captures) and the
+  `required_write` retry-loop yield (12 of 18). The second is the reason a
+  checker alone would still not be sufficient: in that variant the stalled
+  thread is **RUNNABLE and acquires nothing**, so there is no acquisition event
+  to validate. Pin-aware accounting would need to be checked at *waits*, not at
+  acquires. Also not covered: cross-*process* ordering (the checker is
+  per-thread, per-process), and the process-local `DB_MUTEX_PROCESS_ONLY`
+  latches, which are tracked for self-deadlock but not rank-ordered.
 - **G10 — rsnap's race window is untested.** D5's second LSN check
   (`bt_search.c:577-599`) exists to close the gap between "snapshot looked
   valid" and "child fetched". Nothing forces that interleaving. Cheapest useful
