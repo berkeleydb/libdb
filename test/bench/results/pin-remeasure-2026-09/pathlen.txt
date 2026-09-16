@@ -1,0 +1,26 @@
+# pathlen probe start 2026-09-16T16:13:21+00:00 reps=3
+# tag=len42/private/rep1 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len42/private/rep1 mode=batch thr=96 batch=16 keys_per_sec=8005933 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=len38/private/rep1 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len38/private/rep1 mode=batch thr=96 batch=16 keys_per_sec=4818783 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=len44/private/rep1 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len44/private/rep1 mode=batch thr=96 batch=16 keys_per_sec=8030397 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=len18/private/rep1 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len18/private/rep1 mode=batch thr=96 batch=16 keys_per_sec=4779371 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=len18/private/rep2 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len18/private/rep2 mode=batch thr=96 batch=16 keys_per_sec=4791118 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=len44/private/rep2 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len44/private/rep2 mode=batch thr=96 batch=16 keys_per_sec=8016438 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=len38/private/rep2 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len38/private/rep2 mode=batch thr=96 batch=16 keys_per_sec=4882594 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=len42/private/rep2 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len42/private/rep2 mode=batch thr=96 batch=16 keys_per_sec=7892882 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=len42/private/rep3 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len42/private/rep3 mode=batch thr=96 batch=16 keys_per_sec=7918252 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=len38/private/rep3 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len38/private/rep3 mode=batch thr=96 batch=16 keys_per_sec=4791315 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# tag=len44/private/rep3 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len44/private/rep3 mode=batch thr=96 batch=16 keys_per_sec=7807065 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0
+# tag=len18/private/rep3 loaded 200000 keys mode=batch batch=16 env=private cache=512MB
+RESULT tag=len18/private/rep3 mode=batch thr=96 batch=16 keys_per_sec=4917005 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+# pathlen probe done 2026-09-16T16:15:06+00:00

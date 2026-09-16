@@ -1,0 +1,29 @@
+=== arm=bhpin mode=batch env=shared
+RESULT tag=prof-bhpin/shared/p mode=batch thr=96 batch=16 keys_per_sec=4694905 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0
+--- self time (top 25)
+    30.72%  pin_bench-bhpin  libdb-2026.0.so    [.] __os_atomic_read
+                          0
+    23.49%  pin_bench-bhpin  libdb-2026.0.so    [.] __memp_fget
+                                     0
+    16.27%  pin_bench-bhpin  libdb-2026.0.so    [.] __memp_fput
+                          0
+     8.29%  pin_bench-bhpin  libdb-2026.0.so    [.] __bam_cmp
+                                     0
+     7.13%  pin_bench-bhpin  libdb-2026.0.so    [.] __os_atomic_dec
+                                     0
+     2.64%  pin_bench-bhpin  libdb-2026.0.so    [.] __db_tas_mutex_readlock_int
+                                     0
+     2.58%  pin_bench-bhpin  libdb-2026.0.so    [.] __db_tas_mutex_unlock
+                                     0
+     1.49%  pin_bench-bhpin  libdb-2026.0.so    [.] __lock_get_internal
+                                     0
+     1.42%  pin_bench-bhpin  libdb-2026.0.so    [.] __lock_getobj
+               0
+     1.19%  pin_bench-bhpin  libdb-2026.0.so    [.] __bam_search
+                          0
+     0.92%  pin_bench-bhpin  libdb-2026.0.so    [.] __db_tas_mutex_lock_int
+                                     0
+     0.85%  pin_bench-bhpin  libdb-2026.0.so    [.] __os_atomic_cas
+                                     0
+     0.50%  pin_bench-bhpin  libdb-2026.0.so    [.] __bam_defcmp
+VERDICT profile arm=bhpin mode=batch env=shared pin_share=62.56% mutex_share=6.16% accounted=99.86%
