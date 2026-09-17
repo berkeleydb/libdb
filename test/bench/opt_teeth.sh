@@ -53,7 +53,7 @@ if grep -q "HAVE_IO_URING" "$BUILD/db_config.h" 2>/dev/null; then
 	LIBS="$LIBS -luring"
 fi
 
-fail() { echo "TEETH FAIL: $*"; hi_emit optimistic_teeth fail 2>/dev/null; exit 1; }
+fail() { echo "TEETH FAIL: $*"; hi_emit optimistic_teeth fail; exit 1; }
 
 # Harness verdicts: without these the script can pass on the console while the
 # manifest gate cannot tell it ran at all -- the exact shape of this project's
@@ -146,5 +146,5 @@ if grep -q "^VERDICT opt-fires-teeth " "$WORK/sab.txt"; then
 fi
 
 echo "VERDICT opt-teeth all three arms behaved: on=fires off=inert sabotage=fails"
+hi_emit optimistic_teeth pass
 exit 0
-hi_emit optimistic_teeth pass 2>/dev/null
