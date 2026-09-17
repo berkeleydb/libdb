@@ -586,9 +586,58 @@ result, not a wasted RFC.
 
 *(Filled by the reviewer when the RFC is decided.)*
 
-- **Decision:** Pending — Draft. Blocked on the phantom-prevention rule (open
-  question #1) and on the Step-1 measurement.
-- **Rationale:** —
-- **Conditions / follow-ups:** produce the Step-1 false-abort quantification in
-  `rfc/0005/` before any engine work; resolve open questions #1, #6 and #7 in
-  the RFC text; do not implement (b) with an `(pgno, indx)` identity.
+- **Decision:** **Rejected — do not implement.** The Step-1 measurement was produced
+  (`test/false-abort-rate`, 585 runs, 117 points x 5 reps) and it argues against
+  the RFC rather than for it, and open question #1 (phantom prevention) has since
+  been confirmed as a real trap by an independent implementation. Details below.
+- **Rationale:** two independent findings, one internal and one external.
+
+  **1. The measurement did not support the premise.** Holding the *logical*
+  conflict graph empty and varying only physical co-location gives **11.37%
+  aborts when keys share a leaf page and 0.000% when they do not**, with the rate
+  spanning ~630x purely from records-per-leaf (0.000% at 512 B pages -> 11.35% at
+  32 KB). So the false aborts are real and are page-granularity artifacts — but
+  users already control the knob that removes them (`set_pagesize`), and on
+  Zipfian workloads page-level write-write *deadlocks* exceed false aborts by
+  roughly 3x (40.1% vs 12.8%), which key-precise *read* edges would not remove.
+  A cheap existing knob beats a large new mechanism.
+
+  **2. TidesDB independently built the key-precise design and hit exactly the
+  phantom trap this RFC warned about.** TidesDB v10.0.1 (`d62d694`) implements the
+  same Cahill dangerous-structure rule with key-precise read/write sets — the
+  thing this RFC proposed — and gets the precision for free because an LSM has no
+  shared leaf pages. Reading its source (verified, not inferred):
+
+  - `src/txn/readset.h` records `(cf_index, key, key_size, seq)` — **points only,
+    no interval or gap representation.**
+  - `tidesdb_readset_record` is called from exactly one place, `txn_get_impl`
+    (`src/txn/txn.c:339,347`) — i.e. **point gets only**. Iterators and range
+    scans record nothing.
+  - It *does* get the absent-read case right: a miss is recorded at the snapshot
+    seq (`txn.c:339`), so a later insert of that same key is caught. That is the
+    gap case for point reads, which this RFC lists as mandatory.
+  - But with no predicate recorded for a scan, a **scan-then-write phantom can
+    commit under its SERIALIZABLE level**, and the limitation is not documented
+    in its public header.
+
+  That is precisely the failure this RFC predicted: *"every option below can be
+  implemented in a way that looks correct, passes `ssi001`-`ssi011`, lowers the
+  abort rate, and is wrong."* An independent team, building the same design
+  competently, shipped the over-approximation loss. This raises the estimated
+  cost of doing option (a) or (b) *correctly* — predicates for every scan, plus
+  next-key/gap handling — and correspondingly lowers the expected value, given
+  finding 1 says the payoff is a knob users already have.
+
+  Note the tension worth keeping in view: libdb's page granularity is what
+  *causes* ~100% of its false aborts **and** what provides its phantom prevention
+  (invariant **D10**). Those are the same mechanism. Removing the cost removes the
+  protection, which is why this is not a local optimization.
+- **Conditions / follow-ups:** none — the RFC is closed as *analysed and
+  declined*, which is a first-class outcome here. If it is ever reopened, the bar
+  is now higher and concrete: (i) a workload where `set_pagesize` demonstrably
+  cannot recover the aborts, (ii) a predicate/interval read-set design that
+  covers range scans and gaps, with a test that *fails* when the predicate is
+  removed (the TidesDB shape is the negative example to test against), and
+  (iii) an answer for the page-level ww deadlocks that dominate on Zipfian keys.
+  Evidence: `test/bench/` false-abort data and `docs/design/global-invariants.md`
+  invariant D10.
