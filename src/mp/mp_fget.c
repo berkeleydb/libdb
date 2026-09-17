@@ -1459,9 +1459,26 @@ __memp_fget_opt(dbmfp, pgnoaddr, ip, sample, addrp)
 		sample->gen = gen;
 		*(void **)addrp = bhp->buf;
 
-		STAT_INC_VERB(env, mpool, hit,
-		    mfp->stat.st_cache_hit, __memp_fn(dbmfp), *pgnoaddr);
-		++c_mp->put_counter;
+		/*
+		 * NO SHARED WRITES BEYOND THIS THREAD'S OWN PIN SLOT.  Two were
+		 * here and both had to go, because the entire premise of this
+		 * path is that a reader dirties no cacheline another core wants:
+		 *
+		 *   ++c_mp->put_counter  -- one word per region, so EVERY reader
+		 *     on every core writes the same line.  It exists so
+		 *     __memp_alloc can tell whether the pool is making progress;
+		 *     an optimistic reader neither pins nor puts, so it has no
+		 *     progress to report.  ThreadSanitizer flagged this, and it is
+		 *     a genuine (if benign-looking) shared write.
+		 *
+		 *   STAT_INC_VERB(... st_cache_hit ...) -- same problem, one
+		 *     counter per MPOOLFILE.  Hits on this path are attributed by
+		 *     the opt_pages counter in bt_search.c, which is
+		 *     process-local.
+		 *
+		 * Anything added here later must answer the same question: which
+		 * cacheline does it dirty, and who else wants it?
+		 */
 		MUTEX_UNLOCK(env, hp->mtx_hash);
 		return (0);
 	}
