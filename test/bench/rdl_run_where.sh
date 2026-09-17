@@ -39,6 +39,14 @@ commands
     silent
     set $nlget = $nlget + 1
     printf "LGET #%d pgno=%u mode=%d action=%d\n", $nlget, pgno, mode, action
+    # Prove the locked page is the LEAF: in the __bam_search frame, `level` is
+    # the level of the page we are descending FROM, and the gate at
+    # bt_search.c:942 is `level - 1 == LEAFLEVEL`, so level must be 2 here
+    # (LEAFLEVEL is 1).  This is the mechanical form of the claim; page numbers
+    # alone cannot distinguish interior from leaf.
+    up
+    printf "LGETFRAME level=%d pg=%u getlock=%d lock_mode=%d slevel=%d\n", level, pg, getlock, lock_mode, slevel
+    down
     continue
   end
   break __lock_get_internal
@@ -65,5 +73,5 @@ sed -i "s|ARGPLACEHOLDER|$ARG|" /tmp/rdl_where.gdb
 
 echo "=== MODE=$MODE ==="
 timeout 900 gdb -q -batch -x /tmp/rdl_where.gdb $OUT 2>&1 |
-    grep -E "RDLW|LGET|LOCKGETINT|COUNTS|FINAL|armed|FAIL|Error" |
+    grep -E "RDLW|LGET|LGETFRAME|LOCKGETINT|COUNTS|FINAL|armed|FAIL|Error" |
     sed -n '1,80p'
