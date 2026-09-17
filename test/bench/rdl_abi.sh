@@ -8,9 +8,24 @@
 set -e
 W=/home/admin/rdl-wt
 B=${B:-$W/bu}
-BASE=${BASE:-/home/admin/libdb}
-BASEB=${BASEB:-$BASE/build_unix}
+# Merge base of this branch, checked out and built separately: /home/admin/libdb
+# is the bare-ish clone whose build_unix/ has never been configured, so it has no
+# db.h and cannot answer the ABI question.
+BASE=${BASE:-/home/admin/rdl-base}
+BASEB=${BASEB:-$BASE/bb}
 OUT=/tmp/rdl_abi.txt
+
+if [ ! -f $BASEB/db.h ]; then
+	if [ ! -d $BASE ]; then
+		( cd /home/admin/libdb &&
+		  git worktree add $BASE \
+		    $(cd $W && git merge-base HEAD master) )
+	fi
+	mkdir -p $BASEB
+	( cd $BASEB && ../dist/configure --enable-debug --enable-diagnostic \
+	    --disable-shared >cfg.log 2>&1 && make -j48 >build.log 2>&1 ) ||
+	    { echo "BASE BUILD FAILED"; tail -20 $BASEB/build.log; exit 1; }
+fi
 
 : > $OUT
 probe() {
