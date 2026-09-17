@@ -836,6 +836,158 @@ g2_antidep(iso_scenario *sc, iso_state *st, iso_txn *t)
 
 /*
  * ---------------------------------------------------------------------------
+ * Scenario: phantom / D10 -- scan-then-insert with the two inserts on
+ * DIFFERENT leaf pages.
+ *
+ * This is the direct executable gate on global invariant D10: libdb's phantom
+ * prevention is EMERGENT from page-granularity co-location.  A scan records a
+ * SIREAD marker on every page it touches; an insert takes DB_LOCK_WRITE on the
+ * leaf it lands on, and that acquisition is what walks the leaf's sireaders
+ * list (src/lock/lock.c:1216) and forms the rw-antidependency edge.
+ *
+ * Why g2_antidep does NOT test this.  In g2_antidep both markers ("marker.t1",
+ * "marker.t2") sort adjacently into the SAME leaf of a tiny tree, so T2's
+ * insert collides with T1's uncommitted WRITE LOCK on that page and is refused
+ * with DB_LOCK_DEADLOCK.  That is ordinary two-phase locking, not the SSI read
+ * set -- and it happens identically under plain DB_TXN_SNAPSHOT, which is why
+ * g2_antidep PASSES at both isolation levels and therefore proves nothing
+ * about the edge.  (Measured: g2_antidep PASS under snapshot AND under
+ * serializable, all partition counts.)
+ *
+ * This scenario removes the write-write collision: the tree is split so that
+ * the minimum and maximum key live on different leaves, and each transaction
+ * inserts at the OPPOSITE end.  The two inserts therefore touch disjoint
+ * pages and cannot block each other.  The only thing that can stop both from
+ * committing is the SIREAD marker each scan left on the OTHER transaction's
+ * target page.  Under plain SI there is no marker, so both commit and the
+ * history is not serializable (the anomaly is VISIBLE -- this is the
+ * anti-vacuity control).  Under SSI one must abort.
+ *
+ * If a change ever removed read locks / SIREAD markers from the descent, this
+ * scenario would start committing both sides under DB_TXN_SERIALIZABLE -- the
+ * exact bug TidesDB has (docs/design/tidesdb-comparison.md).
+ *
+ * Slots: 0 = number of markers stored.
+ * ---------------------------------------------------------------------------
+ */
+static void
+ph_model(iso_state *s)
+{
+	/* Serial execution: whoever runs second sees a marker and inserts none. */
+	if (s->v[0] == 0)
+		s->v[0] = s->v[0] + 1;
+}
+
+/*
+ * Count marker records with a FULL CURSOR SCAN.  The scan is the predicate
+ * read: it must touch every leaf, which is what leaves a marker on both of the
+ * pages the two inserts will target.
+ */
+static int
+ph_count_markers(DB *db, DB_TXN *txn, int *out)
+{
+	DBC *dbc;
+	DBT k, d;
+	int n, rc;
+
+	if ((rc = db->cursor(db, txn, &dbc, 0)) != 0)
+		return (rc);
+	memset(&k, 0, sizeof(k));
+	memset(&d, 0, sizeof(d));
+	for (n = 0; (rc = dbc->get(dbc, &k, &d, DB_NEXT)) == 0; )
+		if (k.size >= 6 && memcmp(k.data, "mark_", 5) == 0)
+			n++;
+	(void)dbc->close(dbc);
+	if (rc != DB_NOTFOUND)
+		return (rc);
+	*out = n;
+	return (0);
+}
+
+static int
+phantom_pages(iso_scenario *sc, iso_state *st, iso_txn *t)
+{
+	static const char *names[] = { "phantom.db" };
+	DB_BTREE_STAT *bst;
+	DB_TXN *txn1, *txn2;
+	char fill[16];
+	int f, leaves, n1, n2, rc, rc1, rc2;
+
+	t[0].name = "T1";
+	t[0].model = ph_model;
+	t[1].name = "T2";
+	t[1].model = ph_model;
+
+	iso_pad = 0;
+	iso_home_init(sc->name);
+	/* Small pages so a modest filler count splits the tree. */
+	iso_env_open(DB_CREATE, 1, names, 512);
+
+	/*
+	 * Fill the middle of the key space so the leaf splits.  Keys sort as
+	 * mark_aaa < f* < mark_zzz is NOT true, so use an explicit ordering:
+	 * "a_t1" (minimum) ... fillers "m*" ... "z_t2" (maximum).  T1 inserts
+	 * the minimum key, T2 the maximum, so after the split they land on
+	 * different leaves and cannot block each other on a page write lock.
+	 */
+	for (f = 0; f < 200; f++) {
+		(void)snprintf(fill, sizeof(fill), "m%05d", f);
+		if ((rc = iso_put(dbs[0], NULL, fill, f)) != 0)
+			iso_die("filler put", rc);
+	}
+	if ((rc = dbs[0]->stat(dbs[0], NULL, &bst, 0)) != 0)
+		iso_die("DB->stat", rc);
+	leaves = (int)bst->bt_leaf_pg;
+	free(bst);
+	if (verbose)
+		printf("    btree leaf pages = %d (need >= 2 so the two "
+		    "inserts land on different pages)\n", leaves);
+	if (leaves < 2) {
+		fprintf(stderr, "    NOTE: tree did not split; "
+		    "different-pages phantom shape NOT exercised\n");
+		return (-1);
+	}
+
+	memset(&st[0], 0, sizeof(st[0]));
+	st[0].v[0] = 0;			/* no markers */
+
+	if ((rc = env->txn_begin(env, NULL, &txn1, iso_level)) != 0 ||
+	    (rc = env->txn_begin(env, NULL, &txn2, iso_level)) != 0)
+		iso_die("txn_begin", rc);
+
+	/* Both predicate scans happen before either write. */
+	if ((rc = ph_count_markers(dbs[0], txn1, &n1)) != 0)
+		iso_die("T1 scan", rc);
+	if ((rc = ph_count_markers(dbs[0], txn2, &n2)) != 0)
+		iso_die("T2 scan", rc);
+	iso_note(&t[0], "scan saw %d markers", n1);
+	iso_note(&t[1], "scan saw %d markers", n2);
+
+	/*
+	 * T1 inserts the MINIMUM key, commits; T2 then inserts the MAXIMUM key
+	 * from its stale snapshot.  Disjoint pages: no write-write lock
+	 * conflict is possible, so only the SIREAD marker T1's scan left on
+	 * T2's target page (and vice versa) can prevent both from committing.
+	 */
+	rc1 = n1 == 0 ? iso_put(dbs[0], txn1, "a_mark_t1", 1) : 0;
+	iso_note(&t[0], "insert a_mark_t1 (min key) -> %s", rc_name(rc1));
+	iso_finish(&t[0], txn1, rc1);
+
+	rc2 = n2 == 0 ? iso_put(dbs[0], txn2, "z_mark_t2", 1) : 0;
+	iso_note(&t[1], "insert z_mark_t2 (max key) -> %s", rc_name(rc2));
+	iso_finish(&t[1], txn2, rc2);
+
+	iso_env_close();
+	iso_env_open(0, 1, names, 512);
+	memset(&st[1], 0, sizeof(st[1]));
+	if ((rc = ph_count_markers(dbs[0], NULL, &st[1].v[0])) != 0)
+		iso_die("read back", rc);
+	iso_env_close();
+	return (0);
+}
+
+/*
+ * ---------------------------------------------------------------------------
  * Scenario: read-only anomaly (Fekete's three-transaction pattern).
  *
  * x = savings, y = checking, both start at 0.
@@ -1089,6 +1241,9 @@ static iso_scenario scenarios[] = {
     { "g2_antidep",
       "G2-item: both txns scan for markers, both insert one",
       1, 1, 2, 0, 0, NULL, 1, g2_antidep },
+    { "phantom_pages",
+      "D10: scan then insert, the two inserts on DIFFERENT leaf pages",
+      1, 1, 2, 0, 1, NULL, 1, phantom_pages },
     { "read_only_anomaly",
       "Fekete 3-txn: read-only txn observes a non-serializable state",
       2, 4, 3, 0, 0, NULL, 1, read_only_anomaly },
