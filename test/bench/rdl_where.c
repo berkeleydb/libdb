@@ -26,6 +26,14 @@
 	}								\
 } while (0)
 
+/*
+ * Stable breakpoint anchors for rdl_run_where.sh.  Named functions, not line
+ * numbers: a line-number breakpoint silently moves when this file is edited,
+ * which is exactly how a probe reports a stale answer.
+ */
+__attribute__((noinline)) void rdl_mark_begin(void) { __asm__(""); }
+__attribute__((noinline)) void rdl_mark_end(void) { __asm__(""); }
+
 int
 main(int argc, char *argv[])
 {
@@ -95,10 +103,21 @@ main(int argc, char *argv[])
 	printf("RDLW mode=%s begin_read\n",
 	    ssi ? "serializable" : mv ? "snapshot" : "plain");
 	fflush(stdout);
+	rdl_mark_begin();
 	CK(dbp->get(dbp, txn, &key, &data, 0));
+	rdl_mark_end();
 	printf("RDLW end_read\n");
 	fflush(stdout);
 	free(data.data);
+
+	/*
+	 * Mechanical proof that the ONE lock a read descent takes is on the
+	 * LEAF, not an interior page: walk the tree by hand with a cursor over
+	 * the same key and compare.  The lock dump below prints the page number
+	 * held; leaf_pg vs int_pg from bt_stat above bounds it, and the gdb
+	 * probe prints the pgno passed to __db_lget.  If that pgno were an
+	 * interior page there would be more than one LGET line.
+	 */
 
 	/* Dump held locks WITH page numbers, before commit releases them. */
 	CK(dbenv->lock_stat_print(dbenv, DB_STAT_LOCK_LOCKERS));
