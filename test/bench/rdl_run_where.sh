@@ -45,7 +45,7 @@ commands
     # (LEAFLEVEL is 1).  This is the mechanical form of the claim; page numbers
     # alone cannot distinguish interior from leaf.
     up
-    printf "LGETFRAME level=%d pg=%u getlock=%d lock_mode=%d slevel=%d\n", level, pg, getlock, lock_mode, slevel
+    printf "LGETFRAME level=%d pg=%u lock_mode=%d\n", level, pg, lock_mode
     down
     continue
   end
