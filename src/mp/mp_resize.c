@@ -203,7 +203,7 @@ retry:	MUTEX_LOCK(env, old_hp->mtx_hash);
 			 */
 			MUTEX_UNLOCK(env, old_hp->mtx_hash);
 			MUTEX_LOCK(env, bhp->mtx_buf);
-			F_SET(bhp, BH_EXCLUSIVE);
+			BH_SET_EXCLUSIVE(bhp);
 			if (BH_OBSOLETE(bhp, old_hp->old_reader, vlsn))
 				alloc_bhp = NULL;
 			else {
@@ -233,7 +233,7 @@ retry:	MUTEX_LOCK(env, old_hp->mtx_hash);
 			 * unreferenced.
 			 */
 err:			atomic_dec(env, &bhp->ref);
-			F_CLR(bhp, BH_EXCLUSIVE);
+			BH_CLR_EXCLUSIVE(bhp);
 			MUTEX_UNLOCK(env, bhp->mtx_buf);
 			if (ret != 0)
 				return (ret);

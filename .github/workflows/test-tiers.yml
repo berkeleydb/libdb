@@ -280,9 +280,18 @@ jobs:
         working-directory: test/c
         run: TIMEOUT=300 AIO_SECONDS=20 sh ./leak-run.sh
 
+      # RFC 0007's optimistic read path is safe only because BH.gen is bumped
+      # at every exclusive acquisition.  opt_teeth.sh proves that by REBUILDING
+      # a sabotaged library with the bump removed and requiring the probe to
+      # FAIL.  It ran only by hand when written -- which is exactly how
+      # leak-run.sh went two releases without CI ever executing it.
+      - name: Optimistic-read validation teeth (RFC 0007)
+        working-directory: test/bench
+        run: BUILD=../../build_unix sh ./opt_teeth.sh -s 3
+
       - name: Manifest gate (assert every driver+mode produced a verdict)
         if: always()
-        run: ./test/check_manifest.sh --tier leak
+        run: ./test/check_manifest.sh --tier leak && ./test/check_manifest.sh --tier bench
 
       - name: Upload verdicts
         if: always()

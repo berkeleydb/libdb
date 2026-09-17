@@ -51,6 +51,294 @@
 
 static int __bam_rsnap_refresh __P((DBC *));
 static int __bam_rsnap_child __P((DBC *, const DBT *, db_pgno_t *, DB_LSN *));
+static int __bam_opt_child __P((DBC *, const DBT *, PAGE *, db_pgno_t *));
+static int __bam_opt_descend __P((DBC *,
+		const DBT *, db_pgno_t, BH_SAMPLE *, db_pgno_t *));
+
+/*
+ * __bam_opt_enabled --
+ *	The optimistic (pin-free) interior descent of RFC 0007 phase 1.  On by
+ *	default; DB_NO_OPTREAD in the environment turns it off.  ONE binary, ONE
+ *	runtime switch is the only unconfounded way to A/B this (see the
+ *	DB_PRIVATE layout warning atop test/bench/run_bench.sh), so the switch
+ *	exists for the benchmark as much as for bisecting.  Read once, cached.
+ */
+static int
+__bam_opt_enabled()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_NO_OPTREAD") != NULL ? 0 : 1;
+	return (cached);
+}
+
+/*
+ * Retry budget for one descent.  After this many validation failures the
+ * descent gives up on the optimistic path and uses the ordinary pinning path
+ * for the rest of that operation (never spins).
+ */
+#define	BAM_OPT_RETRIES	3
+
+/*
+ * Counters for the teeth test: how often the optimistic descent was tried, how
+ * many pages it read pin-free, and how often validation actually FIRED.  A
+ * zero fire count with a nonzero page count means the mechanism is vacuously
+ * "correct" because it never had to retry -- which is exactly the failure mode
+ * this project has recorded nine times.  Process-local and unsynchronized:
+ * they are diagnostics, not shared state, and adding a shared counter to the
+ * read path would reintroduce the cacheline this RFC removes.
+ */
+u_int32_t __bam_opt_tries;
+u_int32_t __bam_opt_pages;
+u_int32_t __bam_opt_invalid;
+u_int32_t __bam_opt_bailouts;
+/*
+ * Why the optimistic descent gave up, for diagnosing a disarmed fast path.
+ * Index: 0 fget_opt returned RETRY, 1 __bam_opt_child rejected the page,
+ * 2 validation failed, 3 level bound.
+ */
+u_int32_t __bam_opt_why[4];
+
+/*
+ * __bam_opt_child --
+ *	Pick the child an internal page's descent for "key" would take, reading
+ *	the page WITHOUT any latch or pin -- so every byte read may be torn.
+ *
+ *	THE PRE-VALIDATION SAFETY BOUND (RFC 0007 risk 6).  This function is
+ *	the only thing that touches an unvalidated page, and it may:
+ *	  - read only within [h, h + dbp->pgsize);
+ *	  - never dereference a pointer derived from page contents without
+ *	    first bounds-checking it against that range;
+ *	  - never follow a page pointer (an overflow key would need another
+ *	    page fetch -- that is a bail, not a fetch);
+ *	  - never write anything, anywhere;
+ *	  - call the user's comparison function only with a DBT whose
+ *	    (data, size) lies inside the frame.  libdb already requires
+ *	    bt_compare to be a pure function of its two DBTs, so torn bytes
+ *	    can produce a wrong answer -- which validation then discards --
+ *	    but not a fault.
+ *
+ *	Any bound violation returns DB_MPOOL_RETRY: on a torn page that is a
+ *	race to be retried, and on a genuinely corrupt page the ordinary
+ *	pinning path will produce the real error with the page latched.
+ *
+ *	Mirrors __bam_search's internal-page selection exactly (same binary
+ *	search, same __bam_cmp semantics, same base->index rule), so the child
+ *	chosen is identical to a normal descent.
+ */
+static int
+__bam_opt_child(dbc, key, h, childp)
+	DBC *dbc;
+	const DBT *key;
+	PAGE *h;
+	db_pgno_t *childp;
+{
+	BINTERNAL *bi;
+	DB *dbp;
+	DBT pg_dbt;
+	db_indx_t base, indx, lim, nent, off, *inp;
+	u_int32_t hoff, psize;
+	int (*func) __P((DB *, const DBT *, const DBT *));
+	int cmp;
+
+	dbp = dbc->dbp;
+	psize = dbp->pgsize;
+	func = ((BTREE *)dbp->bt_internal)->bt_compare;
+
+	/* The page must look like an internal Btree page above the leaves. */
+	if (psize <= P_OVERHEAD(dbp) || TYPE(h) != P_IBTREE ||
+	    LEVEL(h) <= LEAFLEVEL)
+		return (DB_MPOOL_RETRY);
+
+	/*
+	 * The index array must fit between the page header and the start of the
+	 * data (HOFFSET), and HOFFSET must be inside the page.  These two bounds
+	 * are what make every inp[] access below safe.
+	 */
+	nent = NUM_ENT(h);
+	hoff = HOFFSET(h);
+	if (nent == 0 || hoff > psize ||
+	    (u_int32_t)P_OVERHEAD(dbp) + nent * sizeof(db_indx_t) > hoff)
+		return (DB_MPOOL_RETRY);
+	inp = P_INP(dbp, h);
+
+#undef	OPT_BI
+#define	OPT_BI(i, bip) do {						\
+	off = inp[i];							\
+	if (off < hoff || (u_int32_t)off +				\
+	    SSZA(BINTERNAL, data) > psize)				\
+		return (DB_MPOOL_RETRY);				\
+	(bip) = (BINTERNAL *)((u_int8_t *)(h) + off);			\
+	if ((u_int32_t)off + BINTERNAL_SIZE((bip)->len) > psize)		\
+		return (DB_MPOOL_RETRY);				\
+} while (0)
+
+	indx = 0;
+	cmp = 1;
+	DB_BINARY_SEARCH_FOR(base, lim, nent, O_INDX) {
+		DB_BINARY_SEARCH_INCR(indx, base, lim, O_INDX);
+		/*
+		 * Index 0 of an internal page sorts less than any key by
+		 * construction and carries no comparable key -- the same
+		 * special case __bam_cmp makes.
+		 */
+		if (indx == 0)
+			cmp = 1;
+		else {
+			if (indx >= nent)
+				return (DB_MPOOL_RETRY);
+			OPT_BI(indx, bi);
+			/* An overflow key would need another page.  Bail. */
+			if (B_TYPE(bi->type) != B_KEYDATA)
+				return (DB_MPOOL_RETRY);
+			pg_dbt.app_data = NULL;
+			pg_dbt.data = bi->data;
+			pg_dbt.size = bi->len;
+			cmp = func(dbp, key, &pg_dbt);
+		}
+		if (cmp == 0)
+			break;
+		if (cmp > 0)
+			DB_BINARY_SEARCH_SHIFT_BASE(indx, base, lim, O_INDX);
+	}
+	if (cmp != 0)
+		indx = base > 0 ? base - O_INDX : base;
+	if (indx >= nent)
+		return (DB_MPOOL_RETRY);
+	OPT_BI(indx, bi);
+	*childp = bi->pgno;
+	return (0);
+#undef	OPT_BI
+}
+
+/*
+ * __bam_opt_descend --
+ *	Walk the interior pages from "pg" down to the leaf WITHOUT pinning or
+ *	latching any of them, and return the leaf's page number.  On success
+ *	*lastp holds the leaf's parent's sample, still un-released: the caller
+ *	MUST fetch the leaf, then validate that sample, then release it (see
+ *	the coupling argument below).
+ *
+ *	OPTIMISTIC LATCH COUPLING.  The ordinary descent holds the parent's pin
+ *	(a shared buffer latch) across the child fetch, which is what stops a
+ *	split from moving the key out from under the child pointer just read.
+ *	With no latch that protection has to be reconstructed:
+ *
+ *	  sample P;  child = search(P);  validate P	-> child was P's child
+ *	  sample C;  ... read C ...   ;  validate C	-> C's bytes were stable
+ *	  re-validate P (still held)			-> P did not change while
+ *							   C was being read
+ *
+ *	The last line is the one that matters and is why the parent's sample
+ *	outlives the child's acquisition: if P is unchanged across the whole
+ *	window in which C was acquired and read, then at the instant of C's
+ *	validation P still pointed to C.  That gives a single instant at which
+ *	the whole hop was true, which is the linearization point the pinning
+ *	path gets for free.  Without it, P could split after being validated
+ *	and before C was read, and the descent would land in a subtree that no
+ *	longer covers the key -- a wrong answer, not just a slow one.
+ *
+ *	Eviction cannot reclaim either frame: __memp_fget_opt publishes a
+ *	per-thread pin record, and __memp_alloc consults it (__memp_bh_pinned).
+ *
+ *	Returns 0 (descended at least one level), or DB_MPOOL_RETRY when the
+ *	caller should use the ordinary pinning path.
+ */
+static int
+__bam_opt_descend(dbc, key, pg, lastp, leafp)
+	DBC *dbc;
+	const DBT *key;
+	db_pgno_t pg;
+	BH_SAMPLE *lastp;
+	db_pgno_t *leafp;
+{
+	BH_SAMPLE parent, child;
+	DB *dbp;
+	DB_MPOOLFILE *mpf;
+	DB_THREAD_INFO *ip;
+	ENV *env;
+	PAGE *h;
+	db_pgno_t next;
+	int levels, ret;
+
+	dbp = dbc->dbp;
+	env = dbp->env;
+	mpf = dbp->mpf;
+	ip = dbc->thread_info;
+	lastp->bhp = NULL;
+	levels = 0;
+
+	/*
+	 * Hold at most two samples at a time (the coupling pair).  MAXBTREELEVEL
+	 * bounds the walk so a corrupt page whose child pointers form a cycle
+	 * cannot spin here.
+	 */
+	parent.bhp = NULL;
+	for (;;) {
+		if (levels > MAXBTREELEVEL) {
+			ret = DB_MPOOL_RETRY;
+			goto bail;
+		}
+		if ((ret = __memp_fget_opt(mpf, &pg, ip, &child, &h)) != 0) {
+			__bam_opt_why[0]++;
+			goto bail;
+		}
+
+		ret = __bam_opt_child(dbc, key, h, &next);
+		if (ret != 0)
+			__bam_opt_why[1]++;
+
+		/*
+		 * Validate the child's own frame first: everything read above,
+		 * including "next", came from it.
+		 */
+		if (!__memp_fget_opt_valid(&child)) {
+			__bam_opt_invalid++;
+			ret = DB_MPOOL_RETRY;
+		}
+		/*
+		 * Then re-validate the parent, which has been held across this
+		 * whole hop.  See the coupling argument above.
+		 */
+		if (ret == 0 && parent.bhp != NULL &&
+		    !__memp_fget_opt_valid(&parent)) {
+			__bam_opt_invalid++;
+			ret = DB_MPOOL_RETRY;
+		}
+		if (parent.bhp != NULL)
+			__memp_fget_opt_release(env, ip, &parent);
+		if (ret != 0) {
+			parent = child;
+			goto bail;
+		}
+
+		__bam_opt_pages++;
+		levels++;
+		parent = child;
+		pg = next;
+
+		/*
+		 * LEVEL() was read from an unvalidated page, so it is only a
+		 * hint about where to stop -- but it was confirmed by the
+		 * validation above, and __bam_opt_child rejects anything that is
+		 * not an internal page above the leaves.  Stop when the child we
+		 * just selected is the leaf.
+		 */
+		if (LEVEL(h) == LEAFLEVEL + 1)
+			break;
+	}
+
+	*leafp = pg;
+	*lastp = parent;		/* Caller validates + releases. */
+	return (0);
+
+bail:	if (parent.bhp != NULL)
+		__memp_fget_opt_release(env, ip, &parent);
+	__bam_opt_bailouts++;
+	return (ret == 0 ? DB_MPOOL_RETRY : ret);
+}
+
 
 /*
  * __bam_rsnap_enabled --
@@ -471,6 +759,8 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	int from_snap;
 	db_pgno_t snap_child;
 	DB_LSN snap_lsn;
+	BH_SAMPLE opt_parent;
+	int from_opt, opt_ok, opt_tries;
 
 	if (F_ISSET(dbc, DBC_OPD))
 		LOCK_CHECK_OFF(dbc->thread_info);
@@ -513,13 +803,42 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	 * concurrent root change could make the child stale.
 	 */
 	from_snap = 0;
-	if (root_pgno == PGNO_INVALID && key != NULL && slevel == LEAFLEVEL &&
+	from_opt = 0;
+	opt_tries = 0;
+	opt_parent.bhp = NULL;
+	opt_ok = root_pgno == PGNO_INVALID && key != NULL &&
+	    slevel == LEAFLEVEL &&
 	    LF_ISSET(SR_READ) && !LF_ISSET(SR_WRITE | SR_PARENT | SR_STACK |
 	    SR_NEXT | SR_DEL | SR_START | SR_BOTH | SR_MIN | SR_MAX |
 	    SR_STK_ONLY) && !F_ISSET(dbc, DBC_OPD) &&
 	    dbc->dbtype == DB_BTREE && !F_ISSET(cp, C_RECNUM) &&
-	    atomic_read(&mpf->mfp->multiversion) == 0 &&
-	    LOGGING_ON(env) && !F_ISSET(dbp, DB_AM_NOT_DURABLE) &&
+	    atomic_read(&mpf->mfp->multiversion) == 0;
+
+	/*
+	 * Optimistic interior descent (RFC 0007 phase 1), COMPOSED WITH the root
+	 * snapshot rather than replacing it.
+	 *
+	 * The first version of this preempted the snapshot: it walked from the
+	 * live root, so it paid a pin-free fetch (and that fetch's bucket-mutex
+	 * read) for the root that the snapshot path avoids touching altogether.
+	 * Measured on the 96-vCPU box that was a REGRESSION at t=8 and t=32 --
+	 * the comparison was "optimistic descent" against "root snapshot", not
+	 * against plain pinning, and the snapshot was winning.
+	 *
+	 * So: take the first child from the snapshot when it is current (no fetch
+	 * at all for the root), and walk the REMAINING interior levels pin-free.
+	 * On a 3-level tree that is snapshot for the root, optimistic for the one
+	 * interior level, and a single pinned+locked leaf.
+	 *
+	 * This is the ONE retry site (RFC 0007: no longjmp).  The budget is
+	 * BAM_OPT_RETRIES per descent; after that this descent uses the pinning
+	 * path permanently, so a page under sustained modification cannot make
+	 * a reader spin.
+	 */
+opt_retry:
+	from_snap = 0;
+	from_opt = 0;
+	if (opt_ok && LOGGING_ON(env) && !F_ISSET(dbp, DB_AM_NOT_DURABLE) &&
 	    __bam_rsnap_enabled()) {
 		if (__bam_rsnap_child(dbc, key, &snap_child, &snap_lsn) == 0) {
 			start_pgno = snap_child;
@@ -527,9 +846,46 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 		} else
 			(void)__bam_rsnap_refresh(dbc);
 	}
+
+	if (opt_ok && __bam_opt_enabled() && opt_tries <= BAM_OPT_RETRIES) {
+		db_pgno_t opt_from, opt_leaf;
+
+		__bam_opt_tries++;
+		opt_from = from_snap ? start_pgno : BAM_ROOT_PGNO(dbc);
+		if (__bam_opt_descend(dbc,
+		    key, opt_from, &opt_parent, &opt_leaf) == 0) {
+			start_pgno = opt_leaf;
+			from_opt = 1;
+		}
+		/*
+		 * If the optimistic walk bailed we keep whatever the snapshot
+		 * gave us: start_pgno is still the snapshot child (or the real
+		 * root) and from_snap still says which, so the ordinary descent
+		 * proceeds exactly as it does on master.
+		 */
+	}
 	saved_level = MAXBTREELEVEL;
 retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel,
-	    from_snap ? (flags | SR_SNAPSHOT) : flags, &stack)) != 0) {
+	    (from_snap || from_opt) ? (flags | SR_SNAPSHOT) : flags,
+	    &stack)) != 0) {
+		if (from_opt) {
+			/*
+			 * The leaf we picked optimistically was freed or reused
+			 * (DB_NOTFOUND from the SR_SNAPSHOT page-type check) or
+			 * could not be fetched: the descent was stale.  Drop the
+			 * parent sample and retry -- from the real root once the
+			 * budget is spent.
+			 */
+			__memp_fget_opt_release(env,
+			    dbc->thread_info, &opt_parent);
+			if (ret != DB_NOTFOUND && ret != DB_PAGE_NOTFOUND)
+				goto err;
+			__bam_opt_invalid++;
+			from_opt = 0;
+			start_pgno = PGNO_INVALID;
+			opt_tries++;
+			goto opt_retry;
+		}
 		if (from_snap && ret == DB_NOTFOUND) {
 			/*
 			 * The snapshot child was a freed/reused non-btree page:
@@ -573,6 +929,46 @@ retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel,
 		goto done;
 
 	BT_STK_CLR(cp);
+
+	/*
+	 * Optimistic-descent re-check.  The leaf is now pinned and locked, so
+	 * from here on it is protected the ordinary way.  What still has to be
+	 * confirmed is the LAST hop: that the leaf's parent did not change
+	 * between the moment we read the child pointer out of it and the moment
+	 * the leaf was pinned.  If it did, the leaf may no longer be the one
+	 * that covers this key (a split could have moved the key range
+	 * elsewhere, or the page could have been freed and reused) -- so release
+	 * it and retry, falling back to the real root when the budget is out.
+	 *
+	 * This is where validation FIRES.  See the retry-rate numbers in
+	 * test/bench/OPTIMISTIC-READS-2026-09.md; a build that never bumps the
+	 * generation makes the counter zero and the teeth test fail.
+	 *
+	 * The leaf's level and type are confirmed here too: an optimistic
+	 * descent that landed above the leaves (a concurrent split adding a
+	 * level) would otherwise search an internal page as if it were a leaf.
+	 */
+	if (from_opt) {
+		int valid;
+
+		valid = __memp_fget_opt_valid(&opt_parent) &&
+		    LEVEL(h) == LEAFLEVEL &&
+		    (TYPE(h) == P_LBTREE || TYPE(h) == P_LDUP);
+		__memp_fget_opt_release(env, dbc->thread_info, &opt_parent);
+		if (!valid) {
+			__bam_opt_invalid++;
+			if ((ret = __memp_fput(mpf,
+			    dbc->thread_info, h, dbc->priority)) != 0)
+				goto err;
+			h = NULL;
+			(void)__LPUT(dbc, lock);
+			LOCK_INIT(lock);
+			from_opt = 0;
+			start_pgno = PGNO_INVALID;
+			opt_tries++;
+			goto opt_retry;
+		}
+	}
 
 	/*
 	 * Root-snapshot re-check: we began the descent at a child taken from
@@ -1192,6 +1588,12 @@ done:
 
 err:	if (ret == 0)
 		ret = t_ret;
+	/*
+	 * An optimistic parent sample may still be held on any error path out of
+	 * the descent; its pin record must be dropped or that frame is never
+	 * evictable again.  Idempotent when no sample is held.
+	 */
+	__memp_fget_opt_release(env, dbc->thread_info, &opt_parent);
 	if (h != NULL && (t_ret = __memp_fput(mpf,
 	    dbc->thread_info, h, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;

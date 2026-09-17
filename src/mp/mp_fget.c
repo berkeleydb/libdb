@@ -400,7 +400,7 @@ xlatch:			if (LF_ISSET(DB_MPOOL_TRY)) {
 					goto err;
 			} else
 				MUTEX_LOCK(env, bhp->mtx_buf);
-			F_SET(bhp, BH_EXCLUSIVE);
+			BH_SET_EXCLUSIVE(bhp);
 		} else if (LF_ISSET(DB_MPOOL_TRY)) {
 			if ((ret = MUTEX_TRY_READLOCK(env, bhp->mtx_buf)) != 0)
 				goto err;
@@ -418,7 +418,7 @@ xlatch:			if (LF_ISSET(DB_MPOOL_TRY)) {
 			goto xlatch;
 		}
 #else
-		F_SET(bhp, BH_EXCLUSIVE);
+		BH_SET_EXCLUSIVE(bhp);
 #endif
 		b_lock = 1;
 
@@ -856,7 +856,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 			atomic_dec(env, &bhp->ref);
 			b_incr = 0;
 			if (F_ISSET(bhp, BH_EXCLUSIVE))
-				F_CLR(bhp, BH_EXCLUSIVE);
+				BH_CLR_EXCLUSIVE(bhp);
 			MUTEX_UNLOCK(env, bhp->mtx_buf);
 			b_lock = 0;
 			bhp = NULL;
@@ -898,7 +898,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 		 */
 		MUTEX_LOCK(env, bhp->mtx_buf);
 		b_lock = 1;
-		F_SET(bhp, BH_EXCLUSIVE);
+		BH_SET_EXCLUSIVE(bhp);
 		b_incr = 1;
 
 		/* We created a new page, it starts dirty. */
@@ -1110,7 +1110,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 			bhp->priority = MPOOL_CLOCK_DEFAULT;
 			MVCC_MPROTECT(bhp->buf, mfp->pagesize, 0);
 		}
-		F_CLR(bhp, BH_EXCLUSIVE);
+		BH_CLR_EXCLUSIVE(bhp);
 		MUTEX_UNLOCK(env, bhp->mtx_buf);
 
 		bhp = alloc_bhp;
@@ -1174,7 +1174,7 @@ alloc:		/* Allocate a new buffer header and data space. */
 #endif
 		}
 	} else if (F_ISSET(bhp, BH_EXCLUSIVE)) {
-		F_CLR(bhp, BH_EXCLUSIVE);
+		BH_CLR_EXCLUSIVE(bhp);
 #ifdef HAVE_SHARED_LATCHES
 		MUTEX_UNLOCK(env, bhp->mtx_buf);
 		MUTEX_READLOCK(env, bhp->mtx_buf);
@@ -1307,7 +1307,7 @@ err:	/*
 		if (b_incr)
 			atomic_dec(env, &bhp->ref);
 		if (b_lock) {
-			F_CLR(bhp, BH_EXCLUSIVE);
+			BH_CLR_EXCLUSIVE(bhp);
 			MUTEX_UNLOCK(env, bhp->mtx_buf);
 		}
 	}
@@ -1321,4 +1321,219 @@ err:	/*
 		     NULL, alloc_bhp, BH_FREE_FREEMEM | BH_FREE_UNLOCKED);
 
 	return (ret);
+}
+
+u_int32_t __memp_opt_why[4];
+u_int32_t __memp_opt_flags, __memp_opt_gen;
+
+/*
+ * __memp_fget_opt --
+ *	Optimistic (pin-free) page fetch -- RFC 0007 phase 1.
+ *
+ *	Locate the frame holding <mfp, pgno>, sample (gen, pgno, mf_offset) and
+ *	hand back the page WITHOUT incrementing bhp->ref and WITHOUT acquiring
+ *	bhp->mtx_buf.  The caller may then do side-effect-free, non-faulting
+ *	work on the page and MUST call __memp_fget_opt_valid() before acting on
+ *	anything it read.  A per-thread pin record IS written (it is a
+ *	thread-local store in shared memory, uncontended, and is what makes the
+ *	frame ineligible for eviction while a live thread holds it), and is
+ *	dropped by __memp_fget_opt_release().
+ *
+ *	Returns 0 with *addrp set and *sample filled in, or DB_MPOOL_RETRY if
+ *	the page is not simply resident and clean (a miss, a frame in flux, a
+ *	freed/frozen/trash frame, an MVCC chain, a dirty frame, an mmap'd file,
+ *	no pin slot free).  DB_MPOOL_RETRY is never an error: the caller falls
+ *	back to the ordinary pinning __memp_fget.
+ *
+ *	The bucket mutex IS taken (shared) to walk the hash chain: it is a
+ *	read lock on a per-bucket mutex, which is not the cacheline this RFC is
+ *	about, and walking an unlocked SH_TAILQ would risk a wild pointer
+ *	rather than a stale read.  What is removed is the atomic RMW on the
+ *	frame that every other core also wants.
+ *
+ * PUBLIC: int __memp_fget_opt __P((DB_MPOOLFILE *,
+ * PUBLIC:      db_pgno_t *, DB_THREAD_INFO *, BH_SAMPLE *, void *));
+ */
+int
+__memp_fget_opt(dbmfp, pgnoaddr, ip, sample, addrp)
+	DB_MPOOLFILE *dbmfp;
+	db_pgno_t *pgnoaddr;
+	DB_THREAD_INFO *ip;
+	BH_SAMPLE *sample;
+	void *addrp;
+{
+	BH *bhp;
+	DB_MPOOL *dbmp;
+	DB_MPOOL_HASH *hp;
+	ENV *env;
+	MPOOL *c_mp;
+	MPOOLFILE *mfp;
+	PIN_LIST *list, *lp;
+	REGINFO *infop;
+	roff_t mf_offset;
+	u_int32_t bucket;
+	u_int8_t gen;
+	int ret;
+
+	*(void **)addrp = NULL;
+	sample->bhp = NULL;
+	env = dbmfp->env;
+	dbmp = env->mp_handle;
+	mfp = dbmfp->mfp;
+
+	/*
+	 * An optimistic reader has no pin to protect it, so it must not be
+	 * handed a page it could have to modify or wait for.  Everything
+	 * excluded here is handled by the ordinary path.
+	 */
+	if (ip == NULL || dbmfp->addr != NULL ||
+	    atomic_read(&mfp->multiversion) != 0) {
+		__memp_opt_why[0]++;
+		__memp_opt_flags = (ip == NULL) | ((dbmfp->addr != NULL) << 1) |
+		    ((atomic_read(&mfp->multiversion) != 0) << 2);
+		return (DB_MPOOL_RETRY);
+	}
+
+	mf_offset = R_OFFSET(dbmp->reginfo, mfp);
+	MP_GET_BUCKET(env, mfp, *pgnoaddr, &infop, hp, bucket, ret);
+	if (ret != 0)
+		return (ret);
+	c_mp = infop->primary;
+
+	SH_TAILQ_FOREACH(bhp, &hp->hash_bucket, hq, __bh) {
+		if (bhp->pgno != *pgnoaddr || bhp->mf_offset != mf_offset)
+			continue;
+
+		/*
+		 * Sample the generation FIRST, then check the frame's state.
+		 * If the frame is in flux (odd generation) some thread holds it
+		 * exclusively and the page bytes may be mid-modification: give
+		 * up rather than read them.  A version chain, a dirty frame or
+		 * a freed/frozen/trash frame all mean the ordinary path has
+		 * work to do that a pin-free reader cannot do.
+		 */
+		gen = bhp->gen;
+		if ((gen & BH_GEN_INFLUX) != 0 ||
+		    F_ISSET(bhp, BH_DIRTY | BH_FREED | BH_FROZEN |
+		    BH_TRASH | BH_CALLPGIN | BH_EXCLUSIVE) ||
+		    !SH_CHAIN_SINGLETON(bhp, vc)) {
+			__memp_opt_why[1]++;
+			__memp_opt_flags = bhp->flags;
+			__memp_opt_gen = gen;
+			break;
+		}
+
+		/* Find a free pin slot.  Never grow the array here. */
+		list = R_ADDR(env->reginfo, ip->dbth_pinlist);
+		for (lp = list; lp < &list[ip->dbth_pinmax]; lp++)
+			if (lp->b_ref == INVALID_ROFF)
+				break;
+		if (lp == &list[ip->dbth_pinmax]) {
+			__memp_opt_why[2]++;
+			break;
+		}
+
+		/*
+		 * Publish the pin BEFORE re-reading the generation, and fence
+		 * between: eviction bumps the generation under the exclusive
+		 * latch and then scans the pin lists, so either the evictor
+		 * sees this pin (and skips the frame) or this reader sees the
+		 * bumped generation at validation.  Store-load, so an ARM/PPC
+		 * build needs the explicit fence -- x86 TSO would not.
+		 */
+		lp->b_ref = R_OFFSET(infop, bhp);
+		lp->region = (int)(infop - dbmp->reginfo);
+		ip->dbth_pincount++;
+		__os_atomic_thread_fence();
+
+		if (bhp->gen != gen || bhp->pgno != *pgnoaddr ||
+		    bhp->mf_offset != mf_offset) {
+			lp->b_ref = INVALID_ROFF;
+			ip->dbth_pincount--;
+			break;
+		}
+
+		sample->bhp = bhp;
+		sample->pgno = bhp->pgno;
+		sample->mf_offset = mf_offset;
+		sample->gen = gen;
+		*(void **)addrp = bhp->buf;
+
+		/*
+		 * NO SHARED WRITES BEYOND THIS THREAD'S OWN PIN SLOT.  Two were
+		 * here and both had to go, because the entire premise of this
+		 * path is that a reader dirties no cacheline another core wants:
+		 *
+		 *   ++c_mp->put_counter  -- one word per region, so EVERY reader
+		 *     on every core writes the same line.  It exists so
+		 *     __memp_alloc can tell whether the pool is making progress;
+		 *     an optimistic reader neither pins nor puts, so it has no
+		 *     progress to report.  ThreadSanitizer flagged this, and it is
+		 *     a genuine (if benign-looking) shared write.
+		 *
+		 *   STAT_INC_VERB(... st_cache_hit ...) -- same problem, one
+		 *     counter per MPOOLFILE.  Hits on this path are attributed by
+		 *     the opt_pages counter in bt_search.c, which is
+		 *     process-local.
+		 *
+		 * Anything added here later must answer the same question: which
+		 * cacheline does it dirty, and who else wants it?
+		 */
+		MUTEX_UNLOCK(env, hp->mtx_hash);
+		return (0);
+	}
+
+	MUTEX_UNLOCK(env, hp->mtx_hash);
+	if (bhp == NULL)
+		__memp_opt_why[3]++;
+	return (DB_MPOOL_RETRY);
+}
+
+/*
+ * __memp_fget_opt_valid --
+ *	Has the frame this sample came from stayed exactly as it was?  Anything
+ *	the caller read from the page is trustworthy only if this returns 1.
+ *
+ * PUBLIC: int __memp_fget_opt_valid __P((BH_SAMPLE *));
+ */
+int
+__memp_fget_opt_valid(sample)
+	BH_SAMPLE *sample;
+{
+	return (BH_SAMPLE_VALID(sample) ? 1 : 0);
+}
+
+/*
+ * __memp_fget_opt_release --
+ *	Drop the pin record taken by __memp_fget_opt.  Must be called whether
+ *	or not validation succeeded (the record is what keeps the frame from
+ *	being evicted, and leaking one wedges the frame).
+ *
+ * PUBLIC: void __memp_fget_opt_release __P((ENV *,
+ * PUBLIC:      DB_THREAD_INFO *, BH_SAMPLE *));
+ */
+void
+__memp_fget_opt_release(env, ip, sample)
+	ENV *env;
+	DB_THREAD_INFO *ip;
+	BH_SAMPLE *sample;
+{
+	DB_MPOOL *dbmp;
+	PIN_LIST *list, *lp;
+	roff_t b_ref;
+	int region;
+
+	if (sample->bhp == NULL)
+		return;
+	dbmp = env->mp_handle;
+	region = sample->bhp->region;
+	b_ref = R_OFFSET(&dbmp->reginfo[region], sample->bhp);
+	list = R_ADDR(env->reginfo, ip->dbth_pinlist);
+	for (lp = list; lp < &list[ip->dbth_pinmax]; lp++)
+		if (lp->b_ref == b_ref && lp->region == region) {
+			lp->b_ref = INVALID_ROFF;
+			ip->dbth_pincount--;
+			break;
+		}
+	sample->bhp = NULL;
 }

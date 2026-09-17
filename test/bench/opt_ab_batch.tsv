@@ -1,0 +1,65 @@
+# opt_ab 2026-09-17T20:08:51Z host=ip-172-31-34-155 mode=batch
+# nkeys=2000000 secs=10 warm=3 reps=5 threads=1 8 32 96 batchsz=32
+# home=/tmp/optab homelen=10 build=/tmp/optw/build_unix
+# governor=n/a
+# libdb=d9ed1c717 test/bench: opt_ab.sh -m batch needs a batch SIZE (-B, default 32)
+# ONE binary, ONE home dir, arms differ ONLY by DB_NO_OPTREAD.
+rep=1 RESULT tag=base mode=batch thr=1 batch=32 keys_per_sec=509694 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt mode=batch thr=1 batch=32 keys_per_sec=555911 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=5559200 opt_pages=11118400 opt_invalid=0
+rep=1 RESULT tag=base2 mode=batch thr=1 batch=32 keys_per_sec=483565 batch_p50_us=32.8 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt2 mode=batch thr=1 batch=32 keys_per_sec=571536 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=5715424 opt_pages=11430848 opt_invalid=0
+rep=1 RESULT tag=base mode=batch thr=8 batch=32 keys_per_sec=1835958 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt mode=batch thr=8 batch=32 keys_per_sec=3078622 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0 opt_tries=29382334 opt_pages=58500793 opt_invalid=0
+rep=1 RESULT tag=base2 mode=batch thr=8 batch=32 keys_per_sec=1953482 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt2 mode=batch thr=8 batch=32 keys_per_sec=2914857 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0 opt_tries=27852721 opt_pages=54508752 opt_invalid=0
+rep=1 RESULT tag=base mode=batch thr=32 batch=32 keys_per_sec=2573198 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt mode=batch thr=32 batch=32 keys_per_sec=4552114 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0 opt_tries=22476168 opt_pages=33720596 opt_invalid=0
+rep=1 RESULT tag=base2 mode=batch thr=32 batch=32 keys_per_sec=2599916 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt2 mode=batch thr=32 batch=32 keys_per_sec=4622121 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0 opt_tries=24374872 opt_pages=38967509 opt_invalid=0
+rep=1 RESULT tag=base mode=batch thr=96 batch=32 keys_per_sec=3478294 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt mode=batch thr=96 batch=32 keys_per_sec=7275792 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=46463402 opt_pages=80653703 opt_invalid=0
+rep=1 RESULT tag=base2 mode=batch thr=96 batch=32 keys_per_sec=3479829 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt2 mode=batch thr=96 batch=32 keys_per_sec=7129882 batch_p50_us=262.1 batch_p99_us=524.3 notfound=0 opt_tries=55115143 opt_pages=99227599 opt_invalid=0
+rep=2 RESULT tag=base mode=batch thr=1 batch=32 keys_per_sec=496165 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt mode=batch thr=1 batch=32 keys_per_sec=542714 batch_p50_us=32.8 batch_p99_us=131.1 notfound=0 opt_tries=5427232 opt_pages=10854464 opt_invalid=0
+rep=2 RESULT tag=base2 mode=batch thr=1 batch=32 keys_per_sec=513795 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt2 mode=batch thr=1 batch=32 keys_per_sec=562126 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=5621344 opt_pages=11242688 opt_invalid=0
+rep=2 RESULT tag=base mode=batch thr=8 batch=32 keys_per_sec=1915142 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt mode=batch thr=8 batch=32 keys_per_sec=3166191 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0 opt_tries=30652847 opt_pages=60510375 opt_invalid=0
+rep=2 RESULT tag=base2 mode=batch thr=8 batch=32 keys_per_sec=1921824 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt2 mode=batch thr=8 batch=32 keys_per_sec=2996444 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0 opt_tries=28999018 opt_pages=56565902 opt_invalid=0
+rep=2 RESULT tag=base mode=batch thr=32 batch=32 keys_per_sec=2550589 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt mode=batch thr=32 batch=32 keys_per_sec=4739510 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0 opt_tries=23729649 opt_pages=35898912 opt_invalid=0
+rep=2 RESULT tag=base2 mode=batch thr=32 batch=32 keys_per_sec=2572300 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt2 mode=batch thr=32 batch=32 keys_per_sec=4826419 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0 opt_tries=23768159 opt_pages=34565939 opt_invalid=0
+rep=2 RESULT tag=base mode=batch thr=96 batch=32 keys_per_sec=3471376 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt mode=batch thr=96 batch=32 keys_per_sec=7085677 batch_p50_us=262.1 batch_p99_us=524.3 notfound=0 opt_tries=50828888 opt_pages=89209904 opt_invalid=0
+rep=2 RESULT tag=base2 mode=batch thr=96 batch=32 keys_per_sec=3562824 batch_p50_us=524.3 batch_p99_us=524.3 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt2 mode=batch thr=96 batch=32 keys_per_sec=7102422 batch_p50_us=262.1 batch_p99_us=524.3 notfound=0 opt_tries=53932159 opt_pages=98533472 opt_invalid=0
+rep=3 RESULT tag=base mode=batch thr=1 batch=32 keys_per_sec=501221 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt mode=batch thr=1 batch=32 keys_per_sec=523588 batch_p50_us=32.8 batch_p99_us=131.1 notfound=0 opt_tries=5235936 opt_pages=10471872 opt_invalid=0
+rep=3 RESULT tag=base2 mode=batch thr=1 batch=32 keys_per_sec=493349 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt2 mode=batch thr=1 batch=32 keys_per_sec=568970 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=5689760 opt_pages=11379520 opt_invalid=0
+rep=3 RESULT tag=base mode=batch thr=8 batch=32 keys_per_sec=1900085 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt mode=batch thr=8 batch=32 keys_per_sec=3108333 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0 opt_tries=29507442 opt_pages=58473717 opt_invalid=0
+rep=3 RESULT tag=base2 mode=batch thr=8 batch=32 keys_per_sec=1832909 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt2 mode=batch thr=8 batch=32 keys_per_sec=3176210 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0 opt_tries=30202220 opt_pages=60366666 opt_invalid=0
+rep=3 RESULT tag=base mode=batch thr=32 batch=32 keys_per_sec=2522718 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt mode=batch thr=32 batch=32 keys_per_sec=4717352 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0 opt_tries=23016410 opt_pages=33479233 opt_invalid=0
+rep=3 RESULT tag=base2 mode=batch thr=32 batch=32 keys_per_sec=2531923 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt2 mode=batch thr=32 batch=32 keys_per_sec=4934198 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0 opt_tries=25789440 opt_pages=37272475 opt_invalid=0
+rep=3 RESULT tag=base mode=batch thr=96 batch=32 keys_per_sec=3479467 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt mode=batch thr=96 batch=32 keys_per_sec=7071813 batch_p50_us=262.1 batch_p99_us=524.3 notfound=0 opt_tries=50147669 opt_pages=88255393 opt_invalid=0
+rep=3 RESULT tag=base2 mode=batch thr=96 batch=32 keys_per_sec=3457702 batch_p50_us=524.3 batch_p99_us=1048.6 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt2 mode=batch thr=96 batch=32 keys_per_sec=7352536 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=54906271 opt_pages=98740917 opt_invalid=0
+rep=4 RESULT tag=base mode=batch thr=1 batch=32 keys_per_sec=488740 batch_p50_us=32.8 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt mode=batch thr=1 batch=32 keys_per_sec=552749 batch_p50_us=32.8 batch_p99_us=131.1 notfound=0 opt_tries=5527552 opt_pages=11055104 opt_invalid=0
+rep=4 RESULT tag=base2 mode=batch thr=1 batch=32 keys_per_sec=474803 batch_p50_us=32.8 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt2 mode=batch thr=1 batch=32 keys_per_sec=546870 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=5468768 opt_pages=10937536 opt_invalid=0
+rep=4 RESULT tag=base mode=batch thr=8 batch=32 keys_per_sec=1989830 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt mode=batch thr=8 batch=32 keys_per_sec=3280839 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0 opt_tries=31525592 opt_pages=63576480 opt_invalid=0
+rep=4 RESULT tag=base2 mode=batch thr=8 batch=32 keys_per_sec=1913041 batch_p50_us=65.5 batch_p99_us=131.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt2 mode=batch thr=8 batch=32 keys_per_sec=3151724 batch_p50_us=65.5 batch_p99_us=65.5 notfound=0 opt_tries=30106346 opt_pages=59438714 opt_invalid=0
+rep=4 RESULT tag=base mode=batch thr=32 batch=32 keys_per_sec=2587649 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt mode=batch thr=32 batch=32 keys_per_sec=4990244 batch_p50_us=131.1 batch_p99_us=131.1 notfound=0 opt_tries=26105987 opt_pages=37589522 opt_invalid=0
+rep=4 RESULT tag=base2 mode=batch thr=32 batch=32 keys_per_sec=2590791 batch_p50_us=262.1 batch_p99_us=262.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
