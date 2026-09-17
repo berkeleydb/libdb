@@ -1,0 +1,88 @@
+# opt_ab 2026-09-17T18:50:49Z host=ip-172-31-34-155 mode=indiv
+# nkeys=2000000 secs=10 warm=3 reps=5 threads=1 8 32 96
+# home=/tmp/optab homelen=10 build=/tmp/optw/build_unix
+# governor=n/a
+# libdb=c18a44544 test/bench: opt_ab.sh -- the A/B harness, and pin_bench reports the opt counters
+# ONE binary, ONE home dir, arms differ ONLY by DB_NO_OPTREAD.
+rep=1 RESULT tag=base mode=indiv thr=1 batch=1 keys_per_sec=445683 batch_p50_us=2.0 batch_p99_us=2.0 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt mode=indiv thr=1 batch=1 keys_per_sec=476509 batch_p50_us=1.0 batch_p99_us=2.0 notfound=0 opt_tries=4765135 opt_pages=14295405 opt_invalid=0
+rep=1 RESULT tag=base2 mode=indiv thr=1 batch=1 keys_per_sec=438132 batch_p50_us=2.0 batch_p99_us=4.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt2 mode=indiv thr=1 batch=1 keys_per_sec=450165 batch_p50_us=1.0 batch_p99_us=4.1 notfound=0 opt_tries=4501693 opt_pages=13505079 opt_invalid=0
+rep=1 RESULT tag=base mode=indiv thr=8 batch=1 keys_per_sec=1631005 batch_p50_us=4.1 batch_p99_us=4.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt mode=indiv thr=8 batch=1 keys_per_sec=1523532 batch_p50_us=4.1 batch_p99_us=4.1 notfound=0 opt_tries=14362598 opt_pages=42720887 opt_invalid=0
+rep=1 RESULT tag=base2 mode=indiv thr=8 batch=1 keys_per_sec=1710484 batch_p50_us=4.1 batch_p99_us=4.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt2 mode=indiv thr=8 batch=1 keys_per_sec=1529694 batch_p50_us=4.1 batch_p99_us=4.1 notfound=0 opt_tries=14449858 opt_pages=42860485 opt_invalid=0
+rep=1 RESULT tag=base mode=indiv thr=32 batch=1 keys_per_sec=2400149 batch_p50_us=8.2 batch_p99_us=16.4 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt mode=indiv thr=32 batch=1 keys_per_sec=1873795 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0 opt_tries=15928262 opt_pages=42292522 opt_invalid=0
+rep=1 RESULT tag=base2 mode=indiv thr=32 batch=1 keys_per_sec=2410305 batch_p50_us=8.2 batch_p99_us=16.4 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt2 mode=indiv thr=32 batch=1 keys_per_sec=1881370 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0 opt_tries=15981062 opt_pages=42394582 opt_invalid=0
+rep=1 RESULT tag=base mode=indiv thr=96 batch=1 keys_per_sec=2840345 batch_p50_us=16.4 batch_p99_us=32.8 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt mode=indiv thr=96 batch=1 keys_per_sec=2446851 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=20633461 opt_pages=46286935 opt_invalid=0
+rep=1 RESULT tag=base2 mode=indiv thr=96 batch=1 keys_per_sec=2841169 batch_p50_us=16.4 batch_p99_us=32.8 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=1 RESULT tag=opt2 mode=indiv thr=96 batch=1 keys_per_sec=2439235 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=20420393 opt_pages=45020997 opt_invalid=0
+rep=2 RESULT tag=base mode=indiv thr=1 batch=1 keys_per_sec=437131 batch_p50_us=2.0 batch_p99_us=2.0 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt mode=indiv thr=1 batch=1 keys_per_sec=459298 batch_p50_us=1.0 batch_p99_us=4.1 notfound=0 opt_tries=4593024 opt_pages=13779072 opt_invalid=0
+rep=2 RESULT tag=base2 mode=indiv thr=1 batch=1 keys_per_sec=448099 batch_p50_us=2.0 batch_p99_us=2.0 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt2 mode=indiv thr=1 batch=1 keys_per_sec=456556 batch_p50_us=1.0 batch_p99_us=4.1 notfound=0 opt_tries=4565609 opt_pages=13696827 opt_invalid=0
+rep=2 RESULT tag=base mode=indiv thr=8 batch=1 keys_per_sec=1660652 batch_p50_us=4.1 batch_p99_us=4.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt mode=indiv thr=8 batch=1 keys_per_sec=1428540 batch_p50_us=4.1 batch_p99_us=8.2 notfound=0 opt_tries=13485595 opt_pages=40335355 opt_invalid=0
+rep=2 RESULT tag=base2 mode=indiv thr=8 batch=1 keys_per_sec=1668541 batch_p50_us=4.1 batch_p99_us=4.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt2 mode=indiv thr=8 batch=1 keys_per_sec=1427657 batch_p50_us=4.1 batch_p99_us=8.2 notfound=0 opt_tries=13505215 opt_pages=40516742 opt_invalid=0
+rep=2 RESULT tag=base mode=indiv thr=32 batch=1 keys_per_sec=2450244 batch_p50_us=8.2 batch_p99_us=16.4 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt mode=indiv thr=32 batch=1 keys_per_sec=1854858 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0 opt_tries=16350132 opt_pages=45128147 opt_invalid=0
+rep=2 RESULT tag=base2 mode=indiv thr=32 batch=1 keys_per_sec=2387581 batch_p50_us=8.2 batch_p99_us=16.4 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt2 mode=indiv thr=32 batch=1 keys_per_sec=1840805 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0 opt_tries=15929087 opt_pages=42954520 opt_invalid=0
+rep=2 RESULT tag=base mode=indiv thr=96 batch=1 keys_per_sec=2811189 batch_p50_us=16.4 batch_p99_us=32.8 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt mode=indiv thr=96 batch=1 keys_per_sec=2438132 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=20431298 opt_pages=45464535 opt_invalid=0
+rep=2 RESULT tag=base2 mode=indiv thr=96 batch=1 keys_per_sec=2856329 batch_p50_us=16.4 batch_p99_us=32.8 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=2 RESULT tag=opt2 mode=indiv thr=96 batch=1 keys_per_sec=2450287 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=20509614 opt_pages=45768217 opt_invalid=0
+rep=3 RESULT tag=base mode=indiv thr=1 batch=1 keys_per_sec=446200 batch_p50_us=2.0 batch_p99_us=2.0 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt mode=indiv thr=1 batch=1 keys_per_sec=458261 batch_p50_us=1.0 batch_p99_us=4.1 notfound=0 opt_tries=4582662 opt_pages=13747986 opt_invalid=0
+rep=3 RESULT tag=base2 mode=indiv thr=1 batch=1 keys_per_sec=422399 batch_p50_us=2.0 batch_p99_us=4.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt2 mode=indiv thr=1 batch=1 keys_per_sec=455702 batch_p50_us=1.0 batch_p99_us=4.1 notfound=0 opt_tries=4557069 opt_pages=13671207 opt_invalid=0
+rep=3 RESULT tag=base mode=indiv thr=8 batch=1 keys_per_sec=1757041 batch_p50_us=4.1 batch_p99_us=4.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt mode=indiv thr=8 batch=1 keys_per_sec=1408990 batch_p50_us=4.1 batch_p99_us=8.2 notfound=0 opt_tries=13220589 opt_pages=39090747 opt_invalid=0
+rep=3 RESULT tag=base2 mode=indiv thr=8 batch=1 keys_per_sec=1665368 batch_p50_us=4.1 batch_p99_us=4.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt2 mode=indiv thr=8 batch=1 keys_per_sec=1448066 batch_p50_us=4.1 batch_p99_us=8.2 notfound=0 opt_tries=13710352 opt_pages=40908249 opt_invalid=0
+rep=3 RESULT tag=base mode=indiv thr=32 batch=1 keys_per_sec=2445180 batch_p50_us=8.2 batch_p99_us=16.4 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt mode=indiv thr=32 batch=1 keys_per_sec=1789585 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0 opt_tries=15396726 opt_pages=41611648 opt_invalid=0
+rep=3 RESULT tag=base2 mode=indiv thr=32 batch=1 keys_per_sec=2259338 batch_p50_us=8.2 batch_p99_us=16.4 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt2 mode=indiv thr=32 batch=1 keys_per_sec=1857167 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0 opt_tries=15792146 opt_pages=41952055 opt_invalid=0
+rep=3 RESULT tag=base mode=indiv thr=96 batch=1 keys_per_sec=2840518 batch_p50_us=16.4 batch_p99_us=32.8 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt mode=indiv thr=96 batch=1 keys_per_sec=2419863 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=18601072 opt_pages=40101938 opt_invalid=0
+rep=3 RESULT tag=base2 mode=indiv thr=96 batch=1 keys_per_sec=2848851 batch_p50_us=16.4 batch_p99_us=32.8 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=3 RESULT tag=opt2 mode=indiv thr=96 batch=1 keys_per_sec=2462187 batch_p50_us=32.8 batch_p99_us=65.5 notfound=0 opt_tries=20457976 opt_pages=44797170 opt_invalid=0
+rep=4 RESULT tag=base mode=indiv thr=1 batch=1 keys_per_sec=446969 batch_p50_us=2.0 batch_p99_us=2.0 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt mode=indiv thr=1 batch=1 keys_per_sec=469150 batch_p50_us=1.0 batch_p99_us=2.0 notfound=0 opt_tries=4691550 opt_pages=14074650 opt_invalid=0
+rep=4 RESULT tag=base2 mode=indiv thr=1 batch=1 keys_per_sec=420378 batch_p50_us=2.0 batch_p99_us=4.1 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt2 mode=indiv thr=1 batch=1 keys_per_sec=450036 batch_p50_us=1.0 batch_p99_us=4.1 notfound=0 opt_tries=4500407 opt_pages=13501221 opt_invalid=0
+rep=4 RESULT tag=base mode=indiv thr=8 batch=1 keys_per_sec=1600690 batch_p50_us=4.1 batch_p99_us=8.2 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt mode=indiv thr=8 batch=1 keys_per_sec=1458902 batch_p50_us=4.1 batch_p99_us=4.1 notfound=0 opt_tries=13758133 opt_pages=41087929 opt_invalid=0
+rep=4 RESULT tag=base2 mode=indiv thr=8 batch=1 keys_per_sec=1581758 batch_p50_us=4.1 batch_p99_us=8.2 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt2 mode=indiv thr=8 batch=1 keys_per_sec=1426555 batch_p50_us=4.1 batch_p99_us=8.2 notfound=0 opt_tries=13386919 opt_pages=39692500 opt_invalid=0
+rep=4 RESULT tag=base mode=indiv thr=32 batch=1 keys_per_sec=2377056 batch_p50_us=8.2 batch_p99_us=16.4 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt mode=indiv thr=32 batch=1 keys_per_sec=1897662 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0 opt_tries=16660256 opt_pages=45528986 opt_invalid=0
+rep=4 RESULT tag=base2 mode=indiv thr=32 batch=1 keys_per_sec=2404302 batch_p50_us=8.2 batch_p99_us=16.4 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 RESULT tag=opt2 mode=indiv thr=32 batch=1 keys_per_sec=1895261 batch_p50_us=16.4 batch_p99_us=16.4 notfound=0 opt_tries=16024031 opt_pages=41968706 opt_invalid=0
+rep=4 RESULT tag=base mode=indiv thr=96 batch=1 keys_per_sec=2839120 batch_p50_us=16.4 batch_p99_us=32.8 notfound=0 opt_tries=0 opt_pages=0 opt_invalid=0
+rep=4 FAIL tag=opt mode=indiv thr=96 warmup window failed
+FAIL tag=opt 1 point(s) produced no verdict
+rep=4 FAIL tag=base2 thr=96 no output
+rep=4 FAIL tag=opt2 thr=96 no output
+rep=5 FAIL tag=base thr=1 no output
+rep=5 FAIL tag=opt thr=1 no output
+rep=5 FAIL tag=base2 thr=1 no output
+rep=5 FAIL tag=opt2 thr=1 no output
+rep=5 FAIL tag=base thr=8 no output
+rep=5 FAIL tag=opt thr=8 no output
+rep=5 FAIL tag=base2 thr=8 no output
+rep=5 FAIL tag=opt2 thr=8 no output
+rep=5 FAIL tag=base thr=32 no output
+rep=5 FAIL tag=opt thr=32 no output
+rep=5 FAIL tag=base2 thr=32 no output
+rep=5 FAIL tag=opt2 thr=32 no output
+rep=5 FAIL tag=base thr=96 no output
+rep=5 FAIL tag=opt thr=96 no output
+rep=5 FAIL tag=base2 thr=96 no output
+rep=5 FAIL tag=opt2 thr=96 no output
+# done 2026-09-17T19:21:40Z
