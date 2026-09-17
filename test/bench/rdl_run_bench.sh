@@ -29,8 +29,12 @@ for rep in $(seq 1 $REPS); do
 		for iso in $ISOS; do
 			find $S -mindepth 1 -delete
 			printf "rep=%s " "$rep"
-			timeout 900 $BIN $rg $iso $NKEYS $SECS $S $THREADS \
-			    2>/dev/null | grep -v setup || echo "ARM FAILED $rg $iso"
+			if ! timeout 900 $BIN $rg $iso $NKEYS $SECS $S $THREADS \
+			    2>/tmp/rdl_arm_err.txt | grep -v setup; then
+				echo "ARM FAILED $rg $iso -- stderr:"
+				head -5 /tmp/rdl_arm_err.txt
+				exit 1
+			fi
 		done
 	done
 done

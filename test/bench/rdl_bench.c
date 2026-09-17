@@ -204,6 +204,16 @@ run(int nthreads, double secs)
 	}
 	dur = now_sec() - t0;
 
+	/*
+	 * Anti-vacuity: an arm where every op errored would post ops/sec=0 with a
+	 * clean-looking counter row.  Refuse to report it.
+	 */
+	if (total == 0) {
+		fprintf(stderr, "FAIL arm measured nothing: 0 ops, %llu errs\n",
+		    (unsigned long long)errs);
+		exit(1);
+	}
+
 	(void)env->lock_stat(env, &lk, 0);
 	(void)env->memp_stat(env, &mp, NULL, 0);
 
