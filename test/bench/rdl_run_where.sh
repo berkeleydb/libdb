@@ -27,31 +27,43 @@ cat >/tmp/rdl_where.gdb <<'EOF'
 set pagination off
 set confirm off
 set breakpoint pending on
+set $nlget = 0
+set $nlockget = 0
 # Arm the counters only across the single measured read.
-break rdl_where.c:97
+break rdl_mark_begin
 commands
   silent
   printf "GDB armed\n"
   break __db_lget
   commands
     silent
-    printf "LGET pgno=%u mode=%d action=%d\n", pgno, mode, action
+    set $nlget = $nlget + 1
+    printf "LGET #%d pgno=%u mode=%d action=%d\n", $nlget, pgno, mode, action
     continue
   end
-  break __lock_get
+  break __lock_get_internal
   commands
     silent
-    printf "LOCKGET mode=%d\n", mode
+    set $nlockget = $nlockget + 1
+    printf "LOCKGETINT #%d mode=%d\n", $nlockget, lock_mode
+    continue
+  end
+  # Show the page number the descent settled on, and its level/type.
+  break rdl_mark_end
+  commands
+    silent
+    printf "COUNTS lget=%d lock_get_internal=%d\n", $nlget, $nlockget
     continue
   end
   continue
 end
 run -h /tmp/rdl-where/env ARGPLACEHOLDER
+printf "FINAL lget=%d lock_get_internal=%d\n", $nlget, $nlockget
 quit
 EOF
 sed -i "s|ARGPLACEHOLDER|$ARG|" /tmp/rdl_where.gdb
 
 echo "=== MODE=$MODE ==="
 timeout 900 gdb -q -batch -x /tmp/rdl_where.gdb $OUT 2>&1 |
-    grep -E "RDLW|LGET|LOCKGET|GDB armed|FAIL|Locker|READ|WRITE|page" |
+    grep -E "RDLW|LGET|LOCKGETINT|COUNTS|FINAL|armed|FAIL|Error" |
     sed -n '1,80p'
