@@ -94,7 +94,14 @@ echo "=== arm 3: sabotaged library (BH.gen never bumped) -- MUST FAIL arm 1"
 SAB=$WORK/sab
 mkdir -p "$SAB"
 # Copy the source tree (not the build) and break exactly one macro.
-tar -C "$SRC" -cf - src dist 2>/dev/null | tar -C "$SAB" -xf -
+#
+# test/ must come along: configure substitutes test/tcl/include.tcl and dies with
+# "cannot find input file" without it, so a src+dist-only copy fails to configure
+# and the arm reports "sabotaged build failed" -- which looks like the sabotage
+# working when it is really the harness broken.  Copy the whole tree except
+# build directories (which are large and would be stale here anyway).
+tar -C "$SRC" -cf - --exclude='build_*' --exclude='.git' . 2>/dev/null |
+    tar -C "$SAB" -xf -
 python3 - "$SAB/src/dbinc/mp.h" <<'PYEOF'
 import sys
 p = sys.argv[1]
@@ -106,8 +113,16 @@ open(p, "w").write(s.replace(old, "\t/* SABOTAGED: no generation bump. */\t\t\t\
 PYEOF
 mkdir -p "$SAB/build_unix"
 ( cd "$SAB/build_unix" && "$SAB/dist/configure" --enable-diagnostic \
-    > conf.log 2>&1 && make -j"$(nproc)" > build.log 2>&1 ) ||
-    fail "sabotaged build failed (see $SAB/build_unix/build.log)"
+    > conf.log 2>&1 ) || {
+	echo "--- tail of $SAB/build_unix/conf.log:" >&2
+	tail -10 "$SAB/build_unix/conf.log" >&2
+	fail "sabotaged configure failed"
+}
+( cd "$SAB/build_unix" && make -j"$(nproc)" > build.log 2>&1 ) || {
+	echo "--- tail of $SAB/build_unix/build.log:" >&2
+	tail -20 "$SAB/build_unix/build.log" >&2
+	fail "sabotaged build failed"
+}
 test -f "$SAB/build_unix/libdb.a" || fail "sabotaged libdb.a missing"
 build_probe "$SAB/build_unix/libdb.a" "$WORK/opt_fires_sab"
 find "$HOME_DIR" -mindepth 1 -delete
