@@ -7,7 +7,7 @@
 # test whose source fails prints an error and the interpreter still exits 0).
 set -u
 W=/home/admin/rdl-wt
-B=${B:-$W/bu}
+B=${B:-$W/btcl}
 TCLSH=${TCLSH:-tclsh}
 OUT=/tmp/rdl_ssi_tcl.txt
 SCRIPT=/tmp/rdl_ssi.tcl
