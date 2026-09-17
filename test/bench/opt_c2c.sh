@@ -11,13 +11,23 @@
 #
 # Produces, for each arm (base = DB_NO_OPTREAD, opt):
 #   $OUT/<arm>.perf.txt   perf record -g, symbol self-time, for the pin's share
-#   $OUT/<arm>.c2c.txt    perf c2c report, for HITM (cross-core dirty-line reads)
+#   $OUT/<arm>.c2c.txt    perf c2c report, when the PMU supports it
+#   $OUT/<arm>.rfo.txt    l2_rqsts.rfo_miss counters (the portable fallback)
 #
-# HOW TO READ THE C2C OUTPUT.  The number that matters is the count of remote
-# HITMs on the BH cachelines: an optimistic reader that writes nothing to a
-# frame cannot appear as the writer of a line another core then reads.  Compare
-# the "Load HITMs" totals between arms; opt should be materially lower, and the
-# BH-attributed entries should lose their store side.
+# perf c2c NEEDS PEBS MEMORY EVENTS, which a virtualized instance usually does
+# not expose: it fails with "memory events not supported" and produces nothing.
+# Measured, not assumed -- it failed on the c7i-class box this was developed on.
+# So the primary evidence here is the RFO counter, which is available:
+#
+#   l2_rqsts.rfo_miss  -- Read-For-Ownership requests that MISS L2.  An RFO is
+#     issued when this core needs a line in a writable state; it misses L2
+#     exactly when another core owns the line.  That IS the cross-core
+#     write-sharing this RFC claims to remove, counted in hardware.  A reader
+#     that writes nothing to a shared frame cannot generate an RFO for it.
+#
+# Normalize by keys/sec before comparing: the faster arm does more work per
+# second, so raw counts understate the improvement.  The figure to report is
+# RFO misses PER READ.
 #
 # Usage: ./opt_c2c.sh [-b BUILD] [-o OUTDIR] [-t THREADS] [-s SECS] [-k NKEYS]
 set -e
@@ -74,17 +84,29 @@ run_arm() {
 	echo "--- top self time ($arm)"
 	grep -E "^ +[0-9]+\.[0-9]+%" "$OUT/$arm.perf.txt" | head -12 || true
 
-	echo "=== $arm: perf c2c (cacheline sharing)"
+	echo "=== $arm: RFO misses (cross-core write sharing, in hardware)"
+	env $extra PIN_HOME="$HOME_DIR" PIN_TAG="$arm-rfo" \
+	    PIN_CACHE_MB="${OPT_AB_CACHE_MB:-4096}" \
+	    perf stat -e l2_rqsts.rfo_miss,l2_rqsts.all_rfo,cache-misses -- \
+	    "$BIN" indiv "$NKEYS" 1 3 "$SECS" "$THREADS" \
+	    > "$OUT/$arm.rfo.txt" 2>&1 || true
+	grep -E "^(RESULT|FAIL)|rfo_miss|all_rfo|cache-misses|seconds time" \
+	    "$OUT/$arm.rfo.txt" || true
+
+	echo "=== $arm: perf c2c (only if the PMU exposes memory events)"
 	env $extra PIN_HOME="$HOME_DIR" PIN_TAG="$arm-c2c" \
 	    PIN_CACHE_MB="${OPT_AB_CACHE_MB:-4096}" \
 	    perf c2c record -q -o "$OUT/$arm.c2c.data" -- \
 	    "$BIN" indiv "$NKEYS" 1 3 "$SECS" "$THREADS" \
 	    > "$OUT/$arm.c2cbench.txt" 2>&1 || true
-	perf c2c report -i "$OUT/$arm.c2c.data" --stdio \
-	    > "$OUT/$arm.c2c.txt" 2>&1 || true
-	echo "--- c2c summary ($arm)"
-	sed -n '1,40p' "$OUT/$arm.c2c.txt" | grep -Ei \
-	    "hitm|load operations|store operations|shared cache" || true
+	if [ -f "$OUT/$arm.c2c.data" ]; then
+		perf c2c report -i "$OUT/$arm.c2c.data" --stdio \
+		    > "$OUT/$arm.c2c.txt" 2>&1 || true
+		sed -n '1,40p' "$OUT/$arm.c2c.txt" | grep -Ei \
+		    "hitm|load operations|store operations" || true
+	else
+		echo "  (skipped: $(head -1 "$OUT/$arm.c2cbench.txt" 2>/dev/null))"
+	fi
 }
 
 # Arms alternate here too, so a drift over the capture cannot be read as an arm
