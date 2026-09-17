@@ -1,6 +1,6 @@
 # RFC 0007: Optimistic read-path page validation (removing the shared pin refcount)
 
-- **Status:** Draft
+- **Status:** Phase 1 implemented and measured (see Decision)
 - **Type:** Prospective
 - **Author:** libdb maintainers
 - **Date:** 2026-09-17
@@ -273,10 +273,105 @@ Required before any merge:
 
 ## Decision
 
-*(Filled by the reviewer when the RFC is decided.)*
+- **Decision:** **Phase 1 IMPLEMENTED and MEASURED** on
+  `perf/optimistic-reads`; **accepted for the batched read path, and for the
+  per-key path to 32 threads. NOT recommended as a default yet** because the
+  per-key path regresses at 96 threads for a reason outside this RFC (below).
+  Phase 0 was already resolved; the two blockers named above are now answered:
+  the generation-width/ABA question and the phase-1 measurement
+  (`test/bench/OPTIMISTIC-READS-2026-09.md`).
 
-- **Decision:** Pending — Draft. Phase 0 is **resolved** (a generation fits in
-  existing padding with an unchanged environment signature). Now blocked on the
-  generation-width/ABA argument and on the phase-1 measurement.
-- **Rationale:** —
-- **Conditions / follow-ups:** —
+- **Rationale:**
+
+  *The premise held.* The pin atomics leave the profile entirely: at t=96
+  `__os_atomic_read` falls from 20.8% of self time to below a 1% cutoff,
+  `__os_atomic_dec` from 5.4% to below cutoff, `__memp_fget` from 12.4% to below
+  cutoff. Pin operations per read fall from `levels-1` to exactly 1 (only the
+  leaf is pinned and locked); measured `opt_pages/opt_tries` is 2.0.
+
+  *Throughput, dedicated 96-vCPU box, 4-5 reps, arms alternating within each rep,
+  noise floor (base vs base2) under 0.5% at t>=8:*
+
+  | path | t=1 | t=8 | t=32 | t=96 |
+  |---|---:|---:|---:|---:|
+  | per-key `DB->get` | 1.09x | 1.26x | **1.71x** | **0.77x** |
+  | batched `db_get_multiple` (32) | - | - | - | **2.03x** |
+
+  At t=32 the per-key path does 1.71x the reads while performing **0.57x** the
+  pinned page-touches.
+
+  *The t=96 per-key regression is measured, not speculated, and is not this
+  change.* `perf --call-graph dwarf`: 82% of time in `__db_tas_mutex_lock_int`,
+  of which 41% is under `__dbc_close` and 40% under `__db_cursor_int` -- the
+  cursor-lifecycle mutex, reached from `__db_get`. A faster descent arrives
+  there more often per second, converting a page-pin bottleneck into a
+  cursor-lifecycle one. The identical code on the batched API, which does not pay
+  per-key cursor open/close, is 2.03x at the same thread count. This is the same
+  wall `PIN-REMEASURE-2026-09.md` hit from the other side (the pin was only 2.4%
+  of self time until that mutex left the batched path).
+
+  *Risk 3 (ABA) -- answered.* 7-bit counter + 1 in-flux bit in the single spare
+  byte, with validation comparing the full tuple `(gen, pgno, mf_offset)` and
+  `gen` never reset on frame reuse. Taking a second byte from `BH.flags` was
+  rejected: the flags word takes a non-atomic read-modify-write under a merely
+  SHARED latch (`__memp_pgwrite` clears `BH_DIRTY` that way), so a generation
+  living there could be lost to a racing `F_CLR`. **Stated residual:** the frame
+  must be exclusively acquired a nonzero multiple of 128 times *and* be hosting
+  the same `(pgno, mf_offset)` at validation, all inside one reader's
+  pre-validation window of a few hundred instructions.
+
+  *Risk 4 (dead process's pin) -- answered, with teeth.* `__memp_bh_pinned`
+  disregards a pin whose owner fails `is_alive`. The first version of that test
+  was VACUOUS (a cursor also holds `bhp->ref`, which eviction already respects,
+  so both arms passed at 160 stranded frames); the shipped test drives
+  `__memp_bh_pinned` directly and flips only the owner's liveness. A build with
+  the `is_alive` check removed fails it.
+
+  *Risk 5 (memory ordering) -- answered per architecture.*
+  `__os_atomic_thread_fence()` is seq-cst on every backend, so the argument is
+  not an x86-TSO argument: ARM64 gets `dmb ish`, PowerPC `sync`, RISC-V
+  `fence rw,rw`. The subtle edge is store-load: the reader publishes its pin
+  record *before* re-reading the generation, which is what makes the eviction
+  handshake (bump under exclusive latch, then scan pin lists) airtight.
+
+  *Risk 6 (torn reads) -- bounded.* `__bam_opt_child` is the only code touching an
+  unvalidated page: reads confined to the frame, `HOFFSET`/index-array/`BINTERNAL`
+  bounds-checked before any dereference, no page pointer followed (an overflow
+  key bails), nothing written. `bt_compare` is called only with a DBT inside the
+  frame, so torn bytes can produce a wrong answer that validation discards, but
+  not a fault.
+
+  *Risk 2 (eviction pin scan) -- acceptable.* `__memp_bh_pinned` is O(threads),
+  off the hot path, and did not appear in any profile.
+
+  *Two things source review missed and measurement caught*, recorded because they
+  are the reason this RFC's evidence bar exists:
+  1. The "pin-free" path performed **shared writes** -- `++c_mp->put_counter`
+     (one word per region, dirtied by every reader on every core) and a
+     per-MPOOLFILE stat counter. ThreadSanitizer found the first. Removed.
+  2. The first design **preempted** the existing `rsnap` root snapshot instead of
+     composing with it, so the A/B was measuring "optimistic descent vs root
+     snapshot" -- and the snapshot was winning (0.87x at t=8, 0.78x at t=32; raw
+     data kept in `test/bench/opt_ab_v1_preempt.tsv`). Now the snapshot supplies
+     the root's child and the optimistic walk covers the remaining interior
+     levels; `pages_per_read` fell 0.88 -> 0.16, i.e. the root fetch is gone
+     rather than merely cheaper.
+
+- **Conditions / follow-ups:**
+  1. **Do not enable by default until the cursor-lifecycle mutex is addressed.**
+     It is now the t=96 wall on the per-key path and is outside this RFC.
+     `DB_NO_OPTREAD` makes the path inert.
+  2. **Next target: the bucket mutex.** `__memp_fget_opt` still read-locks
+     `hp->mtx_hash` to walk the hash chain safely, trading one atomic on the
+     *frame* for one on the *bucket*. Favourable (the bucket line is contended by
+     a fraction of the readers of a given page) and confirmed by the profile, but
+     it is why the win is 1.7x rather than what "71.9% is the pin" would suggest.
+  3. **Phase 2 callers** (Hash/Recno, internal-node traversal) each need their own
+     retry site and their own measurement. None added here.
+  4. **TSan cannot gate this code.** Baseline 315 races vs 310 on the branch;
+     libdb's shared-region mutexes are invisible to it. Useful diagnostically
+     (it found the `put_counter` write) but not as a pass/fail gate.
+  5. Precondition worth documenting for users: the optimistic path requires
+     `DB_ENV->set_thread_count` (the pin list lives in the thread region, which is
+     allocated only when `thr_max != 0`). Without it the path correctly refuses to
+     engage -- silently. It bailed on 100% of descents before this was found.
