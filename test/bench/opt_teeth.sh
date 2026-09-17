@@ -49,7 +49,7 @@ trap cleanup 0 1 2 3 13 15
 
 LIBS="-lpthread"
 # liburing is linked into libdb.a on Linux builds that detected it.
-if grep -q "HAVE_OS_AIO_URING" "$BUILD/db_config.h" 2>/dev/null; then
+if grep -q "HAVE_IO_URING" "$BUILD/db_config.h" 2>/dev/null; then
 	LIBS="$LIBS -luring"
 fi
 
