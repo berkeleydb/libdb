@@ -65,6 +65,18 @@ isolation	g2_antidep@snapshot-default
 isolation	g2_antidep@snapshot-1
 isolation	g2_antidep@serializable-default
 isolation	g2_antidep@serializable-1
+# phantom_pages is the executable gate on D10 (phantom prevention is emergent
+# from page-granularity co-location).  Unlike g2_antidep -- whose two inserts
+# land on the SAME leaf and are therefore stopped by an ordinary page write lock
+# at BOTH isolation levels, so it proves nothing about the SSI read set -- this
+# scenario puts the two inserts on DIFFERENT leaves, so only the scan's SIREAD
+# marker can prevent both from committing.  si_anomaly=1: it MUST show the
+# anomaly under DB_TXN_SNAPSHOT and MUST prevent it under DB_TXN_SERIALIZABLE,
+# which is the anti-vacuity control.
+isolation	phantom_pages@snapshot-default
+isolation	phantom_pages@snapshot-1
+isolation	phantom_pages@serializable-default
+isolation	phantom_pages@serializable-1
 isolation	read_only_anomaly@snapshot-default
 isolation	read_only_anomaly@snapshot-1
 isolation	read_only_anomaly@serializable-default
