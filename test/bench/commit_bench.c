@@ -54,6 +54,26 @@ static DB *db;
 static volatile int stop;
 static int nthreads, secs, txnflag;
 static unsigned keyrange = 1000000;
+/*
+ * BATCH and PAGESIZE are the two APPLICATION-LEVEL levers on the metadata
+ * allocation ceiling characterised in BTREE-LOCK-SCOPE-2026-09.md.  Page
+ * allocation holds PGNO_BASE_MD's write lock to commit (2PL), so the engine can
+ * retire at most one *allocating transaction* per durable commit.  BATCH puts
+ * more inserts under one such hold; PAGESIZE makes fewer inserts need one.
+ * Neither requires a library change -- they exist to test whether one is
+ * needed.
+ */
+static unsigned batch = 1;
+static unsigned pagesize;
+/*
+ * LSC_BULK=1 adds DB_TXN_BULK to txn_begin.  That flag already exists
+ * (src/txn/txn.c:374 -> TXN_BULK) and suppresses logging of updates to pages
+ * ABOVE a per-file extension watermark, flushing those pages at commit
+ * instead.  Testing it here answers the assignment's "an existing bulk-load
+ * fast path that simply is not being used" candidate with a measurement rather
+ * than a code read.
+ */
+static int bulkflag;
 
 /*
  * Prepopulate the key range so the measured window is steady state.
@@ -110,6 +130,8 @@ struct tstate {
 	pthread_t th;
 	int id;
 	unsigned long commits;
+	unsigned long inserts;		/* commits * batch */
+	unsigned long deadlocks;
 	unsigned long *lat;		/* whole txn: begin+put+commit, us */
 	unsigned long *lat_begin;	/* txn_begin alone */
 	unsigned long *lat_put;		/* db->put alone (takes page locks) */
@@ -135,39 +157,66 @@ worker(void *arg)
 	char kbuf[32], dbuf[128];
 	unsigned int seed = (unsigned int)(s->id * 7919 + 13);
 	double t0, tb, tp, t1;
+	unsigned nb, kbase;
 	int ret;
 
 	memset(dbuf, 'x', sizeof(dbuf));
 	while (!stop) {
-		(void)snprintf(kbuf, sizeof(kbuf), "%010u",
-		    (unsigned)(rand_r(&seed) % keyrange));
+		kbase = (unsigned)(rand_r(&seed) % keyrange);
+		(void)snprintf(kbuf, sizeof(kbuf), "%010u", kbase);
 		memset(&key, 0, sizeof(key));
 		memset(&data, 0, sizeof(data));
 		key.data = kbuf; key.size = (u_int32_t)strlen(kbuf);
 		data.data = dbuf; data.size = sizeof(dbuf);
 
 		t0 = now();
-		if ((ret = env->txn_begin(env, NULL, &txn, txnflag)) != 0) {
+		if ((ret = env->txn_begin(env, NULL, &txn,
+		    txnflag | bulkflag)) != 0) {
 			fprintf(stderr, "txn_begin: %s\n", db_strerror(ret));
 			exit(1);
 		}
 		tb = now();
-		if ((ret = db->put(db, txn, &key, &data, 0)) != 0) {
+		for (nb = 0; nb < batch; nb++) {
+			if (nb != 0) {
+				/*
+				 * CONSECUTIVE keys inside a batch.  Random keys
+				 * inside one txn give cross-leaf lock cycles
+				 * and the run deadlocks; consecutive keys are
+				 * both what a bulk load actually does and
+				 * mostly one leaf per batch.
+				 */
+				(void)snprintf(kbuf, sizeof(kbuf), "%010u",
+				    (unsigned)((kbase + nb) % keyrange));
+				memset(&key, 0, sizeof(key));
+				memset(&data, 0, sizeof(data));
+				key.data = kbuf;
+				key.size = (u_int32_t)strlen(kbuf);
+				data.data = dbuf; data.size = sizeof(dbuf);
+			}
+			if ((ret = db->put(db, txn, &key, &data, 0)) != 0)
+				break;
+		}
+		if (ret != 0) {
 			(void)txn->abort(txn);
-			if (ret == DB_LOCK_DEADLOCK)
+			if (ret == DB_LOCK_DEADLOCK) {
+				s->deadlocks++;
 				continue;
+			}
 			fprintf(stderr, "put: %s\n", db_strerror(ret));
 			exit(1);
 		}
 		tp = now();
 		if ((ret = txn->commit(txn, 0)) != 0) {
-			if (ret == DB_LOCK_DEADLOCK)
+			if (ret == DB_LOCK_DEADLOCK) {
+				s->deadlocks++;
 				continue;
+			}
 			fprintf(stderr, "commit: %s\n", db_strerror(ret));
 			exit(1);
 		}
 		t1 = now();
 		s->commits++;
+		s->inserts += batch;
 		if (s->nlat < MAXLAT) {
 			s->lat_begin[s->nlat] = (unsigned long)((tb - t0) * 1e6);
 			s->lat_put[s->nlat] = (unsigned long)((tp - tb) * 1e6);
@@ -210,7 +259,7 @@ int
 main(int argc, char **argv)
 {
 	DB_LOG_STAT *lsp;
-	unsigned long total, *all, nall, i, j;
+	unsigned long total, *all, nall, ninserts, ndl, i, j;
 	double t0, elapsed;
 	const char *mode;
 	int ret;
@@ -227,6 +276,15 @@ main(int argc, char **argv)
 	{ const char *kr = getenv("KEYRANGE");
 	  if (kr != NULL && atoi(kr) > 0)
 		keyrange = (unsigned)atoi(kr); }
+	{ const char *bt = getenv("BATCH");
+	  if (bt != NULL && atoi(bt) > 0)
+		batch = (unsigned)atoi(bt); }
+	{ const char *ps = getenv("PAGESIZE");
+	  if (ps != NULL && atoi(ps) > 0)
+		pagesize = (unsigned)atoi(ps); }
+	{ const char *bk = getenv("LSC_BULK");
+	  if (bk != NULL && atoi(bk) != 0)
+		bulkflag = DB_TXN_BULK; }
 	if (strcmp(mode, "nosync") == 0)
 		txnflag = DB_TXN_NOSYNC;
 	else if (strcmp(mode, "wrnosync") == 0)
@@ -240,12 +298,21 @@ main(int argc, char **argv)
 	(void)env->set_lk_max_lockers(env, 20000);
 	(void)env->set_lk_max_locks(env, 200000);
 	(void)env->set_lk_max_objects(env, 200000);
+	/*
+	 * BATCH>1 makes cross-leaf lock cycles reachable.  With no detector the
+	 * run does not report a deadlock, it HANGS -- observed, BATCH=5 emitted
+	 * nothing and had to be killed.  Aborts are counted and printed so a
+	 * batched row cannot hide a workload that is mostly rolling back.
+	 */
+	(void)env->set_lk_detect(env, DB_LOCK_DEFAULT);
 	(void)env->set_lg_bsize(env, 8 * 1024 * 1024);
 	env->set_errfile(env, stderr);
 	if ((ret = env->open(env, argv[1], DB_CREATE | DB_INIT_LOCK |
 	    DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_THREAD, 0644)) != 0)
 		goto err;
 	if ((ret = db_create(&db, env, 0)) != 0)
+		goto err;
+	if (pagesize != 0 && (ret = db->set_pagesize(db, pagesize)) != 0)
 		goto err;
 	if ((ret = db->open(db, NULL, "bench.db", NULL, DB_BTREE,
 	    DB_CREATE | DB_AUTO_COMMIT | DB_THREAD, 0644)) != 0)
@@ -297,9 +364,11 @@ main(int argc, char **argv)
 	if ((ret = env->log_stat(env, &lsp, 0)) != 0)
 		goto err;
 
-	total = nall = 0;
+	total = nall = ninserts = ndl = 0;
 	for (i = 0; i < (unsigned long)nthreads; i++) {
 		total += ts[i].commits;
+		ninserts += ts[i].inserts;
+		ndl += ts[i].deadlocks;
 		nall += ts[i].nlat;
 	}
 	if ((all = malloc((nall ? nall : 1) * sizeof(unsigned long))) == NULL)
@@ -322,6 +391,9 @@ main(int argc, char **argv)
 	    nall ? all[nall * 50 / 100] : 0,
 	    nall ? all[nall * 99 / 100] : 0,
 	    nall ? all[(nall * 999) / 1000] : 0);
+	printf("BATCH batch=%u inserts=%lu inserts_sec=%.0f pagesize=%u "
+	    "bulk=%d deadlocks=%lu\n", batch, ninserts, ninserts / elapsed,
+	    pagesize, bulkflag != 0, ndl);
 	free(lsp);
 
 	/*

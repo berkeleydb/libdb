@@ -1,0 +1,1067 @@
+[New LWP 14400]
+[New LWP 14401]
+[New LWP 14402]
+[New LWP 14403]
+[New LWP 14404]
+[New LWP 14405]
+[New LWP 14406]
+[New LWP 14407]
+[New LWP 14408]
+[New LWP 14409]
+[New LWP 14410]
+[New LWP 14411]
+[New LWP 14412]
+[New LWP 14413]
+[New LWP 14414]
+[New LWP 14415]
+[New LWP 14416]
+[New LWP 14417]
+[New LWP 14418]
+[New LWP 14419]
+[New LWP 14420]
+[New LWP 14421]
+[New LWP 14422]
+[New LWP 14423]
+[New LWP 14424]
+[New LWP 14425]
+[New LWP 14426]
+[New LWP 14427]
+[New LWP 14428]
+[New LWP 14429]
+[New LWP 14430]
+[New LWP 14431]
+[New LWP 14432]
+[New LWP 14433]
+[New LWP 14434]
+[New LWP 14435]
+[New LWP 14436]
+[New LWP 14437]
+[New LWP 14438]
+[New LWP 14439]
+[New LWP 14440]
+[New LWP 14441]
+[New LWP 14442]
+[New LWP 14443]
+[New LWP 14444]
+[New LWP 14445]
+[New LWP 14446]
+[New LWP 14447]
+[New LWP 14448]
+[New LWP 14449]
+[New LWP 14450]
+[New LWP 14451]
+[New LWP 14452]
+[New LWP 14453]
+[New LWP 14454]
+[New LWP 14455]
+[New LWP 14456]
+[New LWP 14457]
+[New LWP 14458]
+[New LWP 14459]
+[New LWP 14460]
+[New LWP 14461]
+[New LWP 14462]
+[New LWP 14463]
+[New LWP 14464]
+[New LWP 14465]
+[New LWP 14466]
+[New LWP 14467]
+[New LWP 14468]
+[New LWP 14469]
+[New LWP 14470]
+[New LWP 14471]
+[New LWP 14472]
+[New LWP 14473]
+[New LWP 14474]
+[New LWP 14475]
+[New LWP 14476]
+[New LWP 14477]
+[New LWP 14478]
+[New LWP 14479]
+[New LWP 14480]
+[New LWP 14481]
+[New LWP 14482]
+[New LWP 14483]
+[New LWP 14484]
+[New LWP 14485]
+[New LWP 14486]
+[New LWP 14487]
+[New LWP 14488]
+[New LWP 14489]
+[New LWP 14490]
+[New LWP 14491]
+[New LWP 14492]
+[New LWP 14493]
+[New LWP 14494]
+[New LWP 14495]
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+0x00007ffff7ceb545 in __GI___clock_nanosleep (clock_id=clock_id@entry=0, flags=flags@entry=0, req=req@entry=0x7fffffffe930, rem=rem@entry=0x0) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:48
+48	../sysdeps/unix/sysv/linux/clock_nanosleep.c: No such file or directory.
+
+Thread 97 (Thread 0x7ffb477fe6c0 (LWP 14495) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e698) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e698, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e698, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e648, cond=0x7fffee60e670) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e670, mutex=mutex@entry=0x7fffee60e648) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e648) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69370, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69370, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 96 (Thread 0x7ffb47fff6c0 (LWP 14494) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60cf70) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60cf70, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60cf70, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60cf20, cond=0x7fffee60cf48) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60cf48, mutex=mutex@entry=0x7fffee60cf20) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60cf20) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69331, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69331, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 95 (Thread 0x7ffb64ff96c0 (LWP 14493) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee607bb8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee607bb8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee607bb8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee607b68, cond=0x7fffee607b90) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee607b90, mutex=mutex@entry=0x7fffee607b68) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee607b68) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69190, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69190, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 94 (Thread 0x7ffb657fa6c0 (LWP 14492) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d0a0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d0a0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d0a0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d050, cond=0x7fffee60d078) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d078, mutex=mutex@entry=0x7fffee60d050) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d050) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69333, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69333, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 93 (Thread 0x7ffb65ffb6c0 (LWP 14491) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee609540) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee609540, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee609540, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee6094f0, cond=0x7fffee609518) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee609518, mutex=mutex@entry=0x7fffee6094f0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee6094f0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69233, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69233, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 92 (Thread 0x7ffb667fc6c0 (LWP 14490) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60db50) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60db50, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60db50, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60db00, cond=0x7fffee60db28) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60db28, mutex=mutex@entry=0x7fffee60db00) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60db00) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69351, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69351, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 91 (Thread 0x7ffb66ffd6c0 (LWP 14489) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e3a4) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e3a4, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e3a4, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e350, cond=0x7fffee60e378) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e378, mutex=mutex@entry=0x7fffee60e350) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e350) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69365, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69365, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 90 (Thread 0x7ffb677fe6c0 (LWP 14488) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee6058b0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee6058b0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee6058b0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee605860, cond=0x7fffee605888) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee605888, mutex=mutex@entry=0x7fffee605860) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee605860) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69131, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69131, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 89 (Thread 0x7ffb67fff6c0 (LWP 14487) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d858) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d858, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d858, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d808, cond=0x7fffee60d830) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d830, mutex=mutex@entry=0x7fffee60d808) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d808) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69346, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69346, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 88 (Thread 0x7ffb84ff96c0 (LWP 14486) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d138) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d138, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d138, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d0e8, cond=0x7fffee60d110) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d110, mutex=mutex@entry=0x7fffee60d0e8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d0e8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69334, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69334, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 87 (Thread 0x7ffb857fa6c0 (LWP 14485) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60f018) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60f018, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60f018, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60efc8, cond=0x7fffee60eff0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60eff0, mutex=mutex@entry=0x7fffee60efc8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60efc8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69386, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69386, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 86 (Thread 0x7ffb85ffb6c0 (LWP 14484) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee600fa8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee600fa8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee600fa8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee600f58, cond=0x7fffee600f80) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee600f80, mutex=mutex@entry=0x7fffee600f58) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee600f58) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69008, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69008, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 85 (Thread 0x7ffb867fc6c0 (LWP 14483) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60dd18) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60dd18, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60dd18, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60dcc8, cond=0x7fffee60dcf0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60dcf0, mutex=mutex@entry=0x7fffee60dcc8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60dcc8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69354, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69354, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 84 (Thread 0x7ffb86ffd6c0 (LWP 14482) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e0a8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e0a8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e0a8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e058, cond=0x7fffee60e080) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e080, mutex=mutex@entry=0x7fffee60e058) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e058) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69360, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69360, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 83 (Thread 0x7ffb877fe6c0 (LWP 14481) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e010) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e010, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e010, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60dfc0, cond=0x7fffee60dfe8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60dfe8, mutex=mutex@entry=0x7fffee60dfc0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60dfc0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69359, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69359, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 82 (Thread 0x7ffb87fff6c0 (LWP 14480) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60dbe8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60dbe8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60dbe8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60db98, cond=0x7fffee60dbc0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60dbc0, mutex=mutex@entry=0x7fffee60db98) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60db98) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69352, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69352, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 81 (Thread 0x7ffba4ff96c0 (LWP 14479) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee601f18) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee601f18, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee601f18, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee601ec8, cond=0x7fffee601ef0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee601ef0, mutex=mutex@entry=0x7fffee601ec8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee601ec8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69034, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69034, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 80 (Thread 0x7ffba57fa6c0 (LWP 14478) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d398) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d398, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d398, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d348, cond=0x7fffee60d370) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d370, mutex=mutex@entry=0x7fffee60d348) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d348) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69338, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69338, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 79 (Thread 0x7ffba5ffb6c0 (LWP 14477) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee6068b8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee6068b8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee6068b8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee606868, cond=0x7fffee606890) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee606890, mutex=mutex@entry=0x7fffee606868) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee606868) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69158, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69158, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 78 (Thread 0x7ffba67fc6c0 (LWP 14476) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60c980) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60c980, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60c980, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60c930, cond=0x7fffee60c958) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60c958, mutex=mutex@entry=0x7fffee60c930) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60c930) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69321, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69321, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 77 (Thread 0x7ffba6ffd6c0 (LWP 14475) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60ec88) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60ec88, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60ec88, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60ec38, cond=0x7fffee60ec60) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60ec60, mutex=mutex@entry=0x7fffee60ec38) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60ec38) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69380, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69380, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 76 (Thread 0x7ffba77fe6c0 (LWP 14474) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60b4b8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60b4b8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60b4b8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60b468, cond=0x7fffee60b490) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60b490, mutex=mutex@entry=0x7fffee60b468) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60b468) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69286, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69286, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 75 (Thread 0x7ffba7fff6c0 (LWP 14473) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60b8e0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60b8e0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60b8e0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60b890, cond=0x7fffee60b8b8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60b8b8, mutex=mutex@entry=0x7fffee60b890) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60b890) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69293, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69293, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 74 (Thread 0x7ffbc4ff96c0 (LWP 14472) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5e8568) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5e8568, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5e8568, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5e8518, cond=0x7fffee5e8540) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5e8540, mutex=mutex@entry=0x7fffee5e8518) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5e8518) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=68344, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=68344, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 73 (Thread 0x7ffbc57fa6c0 (LWP 14471) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee6075c8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee6075c8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee6075c8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee607578, cond=0x7fffee6075a0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee6075a0, mutex=mutex@entry=0x7fffee607578) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee607578) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69180, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69180, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 72 (Thread 0x7ffbc5ffb6c0 (LWP 14470) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee6088c8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee6088c8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee6088c8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee608878, cond=0x7fffee6088a0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee6088a0, mutex=mutex@entry=0x7fffee608878) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee608878) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69212, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69212, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 71 (Thread 0x7ffbc67fc6c0 (LWP 14469) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60c558) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60c558, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60c558, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60c508, cond=0x7fffee60c530) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60c530, mutex=mutex@entry=0x7fffee60c508) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60c508) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69314, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69314, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 70 (Thread 0x7ffbc6ffd6c0 (LWP 14468) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60c428) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60c428, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60c428, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60c3d8, cond=0x7fffee60c400) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60c400, mutex=mutex@entry=0x7fffee60c3d8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60c3d8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69312, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69312, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 69 (Thread 0x7ffbc77fe6c0 (LWP 14467) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60cd10) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60cd10, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60cd10, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60ccc0, cond=0x7fffee60cce8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60cce8, mutex=mutex@entry=0x7fffee60ccc0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60ccc0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69327, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69327, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 68 (Thread 0x7ffbc7fff6c0 (LWP 14466) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5e88fc) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5e88fc, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5e88fc, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5e88a8, cond=0x7fffee5e88d0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5e88d0, mutex=mutex@entry=0x7fffee5e88a8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5e88a8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=68350, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=68350, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 67 (Thread 0x7ffbe4ff96c0 (LWP 14465) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5af994) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5af994, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5af994, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5af940, cond=0x7fffee5af968) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5af968, mutex=mutex@entry=0x7fffee5af940) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5af940) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66815, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66815, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 66 (Thread 0x7ffbe57fa6c0 (LWP 14464) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e1d8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e1d8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e1d8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e188, cond=0x7fffee60e1b0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e1b0, mutex=mutex@entry=0x7fffee60e188) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e188) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69362, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69362, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 65 (Thread 0x7ffbe5ffb6c0 (LWP 14463) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee606bb0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee606bb0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee606bb0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee606b60, cond=0x7fffee606b88) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee606b88, mutex=mutex@entry=0x7fffee606b60) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee606b60) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69163, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69163, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 64 (Thread 0x7ffbe67fc6c0 (LWP 14462) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60bc70) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60bc70, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60bc70, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60bc20, cond=0x7fffee60bc48) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60bc48, mutex=mutex@entry=0x7fffee60bc20) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60bc20) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69299, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69299, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 63 (Thread 0x7ffbe6ffd6c0 (LWP 14461) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5abec8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5abec8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5abec8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5abe78, cond=0x7fffee5abea0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5abea0, mutex=mutex@entry=0x7fffee5abe78) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5abe78) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66716, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66716, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 62 (Thread 0x7ffbe77fe6c0 (LWP 14460) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e600) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e600, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e600, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e5b0, cond=0x7fffee60e5d8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e5d8, mutex=mutex@entry=0x7fffee60e5b0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e5b0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69369, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69369, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 61 (Thread 0x7ffbe7fff6c0 (LWP 14459) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60ddb0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60ddb0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60ddb0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60dd60, cond=0x7fffee60dd88) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60dd88, mutex=mutex@entry=0x7fffee60dd60) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60dd60) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69355, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69355, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 60 (Thread 0x7ffc04ff96c0 (LWP 14458) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5fd1e8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5fd1e8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5fd1e8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5fd198, cond=0x7fffee5fd1c0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5fd1c0, mutex=mutex@entry=0x7fffee5fd198) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5fd198) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=68904, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=68904, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 59 (Thread 0x7ffc057fa6c0 (LWP 14457) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60abd0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60abd0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60abd0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60ab80, cond=0x7fffee60aba8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60aba8, mutex=mutex@entry=0x7fffee60ab80) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60ab80) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69271, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69271, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 58 (Thread 0x7ffc05ffb6c0 (LWP 14456) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e7c8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e7c8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e7c8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e778, cond=0x7fffee60e7a0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e7a0, mutex=mutex@entry=0x7fffee60e778) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e778) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69372, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69372, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 57 (Thread 0x7ffc067fc6c0 (LWP 14455) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee608078) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee608078, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee608078, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee608028, cond=0x7fffee608050) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee608050, mutex=mutex@entry=0x7fffee608028) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee608028) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69198, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69198, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 56 (Thread 0x7ffc06ffd6c0 (LWP 14454) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60ed20) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60ed20, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60ed20, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60ecd0, cond=0x7fffee60ecf8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60ecf8, mutex=mutex@entry=0x7fffee60ecd0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60ecd0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69381, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69381, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 55 (Thread 0x7ffc077fe6c0 (LWP 14453) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5ac7b4) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5ac7b4, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5ac7b4, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5ac760, cond=0x7fffee5ac788) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5ac788, mutex=mutex@entry=0x7fffee5ac760) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5ac760) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66731, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66731, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 54 (Thread 0x7ffc07fff6c0 (LWP 14452) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5acb40) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5acb40, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5acb40, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5acaf0, cond=0x7fffee5acb18) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5acb18, mutex=mutex@entry=0x7fffee5acaf0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5acaf0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66737, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66737, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 53 (Thread 0x7ffc3cff96c0 (LWP 14451) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee607a88) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee607a88, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee607a88, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee607a38, cond=0x7fffee607a60) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee607a60, mutex=mutex@entry=0x7fffee607a38) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee607a38) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69188, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69188, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 52 (Thread 0x7ffc3d7fa6c0 (LWP 14450) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60ebf0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60ebf0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60ebf0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60eba0, cond=0x7fffee60ebc8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60ebc8, mutex=mutex@entry=0x7fffee60eba0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60eba0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69379, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69379, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 51 (Thread 0x7ffc3dffb6c0 (LWP 14449) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e990) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e990, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e990, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e940, cond=0x7fffee60e968) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e968, mutex=mutex@entry=0x7fffee60e940) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e940) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69375, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69375, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 50 (Thread 0x7ffc3e7fc6c0 (LWP 14448) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5aeab8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5aeab8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5aeab8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5aea68, cond=0x7fffee5aea90) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5aea90, mutex=mutex@entry=0x7fffee5aea68) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5aea68) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66790, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66790, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 49 (Thread 0x7ffc3effd6c0 (LWP 14447) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d1d0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d1d0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d1d0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d180, cond=0x7fffee60d1a8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d1a8, mutex=mutex@entry=0x7fffee60d180) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d180) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69335, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69335, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 48 (Thread 0x7ffc3ffff6c0 (LWP 14446) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60da20) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60da20, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60da20, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d9d0, cond=0x7fffee60d9f8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d9f8, mutex=mutex@entry=0x7fffee60d9d0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d9d0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69349, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69349, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 47 (Thread 0x7ffc44ff96c0 (LWP 14445) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5ff880) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5ff880, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5ff880, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5ff830, cond=0x7fffee5ff858) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5ff858, mutex=mutex@entry=0x7fffee5ff830) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5ff830) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=68969, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=68969, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 46 (Thread 0x7ffc457fa6c0 (LWP 14444) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee6013d0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee6013d0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee6013d0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee601380, cond=0x7fffee6013a8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee6013a8, mutex=mutex@entry=0x7fffee601380) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee601380) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69015, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69015, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 45 (Thread 0x7ffc45ffb6c0 (LWP 14443) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d728) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d728, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d728, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d6d8, cond=0x7fffee60d700) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d700, mutex=mutex@entry=0x7fffee60d6d8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d6d8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69344, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69344, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 44 (Thread 0x7ffc467fc6c0 (LWP 14442) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e270) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e270, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e270, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e220, cond=0x7fffee60e248) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e248, mutex=mutex@entry=0x7fffee60e220) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e220) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69363, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69363, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 43 (Thread 0x7ffc46ffd6c0 (LWP 14441) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60b848) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60b848, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60b848, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60b7f8, cond=0x7fffee60b820) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60b820, mutex=mutex@entry=0x7fffee60b7f8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60b7f8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69292, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69292, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 42 (Thread 0x7ffc477fe6c0 (LWP 14440) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee605780) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee605780, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee605780, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee605730, cond=0x7fffee605758) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee605758, mutex=mutex@entry=0x7fffee605730) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee605730) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69129, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69129, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 41 (Thread 0x7ffc3f7fe6c0 (LWP 14439) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60a8d8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60a8d8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60a8d8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60a888, cond=0x7fffee60a8b0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60a8b0, mutex=mutex@entry=0x7fffee60a888) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60a888) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69266, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69266, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 40 (Thread 0x7ffc47fff6c0 (LWP 14438) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5ac84c) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5ac84c, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5ac84c, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5ac7f8, cond=0x7fffee5ac820) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5ac820, mutex=mutex@entry=0x7fffee5ac7f8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5ac7f8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66732, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66732, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 39 (Thread 0x7ffc80ff96c0 (LWP 14437) "commit_bench"):
+#0  0x00007ffff7d1ad0a in __GI_fdatasync (fd=6) at ../sysdeps/unix/sysv/linux/fdatasync.c:28
+#1  0x00007ffff7f5aed5 in __os_fsync (env=env@entry=0x55555555aad0, fhp=0x55555555cc00) at ../src/os/os_fsync.c:75
+#2  0x00007ffff7f418dc in __log_flush_int (dblp=dblp@entry=0x55555555b510, lsnp=lsnp@entry=0x7ffc80ff88d8, release=release@entry=1) at ../src/log/log_put.c:1257
+#3  0x00007ffff7f42caf in __log_flush_commit (lsnp=0x7ffc80ff88c8, flags=14, env=0x55555555aad0) at ../src/log/log_put.c:576
+#4  __log_put (env=env@entry=0x55555555aad0, lsnp=lsnp@entry=0x7ffff1fadbd0, udbt=udbt@entry=0x7ffc80ff8a90, flags=flags@entry=14) at ../src/log/log_put.c:330
+#5  0x00007ffff7f43d91 in __log_put_record_int (env=0x55555555aad0, dbp=<optimized out>, txnp=<optimized out>, ret_lsnp=0x7ffff1fadbd0, flags=6, rectype=<optimized out>, has_data=0, size=<optimized out>, spec=0x7ffff7fbd680 <__txn_regop_desc>, argp=0x7ffc80ff8b28) at ../src/log/log_put.c:2162
+#6  0x00007ffff7f4482b in __log_put_record (env=env@entry=0x55555555aad0, dbp=dbp@entry=0x0, txnp=txnp@entry=0x7ffc40000b70, ret_lsnp=<optimized out>, flags=<optimized out>, rectype=rectype@entry=10, has_data=0, size=32, spec=0x7ffff7fbd680 <__txn_regop_desc>) at ../src/log/log_put.c:1903
+#7  0x00007ffff7f680da in __txn_regop_log (locks=0x0, envid=2331106343, timestamp=<optimized out>, opcode=1, flags=<optimized out>, ret_lsnp=0x7ffff1fadbd0, txnp=0x7ffc40000b70, env=0x55555555aad0) at ../src/dbinc_auto/txn_auto.h:40
+
+Thread 38 (Thread 0x7ffc817fa6c0 (LWP 14436) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5ab8d8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5ab8d8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5ab8d8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5ab888, cond=0x7fffee5ab8b0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5ab8b0, mutex=mutex@entry=0x7fffee5ab888) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5ab888) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66706, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66706, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 37 (Thread 0x7ffc81ffb6c0 (LWP 14435) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d7c0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d7c0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d7c0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d770, cond=0x7fffee60d798) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d798, mutex=mutex@entry=0x7fffee60d770) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d770) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69345, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69345, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 36 (Thread 0x7ffc827fc6c0 (LWP 14434) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60bbd8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60bbd8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60bbd8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60bb88, cond=0x7fffee60bbb0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60bbb0, mutex=mutex@entry=0x7fffee60bb88) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60bb88) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69298, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69298, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 35 (Thread 0x7ffc82ffd6c0 (LWP 14433) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d008) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d008, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d008, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60cfb8, cond=0x7fffee60cfe0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60cfe0, mutex=mutex@entry=0x7fffee60cfb8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60cfb8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69332, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69332, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 34 (Thread 0x7ffc837fe6c0 (LWP 14432) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60c4c0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60c4c0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60c4c0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60c470, cond=0x7fffee60c498) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60c498, mutex=mutex@entry=0x7fffee60c470) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60c470) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69313, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69313, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 33 (Thread 0x7ffc83fff6c0 (LWP 14431) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d988) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d988, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d988, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d938, cond=0x7fffee60d960) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d960, mutex=mutex@entry=0x7fffee60d938) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d938) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69348, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69348, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 32 (Thread 0x7ffc9cff96c0 (LWP 14430) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee6097a0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee6097a0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee6097a0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee609750, cond=0x7fffee609778) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee609778, mutex=mutex@entry=0x7fffee609750) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee609750) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69237, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69237, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 31 (Thread 0x7ffc9d7fa6c0 (LWP 14429) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e730) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e730, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e730, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e6e0, cond=0x7fffee60e708) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e708, mutex=mutex@entry=0x7fffee60e6e0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e6e0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69371, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69371, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 30 (Thread 0x7ffc9dffb6c0 (LWP 14428) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60c000) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60c000, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60c000, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60bfb0, cond=0x7fffee60bfd8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60bfd8, mutex=mutex@entry=0x7fffee60bfb0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60bfb0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69305, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69305, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 29 (Thread 0x7ffc9e7fc6c0 (LWP 14427) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d5f8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d5f8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d5f8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d5a8, cond=0x7fffee60d5d0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d5d0, mutex=mutex@entry=0x7fffee60d5a8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d5a8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69342, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69342, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 28 (Thread 0x7ffc9effd6c0 (LWP 14426) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60eac0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60eac0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60eac0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60ea70, cond=0x7fffee60ea98) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60ea98, mutex=mutex@entry=0x7fffee60ea70) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60ea70) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69377, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69377, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 27 (Thread 0x7ffc9f7fe6c0 (LWP 14425) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5aba08) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5aba08, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5aba08, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5ab9b8, cond=0x7fffee5ab9e0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5ab9e0, mutex=mutex@entry=0x7fffee5ab9b8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5ab9b8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66708, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66708, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 26 (Thread 0x7ffca4ff96c0 (LWP 14424) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60a4b0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60a4b0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60a4b0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60a460, cond=0x7fffee60a488) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60a488, mutex=mutex@entry=0x7fffee60a460) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60a460) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69259, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69259, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 25 (Thread 0x7ffca57fa6c0 (LWP 14423) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee605a78) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee605a78, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee605a78, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee605a28, cond=0x7fffee605a50) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee605a50, mutex=mutex@entry=0x7fffee605a28) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee605a28) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69134, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69134, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 24 (Thread 0x7ffca5ffb6c0 (LWP 14422) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e4d0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e4d0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e4d0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e480, cond=0x7fffee60e4a8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e4a8, mutex=mutex@entry=0x7fffee60e480) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e480) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69367, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69367, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 23 (Thread 0x7ffca67fc6c0 (LWP 14421) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee604350) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee604350, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee604350, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee604300, cond=0x7fffee604328) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee604328, mutex=mutex@entry=0x7fffee604300) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee604300) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69095, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69095, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 22 (Thread 0x7ffca6ffd6c0 (LWP 14420) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60ad00) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60ad00, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60ad00, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60acb0, cond=0x7fffee60acd8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60acd8, mutex=mutex@entry=0x7fffee60acb0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60acb0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69273, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69273, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 21 (Thread 0x7ffca77fe6c0 (LWP 14419) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60e860) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60e860, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60e860, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60e810, cond=0x7fffee60e838) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60e838, mutex=mutex@entry=0x7fffee60e810) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60e810) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69373, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69373, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 20 (Thread 0x7ffc9ffff6c0 (LWP 14418) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60f310) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60f310, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60f310, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60f2c0, cond=0x7fffee60f2e8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60f2e8, mutex=mutex@entry=0x7fffee60f2c0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60f2c0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69391, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69391, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 19 (Thread 0x7ffca7fff6c0 (LWP 14417) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60c1c8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60c1c8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60c1c8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60c178, cond=0x7fffee60c1a0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60c1a0, mutex=mutex@entry=0x7fffee60c178) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60c178) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69308, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69308, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 18 (Thread 0x7ffcd8ff96c0 (LWP 14416) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee609708) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee609708, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee609708, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee6096b8, cond=0x7fffee6096e0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee6096e0, mutex=mutex@entry=0x7fffee6096b8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee6096b8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69236, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69236, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 17 (Thread 0x7ffcd97fa6c0 (LWP 14415) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60eb58) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60eb58, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60eb58, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60eb08, cond=0x7fffee60eb30) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60eb30, mutex=mutex@entry=0x7fffee60eb08) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60eb08) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69378, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69378, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 16 (Thread 0x7ffcd9ffb6c0 (LWP 14414) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60d430) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60d430, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60d430, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60d3e0, cond=0x7fffee60d408) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60d408, mutex=mutex@entry=0x7fffee60d3e0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60d3e0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69339, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69339, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 15 (Thread 0x7ffcda7fc6c0 (LWP 14413) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5af8fc) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5af8fc, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5af8fc, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5af8a8, cond=0x7fffee5af8d0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5af8d0, mutex=mutex@entry=0x7fffee5af8a8) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5af8a8) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66814, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66814, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 14 (Thread 0x7ffcdaffd6c0 (LWP 14412) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60a710) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60a710, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60a710, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60a6c0, cond=0x7fffee60a6e8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60a6e8, mutex=mutex@entry=0x7fffee60a6c0) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60a6c0) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69263, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69263, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 13 (Thread 0x7ffcdb7fe6c0 (LWP 14411) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60c260) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60c260, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60c260, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60c210, cond=0x7fffee60c238) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60c238, mutex=mutex@entry=0x7fffee60c210) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60c210) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69309, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69309, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 12 (Thread 0x7ffcdbfff6c0 (LWP 14410) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5aeb50) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5aeb50, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5aeb50, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5aeb00, cond=0x7fffee5aeb28) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5aeb28, mutex=mutex@entry=0x7fffee5aeb00) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5aeb00) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66791, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66791, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 11 (Thread 0x7ffceca766c0 (LWP 14409) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60bda0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60bda0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60bda0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60bd50, cond=0x7fffee60bd78) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60bd78, mutex=mutex@entry=0x7fffee60bd50) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60bd50) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69301, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69301, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 10 (Thread 0x7ffced2776c0 (LWP 14408) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60b5e8) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60b5e8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60b5e8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60b598, cond=0x7fffee60b5c0) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60b5c0, mutex=mutex@entry=0x7fffee60b598) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60b598) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69288, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69288, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 9 (Thread 0x7ffceda786c0 (LWP 14407) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5afac4) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5afac4, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5afac4, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5afa70, cond=0x7fffee5afa98) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5afa98, mutex=mutex@entry=0x7fffee5afa70) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5afa70) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66817, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66817, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 8 (Thread 0x7ffcee2796c0 (LWP 14406) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee60dee0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee60dee0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee60dee0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee60de90, cond=0x7fffee60deb8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee60deb8, mutex=mutex@entry=0x7fffee60de90) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee60de90) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69357, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69357, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 7 (Thread 0x7ffceea7a6c0 (LWP 14405) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee6092e0) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee6092e0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee6092e0, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee609290, cond=0x7fffee6092b8) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee6092b8, mutex=mutex@entry=0x7fffee609290) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee609290) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69229, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69229, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 6 (Thread 0x7ffcef27b6c0 (LWP 14404) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5baa80) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5baa80, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5baa80, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5baa30, cond=0x7fffee5baa58) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5baa58, mutex=mutex@entry=0x7fffee5baa30) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5baa30) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=67113, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=67113, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 5 (Thread 0x7ffcefa7c6c0 (LWP 14403) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee609a98) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee609a98, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee609a98, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee609a48, cond=0x7fffee609a70) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee609a70, mutex=mutex@entry=0x7fffee609a48) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee609a48) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=69242, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=69242, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 4 (Thread 0x7ffcf027d6c0 (LWP 14402) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5ff160) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5ff160, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5ff160, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5ff110, cond=0x7fffee5ff138) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5ff138, mutex=mutex@entry=0x7fffee5ff110) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5ff110) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=68957, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=68957, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 3 (Thread 0x7ffcf0a7e6c0 (LWP 14401) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5ac388) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5ac388, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5ac388, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5ac338, cond=0x7fffee5ac360) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5ac360, mutex=mutex@entry=0x7fffee5ac338) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5ac338) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66724, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66724, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 2 (Thread 0x7ffcf127f6c0 (LWP 14400) "commit_bench"):
+#0  __futex_abstimed_wait_common64 (private=128, cancel=true, abstime=0x0, op=265, expected=0, futex_word=0x7fffee5afc8c) at ./nptl/futex-internal.c:57
+#1  __futex_abstimed_wait_common (futex_word=futex_word@entry=0x7fffee5afc8c, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128, cancel=cancel@entry=true) at ./nptl/futex-internal.c:87
+#2  0x00007ffff7ca1f7b in __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffee5afc8c, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=128) at ./nptl/futex-internal.c:139
+#3  0x00007ffff7ca45d8 in __pthread_cond_wait_common (abstime=0x0, clockid=0, mutex=0x7fffee5afc38, cond=0x7fffee5afc60) at ./nptl/pthread_cond_wait.c:503
+#4  ___pthread_cond_wait (cond=0x7fffee5afc60, mutex=mutex@entry=0x7fffee5afc38) at ./nptl/pthread_cond_wait.c:618
+#5  0x00007ffff7e3514b in __db_pthread_mutex_condwait (env=0x55555555aad0, mutex=93824992258768, timespec=0x0, mutexp=0x7fffee5afc38) at ../src/mutex/mut_pthread.c:321
+#6  __db_hybrid_mutex_suspend (env=env@entry=0x55555555aad0, mutex=mutex@entry=66820, timespec=timespec@entry=0x0, exclusive=exclusive@entry=1) at ../src/mutex/mut_pthread.c:577
+#7  0x00007ffff7e34924 in __db_tas_mutex_lock_int (env=env@entry=0x55555555aad0, mutex=66820, timeout=timeout@entry=0, nowait=nowait@entry=0) at ../src/mutex/mut_tas.c:255
+
+Thread 1 (Thread 0x7ffff7c13b80 (LWP 14398) "commit_bench"):
+#0  0x00007ffff7ceb545 in __GI___clock_nanosleep (clock_id=clock_id@entry=0, flags=flags@entry=0, req=req@entry=0x7fffffffe930, rem=rem@entry=0x0) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:48
+#1  0x00007ffff7cefe53 in __GI___nanosleep (req=req@entry=0x7fffffffe930, rem=rem@entry=0x0) at ../sysdeps/unix/sysv/linux/nanosleep.c:25
+#2  0x00007ffff7d1b295 in usleep (useconds=<optimized out>) at ../sysdeps/posix/usleep.c:31
+#3  0x00005555555556ef in main ()
+[Inferior 1 (process 14398) detached]
