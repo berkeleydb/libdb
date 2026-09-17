@@ -151,8 +151,17 @@ open_handle(uint32_t extra, DB **dbp)
 
 	if ((ret = db_create(dbp, env, 0)) != 0)
 		return (ret);
+	/*
+	 * DB_AUTO_COMMIT is required here even though the handle only reads: the
+	 * open itself must be transactional or the handle is non-transactional,
+	 * and then every txn-bearing get returns EINVAL ("Transaction specified
+	 * for a non-transactional database") and DB_MULTIVERSION is refused
+	 * outright.  Without it four of six arms posted ops/sec=0 with errs=500k
+	 * -- which is exactly what the errs column and the total==0 abort exist
+	 * to catch.
+	 */
 	return ((*dbp)->open(*dbp, NULL, "rdl.db", NULL, DB_BTREE,
-	    DB_THREAD | extra, 0));
+	    DB_THREAD | DB_AUTO_COMMIT | extra, 0));
 }
 
 static void
