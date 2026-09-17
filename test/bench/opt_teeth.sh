@@ -53,7 +53,15 @@ if grep -q "HAVE_IO_URING" "$BUILD/db_config.h" 2>/dev/null; then
 	LIBS="$LIBS -luring"
 fi
 
-fail() { echo "TEETH FAIL: $*"; exit 1; }
+fail() { echo "TEETH FAIL: $*"; hi_emit optimistic_teeth fail 2>/dev/null; exit 1; }
+
+# Harness verdicts: without these the script can pass on the console while the
+# manifest gate cannot tell it ran at all -- the exact shape of this project's
+# recorded vacuous greens (leak-run.sh was in NO workflow for two releases).
+if [ -f "$HERE/../harness.sh" ]; then
+	. "$HERE/../harness.sh"
+	hi_init bench "$HERE/.."
+fi
 
 # One env home, reused by every arm: a DB_PRIVATE/layout artifact selected by
 # the path is exactly how a false result gets manufactured here (see the warning
@@ -139,3 +147,4 @@ fi
 
 echo "VERDICT opt-teeth all three arms behaved: on=fires off=inert sabotage=fails"
 exit 0
+hi_emit optimistic_teeth pass 2>/dev/null

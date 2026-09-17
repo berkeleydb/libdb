@@ -197,3 +197,8 @@ sim	test_sim_buggify
 sim	test_sim_torn
 sim	test_sim_stale
 sim	test_sim_enospc
+
+# RFC 0007 optimistic read validation.  opt_teeth.sh rebuilds a SABOTAGED
+# library (BH.gen never bumped) and requires the probe to FAIL, so this verdict
+# means the generation bump is load-bearing, not merely present.
+bench	optimistic_teeth
