@@ -882,6 +882,12 @@ ph_model(iso_state *s)
  * Count marker records with a FULL CURSOR SCAN.  The scan is the predicate
  * read: it must touch every leaf, which is what leaves a marker on both of the
  * pages the two inserts will target.
+ *
+ * The match is on the SUFFIX "_mark_", not a prefix: the two marker keys are
+ * "a_mark_t1" and "z_mark_t2" (deliberately at opposite ends of the key space
+ * so they land on different leaves), so a prefix test finds neither.  A prefix
+ * test here silently counted 0 markers in every state, which made the scenario
+ * report a phantom that was really a broken predicate.
  */
 static int
 ph_count_markers(DB *db, DB_TXN *txn, int *out)
@@ -895,7 +901,8 @@ ph_count_markers(DB *db, DB_TXN *txn, int *out)
 	memset(&k, 0, sizeof(k));
 	memset(&d, 0, sizeof(d));
 	for (n = 0; (rc = dbc->get(dbc, &k, &d, DB_NEXT)) == 0; )
-		if (k.size >= 6 && memcmp(k.data, "mark_", 5) == 0)
+		if (k.size >= 7 &&
+		    memcmp((char *)k.data + 1, "_mark_", 6) == 0)
 			n++;
 	(void)dbc->close(dbc);
 	if (rc != DB_NOTFOUND)
@@ -950,6 +957,41 @@ phantom_pages(iso_scenario *sc, iso_state *st, iso_txn *t)
 
 	memset(&st[0], 0, sizeof(st[0]));
 	st[0].v[0] = 0;			/* no markers */
+
+	/*
+	 * Self-check the predicate before relying on it: a scan that cannot see
+	 * a marker it just inserted would report "0 markers" forever and make
+	 * every outcome look like a phantom.  This exact bug (prefix vs suffix
+	 * match) produced one false FAIL here.  Insert, count, delete, recount.
+	 */
+	{
+		DBT pk;
+		int probe;
+
+		if ((rc = iso_put(dbs[0], NULL, "a_mark_probe", 1)) != 0)
+			iso_die("predicate self-check put", rc);
+		if ((rc = ph_count_markers(dbs[0], NULL, &probe)) != 0)
+			iso_die("predicate self-check scan", rc);
+		if (probe != 1) {
+			fprintf(stderr, "    FAIL predicate self-check: scan "
+			    "saw %d markers, expected 1 -- the marker "
+			    "predicate is broken, every verdict from this "
+			    "scenario would be meaningless\n", probe);
+			return (-1);
+		}
+		memset(&pk, 0, sizeof(pk));
+		pk.data = (void *)"a_mark_probe";
+		pk.size = (u_int32_t)strlen("a_mark_probe");
+		if ((rc = dbs[0]->del(dbs[0], NULL, &pk, 0)) != 0)
+			iso_die("predicate self-check del", rc);
+		if ((rc = ph_count_markers(dbs[0], NULL, &probe)) != 0)
+			iso_die("predicate self-check rescan", rc);
+		if (probe != 0) {
+			fprintf(stderr, "    FAIL predicate self-check: %d "
+			    "markers after delete, expected 0\n", probe);
+			return (-1);
+		}
+	}
 
 	if ((rc = env->txn_begin(env, NULL, &txn1, iso_level)) != 0 ||
 	    (rc = env->txn_begin(env, NULL, &txn2, iso_level)) != 0)
