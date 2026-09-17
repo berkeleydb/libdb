@@ -1,0 +1,16 @@
+=== bench
+mode=sync threads=96 secs=25.25 commits=102149 ops_sec=4046 flushes=11831 flush_per_commit=0.1158 maxcpf=32 mincpf=1 p50_us=3834 p99_us=294893 p999_us=539960
+BATCH batch=1 inserts=102149 inserts_sec=4046 pagesize=0 deadlocks=0
+PHASE begin_us p50=25 p90=80 p99=137 p999=185 max=1804
+PHASE put_us p50=26 p90=83 p99=290443 p999=535444 max=558757
+PHASE commit_us p50=3757 p90=5624 p99=5827 p999=8363 max=270240
+=== sample 1: per-thread call-site attribution
+threads=97 in_lock_get=78  at_db_new(held-to-commit site)=0  at_bam_split_only(pre-descent site)=78  elsewhere=0  in_fsync=1
+=== sample 2: per-thread call-site attribution
+threads=97 in_lock_get=81  at_db_new(held-to-commit site)=0  at_bam_split_only(pre-descent site)=81  elsewhere=0  in_fsync=1
+=== sample 3: per-thread call-site attribution
+threads=97 in_lock_get=80  at_db_new(held-to-commit site)=0  at_bam_split_only(pre-descent site)=80  elsewhere=0  in_fsync=1
+=== distinct frames directly above __lock_get_internal, all samples
+    478 __lock_get
+    239 __db_lget
+SITE_DONE
