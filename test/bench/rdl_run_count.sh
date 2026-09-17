@@ -6,7 +6,7 @@ B=$W/bu
 S=/tmp/rdl-scratch
 OUT=/tmp/rdl_count.bin
 rm -f $OUT
-gcc -O2 -g -o $OUT $W/test/bench/rdl_count.c -I$B -L$B -ldb -lpthread
+gcc -O2 -g -o $OUT $W/test/bench/rdl_count.c -I$B -L$B -ldb -lpthread -luring
 test -x $OUT || { echo "COMPILE FAILED"; exit 1; }
 mkdir -p $S
 find $S -mindepth 1 -delete
