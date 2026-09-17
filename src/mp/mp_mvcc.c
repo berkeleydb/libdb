@@ -283,7 +283,7 @@ __memp_bh_freeze(dbmp, infop, hp, bhp, need_frozenp)
 	    DB_MUTEX_SHARED, &frozen_bhp->mtx_buf)) != 0)
 		goto err;
 	F_SET(frozen_bhp, BH_FROZEN);
-	F_CLR(frozen_bhp, BH_EXCLUSIVE);
+	BH_CLR_EXCLUSIVE(frozen_bhp);
 	((BH_FROZEN_PAGE *)frozen_bhp)->spgno = newpgno;
 
 	/*

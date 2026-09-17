@@ -649,6 +649,36 @@ struct __bh { /* SHARED */
 	 */
 	u_int8_t	wired;
 
+	/*
+	 * RFC 0007 phase 1: frame generation, bumped whenever this frame is
+	 * taken exclusively (a writer dirties it, it is read in, it is frozen/
+	 * thawed, or it is reused by eviction).  An optimistic reader samples
+	 * (gen, pgno, mf_offset) before reading the page and re-samples after;
+	 * any change means the frame moved under it and the read is discarded.
+	 *
+	 * Occupies the 1-byte hole that used to sit here between `wired` and
+	 * the 4-byte-aligned `priority`, so sizeof(BH) is unchanged (96 on
+	 * LP64) and __env_struct_sig() -- which hashes struct __bh, see
+	 * env_sig.c -- is byte-identical.  That matters more than it looks:
+	 * a signature change makes env_region.c refuse to attach EVERY
+	 * existing environment (BDB1539 / DB_VERSION_MISMATCH) while abidiff
+	 * stays green, because BH is not public ABI.
+	 *
+	 * WRAP / ABA.  8 bits wraps after 256 exclusive acquisitions, which is
+	 * far too weak alone, so validation compares the FULL tuple
+	 * (gen, pgno, mf_offset) -- see BH_GEN_SAMPLE/BH_GEN_VALID.  A frame
+	 * that is reused must be re-inserted for the same page of the same
+	 * file to defeat that, so the residual is: exactly 256 (mod 256)
+	 * exclusive acquisitions, ending with the same (pgno, mf_offset), all
+	 * inside one reader's pre-validation window.
+	 *
+	 * Like `wired` this is a dedicated byte rather than flag bits: it is
+	 * stored with a plain byte store under the exclusive latch and must
+	 * not share the non-atomic read-modify-write of the flags word (which
+	 * __memp_pgwrite clears BH_DIRTY in while holding only a shared latch).
+	 */
+	u_int8_t	gen;
+
 	u_int32_t	priority;	/* Priority. */
 	SH_TAILQ_ENTRY	hq;		/* MPOOL hash bucket queue. */
 
@@ -692,7 +722,103 @@ struct __bh_frozen_a {
 	SH_TAILQ_ENTRY links;
 };
 
+/*
+ * DB_MPOOL_RETRY --
+ *	Internal-only return from __memp_fget_opt / the optimistic descent:
+ *	"this page could not be read optimistically (or the read did not
+ *	validate), use the ordinary pinning path".  Defined here rather than in
+ *	db.in because it must NEVER reach an application: every producer has
+ *	exactly one consumer, the bounded retry loop in __bam_search.  Value
+ *	taken from the private error range (db.in: DB_VERIFY_FATAL is -30887).
+ */
+#define	DB_MPOOL_RETRY		(-30886)
+
 #define	MULTIVERSION(dbp)	atomic_read(&(dbp)->mpf->mfp->multiversion)
+
+/*
+ * RFC 0007 phase 1 -- optimistic read validation.
+ *
+ * BH.gen is a one-byte seqlock over the frame:
+ *
+ *	bit 0		"in flux": the frame is held exclusively (being read
+ *			in, modified, frozen/thawed, or reused by eviction).
+ *	bits 1..7	episode counter, bumped once per exclusive acquisition.
+ *
+ * Writers: BH_GEN_EXCL_ENTER at every exclusive acquisition (bump + mark),
+ * BH_GEN_EXCL_EXIT at release (clear the mark).  Both are done while holding
+ * mtx_buf exclusively, so the read-modify-write needs no atomic -- it is the
+ * same argument that lets the existing code do F_SET(bhp, BH_EXCLUSIVE) there.
+ *
+ * The asymmetry is deliberate and is what makes this auditable: MISSING an
+ * ENTER would be a correctness bug, but missing an EXIT only leaves the frame
+ * looking permanently in flux, which makes optimistic readers fall back to the
+ * pinning path forever.  Fail-closed.  There are 8 acquisition sites (7
+ * F_SET(bhp, BH_EXCLUSIVE) plus the fresh-frame initialization in
+ * __memp_fget) and they are all routed through BH_GEN_EXCL_ENTER.
+ *
+ * gen is never assigned outside these macros -- in particular it is NOT reset
+ * when a frame is reused, because a reset could hand a reader the same value it
+ * sampled from the frame's previous life (see the ABA note in struct __bh).
+ *
+ * Memory ordering (see rfc/0007 and OPTIMISTIC-READS-2026-09.md):
+ *
+ *   writer: [store gen odd] FENCE [store page bytes] ... FENCE [store gen even]
+ *   reader: [load gen,pgno,mf] FENCE [load page bytes] FENCE [reload gen,pgno,mf]
+ *
+ * __os_atomic_thread_fence() is a sequentially-consistent fence on every
+ * backend (__atomic_thread_fence / __sync_synchronize / MemoryBarrier / x86
+ * lock-prefixed op / membar_enter), so the argument is not an x86-TSO argument:
+ * on ARM64, PPC and RISC-V the fence emits the dmb ish / sync / fence needed to
+ * order the plain loads and stores on either side of it.
+ */
+#define	BH_GEN_INFLUX		0x01	/* Frame is exclusively held. */
+#define	BH_GEN_STEP		0x02	/* One episode. */
+
+#define	BH_GEN_EXCL_ENTER(bhp) do {					\
+	(bhp)->gen = (u_int8_t)(((bhp)->gen + BH_GEN_STEP) | BH_GEN_INFLUX);\
+	__os_atomic_thread_fence();					\
+} while (0)
+
+#define	BH_GEN_EXCL_EXIT(bhp) do {					\
+	__os_atomic_thread_fence();					\
+	(bhp)->gen = (u_int8_t)((bhp)->gen & ~BH_GEN_INFLUX);		\
+} while (0)
+
+/*
+ * Set/clear BH_EXCLUSIVE together with the generation.  Every existing
+ * F_SET(bhp, BH_EXCLUSIVE) / F_CLR(bhp, BH_EXCLUSIVE) is spelled this way so
+ * the two can never drift apart.
+ */
+#define	BH_SET_EXCLUSIVE(bhp) do {					\
+	F_SET((bhp), BH_EXCLUSIVE);					\
+	BH_GEN_EXCL_ENTER(bhp);						\
+} while (0)
+
+#define	BH_CLR_EXCLUSIVE(bhp) do {					\
+	BH_GEN_EXCL_EXIT(bhp);						\
+	F_CLR((bhp), BH_EXCLUSIVE);					\
+} while (0)
+
+/*
+ * BH_SAMPLE --
+ *	What an optimistic reader observes about a frame before reading the
+ *	page, and re-checks afterwards.  gen alone is only 7 bits of counter,
+ *	so the page identity travels with it (see the ABA bound in struct
+ *	__bh).
+ */
+typedef struct __bh_sample {
+	BH		*bhp;		/* Frame observed. */
+	db_pgno_t	pgno;		/* ... hosting this page ... */
+	roff_t		mf_offset;	/* ... of this file ... */
+	u_int8_t	gen;		/* ... at this generation (always even). */
+} BH_SAMPLE;
+
+/* True if the frame still holds exactly what the sample recorded. */
+#define	BH_SAMPLE_VALID(s)						\
+	(__os_atomic_thread_fence(),					\
+	 (s)->bhp->gen == (s)->gen &&					\
+	 (s)->bhp->pgno == (s)->pgno &&					\
+	 (s)->bhp->mf_offset == (s)->mf_offset)
 
 #define	PAGE_TO_BH(p)	(BH *)((u_int8_t *)(p) - SSZA(BH, buf))
 #define	IS_DIRTY(p)							\

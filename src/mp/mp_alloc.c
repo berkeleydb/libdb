@@ -518,11 +518,27 @@ this_buffer:	/*
 				return (ret);
 			goto next_hb;
 		}
-		F_SET(bhp, BH_EXCLUSIVE);
+		BH_SET_EXCLUSIVE(bhp);
 		b_lock = 1;
 
 		/* Someone may have grabbed it while we got the lock. */
 		if (BH_REFCOUNT(bhp) != 1)
+			goto next_hb;
+
+		/*
+		 * RFC 0007 phase 1: an optimistic reader holds no ref, so
+		 * BH_REFCOUNT above does not see it.  Its per-thread pin record
+		 * does.  BH_SET_EXCLUSIVE above already bumped the generation
+		 * and marked the frame in flux, and it did so with a fence, so
+		 * the order is: bump, then scan.  A reader that publishes its
+		 * pin before the bump is seen here; one that publishes after
+		 * the bump fails validation.  Neither can slip through.
+		 *
+		 * O(threads) and off the hot path, but eviction is not rare
+		 * under memory pressure -- see the measurement in
+		 * test/bench/OPTIMISTIC-READS-2026-09.md.
+		 */
+		if (__memp_bh_pinned(env, infop, bhp))
 			goto next_hb;
 
 		/* Find the associated MPOOLFILE. */
@@ -581,7 +597,7 @@ this_buffer:	/*
 				DB_ASSERT(env, BH_REFCOUNT(bhp) > 0);
 				atomic_dec(env, &bhp->ref);
 				DB_ASSERT(env, b_lock);
-				F_CLR(bhp, BH_EXCLUSIVE);
+				BH_CLR_EXCLUSIVE(bhp);
 				MUTEX_UNLOCK(env, bhp->mtx_buf);
 				DB_ASSERT(env, !h_locked);
 				return (ret);
@@ -623,7 +639,7 @@ this_buffer:	/*
 				MUTEX_READLOCK(env, hp->mtx_hash);
 			} else {
 				need_free = (atomic_dec(env, &bhp->ref) == 0);
-				F_CLR(bhp, BH_EXCLUSIVE);
+				BH_CLR_EXCLUSIVE(bhp);
 				MUTEX_UNLOCK(env, bhp->mtx_buf);
 				if (need_free) {
 					MPOOL_REGION_LOCK(env, infop);
@@ -714,7 +730,7 @@ next_hb:		if (bhp != NULL) {
 				DB_ASSERT(env, BH_REFCOUNT(bhp) > 0);
 				atomic_dec(env, &bhp->ref);
 				if (b_lock) {
-					F_CLR(bhp, BH_EXCLUSIVE);
+					BH_CLR_EXCLUSIVE(bhp);
 					MUTEX_UNLOCK(env, bhp->mtx_buf);
 				}
 			}
@@ -886,7 +902,7 @@ retry_bucket:			MUTEX_LOCK(env, hp->mtx_hash);
 				ret = 0;
 				continue;
 			}
-			F_SET(bhp, BH_EXCLUSIVE);
+			BH_SET_EXCLUSIVE(bhp);
 			MUTEX_LOCK(env, hp->mtx_hash);
 
 			/*
@@ -902,7 +918,7 @@ retry_bucket:			MUTEX_LOCK(env, hp->mtx_hash);
 			    !SH_CHAIN_HASNEXT(bhp, vc) ||
 			    !BH_OBSOLETE(bhp, hp->old_reader, vlsn)) {
 				atomic_dec(env, &bhp->ref);
-				F_CLR(bhp, BH_EXCLUSIVE);
+				BH_CLR_EXCLUSIVE(bhp);
 				MUTEX_UNLOCK(env, bhp->mtx_buf);
 				MUTEX_UNLOCK(env, hp->mtx_hash);
 				continue;
@@ -927,4 +943,77 @@ retry_bucket:			MUTEX_LOCK(env, hp->mtx_hash);
 	}
 
 	return (ret);
+}
+
+/*
+ * __memp_bh_pinned --
+ *	RFC 0007 phase 1: is this frame referenced by any LIVE thread's pin
+ *	list?  Eviction must not reuse a frame that an optimistic (pin-free)
+ *	reader is looking at, and bhp->ref no longer tells it -- the per-thread
+ *	pin record does.
+ *
+ *	A stale pin left behind by a DEAD process must NOT block eviction, or a
+ *	single SIGKILLed reader wedges that frame (and, once enough frames are
+ *	wedged, the whole pool) until failchk runs.  So a pin only counts when
+ *	the owning thread of control is (a) in a state that means it is inside
+ *	the library and (b) alive according to the application's is_alive
+ *	callback, when one is configured.
+ *
+ *	When no is_alive callback is configured (the default) liveness cannot be
+ *	established, and this returns "pinned" for any in-use slot -- exactly
+ *	the behaviour bhp->ref had, since a dead process's leaked ref also
+ *	blocked eviction.  DB_ENV->set_isalive is what buys the improvement, and
+ *	that is already the documented requirement for failchk.
+ *
+ * PUBLIC: int __memp_bh_pinned __P((ENV *, REGINFO *, BH *));
+ */
+int
+__memp_bh_pinned(env, infop, bhp)
+	ENV *env;
+	REGINFO *infop;
+	BH *bhp;
+{
+	DB_ENV *dbenv;
+	DB_HASHTAB *htab;
+	DB_MPOOL *dbmp;
+	DB_THREAD_INFO *ip;
+	PIN_LIST *list, *lp;
+	roff_t b_ref;
+	u_int32_t i;
+	int region;
+
+	if ((htab = env->thr_hashtab) == NULL)
+		return (0);
+	dbenv = env->dbenv;
+	dbmp = env->mp_handle;
+	b_ref = R_OFFSET(infop, bhp);
+	region = (int)(infop - dbmp->reginfo);
+
+	for (i = 0; i < env->thr_nbucket; i++)
+		SH_TAILQ_FOREACH(ip, &htab[i], dbth_links, __db_thread_info) {
+			/*
+			 * A slot not in use, or one whose thread has left the
+			 * library, cannot be mid-descent.  THREAD_OUT is the
+			 * normal idle state and its pin list must be empty; if
+			 * it is not, the owner died holding pins.
+			 */
+			if (ip->dbth_state == THREAD_SLOT_NOT_IN_USE ||
+			    ip->dbth_state == THREAD_BLOCKED_DEAD)
+				continue;
+			if (ip->dbth_pincount == 0)
+				continue;
+			/*
+			 * Dead owner: its pins are garbage that failchk will
+			 * reclaim.  Do not let them block eviction.
+			 */
+			if (ALIVE_ON(env) && !dbenv->is_alive(
+			    dbenv, ip->dbth_pid, ip->dbth_tid, 0))
+				continue;
+
+			list = R_ADDR(env->reginfo, ip->dbth_pinlist);
+			for (lp = list; lp < &list[ip->dbth_pinmax]; lp++)
+				if (lp->b_ref == b_ref && lp->region == region)
+					return (1);
+		}
+	return (0);
 }

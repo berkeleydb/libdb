@@ -1363,6 +1363,7 @@
 #define	__memp_alloc __memp_alloc@DB_VERSION_UNIQUE_NAME@
 #define	__memp_free __memp_free@DB_VERSION_UNIQUE_NAME@
 #define	__memp_purge_obsolete __memp_purge_obsolete@DB_VERSION_UNIQUE_NAME@
+#define	__memp_bh_pinned __memp_bh_pinned@DB_VERSION_UNIQUE_NAME@
 #define	__memp_backup_open __memp_backup_open@DB_VERSION_UNIQUE_NAME@
 #define	__memp_backup_mpf __memp_backup_mpf@DB_VERSION_UNIQUE_NAME@
 #define	__memp_backup_close __memp_backup_close@DB_VERSION_UNIQUE_NAME@
@@ -1375,6 +1376,9 @@
 #define	__memp_bhfree __memp_bhfree@DB_VERSION_UNIQUE_NAME@
 #define	__memp_fget_pp __memp_fget_pp@DB_VERSION_UNIQUE_NAME@
 #define	__memp_fget __memp_fget@DB_VERSION_UNIQUE_NAME@
+#define	__memp_fget_opt __memp_fget_opt@DB_VERSION_UNIQUE_NAME@
+#define	__memp_fget_opt_valid __memp_fget_opt_valid@DB_VERSION_UNIQUE_NAME@
+#define	__memp_fget_opt_release __memp_fget_opt_release@DB_VERSION_UNIQUE_NAME@
 #define	__memp_fcreate_pp __memp_fcreate_pp@DB_VERSION_UNIQUE_NAME@
 #define	__memp_fcreate __memp_fcreate@DB_VERSION_UNIQUE_NAME@
 #define	__memp_set_clear_len __memp_set_clear_len@DB_VERSION_UNIQUE_NAME@
