@@ -1323,6 +1323,9 @@ err:	/*
 	return (ret);
 }
 
+u_int32_t __memp_opt_why[4];
+u_int32_t __memp_opt_flags, __memp_opt_gen;
+
 /*
  * __memp_fget_opt --
  *	Optimistic (pin-free) page fetch -- RFC 0007 phase 1.
@@ -1384,8 +1387,12 @@ __memp_fget_opt(dbmfp, pgnoaddr, ip, sample, addrp)
 	 * excluded here is handled by the ordinary path.
 	 */
 	if (ip == NULL || dbmfp->addr != NULL ||
-	    atomic_read(&mfp->multiversion) != 0)
+	    atomic_read(&mfp->multiversion) != 0) {
+		__memp_opt_why[0]++;
+		__memp_opt_flags = (ip == NULL) | ((dbmfp->addr != NULL) << 1) |
+		    ((atomic_read(&mfp->multiversion) != 0) << 2);
 		return (DB_MPOOL_RETRY);
+	}
 
 	mf_offset = R_OFFSET(dbmp->reginfo, mfp);
 	MP_GET_BUCKET(env, mfp, *pgnoaddr, &infop, hp, bucket, ret);
@@ -1409,16 +1416,22 @@ __memp_fget_opt(dbmfp, pgnoaddr, ip, sample, addrp)
 		if ((gen & BH_GEN_INFLUX) != 0 ||
 		    F_ISSET(bhp, BH_DIRTY | BH_FREED | BH_FROZEN |
 		    BH_TRASH | BH_CALLPGIN | BH_EXCLUSIVE) ||
-		    !SH_CHAIN_SINGLETON(bhp, vc))
+		    !SH_CHAIN_SINGLETON(bhp, vc)) {
+			__memp_opt_why[1]++;
+			__memp_opt_flags = bhp->flags;
+			__memp_opt_gen = gen;
 			break;
+		}
 
 		/* Find a free pin slot.  Never grow the array here. */
 		list = R_ADDR(env->reginfo, ip->dbth_pinlist);
 		for (lp = list; lp < &list[ip->dbth_pinmax]; lp++)
 			if (lp->b_ref == INVALID_ROFF)
 				break;
-		if (lp == &list[ip->dbth_pinmax])
+		if (lp == &list[ip->dbth_pinmax]) {
+			__memp_opt_why[2]++;
 			break;
+		}
 
 		/*
 		 * Publish the pin BEFORE re-reading the generation, and fence
@@ -1454,6 +1467,8 @@ __memp_fget_opt(dbmfp, pgnoaddr, ip, sample, addrp)
 	}
 
 	MUTEX_UNLOCK(env, hp->mtx_hash);
+	if (bhp == NULL)
+		__memp_opt_why[3]++;
 	return (DB_MPOOL_RETRY);
 }
 
