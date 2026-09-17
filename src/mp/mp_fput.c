@@ -193,7 +193,7 @@ unpin:
 		 * we can't touch the flags bits.
 		 */
 		if (F_ISSET(bhp, BH_EXCLUSIVE))
-			F_CLR(bhp, BH_EXCLUSIVE);
+			BH_CLR_EXCLUSIVE(bhp);
 		MUTEX_UNLOCK(env, bhp->mtx_buf);
 		return (0);
 	}
@@ -257,7 +257,7 @@ unpin:
 	 * touch the flags bits.
 	 */
 	if (F_ISSET(bhp, BH_EXCLUSIVE))
-		F_CLR(bhp, BH_EXCLUSIVE);
+		BH_CLR_EXCLUSIVE(bhp);
 	MUTEX_UNLOCK(env, bhp->mtx_buf);
 
 	return (ret);

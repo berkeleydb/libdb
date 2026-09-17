@@ -37,6 +37,15 @@
 #define	VALSZ	100
 #define	NBUCK	64
 
+/*
+ * RFC 0007 phase 1 counters (bt_search.c).  Reported per measured point so an
+ * A/B can never be published without evidence that the arm under test actually
+ * ran -- the failure mode that made four earlier pin branches unfalsifiable.
+ */
+extern u_int32_t __bam_opt_tries;
+extern u_int32_t __bam_opt_pages;
+extern u_int32_t __bam_opt_invalid;
+
 static DB_ENV *env;
 static DB *db;
 static volatile int stop, go;
@@ -245,6 +254,7 @@ run(int nthreads, double warmup, double secs)
 {
 	uint64_t agg[NBUCK], nf;
 	double kps, p50, p99;
+	u_int32_t t0, p0, v0;
 
 	/* Warmup: same work, result discarded, so we measure steady state. */
 	if (warmup > 0.0 &&
@@ -254,6 +264,9 @@ run(int nthreads, double warmup, double secs)
 		return (1);
 	}
 
+	t0 = __bam_opt_tries;
+	p0 = __bam_opt_pages;
+	v0 = __bam_opt_invalid;
 	kps = one_window(nthreads, secs, agg, &nf, &p50, &p99);
 	if (kps <= 0.0) {
 		printf("FAIL tag=%s mode=%s thr=%d no throughput\n",
@@ -261,9 +274,12 @@ run(int nthreads, double warmup, double secs)
 		return (1);
 	}
 	printf("RESULT tag=%s mode=%s thr=%d batch=%d keys_per_sec=%.0f "
-	    "batch_p50_us=%.1f batch_p99_us=%.1f notfound=%llu\n",
+	    "batch_p50_us=%.1f batch_p99_us=%.1f notfound=%llu "
+	    "opt_tries=%u opt_pages=%u opt_invalid=%u\n",
 	    g_tag, g_batch_mode ? "batch" : "indiv", nthreads, g_batchsz,
-	    kps, p50, p99, (unsigned long long)nf);
+	    kps, p50, p99, (unsigned long long)nf,
+	    __bam_opt_tries - t0, __bam_opt_pages - p0,
+	    __bam_opt_invalid - v0);
 	fflush(stdout);
 	return (0);
 }
@@ -331,11 +347,19 @@ main(int argc, char **argv)
 	(void)env->set_flags(env, DB_TXN_NOSYNC, 1);
 	oflags = DB_CREATE | DB_INIT_MPOOL | DB_INIT_LOCK | DB_INIT_TXN |
 	    DB_INIT_LOG | DB_THREAD;
-	if (private) {
+	/*
+	 * set_thread_count is now UNCONDITIONAL, not just for DB_PRIVATE.  The
+	 * per-thread pin list lives in the thread region, which is allocated
+	 * only when thr_max != 0 (env_failchk.c:__env_thread_init) -- and RFC
+	 * 0007's optimistic read path refuses to engage without it (ip == NULL).
+	 * Measured without this line the fast path bailed on 100% of descents,
+	 * so both arms would have been the SAME code and the A/B would have
+	 * reported "no win" for a path that never ran.  It is set identically
+	 * for both arms, so it cannot bias the comparison.
+	 */
+	(void)env->set_thread_count(env, (u_int32_t)maxt + 16);
+	if (private)
 		oflags |= DB_PRIVATE;
-		/* Needed so a DB_PRIVATE env has per-thread info. */
-		(void)env->set_thread_count(env, (u_int32_t)maxt + 16);
-	}
 	if ((ret = env->open(env, home, oflags, 0)) != 0) {
 		env->err(env, ret, "env open %s", home);
 		return (1);
