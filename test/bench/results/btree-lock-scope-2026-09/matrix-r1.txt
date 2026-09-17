@@ -1,0 +1,58 @@
+# lsc_matrix tag=r1 secs=15 reps=1 threads='1 8 32 96' arms='unwarmed warmed'
+RESULT rep=1 arm=unwarmed t=1 mode=sync threads=1 secs=15.02 commits=13300 ops_sec=886 flushes=13300 flush_per_commit=1.0000 maxcpf=1 mincpf=1 p50_us=891 p99_us=2906 p999_us=3169
+RESULT rep=1 arm=unwarmed t=1 PHASE begin_us p50=3 p90=3 p99=3 p999=8 max=28
+RESULT rep=1 arm=unwarmed t=1 PHASE put_us p50=3 p90=4 p99=17 p999=47 max=62
+RESULT rep=1 arm=unwarmed t=1 PHASE commit_us p50=884 p90=2734 p99=2893 p999=3153 max=5307
+RESULT rep=1 arm=unwarmed t=1 LOCKS wait_total=0 wait_pg0=0 wait_other=0 held_total=9 held_pg0=1 held_pages=9 max_nonmeta_wait_pg=-1 n=0
+RESULT rep=1 arm=unwarmed t=1 LOG __bam_split=724 __db_pg_alloc=726 __txn_regop=13301 
+RESULT rep=1 arm=unwarmed t=1 ---
+RESULT rep=1 arm=warmed t=1 mode=sync threads=1 secs=15.02 commits=15977 ops_sec=1064 flushes=15977 flush_per_commit=1.0000 maxcpf=1 mincpf=1 p50_us=888 p99_us=2810 p999_us=2910
+RESULT rep=1 arm=warmed t=1 PHASE begin_us p50=3 p90=3 p99=3 p999=12 max=32
+RESULT rep=1 arm=warmed t=1 PHASE put_us p50=4 p90=4 p99=5 p999=15 max=24
+RESULT rep=1 arm=warmed t=1 PHASE commit_us p50=881 p90=926 p99=2802 p999=2904 max=5869
+RESULT rep=1 arm=warmed t=1 LOCKS wait_total=0 wait_pg0=0 wait_other=0 held_total=4 held_pg0=0 held_pages=5 max_nonmeta_wait_pg=-1 n=0
+RESULT rep=1 arm=warmed t=1 LOG __bam_split=40246 __db_pg_alloc=40249 __txn_regop=16978 
+RESULT rep=1 arm=warmed t=1 ---
+RESULT rep=1 arm=unwarmed t=8 mode=sync threads=8 secs=15.02 commits=34318 ops_sec=2285 flushes=8873 flush_per_commit=0.2586 maxcpf=7 mincpf=1 p50_us=3691 p99_us=7534 p999_us=13149
+RESULT rep=1 arm=unwarmed t=8 PHASE begin_us p50=13 p90=35 p99=53 p999=61 max=86
+RESULT rep=1 arm=unwarmed t=8 PHASE put_us p50=8 p90=18 p99=3752 p999=9811 max=36876
+RESULT rep=1 arm=unwarmed t=8 PHASE commit_us p50=3660 p90=3826 p99=5688 p999=5852 max=6301
+RESULT rep=1 arm=unwarmed t=8 LOCKS wait_total=0 wait_pg0=0 wait_other=0 held_total=54 held_pg0=4 held_pages=49 max_nonmeta_wait_pg=-1 n=0
+RESULT rep=1 arm=unwarmed t=8 LOG __bam_split=1871 __db_pg_alloc=1873 __txn_regop=34319 
+RESULT rep=1 arm=unwarmed t=8 ---
+RESULT rep=1 arm=warmed t=8 mode=sync threads=8 secs=15.02 commits=54707 ops_sec=3642 flushes=13679 flush_per_commit=0.2500 maxcpf=7 mincpf=1 p50_us=1797 p99_us=3803 p999_us=4338
+RESULT rep=1 arm=warmed t=8 PHASE begin_us p50=12 p90=33 p99=48 p999=55 max=107
+RESULT rep=1 arm=warmed t=8 PHASE put_us p50=6 p90=7 p99=8 p999=18 max=1872
+RESULT rep=1 arm=warmed t=8 PHASE commit_us p50=1774 p90=3654 p99=3781 p999=4325 max=5527
+RESULT rep=1 arm=warmed t=8 LOCKS wait_total=0 wait_pg0=0 wait_other=0 held_total=37 held_pg0=0 held_pages=38 max_nonmeta_wait_pg=-1 n=0
+RESULT rep=1 arm=warmed t=8 LOG __bam_split=40246 __db_pg_alloc=40249 __txn_regop=55708 
+RESULT rep=1 arm=warmed t=8 ---
+RESULT rep=1 arm=unwarmed t=32 mode=sync threads=32 secs=15.05 commits=63528 ops_sec=4222 flushes=7115 flush_per_commit=0.1120 maxcpf=29 mincpf=1 p50_us=3841 p99_us=70622 p999_us=84617
+RESULT rep=1 arm=unwarmed t=32 PHASE begin_us p50=24 p90=78 p99=136 p999=181 max=225
+RESULT rep=1 arm=unwarmed t=32 PHASE put_us p50=7 p90=19 p99=66120 p999=80418 max=174049
+RESULT rep=1 arm=unwarmed t=32 PHASE commit_us p50=3780 p90=5673 p99=5861 p999=7345 max=8532
+RESULT rep=1 arm=unwarmed t=32 LOCKS wait_total=63 wait_pg0=62 wait_other=1 held_total=117 held_pg0=5 held_pages=110 max_nonmeta_wait_pg=712 n=1
+RESULT rep=1 arm=unwarmed t=32 LOG __bam_split=3480 __db_pg_alloc=3482 __txn_regop=63529 
+RESULT rep=1 arm=unwarmed t=32 ---
+RESULT rep=1 arm=warmed t=32 mode=sync threads=32 secs=15.02 commits=137173 ops_sec=9133 flushes=8578 flush_per_commit=0.0625 maxcpf=31 mincpf=1 p50_us=3709 p99_us=4097 p999_us=6557
+RESULT rep=1 arm=warmed t=32 PHASE begin_us p50=31 p90=91 p99=150 p999=192 max=1892
+RESULT rep=1 arm=warmed t=32 PHASE put_us p50=6 p90=7 p99=10 p999=66 max=5362
+RESULT rep=1 arm=warmed t=32 PHASE commit_us p50=3660 p90=3803 p99=4022 p999=5786 max=9482
+RESULT rep=1 arm=warmed t=32 LOCKS wait_total=0 wait_pg0=0 wait_other=0 held_total=155 held_pg0=0 held_pages=155 max_nonmeta_wait_pg=-1 n=0
+RESULT rep=1 arm=warmed t=32 LOG __bam_split=40246 __db_pg_alloc=40249 __txn_regop=138174 
+RESULT rep=1 arm=warmed t=32 ---
+RESULT rep=1 arm=unwarmed t=96 mode=sync threads=96 secs=15.23 commits=59481 ops_sec=3906 flushes=7438 flush_per_commit=0.1250 maxcpf=29 mincpf=1 p50_us=3802 p99_us=286084 p999_us=313564
+RESULT rep=1 arm=unwarmed t=96 PHASE begin_us p50=23 p90=74 p99=124 p999=164 max=214
+RESULT rep=1 arm=unwarmed t=96 PHASE put_us p50=28 p90=2676 p99=281634 p999=309692 max=385773
+RESULT rep=1 arm=unwarmed t=96 PHASE commit_us p50=3722 p90=5589 p99=5792 p999=7514 max=8161
+RESULT rep=1 arm=unwarmed t=96 LOCKS wait_total=400 wait_pg0=400 wait_other=0 held_total=100 held_pg0=5 held_pages=95 max_nonmeta_wait_pg=-1 n=0
+RESULT rep=1 arm=unwarmed t=96 LOG __bam_split=3655 __db_pg_alloc=3657 __txn_regop=59482 
+RESULT rep=1 arm=unwarmed t=96 ---
+RESULT rep=1 arm=warmed t=96 mode=sync threads=96 secs=15.03 commits=245811 ops_sec=16359 flushes=5049 flush_per_commit=0.0205 maxcpf=95 mincpf=1 p50_us=6037 p99_us=6940 p999_us=9402
+RESULT rep=1 arm=warmed t=96 PHASE begin_us p50=77 p90=272 p99=552 p999=736 max=2606
+RESULT rep=1 arm=warmed t=96 PHASE put_us p50=12 p90=129 p99=303 p999=3024 max=6514
+RESULT rep=1 arm=warmed t=96 PHASE commit_us p50=5878 p90=6260 p99=6722 p999=8091 max=10597
+RESULT rep=1 arm=warmed t=96 LOCKS wait_total=1 wait_pg0=0 wait_other=1 held_total=447 held_pg0=0 held_pages=443 max_nonmeta_wait_pg=225 n=1
+RESULT rep=1 arm=warmed t=96 LOG __bam_split=40246 __db_pg_alloc=40249 __txn_regop=246812 
+RESULT rep=1 arm=warmed t=96 ---
+MATRIX_DONE
