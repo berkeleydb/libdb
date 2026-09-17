@@ -5,13 +5,20 @@
 # --enable-tcl, so test/tcl/include.tcl is present but UNSUBSTITUTED
 # (tclsh_path empty) and sourcing test.tcl dies with "can't read tclsh_path".
 # A run against those trees produces zero verdicts, which is not a pass.
+#
+# --enable-test is also required, not just --enable-tcl: without it the tcl
+# extension is built but the test-only commands are not registered, and test.tcl
+# dies at `berkdb getconfig` with "bad command".  Same symptom class -- zero
+# verdicts -- from a different missing flag.  Both flags match ci.yml's
+# tcl-tests job.
 set -e
 W=/home/admin/rdl-wt
 cd $W
 mkdir -p btcl
 cd btcl
 if [ ! -f db.h ]; then
-	../dist/configure --enable-tcl --with-tcl=/usr/lib/x86_64-linux-gnu \
+	../dist/configure --enable-tcl --enable-test \
+	    --with-tcl=/usr/lib/tcl8.6 \
 	    --enable-debug --enable-diagnostic >cfg.log 2>&1 ||
 	    { tail -30 cfg.log; exit 1; }
 fi
