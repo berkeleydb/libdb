@@ -40,6 +40,11 @@ WARM=3
 THREADS="1 8 32 96"
 NKEYS=2000000
 MODE=indiv
+# Keys per db_get_multiple call in batch mode.  MUST be > 1 or "batch" mode is
+# just indiv with extra steps -- a run with BATCHSZ=1 measured 1.09x where the
+# same code at BATCHSZ=32 measured 2.03x, because batch=1 still pays the
+# per-key cursor open/close that batching exists to amortize.
+BATCHSZ=32
 HOME_DIR=${OPT_AB_HOME:-/tmp/optab}
 
 while [ $# -gt 0 ]; do
@@ -51,6 +56,7 @@ while [ $# -gt 0 ]; do
 	-n) THREADS=$2; shift 2;;
 	-k) NKEYS=$2; shift 2;;
 	-m) MODE=$2; shift 2;;
+	-B) BATCHSZ=$2; shift 2;;
 	-H) HOME_DIR=$2; shift 2;;
 	*) echo "usage: see header" >&2; exit 2;;
 	esac
@@ -71,7 +77,7 @@ mkdir -p "$HOME_DIR"
 
 hdr() {
 	echo "# opt_ab $(date -u +%FT%TZ) host=$(hostname) mode=$MODE"
-	echo "# nkeys=$NKEYS secs=$SECS warm=$WARM reps=$REPS threads=$THREADS"
+	echo "# nkeys=$NKEYS secs=$SECS warm=$WARM reps=$REPS threads=$THREADS batchsz=$BATCHSZ"
 	echo "# home=$HOME_DIR homelen=${#HOME_DIR} build=$BUILD"
 	echo "# governor=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo n/a)"
 	echo "# libdb=$(cd "$BUILD/.." && git log --oneline -1 2>/dev/null || echo n/a)"
@@ -90,7 +96,9 @@ one() {
 	esac
 	line=$(cd "$HOME_DIR" && env $env_extra PIN_HOME="$HOME_DIR" \
 	    PIN_TAG="$tag" PIN_CACHE_MB="${OPT_AB_CACHE_MB:-4096}" \
-	    "$BIN" "$MODE" "$NKEYS" 1 "$WARM" "$SECS" "$thr" 2>&1 |
+	    "$BIN" "$MODE" "$NKEYS" \
+	    "$([ "$MODE" = batch ] && echo "$BATCHSZ" || echo 1)" \
+	    "$WARM" "$SECS" "$thr" 2>&1 |
 	    grep -E "^(RESULT|FAIL)" || true)
 	if [ -z "$line" ]; then
 		line="FAIL tag=$tag thr=$thr no output"
