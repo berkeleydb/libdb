@@ -295,10 +295,13 @@ Required before any merge:
   | path | t=1 | t=8 | t=32 | t=96 |
   |---|---:|---:|---:|---:|
   | per-key `DB->get` | 1.09x | 1.26x | **1.71x** | **0.77x** |
-  | batched `db_get_multiple` (32) | - | - | - | **2.03x** |
+  | batched `db_get_multiple` (32) | 1.12x | 1.64x | 1.84x | **2.05x** |
 
   At t=32 the per-key path does 1.71x the reads while performing **0.57x** the
-  pinned page-touches.
+  pinned page-touches, and on the batched path (t=32) hardware counters show
+  **0.78x** the Read-For-Ownership requests per read -- 22% less cross-core write
+  traffic per unit of work.  (`perf c2c` is unusable on this instance: its PMU
+  does not expose the PEBS memory events, and it produces no data at all.)
 
   *The t=96 per-key regression is measured, not speculated, and is not this
   change.* `perf --call-graph dwarf`: 82% of time in `__db_tas_mutex_lock_int`,

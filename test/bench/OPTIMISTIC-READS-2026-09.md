@@ -211,15 +211,27 @@ the root's child without a fetch, so a read touches the root snapshot (no pin),
 At t=32 the change does 1.71x the reads while performing **0.57x** the pin
 operations — 3.96M pinned page-touches/s against 6.93M.
 
-### 6.3 Batched reads (`db_get_multiple`, 32 keys/call), t=96
+### 6.3 Batched reads (`db_get_multiple`, 32 keys/call), t=96 spot check
 
 ```
 base  3.578M / 3.470M keys/s
 opt   7.283M / 6.987M keys/s      ratio 2.03x
 ```
 
-Same code, same box, same env home, minutes apart. The full 5-rep batch sweep is
-in `test/bench/opt_ab_batch.tsv`.
+Same code, same box, same env home, minutes apart. Full sweep in section 6.4.
+
+### 6.4 Batched reads (`db_get_multiple`, 32 keys/call), full sweep
+
+```
+   t   base med    CV%    opt med    CV%   ratio   noise    verdict  pages/try
+   1     0.495M   2.5%     0.554M   2.6%   1.120    2.1%        WIN      2.00
+   8     1.914M   2.6%     3.130M   3.4%   1.635    0.5%        WIN      1.98
+  32     2.573M   1.0%     4.740M   3.1%   1.842    0.8%        WIN      1.45
+  96     3.479M   1.0%     7.116M   1.5%   2.046    0.0%        WIN      1.78
+```
+
+WIN at every thread count, noise floor at or under 2.1%. Raw data in
+`test/bench/opt_ab_batch.tsv`.
 
 ## 7. Why t=96 regresses on the per-key path (measured, not guessed)
 
@@ -258,23 +270,82 @@ batched path, which does not pay per-key cursor open/close, the identical code i
 So: reported as a regression on that path at that thread count, with the cause
 named. Not attributed to noise (the floor is 0.1%), and not explained away.
 
-## 8. No shared writes — from the hardware, and one that source review missed
+## 8. No shared writes -- hardware evidence, and one that source review missed
 
 The first version of this branch **did** perform shared writes on the
 "pin-free" path, and the source read as though it did not:
 
-- `++c_mp->put_counter` — one word per cache region, so every reader on every
+- `++c_mp->put_counter` -- one word per cache region, so every reader on every
   core dirtied the same line. ThreadSanitizer flagged it.
-- `STAT_INC_VERB(... st_cache_hit ...)` — one word per MPOOLFILE.
+- `STAT_INC_VERB(... st_cache_hit ...)` -- one word per MPOOLFILE.
 
 Both removed; hit attribution moved to the process-local `opt_pages` counter.
 This is exactly why RFC 0007 requires cacheline evidence rather than a source
 argument, and the requirement earned itself on this branch.
 
 Remaining writes on the optimistic path, exhaustively: this thread's own
-`PIN_LIST` slot and `ip->dbth_pincount`, both in this thread's `DB_THREAD_INFO`;
-plus the shared *read* lock on the bucket mutex (see §9). `test/bench/opt_c2c.sh`
-captures `perf c2c` HITM counts for both arms.
+`PIN_LIST` slot and `ip->dbth_pincount`, both inside this thread's
+`DB_THREAD_INFO`; plus the shared *read* lock on the bucket mutex (section 9).
+
+### 8.1 `perf c2c` does not work here -- measured, not assumed
+
+```
+$ perf c2c record -o /tmp/t.data -- sleep 0.2
+failed: memory events not supported
+```
+
+The instance's PMU does not expose the PEBS memory events `perf c2c` needs, and
+it produces **no data at all** -- a first run of `opt_c2c.sh` left two 68-byte
+files saying `failed to open ... .c2c.data`. Reporting "c2c clean" from that
+would have been evidence-free.
+
+### 8.2 The counter that does work: RFO per read
+
+`l2_rqsts.all_rfo` / `l2_rqsts.rfo_miss`. A Read-For-Ownership is issued when a
+core needs a line in a **writable** state, and it misses L2 exactly when another
+core owns it. That is the cross-core write sharing this RFC is about, counted in
+hardware.
+
+Method: run the same binary for a 4 s and a 12 s window and difference them, so
+the load phase (identical in both) cancels exactly and what remains is 8 s of
+pure read traffic. Normalized per read, because the faster arm does more work
+per second and raw counts would flatter it. (A first attempt reported ~700 RFO
+misses for a 32-thread 8-second run -- the benchmark had failed to open its
+environment and `perf stat` dutifully counted 0.7 ms of nothing. Implausibly
+small counters are a harness failure, not a result.)
+
+**Batched path (t=32), where no per-key cursor mutex is in the way:**
+
+| arm | keys/s | RFO per read | stores per read |
+|---|---:|---:|---:|
+| base | 3.533M | 13.65 | 876.3 |
+| opt | 6.034M | **10.67** | 818.7 |
+| ratio | 1.71x | **0.781** | 0.934 |
+
+**22% fewer cross-core write-ownership requests per read**, and 6.6% fewer
+retired stores per read, while doing 1.71x the work. That is the claim, in
+hardware.
+
+**Per-key path (t=32) -- the opposite sign, and worth stating:**
+
+| arm | keys/s | RFO per read | stores per read |
+|---|---:|---:|---:|
+| base | 3.303M | 33.35 | 1228.6 |
+| opt | 3.882M | **42.46** | 1150.3 |
+| ratio | 1.18x | **1.273** | 0.936 |
+
+RFO per read goes **up** 27% on the per-key path, and this is section 7's finding
+seen through a different instrument. Note first that *stores* per read fall
+(0.936x) on both paths -- the change genuinely removes writes. What rises is RFO
+**traffic**, and libdb's mutex is a test-and-set: every spin iteration is a
+locked RMW, i.e. an RFO. A descent that reaches the cursor-lifecycle mutex
+sooner spins on it more, so the pin's RFOs are replaced by more mutex RFOs.
+Remove that mutex from the path (the batched API) and the number inverts to 0.78x
+on otherwise identical code.
+
+So the honest form of the no-shared-write claim is: **the optimistic read path
+itself performs no shared writes, and where the surrounding code does not
+reintroduce one, cross-core write traffic per unit of work falls 22%.**
 
 ## 9. What is left on the table: the bucket mutex
 
@@ -289,6 +360,20 @@ target, and it is why the win is 1.7x rather than the 3.5x a naive reading of
 "71.9% of self time is the pin" would predict.
 
 ## 10. Correctness gates
+
+### Before/after profile at t=32 (per-key path, arms alternating)
+
+```
+base:  28.7% __os_atomic_read   18.4% __memp_fget   11.1% __memp_fput
+        9.3% __os_atomic_dec     7.1% mutex_unlock   6.4% mutex_lock_int
+opt:   30.7% mutex_lock_int     15.6% mutex_unlock  12.1% __bam_search
+        8.7% __os_atomic_read    3.5% __db_cursor_int 3.3% __dbc_close
+        2.3% __memp_fget         2.1% __memp_fput
+```
+
+`__memp_fget` 18.4% -> 2.3%, `__memp_fput` 11.1% -> 2.1%, `__os_atomic_read`
+28.7% -> 8.7%. The pin's share falls by roughly 8x; what grows is mutex time,
+which section 7 resolves to the cursor-lifecycle mutex.
 
 | gate | result |
 |---|---|
@@ -323,7 +408,8 @@ cache, and why a build that cannot fire is proven to fail (§10, row 3).
 batched read path and on the per-key path to 32 threads.** The mechanism does
 what the RFC predicted: the pin atomics leave the profile entirely.
 
-- Batched reads: **2.03x at t=96.**
+- Batched reads: **1.12x / 1.64x / 1.84x / 2.05x** at t=1/8/32/96 -- a win at
+  every thread count, noise floor at or under 2.1%.
 - Per-key reads: **1.09x / 1.26x / 1.71x** at t=1/8/32.
 - Per-key reads at t=96: **0.77x**, because the change moves the bottleneck onto
   the pre-existing cursor-lifecycle mutex. Cause measured (§7), not speculated.
