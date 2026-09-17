@@ -56,10 +56,16 @@ pass(DB_ENV *dbenv, DB *dbp, const char *label,
 	u_int32_t nreq0, nrel0, nreq1, nrel1, nlk1, nsi1;
 	u_int64_t pg0, pg1;
 
+	/*
+	 * DB_STAT_CLEAR returns the accumulated values AND THEN zeroes them, so
+	 * the pre-pass baseline is by construction zero -- do not subtract the
+	 * returned (pre-clear) values, that underflows.  That bug produced
+	 * 2147483647-per-read nonsense on the first run of this probe.
+	 */
 	CK(dbenv->lock_stat(dbenv, &ls0, DB_STAT_CLEAR));
 	CK(dbenv->memp_stat(dbenv, &ms0, NULL, DB_STAT_CLEAR));
-	nreq0 = ls0->st_nrequests; nrel0 = ls0->st_nreleases;
-	pg0 = (u_int64_t)ms0->st_cache_hit + ms0->st_cache_miss;
+	nreq0 = nrel0 = 0;
+	pg0 = 0;
 	free(ls0); free(ms0);
 
 	txn = NULL;
