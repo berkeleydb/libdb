@@ -1,7 +1,8 @@
 # Optimistic read-path page validation — RFC 0007 phase 1, measured
 
 - **Date:** 2026-09-17
-- **Branch:** `perf/optimistic-reads` (base: `master` @ `e358fb611`)
+- **Branch:** `perf/optimistic-reads`, merged up to `master` @ `e358fb611`
+  (purely additive; deletes nothing)
 - **RFC:** `rfc/0007-optimistic-read-validation.md`
 - **Hardware:** EC2, 96 vCPU, 185 GB, Linux 6.1.0-53-cloud-amd64, THP off, ASLR off
 - **Verdict:** **Win on the batched read path at every thread count and on the
@@ -375,7 +376,13 @@ opt:   30.7% mutex_lock_int     15.6% mutex_unlock  12.1% __bam_search
 28.7% -> 8.7%. The pin's share falls by roughly 8x; what grows is mutex time,
 which section 7 resolves to the cursor-lifecycle mutex.
 
-All re-run against the exact pushed HEAD (`631b81ef6`), not an earlier build.
+All re-run against the merge HEAD, not an earlier build.  Merging master in
+mattered: before it, this branch's diff against master showed 15 file DELETIONS
+(the read-descent-lock work landed on master while this branch was in flight, so
+an unmerged branch would have reverted it), and the stale isolation results file
+failed `check_manifest.sh` on the four new `phantom_pages` entries.  Both fixed
+by merging and RE-RUNNING the suite -- not by editing the manifest, which is
+exactly what that gate's own error message warns against.
 
 | gate | result |
 |---|---|
@@ -385,11 +392,11 @@ All re-run against the exact pushed HEAD (`631b81ef6`), not an earlier build.
 | teeth: **sabotaged build** (no gen bump) | **FAIL 3/3** — twice "validation NEVER FIRED", once a real wrong answer (`mismatch=1`) |
 | dead-process pin liveness | `VERDICT opt-deadpin ... 5/5 assertions`; sabotaged (is_alive removed) FAILS assertion 3 |
 | `db_verify` | clean; 300k keys, half deleted, every read correct |
-| `test/isolation`, both ISO levels, parts={default,1} | 9 scenarios x 2 levels x 2 parts, **0 unexpected outcomes** |
+| `test/isolation`, both ISO levels, parts={default,1} | **10** scenarios x 2 levels x 2 parts (incl. `phantom_pages`), **0 unexpected outcomes** |
 | `ssi001`–`ssi011` | **11/11 pass** (`OPT_SSI_TCL_OK 11/11`) |
 | ASan + UBSan | **0 AddressSanitizer errors**. 60 UBSan reports vs 54 on the same binary with the path disabled; the 6 new ones are all libdb's own `SSZA`/`P_OVERHEAD` null-pointer-offsetof idiom in `bt_search.c`, the same class as the 54 pre-existing |
 | TSan | **not usable as a gate**: baseline 315 races, branch 310. libdb's shared-region mutexes are invisible to TSan. Used diagnostically, and it found the `put_counter` shared write (§8) |
-| `test/check_manifest.sh` | `manifest gate: OK`, 42 verdict lines |
+| `test/check_manifest.sh` | `manifest gate: OK`, **46** verdict lines. No MANIFEST edit was needed: this branch adds no *manifest* verdicts, and the 46 come from master's `phantom_pages` scenario |
 
 ### Retry rate
 
