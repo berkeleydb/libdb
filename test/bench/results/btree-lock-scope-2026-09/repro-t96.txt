@@ -1,0 +1,5 @@
+prepopulate SKIPPED (PREPOP=0): measuring the insert ramp, NOT steady state
+mode=sync threads=96 secs=20.23 commits=81204 ops_sec=4014 flushes=9725 flush_per_commit=0.1198 maxcpf=30 mincpf=1 p50_us=3820 p99_us=289735 p999_us=418037
+PHASE begin_us p50=24 p90=77 p99=130 p999=173 max=1915
+PHASE put_us p50=27 p90=92 p99=285515 p999=413541 max=442002
+PHASE commit_us p50=3743 p90=5599 p99=5810 p999=7571 max=166859

@@ -1,0 +1,139 @@
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Lock REGINFO information:
+Environment	Region type
+1	Region ID
+/tmp/lscenv-14395/__db.001	Region name
+0x7fffefc00000	Region address
+0x7fffefc000a0	Region allocation head
+0x7ffff04005b0	Region primary address
+0	Region maximum allocation
+0	Region allocated
+Region allocations: 31569 allocations, 0 failures, 29490 frees, 3 longest
+REGION_SHARED	Region flags
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+Locks grouped by object:
+Locker   Mode      Count Status  ----------------- Object ---------------
+80007395 WRITE         1 HELD    bench.db                  page       1669
+
+800073a2 WRITE         1 HELD    bench.db                  page       1688
+
+80007399 WRITE         1 HELD    bench.db                  page       1838
+
+80007397 WRITE         1 HELD    bench.db                  page       1809
+
+80006fca WRITE         2 HELD    bench.db                  page       1892
+
+8000739d WRITE         1 HELD    bench.db                  page       1199
+
+80007396 WRITE         1 HELD    bench.db                  page       1150
+
+80007393 WRITE         1 HELD    bench.db                  page       1441
+
+8000739b WRITE         1 HELD    bench.db                  page       1510
+
+80006fca WRITE         1 HELD    bench.db                  page       1474
+
+800073a1 WRITE         1 HELD    bench.db                  page       1341
+
+80006fca WRITE         1 HELD    bench.db                  page        695
+
+80006fca WRITE         1 HELD    bench.db                  page        650
+
+8000739c WRITE         1 HELD    bench.db                  page        713
+
+8000739e WRITE         1 HELD    bench.db                  page        627
+
+8000739f WRITE         1 HELD    bench.db                  page        596
+
+8000739a WRITE         1 HELD    bench.db                  page        838
+
+80006fca WRITE         1 HELD    bench.db                  page          0
+80006fd0 WRITE         1 WAIT    bench.db                  page          0
+80006fd7 WRITE         1 WAIT    bench.db                  page          0
+80006fdf WRITE         1 WAIT    bench.db                  page          0
+80006fe7 WRITE         1 WAIT    bench.db                  page          0
+80006fe6 WRITE         1 WAIT    bench.db                  page          0
+80006fec WRITE         1 WAIT    bench.db                  page          0
+80006ff3 WRITE         1 WAIT    bench.db                  page          0
+80007057 WRITE         1 WAIT    bench.db                  page          0
+8000705e WRITE         1 WAIT    bench.db                  page          0
+80007067 WRITE         1 WAIT    bench.db                  page          0
+80007068 WRITE         1 WAIT    bench.db                  page          0
+8000707c WRITE         1 WAIT    bench.db                  page          0
+8000707b WRITE         1 WAIT    bench.db                  page          0
+8000707f WRITE         1 WAIT    bench.db                  page          0
+80007095 WRITE         1 WAIT    bench.db                  page          0
+8000708f WRITE         1 WAIT    bench.db                  page          0
+8000709c WRITE         1 WAIT    bench.db                  page          0
+8000709e WRITE         1 WAIT    bench.db                  page          0
+800070a0 WRITE         1 WAIT    bench.db                  page          0
+800070ac WRITE         1 WAIT    bench.db                  page          0
+800070af WRITE         1 WAIT    bench.db                  page          0
+800070b1 WRITE         1 WAIT    bench.db                  page          0
+800070c5 WRITE         1 WAIT    bench.db                  page          0
+800070cc WRITE         1 WAIT    bench.db                  page          0
+800070f3 WRITE         1 WAIT    bench.db                  page          0
+80007123 WRITE         1 WAIT    bench.db                  page          0
+8000712b WRITE         1 WAIT    bench.db                  page          0
+80007135 WRITE         1 WAIT    bench.db                  page          0
+80007136 WRITE         1 WAIT    bench.db                  page          0
+80007159 WRITE         1 WAIT    bench.db                  page          0
+80007161 WRITE         1 WAIT    bench.db                  page          0
+80007165 WRITE         1 WAIT    bench.db                  page          0
+80007167 WRITE         1 WAIT    bench.db                  page          0
+80007184 WRITE         1 WAIT    bench.db                  page          0
+80007185 WRITE         1 WAIT    bench.db                  page          0
+80007187 WRITE         1 WAIT    bench.db                  page          0
+80007179 WRITE         1 WAIT    bench.db                  page          0
+80007199 WRITE         1 WAIT    bench.db                  page          0
+800071a6 WRITE         1 WAIT    bench.db                  page          0
+800071a7 WRITE         1 WAIT    bench.db                  page          0
+800071d3 WRITE         1 WAIT    bench.db                  page          0
+800071ec WRITE         1 WAIT    bench.db                  page          0
+800071fe WRITE         1 WAIT    bench.db                  page          0
+80007207 WRITE         1 WAIT    bench.db                  page          0
+80007217 WRITE         1 WAIT    bench.db                  page          0
+80007211 WRITE         1 WAIT    bench.db                  page          0
+80007221 WRITE         1 WAIT    bench.db                  page          0
+80007226 WRITE         1 WAIT    bench.db                  page          0
+80007233 WRITE         1 WAIT    bench.db                  page          0
+8000723a WRITE         1 WAIT    bench.db                  page          0
+8000723f WRITE         1 WAIT    bench.db                  page          0
+80007242 WRITE         1 WAIT    bench.db                  page          0
+80007239 WRITE         1 WAIT    bench.db                  page          0
+80007240 WRITE         1 WAIT    bench.db                  page          0
+80007262 WRITE         1 WAIT    bench.db                  page          0
+80007281 WRITE         1 WAIT    bench.db                  page          0
+8000729e WRITE         1 WAIT    bench.db                  page          0
+8000729f WRITE         1 WAIT    bench.db                  page          0
+800072a4 WRITE         1 WAIT    bench.db                  page          0
+800072b0 WRITE         1 WAIT    bench.db                  page          0
+800072bf WRITE         1 WAIT    bench.db                  page          0
+800072c3 WRITE         1 WAIT    bench.db                  page          0
+800072c8 WRITE         1 WAIT    bench.db                  page          0
+800072c5 WRITE         1 WAIT    bench.db                  page          0
+800072e2 WRITE         1 WAIT    bench.db                  page          0
+80007318 WRITE         1 WAIT    bench.db                  page          0
+8000732b WRITE         1 WAIT    bench.db                  page          0
+8000732d WRITE         1 WAIT    bench.db                  page          0
+8000732e WRITE         1 WAIT    bench.db                  page          0
+80007326 WRITE         1 WAIT    bench.db                  page          0
+80007327 WRITE         1 WAIT    bench.db                  page          0
+80007330 WRITE         1 WAIT    bench.db                  page          0
+8000733a WRITE         1 WAIT    bench.db                  page          0
+80007344 WRITE         1 WAIT    bench.db                  page          0
+80007377 WRITE         1 WAIT    bench.db                  page          0
+80007376 WRITE         1 WAIT    bench.db                  page          0
+80007381 WRITE         1 WAIT    bench.db                  page          0
+80007398 WRITE         1 WAIT    bench.db                  page          0
+
+       1 READ          1 HELD    bench.db                  handle        0
+
+800073a3 WRITE         1 HELD    bench.db                  page        107
+
+800073a0 WRITE         1 HELD    bench.db                  page        395
+
+80007394 WRITE         1 HELD    bench.db                  page        310
+
+800073a4 WRITE         1 HELD    bench.db                  page        361
+
