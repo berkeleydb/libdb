@@ -815,12 +815,20 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	    atomic_read(&mpf->mfp->multiversion) == 0;
 
 	/*
-	 * Optimistic interior descent (RFC 0007 phase 1).  Under exactly the
-	 * read-only-descent guard below, walk the interior pages pin-free and
-	 * start the ordinary descent at the LEAF, so the only page this
-	 * operation pins and locks is the one it actually reads data from.
-	 * Preferred over the root snapshot when both apply: it reads the live
-	 * root rather than a private copy, so there is no copy to refresh.
+	 * Optimistic interior descent (RFC 0007 phase 1), COMPOSED WITH the root
+	 * snapshot rather than replacing it.
+	 *
+	 * The first version of this preempted the snapshot: it walked from the
+	 * live root, so it paid a pin-free fetch (and that fetch's bucket-mutex
+	 * read) for the root that the snapshot path avoids touching altogether.
+	 * Measured on the 96-vCPU box that was a REGRESSION at t=8 and t=32 --
+	 * the comparison was "optimistic descent" against "root snapshot", not
+	 * against plain pinning, and the snapshot was winning.
+	 *
+	 * So: take the first child from the snapshot when it is current (no fetch
+	 * at all for the root), and walk the REMAINING interior levels pin-free.
+	 * On a 3-level tree that is snapshot for the root, optimistic for the one
+	 * interior level, and a single pinned+locked leaf.
 	 *
 	 * This is the ONE retry site (RFC 0007: no longjmp).  The budget is
 	 * BAM_OPT_RETRIES per descent; after that this descent uses the pinning
@@ -828,26 +836,33 @@ __bam_search(dbc, root_pgno, key, flags, slevel, recnop, exactp)
 	 * a reader spin.
 	 */
 opt_retry:
-	if (opt_ok && __bam_opt_enabled() && opt_tries <= BAM_OPT_RETRIES) {
-		db_pgno_t opt_root, opt_leaf;
-
-		__bam_opt_tries++;
-		opt_root = BAM_ROOT_PGNO(dbc);
-		if (__bam_opt_descend(dbc,
-		    key, opt_root, &opt_parent, &opt_leaf) == 0) {
-			start_pgno = opt_leaf;
-			from_opt = 1;
-		}
-	}
-
-	if (opt_ok && !from_opt &&
-	    LOGGING_ON(env) && !F_ISSET(dbp, DB_AM_NOT_DURABLE) &&
+	from_snap = 0;
+	from_opt = 0;
+	if (opt_ok && LOGGING_ON(env) && !F_ISSET(dbp, DB_AM_NOT_DURABLE) &&
 	    __bam_rsnap_enabled()) {
 		if (__bam_rsnap_child(dbc, key, &snap_child, &snap_lsn) == 0) {
 			start_pgno = snap_child;
 			from_snap = 1;
 		} else
 			(void)__bam_rsnap_refresh(dbc);
+	}
+
+	if (opt_ok && __bam_opt_enabled() && opt_tries <= BAM_OPT_RETRIES) {
+		db_pgno_t opt_from, opt_leaf;
+
+		__bam_opt_tries++;
+		opt_from = from_snap ? start_pgno : BAM_ROOT_PGNO(dbc);
+		if (__bam_opt_descend(dbc,
+		    key, opt_from, &opt_parent, &opt_leaf) == 0) {
+			start_pgno = opt_leaf;
+			from_opt = 1;
+		}
+		/*
+		 * If the optimistic walk bailed we keep whatever the snapshot
+		 * gave us: start_pgno is still the snapshot child (or the real
+		 * root) and from_snap still says which, so the ordinary descent
+		 * proceeds exactly as it does on master.
+		 */
 	}
 	saved_level = MAXBTREELEVEL;
 retry:	if ((ret = __bam_get_root(dbc, start_pgno, slevel,
