@@ -375,8 +375,11 @@ opt:   30.7% mutex_lock_int     15.6% mutex_unlock  12.1% __bam_search
 28.7% -> 8.7%. The pin's share falls by roughly 8x; what grows is mutex time,
 which section 7 resolves to the cursor-lifecycle mutex.
 
+All re-run against the exact pushed HEAD (`631b81ef6`), not an earlier build.
+
 | gate | result |
 |---|---|
+| teeth: all three arms, one command | `VERDICT opt-teeth all three arms behaved: on=fires off=inert sabotage=fails` |
 | teeth: optimistic ON | `VERDICT opt-fires-teeth ran=37397 fired=99` — path runs, validation fires, 0 wrong answers |
 | teeth: `DB_NO_OPTREAD=1` | `VERDICT opt-fires-control inert` — tries == 0 |
 | teeth: **sabotaged build** (no gen bump) | **FAIL 3/3** — twice "validation NEVER FIRED", once a real wrong answer (`mismatch=1`) |
