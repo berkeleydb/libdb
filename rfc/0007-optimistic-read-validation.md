@@ -56,6 +56,18 @@ rescued none of them.
 The leverage is not a cheaper refcount. It is **not having a shared-cacheline
 refcount on the read path at all.**
 
+**Corroborated since this RFC was drafted.** A separate investigation
+(`docs/design/read-descent-locks.md`, merged) measured the *other* per-page read
+cost — the lock manager — and found it already minimal: a read descent takes
+**one** lock, on the leaf, **depth-independent** (1.000 locks/read at 2, 3 and 4
+levels), because interior pages are latch-coupled through buffer pins and never
+locked. Plain SI readers with MVCC take **zero** lock objects
+(`db_meta.c:1184-1189`). So the lock manager has nothing left to give on the read
+path, and the buffer pin is the *only* remaining per-page read cost of any size.
+That strengthens this RFC's case and also bounds it: pins are taken `levels-1`
+times per descent (`rsnap` skips the root), so report throughput per **page
+touched**, not per read.
+
 Competitive context: against TidesDB (LSM) libdb is at **near-parity on warm point
 reads (1.14x)** and **3.71x behind on single-threaded writes**
 (`test/bench/TIDESDB-2026-09.md`). The write gap is structural — an LSM memtable
