@@ -51,6 +51,7 @@
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <stddef.h>		/* offsetof, used by the workload record sizes */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -501,9 +502,16 @@ xe_wt_open(xe_env *env)
 	const char *sync;
 
 	switch (c->durability) {
-	case XE_DUR_SYNC:		sync = "on";	break;
-	case XE_DUR_WRITE_NOSYNC:	sync = "background"; break;
-	default:			sync = "off";	break;
+	case XE_DUR_SYNC:		sync = "fsync";	break;
+	case XE_DUR_WRITE_NOSYNC:	sync = "dsync"; break;
+	/*
+	 * NOSYNC.  WT's transaction_sync method choices are none/fsync/dsync --
+	 * "off" is NOT permitted and fails wiredtiger_open outright (caught in
+	 * smoke, which is why the smoke test exists).  "none" means the log is
+	 * written but not flushed at commit, which is what libdb's
+	 * DB_TXN_NOSYNC also means, so the two engines match here.
+	 */
+	default:			sync = "none";	break;
 	}
 
 	/*
