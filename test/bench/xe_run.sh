@@ -54,7 +54,7 @@ WARMUP=60
 THREADS="1 8 32 96"
 OUT=/nvme/results/xe.tsv
 CACHE_GIB=16
-SCALE=0			# 0 = derive from CACHE_GIB for the target ratio
+SCALE=0			# 0 = derive per workload from CACHE_GIB for the target ratio
 PAD=1024
 WORKLOAD="c h"
 ARMS="libdb-sync-btree libdb-uring-btree libdb-sync-hash libdb-uring-hash libdb-sync-mixed libdb-uring-mixed wt-btree"
@@ -84,6 +84,7 @@ done
 
 mkdir -p "$(dirname "$OUT")" "$DATA"
 CACHE_BYTES=$((CACHE_GIB * 1024 * 1024 * 1024))
+SCALE_OPT=$SCALE	# remember whether the user pinned it
 
 # ---- cgroup page-cache cap -------------------------------------------
 cg_setup() {
@@ -290,19 +291,44 @@ run_one() {
 # ---- main ------------------------------------------------------------
 cg_setup || { echo "FAIL cannot set up cgroup -- page cache would be unbounded"; exit 1; }
 
-# Derive scale for the target data:cache ratio if not given.
-# Measured: ~10.63 MiB of tproc-c data per warehouse at pad=1024, and
-# ~0.30 GiB of tproc-h data per million lineitems at pad=200 (pad-dependent).
-if [ "$SCALE" = 0 ]; then
-	TARGET_GIB=$(awk "BEGIN{printf \"%d\", $CACHE_GIB * $TARGET_RATIO}")
-	SCALE=$(awk "BEGIN{printf \"%d\", $TARGET_GIB * 1024 / 10.63}")
-	echo "# derived SCALE=$SCALE for target ${TARGET_GIB}GiB data (${TARGET_RATIO}x cache)"
-fi
+# ---- dataset sizing --------------------------------------------------
+# Derive the scale factor that puts DATA at TARGET_RATIO x CACHE, per workload.
+# The two workloads have completely different bytes-per-scale-unit, so one
+# constant cannot serve both -- using tproc-c's figure for tproc-h would have
+# produced a dataset ~10x off target and an out-of-cache claim that was not
+# true.  Both constants are MEASURED on this machine at the pad in use:
+#
+#   tproc-c  10.63 MiB of data per warehouse at pad=1024
+#            (measured: S=20 -> 222994432 data bytes; load 169.5k rows/s)
+#   tproc-h  1.324 GiB per million lineitems at pad=1024
+#            (measured: S=5 -> 7110864896 data bytes; load 35.4k rows/s)
+#
+# NOTE the tproc-h load is 4.8x SLOWER per row than tproc-c's (35.4k vs 169.5k
+# rows/s) because each lineitem writes two rows (the fact row and a secondary
+# index row) into two trees.  An early draft of this script used 1.07 GiB/M,
+# guessed from the record size instead of measured; that would have built a
+# dataset 24% under target and reported an out-of-cache ratio that was not the
+# one claimed.
+#
+# The achieved size is REPORTED after the load regardless, so if a constant
+# drifts the report shows the real ratio rather than the intended one.
+derive_scale() {
+	local wl=$1 target
+	target=$(awk "BEGIN{printf \"%.3f\", $CACHE_GIB * $TARGET_RATIO}")
+	case $wl in
+	c) awk "BEGIN{printf \"%d\", $target * 1024 / 10.63}" ;;
+	h) awk "BEGIN{printf \"%d\", $target / 1.324}" ;;
+	esac
+}
 
 echo "# ARMS: $ARMS"
 echo "# threads: $THREADS   reps: $REPS   secs: $SECS   warmup: $WARMUP"
 
 for wl in $WORKLOAD; do
+	if [ "$SCALE_OPT" = 0 ]; then
+		SCALE=$(derive_scale "$wl")
+		echo "# workload $wl: derived SCALE=$SCALE for ~$(awk "BEGIN{printf \"%.0f\", $CACHE_GIB*$TARGET_RATIO}")GiB data vs ${CACHE_GIB}GiB cache (${TARGET_RATIO}x)"
+	fi
 	# Load every distinct dataset ONCE, before any measurement.
 	declare -A seen=()
 	for arm in $ARMS; do
