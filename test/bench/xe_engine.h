@@ -45,6 +45,7 @@
 #define XE_ENGINE_H
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <errno.h>
 #include <math.h>
@@ -1407,7 +1408,48 @@ xe_stats_delta_print(const char *tag, const struct xe_stats *a,
 	    txns ? (double)pin / (double)txns : 0.0);
 }
 
-/* On-disk size of the data directory, for the achieved working-set ratio. */
+/*
+ * xe_data_bytes -- on-disk size of the DATA files only.
+ *
+ * NOT the size of the environment home.  A `du -s` of the home directory also
+ * counts things that are NOT the working set and would inflate the reported
+ * working-set:RAM ratio badly:
+ *
+ *   libdb  __db.001..__db.0NN   the shared regions -- __db.001 alone is the
+ *                               mpool region, i.e. a file the same size as the
+ *                               CACHE (1.9 GB of a 2 GB cache in smoke, and it
+ *                               would be ~139 GiB in the real run)
+ *          log.NNNNNNNNNN       write-ahead log segments (1 GB each here)
+ *   WT     WiredTigerLog.*      ditto, and WiredTigerPreplog.*
+ *
+ * Counting the mpool region as "data" would mean a 139 GiB cache reported
+ * itself as 139 GiB of working set -- the achieved ratio would be inflated by
+ * the very quantity it is supposed to be measured against.  So this sums the
+ * named table files explicitly, which is the actual live data.
+ *
+ * Measured, not assumed: at S=2/pad=200 the home was 3.75 GB while the data was
+ * 16.6 MB.  Reporting the former as the working set would have overstated it by
+ * 226x and produced a completely fabricated "10x RAM" claim.
+ */
+static uint64_t
+xe_data_bytes(const char *home, const char *const *names, int n,
+    const char *suffix)
+{
+	char path[1024];
+	struct stat sb;
+	uint64_t total = 0;
+	int i;
+
+	for (i = 0; i < n; i++) {
+		(void)snprintf(path, sizeof(path), "%s/%s%s", home, names[i],
+		    suffix ? suffix : "");
+		if (stat(path, &sb) == 0)
+			total += (uint64_t)sb.st_blocks * 512;
+	}
+	return total;
+}
+
+/* On-disk size of the whole env home, for context (NOT the working set). */
 static uint64_t
 xe_dir_bytes(const char *path)
 {
