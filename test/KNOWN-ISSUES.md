@@ -44,6 +44,26 @@ someone may pick it up.
 |----|-------|--------|
 | **P1** | **`PGNO_BASE_MD` allocation convoy.** `__db_new` (`db_meta.c:134`) takes the metadata page `DB_LOCK_WRITE` with `LCK_ALWAYS` and releases via `__TLPUT`, which is a **no-op for a write lock inside a transaction** (`__db_lput`'s ladder at `db_meta.c:1416-1427` falls through to `action = 0` when `dbc->txn != NULL` and mode is `DB_LOCK_WRITE`). So one page allocation holds the metadata page write-locked **until commit, across its own ~3.7 ms fsync**, and every other allocating writer queues behind it. Measured at t=96 bulk insert: **400 of 400 waits are on page 0**; leaf and split-time ancestor locks held across commit have **zero** waiters. Offered utilisation 0.89; Little's law predicts 333 ms against a measured put p99 of 282 ms. This is the whole of the write tail latency previously misattributed first to the log and then to leaf/split lock scope. **Fix is a 2PL question** — the metadata page records the free list, so releasing its write lock early risks exposing an allocation a later abort undoes; needs a proper safety argument plus a crash/recovery proof. Full analysis: `test/bench/BTREE-LOCK-SCOPE-2026-09.md`. | open, characterized |
 
+## Pre-existing upstream defects (inherited from Oracle 5.3.28)
+
+Found by a pre-release audit conducted in the voices of the original BDB authors.
+Verified present at the `v5.3.28` tag, so these are **not** fork regressions — but
+they are silently weakening our own validation, which is why they are tracked.
+
+| id | issue | status |
+|----|-------|--------|
+| **U1** | `dist/validate/s_chk_err` and `s_chk_pubdef` **print failures and exit 0** — their `exit 1` / `exitv=1` sits inside a subshell, so the value never reaches the caller. `s_validate` therefore reports them as passing whatever they find. Identical at the 5.3.28 import. | open |
+| **U2** | `dist/validate/s_chk_message_id` only works when run **from `dist/validate/`**. Its `MSG_DIR` is `../../src/ ../../util/ ../../lang/dbm/`, so invoked from `dist/` every path misses and it exits 0 having checked nothing. It does work correctly from its own directory — that is how the two fork-introduced duplicate IDs were found. | open |
+| **U3** | Six duplicate `DB_STR()` message IDs remain: `1136` (`qam_open.c` x2), `1169` (`heap_open.c` x2), `3015` (`mp_bh.c` x2), `3037` (`mp_fopen.c` x2), `3672` (`repmgr_util.c` x2) and `3675` (29 sites across the generated `rep_automsg.c` / `repmgr_automsg.c`). All present at `v5.3.28`. The two that were *ours* (`0584` duplicated by `db_get_multiple()`, `1031` duplicated by the #139 fix) are fixed. | open, upstream |
+| **U4** | `dist/s_tags` probes `ctags` capabilities against `../../src/db/db.c`, a path that has never existed in this repository. Every probe fails silently (`2>/dev/null`), so `flags` stays empty and `ctags` runs without `-d -t -w`. Degraded developer convenience only. | open, upstream |
+| **U5** | `dist/s_crypto` references `docs/index.html`, which this fork does not have. It is an export-restriction tool not driven by `s_all`, so the reference is dormant. | open, upstream |
+
+## Windows build gaps
+
+| id | issue | status |
+|----|-------|--------|
+| **W1** | `src/log/log_handoff_trace.c` and `src/mutex/mut_order.c` are absent from the Visual Studio project files, so `--enable-handoff-trace` and the DIAGNOSTIC lock-order checker cannot be built on Windows. **Not** a build break: both files are whole-file `#ifdef`-gated (`HAVE_HANDOFF_TRACE`, `DIAGNOSTIC`) and compile to nothing when their option is off, which is the default. | open |
+
 ## Why this file exists
 
 Each of these was, at some point, rediscovered from scratch by someone who could
