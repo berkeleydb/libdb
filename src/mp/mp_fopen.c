@@ -411,7 +411,7 @@ mvcc_err:				__db_errx(env, DB_STR("3041",
 			if (LF_ISSET(DB_ODDFILESIZE))
 				bytes -= (u_int32_t)(bytes % pagesize);
 			else {
-				__db_errx(env, DB_STR_A("3037",
+				__db_errx(env, DB_STR_A("3044",
 		    "%s: file size not a multiple of the pagesize", "%s"),
 				    rpath);
 				ret = EINVAL;

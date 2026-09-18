@@ -523,7 +523,7 @@ __memp_pgwrite(env, dbmfp, hp, bhp)
 #else
 		if ((ret = __os_io(env, DB_IO_WRITE, dbmfp->fhp, bhp->pgno,
 		    c.mfp->pagesize, 0, c.mfp->pagesize, c.buf, &nw)) != 0)
-			__db_errx(env, DB_STR_A("3015",
+			__db_errx(env, DB_STR_A("3043",
 			    "%s: write failed for page %lu", "%s %lu"),
 			    __memp_fn(dbmfp), (u_long)bhp->pgno);
 #endif

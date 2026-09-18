@@ -174,3 +174,4 @@ EXPORTS
 	__txn_regop_42_desc	@171
 	__txn_regop_desc	@172
 	__txn_xa_regop_42_desc	@173
+	db_get_multiple	@174

@@ -530,7 +530,7 @@ __repmgr_get_nsites(env, nsitesp)
 	}
 
 	if ((nsites = db_rep->region->config_nsites) == 0) {
-		__db_errx(env, DB_STR("3672",
+		__db_errx(env, DB_STR("3683",
 		    "Nsites unknown before repmgr_start()"));
 		return (EINVAL);
 	}
