@@ -103,6 +103,28 @@ def main():
         print("FAIL no data rows in " + path)
         return 1
 
+    # ---- refuse to mix experiments -------------------------------------
+    # Every row must come from a run with the same scale/pad/cache.  A results
+    # directory that accumulates logs from smoke tests and campaign runs will
+    # otherwise average them, and the result looks like a real effect.  Abort
+    # loudly with the offending configs rather than reporting a blended number.
+    cfgs = {}
+    for r in rows:
+        if r["metric"] in ("cfg_scale", "cfg_pad", "cfg_cache_mb"):
+            cfgs.setdefault((r["wl"], r["arm"], r["threads"], r["rep"]),
+                            {})[r["metric"]] = r["value"]
+    distinct = {tuple(sorted(v.items())) for v in cfgs.values()}
+    if len(distinct) > 1:
+        print("FAIL results mix MORE THAN ONE experiment configuration:")
+        for d in sorted(distinct):
+            print("   ", dict(d))
+        print("Refusing to aggregate: averaging runs with different scale, "
+              "padding or cache size produces a number that describes no "
+              "experiment.  Separate the logs by config and re-run.")
+        return 1
+    if distinct:
+        print(f"# config (uniform across all runs): {dict(list(distinct)[0])}")
+
     workloads = sorted({r["wl"] for r in rows})
     print(f"# rows parsed: {len(rows)}")
 
