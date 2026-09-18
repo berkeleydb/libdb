@@ -31,14 +31,35 @@ if [ -d $d/lang/sql/jdbc ]; then
 fi
 chmod 755 $d/dist/s_*
 
+# Test-tree shell scripts.
+#
+# The blanket "find -type f | xargs chmod 644" above strips the execute bit from
+# EVERYTHING, and historically nothing put it back for test/, because the Tcl
+# suite is driven by tclsh rather than by executing shell scripts.  The fork's
+# test tiers are shell-driven and several are invoked as ./script (test/db,
+# test/c, test/sim, test/isolation, test/bench and the manifest gate), so a
+# release package built by buildpkg used to ship them non-executable.  That is
+# how a lost exec bit hid test/c/leak-run.sh, and later 82 further scripts.
+#
+# The discriminator is the SHEBANG, not the name: test/harness.sh is meant to be
+# sourced ('. harness.sh') and must STAY 644, so keying on #! is what keeps this
+# precise.  dist/s_execbits verifies the committed git modes agree with this.
+for f in `find $d/test -name '*.sh' -type f`; do
+	case `head -1 "$f"` in
+	'#!'*)	chmod 755 "$f" ;;
+	esac
+done
+
 run dist/config.guess 755
 run dist/config.sub 755
 run dist/configure 755
 run dist/install-sh 755
-run dist/vx_buildcd 755
 run lang/perl/BerkeleyDB/dbinfo 755
 run lang/perl/BerkeleyDB/mkpod 755
 run lang/sql/sqlite/configure 755
 
 chmod 555 $d/util/dtrace/*.d
 chmod 555 $d/util/systemtap/*.stp
+
+# Scripts the fork's CI invokes directly from dist/.
+run dist/env_sig_print.sh 755
