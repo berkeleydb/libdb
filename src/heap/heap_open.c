@@ -253,7 +253,7 @@ __heap_new_file(dbp, ip, txn, fhp, name)
 		h->region_size = HEAP_DEFAULT_REGION_MAX(dbp) > max_size ?
 		    max_size : HEAP_DEFAULT_REGION_MAX(dbp);
 	else if (h->region_size > max_size) {
-		__db_errx(dbp->env, DB_STR_A("1169",
+		__db_errx(dbp->env, DB_STR_A("1177",
 		    "region size may not be larger than %lu",
 		    "%lu"), (u_long)max_size);
 		return (EINVAL);
