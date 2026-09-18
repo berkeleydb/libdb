@@ -459,6 +459,22 @@ xe_libdb_open(xe_env *env)
 	(void)dbenv->set_lk_max_lockers(dbenv, 2000000);
 	(void)dbenv->set_lg_bsize(dbenv, 256 * 1024 * 1024);
 	(void)dbenv->set_lg_max(dbenv, 1024 * 1024 * 1024);
+	/*
+	 * Reclaim log files once they are no longer needed for recovery.
+	 *
+	 * WITHOUT THIS the load of a ~107 GiB dataset left 205 log segments
+	 * totalling 205 GB -- nearly 2x the data itself -- and then every
+	 * measured run opening the environment with DB_RECOVER scanned all of
+	 * them before doing any work.  Observed directly: a 75-second run sat
+	 * burning CPU for 9+ minutes having produced no output, which is
+	 * indistinguishable from the S1 stall class we are separately trying to
+	 * measure on the io_uring arms.  That confusion is the real damage: it
+	 * would have been logged as a DB_MPOOL_AIO stall finding.
+	 *
+	 * The log is still enabled and commits are still logged -- durability is
+	 * unchanged; only the retention of already-checkpointed segments changes.
+	 */
+	(void)dbenv->log_set_config(dbenv, DB_LOG_AUTO_REMOVE, 1);
 	/* Transaction slots for a 96-thread run with long analytic readers. */
 	(void)dbenv->set_tx_max(dbenv, 200000);
 
@@ -467,6 +483,11 @@ xe_libdb_open(xe_env *env)
 	else if (c->durability == XE_DUR_WRITE_NOSYNC)
 		(void)dbenv->set_flags(dbenv, DB_TXN_WRITE_NOSYNC, 1);
 
+	/*
+	 * DB_RECOVER on open.  Correct for a fresh environment, but note it
+	 * SCANS THE LOG, so it is only cheap when the log is small -- see the
+	 * DB_LOG_AUTO_REMOVE note above for what happens when it is not.
+	 */
 	flags = DB_CREATE | DB_INIT_MPOOL | DB_INIT_LOCK | DB_INIT_LOG |
 	    DB_INIT_TXN | DB_THREAD | DB_RECOVER;
 	if ((ret = dbenv->open(dbenv, c->home, flags, 0)) != 0) {
