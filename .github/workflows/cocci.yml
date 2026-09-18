@@ -390,6 +390,16 @@ jobs:
       - name: Exec-bit gate (dist/s_execbits, also run by dist/s_all)
         run: cd dist && sh ./s_execbits
 
+      # dist/s_validate drives the dist/validate/s_chk_* source checkers. It was
+      # in NO workflow -- the same gap that hid test/c/leak-run.sh for two
+      # releases -- so five duplicate DB_STR() message ids reached a release even
+      # though a checker for exactly that existed. Advisory for now: two checkers
+      # (s_chk_err, s_chk_pubdef) print failures and exit 0 (U1), so a hard gate
+      # here would be green-by-accident; fixing those is a separate change.
+      - name: Source checkers (dist/s_validate, advisory)
+        continue-on-error: true
+        run: cd dist && sh ./s_validate -v 2>&1 | tail -40
+
       - name: Compute the signature on the PR head and on the base
         id: sig
         run: |
