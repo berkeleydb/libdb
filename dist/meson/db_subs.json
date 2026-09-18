@@ -1,9 +1,9 @@
 {
   "DB_VERSION_FAMILY": "11",
   "DB_VERSION_RELEASE": "2",
-  "DB_VERSION_MAJOR": "5",
-  "DB_VERSION_MINOR": "3",
-  "DB_VERSION_PATCH": "37",
+  "DB_VERSION_MAJOR": "2026",
+  "DB_VERSION_MINOR": "0",
+  "DB_VERSION_PATCH": "9",
   "DB_CALVER": "2026.09.7",
   "DB_VERSION_STRING": "\"libdb 2026.09.7 (September 18, 2026)\"",
   "DB_VERSION_FULL_STRING": "\"libdb 2026.09.7 (September 18, 2026)\"",

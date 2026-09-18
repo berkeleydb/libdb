@@ -232,4 +232,5 @@ EXPORTS
 	__txn_regop_42_desc	@229
 	__txn_regop_desc	@230
 	__txn_xa_regop_42_desc	@231
-	__repmgr_getaddr	@232
+	db_get_multiple	@232
+	__repmgr_getaddr	@233

@@ -245,6 +245,7 @@ __txn_recycle_desc						db db_small
 __txn_regop_42_desc						db db_small 
 __txn_regop_desc						db db_small 
 __txn_xa_regop_42_desc						db db_small 
+db_get_multiple						db db_small 
 
 # These are needed for internal test programs.
 __repmgr_getaddr						db 

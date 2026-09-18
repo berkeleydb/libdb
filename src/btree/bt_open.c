@@ -348,7 +348,7 @@ __bam_read_root(dbp, ip, txn, base_pgno, flags)
 		 * a divide-by-zero (SIGFPE).  Reject an impossible minkey now.
 		 */
 		if (t->bt_minkey < 2) {
-			__db_errx(dbp->env, DB_STR("1031",
+			__db_errx(dbp->env, DB_STR("1175",
 			    "minimum bt_minkey value is 2"));
 			ret = EINVAL;
 			goto err;

@@ -17,11 +17,24 @@ Set in `dist/RELEASE` as `DB_CALVER`. Git tags are `vYYYY.0M[.MICRO]`
 (e.g. `v2026.09`). This is the number in `db_version()` output, the README, and
 the GitHub release title.
 
-## Compatibility level: FROZEN at `5.3.37`
+## Compatibility level: FROZEN at `2026.0.9`
 
 `DB_VERSION_MAJOR.MINOR.PATCH` in `dist/RELEASE` is **not** the release version.
 It is the on-disk / log / region / ABI **compatibility level**, and it is frozen
-at `5.3.37`. Do not bump it to "do a release" — bump `DB_CALVER` instead.
+at `2026.0.9`. Do not bump it to "do a release" — bump `DB_CALVER` instead.
+
+**Correction, 2026-09-18.** Earlier revisions of this document said the level was
+frozen at `5.3.37`. That was never true of the shipped artifacts: commit
+`6710649f0` (2026-04-21, five months *before* this document was written) had
+already set the triplet to `2026.0.9`, so **every** fork release from `v2026.04`
+onward has shipped `libdb-2026.0.so` and stamped regions `majver=2026 minver=0`.
+The document described an intention, not the code, and nothing checked it. The
+freeze is real and still matters for exactly the reasons below — it is simply
+frozen at a different value than this file claimed. `dist/meson/db_subs.json` had
+kept the stale `5.3.37` copy, which made the meson build emit a `db.h` claiming
+`5.3.29` and produce a library that could not attach an autoconf-built
+environment; `dist/meson/gen_header.py` now derives the triplet from
+`dist/RELEASE` so the two build systems cannot disagree again.
 
 It stays frozen because several load-bearing things key off it, and changing it
 breaks them for anyone upgrading within the fork:
@@ -44,11 +57,15 @@ gate) — never merely to cut a release.
 - Human / release identity → `DB_CALVER` (or the leading token of
   `db_version()`).
 - Format / ABI / compatibility decisions → the `DB_VERSION_MAJOR/MINOR/PATCH`
-  triplet (unchanged API: `db_version(&maj,&min,&pat)` still returns `5,3,37`).
+  triplet (unchanged API: `db_version(&maj,&min,&pat)` returns `2026,0,9` --
+  verified against a built library, not assumed).
 
 `db_version()` returns, for example:
 
-    libdb 2026.09 (Berkeley DB compat 5.3.37: September 10, 2026)
+    libdb 2026.09.2 (September 10, 2026)
+
+(That is the real string from a built library. Earlier revisions of this file
+showed a "Berkeley DB compat 5.3.37:" form that the code has never produced.)
 
 ## Cutting a release
 
