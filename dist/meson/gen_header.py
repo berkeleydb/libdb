@@ -45,8 +45,14 @@ def main():
         cal = subs.get("DB_CALVER", "")
         date = subs.get("DB_RELEASE_DATE", "")
         if cal and date:
-            subs["DB_VERSION_STRING"] = "libdb %s (%s)" % (cal, date)
-            subs["DB_VERSION_FULL_STRING"] = "libdb %s (%s)" % (cal, date)
+            # db.in has NO quotes around @DB_VERSION_STRING@, so the substituted
+            # value must carry its own -- that is why db_subs.json stores the
+            # quotes inside the string.  Omitting them emits
+            #   #define DB_VERSION_STRING libdb 2026.09.7 (September 18, 2026)
+            # which is a syntax error ("too many decimal points in number").
+            ver = '"libdb %s (%s)"' % (cal, date)
+            subs["DB_VERSION_STRING"] = ver
+            subs["DB_VERSION_FULL_STRING"] = ver
     text = "".join(open(f, encoding="utf-8").read() for f in inputs)
     # Replace known @VAR@; leave unknown tokens untouched so they're visible.
     text = re.sub(r"@([A-Za-z_0-9]+)@",
