@@ -1037,7 +1037,7 @@ db_get_multiple(dbp, txn, keys, datas, rets, nkeys, flags)
 		    "key", &keys[i], DB_RETURNS_A_KEY(dbp, flags))) != 0)
 			return (ret);
 		if (F_ISSET(&datas[i], DB_DBT_READONLY)) {
-			__db_errx(env, DB_STR("0584",
+			__db_errx(env, DB_STR("0750",
 			    "DB_DBT_READONLY should not be set on data DBT."));
 			return (EINVAL);
 		}

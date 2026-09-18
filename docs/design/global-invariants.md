@@ -358,7 +358,9 @@ region state automatically prevents a mismatched binary from attaching** — tha
 is the mechanical guarantee behind adding `si_ref` to `TXN_DETAIL` or
 `nsireaders` to `DB_LOCKREGION`.
 
-The compat triplet (`DB_VERSION_MAJOR/MINOR/PATCH` = 5.3.37) is frozen for
+The compat triplet (`DB_VERSION_MAJOR/MINOR/PATCH` = 2026.0.9 -- see the erratum
+in `VERSIONING.md`; it was documented as 5.3.37 but the shipped value has been
+2026.0.9 since v2026.04) is frozen for
 exactly this reason plus three others: the soname `libdb-5.3.so`
 (`dist/Makefile.in:60`, `LIBVERSION = MAJOR.MINOR`), `DB_VERSION_UNIQUE_NAME`
 symbol mangling, and downstream packaging. See `VERSIONING.md` §"Compatibility
