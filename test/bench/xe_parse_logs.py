@@ -43,6 +43,22 @@ def parse(path):
 
     txt = open(path, errors="replace").read()
 
+    # ---- provenance guard ----------------------------------------------
+    # Record the scale/pad/cache the run ACTUALLY used, so a log from a
+    # different experiment cannot be silently averaged into this one.
+    #
+    # Not hypothetical: three in-cache smoke logs (scale=5, pad=200, 1 GiB
+    # cache) sat in the results directory beside the campaign's out-of-cache
+    # logs (scale=10481, pad=1024, 8 GiB cache) and produced a phantom "t=2"
+    # row reporting 17,308 txn/s next to the real 248 txn/s -- a 70x gap that
+    # read as a thread-count effect and was actually a different experiment.
+    cm = re.search(r"^# arm=\S+ .*?scale=(\d+) pad=(\d+) cache=(\d+)MB",
+                   txt, re.M)
+    if cm:
+        row("cfg_scale", cm.group(1))
+        row("cfg_pad", cm.group(2))
+        row("cfg_cache_mb", cm.group(3))
+
     # ---- the verdict line: the throughput numbers -----------------------
     vm = re.search(r"^VERDICT (?:tproc-c|tproc-h) (.+)$", txt, re.M)
     if vm:
