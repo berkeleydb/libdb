@@ -382,6 +382,12 @@ jobs:
       - name: Self-check the manifest checker
         run: sh test/check_manifest_test.sh
 
+      # The lost exec bit has hidden a test THREE times here: leak-run.sh (which
+      # was also in no workflow, so two releases cited gates that never ran),
+      # opt_teeth.sh, and 42 further scripts.  Pure repo hygiene, no build.
+      - name: Exec-bit gate (every test/*.sh with a shebang is executable)
+        run: sh test/check_execbits.sh
+
       - name: Compute the signature on the PR head and on the base
         id: sig
         run: |

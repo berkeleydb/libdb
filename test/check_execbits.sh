@@ -1,0 +1,45 @@
+#!/bin/sh
+# check_execbits.sh -- every test/ shell script must be executable.
+#
+# WHY THIS EXISTS
+#
+# The lost exec bit has now hidden a test THREE times in this project:
+#   1. test/c/leak-run.sh shipped mode 100644 and was ALSO referenced by no
+#      workflow, so the #138 and os_aio gates went two releases without running
+#      while release notes cited them as evidence.
+#   2. test/bench/opt_teeth.sh (RFC 0007's sabotage test) shipped 100644.
+#   3. 38 further scripts added in the same release window were all 100644.
+#
+# A non-executable script does not fail loudly.  It fails the moment someone
+# invokes it as ./script instead of `sh script`, which is exactly what a new
+# workflow or a developer does -- so it converts a real gate into a silent skip.
+#
+# This is deliberately a repo-hygiene check with no build dependency, so it can
+# run in any job.  It reports every offender rather than stopping at the first.
+set -e
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$here/.."
+
+# The discriminator is the SHEBANG, not the name.  test/harness.sh is meant to be
+# sourced ('. harness.sh') and is correctly non-executable; a file with a #! line
+# is meant to be run, so a missing exec bit on one is a defect.  Keying on the
+# shebang is what makes this gate precise enough to be mandatory rather than
+# advisory -- a gate that cries wolf about sourced files gets switched off.
+bad=0
+for f in $(git ls-files 'test/*.sh'); do
+	mode=$(git ls-files -s "$f" | awk '{print $1}')
+	[ "$mode" = "100644" ] || continue
+	case $(head -1 "$f") in
+	'#!'*)	echo "NOT EXECUTABLE  $f"; bad=$((bad + 1)) ;;
+	esac
+done
+
+if [ "$bad" -ne 0 ]; then
+	echo ""
+	echo "exec-bit gate: FAILED -- $bad script(s) above are mode 100644."
+	echo "Fix with:  git update-index --chmod=+x <file>"
+	echo "Do NOT work around this by invoking them as 'sh <file>' in CI; that"
+	echo "hides the problem from every other caller."
+	exit 1
+fi
+echo "exec-bit gate: OK -- every test/*.sh is executable."
