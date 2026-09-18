@@ -14,6 +14,7 @@
 historical = ["v5.3.28", "v4.6.21-SSI"]
 
 [notes]
+"v2026.09.7" = "RFC 0007 optimistic read-path validation (<strong>2.05&times;</strong> batched reads at 96 threads, environment signature unchanged); T1 SSI marker GC margin and S1 os_aio deadlock fixed; read-descent locks and the write convoy both re-measured and redirected"
 "v2026.09.6" = "<code>lk_partitions=1</code> self-deadlock (default on 1-CPU hosts); <code>db_get_multiple()</code> 2.47&times; concurrent reads; harness-integrity + region-signature gates"
 "v2026.09.5" = "os_aio cross-reap durability fix, <code>st_nsnapshot</code> underflow, operator health signals, global-invariants note"
 "v2026.09.4" = "#137 locker accounting (bounded), <code>ssi_abort_bench</code> SI/SSI distinction, versioning covenant"
