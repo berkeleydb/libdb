@@ -1,5 +1,13 @@
-#!/bin/sh
-# check_execbits.sh -- every test/ shell script must be executable.
+#!/bin/sh -
+#	$Id$
+#
+# s_execbits -- verify every shebang-bearing test/*.sh is committed executable.
+#
+# This is the VERIFY half of the pair; dist/s_perm is the FIX half (it restores
+# the bits while packaging a release, after its blanket chmod 644 strips them).
+# Kept as a dist/s_ script and run from s_all so it follows the same convention
+# as s_include, s_sig and s_test: the tree is regenerated and checked from dist/,
+# not from the subtree being checked.
 #
 # WHY THIS EXISTS
 #
@@ -17,6 +25,7 @@
 # This is deliberately a repo-hygiene check with no build dependency, so it can
 # run in any job.  It reports every offender rather than stopping at the first.
 set -e
+# s_all runs every s_ script from inside dist/, so the tree root is one level up.
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$here/.."
 
@@ -36,10 +45,10 @@ done
 
 if [ "$bad" -ne 0 ]; then
 	echo ""
-	echo "exec-bit gate: FAILED -- $bad script(s) above are mode 100644."
-	echo "Fix with:  git update-index --chmod=+x <file>"
+	echo "s_execbits: FAILED -- $bad script(s) above are mode 100644."
+	echo "Fix with:  git update-index --chmod=+x <file>   (dist/s_perm sets it too)"
 	echo "Do NOT work around this by invoking them as 'sh <file>' in CI; that"
 	echo "hides the problem from every other caller."
 	exit 1
 fi
-echo "exec-bit gate: OK -- every test/*.sh is executable."
+echo "s_execbits: OK -- every shebang-bearing test/*.sh is executable."

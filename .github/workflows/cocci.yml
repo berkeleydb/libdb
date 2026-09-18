@@ -384,9 +384,11 @@ jobs:
 
       # The lost exec bit has hidden a test THREE times here: leak-run.sh (which
       # was also in no workflow, so two releases cited gates that never ran),
-      # opt_teeth.sh, and 42 further scripts.  Pure repo hygiene, no build.
-      - name: Exec-bit gate (every test/*.sh with a shebang is executable)
-        run: sh test/check_execbits.sh
+      # opt_teeth.sh, and 82 further scripts.  Pure repo hygiene, no build.
+      # dist/s_perm restores the bits when packaging; this verifies the committed
+      # git modes agree, which s_perm cannot do because it only chmods a worktree.
+      - name: Exec-bit gate (dist/s_execbits, also run by dist/s_all)
+        run: cd dist && sh ./s_execbits
 
       - name: Compute the signature on the PR head and on the base
         id: sig
