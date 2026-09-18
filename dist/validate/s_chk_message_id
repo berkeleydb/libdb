@@ -1,4 +1,13 @@
-#!/bin/sh -
+#!/usr/bin/env bash
+#
+# NOTE ON THE SHEBANG: this script uses bash arithmetic-for loops
+# (`for (( i = 1; i <= $maxline; i++ ))`), which are NOT POSIX sh.  It declared
+# `#!/bin/sh -` and therefore died at the first such loop on any system where
+# /bin/sh is dash (Debian, Ubuntu), having validated ZERO ids while still exiting
+# without a clear failure.  That is a large part of why five duplicate message ids
+# reached a release: on a developer box where /bin/sh is bash it appears to work.
+# Either rewrite the loops in POSIX sh or say bash; saying bash is honest and is
+# what the code already requires.
 #
 # $Id$
 #
