@@ -207,6 +207,19 @@ typedef struct {
 	uint32_t deliv_wm[64];		/* per-district probe watermark */
 } worker;
 
+/*
+ * Data-file byte total for this workload, used for the achieved working-set
+ * ratio.  WiredTiger appends ".wt" to each table name; libdb uses the name as
+ * given.  Everything else in the home (mpool regions, logs) is deliberately
+ * excluded -- see xe_data_bytes.
+ */
+static uint64_t
+tproc_c_data_bytes(void)
+{
+	return xe_data_bytes(g_cfg.home, g_tblnames, TBL_N,
+	    g_cfg.engine == XE_ENGINE_WT ? ".wt" : "");
+}
+
 /* ---------------------------------------------------------------- */
 /* Population                                                       */
 /* ---------------------------------------------------------------- */
@@ -264,9 +277,19 @@ populate(void)
 
 	if ((ret = xe_thread_init(g_env, &th, 0)) != XE_OK) return ret;
 
+	/*
+	 * Planned row count.  Note the 3/2 on ORDERS_PER_DIST: every order gets
+	 * one orders row, but only the upper HALF of them get a neworder row
+	 * (the rest start delivered), so it is 1.5 rows per order and not 2.  An
+	 * earlier version used 2 and the progress line reported 86.5% at
+	 * completion -- harmless to the measurement, but a progress meter that
+	 * stops at 86% is indistinguishable from a load that died early, which
+	 * is exactly the ambiguity that wastes a debugging cycle later.
+	 */
 	total = (uint64_t)ITEMS +
 	    (uint64_t)g_cfg.scale * (1 + ITEMS_PER_WH +
-	    (uint64_t)DISTRICTS * (1 + CUST_PER_DIST + 2 * ORDERS_PER_DIST));
+	    (uint64_t)DISTRICTS * (1 + CUST_PER_DIST +
+	    ORDERS_PER_DIST + ORDERS_PER_DIST / 2));
 	printf("# load: %llu rows planned, pad=%d\n",
 	    (unsigned long long)total, g_pad);
 
@@ -888,10 +911,12 @@ main(int argc, char **argv)
 		}
 		for (i = 0; i < TBL_N; i++) (void)xe_table_close(g_tbl[i]);
 		(void)xe_close(g_env);
-		dbbytes = (double)xe_dir_bytes(g_cfg.home);
-		printf("VERDICT load arm=%s scale=%d pad=%d on_disk_bytes=%.0f "
-		    "on_disk_gib=%.2f\n", xe_arm_name(&g_cfg), g_cfg.scale,
-		    g_pad, dbbytes, dbbytes / (1024.0 * 1024.0 * 1024.0));
+		dbbytes = (double)tproc_c_data_bytes();
+		printf("VERDICT load arm=%s scale=%d pad=%d data_bytes=%.0f "
+		    "data_gib=%.2f home_gib=%.2f\n", xe_arm_name(&g_cfg),
+		    g_cfg.scale, g_pad, dbbytes,
+		    dbbytes / (1024.0 * 1024.0 * 1024.0),
+		    (double)xe_dir_bytes(g_cfg.home) / (1024.0 * 1024.0 * 1024.0));
 		return 0;
 	}
 
@@ -1016,7 +1041,7 @@ main(int argc, char **argv)
 		    (delivfound + exhaust) ? 100.0 * (double)exhaust /
 		    (double)(delivfound + exhaust) : 0.0);
 
-	dbbytes = (double)xe_dir_bytes(g_cfg.home);
+	dbbytes = (double)tproc_c_data_bytes();
 
 	/*
 	 * THE VERDICT LINE.  A run that prints no throughput number is a FAILED
@@ -1032,7 +1057,7 @@ main(int argc, char **argv)
 	}
 	printf("VERDICT tproc-c arm=%s engine=%s am=%s threads=%d scale=%d "
 	    "txn_per_sec=%.1f tpmC_like=%.0f committed=%llu elapsed=%.2f "
-	    "on_disk_gib=%.2f warm=%llu\n",
+	    "data_gib=%.2f warm=%llu\n",
 	    xe_arm_name(&g_cfg), xe_engine_name(g_cfg.engine),
 	    xe_amcfg_name(g_cfg.amcfg), g_cfg.threads, g_cfg.scale,
 	    (double)grand / elapsed, (double)grand / elapsed * 60.0,
