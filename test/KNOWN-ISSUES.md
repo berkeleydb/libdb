@@ -86,6 +86,12 @@ Full analysis: `docs/design/perf-gate-gaps.md`.
 | **G14** | **42 of 54 `configure` options are never exercised in CI.** Includes `o_direct` (hence **P2**), `atomicsupport`, `mutexalign`, `log_checksum`, `partition`, `hash`, `heap`, `queue`, `replication`, `statistics`, `verify`, `handoff-trace`. Needs a one-at-a-time option sweep, plus a check that any new `configure` option is either in the sweep or on a commented exclusion list. | open |
 | **G15** | **Six runtime behaviour flags are referenced by zero tests:** `DB_DIRECT`, `DB_DSYNC_DB`, `DB_LOG_DIRECT`, `DB_LOG_DSYNC`, `DB_LOG_WRNOSYNC`, `DB_NOSYNC` — the durability and I/O-path knobs. Worse, `test/c/cov_api_surface.c` counts `DB_DIRECT_DB` as covered while only asserting that the *setter accepts* it, which is how a flag that cannot open a database at all (**P2**) showed as covered. Tests must assert the observable consequence (e.g. `O_DIRECT` really set on the data file), not that the API call returned 0. | open |
 
+## Toolchain flakes (not libdb defects)
+
+| id | issue | status |
+|----|-------|--------|
+| **F1** | **Apple clang 15.0.0 (clang-1500.3.9.4) crashes compiling `src/env/env_register.c`** on the `macos-14` runner: `clang: error: unable to execute command: Abort trap: 6`, `clang frontend command failed due to signal`, with a "PLEASE submit a bug report" note and preprocessed source dumped to the runner's temp dir. **Not reproducible** — an unmodified rerun of the identical commit passed, and the job had succeeded on master's previous 5 runs. Most likely a resource/OOM abort on the hosted runner rather than a deterministic frontend bug. Not filed upstream: Apple's clang tracker needs the preprocessed source and run script the crash dumps, and those live on an ephemeral runner that is destroyed with the job, so there is nothing reproducible to submit. **If it recurs, capture the artifacts first** — add a step that uploads `/var/folders/**/*.c` and the `*.sh` run script from the crash note as a build artifact, then file with those attached. A crash report without the reproducer would be closed unactionable. | monitoring |
+
 ## Why this file exists
 
 Each of these was, at some point, rediscovered from scratch by someone who could
