@@ -539,14 +539,29 @@ env_getters_pre_open(dbenv)
 	CHK_OK(dbenv->set_flags(dbenv, DB_TXN_NOWAIT, 1));
 	CHK_OK(dbenv->set_flags(dbenv, DB_TXN_NOWAIT, 0));
 	/*
-	 * DB_DIRECT_DB is refused when the filesystem has no O_DIRECT (the
-	 * __os_support_direct_io() == 0 branch), which is the common case on
-	 * tmpfs/overlayfs.  Both outcomes are correct, so drive it without
-	 * asserting either way -- the point is the branch, not the answer.
+	 * DB_DIRECT_DB IS NOT COVERED HERE, AND MUST NOT BE COUNTED AS IF IT
+	 * WERE.  This block used to read
+	 *
+	 *	(void)dbenv->set_flags(dbenv, DB_DIRECT_DB, 1);
+	 *	(void)dbenv->set_flags(dbenv, DB_DIRECT_DB, 0);
+	 *	checks += 2;
+	 *
+	 * which drove the setter's two branches and then claimed credit for the
+	 * flag.  It could not fail while the flag was completely non-functional,
+	 * and the flag WAS: under DB_DIRECT_DB no database can be opened at all
+	 * (defect P2, docs/design/perf-gate-gaps.md).  Two `checks` went up and a
+	 * dead public flag shipped -- the vacuous-green pattern one layer out,
+	 * where a coverage test raises coverage without exercising behaviour.
+	 *
+	 * The setter branches are still driven, because they are real code in
+	 * this file's remit (argument validation), but `checks` is NOT
+	 * incremented and the flag's BEHAVIOUR is asserted where it belongs:
+	 * test/c/flag_behaviour.c opens a database under the flag and reads
+	 * O_DIRECT back out of /proc/self/fdinfo.  Do not re-add the counter
+	 * here; if you want DB_DIRECT_DB coverage, add it to that driver.
 	 */
 	(void)dbenv->set_flags(dbenv, DB_DIRECT_DB, 1);
 	(void)dbenv->set_flags(dbenv, DB_DIRECT_DB, 0);
-	checks += 2;
 	CHK_OK(dbenv->set_flags(dbenv, DB_NOMMAP, 1));
 	CHK_OK(dbenv->set_flags(dbenv, DB_NOMMAP, 0));
 	CHK_OK(dbenv->set_flags(dbenv, DB_REGION_INIT, 1));

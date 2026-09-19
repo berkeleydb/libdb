@@ -159,6 +159,50 @@ leak	batch_diff@readset-0
 leak	batch_diff@readset-997
 
 # ---------------------------------------------------------------------------
+# Tier: flag -- runtime I/O and durability FLAG BEHAVIOUR.  test/c/flag-run.sh
+#
+# Closes gap G15 (docs/design/perf-gate-gaps.md).  DB_DIRECT, DB_DIRECT_DB,
+# DB_DSYNC_DB, DB_LOG_DIRECT, DB_LOG_DSYNC, DB_LOG_WRNOSYNC and DB_NOSYNC were
+# referenced by ZERO tests; the only test that mentioned one of them checked
+# that set_flags ACCEPTED it, which is how defect P2 shipped -- a flag under
+# which no database can be opened at all, with the coverage counter rising.
+#
+# Every entry here asserts an observable consequence: O_DIRECT / O_DSYNC read
+# back from /proc/self/fdinfo on the descriptor the library opened, or a sync
+# COUNT compared between two arms.  `control` is the anti-vacuity arm -- it
+# asserts the probe reports the bits ABSENT by default, so a probe that always
+# answered "present" fails instead of passing everything.
+#
+# MANDATORY vs optional:
+#   The O_DIRECT modes need an --enable-o_direct build (without it
+#   __os_support_direct_io() is 0 and the flag is correctly refused), so they
+#   are optional -- but the runner PRINTS the skip reason, and the o_direct leg
+#   of the option sweep (test/config/option_sweep.sh) builds with it.
+#   Everything else needs no build option and is mandatory.
+#
+#   direct_db and direct_log currently report XFAIL against P2.  XFAIL counts
+#   as a verdict that held, so these lines are satisfied today and keep being
+#   satisfied when P2 is fixed and they turn into PASS.
+# ---------------------------------------------------------------------------
+flag	control
+flag	dsync_db
+flag	dsync_log
+flag	direct_db	optional
+flag	direct_log	optional
+flag	direct_mpf	optional
+# DB_LOG_WRNOSYNC: per-arm verdicts PLUS the cross-arm comparison.  The
+# comparison is its own entry because the two arms can each succeed while the
+# flag does nothing -- which is precisely what the count check catches.
+flag	syncs@default
+flag	syncs@wrnosync
+flag	syncs@count
+# DB_NOSYNC: the assertion IS the fsync syscall count, so the per-arm runs are
+# mandatory and the count entry is optional only because it needs strace.
+flag	closesync@sync
+flag	closesync@nosync
+flag	closesync@count	optional
+
+# ---------------------------------------------------------------------------
 # test/db/ single-bug regression runners.   Invoked directly from ci.yml's
 # build matrix (config == default).  Each script prints "<name>: PASS|FAIL".
 # ---------------------------------------------------------------------------

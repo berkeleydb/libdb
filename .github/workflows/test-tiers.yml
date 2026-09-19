@@ -37,9 +37,13 @@ on:
       - 'test/isolation/**'
       - 'test/soak/**'
       - 'test/lockmatrix/**'
+      - 'test/c/flag_behaviour.c'
+      - 'test/c/flag-run.sh'
       - 'src/lock/**'
       - 'src/txn/**'
       - 'src/mp/**'
+      - 'src/os/**'
+      - 'src/log/**'
       - 'dist/**'
       - '.github/workflows/test-tiers.yml'
   schedule:
@@ -299,4 +303,84 @@ jobs:
         with:
           name: leak-verdicts
           path: test/.results/*.results
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # Runtime I/O and durability FLAG BEHAVIOUR (test/c/flag-run.sh).  Gap G15.
+  #
+  # DB_DIRECT, DB_DIRECT_DB, DB_DSYNC_DB, DB_LOG_DIRECT, DB_LOG_DSYNC,
+  # DB_LOG_WRNOSYNC and DB_NOSYNC were referenced by ZERO tests.  The one test
+  # that mentioned DB_DIRECT_DB asserted only that set_flags ACCEPTED it -- which
+  # is how defect P2 shipped: a documented flag under which no database can be
+  # opened at all, while the coverage counter went up.
+  #
+  # This job asserts observable consequences: O_DIRECT / O_DSYNC read back from
+  # /proc/self/fdinfo on the descriptor the library actually opened, and sync
+  # COUNTS compared between two arms.  --enable-o_direct is required for the
+  # O_DIRECT modes, so it is configured here; without it those modes SKIP with
+  # the reason printed, which is the state this job exists to prevent.
+  #
+  # HARD GATE.  direct_db and direct_log report XFAIL against P2 today (an
+  # expectation that held, which harness.sh counts as a pass); they become PASS
+  # when P2 is fixed, with no edit to the test.  The teeth of that arrangement
+  # are demonstrated by the FLAGB_STRICT=1 step below, which refuses the XFAIL
+  # allowance and MUST fail on a tree where P2 is present -- a gate that can
+  # only ever pass is indistinguishable from a gate that does nothing.
+  # --------------------------------------------------------------------------
+  flagbehaviour:
+    name: runtime I/O + durability flag behaviour (G15)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install strace (the DB_NOSYNC assertion IS a syscall count)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y strace liburing-dev
+
+      # --enable-o_direct: without it __os_support_direct_io() returns 0,
+      # set_flags(DB_DIRECT_DB) correctly returns EINVAL, and every O_DIRECT
+      # mode skips.  This is the ONLY CI job that builds that option.
+      - name: Build libdb (--enable-o_direct)
+        working-directory: build_unix
+        run: |
+          ../dist/configure --enable-o_direct --enable-diagnostic
+          make -j"$(nproc)"
+
+      - name: Flag behaviour tests
+        working-directory: test/c
+        run: TIMEOUT=300 ./flag-run.sh
+
+      - name: Manifest gate (assert every flag mode produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier flag
+
+      # TEETH, the other direction.  FLAGB_STRICT=1 refuses the P2 XFAIL
+      # allowance, so this step MUST fail while P2 is open.  If it ever
+      # succeeds, either P2 was fixed (then delete this step and the XFAIL
+      # branch in flag-run.sh) or the test stopped asserting anything.
+      #
+      # Runs with its own results directory so it cannot overwrite the verdicts
+      # the manifest gate above just checked.
+      - name: Teeth -- the same tests MUST fail with the P2 allowance refused
+        working-directory: test/c
+        run: |
+          if LIBDB_RESULTS_DIR="$PWD/../.results-strict" \
+              FLAGB_STRICT=1 TIMEOUT=300 ./flag-run.sh; then
+            echo "TEETH FAILURE: flag-run.sh passed with FLAGB_STRICT=1."
+            echo "P2 is either fixed (remove this step and the XFAIL branch)"
+            echo "or the O_DIRECT modes stopped asserting anything."
+            exit 1
+          fi
+          echo "OK: FLAGB_STRICT=1 failed as required -- the gate has teeth."
+
+      - name: Upload verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flag-verdicts
+          path: |
+            test/.results/*.results
+            test/c/flag-run/*/out.txt
           if-no-files-found: ignore
