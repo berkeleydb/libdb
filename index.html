@@ -48,8 +48,8 @@
 
 <section id="get">
   <h2>Get it</h2>
-  <p>Latest release: <a href="https://github.com/berkeleydb/libdb/releases/latest"><strong>v2026.09.8</strong></a>
-     (<a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.8">notes</a>).</p>
+  <p>Latest release: <a href="https://github.com/berkeleydb/libdb/releases/latest"><strong>v2026.09.9</strong></a>
+     (<a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.9">notes</a>).</p>
   <pre><code>git clone https://github.com/berkeleydb/libdb.git
 cd libdb/build_unix
 ../dist/configure &amp;&amp; make</code></pre>
@@ -62,6 +62,7 @@ cd libdb/build_unix
   <table>
     <thead><tr><th>Version</th><th>Notes</th></tr></thead>
     <tbody>
+      <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.9">v2026.09.9</a></td><td>Defect fixes found by the new gates: <code>--disable-mutexsupport</code> had never built (three stacked defects) and <code>DB_DIRECT_DB</code> could not open a database (unaligned metadata buffer, latent on tolerant kernels)</td></tr>
       <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.8">v2026.09.8</a></td><td>Release-machinery correctness: the meson and autoconf builds now agree on the version triplet (meson previously could not attach an autoconf-created environment), <code>s_perm</code> no longer aborts before restoring exec bits, five duplicate message ids renumbered, and the source checkers actually run</td></tr>
       <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.7">v2026.09.7</a></td><td>RFC 0007 optimistic read-path validation (<strong>2.05&times;</strong> batched reads at 96 threads, environment signature unchanged); T1 SSI marker GC margin and S1 os_aio deadlock fixed; read-descent locks and the write convoy both re-measured and redirected</td></tr>
       <tr><td><a href="https://github.com/berkeleydb/libdb/releases/tag/v2026.09.6">v2026.09.6</a></td><td><code>lk_partitions=1</code> self-deadlock (default on 1-CPU hosts); <code>db_get_multiple()</code> 2.47&times; concurrent reads; harness-integrity + region-signature gates</td></tr>
@@ -95,7 +96,7 @@ cd libdb/build_unix
      guides (data storage, transactions, replication), installation, upgrading,
      porting, and Berkeley DB SQL. Generated from Markdown, it is also available
      as <a href="reference/#pdf">PDF</a> and
-     <a href="reference/libdb-man-2026.09.8.tar.gz">man pages</a>
+     <a href="reference/libdb-man-2026.09.9.tar.gz">man pages</a>
      (<code>man libdb</code>, <code>man db_get</code>, &hellip;).</p>
   <ul class="docs">
     <li><a href="reference/api/c/index.html">C API Reference</a> &middot;
@@ -109,7 +110,7 @@ cd libdb/build_unix
         <a href="reference/guides/upgrading/index.html">Upgrading</a> &middot;
         <a href="reference/guides/bdb-sql/index.html">Berkeley DB SQL</a></li>
   </ul>
-  <p class="note">The manuals track the current <strong>2026.09.8</strong> release;
+  <p class="note">The manuals track the current <strong>2026.09.9</strong> release;
      the on-disk, log, and API formats are stable (the format/ABI compatibility
      level is frozen at 5.3.37 — see the versioning covenant in the README).</p>
   <h3>Historical archive</h3>
