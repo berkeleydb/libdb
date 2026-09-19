@@ -1,0 +1,95 @@
+# libdb-scale-shape	v1
+# generated	2026-09-19T13:03:59Z
+# git_rev	366cc644
+# hardware	c6id.24xlarge
+# vcpus	96
+# cpu_model	Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+# kernel	Linux 6.1.0-53-cloud-amd64
+# secs	30
+# warmup	10
+# tproc_scale	96
+# pad	256
+# cache_bytes	4294967296
+# reps	5
+# prewarm	1
+# ---------------------------------------------------------------------------
+# COMMITTED BASELINE SHAPE for the G12/G13 scaling-shape gate.
+#
+# This file records tpm(t=8), tpm(t=32) and tpm(t=96) as first-class artifacts,
+# per docs/design/perf-gate-gaps.md: "a single-threaded number would have shown
+# these engines as equals".
+#
+# THE GATE DOES NOT COMPARE AGAINST THESE NUMBERS.  It asserts a SHAPE within
+# each run (median tpm at every t > 8 must be within tolerance of tpm at t=8),
+# because an absolute number is only meaningful on the machine that produced it.
+# These rows exist so a FUTURE change is comparable -- and so the shape this
+# tree exhibits is on the record rather than in a report somewhere.
+#
+# WHAT THIS BASELINE SHOWS (and it is the defect, not a healthy reference):
+#
+#	t=8    202,411 tpm   cv 4.19%   <- peak
+#	t=32   185,143 tpm   cv 1.98%   -8.5%   (inside tolerance)
+#	t=96    64,268 tpm   cv 1.11%   -68.2%  FAILS THE GATE
+#
+# The gate FAILS on this data, which is correct: the G12 negative-scaling defect
+# is present on master.  When P1 (the PGNO_BASE_MD allocation convoy) is fixed,
+# re-measure and replace these rows.
+#
+# NOTE THE t=32 ROW.  At -8.5% it is INSIDE the tolerance a quiet baseline
+# supports, so a gate that compared only t=8 against t=32 -- which is how the
+# assertion was first written -- would have reported PASS on this very tree.
+# That is why the gate checks EVERY thread count above the reference and takes
+# the worst step.  The brief's t=32 formulation is necessary but not sufficient
+# on this hardware; the defect is unmistakable by t=96.
+#
+# Recorded with `prewarm 1`: one discarded pass over every thread count before
+# the measured reps.  Without it the t=8 arm drifts 282k -> 186k across five
+# reps (cv 16.6%) because TPROC-C mutates its own dataset, and the gate
+# correctly refuses to judge data that noisy.
+# ---------------------------------------------------------------------------
+benchmark	config	threads	rep	metric	unit	value
+tproc-c	libdb	8	1	tpmC_like	tpm	201659
+tproc-c	libdb	8	1	txn_per_sec	txn/s	3361.0
+tproc-c	libdb	8	1	committed	txns	100830
+tproc-c	libdb	32	1	tpmC_like	tpm	185948
+tproc-c	libdb	32	1	txn_per_sec	txn/s	3099.1
+tproc-c	libdb	32	1	committed	txns	92974
+tproc-c	libdb	96	1	tpmC_like	tpm	64268
+tproc-c	libdb	96	1	txn_per_sec	txn/s	1071.1
+tproc-c	libdb	96	1	committed	txns	32134
+tproc-c	libdb	8	2	tpmC_like	tpm	186843
+tproc-c	libdb	8	2	txn_per_sec	txn/s	3114.1
+tproc-c	libdb	8	2	committed	txns	93422
+tproc-c	libdb	32	2	tpmC_like	tpm	179178
+tproc-c	libdb	32	2	txn_per_sec	txn/s	2986.3
+tproc-c	libdb	32	2	committed	txns	89589
+tproc-c	libdb	96	2	tpmC_like	tpm	63888
+tproc-c	libdb	96	2	txn_per_sec	txn/s	1064.8
+tproc-c	libdb	96	2	committed	txns	31944
+tproc-c	libdb	8	3	tpmC_like	tpm	202411
+tproc-c	libdb	8	3	txn_per_sec	txn/s	3373.5
+tproc-c	libdb	8	3	committed	txns	101206
+tproc-c	libdb	32	3	tpmC_like	tpm	186867
+tproc-c	libdb	32	3	txn_per_sec	txn/s	3114.5
+tproc-c	libdb	32	3	committed	txns	93434
+tproc-c	libdb	96	3	tpmC_like	tpm	65598
+tproc-c	libdb	96	3	txn_per_sec	txn/s	1093.3
+tproc-c	libdb	96	3	committed	txns	32799
+tproc-c	libdb	8	4	tpmC_like	tpm	203239
+tproc-c	libdb	8	4	txn_per_sec	txn/s	3387.3
+tproc-c	libdb	8	4	committed	txns	101620
+tproc-c	libdb	32	4	tpmC_like	tpm	178034
+tproc-c	libdb	32	4	txn_per_sec	txn/s	2967.2
+tproc-c	libdb	32	4	committed	txns	89017
+tproc-c	libdb	96	4	tpmC_like	tpm	64312
+tproc-c	libdb	96	4	txn_per_sec	txn/s	1071.9
+tproc-c	libdb	96	4	committed	txns	32156
+tproc-c	libdb	8	5	tpmC_like	tpm	213383
+tproc-c	libdb	8	5	txn_per_sec	txn/s	3556.4
+tproc-c	libdb	8	5	committed	txns	106692
+tproc-c	libdb	32	5	tpmC_like	tpm	185143
+tproc-c	libdb	32	5	txn_per_sec	txn/s	3085.7
+tproc-c	libdb	32	5	committed	txns	92572
+tproc-c	libdb	96	5	tpmC_like	tpm	63482
+tproc-c	libdb	96	5	txn_per_sec	txn/s	1058.0
+tproc-c	libdb	96	5	committed	txns	31741
