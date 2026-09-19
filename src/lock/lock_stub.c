@@ -502,6 +502,26 @@ __lock_sireap_lockers(env)
 }
 
 int
+__lock_sicleanup(env)
+	ENV *env;
+{
+	COMPQUIET(env, NULL);
+	return (0);
+}
+
+int
+__lock_sicommit(env, sh_locker, is_commit)
+	ENV *env;
+	DB_LOCKER *sh_locker;
+	int is_commit;
+{
+	COMPQUIET(env, NULL);
+	COMPQUIET(sh_locker, NULL);
+	COMPQUIET(is_commit, 0);
+	return (0);
+}
+
+int
 __lock_freelocker(lt, sh_locker)
 	DB_LOCKTAB *lt;
 	DB_LOCKER *sh_locker;
