@@ -187,6 +187,7 @@ leak	batch_diff@readset-997
 flag	control
 flag	dsync_db
 flag	dsync_log
+flag	p2_align
 flag	direct_db	optional
 flag	direct_log	optional
 flag	direct_mpf	optional

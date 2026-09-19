@@ -159,6 +159,35 @@ run_mode dsync_db     dsync_db
 run_mode direct_log   direct_log
 run_mode dsync_log    dsync_log
 
+# P2's mechanism check, a separate standalone driver.
+#
+# flag_behaviour's direct_db mode asserts O_DIRECT is really set on the fd, which
+# is the right assertion -- but it PASSED both before and after the P2 fix on
+# hardware whose kernel tolerates an unaligned buffer, so it cannot distinguish
+# fixed from broken there.  p2_align asserts the MECHANISM instead: that
+# ALIGNP_INC over the over-sized buffer yields a 4096-aligned address where the
+# bare DBMETASIZE array does not, and that DBMETASIZE still fits after rounding.
+# It needs no libdb env, so it is built and run directly.
+echo "=== running p2_align"
+p2dir="$RUNDIR/p2_align"
+if fresh_dir "$p2dir"; then
+	p2out="$p2dir/out.txt"
+	if cc -O2 -o "$p2dir/p2_align" "$HERE/p2_align.c" >"$p2out" 2>&1 &&
+	    timeout "$TIMEOUT" "$p2dir/p2_align" >>"$p2out" 2>&1; then
+		sed -n 's/^/    /p' "$p2out"
+		if grep -q '^VERDICT p2_align PASS' "$p2out"; then
+			echo "--- p2_align: PASS"; hi_emit p2_align pass
+		else
+			echo "--- p2_align: FAIL (no PASS verdict)"; hi_emit p2_align fail; rc=1
+		fi
+	else
+		sed -n 's/^/    /p' "$p2out"
+		echo "--- p2_align: FAIL"; hi_emit p2_align fail; rc=1
+	fi
+else
+	hi_emit p2_align fail; rc=1
+fi
+
 # ---------------------------------------------------------------------------
 # DB_LOG_WRNOSYNC -- the log sync COUNT must drop, and the log WRITE count must
 # not.  Both halves are required: an arm that stopped writing the log would
