@@ -421,6 +421,20 @@ q_shipwin(worker *w)
 	double t0;
 
 	if (am_for(TBL_LINE_BY_SHIP) != XE_AM_BTREE) {
+		/*
+		 * N/A on this access method.  Counted ALWAYS, not only while
+		 * g_measure is set, and never cleared at the start of the
+		 * measured interval -- see the na[] note in main().
+		 *
+		 * Why that matters: on the HASH arm a single q1 enumeration of
+		 * 200k rows out of cache takes minutes, so a 45-second measured
+		 * interval completes only a handful of operations and may draw
+		 * q4 zero times.  The counter then reads 0, which is
+		 * indistinguishable from "q4 ran fine" and would quietly delete
+		 * the whole point of the HASH arm: that this query cannot be
+		 * expressed at all.  A cumulative counter still shows the
+		 * attempts made during warmup.
+		 */
 		w->na[op]++;
 		return XE_OK;
 	}
@@ -735,7 +749,14 @@ main(int argc, char **argv)
 		memset(ws[t].ops, 0, sizeof(ws[t].ops));
 		memset(ws[t].retry, 0, sizeof(ws[t].retry));
 		memset(ws[t].err, 0, sizeof(ws[t].err));
-		memset(ws[t].na, 0, sizeof(ws[t].na));
+		/*
+		 * NOTE: na[] is deliberately NOT cleared here.  It records a
+		 * STRUCTURAL fact -- "this query does not exist on this access
+		 * method" -- not a rate, so it must survive the warmup/measure
+		 * boundary.  Clearing it made the HASH arm report na=0 on runs
+		 * whose measured interval was too short to draw q4 at all, which
+		 * reads exactly like "q4 ran and was fine".
+		 */
 		ws[t].rows = 0;
 	}
 	g_measure = 1;
@@ -768,6 +789,18 @@ main(int argc, char **argv)
 	printf("# op-type         completed   retries    errors        N/A"
 	    "      p50_us     p99_us   p99.9_us\n");
 	for (i = 0; i < T_N; i++) {
+		/*
+		 * A query that is N/A on this access method prints a dash row,
+		 * never a zero row.  Zeros are indistinguishable from "ran and
+		 * measured nothing"; dashes plus the N/A count are not.
+		 */
+		if (i == Q_SHIPWIN && am_for(TBL_LINE_BY_SHIP) != XE_AM_BTREE) {
+			printf("OP  %-13s %9s %9s %9s %10llu  "
+			    "%11s %10s %10s   (N/A on this access method)\n",
+			    g_tnames[i], "-", "-", "-",
+			    (unsigned long long)natot[i], "-", "-", "-");
+			continue;
+		}
 		if (natot[i] > 0 && total[i] == 0) {
 			printf("OP  %-13s %9s %9s %9s %10llu  "
 			    "%11s %10s %10s   (N/A on this access method)\n",
@@ -783,7 +816,12 @@ main(int argc, char **argv)
 		    xe_hist_q(&agg[i], 0.999));
 	}
 
-	if (natot[Q_SHIPWIN] > 0)
+	/*
+	 * The N/A line.  Printed whenever the access method cannot express q4,
+	 * EVEN IF no attempt was drawn in the measured interval, because the
+	 * fact is a property of the access method and not of the sample.
+	 */
+	if (am_for(TBL_LINE_BY_SHIP) != XE_AM_BTREE)
 		printf("NA q4-shipwin arm=%s attempts=%llu reason="
 		    "hash-index-has-no-ordered-traversal; answering it by full "
 		    "enumeration would be q1-pricing under another name\n",
