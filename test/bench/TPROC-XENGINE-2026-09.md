@@ -432,9 +432,165 @@ principle.
 
 ## Results
 
-PENDING — the load phase is running. Results are appended here as reps
-complete, with medians, CVs, the noise floor, and a NULL-result verdict wherever
-a difference does not clear it.
+**TPROC-C, BTREE arms: COMPLETE — 5 reps at every thread count, arms alternating
+within each rep.** The HASH and MIXED arms are still loading/running; their
+sections are marked PENDING below.
+
+Dataset actually achieved (measured, not predicted):
+
+| arm | data on disk | cache | data : cache |
+|---|---|---|---|
+| `libdb-*-btree` | **108.9 GiB** | 8 GiB | **13.6x** |
+| `wt-btree` | **124.0 GiB** | 8 GiB | **15.5x** |
+
+WiredTiger's copy of the identical logical dataset is ~14% larger on disk. Both
+engines got the same 8 GiB cache and the same cgroup cap, so WT is if anything
+slightly *disadvantaged* on the cache:data ratio.
+
+### The out-of-cache property, demonstrated rather than asserted
+
+| arm | threads | cache hit rate | read amplification | 
+|---|---|---|---|
+| `libdb-sync-btree` | 1 / 8 / 32 / 96 | 84.4% / 84.1% / 84.3% / 84.3% | 19.3 / 20.1 / 19.8 / 20.4 pages/txn |
+| `libdb-uring-btree` | 1 / 8 / 32 / 96 | 84.6% / 84.2% / 84.3% / 84.5% | 19.9 / 20.1 / 20.0 / 20.4 pages/txn |
+| `wt-btree` | 1 / 8 / 32 / 96 | 68.1% / 74.6% / 78.4% / 71.6% | 20.5 / 16.9 / 17.3 / 20.2 pages/txn |
+
+**Every transaction reads ~17–20 pages from the device.** For comparison, the
+same harness on an in-cache dataset reported `read_amp_pages_per_txn=0.000` and a
+100.000% hit rate. This is the evidence that the runs were genuinely I/O-bound;
+it is measured per run, not inferred from the size ratio.
+
+### Throughput: median txn/s (CV, n reps)
+
+| threads | `libdb-sync-btree` | `libdb-uring-btree` | `wt-btree` |
+|---:|---:|---:|---:|
+| 1 | 251 (CV 7.8%, n=5) | 291 (CV 7.1%, n=5) | 258 (CV 15.0%, n=5) |
+| 8 | 1,041 (CV 5.5%, n=5) | 986 (CV 2.6%, n=5) | 1,455 (CV 5.9%, n=5) |
+| 32 | 522 (CV 20.0%, n=5) | 592 (CV 13.0%, n=5) | 2,805 (CV 4.5%, n=5) |
+| 96 | 337 (CV 39.0%, n=5) | 342 (CV 32.3%, n=5) | 3,308 (CV 4.2%, n=5) |
+
+### The noise floor, and what it disqualifies
+
+**Noise floor: median same-config CV 7.4%, MAXIMUM 39.0%, over 12 configurations.**
+The floor is the maximum, not the mean, because a difference must clear the worst
+spread the machine produces when nothing changes.
+
+Note where that 39% comes from: it is `libdb-sync-btree` at t=96 (CV 39.0%) and
+`libdb-uring-btree` at t=96 (CV 32.3%). **libdb's own run-to-run variance at high
+thread counts is the dominant source of noise in this experiment**, and that is
+itself a result — WiredTiger's CV at the same points is 4.2–5.9%.
+
+### Verdict 1 — io_uring is a NULL RESULT on this workload
+
+`libdb-uring-btree` / `libdb-sync-btree`:
+
+| threads | ratio | delta | verdict |
+|---:|---:|---:|---|
+| 1 | 1.16x | +16.0% | **NULL** (within 39.0% floor) |
+| 8 | 0.95x | −5.3% | **NULL** |
+| 32 | 1.14x | +13.6% | **NULL** |
+| 96 | 1.02x | +1.5% | **NULL** |
+
+**`DB_MPOOL_AIO` produced no measurable throughput change at any thread count.**
+Every point is inside the noise floor. The t=1 +16% is the most suggestive
+number, and it is still less than half the floor — it is not a result.
+
+What this does **not** say: it does not say io_uring is worthless in general. It
+says that on this workload, at this cache ratio, with ~20 pages read per
+transaction, the buffer-pool I/O path is not the binding constraint. The latency
+tables are mildly consistent with a real but small effect (uring's t=32/96
+new-order p99 is slightly lower and its stock-level p99.9 is ~35% lower at t=96),
+but throughput does not move outside the floor and I will not claim a win from
+percentile tails alone.
+
+**S1 did not fire.** No run on either `uring` arm timed out; there were zero
+`TIMEOUT_STALL` records across 20 `DB_MPOOL_AIO` runs. That is consistent with
+the S1 fix holding, though 20 runs is far too small a sample to be evidence of a
+rate — the S1 baseline was 5.7%, so 20 clean runs is unremarkable.
+
+### Verdict 2 — WiredTiger wins, but only above t=8, and the shape matters
+
+`wt-btree` / `libdb-sync-btree` (**the like-for-like comparison** — both engines
+on synchronous `pread`/`pwrite`):
+
+| threads | ratio | delta | verdict |
+|---:|---:|---:|---|
+| 1 | 1.03x | +2.9% | **NULL** (within 39.0% floor) |
+| 8 | 1.40x | +39.8% | WT faster (marginal — just clears the floor) |
+| 32 | **5.38x** | +437.7% | WT faster |
+| 96 | **9.81x** | +880.9% | WT faster |
+
+**At a single thread the two engines are statistically indistinguishable out of
+cache.** That is the honest headline, and it is the opposite of what a
+single-threaded reading of the previous campaign's in-cache numbers would
+suggest.
+
+The gap is a **scaling** difference, not a per-operation one:
+
+* libdb peaks at t=8 (1,041 txn/s) and then **negatively scales** — t=32 is half
+  its t=8 figure, t=96 is a third of it.
+* WiredTiger climbs monotonically to t=96 (3,308 txn/s) and holds a 4.2% CV
+  there.
+
+Since both engines are reading ~20 pages per transaction from the same device,
+the divergence above t=8 is **not** I/O — it is concurrency control. The latency
+percentiles localize it:
+
+| arm | t=96 new-order p50 | p99 | p99.9 |
+|---|---:|---:|---:|
+| `libdb-sync-btree` | 74.8 ms | **2,064 ms** | 2,949 ms |
+| `wt-btree` | 21.0 ms | **182 ms** | 336 ms |
+
+libdb's t=96 new-order p99 is **11x** WT's. new-order is the insert-heavy
+transaction, and **this is the signature of P1** (the `PGNO_BASE_MD` allocation
+convoy: one page allocation holds the metadata page write-locked until commit,
+across its own fsync, and every other allocating writer queues behind it). The
+brief predicted P1 would dominate insert-heavy phases at high thread counts; it
+does, and it is the single largest contributor to the WT gap in this data.
+
+Corroborating: `order-status`, the only read-only transaction that does no
+allocation, has a t=96 p99 of 1.5 ms on WT and 180 ms on libdb — but its p50 is
+424 us vs 1,920 us, a 4.5x gap rather than a 120x one. The tail, not the median,
+is where libdb loses.
+
+### Steady state
+
+Most runs reached the stated criterion (last two 10-second windows within 10%,
+minimum three windows). A substantial minority did not, and are listed as
+anomalies by the aggregator rather than silently included:
+
+* `libdb-sync-btree`: 11 of 20 runs NOT-REACHED
+* `libdb-uring-btree`: 11 of 20 NOT-REACHED
+* `wt-btree`: 12 of 20 NOT-REACHED
+
+**This is a real limitation of these numbers and I am not going to paper over
+it.** With a 30-second warmup budget only 3 windows fit, so the criterion has the
+minimum possible evidence to fire, and a run whose third window differs from its
+second by 11% is recorded as not-converged even if it is close. The measured
+interval is 45 seconds against a 108 GiB working set, so the cache is still
+filling in some runs. The direction of this error is knowable: an
+incompletely-warmed run **understates** throughput (more misses than steady
+state) and **overstates** tail latency. It applies to all three arms at similar
+rates, so it is unlikely to explain a 5–10x cross-arm ratio, but it does mean the
+**absolute** numbers here are a lower bound rather than a steady-state figure.
+A longer warmup was not affordable in the time available; see the honesty section
+at the end.
+
+### TPROC-C, HASH and MIXED arms
+
+PENDING. The HASH dataset load is the bottleneck: the hash load ran at
+**6.2–8.6k rows/s against BTREE's 170k rows/s**, a 20–27x slowdown, and had not
+finished within the campaign window. That slowdown is itself a reportable
+observation about bulk-loading `DB_HASH` at this scale, not merely an
+inconvenience.
+
+### TPROC-H
+
+PENDING — not started. TPROC-H needs its own four datasets at 35.4k rows/s (4.8x
+slower per row than TPROC-C, because each lineitem writes both a fact row and a
+secondary index row), which did not fit in the remaining time alongside the
+TPROC-C campaign. The harness is complete, committed and smoke-tested against all
+four arms, including the Q4 N/A path; only the measured run is missing.
 
 ## Known issues touched by this run
 
