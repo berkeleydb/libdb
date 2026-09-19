@@ -80,6 +80,25 @@ CMP="$HERE/bench_cmp.py"
 REPS=5
 SECS=30
 WARMUP=10
+# PREWARM: one DISCARDED pass over every thread count before the measured reps.
+#
+# This is not decoration, it was MEASURED into existence.  TPROC-C MUTATES its
+# dataset (new-order inserts rows, delivery deletes them), so a freshly loaded
+# database is not in steady state and the first passes run against a smaller,
+# tidier tree.  Without a prewarm pass the t=8 arm measured
+#
+#     rep1 282211, rep2 240373, rep3 212493, rep4 193171, rep5 185604 tpm
+#
+# -- a monotone 34% decline across reps, i.e. cv 16.6%, which is ABOVE
+# bench_cmp.py's 10% usability ceiling.  The gate correctly REFUSED to emit a
+# verdict on it ("a gate that cannot distinguish signal from its own noise is
+# worse than no gate") rather than reporting the -11.6% delta it had computed.
+#
+# Widening the tolerance to cover that spread would have been the wrong repair:
+# it would have hidden the very defect the gate exists for, since the defect
+# itself is a throughput decline.  The right repair is a QUIETER BASELINE, which
+# is also the only way bench_cmp.py allows a tolerance to be tightened.
+PREWARM=1
 THREADS="8 32 96"
 SCALE=96
 PAD=256
@@ -106,6 +125,7 @@ while [ $# -gt 0 ]; do
 	-P) shift; PAD=$1 ;;
 	--lo) shift; LO=$1 ;;
 	--hi) shift; HI=$1 ;;
+	--no-prewarm) PREWARM=0 ;;
 	--min-cores) shift; MIN_CORES=$1 ;;
 	-h|--help) sed -n '2,70p' "$0"; exit 0 ;;
 	*) echo "unknown option: $1" >&2; exit 2 ;;
@@ -138,7 +158,8 @@ verdict_from_tsv() {
 	f=$1
 	echo "== scaling-shape gate =="
 	echo "results: $f"
-	echo "assertion: median tpm(t=$HI) >= median tpm(t=$LO) - tolerance"
+	echo "assertion: median tpm(t) >= median tpm(t=$LO) - tolerance," \
+	    "for every t > $LO (reference $LO, headline $HI)"
 	echo
 
 	# The noise report is the tolerance's provenance -- printed, so the
@@ -230,10 +251,43 @@ if med_lo <= 0:
 tol_pct = max(TOL_FLOOR_PCT, TOL_SIGMA * cv_lo)
 delta_pct = 100.0 * (med_hi - med_lo) / med_lo
 
+
+# ---------------------------------------------------------------------------
+# THE VERDICT.  Monotonicity is asserted from LO against EVERY higher thread
+# count present, not only against HI.
+#
+# This is a MEASURED correction, not extra thoroughness.  On the c6id.24xlarge
+# the t=8 -> t=32 step is a mild -8% (inside a tolerance derived from a quiet
+# baseline) while t=8 -> t=96 is -68%.  A gate that looked only at t=32 would
+# have reported PASS on a machine where throughput collapses to a third of peak
+# by 96 threads -- the exact defect it was built for.  The worst step is what
+# decides the verdict; every step is printed either way.
+# ---------------------------------------------------------------------------
+steps, worst = [], None
+for t in sorted(by_t):
+    if t <= lo:
+        continue
+    if len(by_t[t]) < 2:
+        print("note: t=%d has %d rep(s), not enough to judge; reported, not "
+              "gated." % (t, len(by_t[t])))
+        continue
+    _, med_t, _, _ = stats(by_t[t])
+    d = 100.0 * (med_t - med_lo) / med_lo
+    steps.append((t, med_t, d))
+    if worst is None or d < worst[2]:
+        worst = (t, med_t, d)
+
+if not steps:
+    print("GATE ERROR: no thread count above t=%d has enough reps to judge. "
+          "A gate with one point is not a shape gate." % lo)
+    sys.exit(2)
+
 print("tolerance: max(%.1f%% floor, %.1f x cv(t=%d)=%.2f%%) = %.1f%%"
       % (TOL_FLOOR_PCT, TOL_SIGMA, lo, cv_lo, tol_pct))
-print("delta:     tpm(t=%d)=%.0f vs tpm(t=%d)=%.0f  =  %+.1f%%"
-      % (hi, med_hi, lo, med_lo, delta_pct))
+for t, med_t, d in steps:
+    print("step:      tpm(t=%-3d)=%-9.0f vs tpm(t=%d)=%-9.0f  =  %+7.1f%%   %s"
+          % (t, med_t, lo, med_lo, d,
+             "BELOW TOLERANCE" if d < -tol_pct else "ok"))
 
 # A reference arm noisier than CV_EXCLUDE_PCT cannot support ANY verdict; say so
 # rather than gating at a tolerance so wide it would never fire.
@@ -241,19 +295,26 @@ if cv_lo > CV_EXCLUDE_PCT:
     print()
     print("GATE ERROR: t=%d cv is %.1f%%, above the %.1f%% usability ceiling. "
           "A gate that cannot distinguish signal from its own noise is worse "
-          "than no gate.  Quiet the machine or raise the rep count."
+          "than no gate.  Quiet the machine (--prewarm is on by default) or "
+          "raise the rep count.  Do NOT widen the tolerance: the defect this "
+          "gate looks for IS a throughput decline, so a tolerance wide enough "
+          "to cover this noise would hide it."
           % (lo, cv_lo, CV_EXCLUDE_PCT))
     sys.exit(2)
 
+fails = [s for s in steps if s[2] < -tol_pct]
 print()
-if delta_pct < -tol_pct:
+if fails:
+    t_w, med_w, d_w = worst
     print("VERDICT scale-shape FAIL threads_lo=%d threads_hi=%d "
-          "tpm_lo=%.0f tpm_hi=%.0f delta_pct=%+.1f tol_pct=%.1f"
-          % (lo, hi, med_lo, med_hi, delta_pct, tol_pct))
+          "tpm_lo=%.0f tpm_hi=%.0f delta_pct=%+.1f tol_pct=%.1f "
+          "failing_steps=%s"
+          % (lo, t_w, med_lo, med_w, d_w, tol_pct,
+             ",".join("t%d:%+.1f%%" % (t, d) for t, _, d in fails)))
     print()
     print("NEGATIVE SCALING: throughput FELL by %.1f%% going from %d to %d "
           "threads, beyond the %.1f%% tolerance this machine's own rep-to-rep "
-          "spread supports." % (-delta_pct, lo, hi, tol_pct))
+          "spread supports." % (-d_w, lo, t_w, tol_pct))
     print("This is the G12 defect: libdb peaks at 8 threads and declines, "
           "while WiredTiger rises monotonically to 96.  The mechanism is P1, "
           "the PGNO_BASE_MD allocation convoy (__db_new holds the metadata "
@@ -262,9 +323,10 @@ if delta_pct < -tol_pct:
           "test/bench/BTREE-LOCK-SCOPE-2026-09.md.")
     sys.exit(1)
 
+t_w, med_w, d_w = worst
 print("VERDICT scale-shape PASS threads_lo=%d threads_hi=%d "
       "tpm_lo=%.0f tpm_hi=%.0f delta_pct=%+.1f tol_pct=%.1f"
-      % (lo, hi, med_lo, med_hi, delta_pct, tol_pct))
+      % (lo, t_w, med_lo, med_w, d_w, tol_pct))
 sys.exit(0)
 PYEOF
 	return $?
@@ -427,6 +489,7 @@ mkdir -p "$(dirname "$OUT")" "$DATA" || exit 2
 	printf '# pad\t%s\n' "$PAD"
 	printf '# cache_bytes\t%s\n' "$CACHE_BYTES"
 	printf '# reps\t%s\n' "$REPS"
+	printf '# prewarm\t%s\n' "$PREWARM"
 	printf 'benchmark\tconfig\tthreads\trep\tmetric\tunit\tvalue\n'
 } > "$OUT"
 
@@ -449,44 +512,81 @@ else
 	echo "=== dataset already loaded in $DATA"
 fi
 
-# ---- alternate the thread counts within each rep -------------------------
+# ---- one run; $1 = threads, $2 = rep label, $3 = 1 to RECORD, 0 to discard --
 cap=$((SECS + WARMUP + TIMEOUT_PAD))
+one_run() {
+	t=$1; rep=$2; record=$3
+	log="$(dirname "$OUT")/shape_t${t}_r${rep}.log"
+	rc=0
+	timeout -s KILL "$cap" "$DRIVER" -e libdb -a btree \
+	    -h "$DATA/d" -S "$SCALE" -P "$PAD" -c "$CACHE_BYTES" \
+	    -t "$t" -s "$SECS" -W "$WARMUP" >"$log" 2>&1 || rc=$?
+
+	line=$(grep -m1 '^VERDICT tproc-c' "$log")
+	if [ "$record" != 1 ]; then
+		# The discarded pass still has to be REPORTED.  A prewarm that
+		# silently died would leave the dataset un-warmed and the
+		# measured reps would carry the drift this exists to remove.
+		if [ -z "$line" ]; then
+			echo "### PREWARM t=$t produced no verdict (rc=$rc) -- see $log"
+			prewarm_bad=1
+		else
+			echo "    prewarm t=$t: $(printf '%s\n' "$line" |
+			    sed -n 's/.*tpmC_like=\([0-9.]*\).*/\1/p') tpm (DISCARDED)"
+		fi
+		return 0
+	fi
+
+	if [ "$rc" = 124 ] || [ "$rc" = 137 ]; then
+		# A stall is DATA, recorded as such -- never discarded, and never
+		# counted as a throughput sample.
+		emit "$(printf 'tproc-c\tlibdb\t%s\t%s\tTIMEOUT_STALL\ts\t%d' \
+		    "$t" "$rep" "$cap")"
+		echo "### STALL t=$t rep=$rep -- see $log"
+		return 0
+	fi
+	if [ -z "$line" ]; then
+		emit "$(printf 'tproc-c\tlibdb\t%s\t%s\tNO_VERDICT\tn\t0' \
+		    "$t" "$rep")"
+		echo "### NO VERDICT t=$t rep=$rep rc=$rc"
+		grep -E '^FAIL|error' "$log" | head -3 | sed 's/^/###   /'
+		return 0
+	fi
+	for k in tpmC_like txn_per_sec committed; do
+		v=$(printf '%s\n' "$line" |
+		    sed -n "s/.*[[:space:]]$k=\([0-9.]*\).*/\1/p")
+		[ -n "$v" ] || continue
+		u=tpm
+		[ "$k" = txn_per_sec ] && u=txn/s
+		[ "$k" = committed ] && u=txns
+		emit "$(printf 'tproc-c\tlibdb\t%s\t%s\t%s\t%s\t%s' \
+		    "$t" "$rep" "$k" "$u" "$v")"
+	done
+}
+
+# ---- the DISCARDED prewarm pass -------------------------------------------
+prewarm_bad=0
+if [ "$PREWARM" = 1 ]; then
+	echo "=== prewarm pass (DISCARDED -- brings the mutated dataset to" \
+	    "steady state; see the PREWARM comment at the top)"
+	for t in $THREADS; do
+		one_run "$t" pw 0
+	done
+	if [ "$prewarm_bad" = 1 ]; then
+		echo "### the prewarm pass did not complete; the measured reps" \
+		    "would carry fresh-dataset drift.  Refusing to continue."
+		hi_emit gate fail
+		exit 2
+	fi
+	echo
+fi
+
+# ---- alternate the thread counts within each rep -------------------------
 rep=1
 while [ "$rep" -le "$REPS" ]; do
 	for t in $THREADS; do
-		log="$(dirname "$OUT")/shape_t${t}_r${rep}.log"
 		echo "=== rep $rep t=$t"
-		rc=0
-		timeout -s KILL "$cap" "$DRIVER" -e libdb -a btree \
-		    -h "$DATA/d" -S "$SCALE" -P "$PAD" -c "$CACHE_BYTES" \
-		    -t "$t" -s "$SECS" -W "$WARMUP" >"$log" 2>&1 || rc=$?
-
-		if [ "$rc" = 124 ] || [ "$rc" = 137 ]; then
-			# A stall is DATA, recorded as such -- never discarded,
-			# and never counted as a throughput sample.
-			emit "$(printf 'tproc-c\tlibdb\t%s\t%s\tTIMEOUT_STALL\ts\t%d' \
-			    "$t" "$rep" "$cap")"
-			echo "### STALL t=$t rep=$rep -- see $log"
-			continue
-		fi
-		line=$(grep -m1 '^VERDICT tproc-c' "$log")
-		if [ -z "$line" ]; then
-			emit "$(printf 'tproc-c\tlibdb\t%s\t%s\tNO_VERDICT\tn\t0' \
-			    "$t" "$rep")"
-			echo "### NO VERDICT t=$t rep=$rep rc=$rc"
-			grep -E '^FAIL|error' "$log" | head -3 | sed 's/^/###   /'
-			continue
-		fi
-		for k in tpmC_like txn_per_sec committed; do
-			v=$(printf '%s\n' "$line" |
-			    sed -n "s/.*[[:space:]]$k=\([0-9.]*\).*/\1/p")
-			[ -n "$v" ] || continue
-			u=tpm
-			[ "$k" = txn_per_sec ] && u=txn/s
-			[ "$k" = committed ] && u=txns
-			emit "$(printf 'tproc-c\tlibdb\t%s\t%s\t%s\t%s\t%s' \
-			    "$t" "$rep" "$k" "$u" "$v")"
-		done
+		one_run "$t" "$rep" 1
 	done
 	rep=$((rep + 1))
 done
