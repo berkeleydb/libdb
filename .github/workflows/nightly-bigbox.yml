@@ -1,0 +1,269 @@
+# Nightly: the SCALING-SHAPE gate and the configure-OPTION SWEEP.
+#
+# ===========================================================================
+# THESE JOBS CANNOT RUN ON A GITHUB-HOSTED RUNNER.  READ THIS BEFORE EDITING.
+# ===========================================================================
+#
+# `scale-shape` REQUIRES A 32+ CORE MACHINE and will refuse to produce a verdict
+# on anything smaller (exit 3).  GitHub-hosted `ubuntu-latest` is a 2-4 vCPU
+# shared runner.  On 2 cores, t=8 and t=32 both measure OVERSUBSCRIPTION -- the
+# difference between them describes the Linux scheduler, not libdb's
+# concurrency -- so a number produced there would look exactly like evidence
+# while proving nothing.  That is why the gate refuses instead of reporting.
+#
+# So this workflow needs ONE OF:
+#
+#   * a self-hosted runner with >= 32 cores, labelled `self-hosted, bigbox`, or
+#   * an on-demand cloud instance (the measurements in
+#     docs/design/gate-gaps-closed.md were taken on a c6id.24xlarge: 96 vCPU,
+#     185 GiB, local NVMe), or
+#   * a larger GitHub-hosted runner from a paid runner group.
+#
+# The jobs are `if:`-guarded on a repository variable so the workflow is present,
+# readable and dispatchable in a fork that has no such runner, WITHOUT queueing
+# forever against a label nobody provides.  Set the repo variable
+# HAVE_BIGBOX_RUNNER=1 (and provide the label) to arm it.
+#
+# WHY NIGHTLY AND NOT PER-PR: the shape gate is ~15 min of measurement (5 reps x
+# 3 thread counts x 40 s) plus a dataset load, and the option sweep is ~33
+# configure+build cycles.  Neither belongs in the PR path; both belong somewhere
+# that a regression is noticed within a day.
+#
+# ===========================================================================
+# WHAT THESE GATES CATCH THAT NOTHING ELSE DOES
+# ===========================================================================
+#
+# G12/G13 -- scale-shape.  libdb's TPROC-C throughput PEAKS AT 8 THREADS
+#   (1,041 tpm) and falls to 337 at 96 -- 32% of its own peak -- while
+#   WiredTiger rises monotonically over the same sweep.  At t=1 the engines are
+#   indistinguishable, so this is a concurrency defect, not a throughput
+#   deficit.  Every one of the 34 existing CI jobs runs on 2-4 vCPU, where the
+#   defect is STRUCTURALLY invisible; the only perf job is
+#   `continue-on-error: true` and "informational only", so the fall from 1,041
+#   to 337 is reported by nothing.
+#
+# G14 -- option-sweep.  42 of 54 configure options were never built in CI.  One
+#   of them is --enable-o_direct, and defect P2 (a public flag under which no
+#   database can be opened) survived because nothing compiled OR RAN that path.
+#   Compiling it alone would not have caught P2 either: --enable-o_direct builds
+#   perfectly and fails at runtime.  Hence the smoke run.
+#
+# See docs/design/perf-gate-gaps.md (the analysis) and
+# docs/design/gate-gaps-closed.md (what these gates assert and their teeth).
+
+name: Nightly big-box gates (scaling shape / configure options)
+
+on:
+  schedule:
+    # 05:23 UTC, offset from ci.yml (03:17) and test-tiers.yml (04:41) so the
+    # three nightlies do not contend for runners.
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+    inputs:
+      reps:
+        description: 'Reps per thread count (>= 5 for a usable tolerance)'
+        default: '5'
+      secs:
+        description: 'Measured seconds per run'
+        default: '30'
+      threads:
+        description: 'Thread counts to sweep'
+        default: '8 32 96'
+      run_sweep:
+        description: 'Also run the configure-option sweep (slow)'
+        default: 'true'
+
+concurrency:
+  group: nightly-bigbox-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # THE TEETH, on a normal runner.  This job is the reason the shape gate can be
+  # trusted at all, and it costs seconds: it feeds the gate's own verdict code
+  # two SYNTHETIC series built from the MEASURED numbers in
+  # test/bench/TPROC-XENGINE-2026-09.md and requires OPPOSITE answers --
+  #
+  #     libdb's measured shape      (1041 -> 522 -> 337)  MUST FAIL
+  #     WiredTiger's measured shape (1455 -> 2805 -> 3308) MUST PASS
+  #
+  # A gate that only ever fails is indistinguishable from a broken gate, and a
+  # gate that only ever passes is worse.  This runs on ubuntu-latest because it
+  # measures nothing -- so the teeth are checked on EVERY nightly even when no
+  # big box is available, and the check is never the thing that gets skipped.
+  #
+  # It has already earned its keep: the first version of the gate raised
+  # ModuleNotFoundError inside its verdict path, which exited non-zero, which the
+  # descending arm read as "correctly failed".  Only the ascending arm exposed
+  # that the gate was not running at all.
+  # --------------------------------------------------------------------------
+  shape-selftest:
+    name: scale-shape gate TEETH (both directions, no measurement)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Teeth -- descending MUST fail, ascending MUST pass
+        working-directory: test/bench
+        run: ./scale_shape_gate.sh --self-test
+
+      # bench_cmp.py owns the tolerance arithmetic the gate imports, so its own
+      # self-test is part of trusting the gate's numbers.
+      - name: bench_cmp.py self-test (the tolerance arithmetic)
+        working-directory: test/bench
+        run: python3 test_bench_cmp.py
+
+      - name: Manifest gate (tier shape)
+        if: always()
+        run: ./test/check_manifest.sh --tier shape
+
+      - name: Upload verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shape-selftest-verdicts
+          path: test/.results/*.results
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # THE MEASUREMENT.  Needs 32+ cores; see the header.
+  #
+  # EXPECTED RESULT ON CURRENT MASTER: THIS JOB FAILS.  The negative-scaling
+  # defect is real and present, so a red X here is the gate working.  It is NOT
+  # marked continue-on-error, because that is exactly how the existing perf job
+  # became decorative.  When P1 (the PGNO_BASE_MD allocation convoy) is fixed,
+  # this turns green on its own.
+  # --------------------------------------------------------------------------
+  scale-shape:
+    name: scaling-shape gate (G12/G13, needs 32+ cores)
+    # Armed only where a big-box runner exists.  Change `bigbox` to your label.
+    if: vars.HAVE_BIGBOX_RUNNER == '1'
+    runs-on: [self-hosted, bigbox]
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Report the machine (a shape claim is only as good as its box)
+        run: |
+          echo "cores:  $(nproc)"
+          echo "model:  $(sed -n 's/^model name[[:space:]]*:[[:space:]]*//p' \
+              /proc/cpuinfo | head -1)"
+          free -g | head -2
+          echo "kernel: $(uname -sr)"
+          if [ "$(nproc)" -lt 32 ]; then
+            echo "This runner has fewer than 32 cores.  The gate will refuse"
+            echo "to emit a verdict (exit 3) rather than report a number that"
+            echo "describes the scheduler.  Fix the runner, not the gate."
+          fi
+
+      - name: Build libdb
+        working-directory: build_unix
+        run: |
+          ../dist/configure --enable-o_direct \
+            CFLAGS="-O2 -g -fno-omit-frame-pointer"
+          make -j"$(nproc)"
+
+      # Teeth first, on this box too: if the gate has stopped discriminating,
+      # find that out BEFORE spending an hour measuring and believing it.
+      - name: Teeth before measuring
+        working-directory: test/bench
+        run: ./scale_shape_gate.sh --self-test
+
+      - name: Measure the shape and gate on it
+        working-directory: test/bench
+        env:
+          BUILD: ${{ github.workspace }}/build_unix
+          DATA: ${{ runner.temp }}/shape_data
+        run: |
+          ./scale_shape_gate.sh \
+            -r "${{ github.event.inputs.reps || '5' }}" \
+            -s "${{ github.event.inputs.secs || '30' }}" \
+            -n "${{ github.event.inputs.threads || '8 32 96' }}" \
+            -o "$PWD/results/scale_shape.tsv"
+
+      # Compare against the committed baseline shape.  A future regression in
+      # the SHAPE is what this gate is for; the absolute numbers in the baseline
+      # are recorded so a change in them is at least visible and comparable.
+      - name: Compare against the committed baseline
+        if: always()
+        working-directory: test/bench
+        run: |
+          echo "committed baseline (test/bench/baseline-scale-shape.tsv):"
+          grep -v '^#' baseline-scale-shape.tsv | head -20
+          echo
+          echo "this run:"
+          ./scale_shape_gate.sh --noise results/scale_shape.tsv || true
+
+      - name: Manifest gate (tier shape)
+        if: always()
+        run: ./test/check_manifest.sh --tier shape
+
+      - name: Upload measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scale-shape-results
+          path: |
+            test/bench/results/*.tsv
+            test/bench/results/*.log
+            test/.results/*.results
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # THE CONFIGURE-OPTION SWEEP (G14).
+  #
+  # The COMPLETENESS half runs on a normal runner and is cheap: it only parses
+  # dist/aclocal/options.m4 and checks every option is swept or excluded with a
+  # reason.  That is the part that must never be skipped, because it is what
+  # makes adding a configure option force a testing decision.
+  # --------------------------------------------------------------------------
+  option-completeness:
+    name: every configure option is swept or excluded with a reason (G14)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Completeness gate
+        run: ./test/config/option_sweep.sh --check-complete
+      - name: Print the plan
+        run: ./test/config/option_sweep.sh --list
+
+  option-sweep:
+    name: configure-option sweep, one at a time + smoke (G14)
+    if: >-
+      vars.HAVE_BIGBOX_RUNNER == '1' &&
+      (github.event_name == 'schedule' ||
+       github.event.inputs.run_sweep != 'false')
+    runs-on: [self-hosted, bigbox]
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sweep (configure + build each option alone; smoke the runtime ones)
+        working-directory: .
+        run: |
+          # -j is per-leg; the legs themselves are sequential so a failure is
+          # attributable to one option rather than to a crowded machine.
+          JOBS="$(( $(nproc) / 8 > 4 ? $(nproc) / 8 : 4 ))" \
+            ./test/config/option_sweep.sh
+
+      - name: Manifest gate (tier config)
+        if: always()
+        run: ./test/check_manifest.sh --tier config
+
+      - name: Upload the sweep summary and every failing log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: option-sweep
+          path: |
+            test/config/sweep/summary.tsv
+            test/config/sweep/*/configure.log
+            test/config/sweep/*/build.log
+            test/config/sweep/*/smoke.log
+            test/.results/*.results
+          if-no-files-found: ignore

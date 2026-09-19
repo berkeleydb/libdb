@@ -203,6 +203,95 @@ flag	closesync@nosync
 flag	closesync@count	optional
 
 # ---------------------------------------------------------------------------
+# Tier: config -- the configure-option sweep.  test/config/option_sweep.sh
+#
+# Closes gap G14: 42 of 54 configure options were never built in CI, including
+# --enable-o_direct, which is how defect P2 survived -- nothing ever compiled
+# or ran that path.
+#
+# ONE OPTION AT A TIME (never combinatorially), and options that change RUNTIME
+# behaviour additionally run test/config/config_smoke.c, because
+# --enable-o_direct builds perfectly and fails at runtime: a build-only sweep
+# would have reported it green.
+#
+# `complete` is the completeness gate itself, and it is MANDATORY and listed
+# FIRST: every configure option must be in a sweep list or on the commented
+# exclusion list, so adding an option forces a testing decision.  That is the
+# same discipline this file applies to tests.  Without this entry a sweep could
+# run every leg it knows about against a list that had silently lost half the
+# options.
+#
+# The per-option legs are `optional` because the sweep is a NIGHTLY job that
+# needs ~30 configure+build cycles (roughly 40 min on 12 jobs), not a per-PR
+# gate -- but once the tier runs at all, check_manifest.sh reports each absent
+# leg, and option_sweep.sh separately fails if the number of recorded legs does
+# not match the number planned.  A leg that wrote no row did not run.
+# ---------------------------------------------------------------------------
+config	complete
+# --- smoke legs (build + run the runtime smoke suite) ---
+config	o_direct	optional
+config	atomicsupport	optional
+config	atomicfileread	optional
+config	mutexsupport	optional
+config	mutex	optional
+config	posixmutexes	optional
+config	umrw	optional
+config	stacksize	optional
+config	log_checksum	optional
+config	partition	optional
+config	hash	optional
+config	heap	optional
+config	queue	optional
+config	replication	optional
+config	statistics	optional
+config	verify	optional
+config	compression	optional
+config	smallbuild	optional
+config	debug_rop	optional
+config	debug_wop	optional
+config	diagnostic	optional
+config	debug	optional
+config	dst	optional
+config	faultinject	optional
+config	handoff-trace	optional
+config	cryptography	optional
+config	localization	optional
+config	stripped_messages	optional
+config	uniquename	optional
+# --- build-only legs (bindings/utilities; they do not change the engine) ---
+config	cxx	optional
+config	stl	optional
+config	dbm	optional
+config	compat185	optional
+
+# ---------------------------------------------------------------------------
+# Tier: shape -- the SCALING-SHAPE gate.  test/bench/scale_shape_gate.sh
+#
+# Closes gaps G12 + G13.  libdb's TPROC-C throughput PEAKS AT 8 THREADS and
+# falls to 32% of that peak by 96, while WiredTiger rises monotonically; all 34
+# CI jobs run on a 2-4 vCPU ubuntu-latest runner that CANNOT produce the
+# contention, and the one perf job is continue-on-error "informational only".
+#
+# The gate asserts SHAPE -- median tpm(t=32) >= median tpm(t=8) within a
+# tolerance derived from the reps' own spread -- not an absolute number, because
+# a shape comparison is between two measurements minutes apart on the same box
+# and so survives a machine-class change that would invalidate a stored number.
+#
+# `selftest` is the TEETH entry and is MANDATORY: it feeds the same verdict code
+# the measured libdb shape (must FAIL) and the measured WiredTiger shape (must
+# PASS).  It needs no benchmark run and takes seconds, so it is the one entry
+# that can be mandatory everywhere.  It has already earned its place -- it
+# caught a ModuleNotFoundError in the gate that was exiting non-zero and being
+# read as "correctly failed the descending series".
+#
+# `gate` is optional because it requires a 32+ core machine: the script REFUSES
+# to emit a verdict below 32 cores (exit 3) rather than produce a number that
+# describes the scheduler.  It runs in the nightly scale-shape workflow.
+# ---------------------------------------------------------------------------
+shape	selftest
+shape	gate	optional
+
+# ---------------------------------------------------------------------------
 # test/db/ single-bug regression runners.   Invoked directly from ci.yml's
 # build matrix (config == default).  Each script prints "<name>: PASS|FAIL".
 # ---------------------------------------------------------------------------
