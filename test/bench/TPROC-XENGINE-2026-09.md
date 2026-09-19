@@ -1,8 +1,9 @@
 # Cross-engine out-of-cache benchmark: libdb 2026.09.8 vs WiredTiger 12.0.0 (2026-09)
 
-**Status: IN PROGRESS.** This document is committed before the measurements are
-complete, and partial results are landed as they arrive. Sections marked
-`PENDING` have no data yet. Nothing in a `PENDING` section should be quoted.
+**Status: TPROC-C COMPLETE (all 7 arms, 3-5 reps per point). TPROC-H NOT
+MEASURED.** The TPROC-H harness is finished, committed and smoke-tested, but no
+TPROC-H numbers exist and none are implied anywhere in this document. See "What
+could not be measured, and why" for the full list of limitations.
 
 > **These are HammerDB-style workloads, independently implemented. They are NOT
 > the TPC-C or TPC-H benchmarks, they produce no TPC-comparable metric, and they
@@ -576,21 +577,151 @@ rates, so it is unlikely to explain a 5–10x cross-arm ratio, but it does mean 
 A longer warmup was not affordable in the time available; see the honesty section
 at the end.
 
-### TPROC-C, HASH and MIXED arms
+### TPROC-C, HASH and MIXED arms: COMPLETE
 
-PENDING. The HASH dataset load is the bottleneck: the hash load ran at
-**6.2–8.6k rows/s against BTREE's 170k rows/s**, a 20–27x slowdown, and had not
-finished within the campaign window. That slowdown is itself a reportable
-observation about bulk-loading `DB_HASH` at this scale, not merely an
-inconvenience.
+All three libdb access-method configurations finished, serialized (see the
+contention finding below). Full table, median txn/s (CV, n reps):
+
+| threads | `libdb-sync-btree` | `libdb-sync-hash` | `libdb-sync-mixed` | `libdb-uring-btree` | `libdb-uring-hash` | `libdb-uring-mixed` | `wt-btree` |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 251 (7.8%, 5) | 151 (23.5%, 3) | **299** (1.4%, 4) | 291 (7.1%, 5) | 154 (2.8%, 3) | 288 (11.1%, 4) | 258 (15.0%, 5) |
+| 8 | 1,041 (5.5%, 5) | 288 (2.9%, 3) | 1,070 (4.9%, 4) | 986 (2.6%, 5) | 290 (2.5%, 3) | **1,230** (13.5%, 4) | 1,455 (5.9%, 5) |
+| 32 | 522 (20.0%, 5) | 176 (5.7%, 3) | **608** (29.9%, 4) | 592 (13.0%, 5) | 149 (7.1%, 3) | 570 (12.8%, 3) | 2,805 (4.5%, 5) |
+| 96 | 337 (39.0%, 5) | 67 (40.8%, 4) | 298 (4.0%, 3) | **342** (32.3%, 5) | 68 (21.7%, 4) | 316 (5.8%, 3) | 3,308 (4.2%, 5) |
+
+**Final noise floor: median same-config CV 7.1%, maximum 40.8%, over 28
+configurations.**
+
+### Verdict 3 — HASH is decisively worse out of cache, and the mechanism is measured
+
+`libdb-sync-hash` / `libdb-sync-btree`: 0.60x (t=1, **NULL** — inside the floor),
+**0.28x** (t=8), **0.34x** (t=32), **0.20x** (t=96). The last three clear the
+floor comfortably: HASH is **3–5x slower** than BTREE above one thread.
+
+The cause is not a mystery, because read amplification was instrumented:
+
+| arm | cache hit rate | read amplification |
+|---|---:|---:|
+| `libdb-*-btree` | 84.1–84.6% | **19.3–20.4** pages/txn |
+| `libdb-*-mixed` | 84.2–90.4% | **19.3–34.0** pages/txn |
+| `libdb-*-hash` | **49.6–50.4%** | **101.8–131.6** pages/txn |
+
+**The HASH arm reads 5–6x more pages per transaction at half the cache hit
+rate.** That is the whole result. Out of cache, a hash table's lack of ordered
+access is not a mild inconvenience — it converts one sequential leaf scan into
+hundreds of scattered point lookups, each with its own probability of a device
+read. A B-tree's interior pages also cache far better than a hash directory of
+the same footprint: 84% vs 50% hit rate on the same 8 GiB budget.
+
+This is the clearest finding in the campaign, and note that it is the *opposite*
+of the naive expectation that hash beats B-tree for point lookups. It does, in
+cache. At 13.6x cache it loses by 3–5x.
+
+### The HASH delivery ceiling — and why the HASH numbers are FLATTERED
+
+`delivery` on HASH probes upward from a watermark for at most 64 keys instead of
+seeking (see the honesty section above). The harness counts how often that probe
+window is exhausted — i.e. how often the HASH arm committed a delivery
+transaction **having delivered nothing**, where BTREE would have found a row:
+
+| threads | probe exhausted |
+|---:|---:|
+| 1 | 2.5–5.8% |
+| 8 | 8.4–8.6% |
+| 32 | **40.6–42.4%** |
+| 96 | **86.9–97.9%** |
+
+**At t=96, 87–98% of the HASH arm's delivery transactions did no work at all.**
+Delivery is 4% of the mix, so this is not the dominant term — but the direction
+matters: it means the HASH arm's already-poor throughput is **overstated**
+relative to a hash implementation that actually delivered every order. The real
+HASH deficit is therefore somewhat worse than the 3–5x measured here.
+
+I am reporting this rather than quietly benefiting from it. It is also the
+concrete demonstration of why the N/A rule matters: without the counter, the
+HASH arm would have reported the same `delivery` transaction name as BTREE at a
+similar rate while doing a fraction of the work, and the comparison would have
+looked clean.
+
+### Verdict 4 — MIXED is a NULL RESULT against BTREE
+
+`libdb-sync-mixed` / `libdb-sync-btree`: +19.1% (t=1), +2.8% (t=8), +16.5%
+(t=32), −11.7% (t=96) — **every point inside the 40.8% noise floor. NULL.**
+
+The MIXED hypothesis was that HASH for point-lookup-only tables plus BTREE for
+the two ordered-access tables would beat both pure arms. **It did not beat
+BTREE measurably.** It reliably beat pure HASH (by 2–4x), which is consistent
+with Verdict 3 — but that is a statement about how bad pure HASH is out of
+cache, not evidence that the mixed mapping is a win.
+
+The read-amplification data explains why MIXED failed to win: at 19.3–34.0
+pages/txn it looks essentially like the BTREE arm, because the two tables kept as
+B-trees (`stock`, `neworder`) are exactly the ones carrying the scan-heavy
+traffic. Converting the point-lookup tables to hash moved almost no I/O.
+
+MIXED does show the **lowest variance** of any libdb arm at high thread counts
+(CV 4.0–5.8% at t=96 against BTREE's 32–39%), which is suggestive but not a
+throughput claim.
+
+### Contention finding: I corrupted 25 runs, caught it, and excluded them
+
+I started the HASH campaign while the MIXED campaign was still running. Two
+benchmarks sharing 96 CPUs and one NVMe device contended, and the damage looked
+like an engine property rather than an artifact:
+
+| measurement | with overlap | serialized |
+|---|---:|---:|
+| `libdb-sync-mixed` t=1 CV | 41.6% | **1.4%** |
+| `libdb-sync-mixed` t=8 CV | 47.8% | **4.9%** |
+| campaign-wide noise floor | 135.8% | **40.8%** |
+
+One overlapped run returned 134 txn/s against ~1100 for the same configuration.
+At a 135.8% floor, **every real difference in this report would have been
+reported as a NULL RESULT** — the floor is meant to disqualify false findings,
+not to be manufactured by the harness.
+
+25 overlapping runs (11 MIXED, 14 HASH) are quarantined to
+`results/contaminated/`, not deleted, and excluded from the aggregate. Those
+excluded runs are the evidence for the diagnosis: removing them restored CVs of
+1.4–13.5% on the same arm against the same dataset.
+
+Note why the cgroup did not prevent this: it caps **memory**, which is what the
+page-cache requirement needed, and says nothing about CPU time or device queue
+depth. `xe_lock.sh` now refuses to start a campaign while another holds the lock.
 
 ### TPROC-H
 
-PENDING — not started. TPROC-H needs its own four datasets at 35.4k rows/s (4.8x
-slower per row than TPROC-C, because each lineitem writes both a fact row and a
-secondary index row), which did not fit in the remaining time alongside the
-TPROC-C campaign. The harness is complete, committed and smoke-tested against all
-four arms, including the Q4 N/A path; only the measured run is missing.
+PENDING — not started, and it will not be started in this run. TPROC-H needs its
+own four datasets at 35.4k rows/s (4.8x slower per row than TPROC-C, because each
+lineitem writes both a fact row and a secondary index row), which does not fit in
+the remaining time after the TPROC-C campaign and the 4.3-hour HASH load. The
+harness is complete, committed and smoke-tested against all four arms — including
+the Q4 N/A path, which correctly recorded 123 N/A attempts on the HASH arm and
+real percentiles on the other three — so only the measured run is missing.
+
+**What TPROC-H would most likely show, stated as a prediction and not a result:**
+given that TPROC-H's queries are dominated by large ordered traversals of the
+fact table, and given Verdict 3 (HASH costs 5–6x read amplification precisely
+where ordered access is replaced by enumeration), the HASH arm should fare
+*worse* on TPROC-H than on TPROC-C. That is a hypothesis with a mechanism behind
+it, not a measurement, and nothing in this report should be read as having tested
+it.
+
+### Bulk-load observation (incidental, but worth recording)
+
+Single-threaded load rates for the identical logical dataset:
+
+| arm | load rate | wall time |
+|---|---:|---:|
+| `wt-btree` | — | **314 s** |
+| `libdb-*-btree` | 170k rows/s | **1,924 s** (6.1x WT) |
+| `libdb-*-mixed` | ~9k rows/s | ~4.3 h |
+| `libdb-*-hash` | **6.1–8.6k rows/s** | **~4.3 h** (20–27x slower than libdb BTREE) |
+
+WiredTiger loaded the same data **6.1x faster** than libdb's BTREE. The `DB_HASH`
+bulk-load rate of 6–9k rows/s — against 170k for `DB_BTREE` — is a 20–27x
+slowdown and was the single largest time cost in this campaign. `set_h_nelem`
+was set from the expected row count, so this is not a missing-presize artifact.
 
 ## Known issues touched by this run
 
@@ -606,6 +737,77 @@ four arms, including the Q4 N/A path; only the measured run is missing.
 * **New, from this run:** `DB_DIRECT_DB` cannot be used on this platform at all
   — the first meta-page read fails `EINVAL` because `__fop_read_meta` reads
   through an unaligned buffer. See Finding 1.
+
+## Summary of verdicts
+
+| # | question | verdict | evidence |
+|---|---|---|---|
+| 1 | Is `DB_MPOOL_AIO` (io_uring) worth anything here? | **NULL RESULT** at every thread count | +16.0% / −5.3% / +13.6% / +1.5%, all inside a 40.8% floor |
+| 2 | libdb vs WiredTiger, like-for-like | **indistinguishable at t=1**; WT **5.4x** at t=32, **9.8x** at t=96 | both ~20 pages/txn, so the gap is concurrency control, not I/O |
+| 3 | Is HASH better for point lookups out of cache? | **No — 3–5x WORSE** | HASH reads 102–132 pages/txn at 50% hit rate vs BTREE's 20 at 84% |
+| 4 | Does the MIXED mapping beat pure BTREE? | **NULL RESULT** | +19.1% / +2.8% / +16.5% / −11.7%, all inside the floor |
+| 5 | Did WiredTiger use io_uring? | **No — it has no io_uring path at all** | 4 independent probes, all negative |
+| 6 | Was this genuinely out of cache? | **Yes** | 17–20 pages/txn (BTREE), 102–132 (HASH), vs 0.000 in-cache |
+| 7 | Did S1 (`os_aio` stall) fire? | **No stall in 20 uring runs** | but 20 runs cannot evidence a rate against a 5.7% baseline |
+
+**The single most useful number for a libdb maintainer:** at t=96, libdb's
+`new-order` p99 is **2,064 ms** against WiredTiger's **182 ms** on the same
+device with the same page-read rate. `new-order` is the allocation-heavy
+transaction. That is the **P1** `PGNO_BASE_MD` convoy, and it is the dominant
+term in the 9.8x throughput gap at 96 threads.
+
+## What could not be measured, and why
+
+Stated plainly, because a partial honest result is the requirement and an
+infinite investigation is the failure mode.
+
+1. **The 10x-RAM working set was not achieved.** 4 x 1.85 TB does not fit on a
+   5.2 TB filesystem, and would take 11.5 h to load before any measurement. The
+   run preserves the **13.6x data:cache ratio** at 1/13th the absolute size
+   (108–134 GiB data, 8 GiB cache). The working set is **1.18x RAM, not 10x**.
+   The out-of-cache property is demonstrated by read amplification rather than
+   inferred from the ratio.
+2. **Neither engine used `O_DIRECT`.** WT's option is a verified no-op; libdb's
+   is genuinely broken on this platform (`EINVAL` on the first meta-page read).
+   Page cache was bounded by cgroup instead, verified with a control. **No
+   `O_DIRECT` parity is claimed.**
+3. **io_uring parity was impossible.** WiredTiger has no io_uring backend. The
+   like-for-like comparison is `libdb-sync` vs `wt`, and every `libdb-uring` vs
+   `wt` number is labelled not-like-for-like.
+4. **TPROC-H was not measured at all.** The harness is complete, committed and
+   smoke-tested on all four arms including the Q4 N/A path; there was no time
+   left after the TPROC-C campaign plus a 4.3-hour `DB_HASH` load. **No TPROC-H
+   result is claimed or implied.**
+5. **Steady state was not reached in roughly half the runs.** On a 30-second
+   warmup budget only three 10-second windows fit, giving the criterion minimum
+   evidence. The error direction is knowable — an under-warmed run understates
+   throughput and overstates tail latency — and it applies to all arms at similar
+   rates, so it does not plausibly explain a 5–10x cross-arm ratio. But the
+   **absolute** figures here are a lower bound, not steady-state numbers.
+6. **HASH arms have n=3–4 reps, not 5**, because 14 HASH runs were quarantined
+   for campaign overlap. The BTREE arms have a full n=5 at every point.
+7. **`libdb-uring-mixed` t=32/96 and `libdb-sync-mixed` t=96 have n=3.** Same
+   cause.
+8. **The HASH arm's delivery transaction did less work than BTREE's** — 87–98%
+   probe exhaustion at t=96 — so the measured HASH deficit is, if anything,
+   optimistic.
+
+### Things that would have been published as findings had they not been caught
+
+Recorded because each was produced by working code on real data and none would
+have failed an `rc=0` check:
+
+| # | the wrong number | how it was caught |
+|---|---|---|
+| 1 | "WiredTiger has io_uring strings" | `grep -i uring` matches "d**uring**": 818 false hits, 0 real |
+| 2 | "both engines used `O_DIRECT`" | `direct_io` parses but strace shows 0 `O_DIRECT` opens |
+| 3 | `O_DIRECT` probe "confirmed" absence | probe used invalid `type=row`, created nothing — right answer, wrong reason; caught by a missing `VERDICT` line |
+| 4 | working set "4.41 GiB" | was `du -s` of the env home, counting the mpool region (a file the size of the cache) — **21x overstatement** |
+| 5 | "load completed" in 0 s | `/usr/bin/time` is not installed; every load died `rc=127` and a `grep` hid it |
+| 6 | a 9-minute "stall" on a 75-second run | 205 GB of unreclaimed logs + `DB_RECOVER`; would have been logged as an S1 `DB_MPOOL_AIO` stall on an arm where S1 cannot apply |
+| 7 | a phantom `t=2` row at 17,308 txn/s | in-cache smoke logs (scale=5) averaged with campaign logs (scale=10481) — a 70x gap that read as a thread-count effect |
+| 8 | "the MIXED arm is intrinsically unstable" (CV 41.6%) | two campaigns overlapped; serialized CV is 1.4% |
+| 9 | results TSV with `t` as the field separator | printf backslashes eaten by ssh quoting; now parsed from logs, not shell output |
 
 ## Reproducing
 
