@@ -170,7 +170,15 @@ def main():
                     continue
                 m = statistics.median(vals)
                 c = cv(vals)
-                cells.append(f"{m:,.0f} (CV {fmt(c)}%, n={len(vals)})")
+                # Format with enough precision for the metric's magnitude.
+                # TPROC-H reports fractional queries/s (a single analytic scan
+                # can take seconds), and "%,.0f" rendered every one of them as
+                # "0" -- a table of zeros beside real ratios, which looks like a
+                # failed run rather than a slow query.
+                if m < 10:
+                    cells.append(f"{m:,.3f} (CV {fmt(c)}%, n={len(vals)})")
+                else:
+                    cells.append(f"{m:,.0f} (CV {fmt(c)}%, n={len(vals)})")
             if md:
                 print("| " + " | ".join(cells) + " |")
             else:
