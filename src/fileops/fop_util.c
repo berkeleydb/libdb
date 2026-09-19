@@ -1123,6 +1123,16 @@ __fop_read_meta(env, name, buf, size, fhp, errok, nbytesp)
 {
 	size_t nr;
 	int ret;
+	u_int8_t *rbuf;
+	/*
+	 * Bounce storage for the O_DIRECT case below.  DB_FOP_DIRECT_ALIGN is
+	 * the largest logical block size we align for; 4096 covers every device
+	 * in common use (512e and 4Kn both), and over-aligning is harmless.
+	 * The extra DB_FOP_DIRECT_ALIGN bytes are the slack ALIGNP_INC needs to
+	 * round the base address up.
+	 */
+#define	DB_FOP_DIRECT_ALIGN	4096
+	u_int8_t alignbuf[DBMETASIZE + DB_FOP_DIRECT_ALIGN];
 
 	/*
 	 * Our caller wants to know the number of bytes read, even if we
@@ -1131,8 +1141,34 @@ __fop_read_meta(env, name, buf, size, fhp, errok, nbytesp)
 	if (nbytesp != NULL)
 		*nbytesp = 0;
 
+	/*
+	 * O_DIRECT requires a block-aligned transfer buffer, but every caller
+	 * hands us a plain stack array (u_int8_t mbuf[DBMETASIZE]) carrying only
+	 * the platform's scalar alignment.  Under DB_DIRECT_DB that made the very
+	 * first metadata read fail EINVAL, so no database could be opened at all
+	 * -- and because it depends on whether the kernel tolerates an unaligned
+	 * buffer for the particular call, it reproduced on some systems and not
+	 * others, which is the worst kind of latent bug: green on the developer's
+	 * machine, broken on the deployment's storage.
+	 *
+	 * This function is the single choke point for metadata reads, so aligning
+	 * here covers all eight call sites and any future one without touching
+	 * their signatures.  We use an over-sized stack buffer plus ALIGNP_INC
+	 * rather than an aligned allocation: nothing to free, so no error path can
+	 * leak, which matters on the database-open path.  The copy is one
+	 * DBMETASIZE block per open, on a path that already performs a read.
+	 *
+	 * Only taken when DB_DIRECT_DB is set, so the default path is byte for
+	 * byte what it was.
+	 */
 	nr = 0;
-	ret = __os_read(env, fhp, buf, size, &nr);
+	rbuf = buf;
+	if (size <= DBMETASIZE && F_ISSET(env->dbenv, DB_ENV_DIRECT_DB))
+		rbuf = ALIGNP_INC(alignbuf, DB_FOP_DIRECT_ALIGN);
+
+	ret = __os_read(env, fhp, rbuf, size, &nr);
+	if (rbuf != buf && nr != 0)
+		memcpy(buf, rbuf, nr < size ? nr : size);
 	if (nbytesp != NULL)
 		*nbytesp = nr;
 
