@@ -71,6 +71,18 @@ they are silently weakening our own validation, which is why they are tracked.
 | **U6** | **The meson build is not feature-parity with autoconf, so the two produce incompatible environments.** `meson setup` omits `HAVE_ATOMIC_SUPPORT`, `HAVE_ATOMIC_BUILTINS`, `HAVE_ATOMIC_64BIT`, `HAVE_ATOMIC_GCC_BUILTIN`, `HAVE_IO_URING`, `HAVE_AIO_POSIX`, `HAVE_AIO_THREADPOOL`, `HAVE_GETRANDOM`, `HAVE_ARC4RANDOM_BUF` and `HAVE_PTHREAD_COND_REINIT_OKAY`, all of which autoconf detects. Several change struct layout, so `__env_struct_sig()` differs (`0xb86f77f0` autoconf vs `0x8e25fcb1` meson) and a cross-build attach fails `BDB1539 Build signature doesn't match environment`. Pre-existing and unrelated to the version-triplet fix: the identical drift is present at `v2026.09.7`, where a *different* error (`BDB1538 Program version 5.3 doesn't match environment version 2026.0`) masked it because the meson library also reported the wrong triplet. Fixing the triplet removed `BDB1538` and left `BDB1539` visible. **Consequence: no release note may claim meson/autoconf environment interoperability.** The meson path is a convenience build, not a supported artifact, until it reaches feature parity. | open |
 | **W1** | `src/log/log_handoff_trace.c` and `src/mutex/mut_order.c` are absent from the Visual Studio project files, so `--enable-handoff-trace` and the DIAGNOSTIC lock-order checker cannot be built on Windows. **Not** a build break: both files are whole-file `#ifdef`-gated (`HAVE_HANDOFF_TRACE`, `DIAGNOSTIC`) and compile to nothing when their option is off, which is the default. | open |
 
+## Test-coverage gaps that let shipped defects through
+
+Identified by asking why the 2026-09 cross-engine benchmark found defects CI did not.
+Full analysis: `docs/design/perf-gate-gaps.md`.
+
+| id | gap | status |
+|----|-----|--------|
+| **G12** | **No CI machine can exhibit a concurrency defect.** All 34 jobs run on `ubuntu-latest` (2-4 vCPU). libdb's throughput *peaks at 8 threads and falls to 32% of that peak by 96* — a defect that is structurally invisible on a 2-core runner. Needs a nightly scaling-shape gate on 32+ cores asserting monotonicity (`tpm(t=32) >= tpm(t=8)`), which is robust to noise in a way an absolute-throughput gate is not. | open |
+| **G13** | **Performance is not gated at all.** The only perf job (`bench.yml`) is `continue-on-error` and self-described as "informational only", correctly, because a shared runner's noise floor makes absolute numbers useless. A regression from 1,041 to 337 tpm would be reported by nothing. | open |
+| **G14** | **42 of 54 `configure` options are never exercised in CI.** Includes `o_direct` (hence **P2**), `atomicsupport`, `mutexalign`, `log_checksum`, `partition`, `hash`, `heap`, `queue`, `replication`, `statistics`, `verify`, `handoff-trace`. Needs a one-at-a-time option sweep, plus a check that any new `configure` option is either in the sweep or on a commented exclusion list. | open |
+| **G15** | **Six runtime behaviour flags are referenced by zero tests:** `DB_DIRECT`, `DB_DSYNC_DB`, `DB_LOG_DIRECT`, `DB_LOG_DSYNC`, `DB_LOG_WRNOSYNC`, `DB_NOSYNC` — the durability and I/O-path knobs. Worse, `test/c/cov_api_surface.c` counts `DB_DIRECT_DB` as covered while only asserting that the *setter accepts* it, which is how a flag that cannot open a database at all (**P2**) showed as covered. Tests must assert the observable consequence (e.g. `O_DIRECT` really set on the data file), not that the API call returned 0. | open |
+
 ## Why this file exists
 
 Each of these was, at some point, rediscovered from scratch by someone who could
