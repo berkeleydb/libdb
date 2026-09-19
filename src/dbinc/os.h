@@ -170,5 +170,20 @@ struct __fh_t {
 }
 #endif
 
+/*
+ * dbinc_auto/os_ext.h declares the atomic helpers in terms of db_atomic_t and
+ * atomic_value_t (src/os/os_atomic.c).  Those types live in dbinc/atomic.h,
+ * which is otherwise only reached through dbinc/mutex_int.h -- and mutex.h
+ * includes mutex_int.h ONLY under HAVE_MUTEX_SUPPORT (dbinc/mutex.h:12).  So a
+ * --disable-mutexsupport build reached these prototypes with the types
+ * undefined and failed to compile:
+ *
+ *	os_ext.h:27: error: unknown type name 'db_atomic_t'
+ *
+ * The header that declares the prototypes is responsible for the types they
+ * name, so include atomic.h here.  It is idempotent (own include guard) and
+ * declares no storage, so this costs a default build nothing.
+ */
+#include "dbinc/atomic.h"
 #include "dbinc_auto/os_ext.h"
 #endif /* !_DB_OS_H_ */
