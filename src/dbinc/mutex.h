@@ -306,11 +306,25 @@ __db_lo_wrap_acq(ENV *env, db_mutex_t mutex, int ret,
  * the call with something the compiler can discard, but which will make
  * if-then-else blocks work correctly.
  */
-#define	MUTEX_LOCK(env, mutex)		(mutex) = (mutex)
-#define	MUTEX_TRYLOCK(env, mutex)	(mutex) = (mutex)
-#define	MUTEX_READLOCK(env, mutex)	(mutex) = (mutex)
-#define	MUTEX_TRY_READLOCK(env, mutex)	(mutex) = (mutex)
-#define	MUTEX_UNLOCK(env, mutex)	(mutex) = (mutex)
+/*
+ * Each stub must be usable both as a STATEMENT and as a VALUE.  The original
+ * form was `(mutex) = (mutex)`, which the comment above explains was chosen so
+ * if-then-else blocks still parse -- but it is an assignment expression, so a
+ * caller that tests the result, as the os_aio cross-reap latch does with
+ *
+ *	MUTEX_TRYLOCK(env, dbmp->aio_ctx->mtx_aio) == 0
+ *
+ * fails with "lvalue required as left operand of assignment" whenever the
+ * argument is not a bare lvalue.  Casting to void and yielding 0 keeps the
+ * statement use working, makes the value use compile, and returns the success
+ * code the trylock/readlock contract specifies (0 == acquired), which is the
+ * right answer when there is no mutex to contend for.
+ */
+#define	MUTEX_LOCK(env, mutex)		((void)(mutex), 0)
+#define	MUTEX_TRYLOCK(env, mutex)	((void)(mutex), 0)
+#define	MUTEX_READLOCK(env, mutex)	((void)(mutex), 0)
+#define	MUTEX_TRY_READLOCK(env, mutex)	((void)(mutex), 0)
+#define	MUTEX_UNLOCK(env, mutex)	((void)(mutex), 0)
 #define	MUTEX_REQUIRED(env, mutex)	(mutex) = (mutex)
 #define	MUTEX_REQUIRED_READ(env, mutex)	(mutex) = (mutex)
 #define	MUTEX_WAIT(env, mutex, duration) (mutex) = (mutex)
