@@ -433,9 +433,9 @@ principle.
 
 ## Results
 
-**TPROC-C, BTREE arms: COMPLETE — 5 reps at every thread count, arms alternating
-within each rep.** The HASH and MIXED arms are still loading/running; their
-sections are marked PENDING below.
+**TPROC-C: COMPLETE for all 7 arms** — 3–5 reps at every thread count, arms
+alternating within each rep. **TPROC-H: measured on the BTREE/MIXED/WT arms**
+(5 reps, t={1,8,32}), with the HASH arm partial and labelled directional.
 
 Dataset actually achieved (measured, not predicted):
 
@@ -691,7 +691,8 @@ depth. `xe_lock.sh` now refuses to start a campaign while another holds the lock
 
 ### TPROC-H
 
-PENDING — superseded; see "TPROC-H: MEASURED" below.
+Measured — see the **TPROC-H: MEASURED** section below for the results, which
+supersede the placeholder this section used to hold.
 
 ### Bulk-load observation (incidental, but worth recording)
 
