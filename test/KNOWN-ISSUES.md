@@ -38,6 +38,12 @@ someone may pick it up.
 |----|-------|--------|
 | **B1** | `perf/bhpin-r1` has a **latent correctness bug**, independent of its throughput. Its option (c) returns a buffer frame without taking `bhp->mtx_buf`, but `__memp_fput` is unchanged and unlocks it unconditionally at `mp_fput.c:197`. A DIAGNOSTIC build panics (`BDB2031 shared unlock N already unlocked`). **A production build does not check**: the `DB_ASSERT(env, sharecount > 0)` in `mut_tas.c` is DIAGNOSTIC-only, so `atomic_dec` runs regardless and silently drives another reader's share count toward zero — and since exclusive acquisition CASes against `sharecount == 0`, a writer can be granted the exclusive latch while a reader still holds a share. Silent data corruption under a race, not a crash. Controls: only bhpin+DIAGNOSTIC+private panics; base clean in the same config; both production and both shared-env arms clean. **Do not merge this branch on correctness grounds, regardless of any throughput number.** Its measured "neutral" verdict was also vacuous — 0 hits in 9M attempts, because the load left every page `BH_DIRTY` and shared envs never attempt the path (gated on `ENV_PRIVATE`). Full analysis: `test/bench/PIN-REMEASURE-2026-09.md`. | open, branch not merged |
 
+## Confirmed engine bugs found by benchmarking
+
+| id | issue | status |
+|----|-------|--------|
+| **P2** | **`DB_DIRECT_DB` (O_DIRECT on data files) is broken.** The first metadata read fails `EINVAL`: `__fop_read_meta` (`src/fileops/fop_util.c:1115`) passes a caller-supplied buffer straight to `__os_read`, and its callers declare it as a plain stack array — `u_int8_t mbuf[DBMETASIZE]` at `src/fileops/fop_rec.c:71,146,360` and the same pattern elsewhere — with no alignment attribute. `O_DIRECT` requires the buffer, the file offset and the length all to be block-aligned (512 B or 4 KiB), so the read is rejected before any database opens. Found while trying to keep the OS page cache out of a cross-engine benchmark; the campaign had to cap the page cache with a cgroup instead. **No test exercises the flag against a real file** — `test/c/cov_api_surface.c` only checks that the setter accepts it, which is why a documented public flag could be completely non-functional. Fix is to give the metadata buffers aligned storage (`__os_malloc` with alignment, or a union with a `DB_ALIGN8`/page-sized member) and to add a test that opens a database with `DB_DIRECT_DB` and reads a page back. | open |
+
 ## Measured, characterized, not yet fixed
 
 | id | issue | status |
