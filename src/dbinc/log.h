@@ -190,6 +190,17 @@ struct __hdr {
 #define	HDR_NORMAL_SZ	12
 #define	HDR_CRYPTO_SZ	12 + DB_MAC_KEY + DB_IV_BYTES
 
+/*
+ * DB_LG_DIRECT_ALIGN --
+ *	The block boundary every O_DIRECT transfer on a log file is aligned to:
+ *	buffer address, file offset and length must all be a multiple of it.
+ *	4096 covers every device in common use (512e and 4Kn alike) and
+ *	over-aligning is harmless, so this is a constant rather than a probe of
+ *	the device's logical block size.  Only ever consulted under
+ *	DBLOG_DIRECT, so it has no effect on a default build.
+ */
+#define	DB_LG_DIRECT_ALIGN	4096
+
 struct __log_persist {
 	u_int32_t magic;		/* DB_LOGMAGIC */
 	u_int32_t version;		/* DB_LOGVERSION */

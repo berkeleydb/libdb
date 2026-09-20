@@ -180,17 +180,25 @@ leak	batch_diff@readset-997
 #   of the option sweep (test/config/option_sweep.sh) builds with it.
 #   Everything else needs no build option and is mandatory.
 #
-#   direct_db and direct_log currently report XFAIL against P2.  XFAIL counts
-#   as a verdict that held, so these lines are satisfied today and keep being
-#   satisfied when P2 is fixed and they turn into PASS.
+#   direct_db reports XFAIL against P2 on hardware whose kernel tolerates an
+#   unaligned O_DIRECT buffer; XFAIL counts as a verdict that held.  direct_log
+#   no longer has an XFAIL allowance at all -- P3 is fixed
+#   (docs/design/p3-log-odirect.md) and a failed transactional open under
+#   DB_LOG_DIRECT is now a hard FAIL.
 # ---------------------------------------------------------------------------
 flag	control
 flag	dsync_db
 flag	dsync_log
 flag	p2_align
+flag	p3_align
 flag	direct_db	optional
 flag	direct_log	optional
 flag	direct_mpf	optional
+# P3's on-the-real-library check: every pread/pwrite the library issues against
+# a log file under DB_LOG_DIRECT must be 4096-aligned in BOTH offset and length.
+# p3_align models that arithmetic; this reads the syscalls, so the model and the
+# code cannot drift apart silently.  Optional: needs strace and --enable-o_direct.
+flag	direct_log@io	optional
 # DB_LOG_WRNOSYNC: per-arm verdicts PLUS the cross-arm comparison.  The
 # comparison is its own entry because the two arms can each succeed while the
 # flag does nothing -- which is precisely what the count check catches.

@@ -529,21 +529,15 @@ m_logfile(const char *name, u_int32_t log_flag, long want)
 	}
 	if ((ret = open_db(dbenv, &dbp, DB_AUTO_COMMIT)) != 0) {
 		/*
-		 * The DB_LOG_DIRECT sibling of P2: the log WRITE path hands
-		 * __os_io unaligned buffers (a 1-byte write is visible in the
-		 * error text), so under O_DIRECT logging fails EINVAL and the
-		 * first transactional open cannot complete.  Recorded as XFAIL
-		 * against P2 for the same reason direct_db is: the defect is the
-		 * finding, and the mode reports PASS once it is fixed.
+		 * This used to allow XFAIL here for want == O_DIRECT: defect P3,
+		 * the DB_LOG_DIRECT sibling of P2, made the log write path hand
+		 * __os_io unaligned buffers of arbitrary length at arbitrary
+		 * offsets, so the first transactional open failed EINVAL.  P3 is
+		 * fixed (__log_write_direct restages each write into aligned
+		 * whole blocks; see docs/design/p3-log-odirect.md), so the
+		 * allowance is GONE and a failed open here is a hard FAIL -- a
+		 * regression, not a recorded expectation.
 		 */
-		if (want == O_DIRECT && ret == EINVAL) {
-			verdict(name, "XFAIL",
-			    "DB->open under DB_LOG_DIRECT failed EINVAL (log "
-			    "write of an unaligned buffer) -- P2 family, see "
-			    "docs/design/perf-gate-gaps.md");
-			(void)dbenv->close(dbenv, 0);
-			return (0);
-		}
 		verdict(name, "FAIL", "DB->open: %s (%d)",
 		    db_strerror(ret), ret);
 		(void)dbenv->close(dbenv, 0);
