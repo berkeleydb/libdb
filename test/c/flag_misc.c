@@ -928,8 +928,8 @@ out:	(void)dbp->close(dbp, 0);
  *	DB_LOCK_NOWAIT at qam.c:838 and (b) selects the `first != cp->recno`
  *	test at qam.c:866, and over a deleted record that condition never
  *	converges -- the non-inorder path advances `first` past the hole at
- *	qam.c:957 (`else if (first == cp->recno) QAM_INC_RECNO(first)`), which
- *	the inorder path does not reach.
+ *	qam.c:956 (`QAM_INC_RECNO(first)`, reached via
+ *	`else if (first == cp->recno)`), which the inorder path does not reach.
  *
  *	This is NOT fixed here: per the brief, an engine defect found by a new
  *	test is marked XFAIL with a reference and fixed in its own reviewed
