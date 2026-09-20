@@ -1378,7 +1378,27 @@ __db_log_page(dbp, txn, lsn, pgno, page)
 	env = dbp->env;
 	ret = 0;
 
-	MUTEX_LOCK(env, env->mtx_dblist);
+	/*
+	 * SHARED, not exclusive.  mtx_dblist guards the shape of env->dblist --
+	 * the dblistlinks pointers we are about to follow -- and nothing else.
+	 * The cursor queues each have their own per-partition mutex, and the
+	 * callback mutates only cursor state, never the handle list.  So this
+	 * walk is a pure READER of the list, and readers can run concurrently.
+	 *
+	 * This is the whole of the P4 fix.  Every B-tree insert reaches here via
+	 * __bam_iitem -> __bam_ca_di, so taking the list latch exclusively made
+	 * one environment-wide mutex serialize the entire write path, and the
+	 * per-partition CQ_LOCKs -- acquired inside it -- bought nothing.
+	 * Measured: __bam_ca_di was 25.58% of all time at 32 threads, and
+	 * throughput peaked at 2 threads and fell 49% by 96.
+	 *
+	 * Handle lifetime: it is safe to keep reading ldbp after dropping
+	 * nothing (we hold the latch shared for the whole walk).  A handle is
+	 * unlinked from dblist in __db_refresh under the SAME latch, which it
+	 * takes exclusively, so it cannot be unlinked while any reader holds it
+	 * shared.  See the block comment above the exclusive acquisition there.
+	 */
+	MUTEX_READLOCK(env, env->mtx_dblist);
 	FIND_FIRST_DB_MATCH(env, dbp, ldbp);
 	for (*countp = 0;
 	    ldbp != NULL && ldbp->adj_fileid == dbp->adj_fileid;
@@ -1394,11 +1414,30 @@ loop:			CQ_LOCK(env, cqp);
 				    countp, pgno, indx, args)) != 0)
 					break;
 			/*
-			 * We use the error to communicate that function
-			 * dropped the mutex.
+			 * The callback uses DB_LOCK_NOTGRANTED to say "I had to
+			 * drop the queue mutex, so the queue may have changed
+			 * under you -- rescan from the top".  It does NOT mean
+			 * the mutex is still held: the callback released it and
+			 * did not retake it, so we must NOT unlock here before
+			 * looping.  The three callbacks that do this
+			 * (__bam_ca_dup_func, __bam_ca_undodup_func,
+			 * __ham_chgpg_recover_func) each have to drop it because
+			 * they call __db_cursor_int/__dbc_close, which take the
+			 * partition mutex of the very handle being walked.
+			 *
+			 * Those callbacks release the partition mutex via
+			 * CQ_UNLOCK(DB_CURSOR_PART(dbc)) -- the mutex this loop
+			 * actually holds.  Before this change they released
+			 * dbp->mutex, which is the mutex this walk held BEFORE
+			 * the cursor queues were sharded and which it has not
+			 * held since; on a DB_THREAD handle that unlocked a
+			 * mutex the thread did not own and left the partition
+			 * mutex held across a re-entrant acquisition of itself.
 			 */
-			if (ret == DB_LOCK_NOTGRANTED)
+			if (ret == DB_LOCK_NOTGRANTED) {
+				ret = 0;
 				goto loop;
+			}
 			CQ_UNLOCK(env, cqp);
 			if (ret != 0)
 				break;
