@@ -399,3 +399,114 @@ jobs:
             test/.results/*.results
             test/c/flag-run/*/out.txt
           if-no-files-found: ignore
+
+  # --------------------------------------------------------------------------
+  # API FLAG BEHAVIOUR, second wave (test/c/flagapi-run.sh).
+  #
+  # docs/design/testing-program-2026-09.md measured the whole flag surface and
+  # found 112 of 229 public API flags (48%) referenced by NO test.  The
+  # flagbehaviour job above covers seven of them; this job covers the next two
+  # priority bands, in defect-yield order: backup/archive first (DB_ARCH_REMOVE
+  # UNLINKS LOG FILES, DB_BACKUP_NO_LOGS decides whether a backup is
+  # recoverable), then everything else that can be given an observable
+  # consequence.
+  #
+  # HARD GATE, and the teeth step is a hard gate TOO -- which the flagbehaviour
+  # job's cannot be.  That difference is the point:
+  #
+  #   P2/P3 are FILESYSTEM-DEPENDENT (they reproduce on XFS and not on the
+  #   GitHub runner's filesystem), so "FLAGB_STRICT=1 must fail" is not a
+  #   property of the code and that step is informational.
+  #
+  #   P6, P7 and P8 are not filesystem-dependent at all.  P6 is a missing
+  #   implementation (the flag is read nowhere in src/); P7 is an unbounded
+  #   retry loop in __qamc_get; P8 is an unconditional `return (0)` in
+  #   LAST_PANIC_CHECK_BEFORE_IO.  All three reproduce anywhere the library
+  #   builds, 100% deterministically.  So FLAGAPI_STRICT=1 MUST fail here, and
+  #   this job asserts it does.  A gate demonstrated in only one direction can
+  #   be completely broken and look fine.
+  #
+  # No build options and no strace: everything here runs against a stock
+  # configure, which is why every flagapi entry in test/MANIFEST is mandatory.
+  # --------------------------------------------------------------------------
+  flagapi:
+    name: API flag behaviour -- archive/backup/sequence/stat/verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tcl (configure wants it) + liburing
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tcl-dev liburing-dev
+
+      - name: Build libdb (stock configure)
+        working-directory: build_unix
+        run: |
+          ../dist/configure
+          make -j"$(nproc)"
+
+      - name: API flag behaviour tests
+        working-directory: test/c
+        run: TIMEOUT=300 ./flagapi-run.sh
+
+      - name: Manifest gate (assert every flagapi mode produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier flagapi
+
+      # TEETH, the must-fail direction -- a HARD gate, unlike the P2 one above.
+      #
+      # Three XFAILs are open (P6, P7, P8) and none is environment-dependent, so
+      # refusing the XFAIL allowance MUST fail.  If this step ever SUCCEEDS,
+      # exactly one of two things happened: an engine fix landed (then remove
+      # the matching XFAIL branch, this step's expectation, and the MANIFEST
+      # note), or the tests stopped asserting anything.  Both need a human, so
+      # both fail the build.
+      #
+      # `!` inverts the status; a separate results directory so this run cannot
+      # overwrite the verdicts the manifest gate just checked.
+      - name: Teeth -- FLAGAPI_STRICT=1 must FAIL while P6/P7/P8 are open
+        working-directory: test/c
+        run: |
+          log=/tmp/flagapi-strict.log
+          if LIBDB_RESULTS_DIR="$PWD/../.results-strict" \
+              FLAGAPI_STRICT=1 TIMEOUT=300 ./flagapi-run.sh 2>&1 | tee "$log" &&
+              ! grep -q "TESTS FAILED" "$log"; then
+            echo "::error title=Flag-behaviour teeth::FLAGAPI_STRICT=1 PASSED."
+            echo "Three engine defects are recorded as XFAIL (P6 DB_BACKUP_NO_LOGS,"
+            echo "P7 DB_INORDER hang, P8 DB_NOFLUSH), and none of them depends on"
+            echo "the filesystem or the runner -- so refusing the XFAIL allowance"
+            echo "MUST fail.  Either a fix landed (remove the XFAIL branch, this"
+            echo "step's expectation and the MANIFEST note) or these tests stopped"
+            echo "asserting anything.  Both need a human."
+            exit 1
+          fi
+          # It must fail for the RIGHT reason.  A compile error, a missing
+          # library or a crashed driver also make the run fail, and reading any
+          # of those as "the gate has teeth" is the exact vacuous-green shape
+          # this project has nine recorded instances of.  So require each of the
+          # three refused XFAILs to appear by name.
+          missing=
+          for m in backup_nologs inorder@inorder noflush@noflush; do
+            grep -q -- "--- $m: FAIL (XFAIL refused" "$log" || missing="$missing $m"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Flag-behaviour teeth::the strict run failed, but"
+            echo "not on the expected modes:$missing did not report a refused"
+            echo "XFAIL.  The run failed for some OTHER reason (build break,"
+            echo "crash, missing dependency), so this proves nothing about the"
+            echo "tests' teeth."
+            exit 1
+          fi
+          echo "OK: FLAGAPI_STRICT=1 failed on exactly P6/P7/P8 -- teeth confirmed."
+
+      - name: Upload verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flagapi-verdicts
+          path: |
+            test/.results/*.results
+            test/c/flagapi-run/*/out.txt
+          if-no-files-found: ignore

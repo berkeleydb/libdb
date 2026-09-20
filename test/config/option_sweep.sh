@@ -120,6 +120,30 @@ compat185|--enable-compat185
 '
 
 # ---------------------------------------------------------------------------
+# SWEEP_PAIRS -- KNOWN-INTERACTING option pairs, built and smoked together.
+#
+# One-at-a-time sweeping cannot see interactions, and 2^54 is not a target.  This
+# is a small NAMED list where each entry carries a reason it is worth a leg --
+# not a random sample.  docs/design/testing-program-2026-09.md names the first
+# four; each reason below says what specifically could break that neither option
+# alone exercises.
+#
+# Format: <pair-name>|<configure-args>|<reason>
+#
+# The reason is not decoration: it is what a future reader needs in order to
+# decide whether a failing leg matters or the pair should be dropped.  A pair
+# with no reason is a random sample, and a random sample of a 2^54 space tells
+# you nothing.
+# ---------------------------------------------------------------------------
+SWEEP_PAIRS='
+diagnostic-x-o_direct|--enable-diagnostic --enable-o_direct|DIAGNOSTIC adds assertions about buffer alignment and page state that only O_DIRECT can violate -- P2 and P3 were both unaligned-buffer defects reachable only under o_direct, and diagnostic is the build most likely to catch the next one at its source rather than as an EINVAL far away.
+smallbuild-x-statistics|--enable-smallbuild --disable-statistics|smallbuild already implies --disable-statistics among others, so requesting both is the case where two mechanisms disable the same code; if either forgets the other has acted, the result is a double-disable that removes a symbol the remaining code still references.
+mutexsupport-x-atomicsupport|--disable-mutexsupport --disable-atomicsupport|XFAIL:inherits the pre-existing single-leg failure. U7 showed --disable-mutexsupport had NEVER built; it BUILDS now, but the smoke driver opens its environment with DB_INIT_LOCK|DB_INIT_TXN, which a library built without mutex support cannot provide -- it correctly answers "library build did not include support for locking" and panics. So the leg fails for a TEST-DESIGN reason, not a defect, and it fails identically with --disable-mutexsupport ALONE (verified on pristine master: same SMOKE pass=0 fail=1). The pair therefore adds no information until config_smoke.c learns to request a mutex-free environment; kept, XFAILed, and named so the fix has somewhere to land.
+replication-x-cryptography|--disable-replication --with-cryptography=no|the replication message path is the largest caller of the crypto/HMAC layer, so removing both at once is where a #ifdef that guards a call on one option but its declaration on the other would surface as an unresolved symbol.
+diagnostic-x-smallbuild|--enable-diagnostic --enable-smallbuild|smallbuild strips code that DIAGNOSTIC assertions refer to (statistics counters, verify paths), so this pair is where an assertion can outlive the field it asserts about -- a compile failure that neither option alone produces.
+'
+
+# ---------------------------------------------------------------------------
 # EXCLUDED -- with the reason, which is the only acceptable form of a skip.
 # Format: <option-name>|<reason>
 #
@@ -243,6 +267,11 @@ if [ "$MODE" = list ]; then
 	printf '%s\n' "$SWEEP_BUILD" | sed -n 's/^\([a-z0-9_-]*\)|\(.*\)/    \1\t\2/p'
 	echo "== excluded =="
 	printf '%s\n' "$EXCLUDED" | sed -n 's/^\([a-z0-9_-]*\)|\(.*\)/    \1\t\2/p'
+	echo
+	echo "KNOWN-INTERACTING PAIRS (extra legs; not part of the completeness"
+	echo "accounting -- every option is still in exactly one list above):"
+	printf '%s\n' "$SWEEP_PAIRS" |
+	    sed -n 's/^\([a-z0-9_-]*\)|\([^|]*\)|\(.*\)/    \1\n        args: \2\n        why:  \3/p'
 	exit 0
 fi
 
@@ -276,7 +305,18 @@ run_leg() {
 	*) case "$name" in *$ONLY*) ;; *) return 0 ;; esac ;;
 	esac
 
-	d="$SWEEP_DIR/$name"
+	# The leg name doubles as the build DIRECTORY name, and it must not
+	# contain a colon: ':' is the dynamic loader's path separator, so a
+	# RUNPATH of ".../pair:foo/.libs" is parsed as two nonexistent
+	# directories and the smoke driver dies with "cannot open shared object
+	# file" even though the library is right there.  Measured: all five pair
+	# legs reported exit 127 for exactly this reason, which looks like five
+	# broken pairs and is one broken directory name.
+	#
+	# Verdict names keep the colon (they are the manifest's identifiers);
+	# only the path is sanitised.
+	dirname_safe=$(printf '%s' "$name" | tr ':' '-')
+	d="$SWEEP_DIR/$dirname_safe"
 	if [ -d "$d" ]; then
 		find "$d" -mindepth 1 -delete
 	elif ! mkdir -p "$d"; then
@@ -317,7 +357,10 @@ run_leg() {
 		return
 	fi
 
-	if [ "$kind" != smoke ]; then
+	# smoke and smoke-xfail both RUN the smoke driver; only the grading of a
+	# failure differs (see the bottom of this function).  Anything else is
+	# build-only.
+	if [ "$kind" != smoke ] && [ "$kind" != smoke-xfail ]; then
 		echo "--- $name: PASS (build only)"
 		printf '%s\t%s\t%s\t0\t0\tn/a\tbuild ok\n' \
 		    "$name" "$kind" "$cargs" >> "$SUMMARY"
@@ -378,17 +421,45 @@ run_leg() {
 
 	# An "all skipped" run is the vacuous shape: every check declining to
 	# run looks exactly like every check passing if only fail= is read.
-	if [ "${sp:-0}" -lt 4 ]; then
-		echo "--- $name: FAIL ($sline -- fewer than 4 checks PASSED," \
-		    "so the smoke run proved almost nothing)"
-		printf '%s\t%s\t%s\t0\t0\tvacuous\t%s\n' \
-		    "$name" "$kind" "$cargs" "$sline" >> "$SUMMARY"
-		hi_emit "$name" fail
-		sweep_rc=1
-	elif [ "${sf:-1}" != 0 ]; then
-		echo "--- $name: FAIL ($sline)"
-		printf '%s\t%s\t%s\t0\t0\tfail\t%s\n' \
-		    "$name" "$kind" "$cargs" "$sline" >> "$SUMMARY"
+	if [ "${sp:-0}" -lt 4 ] || [ "${sf:-1}" != 0 ]; then
+		# The failure shapes: too few checks passed (an "all skipped"
+		# run looks like a clean one if only fail= is read), or a check
+		# actually failed.
+		if [ "${sp:-0}" -lt 4 ]; then
+			why="fewer than 4 checks PASSED, so the smoke run proved almost nothing"
+			tag=vacuous
+		else
+			why="a check FAILED"
+			tag=fail
+		fi
+		if [ "$kind" = smoke-xfail ]; then
+			# A recorded, understood expectation.  It ran, it failed
+			# as stated, and that does not fail the sweep -- but it
+			# is reported as XFAIL rather than quietly skipped, so it
+			# stays visible.
+			echo "--- $name: XFAIL ($sline -- $why; expected, see" \
+			    "the stated reason)"
+			printf '%s\t%s\t%s\t0\t0\txfail\t%s\n' \
+			    "$name" "$kind" "$cargs" "$sline" >> "$SUMMARY"
+			hi_emit "$name" pass
+		else
+			echo "--- $name: FAIL ($sline -- $why)"
+			printf '%s\t%s\t%s\t0\t0\t%s\t%s\n' \
+			    "$name" "$kind" "$cargs" "$tag" "$sline" >> "$SUMMARY"
+			hi_emit "$name" fail
+			sweep_rc=1
+		fi
+	elif [ "$kind" = smoke-xfail ]; then
+		# It PASSED while recorded as expected-to-fail.  That is news,
+		# and it must not pass silently: either the underlying problem
+		# was fixed (drop the XFAIL: prefix) or the leg stopped
+		# asserting anything.  Both need a human, so both fail.
+		echo "--- $name: FAIL (UNEXPECTED PASS: smoke pass=$sp skip=$sk," \
+		    "but this leg is recorded XFAIL.  Either the stated problem" \
+		    "is fixed -- remove the XFAIL: prefix from its reason in" \
+		    "SWEEP_PAIRS -- or the leg stopped checking anything.)"
+		printf '%s\t%s\t%s\t0\t0\tunexpected-pass\tpass=%s skip=%s\n' \
+		    "$name" "$kind" "$cargs" "$sp" "$sk" >> "$SUMMARY"
 		hi_emit "$name" fail
 		sweep_rc=1
 	else
@@ -416,19 +487,82 @@ walk() {
 walk smoke "$SWEEP_SMOKE"
 walk build "$SWEEP_BUILD"
 
+# ---------------------------------------------------------------------------
+# The PAIR legs.  Same machinery, a third field to ignore (the reason).
+#
+# Deliberately AFTER the single-option legs: a pair failure is only interesting
+# once both its options are known to build alone, and running them first means
+# the summary reads in that order.
+#
+# Pairs are NOT part of the completeness accounting.  Every configure option is
+# still in exactly one of SWEEP_SMOKE / SWEEP_BUILD / EXCLUDED, and adding a pair
+# does not remove an option from that reckoning -- so --check-complete is
+# untouched by this list, which is what keeps the "an unlisted option fails the
+# gate" property intact.
+# ---------------------------------------------------------------------------
+walk_pairs() {
+	printf '%s\n' "$SWEEP_PAIRS" | while IFS='|' read -r nm args reason; do
+		[ -n "${nm:-}" ] || continue
+		# A pair with no stated reason is a random sample.  Refuse it:
+		# the whole justification for this list is that each entry earns
+		# its minutes, and an unjustified entry silently erodes that.
+		if [ -z "${reason:-}" ]; then
+			echo "--- pair:$nm: FAIL (no reason given -- a pair" \
+			    "without a stated interaction is a random sample" \
+			    "of a 2^54 space, which proves nothing)"
+			hi_emit "pair:$nm" fail
+			continue
+		fi
+		echo
+		echo "### pair $nm"
+		echo "    why: $reason"
+		# A reason beginning "XFAIL:" records a leg known to fail for a
+		# stated, understood reason.  It still RUNS -- the point is to
+		# notice when it starts passing -- but its failure does not fail
+		# the sweep, and its verdict says which it was.  A bare skip
+		# would hide it; a hard failure would make the sweep permanently
+		# red and train everyone to ignore it.
+		case "$reason" in
+		XFAIL:*)
+			echo "    (XFAIL: expected to fail; see the reason above)"
+			# shellcheck disable=SC2086
+			run_leg "pair:$nm" smoke-xfail $args ;;
+		*)
+			# shellcheck disable=SC2086
+			run_leg "pair:$nm" smoke $args ;;
+		esac
+	done
+}
+walk_pairs
+
 echo
 echo "=== sweep summary ($SUMMARY)"
 column -t -s"$(printf '\t')" "$SUMMARY" 2>/dev/null || cat "$SUMMARY"
 
 nrows=$(($(wc -l < "$SUMMARY") - 1))
+# The bad tags.  "unexpected-pass" is one of them: an XFAIL leg that started
+# passing needs a human either way, and leaving it off this list is how the
+# verdict printed by run_leg fails to reach the exit status.  Measured -- the
+# teeth probe for the XFAIL arm reported UNEXPECTED PASS on the leg and the
+# sweep still exited 0, because walk_pairs runs in a subshell (see the note on
+# walk) and the SUMMARY file is the only channel that survives.
+#
+# "xfail" is NOT bad: it is a recorded expectation that held.
 nbad=$(awk -F'\t' 'NR > 1 && ($4 != 0 || $5 != 0 || $6 == "fail" ||
     $6 == "vacuous" || $6 == "no-verdict" || $6 == "cc-fail" ||
-    $6 == "no-lib") { n++ } END { print n + 0 }' "$SUMMARY")
+    $6 == "no-lib" || $6 == "unexpected-pass") { n++ }
+    END { print n + 0 }' "$SUMMARY")
+# Planned legs: the single options, PLUS the pairs (which are extra legs, not
+# options).  Counting only the options would make a pair that never ran invisible
+# to the "a leg that wrote no row did not run" check below.
 nexpect=$( { opt_names "$SWEEP_SMOKE"; opt_names "$SWEEP_BUILD"; } |
     sort -u | wc -l | tr -d ' ')
+npairs=$(printf '%s\n' "$SWEEP_PAIRS" | sed -n 's/^\([a-z0-9_-]*\)|.*/\1/p' |
+    sort -u | wc -l | tr -d ' ')
+nexpect=$((nexpect + npairs))
 
 echo
-echo "legs run: $nrows   failing: $nbad   planned: $nexpect"
+echo "legs run: $nrows   failing: $nbad   planned: $nexpect ($npairs of them pairs)"
 if [ -z "$ONLY" ] && [ "$nrows" -ne "$nexpect" ]; then
 	echo "SWEEP INCOMPLETE: $nrows legs recorded but $nexpect were planned."
 	echo "A leg that wrote no row did not run; that is not a pass."

@@ -151,14 +151,119 @@ if ! command -v lcov >/dev/null 2>&1; then
   fi
 fi
 
-# lcov error classes we tolerate: version (LLVM/gcc tag noise), source/mismatch
-# (generated headers), inconsistent (gcov line/branch quirks), empty/unused.
-IGN="mismatch,source,gcov,unused,negative,empty,inconsistent,version"
+# TWO LCOV DIALECTS.  This script must produce a branch number on lcov 1.x and
+# lcov 2.x, because CI (ubuntu apt) and the measurement boxes do not agree.  Two
+# incompatibilities, and BOTH abort the capture AFTER the tests have already
+# run -- so getting either wrong turns a 33-minute run into no number at all.
+# Both were hit for real on a box with lcov 1.16.
+#
+#   1. branch coverage:  2.x wants --branch-coverage; 1.x rejects it outright
+#      ("lcov: Unknown option: branch-coverage") and wants
+#      --rc lcov_branch_coverage=1.
+#   2. --ignore-errors:  1.x knows only gcov,source,graph,id and dies on any
+#      other name ("geninfo: ERROR: unknown argument for --ignore-errors:
+#      mismatch"); 2.x adds mismatch,unused,negative,empty,inconsistent,version.
+#
+# So: probe for the branch spelling, and intersect the wanted ignore list with
+# what this lcov documents.  Both are computed once, here.
+if "$LCOV" --help 2>&1 | grep -q -- '--branch-coverage'; then
+  BRCOV="--branch-coverage"
+else
+  BRCOV="--rc lcov_branch_coverage=1"
+fi
+
+# The classes we would like to tolerate: version (LLVM/gcc tag noise),
+# source/mismatch (generated headers), inconsistent (gcov line/branch quirks),
+# empty/unused/negative.
+IGN_WANT="mismatch source gcov unused negative empty inconsistent version"
+# What this lcov's own --help says it accepts.
+lcov_ign_help=$("$LCOV" --help 2>&1 | sed -n 's/.*--ignore-errors[^(]*(\([^)]*\)).*/\1/p' | head -1)
+IGN=""
+for c in $IGN_WANT; do
+  # An lcov whose help does not enumerate the classes (some 2.x builds) gets
+  # the full list; one that does gets only the names it listed.
+  if [ -z "$lcov_ign_help" ] || printf '%s' "$lcov_ign_help" | grep -q "$c"; then
+    IGN="${IGN:+$IGN,}$c"
+  fi
+done
+: "${IGN:=gcov,source}"
+# --- per-run private log directory -------------------------------------------
+# Every diagnostic below used to go to a FIXED /tmp path ($COVLOG/build.log,
+# $COVLOG/tests.log, $COVLOG/dreg-$name.log, ~15 of them).  Two concurrent runs
+# of this script therefore overwrote each other's logs, so a failure in one was
+# diagnosed from the other's output.  Measured while running three instances at
+# once for the ratchet's variance number.
+#
+# COVLOG is per-run and derived from the build directory, so concurrent runs in
+# separate worktrees get separate logs and a single run still has a stable,
+# guessable location.
+COVLOG="${COVLOG:-$bld/coverage-logs}"
+mkdir -p "$COVLOG" 2>/dev/null || COVLOG=/tmp
+
+# cov_pkill PATTERN... -- pkill each PATTERN, but only processes belonging to
+# THIS coverage run.
+#
+# The deadlock/register and recd blocks below clean up orphan workers.  They used
+# bare `pkill -f 'wrap.tcl'` / 'ddscript' / 'envscript' / 'db_deadlock' /
+# 'recdscript', and pkill -f matches the COMMAND LINE of every process on the
+# machine -- so two concurrent coverage runs killed each other's live workers.
+# Measured while running three instances at once for the ratchet's variance
+# number: two of the three died at dead003 with rc=124 while the third completed
+# dead001..dead005 normally.  Separate worktrees do not help, because the
+# patterns name no path.
+#
+# Two strategies, both needed:
+#   - match PATTERN together with THIS run's build directory, which appears in a
+#     worker's argv (the Tcl harness invokes wrap.tcl by absolute path), so
+#     another run's identically-named worker does not match;
+#   - fall back to this shell's own process GROUP (-g 0), for workers whose argv
+#     does not carry the path.  Another run lives in a different group, so this
+#     cannot reach it either.
+#
+# Verified directly: with two fake runs each holding a 'wrap.tcl marker' worker,
+# cov_pkill with bld=runA left runA=0 and runB=1, while the old bare
+# `pkill -f 'wrap.tcl'` killed both.
+cov_pkill() {
+  for pat in "$@"; do
+    pkill -f "$bld.*$pat" 2>/dev/null || true
+    pkill -f "$pat.*$bld" 2>/dev/null || true
+    pkill -g 0 -f "$pat" 2>/dev/null || true
+  done
+  return 0
+}
+
+# --- phase timing ------------------------------------------------------------
+# Wall time PER PHASE, printed as it goes and summarised at the end.  Without
+# this, "the coverage job takes 33 minutes" is a single number with no handle on
+# it: the parallelisation work needs to know WHICH phase to attack, and a future
+# regression in one block is otherwise invisible inside the total.
+COV_T0=$(date +%s)
+PHASE_LOG="$bld/coverage-phases.txt"
+: > "$PHASE_LOG" 2>/dev/null || PHASE_LOG=/dev/null
+phase_last=$COV_T0
+phase() {
+  now=$(date +%s)
+  if [ -n "${phase_name:-}" ]; then
+    printf '%-28s %6ds\n' "$phase_name" "$((now - phase_last))" >> "$PHASE_LOG"
+  fi
+  phase_name=$1
+  phase_last=$now
+  [ -n "$1" ] && echo "== $1 =="
+}
+phase_done() {
+  phase ""
+  echo
+  echo "== phase wall time =="
+  sed -n 's/^/  /p' "$PHASE_LOG"
+  printf '  %-28s %6ds\n' "TOTAL" "$(( $(date +%s) - COV_T0 ))"
+}
 
 echo "== libdb coverage =="
 echo "  repo:    $root"
 echo "  CC:      $CC ($($CC -dumpversion 2>/dev/null || echo '?'))"
 echo "  gcov:    $GCOV ($($GCOV --version 2>/dev/null | head -1))"
+echo "  lcov:    $("$LCOV" --version 2>&1 | head -1)"
+echo "           branch=$BRCOV ignore=$IGN"
 echo "  tcl lib: $TCL_LIB"
 echo "  tests:   $COV_TESTS"
 echo
@@ -168,7 +273,7 @@ find "$bld" \( -name '*.gcda' -o -name '*.gcno' \) -delete 2>/dev/null || true
 rm -f "$bld/coverage.info" "$bld/coverage-src.info" 2>/dev/null || true
 
 # --- configure + build with instrumentation ---------------------------------
-echo "== configure (--coverage) =="
+phase configure
 cd "$bld"
 # --enable-faultinject is REQUIRED by the cov_oom_paths driver below (it prints
 # SKIP and covers nothing without HAVE_FAULT_INJECT).  It is additive and inert
@@ -181,16 +286,16 @@ cd "$bld"
 EXTRA_CONF="--enable-faultinject"
 [ "${COV_DST:-0}" = 1 ] && EXTRA_CONF="$EXTRA_CONF --enable-dst"
 CC=gcc ../dist/configure --enable-test --with-tcl="$TCL_LIB" $EXTRA_CONF \
-  CFLAGS="-O0 -g --coverage" LDFLAGS="--coverage" >/tmp/cov-configure.log 2>&1 \
-  || { echo "configure failed:"; tail -30 /tmp/cov-configure.log; exit 1; }
+  CFLAGS="-O0 -g --coverage" LDFLAGS="--coverage" >$COVLOG/configure.log 2>&1 \
+  || { echo "configure failed:"; tail -30 $COVLOG/configure.log; exit 1; }
 
-echo "== build (-j$COV_JOBS) =="
-make -j"$COV_JOBS" >/tmp/cov-build.log 2>&1 \
-  || { echo "build failed:"; tail -40 /tmp/cov-build.log; exit 1; }
+phase build
+make -j"$COV_JOBS" >$COVLOG/build.log 2>&1 \
+  || { echo "build failed:"; tail -40 $COVLOG/build.log; exit 1; }
 echo "  .gcno files: $(find . -name '*.gcno' | wc -l)"
 
 # --- run the test subset (produces .gcda) ------------------------------------
-echo "== run tests =="
+phase tcl-subset
 runtcl="$bld/.cov-run.tcl"
 {
   echo 'source ../test/tcl/test.tcl'
@@ -219,10 +324,10 @@ runtcl="$bld/.cov-run.tcl"
 } > "$runtcl"
 # tclsh8.6 preferred if present (nix); fall back to tclsh.
 TCLBIN="$TCLSH"; command -v tclsh8.6 >/dev/null 2>&1 && TCLBIN=tclsh8.6
-timeout "${COV_TIMEOUT:-2400}" "$TCLBIN" "$runtcl" 2>&1 | tee /tmp/cov-tests.log \
+timeout "${COV_TIMEOUT:-2400}" "$TCLBIN" "$runtcl" 2>&1 | tee $COVLOG/tests.log \
   | grep -E '^PASS|^FAIL' || true
 rm -f "$runtcl"
-if grep -q '^FAIL' /tmp/cov-tests.log; then
+if grep -q '^FAIL' $COVLOG/tests.log; then
   echo "warning: a test FAILED; coverage still aggregated below" >&2
 fi
 echo "  .gcda files: $(find . -name '*.gcda' | wc -l)"
@@ -240,7 +345,7 @@ echo "  .gcda files: $(find . -name '*.gcda' | wc -l)"
 # and the repmgr 100-series (need the db_repsite utility, absent from this fork)
 # and a few election/lease tests that hang (rep016, repmgr024/026).
 if [ "${COV_REP:-0}" = 1 ]; then
-  echo "== run replication tests (COV_REP=1) =="
+  phase replication
   : "${COV_REP_TIMEOUT:=300}"
   : "${COV_REP_TESTS:=rep001 rep002 rep003 rep005 rep006 rep007 rep008 rep009 \
  rep010 rep011 rep012 rep013 rep014 rep015 rep019 rep020 rep021 rep022 rep023 \
@@ -256,10 +361,10 @@ if [ "${COV_REP:-0}" = 1 ]; then
     esac
     printf 'source ../test/tcl/test.tcl\nsource ../test/tcl/reputils.tcl\nif {[catch {%s} r]} { puts "FAIL %s: $r"; exit 3 }\nputs "PASS %s"\n' \
       "$call" "$t" "$t" > "$reptcl"
-    timeout "$COV_REP_TIMEOUT" "$TCLBIN" "$reptcl" >/tmp/cov-rep-$t.log 2>&1
+    timeout "$COV_REP_TIMEOUT" "$TCLBIN" "$reptcl" >$COVLOG/rep-$t.log 2>&1
     rc=$?
     if [ $rc -eq 124 ]; then echo "HANG $t"
-    elif [ $rc -eq 0 ] && grep -q "^PASS $t" /tmp/cov-rep-$t.log; then echo "PASS $t"
+    elif [ $rc -eq 0 ] && grep -q "^PASS $t" $COVLOG/rep-$t.log; then echo "PASS $t"
     else echo "FAIL $t (rc=$rc)"; fi
     pkill -f "$reptcl" 2>/dev/null || true
     find TESTDIR -mindepth 1 -delete 2>/dev/null || true
@@ -299,16 +404,16 @@ fi
 export CFLAGS="${CFLAGS:-} --coverage"
 
 if [ "${COV_XA_UPG:-1}" = 1 ]; then
-  echo "== run XA + upgrade drivers (COV_XA_UPG=1) =="
-  if sh "$root/test/xa/run_xa_direct.sh" >/tmp/cov-xa.log 2>&1; then
+  phase xa+upgrade
+  if sh "$root/test/xa/run_xa_direct.sh" >$COVLOG/xa.log 2>&1; then
     echo "PASS xa_direct"
   else
-    echo "FAIL xa_direct (rc=$?)"; tail -5 /tmp/cov-xa.log
+    echo "FAIL xa_direct (rc=$?)"; tail -5 $COVLOG/xa.log
   fi
-  if sh "$root/test/db/run_upgrade.sh" >/tmp/cov-upg.log 2>&1; then
+  if sh "$root/test/db/run_upgrade.sh" >$COVLOG/upg.log 2>&1; then
     echo "PASS db_upgrade"
   else
-    echo "FAIL db_upgrade (rc=$?)"; tail -5 /tmp/cov-upg.log
+    echo "FAIL db_upgrade (rc=$?)"; tail -5 $COVLOG/upg.log
   fi
   # os_aio async-I/O backends: the buffer pool reaches os_aio only via
   # DB_ENV->set_flags(DB_MPOOL_AIO) and then picks a SINGLE backend at
@@ -317,10 +422,10 @@ if [ "${COV_XA_UPG:-1}" = 1 ]; then
   # directly plus a real DB_MPOOL_AIO checkpoint workload.  Lifts os_aio.c
   # 0%->~84%, os_aio_pool.c 0%->~73%, os_aio_posix.c 0%->~84%,
   # os_aio_uring.c 0%->~81%, common/os_method.c 0%->100%.
-  if sh "$root/test/os/run_os_aio.sh" >/tmp/cov-osaio.log 2>&1; then
+  if sh "$root/test/os/run_os_aio.sh" >$COVLOG/osaio.log 2>&1; then
     echo "PASS os_aio_direct"
   else
-    echo "FAIL os_aio_direct (rc=$?)"; tail -5 /tmp/cov-osaio.log
+    echo "FAIL os_aio_direct (rc=$?)"; tail -5 $COVLOG/osaio.log
   fi
   echo "  .gcda files after xa/upg: $(find . -name '*.gcda' | wc -l)"
 fi
@@ -354,31 +459,31 @@ fi
 #     (__bam_irep 60% br, __bam_root 53%, __bam_rcuradj 74%, __db_ovref 68%).
 # Set COV_BACKUP=0 to skip.
 if [ "${COV_BACKUP:-1}" = 1 ]; then
-  echo "== run backup + compaction-recovery drivers (COV_BACKUP=1) =="
-  if sh "$root/test/backup/run_backup_direct.sh" >/tmp/cov-backup.log 2>&1; then
+  phase backup+recd-compact
+  if sh "$root/test/backup/run_backup_direct.sh" >$COVLOG/backup.log 2>&1; then
     echo "PASS backup_direct"
   else
-    echo "FAIL backup_direct (rc=$?)"; tail -5 /tmp/cov-backup.log
+    echo "FAIL backup_direct (rc=$?)"; tail -5 $COVLOG/backup.log
   fi
-  if sh "$root/test/db/run_recd_compact.sh" >/tmp/cov-recdcompact.log 2>&1; then
+  if sh "$root/test/db/run_recd_compact.sh" >$COVLOG/recdcompact.log 2>&1; then
     echo "PASS recd_compact"
   else
-    echo "FAIL recd_compact (rc=$?)"; tail -5 /tmp/cov-recdcompact.log
+    echo "FAIL recd_compact (rc=$?)"; tail -5 $COVLOG/recdcompact.log
   fi
-  if sh "$root/test/db/run_recd_handlers.sh" >/tmp/cov-recdhandlers.log 2>&1; then
+  if sh "$root/test/db/run_recd_handlers.sh" >$COVLOG/recdhandlers.log 2>&1; then
     echo "PASS recd_handlers"
   else
-    echo "FAIL recd_handlers (rc=$?)"; tail -5 /tmp/cov-recdhandlers.log
+    echo "FAIL recd_handlers (rc=$?)"; tail -5 $COVLOG/recdhandlers.log
   fi
   # Legacy P_HASH_UNSORTED lookup with a custom DB->set_h_compare: the
   # h_compare branch of __ham_getindex_unsorted needs a pre-4.6 page AND an
   # explicit comparator at the same time, which no Tcl test arranges
   # (test093 sets a comparator over sorted pages; run_upgrade.sh reads legacy
   # pages without one).  Regression gate for issue #139.
-  if sh "$root/test/db/run_hash_unsorted_cmp.sh" >/tmp/cov-hashunsorted.log 2>&1; then
+  if sh "$root/test/db/run_hash_unsorted_cmp.sh" >$COVLOG/hashunsorted.log 2>&1; then
     echo "PASS hash_unsorted_cmp"
   else
-    echo "FAIL hash_unsorted_cmp (rc=$?)"; tail -5 /tmp/cov-hashunsorted.log
+    echo "FAIL hash_unsorted_cmp (rc=$?)"; tail -5 $COVLOG/hashunsorted.log
   fi
   echo "  .gcda files after backup/compact: $(find . -name '*.gcda' | wc -l)"
 fi
@@ -397,7 +502,7 @@ fi
 # test finishes well inside the timeout; the full {2 4 10} matrix adds no new
 # coverage, only minutes.  Set COV_DEAD_REG=0 to skip.
 if [ "${COV_DEAD_REG:-1}" = 1 ]; then
-  echo "== run deadlock + DB_REGISTER drivers (COV_DEAD_REG=1) =="
+  phase deadlock+register
   : "${COV_DEAD_REG_TIMEOUT:=300}"
   # Each entry is "name:tcl-call"; trimmed proc counts keep each run bounded.
   # A bash array so the spaces inside a call ({2 4}) survive word-splitting.
@@ -416,15 +521,23 @@ if [ "${COV_DEAD_REG:-1}" = 1 ]; then
     name="${spec%%:*}"; call="${spec#*:}"
     printf 'source ../test/tcl/test.tcl\nif {[catch {%s} r]} { puts "FAIL %s: $r"; exit 3 }\nputs "PASS %s"\n' \
       "$call" "$name" "$name" > "$dregtcl"
-    timeout "$COV_DEAD_REG_TIMEOUT" "$TCLBIN" "$dregtcl" >/tmp/cov-dreg-$name.log 2>&1
+    timeout "$COV_DEAD_REG_TIMEOUT" "$TCLBIN" "$dregtcl" >$COVLOG/dreg-$name.log 2>&1
     rc=$?
-    # kill orphan workers a hung/killed test may have left behind
-    pkill -f 'wrap.tcl' 2>/dev/null || true
-    pkill -f 'ddscript' 2>/dev/null || true
-    pkill -f 'envscript' 2>/dev/null || true
-    pkill -f 'db_deadlock' 2>/dev/null || true
+    # Kill orphan workers a hung/killed test may have left behind -- but only
+    # THIS run's.
+    #
+    # These were bare `pkill -f 'wrap.tcl'` etc.  pkill -f matches the whole
+    # COMMAND LINE of every process on the machine, so two concurrent coverage
+    # runs killed each other's live workers: measured, two of three concurrent
+    # runs died at dead003 with rc=124 while the third completed.  Separate
+    # worktrees do not help, because the pattern names no path.
+    #
+    # cov_pkill anchors each pattern to this run's own build directory, which
+    # appears in the workers' argv because wrap.tcl is invoked by absolute path
+    # from it.  A worker belonging to another run no longer matches.
+    cov_pkill 'wrap.tcl' 'ddscript' 'envscript' 'db_deadlock'
     if [ $rc -eq 124 ]; then echo "HANG $name"
-    elif [ $rc -eq 0 ] && grep -q "^PASS $name" /tmp/cov-dreg-$name.log; then echo "PASS $name"
+    elif [ $rc -eq 0 ] && grep -q "^PASS $name" $COVLOG/dreg-$name.log; then echo "PASS $name"
     else echo "FAIL $name (rc=$rc)"; fi
     find TESTDIR -mindepth 1 -delete 2>/dev/null || true
   done
@@ -472,7 +585,7 @@ fi
 #     covered by the recd_compact + upgrade drivers already in the subset.
 # Set COV_RECD=0 to skip.
 if [ "${COV_RECD:-1}" = 1 ]; then
-  echo "== run recovery-record handler tests (COV_RECD=1) =="
+  phase recd-handlers
   : "${COV_RECD_TIMEOUT:=300}"
   # Each entry is "test:method:extra-arg" (extra blank for tests taking none).
   cov_recd_tests=(
@@ -492,13 +605,14 @@ if [ "${COV_RECD:-1}" = 1 ]; then
     t="${spec%%:*}"; rest="${spec#*:}"; m="${rest%%:*}"; a="${rest#*:}"
     printf 'source ../test/tcl/test.tcl\nsource ../test/tcl/%s.tcl\nif {[catch {eval %s %s %s} r]} { puts "FAIL %s %s: $r"; exit 3 }\nputs "PASS %s %s"\n' \
       "$t" "$t" "$m" "$a" "$t" "$m" "$t" "$m" > "$recdtcl"
-    timeout "$COV_RECD_TIMEOUT" "$TCLBIN" "$recdtcl" >/tmp/cov-recd-$t-$m.log 2>&1
+    timeout "$COV_RECD_TIMEOUT" "$TCLBIN" "$recdtcl" >$COVLOG/recd-$t-$m.log 2>&1
     rc=$?
-    # kill orphan recdscript.tcl subprocesses a hung/killed test may leave
+    # Kill orphan recdscript.tcl subprocesses a hung/killed test may leave --
+    # this run's only; see cov_pkill and the note in the deadlock block.
     pkill -f "$recdtcl" 2>/dev/null || true
-    pkill -f 'recdscript' 2>/dev/null || true
+    cov_pkill 'recdscript'
     if [ $rc -eq 124 ]; then echo "HANG $t $m"
-    elif [ $rc -eq 0 ] && grep -q "^PASS $t $m" /tmp/cov-recd-$t-$m.log; then echo "PASS $t $m"
+    elif [ $rc -eq 0 ] && grep -q "^PASS $t $m" $COVLOG/recd-$t-$m.log; then echo "PASS $t $m"
     else echo "FAIL $t $m (rc=$rc)"; fi
     find TESTDIR -mindepth 1 -delete 2>/dev/null || true
   done
@@ -546,54 +660,55 @@ fi
 # cov_dst is listed too but SKIPs unless COV_DST=1 (see the configure line).
 # Set COV_C_DRIVERS=0 to skip the whole block.
 if [ "${COV_C_DRIVERS:-1}" = 1 ]; then
-  echo "== run cov_* C drivers (COV_C_DRIVERS=1) =="
+  phase cov-c-drivers
   # A bounded OOM sweep by default so the block fits a CI budget; set
   # COV_OOM_STRIDE=1 for the exhaustive sweep.
   : "${COV_OOM_STRIDE:=4}"
   export COV_OOM_STRIDE
   for d in cov_api_surface cov_rep_api cov_logrec_print cov_codecs \
            cov_cutest cov_fuzz_corpus cov_dst cov_oom_paths; do
-    if sh "$root/test/c/run_$d.sh" >/tmp/cov-$d.log 2>&1; then
-      if grep -q 'SKIP' /tmp/cov-$d.log; then
-        echo "SKIP $d ($(grep -m1 'SKIP' /tmp/cov-$d.log))"
+    if sh "$root/test/c/run_$d.sh" >$COVLOG/$d.log 2>&1; then
+      if grep -q 'SKIP' $COVLOG/$d.log; then
+        echo "SKIP $d ($(grep -m1 'SKIP' $COVLOG/$d.log))"
       else
         echo "PASS $d"
       fi
     else
-      echo "FAIL $d (rc=$?)"; tail -5 /tmp/cov-$d.log
+      echo "FAIL $d (rc=$?)"; tail -5 $COVLOG/$d.log
     fi
   done
   echo "  .gcda files after cov_* drivers: $(find . -name '*.gcda' | wc -l)"
 fi
 
 # --- aggregate ---------------------------------------------------------------
-echo "== capture (lcov) =="
+phase lcov-capture
 # NOTE: capture from .libs (not .) -- libtool double-compiles, and only the
 # .libs/*.gcda carry the merged replication counts; capturing "." drops repmgr.
 "$LCOV" --capture --directory .libs --output-file coverage.info \
-  --gcov-tool "$GCOV" --rc geninfo_unexecuted_blocks=1 --branch-coverage \
-  --ignore-errors "$IGN" >/tmp/cov-lcov.log 2>&1 \
-  || { echo "lcov capture failed:"; tail -20 /tmp/cov-lcov.log; exit 1; }
+  --gcov-tool "$GCOV" --rc geninfo_unexecuted_blocks=1 $BRCOV \
+  --ignore-errors "$IGN" >$COVLOG/lcov.log 2>&1 \
+  || { echo "lcov capture failed:"; tail -20 $COVLOG/lcov.log; exit 1; }
 
 # Keep only the library sources under src/ (drop tcl harness, examples, system).
 "$LCOV" --extract coverage.info "*/src/*" --output-file coverage-src.info \
-  --branch-coverage --ignore-errors "$IGN" >/dev/null 2>&1
+  $BRCOV --ignore-errors "$IGN" >/dev/null 2>&1
 
 echo "== summary =="
-"$LCOV" --summary coverage-src.info --branch-coverage --ignore-errors "$IGN" 2>&1 \
+"$LCOV" --summary coverage-src.info $BRCOV --ignore-errors "$IGN" 2>&1 \
   | grep -E 'source files|lines|functions|branches' | tee coverage-summary.txt
 
 # --- HTML report -------------------------------------------------------------
-echo "== genhtml =="
+phase genhtml
 rm -rf coverage-html
-"$GENHTML" coverage-src.info --output-directory coverage-html --branch-coverage \
-  --ignore-errors "empty,inconsistent,source,category,unmapped" >/tmp/cov-genhtml.log 2>&1 \
+"$GENHTML" coverage-src.info --output-directory coverage-html $BRCOV \
+  --ignore-errors "empty,inconsistent,source,category,unmapped" >$COVLOG/genhtml.log 2>&1 \
   && echo "  report: $bld/coverage-html/index.html" \
-  || { echo "genhtml failed:"; tail -10 /tmp/cov-genhtml.log; }
+  || { echo "genhtml failed:"; tail -10 $COVLOG/genhtml.log; }
 
 # --- least-covered files (the actionable list) -------------------------------
 echo
 echo "== least-covered src files (>=50 lines) -- aim new tests here =="
 "${PYTHON:-python3}" "$here/rank_coverage.py" coverage-src.info | head -20
+phase_done
 echo
 echo "Done. See test/coverage/README.md for how to read the report."
