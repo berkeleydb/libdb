@@ -53,6 +53,12 @@ someone may pick it up.
 |----|-------|--------|
 | **P4** | `__db_walk_cursors` held `env->mtx_dblist` **exclusively** across the whole cursor walk, so the 8-way `cq_parts[]` sharding bought nothing and one environment-wide mutex serialized every B-tree insert. **FIXED** — the latch is now taken **shared**: it guards the *shape* of `env->dblist`, the walk is a pure reader, and `__db_refresh` unlinks under the same latch **exclusively**, so a handle cannot be unlinked while a reader holds it shared. That makes the handle-lifetime question vanish rather than requiring a pin that does not exist. `__bam_ca_di` **30.74% → 2.89%** of profile at t=64. **Throughput effect is modest and workload-dependent** — independently measured over 3 alternating reps on 96 vCPU: **t=64 +10.7%** (median 125,890 → 139,396), **t=32 −5.3% at 6.4% CV, i.e. inside noise**. The implementing agent measured a t=64 *regression*; my re-measurement found the opposite sign, so the honest statement is that this is not a large throughput win. **`__log_put` is now the ceiling** — 56% of time at t=64, 87% of that on the single log-region latch — which is the next target and is tracked as **P5**. Analysis: `test/bench/P4-FIX-2026-09.md`. | **fixed** |
 
+## The next ceiling
+
+| id | issue | status |
+|----|-------|--------|
+| **P5** | **`__log_put` and the single log-region latch are now the scaling ceiling.** With P1 and P4 fixed, profiling at t=64 puts **56% of all time in `__log_put`, 87% of that on one log-region latch**. Every committing transaction must append to the log, and the append is serialized. This is why removing upstream contention (P1's locker stripes, P4's cursor-walk latch) moves the queue rather than shortening it — the serial stage downstream is saturated. Directions, none free: a striped or lock-free log buffer with ordered reservation; batching more records per latch acquisition (group commit already batches *flushes*, not *appends*); or reducing the work done under the latch. The log is the durability frontier, so any change needs a crash/recovery argument at least as strong as P3's. | open |
+
 ## Measured, characterized, not yet fixed
 
 | id | issue | status |
