@@ -243,6 +243,111 @@ flag	closesync@nosync
 flag	closesync@count	optional
 
 # ---------------------------------------------------------------------------
+# Tier: flagapi -- API FLAG BEHAVIOUR, second wave.  test/c/flagapi-run.sh
+#
+# The `flag` tier above covers the seven runtime I/O and durability flags.
+# docs/design/testing-program-2026-09.md then measured the WHOLE surface and
+# found 112 of 229 public API flags (48%) referenced by NO test at all.  This
+# tier covers the next two priority bands from that document, in defect-yield
+# order:
+#
+#   1. backup and archive -- DATA-LOSS ADJACENT.  DB_ARCH_REMOVE UNLINKS LOG
+#      FILES, so a defect there destroys the record of committed transactions;
+#      DB_BACKUP_NO_LOGS decides whether a backup contains the logs it needs to
+#      be recoverable at all.  Nothing tested any of them.
+#   2. everything else to which an observable consequence can be attached.
+#
+# The bar is the observable consequence, never the return code: a file created
+# or removed, a byte pattern on disk at unlink time, a stat counter that moved,
+# a record visible or not, a stat section present or absent, an elapsed time.
+# G15 established why -- cov_api_surface.c "covered" DB_DIRECT_DB by checking
+# that set_flags ACCEPTED it, while no database could be opened under it (P2).
+#
+# THREE ENGINE DEFECTS THIS TIER FOUND.  All three are recorded as XFAIL, which
+# counts as a verdict that HELD, and every one flips to PASS with no edit to the
+# test once the engine is fixed.  FLAGAPI_STRICT=1 refuses the allowance, which
+# is how they are shown to have teeth.
+#
+#   backup_nologs   P6  DB_BACKUP_NO_LOGS accepted and IGNORED (it appears once
+#                       in all of src/, in db_backup.c's flag mask, and is read
+#                       nowhere).  Measured: 62 log files copied either way.
+#   inorder@inorder P7  DB_INORDER + DB_CONSUME across a deleted record HANGS at
+#                       98% CPU (retry label in __qamc_get hit >100,000 times
+#                       without terminating, vs 22 for the default arm).
+#   noflush@noflush P8  DB_NOFLUSH makes an environment unusable: SIGBUS on a
+#                       shared env (region file left zero-length),
+#                       DB_PAGE_NOTFOUND on a private one.
+#
+# Every entry is MANDATORY.  None needs a build option: unlike the `flag` tier's
+# O_DIRECT modes there is nothing here that a stock configure cannot exercise,
+# and nothing here depends on strace.  So an absent verdict is a failure, with
+# no "optional" to hide behind.
+# ---------------------------------------------------------------------------
+# Archive and backup -- the data-loss-adjacent band, first.
+flagapi	arch_log
+flagapi	arch_data
+flagapi	arch_abs
+flagapi	arch_remove
+flagapi	backup_nologs
+flagapi	backup_update
+# DB_SEQUENCE flags, graded on the VALUES returned, not on set_flags succeeding.
+flagapi	seq_dir@inc
+flagapi	seq_dir@dec
+flagapi	seq_wrap
+flagapi	seq_range
+# DB_TXN_FAMILY: sibling children share locks where independent txns deadlock.
+flagapi	txn_family
+# DB_TXN_WAIT: per-arm runs PLUS the cross-arm TIME comparison.  The comparison
+# is its own entry because both arms return DB_LOCK_DEADLOCK -- grading on the
+# error code would pass a build where the flag was ignored entirely, so the
+# 0ms-vs-2000ms difference is the only thing that distinguishes them.
+flagapi	txn_wait@nowait
+flagapi	txn_wait@wait
+flagapi	txn_wait@time
+# DB_CURSOR_BULK: every record stored through a bulk cursor reads back intact.
+flagapi	cursor_bulk
+# DB_INORDER: both arms.  The default arm is what makes the XFAIL meaningful --
+# it drains the same queue over the same hole and completes, so P7 cannot be
+# blamed on the workload.
+flagapi	inorder@default
+flagapi	inorder@inorder
+# DB_FREELIST_ONLY: pages returned to the filesystem AND every surviving record
+# still readable.  A compaction that truncated live data passes a return-code
+# check and fails here.
+flagapi	freelist_only
+# DB_NOLOCKING: per-arm runs PLUS the cross-arm lock-request COUNT.  Each arm
+# also asserts every record read back correctly, because an arm that stopped
+# doing the work would also stop requesting locks.
+flagapi	nolocking@default
+flagapi	nolocking@nolocking
+flagapi	nolocking@count
+# DB_OVERWRITE: the bytes in the region file AT UNLINK TIME, read from inside a
+# db_env_set_func_unlink hook.  The default arm must find the real contents and
+# the flagged arm a uniform 0xff pattern; without the control, "it was
+# overwritten" could be something else zeroing region files.
+flagapi	overwrite@default
+flagapi	overwrite@overwrite
+# DB_NOFLUSH: both arms.  The default arm proves the two environment shapes the
+# flagged arm fails in are otherwise fine, which is what makes P8 attributable
+# to the flag.
+flagapi	noflush@default
+flagapi	noflush@noflush
+# DB_HOTBACKUP_IN_PROGRESS: reads back while set, and GONE after the paired
+# clear -- the flag is reference-counted, so the clear half is the real check.
+flagapi	hotbackup
+# DB_STAT_LOCK_CONF / _OBJECTS / _PARAMS and DB_STAT_SUMMARY: each flag's own
+# section present with it and ABSENT without it.  Not graded on output size: a
+# section flag SUPPRESSES the default counter block, so every flagged arm is
+# smaller than the plain one even when the flag works.
+flagapi	stat_sections
+flagapi	stat_summary
+# DB->verify flags, graded on the salvage OUTPUT: DB_SALVAGE non-empty,
+# DB_PRINTABLE containing the stored value literally where raw salvage escapes
+# it, DB_AGGRESSIVE still producing the records, DB_ORDERCHKONLY accepted on a
+# named subdatabase and writing no dump.
+flagapi	verify_flags
+
+# ---------------------------------------------------------------------------
 # Tier: config -- the configure-option sweep.  test/config/option_sweep.sh
 #
 # Closes gap G14: 42 of 54 configure options were never built in CI, including
