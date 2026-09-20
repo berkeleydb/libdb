@@ -33,6 +33,12 @@ changed throughput **not at all** (t=96: 88,435 → 94,421 ops/s, inside the
 noise floor). If neither the copy nor the syscall inside the critical section
 is the cost, then shortening the critical section is not the fix.
 
+A control with the log append path suppressed but transactions and locking
+intact (`DB_TXN_NOT_DURABLE`, valid at every thread count) quantifies the prize:
+the log is **36–62% of removable per-transaction cost at t≥8**, so even a
+*perfect* append fix buys at most +57% at t=96. Reserve-then-copy's 10–20% of
+the critical section, applied to that, is a few percent of throughput.
+
 What the same experiments *do* implicate is the **handoff**: on a 96-vCPU box
 each waiter burns up to **4,800** test-and-set attempts on one shared cacheline
 per acquisition (`MUTEX_SPINS_PER_PROCESSOR` = 50 × 96 CPUs,
@@ -567,16 +573,48 @@ of how much work each transaction does. The log-latch wait rate corroborates: at
 t=32 the region-lock wait fraction falls from **58.4%** to **27.7%** at batch=4
 while appends/s doubles.
 
-**Caveat, stated plainly.** Batching reduces *per-transaction* costs across the
-whole engine — `txn_begin`/`txn_end` (the P1 locker path), lock acquisition, and
-the commit record and its flush — not only log appends. This establishes that
-the **per-transaction fixed cost** is the ceiling and that the log's share is
-large (the wait fraction halves), but it does **not** prove the log is all of
-it. A `nolog` control (no txn, no log, identical btree work) reached 270,767
-rows/s at t=1 and 307,276 at t=8 versus 163,738 and 146,786 for the logged arm —
-so removing the log/txn path roughly doubles throughput at t=8. Above t=8 that
-control is invalid (concurrent `DB->put` without `DB_INIT_LOCK` returns
-`EINVAL`), so it cannot settle the high-t case and I am not claiming it does.
+**Caveat, and then its resolution.** Batching reduces *per-transaction* costs
+across the whole engine — `txn_begin`/`txn_end` (the P1 locker path), lock
+acquisition, and the commit record and its flush — not only log appends. So the
+batch experiment alone establishes that the **per-transaction fixed cost** is the
+ceiling, but not how much of it is the log.
+
+### Finding 4 — the log is 36–62% of removable per-transaction cost
+
+Resolved with a control that is valid at **every** thread count.
+`DB_TXN_NOT_DURABLE` on the DB handle keeps full transactions, full locking and
+the same commit path, but `__log_put_record_int` takes the `is_durable == 0`
+branch and queues the record on the transaction instead of appending it
+(`log_put.c:2081-2090`) — so the log region latch is never taken for data
+records. Verified by the harness reporting **0.00 records per row**. 5 reps,
+medians:
+
+| t | logged rows/s | log-suppressed rows/s | ratio | log's share of removable per-row cost |
+|---:|---:|---:|---:|---:|
+| 1 | 164,782 | 206,902 | 1.26× | 20.4% |
+| 2 | 215,456 | 266,052 | 1.23× | 19.0% |
+| 4 | 167,944 | 206,091 | 1.23× | 18.5% |
+| 8 | 144,141 | 235,102 | 1.63× | **38.7%** |
+| 16 | 88,018 | 231,106 | 2.63× | **61.9%** |
+| 32 | 78,626 | 169,749 | 2.16× | **53.7%** |
+| 64 | 88,362 | 138,182 | 1.56× | 36.1% |
+| 96 | 83,296 | 131,170 | 1.57× | 36.5% |
+
+**The log is the largest single component of per-transaction cost at t≥8 — 36%
+to 62% — but it is not all of it.** Two further readings matter:
+
+1. **Even with the log entirely out of the append path, throughput still
+   declines** with thread count (235k at t=8 → 131k at t=96) and CV rises to
+   17%. So the log is not the *only* thing that fails to scale here; removing it
+   raises the ceiling without making the curve monotonic. An upper bound on what
+   any P5 fix can achieve is therefore roughly the `notdur` column, and that
+   column is itself falling.
+2. **This bounds every design in this RFC.** A perfect fix to the log append
+   path — one that made appends free — would buy at most +57% at t=96 and
+   +163% at t=16. D1's measured 10–20% of the *critical section*, applied to a
+   component worth 36–62% of the cost, is a few percent of throughput. D0/D2,
+   which attack acquisitions per transaction, can plausibly capture a real
+   fraction of it. This is the quantitative case for the ranking.
 
 ### What this means for the device ceiling
 
@@ -781,11 +819,12 @@ design at all.
 
 ## Risks & open questions
 
-1. **The batch result may overstate the log's share.** It reduces
-   per-transaction cost engine-wide. The `nolog` control bounds it at t≤8 only.
-   **Open:** a valid high-thread control — `DB_INIT_CDB`, or a
-   `DB_LOG_NOT_DURABLE` database, keeping transactions and locking but dropping
-   logging.
+1. ~~**The batch result may overstate the log's share.**~~ **Resolved** by
+   Finding 4: a `DB_TXN_NOT_DURABLE` control, valid at all thread counts, puts
+   the log at 36–62% of removable per-transaction cost at t≥8. The residual
+   open question is the *other* 38–64%, and the fact that the log-suppressed arm
+   still declines from 235k at t=8 to 131k at t=96 — i.e. there is a second,
+   non-log scaling defect behind P5 which this RFC does not identify.
 2. **D0's record-combining may be blocked by an access-method detail I have not
    verified.** `__db_pitem` is called from Btree, Hash, Recno and recovery; the
    two calls in `__bam_iitem` are the common case, not the only one. **Open:**
