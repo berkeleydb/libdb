@@ -8,7 +8,7 @@
 # Format: YYYY.0M  (append .MICRO for a same-month re-release, e.g. 2026.09.1).
 # Bump YYYY.0M for the month you cut the release; MICRO for follow-ups.
 # ---------------------------------------------------------------------------
-DB_CALVER="2026.09.10"
+DB_CALVER="2026.09.11"
 
 # ---------------------------------------------------------------------------
 # FORMAT / ABI COMPATIBILITY LEVEL -- FROZEN at 5.3.37, do NOT bump for a
