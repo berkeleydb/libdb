@@ -408,6 +408,25 @@ config	cxx	optional
 config	stl	optional
 config	dbm	optional
 config	compat185	optional
+# --- KNOWN-INTERACTING PAIRS -----------------------------------------------
+# One-at-a-time sweeping cannot see interactions, and 2^54 is not a target, so
+# this is a small NAMED list where each entry states the interaction it is worth
+# minutes for (the reasons live in SWEEP_PAIRS in test/config/option_sweep.sh,
+# and a pair with no stated reason FAILS its leg rather than running).
+#
+# These are extra LEGS, not a new population of options: every configure option
+# is still in exactly one of the smoke/build-only/excluded lists above, so
+# --check-complete is unaffected and "an unlisted option fails the gate" still
+# holds.
+#
+# Optional for the same reason as every other config leg: the tier is a
+# multi-build sweep CI does not schedule on every trigger, and the runner prints
+# why a leg was skipped rather than vanishing.
+config	pair:diagnostic-x-o_direct		optional
+config	pair:smallbuild-x-statistics		optional
+config	pair:mutexsupport-x-atomicsupport	optional
+config	pair:replication-x-cryptography		optional
+config	pair:diagnostic-x-smallbuild		optional
 
 # ---------------------------------------------------------------------------
 # Tier: shape -- the SCALING-SHAPE gate.  test/bench/scale_shape_gate.sh

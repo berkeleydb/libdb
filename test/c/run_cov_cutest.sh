@@ -66,6 +66,38 @@ LIBS_DIR=$(cd "$BUILD/.libs" && pwd)
 LD_LIBRARY_PATH="$LIBS_DIR:${LD_LIBRARY_PATH:-}"
 export LD_LIBRARY_PATH
 
+# ---------------------------------------------------------------------------
+# A PRIVATE TCP PORT RANGE PER RUN.
+#
+# TestChannel brings up three live repmgr sites on real sockets and picks its
+# ports by probing upward from a base that defaults to 30100
+# (test/c/suites/TestChannel.c:1305).  The probe is bind-then-close-then-reuse,
+# so two concurrent runs both find "30101 is free", and one of them then loses
+# the race.
+#
+# That is not hypothetical.  Three concurrent coverage runs on one box gave
+# TestChannel three different outcomes -- clean, SIGABRT (rc=134), and a CuTest
+# FAILURE -- and because TestChannel is the only thing in the whole subset that
+# exercises live replication, the run-to-run BRANCH coverage swung 40.4% / 36.6%
+# / 39.4%.  Sixty files differed, all of them under rep/ and repmgr/, for a total
+# of ~3,100 branches: rep_record.c alone went 476 -> 0.  Every other phase of
+# those three runs was identical, and so were the .gcda counts.
+#
+# TestChannel already honours BDBPORTRANGE ("base:upper"), so the fix is to give
+# each run its own window rather than to change the suite.  Derived from the PID
+# so concurrent runs cannot collide, clamped into the ephemeral-safe region, and
+# overridable.
+if [ -z "${BDBPORTRANGE:-}" ]; then
+	# 200 ports per run, 30100..60000, chosen by PID.  Range width 200 covers
+	# TestChannel's incr-of-10 stride with room for its upward probing.
+	_slot=$(( ($$ % 148) * 200 ))
+	BDBPORTRANGE="$((30100 + _slot)):$((30100 + _slot + 199))"
+	export BDBPORTRANGE
+fi
+echo "run_cov_cutest.sh: BDBPORTRANGE=$BDBPORTRANGE (private per run; the"
+echo "    default 30100 base makes concurrent runs race for TestChannel's"
+echo "    repmgr ports, which swung measured branch coverage by 3.8pp)"
+
 #
 # Run ONE SUITE PER PROCESS (cutest -s <suite>) rather than the whole binary.
 # Two reasons, both about not losing coverage:
