@@ -44,7 +44,7 @@ static int nthreads, reclen, spins, mode;
  * A test-and-set latch with BDB's acquisition discipline: spin up to `spins`
  * times on a plain read before attempting the atomic, pause between attempts,
  * and -- the part that matters -- write owner identity into the same cacheline
- * on success, as mut_tas.c:205-206 does.
+ * on success, as mut_tas.c:203-204 does.
  */
 typedef struct {
 	volatile uint32_t tas;

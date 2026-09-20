@@ -35,7 +35,7 @@
  *   mode=notdur   DB_TXN_NOT_DURABLE on the DB handle: full transactions, full
  *                 locking, the same commit path, but __log_put_record_int takes
  *                 the is_durable == 0 branch and queues the record on the txn
- *                 instead of appending it (src/log/log_put.c:2081-2090), so the
+ *                 instead of appending it (src/log/log_put.c:2278-2302), so the
  *                 log region latch is never taken for data records.  This IS
  *                 valid at every thread count and is the control that isolates
  *                 the log's share of the per-transaction cost.
