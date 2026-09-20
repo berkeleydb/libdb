@@ -4,7 +4,7 @@
   "DB_VERSION_MAJOR": "2026",
   "DB_VERSION_MINOR": "0",
   "DB_VERSION_PATCH": "9",
-  "DB_CALVER": "2026.09.9",
+  "DB_CALVER": "2026.09.10",
   "DB_VERSION_STRING": "\"libdb 2026.09.8 (September 18, 2026)\"",
   "DB_VERSION_FULL_STRING": "\"libdb 2026.09.8 (September 18, 2026)\"",
   "DB_VERSION_UNIQUE_NAME": "",
