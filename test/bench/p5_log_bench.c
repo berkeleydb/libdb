@@ -25,6 +25,12 @@
  *	    -o p5_log_bench
  *	./p5_log_bench <dir> <threads> <secs> <valsz> [lg_bsize] [mode] [spins] [batch]
  *
+ * mode=nolog runs the SAME btree work with no transaction and no logging
+ * (DB->put with a NULL txn on a non-transactional environment).  This is the
+ * control that separates "the log is the ceiling" from "the per-transaction
+ * path is the ceiling": if nolog scales and the logged arms do not, the log is
+ * implicated; if nolog is also flat, the ceiling is elsewhere.
+ *
  * [batch] puts N keys per transaction instead of 1.  A single-key insert costs
  * ~3.1 log records (2 x __db_addrem for key and data, 1 x __txn_regop), so it
  * takes the log region latch 3+ times.  Batching amortizes the commit record
@@ -45,7 +51,7 @@
 
 static DB_ENV *env;
 static DB *dbp;
-static int nthreads, secs, valsz, batch;
+static int nthreads, secs, valsz, batch, nolog;
 static volatile int stop;
 static unsigned long long total_ops;
 static pthread_mutex_t tally = PTHREAD_MUTEX_INITIALIZER;
@@ -79,7 +85,7 @@ static void *worker(void *arg)
 	while (!stop) {
 		int i;
 
-		if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
+		if (!nolog && (ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
 			die(ret, "txn_begin");
 		for (i = 0; i < batch; i++) {
 			/* Unique, non-colliding keys: every insert grows the tree. */
@@ -92,16 +98,19 @@ static void *worker(void *arg)
 			key.data = kbuf; key.size = (u_int32_t)strlen(kbuf);
 			data.data = vbuf; data.size = (u_int32_t)valsz;
 
-			if ((ret = dbp->put(dbp, txn, &key, &data, 0)) != 0)
+			if ((ret = dbp->put(dbp,
+			    nolog ? NULL : txn, &key, &data, 0)) != 0)
 				break;
 		}
 		if (ret != 0) {
+			if (nolog)
+				die(ret, "put");
 			(void)txn->abort(txn);
 			if (ret == DB_LOCK_DEADLOCK || ret == DB_LOCK_NOTGRANTED)
 				continue;
 			die(ret, "put");
 		}
-		if ((ret = txn->commit(txn, 0)) != 0) {
+		if (!nolog && (ret = txn->commit(txn, 0)) != 0) {
 			if (ret == DB_LOCK_DEADLOCK)
 				continue;
 			die(ret, "commit");
@@ -171,28 +180,38 @@ int main(int argc, char **argv)
 	 */
 	if (spins != 0)
 		(void)env->mutex_set_tas_spins(env, spins);
-	if (strcmp(mode, "nosync") == 0)
+	if (strcmp(mode, "nolog") == 0)
+		nolog = 1;
+	else if (strcmp(mode, "nosync") == 0)
 		(void)env->set_flags(env, DB_TXN_NOSYNC, 1);
 	else if (strcmp(mode, "wrnosync") == 0)
 		(void)env->set_flags(env, DB_TXN_WRITE_NOSYNC, 1);
 	else if (strcmp(mode, "sync") != 0) {
-		fprintf(stderr, "mode must be nosync|wrnosync|sync\n");
+		fprintf(stderr, "mode must be nosync|wrnosync|sync|nolog\n");
 		return (2);
 	}
-	if ((ret = env->open(env, home, DB_CREATE | DB_INIT_MPOOL | DB_INIT_TXN |
-	    DB_INIT_LOG | DB_INIT_LOCK | DB_THREAD, 0644)) != 0)
+	if ((ret = env->open(env, home, DB_CREATE | DB_INIT_MPOOL | DB_THREAD |
+	    (nolog ? 0 : DB_INIT_TXN | DB_INIT_LOG | DB_INIT_LOCK), 0644)) != 0)
 		die(ret, "env->open");
 
 	if ((ret = db_create(&dbp, env, 0)) != 0) die(ret, "db_create");
 	(void)dbp->set_pagesize(dbp, 4096);
-	if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0) die(ret, "open txn");
-	if ((ret = dbp->open(dbp, txn, "p5.db", NULL, DB_BTREE,
-	    DB_CREATE | DB_THREAD, 0644)) != 0) die(ret, "db->open");
-	if ((ret = txn->commit(txn, 0)) != 0) die(ret, "open commit");
+	if (nolog) {
+		if ((ret = dbp->open(dbp, NULL, "p5.db", NULL, DB_BTREE,
+		    DB_CREATE | DB_THREAD, 0644)) != 0) die(ret, "db->open");
+	} else {
+		if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
+			die(ret, "open txn");
+		if ((ret = dbp->open(dbp, txn, "p5.db", NULL, DB_BTREE,
+		    DB_CREATE | DB_THREAD, 0644)) != 0) die(ret, "db->open");
+		if ((ret = txn->commit(txn, 0)) != 0) die(ret, "open commit");
+	}
 
 	/* Reset stats so the counts below cover only the measured window. */
-	(void)env->log_stat(env, &ls, DB_STAT_CLEAR);
-	free(ls);
+	if (!nolog) {
+		(void)env->log_stat(env, &ls, DB_STAT_CLEAR);
+		free(ls);
+	}
 
 	if ((th = calloc(nthreads, sizeof(*th))) == NULL) return (2);
 	t0 = now();
@@ -205,10 +224,16 @@ int main(int argc, char **argv)
 		(void)pthread_join(th[i], NULL);
 	el = now() - t0;
 
-	if ((ret = env->log_stat(env, &ls, 0)) != 0) die(ret, "log_stat");
-
 	printf("threads=%d ops=%llu secs=%.2f ops_per_sec=%.0f\n",
 	    nthreads, total_ops, el, total_ops / el);
+	if (nolog) {
+		printf("  mode=nolog (no txn, no log) batch=%d\n", batch);
+		(void)dbp->close(dbp, 0);
+		(void)env->close(env, 0);
+		free(th);
+		return (0);
+	}
+	if ((ret = env->log_stat(env, &ls, 0)) != 0) die(ret, "log_stat");
 	printf("  lg_bsize=%lu records=%lu w_bytes=%luMB+%lu "
 	    "wcount=%lu wcount_fill=%lu scount=%lu\n",
 	    (u_long)ls->st_lg_bsize, (u_long)ls->st_record,
