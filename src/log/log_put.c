@@ -25,6 +25,7 @@
 static int __log_encrypt_record __P((ENV *, DBT *, HDR *, u_int32_t));
 static int __log_file __P((ENV *, const DB_LSN *, char *, size_t));
 static int __log_fill __P((DB_LOG *, DB_LSN *, void *, u_int32_t));
+static int __log_write_direct __P((DB_LOG *, u_int8_t *, u_int32_t));
 static int __log_flush_commit __P((ENV *, const DB_LSN *, u_int32_t));
 static int __log_newfh __P((DB_LOG *, int));
 static int __log_put_next __P((ENV *,
@@ -1395,6 +1396,113 @@ __log_fill(dblp, lsn, addr, len)
 }
 
 /*
+ * __log_write_direct --
+ *	Write the log buffer through a descriptor opened O_DIRECT.
+ *
+ * O_DIRECT constrains all three of the buffer address, the file offset and the
+ * transfer length to be multiples of the device block size.  __log_write
+ * satisfies none of them: `addr' is either the region log buffer or a caller's
+ * record, `lp->w_off' is a byte-granular append frontier, and `len' is an
+ * arbitrary record length.  That is defect P3 -- under DB_LOG_DIRECT the first
+ * transactional DB->open failed EINVAL on a 1-byte and then a 131-byte write.
+ *
+ * We restage each write into a block-aligned window:
+ *
+ *	base = w_off rounded DOWN to a block, head = w_off - base
+ *
+ * and emit whole blocks covering [base, w_off + len).  The head bytes are the
+ * tail of a record a PREVIOUS write already placed in the file, so we read that
+ * leading block back and rewrite it byte-for-byte identically; the trailing
+ * partial block is zero-padded.
+ *
+ * Why the log stays readable:  the padding lies strictly beyond lp->w_off + len,
+ * ground the reader already treats as end-of-log, and which a log file is
+ * already zero/sparse over (__db_file_extend / DBLOG_ZERO preallocate it that
+ * way).  The next write re-covers it with real data.  LSN space is untouched:
+ * w_off still advances by exactly `len', so no offset, f_lsn, s_lsn or
+ * buffer-index arithmetic anywhere else changes meaning.
+ *
+ * Why durability is unchanged:  rewriting the leading block with identical
+ * bytes is what the buffered path already does -- the page cache writes back
+ * whole pages, so a page holding an already-fsync'd record is rewritten when
+ * the next record lands in it.  The only exposure is a torn sector, which is
+ * exactly what the per-record log checksum exists to detect and which makes the
+ * reader stop at that record.  Both __os_io error returns propagate.
+ *
+ * ponytail: one pwrite per block, so a flush larger than a block costs more I/O
+ * operations than the single unaligned write it replaces, and a write that does
+ * not start on a boundary costs one extra block read.  Caching the trailing
+ * partial block across calls would remove the read, but needs a field in DB_LOG,
+ * which __env_struct_sig hashes -- that would invalidate every existing
+ * environment for an optional flag.  Revisit if DB_LOG_DIRECT throughput
+ * matters more than on-disk compatibility.
+ */
+static int
+__log_write_direct(dblp, addr, len)
+	DB_LOG *dblp;
+	u_int8_t *addr;
+	u_int32_t len;
+{
+	ENV *env;
+	LOG *lp;
+	size_t nio;
+	u_int32_t base, head, n, off, total;
+	int ret;
+	u_int8_t *stage;
+	/* One block, plus the slack ALIGNP_INC needs to round the base up. */
+	u_int8_t stagebuf[2 * DB_LG_DIRECT_ALIGN];
+
+	env = dblp->env;
+	lp = dblp->reginfo.primary;
+	stage = ALIGNP_INC(stagebuf, DB_LG_DIRECT_ALIGN);
+
+	base = lp->w_off & ~(u_int32_t)(DB_LG_DIRECT_ALIGN - 1);
+	head = lp->w_off - base;
+	total = head + len;
+
+	/*
+	 * Recover the bytes of the leading block that precede our data.  An
+	 * earlier write put them there, so the file is at least w_off long; a
+	 * read that cannot reach w_off means the log was truncated under us,
+	 * and rewriting the block from stack garbage would destroy a durable
+	 * record.  Fail instead.
+	 */
+	if (head != 0) {
+		if ((ret = __os_io(env, DB_IO_READ, dblp->lfhp, 0, 0,
+		    base, DB_LG_DIRECT_ALIGN, stage, &nio)) != 0)
+			return (ret);
+		if (nio < (size_t)head) {
+			__db_errx(env,
+			    "Short read of the log block preceding offset %lu",
+			    (u_long)lp->w_off);
+			return (EIO);
+		}
+	}
+
+	for (off = 0; off < total; off += n) {
+		n = total - off;
+		if (n > DB_LG_DIRECT_ALIGN)
+			n = DB_LG_DIRECT_ALIGN;
+		/*
+		 * stage[0, head) already holds the recovered head bytes; every
+		 * later block starts on a boundary, so it is all payload.
+		 */
+		if (off == 0)
+			memcpy(stage + head, addr, n - head);
+		else
+			memcpy(stage, addr + (off - head), n);
+		/* Zero-pad a trailing partial block. */
+		if (n != DB_LG_DIRECT_ALIGN)
+			memset(stage + n, 0, DB_LG_DIRECT_ALIGN - n);
+		if ((ret = __os_io(env, DB_IO_WRITE, dblp->lfhp, 0, 0,
+		    base + off, DB_LG_DIRECT_ALIGN, stage, &nio)) != 0)
+			return (ret);
+	}
+
+	return (0);
+}
+
+/*
  * __log_write --
  *	Write the log buffer to disk.
  */
@@ -1433,11 +1541,18 @@ __log_write(dblp, addr, len)
 	 *
 	 * Ignore any error -- we may have run out of disk space, but that's no
 	 * reason to quit.
+	 *
+	 * Skipped under DBLOG_DIRECT: both helpers do byte- and buffer_size-
+	 * granular I/O that O_DIRECT rejects (the 1-byte __db_file_extend write
+	 * is the first EINVAL P3 reported).  The errors are already ignored, so
+	 * the only thing lost is the optimization -- but the syserr each failed
+	 * call logged named the wrong culprit on every log file creation.
 	 */
 #ifdef HAVE_FILESYSTEM_NOTZERO
-	if (lp->w_off == 0 && !__os_fs_notzero()) {
+	if (lp->w_off == 0 && !F_ISSET(dblp, DBLOG_DIRECT) &&
+	    !__os_fs_notzero()) {
 #else
-	if (lp->w_off == 0) {
+	if (lp->w_off == 0 && !F_ISSET(dblp, DBLOG_DIRECT)) {
 #endif
 		(void)__db_file_extend(env, dblp->lfhp, lp->log_size);
 		if (F_ISSET(dblp, DBLOG_ZERO))
@@ -1450,7 +1565,9 @@ __log_write(dblp, addr, len)
 	 * Seek to the offset in the file (someone may have written it
 	 * since we last did).
 	 */
-	if ((ret = __os_io(env, DB_IO_WRITE,
+	if ((ret = F_ISSET(dblp, DBLOG_DIRECT) ?
+	    __log_write_direct(dblp, addr, len) :
+	    __os_io(env, DB_IO_WRITE,
 	    dblp->lfhp, 0, 0, lp->w_off, len, addr, &nw)) != 0) {
 #if defined(HAVE_DST)
 #if DB_DST_BUG(8)
