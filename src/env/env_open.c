@@ -1177,10 +1177,19 @@ __env_attach_regions(dbenv, flags, orig_flags, retry_ok)
 		 * Initialize the DB list and its mutex.  If the mpool is
 		 * not initialized, we can't ever open a DB handle, which
 		 * is why this code lives here.
+		 *
+		 * The list latch is SHARED (a reader/writer latch).  Mutating
+		 * the list -- __env_setup inserting a handle, __db_refresh
+		 * removing one -- still takes it exclusively via MUTEX_LOCK.
+		 * The one hot path that only READS the list, __db_walk_cursors
+		 * (reached from __bam_ca_di on every B-tree insert), takes it
+		 * shared, so concurrent inserts no longer serialize on it.  The
+		 * cursor queues it walks have their own per-partition mutexes.
 		 */
 		TAILQ_INIT(&env->dblist);
 		if ((ret = __mutex_alloc(env, MTX_ENV_DBLIST,
-		    DB_MUTEX_PROCESS_ONLY, &env->mtx_dblist)) != 0)
+		    DB_MUTEX_PROCESS_ONLY | DB_MUTEX_SHARED,
+		    &env->mtx_dblist)) != 0)
 			goto err;
 
 		/* Register DB's pgin/pgout functions.  */
