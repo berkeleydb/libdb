@@ -14,6 +14,7 @@
 historical = ["v5.3.28", "v4.6.21-SSI"]
 
 [notes]
+"v2026.09.11" = "<code>DB_LOG_DIRECT</code> fixed (log writes restaged into aligned blocks, SIGKILL-proven durability), and a <strong>live self-deadlock</strong> in the cursor-walk retry protocol repaired &mdash; introduced by our own cursor sharding and invisible to every test"
 "v2026.09.10" = "<strong>P1 fixed</strong>: <code>LOCK_LOCKERS</code> acquired all 64 locker stripes on every transaction begin and end (128 mutex ops/txn). Now keyed on the bucket index &mdash; 4 ops/txn, <strong>+52% at 96 threads</strong>, run-to-run CV 11.1% &rarr; 1.3%"
 "v2026.09.9" = "Defect fixes found by the new gates: <code>--disable-mutexsupport</code> had never built (three stacked defects) and <code>DB_DIRECT_DB</code> could not open a database (unaligned metadata buffer, latent on tolerant kernels)"
 "v2026.09.8" = "Release-machinery correctness: the meson and autoconf builds now agree on the version triplet (meson previously could not attach an autoconf-created environment), <code>s_perm</code> no longer aborts before restoring exec bits, five duplicate message ids renumbered, and the source checkers actually run"
