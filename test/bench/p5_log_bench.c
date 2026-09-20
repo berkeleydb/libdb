@@ -23,7 +23,14 @@
  *
  *	cc -O2 -pthread p5_log_bench.c -I<build> -L<build>/.libs -ldb-2026.0 \
  *	    -o p5_log_bench
- *	./p5_log_bench <dir> <threads> <secs> <valsz> [lg_bsize] [mode]
+ *	./p5_log_bench <dir> <threads> <secs> <valsz> [lg_bsize] [mode] [spins] [batch]
+ *
+ * [batch] puts N keys per transaction instead of 1.  A single-key insert costs
+ * ~3.1 log records (2 x __db_addrem for key and data, 1 x __txn_regop), so it
+ * takes the log region latch 3+ times.  Batching amortizes the commit record
+ * over N puts and is the zero-code estimate of what per-transaction append
+ * batching (design D2) could buy -- it changes how many times the serialized
+ * stage is entered per unit of user work, which is the quantity that matters.
  */
 #include <sys/types.h>
 #include <errno.h>
@@ -38,7 +45,7 @@
 
 static DB_ENV *env;
 static DB *dbp;
-static int nthreads, secs, valsz;
+static int nthreads, secs, valsz, batch;
 static volatile int stop;
 static unsigned long long total_ops;
 static pthread_mutex_t tally = PTHREAD_MUTEX_INITIALIZER;
@@ -70,19 +77,24 @@ static void *worker(void *arg)
 	memset(vbuf, 'v', valsz);
 
 	while (!stop) {
-		/* Unique, non-colliding keys: every insert grows the tree. */
-		seed = seed * 1103515245u + 12345;
-		snprintf(kbuf, sizeof(kbuf), "%016lx%08lx",
-		    (unsigned long)(uintptr_t)arg, seed & 0xffffffffu);
-
-		memset(&key, 0, sizeof(key));
-		memset(&data, 0, sizeof(data));
-		key.data = kbuf; key.size = (u_int32_t)strlen(kbuf);
-		data.data = vbuf; data.size = (u_int32_t)valsz;
+		int i;
 
 		if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
 			die(ret, "txn_begin");
-		ret = dbp->put(dbp, txn, &key, &data, 0);
+		for (i = 0; i < batch; i++) {
+			/* Unique, non-colliding keys: every insert grows the tree. */
+			seed = seed * 1103515245u + 12345;
+			snprintf(kbuf, sizeof(kbuf), "%016lx%08lx",
+			    (unsigned long)(uintptr_t)arg, seed & 0xffffffffu);
+
+			memset(&key, 0, sizeof(key));
+			memset(&data, 0, sizeof(data));
+			key.data = kbuf; key.size = (u_int32_t)strlen(kbuf);
+			data.data = vbuf; data.size = (u_int32_t)valsz;
+
+			if ((ret = dbp->put(dbp, txn, &key, &data, 0)) != 0)
+				break;
+		}
 		if (ret != 0) {
 			(void)txn->abort(txn);
 			if (ret == DB_LOCK_DEADLOCK || ret == DB_LOCK_NOTGRANTED)
@@ -94,7 +106,9 @@ static void *worker(void *arg)
 				continue;
 			die(ret, "commit");
 		}
-		n++;
+		/* Count user-level rows, so arms with different batch sizes
+		 * are compared on the same unit of work. */
+		n += batch;
 	}
 	pthread_mutex_lock(&tally);
 	total_ops += n;
@@ -120,12 +134,30 @@ int main(int argc, char **argv)
 	bsize = argc > 5 ? (u_int32_t)strtoul(argv[5], NULL, 0) : 0;
 	mode = argc > 6 ? argv[6] : "nosync";
 	spins = argc > 7 ? (u_int32_t)strtoul(argv[7], NULL, 0) : 0;
+	batch = argc > 8 ? atoi(argv[8]) : 1;
+	if (batch < 1)
+		batch = 1;
 
 	if ((ret = db_env_create(&env, 0)) != 0) die(ret, "env_create");
 	env->set_errfile(env, stderr);
 	env->set_errpfx(env, "p5");
 	(void)env->set_cachesize(env, 0, 512 * 1024 * 1024, 1);
 	(void)env->set_thread_count(env, nthreads + 8);
+	/*
+	 * Deadlock detection.  Without it, a genuine deadlock blocks forever
+	 * instead of one party being chosen as a victim -- and a batch > 1 puts
+	 * several keys in one transaction, which really can deadlock against a
+	 * concurrent transaction on a growing tree.  The other benches in this
+	 * directory set this (see test/bench/bdb_bench.h); its absence here
+	 * cost one debugging detour that looked like a library hang and was
+	 * this probe's own missing configuration.
+	 */
+	(void)env->set_lk_detect(env, DB_LOCK_DEFAULT);
+	/* The default region holds ~1000 locks/lockers/objects; a 96-thread
+	 * run with batching needs more, and exhausting them returns ENOMEM. */
+	(void)env->set_lk_max_locks(env, 200000);
+	(void)env->set_lk_max_lockers(env, 200000);
+	(void)env->set_lk_max_objects(env, 200000);
 	if (bsize != 0)
 		(void)env->set_lg_bsize(env, bsize);
 	/*
@@ -183,7 +215,9 @@ int main(int argc, char **argv)
 	    (u_long)ls->st_w_mbytes, (u_long)ls->st_w_bytes,
 	    (u_long)ls->st_wcount, (u_long)ls->st_wcount_fill,
 	    (u_long)ls->st_scount);
-	printf("  spins=%lu\n", (u_long)spins);
+	printf("  spins=%lu batch=%d records_per_row=%.2f\n",
+	    (u_long)spins, batch,
+	    total_ops == 0 ? 0.0 : (double)ls->st_record / total_ops);
 	printf("  region_wait=%lu region_nowait=%lu "
 	    "mincommitperflush=%lu maxcommitperflush=%lu\n",
 	    (u_long)ls->st_region_wait, (u_long)ls->st_region_nowait,
