@@ -338,6 +338,7 @@ __bam_ca_dup_func(dbc, my_dbc, foundp, fpgno, fi, vargs)
 	DB *dbp;
 	int ret;
 	struct __bam_ca_dup_args *args;
+	struct __cq_part *cqp;
 
 	COMPQUIET(my_dbc, NULL);
 
@@ -357,11 +358,19 @@ __bam_ca_dup_func(dbc, my_dbc, foundp, fpgno, fi, vargs)
 	dbp = dbc->dbp;
 	args = vargs;
 
-	MUTEX_UNLOCK(dbp->env, dbp->mutex);
+	/*
+	 * __bam_opd_cursor -> __db_cursor_int takes the cursor-queue partition
+	 * mutex of this same handle, so we must drop the partition mutex our
+	 * caller (__db_walk_cursors) holds -- the one THIS cursor lives in,
+	 * which is the one being walked.  Returning DB_LOCK_NOTGRANTED tells the
+	 * caller we released it and it must rescan without unlocking again.
+	 */
+	cqp = DB_CURSOR_PART(dbc);
+	CQ_UNLOCK(dbp->env, cqp);
 
 	if ((ret = __bam_opd_cursor(dbp,
 	    dbc, args->first, args->tpgno, args->ti)) != 0) {
-		MUTEX_LOCK(dbp->env, dbp->mutex);
+		CQ_LOCK(dbp->env, cqp);
 		return (ret);
 	}
 	if (args->my_txn != NULL && args->my_txn != dbc->txn)
@@ -424,6 +433,7 @@ __bam_ca_undodup_func(dbc, my_dbc, countp, fpgno, fi, vargs)
 	DB *dbp;
 	int ret;
 	struct __bam_ca_dup_args *args;
+	struct __cq_part *cqp;
 
 	COMPQUIET(my_dbc, NULL);
 	COMPQUIET(countp, NULL);
@@ -444,9 +454,14 @@ __bam_ca_undodup_func(dbc, my_dbc, countp, fpgno, fi, vargs)
 	    orig_cp->opd->internal)->indx != args->ti ||
 	    MVCC_SKIP_CURADJ(dbc, fpgno))
 		return (0);
-	MUTEX_UNLOCK(dbp->env, dbp->mutex);
+	/*
+	 * __dbc_close takes this handle's cursor-queue partition mutexes, so
+	 * drop the partition mutex the walk holds -- see __bam_ca_dup_func.
+	 */
+	cqp = DB_CURSOR_PART(dbc);
+	CQ_UNLOCK(dbp->env, cqp);
 	if ((ret = __dbc_close(orig_cp->opd)) != 0) {
-		MUTEX_LOCK(dbp->env, dbp->mutex);
+		CQ_LOCK(dbp->env, cqp);
 		return (ret);
 	}
 	orig_cp->opd = NULL;
