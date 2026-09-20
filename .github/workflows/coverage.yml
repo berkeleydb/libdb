@@ -1,18 +1,57 @@
-# Code coverage (gcov/lcov) -- advisory measurement tier.
+# Code coverage (gcov/lcov) -- branch coverage, measured and RATCHETED.
 #
-# SQLite's ethic is 100% MC/DC branch coverage. We are nowhere near that, but
-# Tier B3 of the project's test-suite maturity plan says: MEASURE branch coverage,
-# then aim new DST/PBT/unit tests at the uncovered branches, and ratchet the
-# number upward. This workflow does the measuring.
+# SQLite's ethic is 100% MC/DC branch coverage.  We are nowhere near that, but
+# Tier B3 of the test-suite maturity plan says: MEASURE branch coverage, aim new
+# tests at the uncovered branches, and ratchet the number upward.  This workflow
+# does the measuring AND, now, the ratcheting.
 #
-# Coverage builds are slow (instrumented -O0 build + test run), so this does
-# NOT run on every PR: nightly (cron) + on-demand (workflow_dispatch) only.
-# Dedicated workflow -- does NOT touch ci.yml. Advisory (continue-on-error):
-# it informs and warns on regressions but never gates a merge.
+# WHAT CHANGED, AND WHY
+#
+# docs/design/testing-program-2026-09.md found three things wrong here:
+#
+#   1. "baseline.txt exists but nothing fails when coverage DROPS."  The old
+#      ratchet step emitted ::warning and always succeeded, on a job that was
+#      additionally continue-on-error -- so a coverage regression was reported by
+#      nothing that could stop it.  The gate is now test/coverage/ratchet.sh,
+#      it FAILS below the floor, and its own teeth are demonstrated in BOTH
+#      directions by the must-fail step below.
+#
+#   2. Line coverage was treated as a peer of branch coverage.  It is not:
+#      a line executed once with one outcome of a two-way branch counts as
+#      covered, which is exactly the defect class P1-P5 and U7 all lived in.
+#      Line and function coverage are now REPORTED and never gate.
+#
+#   3. "34 minutes in a single job -- the longest thing in CI and entirely
+#      serial."  Split in two: a PARALLEL run per push (one build, five
+#      concurrent test groups, merged with lcov -a) and the serial run kept
+#      nightly as the reference measurement.  The parallel path cannot buy time
+#      with coverage, because its merged number goes through the same ratchet.
+#
+# WHY TWO JOBS RATHER THAN ONE FAST ONE
+#
+# The serial script is the measurement the committed baseline came from.  Keeping
+# it nightly means the parallel path is continuously checked against a reference
+# that is not itself parallel -- if the group split ever loses coverage, the two
+# numbers diverge and the nightly job says so.  Deleting the serial run would
+# leave the fast path grading itself.
 
 name: Coverage
 
 on:
+  # Per-push: the parallel job only.  It is the one that now gates.
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'dist/**'
+      - '.github/workflows/coverage.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'dist/**'
+      - '.github/workflows/coverage.yml'
   schedule:
     # Nightly at 05:41 UTC, staggered after ci.yml (03:17) and ci-extended (04:23).
     - cron: '41 5 * * *'
@@ -31,10 +70,113 @@ permissions:
   contents: read
 
 jobs:
-  coverage:
-    name: gcov/lcov branch coverage
+  # --------------------------------------------------------------------------
+  # The ratchet's own self-check.  Seconds, no build, and it runs FIRST.
+  #
+  # A coverage gate that cannot fail is worse than no gate, and this project has
+  # a recorded instance of exactly that: a gate whose first version raised
+  # ModuleNotFoundError inside its verdict path, while its must-fail arm read the
+  # traceback as success.  ratchet_test.sh exercises the gate against synthetic
+  # summaries in both directions, including the unparseable-number case that
+  # must NOT satisfy the must-fail arm.  If this job fails, nothing below it can
+  # be believed, so it gates the rest.
+  # --------------------------------------------------------------------------
+  ratchet-selfcheck:
+    name: ratchet self-check (teeth, both directions)
     runs-on: ubuntu-latest
-    continue-on-error: true   # advisory tier
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ratchet self-check
+        run: ./test/coverage/ratchet_test.sh
+
+  # --------------------------------------------------------------------------
+  # PER-PUSH: parallel coverage + the branch ratchet.
+  #
+  # One instrumented build, five concurrent test groups in separate run trees
+  # with separate GCOV_PREFIX, merged with lcov -a.  See
+  # test/coverage/run_coverage_parallel.sh for why the groups cannot simply be
+  # backgrounded in one tree (they share build_unix/TESTDIR and three of them
+  # empty it between tests) and for the measured proof that merging per-group
+  # captures equals a serial run.
+  # --------------------------------------------------------------------------
+  coverage-parallel:
+    name: branch coverage (parallel) + ratchet
+    needs: ratchet-selfcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain (gcc, gcov, lcov, tcl)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc lcov tcl-dev tcl python3 liburing-dev
+
+      - name: Parallel coverage run
+        id: cov
+        env:
+          TCL_LIB: /usr/lib/tcl8.6
+        run: |
+          test/coverage/run_coverage_parallel.sh | tee /tmp/covp.out
+          summary=$(grep -E 'lines|branches|functions' \
+            build_unix/coverage-summary.txt | tr '\n' ' ')
+          echo "::notice title=Coverage (src/, parallel)::$summary"
+
+      # THE GATE.  Fails when branch coverage is below the committed baseline
+      # minus the measured tolerance.  Not continue-on-error: the whole point of
+      # this change is that a coverage regression can now stop something.
+      - name: Branch-coverage ratchet (GATE)
+        run: ./test/coverage/ratchet.sh
+
+      # TEETH, the must-fail direction, on the REAL measured numbers rather than
+      # on synthetic ones.  Take the run that just passed, reduce its branch
+      # figure by well over the tolerance, and require the ratchet to reject it.
+      #
+      # RATCHET_EXPECT_FAIL inverts only the ratchet's pass/fail verdict, NOT its
+      # error exit -- so if the gate crashes on the doctored input this step
+      # still fails, instead of accepting a crash as evidence of teeth.
+      - name: Teeth -- a reduced run must FAIL the ratchet
+        run: |
+          real=build_unix/coverage-summary.txt
+          fake=/tmp/coverage-summary-reduced.txt
+          br=$(grep branches "$real" | grep -oE '[0-9]+\.[0-9]+%' | head -1 | tr -d '%')
+          low=$(awk -v b="$br" 'BEGIN{printf "%.1f", (b - 5 < 0) ? 0 : b - 5}')
+          echo "doctoring the measured ${br}% down to ${low}% (>> the tolerance)"
+          sed "s/$br%/$low%/" "$real" > "$fake"
+          grep -q "$low%" "$fake" || {
+            echo "::error::could not doctor the summary -- the must-fail arm"
+            echo "would be testing the UNCHANGED file, which proves nothing."
+            exit 1
+          }
+          RATCHET_EXPECT_FAIL=1 ./test/coverage/ratchet.sh "$fake"
+          echo "OK: the ratchet rejected a ${low}% run and accepted the real ${br}%."
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-parallel
+          path: |
+            build_unix/coverage-summary.txt
+            build_unix/coverage-src.info
+          if-no-files-found: warn
+
+  # --------------------------------------------------------------------------
+  # NIGHTLY: the serial run.  This is the reference measurement the committed
+  # baseline came from, kept so the parallel path is graded against something
+  # that is not itself parallel.  Also produces the HTML report and the
+  # least-covered-file ranking, which are for humans and need no per-push run.
+  #
+  # Still gated by the ratchet -- a nightly that only informs is what the
+  # previous version of this workflow was, and it reported a regression to
+  # nobody.
+  # --------------------------------------------------------------------------
+  coverage-serial:
+    name: branch coverage (serial reference, nightly)
+    needs: ratchet-selfcheck
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -42,69 +184,27 @@ jobs:
       - name: Install toolchain (gcc, gcov, lcov, tcl)
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc lcov tcl-dev tcl python3
+          sudo apt-get install -y gcc lcov tcl-dev tcl python3 liburing-dev
 
-      - name: Build with coverage + run test subset + aggregate
+      - name: Serial coverage run + aggregate
         id: cov
         env:
-          # gcov must match the compiler; run_coverage.sh forces CC=gcc.
           TCL_LIB: /usr/lib/tcl8.6
           COV_TESTS: ${{ github.event.inputs.tests }}
         run: |
-          # Empty COV_TESTS => script uses its built-in representative subset.
           [ -z "$COV_TESTS" ] && unset COV_TESTS
           test/coverage/run_coverage.sh | tee /tmp/cov.out
-          # Surface the summary as a job notice.
-          summary=$(grep -E 'lines|branches|functions' build_unix/coverage-summary.txt | tr '\n' ' ')
-          echo "::notice title=Coverage (src/)::$summary"
-          # Extract the branch % (e.g. "12.3%") for the ratchet.
-          br=$(grep -E 'branches' build_unix/coverage-summary.txt \
-               | grep -oE '[0-9]+\.[0-9]+%' | head -1 | tr -d '%')
-          ln=$(grep -E 'lines' build_unix/coverage-summary.txt \
-               | grep -oE '[0-9]+\.[0-9]+%' | head -1 | tr -d '%')
-          # FUNCTION coverage is the metric with a reachable target: >85% needs
-          # ~+180 functions, whereas >85% BRANCH would need +27k -- 70% of every
-          # branch currently missing, because ~1662 `if ((ret = f()) != 0)` OOM
-          # legs are reachable only one-per-fault-injection-run.  See
-          # test/coverage/FULL-COVERAGE-REPORT-4.md.
-          fn=$(grep -E 'functions' build_unix/coverage-summary.txt \
-               | grep -oE '[0-9]+\.[0-9]+%' | head -1 | tr -d '%')
-          echo "branch=$br" >> "$GITHUB_OUTPUT"
-          echo "line=$ln" >> "$GITHUB_OUTPUT"
-          echo "function=$fn" >> "$GITHUB_OUTPUT"
-
-      - name: Ratchet (advisory) -- warn if branch coverage dropped
-        run: |
-          base_file=test/coverage/baseline.txt
-          br="${{ steps.cov.outputs.branch }}"
-          ln="${{ steps.cov.outputs.line }}"
-          if [ -f "$base_file" ]; then
-            base_br=$(grep -E '^branch=' "$base_file" | cut -d= -f2)
-            base_ln=$(grep -E '^line=' "$base_file" | cut -d= -f2)
-            base_fn=$(grep -E '^function=' "$base_file" | cut -d= -f2)
-            echo "baseline: line=${base_ln}% branch=${base_br}% function=${base_fn:-n/a}"
-            echo "now:      line=${ln}% branch=${br}% function=${fn}"
-            # bc may be absent; use awk for the float compare.
-            drop=$(awk -v a="$br" -v b="$base_br" 'BEGIN{print (a+0 < b-0.5) ? 1 : 0}')
-            if [ "$drop" = "1" ]; then
-              echo "::warning title=Coverage ratchet::branch coverage dropped ${base_br}% -> ${br}% (advisory)"
-            else
-              echo "::notice title=Coverage ratchet::branch coverage ${br}% >= baseline ${base_br}% (ok)"
-            fi
-            # Same advisory treatment for function coverage, the metric we
-            # actually track toward 85%.  Skipped when the baseline predates it.
-            if [ -n "${base_fn:-}" ]; then
-              fdrop=$(awk -v a="$fn" -v b="$base_fn" 'BEGIN{print (a+0 < b-0.5) ? 1 : 0}')
-              if [ "$fdrop" = "1" ]; then
-                echo "::warning title=Coverage ratchet::function coverage dropped ${base_fn}% -> ${fn}% (advisory)"
-              else
-                echo "::notice title=Coverage ratchet::function coverage ${fn}% >= baseline ${base_fn}% (ok)"
-              fi
-            fi
-          else
-            echo "::notice title=Coverage ratchet::no baseline file yet; current branch=${br}% line=${ln}%"
+          summary=$(grep -E 'lines|branches|functions' \
+            build_unix/coverage-summary.txt | tr '\n' ' ')
+          echo "::notice title=Coverage (src/, serial)::$summary"
+          # Per-phase wall time, so "which block costs the 30 minutes" stays a
+          # measured fact rather than a recollection.
+          if [ -f build_unix/coverage-phases.txt ]; then
+            echo "phase wall time:"; cat build_unix/coverage-phases.txt
           fi
-          echo "To update the committed baseline: put 'line=${ln}', 'branch=${br}' and 'function=${fn}' in $base_file"
+
+      - name: Branch-coverage ratchet (GATE)
+        run: ./test/coverage/ratchet.sh
 
       - name: Upload HTML report
         if: always()
@@ -114,4 +214,5 @@ jobs:
           path: |
             build_unix/coverage-html/
             build_unix/coverage-summary.txt
+            build_unix/coverage-phases.txt
           if-no-files-found: warn
