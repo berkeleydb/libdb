@@ -25,11 +25,20 @@
  *	    -o p5_log_bench
  *	./p5_log_bench <dir> <threads> <secs> <valsz> [lg_bsize] [mode] [spins] [batch]
  *
- * mode=nolog runs the SAME btree work with no transaction and no logging
- * (DB->put with a NULL txn on a non-transactional environment).  This is the
- * control that separates "the log is the ceiling" from "the per-transaction
- * path is the ceiling": if nolog scales and the logged arms do not, the log is
- * implicated; if nolog is also flat, the ceiling is elsewhere.
+ * Two controls separate "the log is the ceiling" from "the per-transaction path
+ * is the ceiling":
+ *
+ *   mode=nolog    no transaction and no logging (DB->put with a NULL txn on a
+ *                 non-transactional environment).  Only valid to t=8 --
+ *                 concurrent DB->put without DB_INIT_LOCK returns EINVAL above
+ *                 that, so it cannot answer the high-thread question.
+ *   mode=notdur   DB_TXN_NOT_DURABLE on the DB handle: full transactions, full
+ *                 locking, the same commit path, but __log_put_record_int takes
+ *                 the is_durable == 0 branch and queues the record on the txn
+ *                 instead of appending it (src/log/log_put.c:2081-2090), so the
+ *                 log region latch is never taken for data records.  This IS
+ *                 valid at every thread count and is the control that isolates
+ *                 the log's share of the per-transaction cost.
  *
  * [batch] puts N keys per transaction instead of 1.  A single-key insert costs
  * ~3.1 log records (2 x __db_addrem for key and data, 1 x __txn_regop), so it
@@ -51,7 +60,7 @@
 
 static DB_ENV *env;
 static DB *dbp;
-static int nthreads, secs, valsz, batch, nolog;
+static int nthreads, secs, valsz, batch, nolog, notdur;
 static volatile int stop;
 static unsigned long long total_ops;
 static pthread_mutex_t tally = PTHREAD_MUTEX_INITIALIZER;
@@ -182,12 +191,16 @@ int main(int argc, char **argv)
 		(void)env->mutex_set_tas_spins(env, spins);
 	if (strcmp(mode, "nolog") == 0)
 		nolog = 1;
-	else if (strcmp(mode, "nosync") == 0)
+	else if (strcmp(mode, "notdur") == 0) {
+		notdur = 1;
+		(void)env->set_flags(env, DB_TXN_NOSYNC, 1);
+	} else if (strcmp(mode, "nosync") == 0)
 		(void)env->set_flags(env, DB_TXN_NOSYNC, 1);
 	else if (strcmp(mode, "wrnosync") == 0)
 		(void)env->set_flags(env, DB_TXN_WRITE_NOSYNC, 1);
 	else if (strcmp(mode, "sync") != 0) {
-		fprintf(stderr, "mode must be nosync|wrnosync|sync|nolog\n");
+		fprintf(stderr,
+		    "mode must be nosync|wrnosync|sync|nolog|notdur\n");
 		return (2);
 	}
 	if ((ret = env->open(env, home, DB_CREATE | DB_INIT_MPOOL | DB_THREAD |
@@ -196,6 +209,8 @@ int main(int argc, char **argv)
 
 	if ((ret = db_create(&dbp, env, 0)) != 0) die(ret, "db_create");
 	(void)dbp->set_pagesize(dbp, 4096);
+	if (notdur)
+		(void)dbp->set_flags(dbp, DB_TXN_NOT_DURABLE);
 	if (nolog) {
 		if ((ret = dbp->open(dbp, NULL, "p5.db", NULL, DB_BTREE,
 		    DB_CREATE | DB_THREAD, 0644)) != 0) die(ret, "db->open");
@@ -240,8 +255,8 @@ int main(int argc, char **argv)
 	    (u_long)ls->st_w_mbytes, (u_long)ls->st_w_bytes,
 	    (u_long)ls->st_wcount, (u_long)ls->st_wcount_fill,
 	    (u_long)ls->st_scount);
-	printf("  spins=%lu batch=%d records_per_row=%.2f\n",
-	    (u_long)spins, batch,
+	printf("  spins=%lu batch=%d notdur=%d records_per_row=%.2f\n",
+	    (u_long)spins, batch, notdur,
 	    total_ops == 0 ? 0.0 : (double)ls->st_record / total_ops);
 	printf("  region_wait=%lu region_nowait=%lu "
 	    "mincommitperflush=%lu maxcommitperflush=%lu\n",

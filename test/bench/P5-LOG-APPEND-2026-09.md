@@ -213,20 +213,50 @@ transactions, not appends or bytes.
 **The best arm reaches ~5% of the device.** At 32 KB per write and ~1,440
 writes/s, IOPS utilisation is ~0.3% of 494k. Nothing here is device-bound.
 
-## 8. Confound, stated
+## 8. The log's actual share (`p5_notdur.tsv`)
 
 Batching reduces per-transaction cost **engine-wide** — `txn_begin`/`txn_end`
 (the P1 locker path), lock acquisition, the commit record and its flush — not
-only log appends. So §7 establishes that the **per-transaction fixed cost** is
-the ceiling and that the log's share is large (wait fraction halves), but not
-that the log is all of it.
+only log appends. So §7 establishes that the per-transaction fixed cost is the
+ceiling, but not how much of it is the log. Two controls, one invalid and one
+valid:
 
-A `nolog` control (no transaction, no logging, identical btree work) gives
-270,767 rows/s at t=1 and 307,276 at t=8, against 163,738 and 146,786 for the
-logged arm — removing the log/txn path roughly doubles throughput at t=8. Above
-t=8 that control is **invalid**: concurrent `DB->put` without `DB_INIT_LOCK`
-returns `EINVAL`. It therefore cannot settle the high-thread case and no claim
-is made from it. RFC 0008 Risk 1 records the valid control still needed.
+**Invalid above t=8.** A `nolog` arm (no transaction, no logging, identical btree
+work) gives 270,767 rows/s at t=1 and 307,276 at t=8 against 163,738 and 146,786
+logged. Above t=8, concurrent `DB->put` without `DB_INIT_LOCK` returns `EINVAL`,
+so this arm cannot answer the high-thread question and nothing is claimed from
+it.
+
+**Valid at every thread count.** `DB_TXN_NOT_DURABLE` on the DB handle keeps full
+transactions, full locking and the same commit path, but
+`__log_put_record_int` takes the `is_durable == 0` branch and queues the record
+on the transaction rather than appending it (`src/log/log_put.c:2081-2090`), so
+the log region latch is never taken for data records. The harness confirms
+**0.00 records per row**. 5 reps, medians:
+
+| t | logged rows/s | log-suppressed rows/s | ratio | log share of removable per-row cost | notdur CV% |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 164,782 | 206,902 | 1.26× | 20.4% | 4.35 |
+| 2 | 215,456 | 266,052 | 1.23× | 19.0% | 3.10 |
+| 4 | 167,944 | 206,091 | 1.23× | 18.5% | 2.12 |
+| 8 | 144,141 | 235,102 | 1.63× | **38.7%** | 1.65 |
+| 16 | 88,018 | 231,106 | 2.63× | **61.9%** | 2.99 |
+| 32 | 78,626 | 169,749 | 2.16× | **53.7%** | 12.97 |
+| 64 | 88,362 | 138,182 | 1.56× | 36.1% | 16.13 |
+| 96 | 83,296 | 131,170 | 1.57× | 36.5% | 17.08 |
+
+**The log is the largest single component of per-transaction cost at t≥8 — 36%
+to 62% — and it is not all of it.**
+
+This bounds every design in RFC 0008: a *perfect* append fix buys at most +57%
+at t=96 and +163% at t=16. Reserve-then-copy's measured 10–20% of the critical
+section, applied to a component worth 36–62% of cost, is a few percent of
+throughput.
+
+It also reveals a second defect behind P5: **with the log removed from the append
+path, throughput still declines** — 235k at t=8 down to 131k at t=96, with CV
+rising to 17%. Whatever that is, it is not the log, and RFC 0008 does not
+identify it.
 
 ## 9. Two harness defects of mine, so they are not re-derived
 
@@ -258,6 +288,9 @@ sh p5_sweep.sh <build> p5_bsize8m.tsv 8388608 nosync 10 3 0 1 2 4 8 16 32 64 96
 sh p5_batch_ab.sh <build> p5_floor.tsv 10 5 1,1 1,2,4,8,16,32,64,96
 sh p5_batch_ab.sh <build> p5_batch.tsv 10 5 1,4 1,2,4,8,16,32,64,96
 python3 p5_report.py p5_batch.tsv
+
+# the log's share: same arms, log appends suppressed, txn+locking intact
+sh p5_batch_ab.sh <build> p5_notdur.tsv 10 5 1,1 1,2,4,8,16,32,64,96 notdur
 
 # critical-section model: copy-inside vs reserve-then-copy
 for t in 1 8 32 96; do for m in 0 1 0 1; do ./p5_cslen $t 157 4 4800 $m; done; done
