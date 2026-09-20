@@ -33,17 +33,21 @@
 # library's own descriptors.  Both kinds emit through hi_emit, so an unrecorded
 # check is a manifest failure rather than a silent skip.
 #
-# P2 IS RECORDED, NOT HIDDEN
+# P2 IS RECORDED, NOT HIDDEN -- AND P3 IS NO LONGER ALLOWED TO FAIL
 #
-# On current master direct_db and direct_log report XFAIL naming P2, because the
-# open genuinely fails EINVAL (__fop_read_meta and the log write path hand
-# unaligned buffers to an O_DIRECT fd).  XFAIL counts as pass in harness.sh:
-# the expectation held.  When P2 is fixed the open succeeds, the O_DIRECT
-# assertion runs, and the mode reports PASS with no edit to this file.
+# direct_db reports XFAIL against P2 on a tree where P2 is present, naming it.
+# XFAIL counts as pass in harness.sh: the expectation held.  When P2 is fixed the
+# open succeeds, the O_DIRECT assertion runs, and the mode reports PASS with no
+# edit to this file.
 #
-# TEETH.  FLAGB_STRICT=1 refuses the XFAIL allowance, so the two modes report
-# FAIL on a tree where P2 is present.  That is how this test is shown to have
-# teeth rather than being a comment about a defect.
+# direct_log has NO XFAIL allowance any more.  P3 (the log write path handing
+# __os_io unaligned buffers of arbitrary length at arbitrary offsets) is fixed in
+# src/log/log_put.c:__log_write_direct -- see docs/design/p3-log-odirect.md -- so
+# a failed transactional open under DB_LOG_DIRECT is a hard FAIL here.
+#
+# TEETH.  FLAGB_STRICT=1 refuses the XFAIL allowance, so a mode still reporting
+# XFAIL becomes FAIL.  That is how this test is shown to have teeth rather than
+# being a comment about a defect.
 #
 # Usage:  ./flag-run.sh [build_dir]     (default: ../../build_unix)
 # Env:    CC, TIMEOUT (per-run seconds, default 300), FLAGB_STRICT=1
@@ -95,7 +99,7 @@ else
 	echo "    Configure with --enable-o_direct to exercise them."
 	HAVE_OD=0
 fi
-echo "=== FLAGB_STRICT=$STRICT (1 = refuse the P2 XFAIL allowance)"
+echo "=== FLAGB_STRICT=$STRICT (1 = refuse the XFAIL allowance)"
 
 # fresh_dir DIR -- an empty directory, or a hard error.  A mkdir failure used
 # to SKIP a run silently in leak-run.sh (historical trap 2); no directory means
@@ -168,25 +172,118 @@ run_mode dsync_log    dsync_log
 # ALIGNP_INC over the over-sized buffer yields a 4096-aligned address where the
 # bare DBMETASIZE array does not, and that DBMETASIZE still fits after rounding.
 # It needs no libdb env, so it is built and run directly.
-echo "=== running p2_align"
-p2dir="$RUNDIR/p2_align"
-if fresh_dir "$p2dir"; then
-	p2out="$p2dir/out.txt"
-	if cc -O2 -o "$p2dir/p2_align" "$HERE/p2_align.c" >"$p2out" 2>&1 &&
-	    timeout "$TIMEOUT" "$p2dir/p2_align" >>"$p2out" 2>&1; then
-		sed -n 's/^/    /p' "$p2out"
-		if grep -q '^VERDICT p2_align PASS' "$p2out"; then
-			echo "--- p2_align: PASS"; hi_emit p2_align pass
+
+# mech_gate NAME SRC -- build and run a standalone mechanism driver.
+mech_gate() {
+	mname=$1; msrc=$2
+	echo "=== running $mname"
+	mdir="$RUNDIR/$mname"
+	if ! fresh_dir "$mdir"; then
+		hi_emit "$mname" fail; rc=1; return
+	fi
+	mout="$mdir/out.txt"
+	if cc -O2 -o "$mdir/$mname" "$HERE/$msrc" >"$mout" 2>&1 &&
+	    timeout "$TIMEOUT" "$mdir/$mname" >>"$mout" 2>&1; then
+		sed -n 's/^/    /p' "$mout"
+		if grep -q "^VERDICT $mname PASS" "$mout"; then
+			echo "--- $mname: PASS"; hi_emit "$mname" pass
 		else
-			echo "--- p2_align: FAIL (no PASS verdict)"; hi_emit p2_align fail; rc=1
+			echo "--- $mname: FAIL (no PASS verdict)"
+			hi_emit "$mname" fail; rc=1
 		fi
 	else
-		sed -n 's/^/    /p' "$p2out"
-		echo "--- p2_align: FAIL"; hi_emit p2_align fail; rc=1
+		sed -n 's/^/    /p' "$mout"
+		echo "--- $mname: FAIL"; hi_emit "$mname" fail; rc=1
 	fi
-else
-	hi_emit p2_align fail; rc=1
-fi
+}
+
+mech_gate p2_align p2_align.c
+
+# P3's mechanism check.  direct_log DOES fail EINVAL on the development box
+# without the fix (unlike direct_db), so the behaviour mode has teeth here --
+# but /nvme's logical sector size is 512, so a passing run only demonstrates
+# 512-alignment while the code claims 4096.  And no behaviour test can show the
+# RESTAGED BYTES are the right bytes: a staging loop emitting correctly-aligned
+# garbage would satisfy every O_DIRECT check and silently corrupt the log.
+# p3_align asserts all three constraints on the staging arithmetic AND that the
+# resulting file is byte-identical to what the plain unaligned writes would have
+# left below the write frontier, with zero padding above it.
+mech_gate p3_align p3_align.c
+
+# ---------------------------------------------------------------------------
+# P3, on the REAL library: are the log writes the library actually issues
+# block-aligned in OFFSET and LENGTH?  p3_align models the arithmetic; this
+# reads the syscalls the library made, so the model and the code cannot drift
+# apart silently.
+# ---------------------------------------------------------------------------
+logio_gate() {
+	if ! command -v strace >/dev/null 2>&1; then
+		echo "--- direct_log@io: SKIP (strace not installed; the" \
+		    "assertion IS the syscall argument list, so there is" \
+		    "nothing weaker to fall back on)"
+		hi_emit direct_log@io skip
+		return
+	fi
+	if [ "$HAVE_OD" != 1 ]; then
+		echo "--- direct_log@io: SKIP (no HAVE_O_DIRECT in this build," \
+		    "so the log fd is not O_DIRECT and alignment is not" \
+		    "required)"
+		hi_emit direct_log@io skip
+		return
+	fi
+	dir="$RUNDIR/direct_log-io"
+	fresh_dir "$dir" || { hi_emit direct_log@io fail; rc=1; return; }
+	echo "=== running flag_behaviour direct_log under strace (log I/O args)"
+	out="$dir/out.txt"
+	arc=0
+	( cd "$dir" && mkdir -p TESTDIR_flag_behaviour &&
+	    timeout "$TIMEOUT" strace -f -y -e trace=pwrite64,pread64 \
+	    "$RUNDIR/flag_behaviour" direct_log ) >"$out" 2>&1 || arc=$?
+	v=$(awk '$1 == "VERDICT" { print $3; exit }' "$out")
+	if [ "$arc" != 0 ] || [ "${v:-}" != PASS ]; then
+		echo "--- direct_log@io: FAIL (run exit $arc, verdict ${v:-none}" \
+		    "-- the I/O of a run that did not work cannot be graded)"
+		hi_emit direct_log@io fail
+		rc=1
+		return
+	fi
+	# strace -y prints  pwrite64(9</abs/path/log.0000000001>, "...", LEN, OFF)
+	# Grade only the log files: the data file and the region files are
+	# buffered descriptors under this flag and need no alignment.
+	awk '
+	/p(write|read)64\(/ && /log\.[0-9]+>/ {
+		n = split($0, f, ",")
+		len = f[n-1] + 0; off = f[n] + 0
+		total++
+		if (len % 4096 != 0 || off % 4096 != 0) {
+			bad++
+			if (bad <= 5) print "    BAD  " $0
+		}
+	}
+	END { printf "LOGIO total=%d bad=%d\n", total + 0, bad + 0 }
+	' "$out" > "$dir/graded.txt"
+	sed -n 's/^/    /p' "$dir/graded.txt"
+	line=$(grep '^LOGIO ' "$dir/graded.txt" || true)
+	tot=$(printf '%s\n' "$line" | sed -n 's/.*total=\([0-9]*\).*/\1/p')
+	bad=$(printf '%s\n' "$line" | sed -n 's/.*bad=\([0-9]*\).*/\1/p')
+	if [ "${tot:-0}" -lt 10 ]; then
+		echo "--- direct_log@io: FAIL (strace saw only ${tot:-0}" \
+		    "pread/pwrite calls on a log file -- nothing was measured," \
+		    "so 'all aligned' would be vacuous)"
+		hi_emit direct_log@io fail
+		rc=1
+	elif [ "${bad:-1}" -ne 0 ]; then
+		echo "--- direct_log@io: FAIL ($bad of $tot log pread/pwrite" \
+		    "calls were NOT 4096-aligned in offset and length)"
+		hi_emit direct_log@io fail
+		rc=1
+	else
+		echo "--- direct_log@io: PASS (all $tot log pread/pwrite calls" \
+		    "4096-aligned in both offset and length)"
+		hi_emit direct_log@io pass
+	fi
+}
+logio_gate
 
 # ---------------------------------------------------------------------------
 # DB_LOG_WRNOSYNC -- the log sync COUNT must drop, and the log WRITE count must
