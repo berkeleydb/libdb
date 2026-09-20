@@ -53,6 +53,18 @@ someone may pick it up.
 |----|-------|--------|
 | **P4** | `__db_walk_cursors` held `env->mtx_dblist` **exclusively** across the whole cursor walk, so the 8-way `cq_parts[]` sharding bought nothing and one environment-wide mutex serialized every B-tree insert. **FIXED** — the latch is now taken **shared**: it guards the *shape* of `env->dblist`, the walk is a pure reader, and `__db_refresh` unlinks under the same latch **exclusively**, so a handle cannot be unlinked while a reader holds it shared. That makes the handle-lifetime question vanish rather than requiring a pin that does not exist. `__bam_ca_di` **30.74% → 2.89%** of profile at t=64. **Throughput effect is modest and workload-dependent** — independently measured over 3 alternating reps on 96 vCPU: **t=64 +10.7%** (median 125,890 → 139,396), **t=32 −5.3% at 6.4% CV, i.e. inside noise**. The implementing agent measured a t=64 *regression*; my re-measurement found the opposite sign, so the honest statement is that this is not a large throughput win. **`__log_put` is now the ceiling** — 56% of time at t=64, 87% of that on the single log-region latch — which is the next target and is tracked as **P5**. Analysis: `test/bench/P4-FIX-2026-09.md`. | **fixed** |
 
+## Engine bugs in untested public API flags
+
+Found by the `flagapi` behaviour tier, which was built because 112 of 229 public flags
+had **no** test. Each is XFAIL'd with a reference and flips to PASS with no edit once
+fixed. **All three were reproduced on stock master.**
+
+| id | issue | status |
+|----|-------|--------|
+| **P6** | **`DB_BACKUP_NO_LOGS` is accepted and silently ignored.** It appears exactly *twice* in the tree: its own `#define` and the accepted-flag mask at `src/db/db_backup.c:684`. It is **read nowhere**. Measured: a plain `DB_ENV->backup()` copied 62 log files; the same call with `DB_BACKUP_NO_LOGS` copied the same 62. `docs_src/api/c/envbackup.md` documents it as "Back up only the `*.db` files. Do not backup the log files." Severity: silent — an operator asking for a logless backup gets logs, so wasted space and a false expectation rather than data loss. | open |
+| **P7** | **`DB_INORDER` + `DB_CONSUME` across a deleted record hangs forever at 98% CPU.** Minimal repro with **no concurrency**: queue with `set_flags(DB_INORDER)`, 20 records via `DB_APPEND`, `DB->del()` record 10, drain with `DB_CONSUME`. Without the flag it drains all 19 survivors and returns `DB_NOTFOUND`; with it, it consumes 1–9, reaches the hole, and never returns. gdb hit counts on the `retry:` label in `__qamc_get` (`src/qam/qam.c:691`): **22** for the default arm versus **>100,001 and climbing** under `DB_INORDER`. Verified in source: `inorder = F_ISSET(dbp, DB_AM_INORDER) && with_delete` (`qam.c:667`) causes the record lock to be taken **without `DB_LOCK_NOWAIT`** (`qam.c:838`), and `first != cp->recno` (`qam.c:866`) breaks out of the switch without advancing past the gap, so it never converges. Severity: **highest of the three** — an unkillable spin in a documented public flag, reachable single-threaded. | open |
+| **P8** | **`DB_NOFLUSH` makes an environment unusable** — `SIGBUS` on a shared environment, `DB_PAGE_NOTFOUND` on a private one. `LAST_PANIC_CHECK_BEFORE_IO` is an unconditional `return (0)` inside every write path. | open |
+
 ## The next ceiling
 
 | id | issue | status |
