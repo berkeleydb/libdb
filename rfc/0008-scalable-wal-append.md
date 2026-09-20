@@ -426,6 +426,431 @@ backpressure would fit existing call sites. Detailed as **D3**.
 
 ---
 
-*(§Design, §Findings, §Risks and §Decision follow; the anatomy and prior-art
-survey above are committed first, per the RFC process, so the analysis lands
-independently of how far the prototyping gets.)*
+## Findings: what actually limits the append path
+
+All measurements: 96-vCPU box, production build (`--enable-shared`, no
+DIAGNOSTIC), `/nvme` striped local NVMe, insert workload
+(`test/bench/p5_log_bench.c`), `DB_TXN_NOSYNC`, 100-byte values, throughput in
+rows/sec. Counters are read from `DB_ENV->log_stat`, i.e. from the engine, not
+inferred.
+
+### The noise floor is wide, and that shapes what can be claimed
+
+Base against itself (same binary in both arms, arms alternating within each rep,
+5 reps, ratio computed **paired within each rep**):
+
+| t | 1 | 2 | 4 | 8 | 16 | 32 | 64 | 96 |
+|---|---|---|---|---|---|---|---|---|
+| max \|dev\| | 4.1% | 3.9% | 4.5% | 10.4% | 9.3% | 13.6% | **22.2%** | 10.6% |
+
+**Floor: ±22.2%.** Much wider than the ±4.6% P4 measured on the same box,
+because this workload is *bimodal* at high thread counts — at t=64 one rep
+returned 148k and 115k where the other four returned ~85k. Anything below ±22%
+at t=64 is not a result. Median throughput, batch=1:
+
+| t | 1 | 2 | 4 | 8 | 16 | 32 | 64 | 96 |
+|---|---|---|---|---|---|---|---|---|
+| rows/s | 163,738 | 211,587 | 169,452 | 146,786 | 90,333 | 78,439 | 86,017 | 89,896 |
+
+This reproduces the shape P5 reported: a peak at t=2 and a decline thereafter.
+
+### Finding 1 — the critical section's *contents* are not the cost
+
+Two independent controls, both pointing the same way.
+
+**The profile.** `perf record --call-graph dwarf` at t=64 attributes **85.57%**
+to `__db_tas_mutex_lock_int` and **4.88%** to `__db_tas_mutex_unlock` (90.45%
+combined), of which `__log_put` is 52.31% — reproducing the 56%/87% split P5
+reported. But `__memmove_evex_unaligned_erms`, which is the `__log_fill` copy at
+`:1382`, is **1.46%** of total time. The mean log record here is **157 bytes**
+(795 MB over 5.06M records), i.e. a copy of roughly 10 ns.
+
+**The buffer-size control.** `lg_bsize` 32 KB (default) → 8 MB changes *how
+often a `pwrite` happens inside the latch* by two orders of magnitude and
+nothing else:
+
+| | writes/s inside latch | t=32 rows/s | t=96 rows/s |
+|---|---|---|---|
+| 32 KB | 2,608 | 78,614 | 88,435 |
+| 8 MB | **15** | 78,537 | 94,421 |
+
+`wcount_fill` ≈ `wcount` in both arms (10,779 of 10,811 at 32 KB), confirming
+that nearly every log write is issued by `__log_fill` **under the region latch**
+rather than by the flusher. Removing **170×** of those syscalls from inside the
+critical section changed throughput by **−0.1% / +6.8%**, both inside the floor.
+
+**Consequence: shortening this critical section optimises a term worth ~1.5%,
+plus a syscall whose removal buys nothing.** That is a direct argument against
+D1 as a first move, and it was worth measuring before designing.
+
+### Finding 2 — the model bounds reserve-then-copy at ~10–20%
+
+`test/bench/p5_cslen.c` models the critical section standalone under a
+BDB-shaped TAS latch (including the owner-identity write to the same cacheline
+that `mut_tas.c:205-206` performs), A/Bing copy-inside (mode 0, today) against
+reserve-inside-copy-outside (mode 1, the PG/InnoDB shape), 157-byte records,
+each arm run twice, alternating:
+
+| t | mode 0 acq/s | mode 1 acq/s | gain | mode 0 hold | mode 1 hold |
+|---|---|---|---|---|---|
+| 1 | 14.0M | 14.1M | +0.8% | 21.6 ns | 19.3 ns |
+| 8 | 1.79M / 1.68M | 1.62M / 1.62M | −6% | 221–225 ns | 227–228 ns |
+| 32 | 1.10M / 1.05M | 1.22M / 1.21M | +13% | 364–377 ns | 308–320 ns |
+| 96 | 1.13M / 1.31M | 1.56M / 1.32M | +18% / +1% | 310–422 ns | 269–339 ns |
+
+Two readings. First, **reserve-then-copy's ideal-case upside is 10–20%**, not a
+multiple — consistent with Finding 1, since it removes a ~10 ns copy from a
+~300 ns section. Second, and more informative: mean hold time grows
+**21 ns → ~300 ns (14×)** as threads rise *while the work under the latch is
+constant*. That inflation is cache-coherence traffic on the latch line and the
+`lp->*` counters, not computation — which is both why the `memcpy` is not the
+cost and why removing it does not help.
+
+### Finding 3 — the ceiling is transactions/sec, not appends/sec
+
+The decisive experiment. A single-key btree insert costs **3.10 log records**,
+verified with `db_printlog` over a t=1 run: 2,013,278 `__db_addrem` +
+1,006,640 `__txn_regop` + 50,326 `__db_pg_alloc` + 50,323 `__bam_split` for
+1,006,639 rows. The two `__db_addrem` are the key and the data, each a separate
+`__db_pitem` (`src/btree/bt_put.c:366`, `:478-483`), each its own `__log_put`.
+So **one row enters the serialized append stage three times.**
+
+Batching rows per transaction changes how often that stage is entered per unit
+of user work. 5 reps, arms alternating within each rep, rows/s for both arms so
+the unit of work is identical:
+
+| t | batch=1 | CV% | batch=4 | CV% | 4/1 | vs floor |
+|---|---|---|---|---|---|---|
+| 1 | 163,738 | 3.97 | 188,363 | 4.07 | **+15.0%** | outside (4.1%) |
+| 2 | 211,587 | 5.31 | 257,813 | 4.78 | **+21.9%** | outside (3.9%) |
+| 4 | 169,452 | 2.08 | 235,224 | 2.51 | **+38.8%** | outside (4.5%) |
+| 8 | 146,786 | 2.92 | 241,359 | 1.72 | **+64.4%** | outside (10.4%) |
+| 16 | 90,333 | 4.15 | 239,005 | 1.90 | **+164.6%** | outside (9.3%) |
+| 32 | 78,439 | 5.32 | 226,841 | 1.22 | **+189.2%** | outside (13.6%) |
+| 64 | 86,017 | 2.76 | 213,982 | 1.42 | **+148.8%** | outside (22.2%) |
+| 96 | 89,896 | 4.44 | 197,229 | 1.10 | **+119.4%** | outside (10.6%) |
+
+Every cell from t=4 up is far outside the floor, and CV *falls* from ~4–5% to
+~1–2% — the bimodality disappears. Batching also flattens the curve: batch=4
+holds 197k–257k across the whole range instead of collapsing from 211k to 78k.
+
+Now the mechanism. Records per row falls only 3.10 → 2.35 (−24%) at batch=4,
+yet throughput rises up to +189%. The win is **not** proportional to the
+reduction in appends. Sustained appends/sec:
+
+| t | appends/s batch=1 | appends/s batch=4 | ratio |
+|---|---|---|---|
+| 16 | 280,032 | 561,662 | **2.01×** |
+| 32 | 243,161 | 533,076 | **2.19×** |
+| 64 | 266,653 | 502,858 | 1.89× |
+| 96 | 278,678 | 463,488 | 1.66× |
+
+**The same latch sustains 2.19× more appends per second when those appends
+arrive in bursts of ~9 from one thread instead of 3 from each of many.** A latch
+capacity-limited at 243k appends/s could not do 533k. So 243k is not the latch's
+capacity — it is what the latch delivers when every acquisition comes from a
+different core and therefore takes the latch line and the `lp->*` counters as
+cold misses.
+
+Holding the unit of work fixed while varying batch shows the real invariant:
+
+| batch | rows/s | **txns/s** | appends/s | appends/txn |
+|---|---|---|---|---|
+| 1 | 91,609 | **91,609** | 283,988 | 3.10 |
+| 2 | 175,494 | **87,747** | 456,284 | 5.20 |
+| 4 | 229,921 | 57,480 | 540,314 | 9.40 |
+| 8 | 215,330 | 26,916 | 480,186 | 17.84 |
+
+From batch=1 to batch=2, rows/s nearly doubles while **txns/s is flat** (91.6k →
+87.7k). The system is limited to **~90k transactions/sec**, largely independently
+of how much work each transaction does. The log-latch wait rate corroborates: at
+t=32 the region-lock wait fraction falls from **58.4%** to **27.7%** at batch=4
+while appends/s doubles.
+
+**Caveat, stated plainly.** Batching reduces *per-transaction* costs across the
+whole engine — `txn_begin`/`txn_end` (the P1 locker path), lock acquisition, and
+the commit record and its flush — not only log appends. This establishes that
+the **per-transaction fixed cost** is the ceiling and that the log's share is
+large (the wait fraction halves), but it does **not** prove the log is all of
+it. A `nolog` control (no txn, no log, identical btree work) reached 270,767
+rows/s at t=1 and 307,276 at t=8 versus 163,738 and 146,786 for the logged arm —
+so removing the log/txn path roughly doubles throughput at t=8. Above t=8 that
+control is invalid (concurrent `DB->put` without `DB_INIT_LOCK` returns
+`EINVAL`), so it cannot settle the high-t case and I am not claiming it does.
+
+### What this means for the device ceiling
+
+Against 494k IOPS / 1930 MiB/s measured with `fio`:
+
+| arm | t=32 | t=96 | share of 1930 MiB/s |
+|---|---|---|---|
+| batch=1 | 38.2 MiB/s | 43.8 MiB/s | 2.0% / 2.3% |
+| batch=4 | 103.5 MiB/s | 89.9 MiB/s | 5.4% / 4.7% |
+
+Even the best arm uses **~5%** of the device. `avg_write_bytes` is 31,966 — the
+log writes full 32 KB buffers, so at ~1,440 writes/s it is nowhere near the 494k
+IOPS limit either. **No design here is device-bound; storage is not the
+constraint at any measured point, which makes the backpressure work (D3) about
+future-proofing rather than a current stall.**
+
+## Design
+
+Four designs, ranked by measured benefit against correctness risk. The ranking
+is driven by §Findings, and it is **not** the ranking this RFC set out to
+produce.
+
+### D0 — Reduce log appends per transaction (recommended first)
+
+**Mechanism.** Attack the 3.10 records per row where the engine emits more
+records than the format requires:
+
+1. **Combine the key and data `__db_addrem` records.** `__bam_iitem` calls
+   `__db_pitem` twice for one logical insert (`bt_put.c:366`, `:478-483`), and
+   each call logs independently (`db_dup.c:205`). One record carrying both
+   items — or a vector of items for one page — halves the dominant record count.
+   Both items go to the **same page** under the **same page latch** in the same
+   operation, so the recovery argument is local: the redo applies both or
+   neither, which is *stronger* than today, where a crash can land the key
+   record without the data record and recovery depends on the transaction being
+   rolled back.
+2. **Avoid re-entering the latch for an adjacent commit record.** A committing
+   transaction's last data record and its `__txn_regop` are usually emitted
+   back-to-back by the same thread; a combined path would take the latch once.
+
+**Critical section shrinks to:** unchanged in *duration*; what falls is
+**acquisitions per transaction**, 3.10 → ~2.1 for (1) alone. Per Finding 3 that
+is the quantity that matters — and unlike batching it needs no application
+change.
+
+**Recovery/durability argument.** On-disk byte order is unchanged: records are
+still appended by one latch holder, densely packed, back-chained. A combined
+record needs a new type plus recovery function — routine versioned work
+(`DB_LOGVERSION`, the `_read`/`_recover` pair, `log_verify`) — and old logs keep
+replaying through the old record's recovery function, which is how libdb has
+always added record types.
+
+**ABI/format.** **Log format version bump** (new record type): a *forward*
+change with the well-trodden migration path, a new library reading old logs.
+**No region-layout change, so `__env_struct_sig()` is unchanged and existing
+environments still attach.** A much weaker break than D1's.
+
+**Measurement.** The batch experiment already gives the upper bound (+119% to
++189% at t≥16 from a 24% record reduction). For D0: A/B records-per-row (the
+harness prints it from `st_record`) and rows/s, 5 reps, arms alternating, against
+the ±22.2% floor. **Falsifier stated in advance:** if halving `__db_addrem`
+records moves throughput less than the floor at t≥16, the per-transaction cost
+is dominated by `txn_begin`/`txn_end` or the commit flush rather than by appends,
+and D0 should be abandoned in favour of attacking those.
+
+**Risk.** Low-to-moderate. A new record type touches recovery — the dangerous
+part of the engine — but through the mechanism designed for it. No concurrency
+invariant changes.
+
+### D1 — Reserve-then-copy (PostgreSQL/InnoDB shape) — **not recommended now**
+
+**Mechanism.** Hold the latch only to (a) compute `hdr->prev` from `lp->len`,
+(b) advance `lp->lsn` and `lp->b_off` by the record length, (c) update `lp->len`
+and `lp->f_lsn`; release; then `memcpy` header and payload into the reserved
+range in parallel. A completion structure tells the flusher the contiguous
+filled prefix — PG's array of `insertingAt` watermarks with the flusher taking
+`min()`, or InnoDB's `link_buf` walked forward from the frontier.
+`__log_flush_int` must then wait for that prefix to cover `flush_lsn` before
+writing, replacing today's implicit guarantee that everything below `b_off` is
+present.
+
+**Critical section shrinks to:** two counter bumps and two field writes — ~300 ns
+becomes maybe ~100 ns, per the model.
+
+**Why it is not recommended.** Three reasons, in severity order.
+
+1. **Measured upside is 10–20%, inside or barely outside the floor at the thread
+   counts that matter** (Findings 1–2). D0 and batching each showed multiples.
+2. **The multi-process crash hazard is real and specific** (§Multi-process). A
+   process dying between reserve and fill leaves a zero-filled hole while
+   holding no lock. By `log_get.c:1238-1240` and `log.c:373-381` that hole is
+   *virtual EOF*: recovery stops there and **silently discards every committed
+   transaction after it.** PG and InnoDB are immune because a dead writer means
+   a dead server and a full replay; libdb promises `failchk` recovery of a
+   surviving environment. Mitigation requires making the reservation
+   crash-visible — e.g. a length-only placeholder header written under the latch
+   so a hole is *detectably* incomplete rather than indistinguishable from EOF,
+   plus a `failchk` pass that can complete or invalidate an abandoned
+   reservation. That is substantial new mechanism in the durability frontier for
+   a 10–20% gain.
+3. **The back-chain serializes reservations anyway.** `hdr->prev` needs
+   `lp->len` of the immediately preceding record (`:842`, `:898`), so
+   reservations cannot be computed independently as PG's and InnoDB's can — both
+   formats are flat byte spaces with no back-pointer. The reservation stays
+   serial; only the copy parallelises. This is why libdb gets less from the
+   pattern than its two model systems.
+
+**ABI/format.** The completion structure must live in the log region, i.e. new
+fields in `struct __log`, which `env_sig.c:76` hashes via `__ADD(__log)`.
+**`__env_struct_sig()` changes and every existing environment refuses to attach:
+a hard format break requiring clean shutdown and re-creation.** On-disk log
+bytes and their order are unchanged, so this breaks *region* compatibility, not
+log compatibility.
+
+**Measurement.** Same protocol; beyond throughput, (a) `st_scount` /
+`maxcommitperflush` to prove group commit still batches, (b) a crash-mid-copy
+test that kills a process between reserve and fill and asserts recovery does
+**not** silently truncate, (c) `db_verify` + `db_log_verify` after every crash
+test.
+
+### D2 — Consolidated append (Aether's consolidation array)
+
+**Mechanism.** The one design that targets Finding 3 without changing
+application behaviour or the record format. A small fixed array of slots in the
+log region; a thread CASes its length into a slot to join a group. One thread
+per slot becomes leader, takes the region latch **once** for the group's
+combined length, computes the intra-group back-chain locally (it knows every
+member's length, so it can fill each `hdr->prev` correctly), releases, and
+members copy into their assigned sub-ranges in parallel. This is precisely the
+structure that makes the back-chain tractable: the *leader* resolves the serial
+dependency for the whole group.
+
+**Critical section shrinks to:** one acquisition per *group* rather than per
+record — the same 2.19× effect the batch experiment produced, achieved inside
+the engine instead of by asking the application to batch.
+
+**Recovery/durability argument.** Byte order unchanged; back-chain correct by
+construction. The crash hazard is D1's — a member dying before filling leaves a
+hole — with the same required mitigation, but concentrable: the leader can copy
+on behalf of members that have not yet done so (members publish a pointer,
+leader completes), bounding exposure to the leader's own death and making the
+hazard equivalent to today's "holder dies with the latch".
+
+**ABI/format.** New region fields (the slot array) → **`__env_struct_sig()`
+changes, hard format break.** No log-format change.
+
+**Measurement.** Same protocol; the specific metric is appends/s at fixed
+rows/s, which should approach the batch=4 arm's 533k at t=32.
+
+**Risk.** Higher than D0 (new concurrency protocol in the durability path),
+better than D1 per unit of benefit because the benefit is a multiple rather than
+10–20%. Pursue **if and only if** D0's measured gain is insufficient.
+
+### D3 — Backpressure at the API boundary
+
+**Mechanism.** libdb has none today, and per §Findings the device sits at ~5%,
+so this is not currently a throughput lever — it is a **robustness** gap that
+any of D0–D2 makes more pressing by raising append rates. Following InnoDB's
+`log_free_check()`: (1) track the lag between the append frontier (`lp->lsn`)
+and the durable frontier (`lp->s_lsn`); (2) at `DB_TXN->commit()` — or better,
+before a transaction does work, which is InnoDB's placement — if the lag exceeds
+a configured bound, block *outside* the region latch or return a retryable
+error; (3) expose the lag via `DB_ENV->log_stat` so saturation is observable.
+`DB_LOCK_NOTGRANTED` is the precedent for a retryable "resource exhausted"
+return that applications already handle.
+
+**Critical section:** unchanged.
+
+**ABI/format.** A new `DB_LOG_STAT` field would change `__ADD(__db_log_stat)`
+(`env_sig.c:57`) → format break — **unless** the lag is derived from existing
+fields (`st_cur_file`/`st_cur_offset` vs `st_disk_file`/`st_disk_offset`), which
+it can be, so **a read-only implementation needs no break at all.** The
+blocking/erroring behaviour needs a new flag, which is additive.
+
+**Measurement.** Not a throughput experiment. Throttle the device (cgroup
+`io.max`), confirm that without D3 latency grows without bound while the log
+buffer queues, and that with D3 the lag stays bounded and the API reports
+saturation.
+
+### Rejected outright
+
+- **Partitioned/sharded WAL with per-partition order** (Kafka/Redpanda/Silo/
+  Taurus shape). Physiological redo's page-LSN precondition (`CHECK_LSN`,
+  `src/dbinc/log.h:412`) makes a cross-log merge unsound, and the format carries
+  no dependency vector. §Prior art has the full argument. Not a patch to libdb;
+  a different engine.
+- **Removing the `hdr->prev` back-chain** to make reservations independent. It
+  would make D1 behave as it does in PG, but `DB_PREV` log cursors
+  (`log_get.c:489`, `:775`), partial-record reassembly (`:990-1001`) and
+  `db_log_verify` all consume it. A log-format break of the most invasive kind
+  for a 10–20% gain.
+
+## Alternatives considered
+
+See §Design's four options and §Rejected outright. The alternative to all of
+them is **do nothing to the log and attack `txn_begin`/`txn_end` instead**,
+which Finding 3 makes a serious contender: if the ceiling is ~90k
+transactions/sec and the log is roughly half the per-transaction cost, the other
+half is in the transaction and lock subsystems, where P1 already found and fixed
+one convoy. Establishing that split is the cheapest next experiment and needs no
+design at all.
+
+## Risks & open questions
+
+1. **The batch result may overstate the log's share.** It reduces
+   per-transaction cost engine-wide. The `nolog` control bounds it at t≤8 only.
+   **Open:** a valid high-thread control — `DB_INIT_CDB`, or a
+   `DB_LOG_NOT_DURABLE` database, keeping transactions and locking but dropping
+   logging.
+2. **D0's record-combining may be blocked by an access-method detail I have not
+   verified.** `__db_pitem` is called from Btree, Hash, Recno and recovery; the
+   two calls in `__bam_iitem` are the common case, not the only one. **Open:**
+   whether every two-`pitem` site shares a page and an operation.
+3. **The 14× hold-time inflation with thread count is unexplained in detail.**
+   Consistent with coherence traffic on the latch line, but I have not measured
+   cache misses per acquisition. If part of it is the two owner-identity stores
+   (`mut_tas.c:205-206`), a cheaper acquisition would help *every* latch in the
+   engine, not just the log's — a much larger prize than P5. **Open, and the
+   highest-value follow-up here.**
+4. **`tas_spins` is not the lever it first appeared to be.** An early single-rep
+   probe suggested large gains at low spin counts; repeated properly, the
+   default (4800) was *best* at t=8 (145k vs 110k at spins=1). Recorded so it is
+   not re-tried.
+5. **Group-commit properties under D1/D2** need explicit proof, not inspection:
+   the leader/follower protocol's correctness rests on "everything below `b_off`
+   is filled", which both designs break.
+
+## Prototype / evidence
+
+No library change is proposed, so there is no prototype of a fix. What exists:
+
+- `test/bench/p5_log_bench.c` — the workload, with levers for `lg_bsize`,
+  durability mode, `tas_spins`, rows-per-transaction, and a no-log control.
+  Reads the engine's own log counters.
+- `test/bench/p5_cslen.c` — standalone model of the critical section; A/Bs
+  copy-inside against reserve-then-copy to bound D1's benefit at **10–20%**
+  without touching the library.
+- `test/bench/p5_ab.sh`, `p5_batch_ab.sh`, `p5_sweep.sh`, `p5_report.py` — A/B
+  drivers (arms alternate within each rep) and the median/CV reporter.
+- `test/bench/P5-LOG-APPEND-2026-09.md` — the full tables.
+
+Two harness defects of mine are recorded in the commit history because each
+briefly looked like a library bug: a missing `set_lk_detect` (batched
+transactions really can deadlock, and without a detector they block forever),
+and hangs at `tas_spins=1` that were my own overlapping 96-thread sweeps
+oversubscribing the box — 0 of 6 runs hang on an idle machine.
+
+---
+
+## Decision
+
+*(Filled by the reviewer when the RFC is decided.)*
+
+- **Decision:** Pending — Draft. The authors' recommendation is **reject D1
+  (reserve-then-copy) as the first move, and do not implement it on the current
+  evidence.** It was the hypothesis this RFC was opened to pursue; the
+  measurements do not support it. Pursue **D0** first — the only option with a
+  measured multiple behind it, no region-format break, and no new concurrency
+  protocol in the durability path.
+- **Rationale:** the critical section's contents are not the bottleneck
+  (memmove 1.46%; removing 170× of the in-latch syscalls changed nothing), the
+  ideal-case model bounds reserve-then-copy at 10–20%, and the same latch
+  demonstrably sustains 2.19× more appends when entered in bursts — so the cost
+  is entry into the serialized stage, not the stage itself. Against that, D1
+  requires a region-format break *and* converts a detectable
+  process-death-under-latch into silent log truncation, in the multi-process
+  configuration that distinguishes libdb from both of its model systems.
+- **Conditions / follow-ups:** (a) settle Risk 1 with a valid high-thread
+  no-logging control before attributing the whole per-transaction ceiling to the
+  log; (b) investigate Risk 3 — the 14× hold-time inflation — since a cheaper
+  mutex acquisition would benefit every subsystem; (c) treat D3 (backpressure)
+  as independent of P5 and worth doing on its own merits, noting it can be
+  implemented read-only with **no** format break; (d) if D0's gain proves
+  insufficient, D2 (consolidation array) is the next design, not D1, because it
+  targets acquisitions-per-transaction rather than hold time and resolves the
+  back-chain dependency at the group leader.
+
