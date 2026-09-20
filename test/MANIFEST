@@ -199,6 +199,37 @@ flag	direct_mpf	optional
 # p3_align models that arithmetic; this reads the syscalls, so the model and the
 # code cannot drift apart silently.  Optional: needs strace and --enable-o_direct.
 flag	direct_log@io	optional
+
+# ---------------------------------------------------------------------------
+# Tier: p3durable -- the DURABILITY proof for the P3 fix.
+# test/c/p3-durable-run.sh
+#
+# The flag tier proves DB_LOG_DIRECT WORKS (the open completes, the fd is
+# O_DIRECT, every log I/O is aligned).  None of that proves it is SAFE:
+# __log_write_direct rewrites the leading partial block of every write and
+# zero-pads the trailing one, so it touches bytes belonging to records that were
+# already fsync'd and ACKED DURABLE.  If the restaging is wrong, a committed
+# transaction disappears.  This project already shipped one "fast liar"
+# (__memp_aio_drain swallowing write errors while reporting durability), so the
+# bar here is a real SIGKILL with no clean close and no checkpoint anywhere.
+#
+#   p3durable@ack     N commits acked DB_TXN_SYNC under DB_LOG_DIRECT, the
+#                     process SIGKILLed, then recovered: every acked commit must
+#                     be present with byte-correct contents.  The count comes
+#                     from the writer's own DURABLE-ACK lines, so a writer that
+#                     died early cannot make the gate easier by acking fewer.
+#   p3durable@verify  db_verify on the recovered database -- the right keys in a
+#                     corrupt btree is still corruption.
+#   p3durable@group   group commit intact under the flag, compared against the
+#                     BUFFERED arm: a fix that serialized the log would still
+#                     pass an absolute fsync-count threshold.
+#
+# All optional: they need an --enable-o_direct build, and the runner prints the
+# skip reason rather than vanishing.
+# ---------------------------------------------------------------------------
+p3durable	p3durable@ack		optional
+p3durable	p3durable@verify	optional
+p3durable	p3durable@group		optional
 # DB_LOG_WRNOSYNC: per-arm verdicts PLUS the cross-arm comparison.  The
 # comparison is its own entry because the two arms can each succeed while the
 # flag does nothing -- which is precisely what the count check catches.
