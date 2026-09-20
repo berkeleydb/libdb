@@ -72,7 +72,24 @@ bld="$root/build_unix"
 : "${COVP_JOBS:=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 # The five groups, chosen so the longest (recd, ~10 min) starts first and runs
 # alongside everything else -- the critical path is then recd, not the sum.
-: "${COVP_GROUPS:=recd tcl deadreg cdrivers misc}"
+# MEASURED group wall times from the first full parallel run:
+#
+#	deadreg    1344s   <- the critical path, on its own
+#	recd        439s
+#	tcl          93s
+#	cdrivers     15s
+#	misc          ~5s
+#
+# deadreg alone was longer than everything else put together, so five groups
+# could not beat ~22 minutes no matter how they were scheduled.  It is therefore
+# SPLIT: the eight dead/env tests are independent driver-per-test runs (each gets
+# its own tclsh and empties TESTDIR afterwards), so they split cleanly into two
+# halves that run concurrently.  deadreg1 takes dead001-003, which are the slow
+# multi-process lock-cycle tests; deadreg2 takes the rest.
+#
+# recd is split for the same reason, into the four access methods' worth of
+# recd002 plus everything else.
+: "${COVP_GROUPS:=deadreg1 deadreg2 recd1 recd2 tcl cdrivers misc}"
 : "${TCLSH:=tclsh}"
 : "${TCL_LIB:=}"
 if [ -z "$TCL_LIB" ]; then
@@ -180,27 +197,67 @@ TCL_SUBSET="lock001: txn001: ssi001: ssi002: env007: lock007: \
   run_range_partition@test001@btree run_partition_callback@test001@btree \
   logverify001: logverify002: env020: statprint001: mvcc001: sec001: sec002:"
 
-RECD_TESTS="recd002:btree:0 recd002:hash:0 recd002:queue:0 recd002:recno:0
+# The recd set, split in two halves of comparable length.  Same tests as the
+# serial script's COV_RECD list, in the same forms.
+RECD1_TESTS="recd002:btree:0 recd002:hash:0 recd002:queue:0 recd002:recno:0
 recd004:btree: recd005:btree: recd005:hash: recd005:queue: recd005:recno:
-recd006:btree: recd006:hash: recd008:btree: recd009:btree: recd010:btree:
-recd013:btree: recd013:hash: recd014:queueext: recd016:btree: recd017:btree:
-recd018:btree: recd019:btree: recd020:btree: recd022:btree: recd023:btree:
-recd024:btree: recd025:btree:"
+recd006:btree: recd006:hash: recd008:btree:"
+RECD2_TESTS="recd009:btree: recd010:btree: recd013:btree: recd013:hash:
+recd014:queueext: recd016:btree: recd017:btree: recd018:btree: recd019:btree:
+recd020:btree: recd022:btree: recd023:btree: recd024:btree: recd025:btree:"
 
-DEADREG_TESTS="dead001:dead001 {2 4}
+# The deadlock/register set, split so the critical path is halved.  dead001-003
+# are the slow multi-process lock-cycle tests.
+DEADREG1_TESTS="dead001:dead001 {2 4}
 dead002:dead002 {2 4}
-dead003:dead003 {2 4}
-dead004:dead004
+dead003:dead003 {2 4}"
+DEADREG2_TESTS="dead004:dead004
 dead005:dead005 {4}
 dead006:dead006 {2 4}
 env007:env007
 env012:env012"
 
 # group_dir GROUP -- a fresh run directory for GROUP, echoed on stdout.
+#
+# The Tcl harness is cwd-relative in two ways that both have to be satisfied for
+# a group directory to work at all:
+#
+#   test/tcl/test.tcl line 7 does `source ./include.tcl`, and include.tcl is
+#   GENERATED INTO build_unix by dist/s_test -- so a group running in a
+#   subdirectory cannot find it.  Measured: four of five groups produced ZERO
+#   .gcda and the run aborted, all with "couldn't read file ./include.tcl".
+#
+#   include.tcl itself then names `.libs/libdb_tcl-*.so` and `../dist/..`
+#   relatively, so those have to resolve from the group directory too.
+#
+# Symlinks rather than copies: the .so is large, and a copy would also have to be
+# kept in step with a rebuild.
 group_dir() {
   d="$bld/covp-$1"
   if [ -d "$d" ]; then find "$d" -mindepth 1 -delete; else mkdir -p "$d"; fi
-  mkdir -p "$d/TESTDIR"
+  mkdir -p "$d/TESTDIR" "$d/.libs"
+  # include.tcl is generated with paths relative to build_unix ("../dist/..",
+  # "../dist/../test/tcl"), which do not resolve one level deeper.  Symlinking it
+  # gets past `source ./include.tcl` and then fails on
+  # "couldn't read file ../dist/../test/tcl/testutils.tcl".  So REWRITE those
+  # roots to absolute paths for the group copy; everything else is carried
+  # through verbatim, including the tcllib path, which is relative to the cwd and
+  # is satisfied by the .libs symlinks below.
+  if [ -f "$bld/include.tcl" ]; then
+    sed -e "s,^set src_root .*,set src_root $root," \
+        -e "s,^set test_path .*,set test_path $root/test/tcl," \
+        -e "s,^set tcl_utils .*,set tcl_utils $root/test/tcl_utils," \
+        -e "s,^set je_root .*,set je_root $root/../je," \
+        "$bld/include.tcl" > "$d/include.tcl"
+  fi
+  for so in "$bld"/.libs/libdb_tcl-*.so "$bld"/.libs/libdb-*.so; do
+    [ -e "$so" ] && ln -sf "$so" "$d/.libs/$(basename "$so")"
+  done
+  # The Tcl tests also expect the utilities (db_dump, db_verify, ...) and
+  # DB_CONFIG-adjacent paths at the cwd, as they are in build_unix.
+  for u in "$bld"/db_* "$bld"/libtool; do
+    [ -e "$u" ] && [ ! -d "$u" ] && ln -sf "$u" "$d/$(basename "$u")"
+  done
   echo "$d"
 }
 
@@ -247,12 +304,17 @@ run_group() {
     } > "$rt"
     timeout "${COVP_TCL_TIMEOUT:-2400}" "$TCLBIN" "$rt" >"$log" 2>&1 || true
     ;;
-  recd)
+  recd|recd1|recd2)
     # Driver-per-test: several recd tests use conflicting Tcl globals and each
     # spawns recdscript.tcl subprocesses, so they cannot share one tclsh.
+    case "$g" in
+    recd1) _set=$RECD1_TESTS ;;
+    recd2) _set=$RECD2_TESTS ;;
+    *)     _set="$RECD1_TESTS $RECD2_TESTS" ;;
+    esac
     rt="$d/recd.tcl"
     : > "$log"
-    printf '%s\n' "$RECD_TESTS" | tr ' ' '\n' | grep ':' | while read -r spec; do
+    printf '%s\n' "$_set" | tr ' ' '\n' | grep ':' | while read -r spec; do
       [ -n "$spec" ] || continue
       t="${spec%%:*}"; rest="${spec#*:}"; m="${rest%%:*}"; a="${rest#*:}"
       printf 'source %s/test/tcl/test.tcl\nsource %s/test/tcl/%s.tcl\nif {[catch {eval %s %s %s} r]} { puts "FAIL %s %s: $r"; exit 3 }\nputs "PASS %s %s"\n' \
@@ -263,10 +325,16 @@ run_group() {
       find TESTDIR -mindepth 1 -delete 2>/dev/null || true
     done
     ;;
-  deadreg)
+  deadreg|deadreg1|deadreg2)
+    case "$g" in
+    deadreg1) _set=$DEADREG1_TESTS ;;
+    deadreg2) _set=$DEADREG2_TESTS ;;
+    *)        _set="$DEADREG1_TESTS
+$DEADREG2_TESTS" ;;
+    esac
     rt="$d/dreg.tcl"
     : > "$log"
-    printf '%s\n' "$DEADREG_TESTS" | while IFS= read -r spec; do
+    printf '%s\n' "$_set" | while IFS= read -r spec; do
       [ -n "$spec" ] || continue
       nm="${spec%%:*}"; call="${spec#*:}"
       printf 'source %s/test/tcl/test.tcl\nif {[catch {%s} r]} { puts "FAIL %s: $r"; exit 3 }\nputs "PASS %s"\n' \
@@ -279,26 +347,46 @@ run_group() {
     done
     ;;
   cdrivers)
-    # The cov_* C drivers.  Each compiles against the just-built library and
-    # self-cleans its own home dir, so they are already independent of TESTDIR.
+    # The cov_* C drivers.  Like the misc group, these run FROM build_unix: they
+    # reference their sources as "../test/c/..." and each uses its own run
+    # directory under the build tree rather than the shared TESTDIR.
+    #
+    # cov_cutest brings up live repmgr sites; run_cov_cutest.sh now gives itself a
+    # private BDBPORTRANGE per run, which is what makes it safe to run this group
+    # concurrently with anything else (and was worth 3.8pp of measured branch
+    # coverage variance before it was fixed).
     : > "$log"
     CFLAGS="${CFLAGS:-} --coverage"; export CFLAGS
+    cd "$bld"
     for drv in cov_api_surface cov_rep_api cov_logrec_print cov_codecs \
                cov_cutest cov_fuzz_corpus cov_oom_paths; do
       COV_OOM_STRIDE="${COV_OOM_STRIDE:-4}" \
-      BUILD="$bld" sh "$root/test/c/run_$drv.sh" >>"$log" 2>&1 \
+      BUILD=. sh "$root/test/c/run_$drv.sh" >>"$log" 2>&1 \
         && echo "PASS $drv" >>"$log" || echo "FAIL $drv" >>"$log"
     done
     ;;
   misc)
     # XA, on-disk upgrade, os_aio, backup, compaction-recovery, hash-unsorted.
+    #
+    # These run FROM build_unix, not from a group directory, because each one
+    # compiles its driver from a path spelled "../test/xa/xa_direct.c" -- i.e.
+    # relative to build_unix.  Measured: from a group dir they all died with
+    # "cc1: fatal error: ../test/xa/xa_direct.c: No such file or directory", the
+    # group produced zero .gcda, and the PRODUCED-NO-GCDA guard aborted the run.
+    #
+    # That is safe here, unlike for the Tcl groups: each of these drivers uses
+    # its OWN home directory (XA_TESTDIR, OSAIO_TESTDIR, BACKUP_TESTDIR, ...),
+    # never the shared build_unix/TESTDIR, so running in build_unix collides with
+    # nothing the other groups touch.  Their .gcda still land under this group's
+    # GCOV_PREFIX, which is what keeps the counts separate.
     : > "$log"
     CFLAGS="${CFLAGS:-} --coverage"; export CFLAGS
-    for s in xa/run_xa_direct.sh db/run_upgrade.sh os/run_os_aio.sh \
+    cd "$bld"
+    for sc in xa/run_xa_direct.sh db/run_upgrade.sh os/run_os_aio.sh \
              backup/run_backup_direct.sh db/run_recd_compact.sh \
              db/run_recd_handlers.sh db/run_hash_unsorted_cmp.sh; do
-      BUILD="$bld" sh "$root/test/$s" >>"$log" 2>&1 \
-        && echo "PASS $s" >>"$log" || echo "FAIL $s" >>"$log"
+      BUILD=. sh "$root/test/$sc" >>"$log" 2>&1 \
+        && echo "PASS $sc" >>"$log" || echo "FAIL $sc" >>"$log"
     done
     ;;
   *)
