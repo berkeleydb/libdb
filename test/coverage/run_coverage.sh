@@ -151,14 +151,48 @@ if ! command -v lcov >/dev/null 2>&1; then
   fi
 fi
 
-# lcov error classes we tolerate: version (LLVM/gcc tag noise), source/mismatch
-# (generated headers), inconsistent (gcov line/branch quirks), empty/unused.
-IGN="mismatch,source,gcov,unused,negative,empty,inconsistent,version"
+# TWO LCOV DIALECTS.  This script must produce a branch number on lcov 1.x and
+# lcov 2.x, because CI (ubuntu apt) and the measurement boxes do not agree.  Two
+# incompatibilities, and BOTH abort the capture AFTER the tests have already
+# run -- so getting either wrong turns a 33-minute run into no number at all.
+# Both were hit for real on a box with lcov 1.16.
+#
+#   1. branch coverage:  2.x wants --branch-coverage; 1.x rejects it outright
+#      ("lcov: Unknown option: branch-coverage") and wants
+#      --rc lcov_branch_coverage=1.
+#   2. --ignore-errors:  1.x knows only gcov,source,graph,id and dies on any
+#      other name ("geninfo: ERROR: unknown argument for --ignore-errors:
+#      mismatch"); 2.x adds mismatch,unused,negative,empty,inconsistent,version.
+#
+# So: probe for the branch spelling, and intersect the wanted ignore list with
+# what this lcov documents.  Both are computed once, here.
+if "$LCOV" --help 2>&1 | grep -q -- '--branch-coverage'; then
+  BRCOV="--branch-coverage"
+else
+  BRCOV="--rc lcov_branch_coverage=1"
+fi
 
+# The classes we would like to tolerate: version (LLVM/gcc tag noise),
+# source/mismatch (generated headers), inconsistent (gcov line/branch quirks),
+# empty/unused/negative.
+IGN_WANT="mismatch source gcov unused negative empty inconsistent version"
+# What this lcov's own --help says it accepts.
+lcov_ign_help=$("$LCOV" --help 2>&1 | sed -n 's/.*--ignore-errors[^(]*(\([^)]*\)).*/\1/p' | head -1)
+IGN=""
+for c in $IGN_WANT; do
+  # An lcov whose help does not enumerate the classes (some 2.x builds) gets
+  # the full list; one that does gets only the names it listed.
+  if [ -z "$lcov_ign_help" ] || printf '%s' "$lcov_ign_help" | grep -q "$c"; then
+    IGN="${IGN:+$IGN,}$c"
+  fi
+done
+: "${IGN:=gcov,source}"
 echo "== libdb coverage =="
 echo "  repo:    $root"
 echo "  CC:      $CC ($($CC -dumpversion 2>/dev/null || echo '?'))"
 echo "  gcov:    $GCOV ($($GCOV --version 2>/dev/null | head -1))"
+echo "  lcov:    $("$LCOV" --version 2>&1 | head -1)"
+echo "           branch=$BRCOV ignore=$IGN"
 echo "  tcl lib: $TCL_LIB"
 echo "  tests:   $COV_TESTS"
 echo
@@ -571,22 +605,22 @@ echo "== capture (lcov) =="
 # NOTE: capture from .libs (not .) -- libtool double-compiles, and only the
 # .libs/*.gcda carry the merged replication counts; capturing "." drops repmgr.
 "$LCOV" --capture --directory .libs --output-file coverage.info \
-  --gcov-tool "$GCOV" --rc geninfo_unexecuted_blocks=1 --branch-coverage \
+  --gcov-tool "$GCOV" --rc geninfo_unexecuted_blocks=1 $BRCOV \
   --ignore-errors "$IGN" >/tmp/cov-lcov.log 2>&1 \
   || { echo "lcov capture failed:"; tail -20 /tmp/cov-lcov.log; exit 1; }
 
 # Keep only the library sources under src/ (drop tcl harness, examples, system).
 "$LCOV" --extract coverage.info "*/src/*" --output-file coverage-src.info \
-  --branch-coverage --ignore-errors "$IGN" >/dev/null 2>&1
+  $BRCOV --ignore-errors "$IGN" >/dev/null 2>&1
 
 echo "== summary =="
-"$LCOV" --summary coverage-src.info --branch-coverage --ignore-errors "$IGN" 2>&1 \
+"$LCOV" --summary coverage-src.info $BRCOV --ignore-errors "$IGN" 2>&1 \
   | grep -E 'source files|lines|functions|branches' | tee coverage-summary.txt
 
 # --- HTML report -------------------------------------------------------------
 echo "== genhtml =="
 rm -rf coverage-html
-"$GENHTML" coverage-src.info --output-directory coverage-html --branch-coverage \
+"$GENHTML" coverage-src.info --output-directory coverage-html $BRCOV \
   --ignore-errors "empty,inconsistent,source,category,unmapped" >/tmp/cov-genhtml.log 2>&1 \
   && echo "  report: $bld/coverage-html/index.html" \
   || { echo "genhtml failed:"; tail -10 /tmp/cov-genhtml.log; }
