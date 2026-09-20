@@ -344,6 +344,7 @@ db	run_null_method_slots
 db	run_qam_extent_vrfy
 db	run_db_verify_multifile
 db	run_qam_readpath_bound
+db	run_curadj_dup_partition
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

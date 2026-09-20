@@ -1447,6 +1447,7 @@ __ham_chgpg_recover_func(cp, my_dbc, countp, pgno, indx, vargs)
 	u_int32_t order;
 	int ret;
 	__ham_chgpg_args *argp;
+	struct __cq_part *cqp;
 
 	COMPQUIET(my_dbc, NULL);
 	COMPQUIET(countp, NULL);
@@ -1513,17 +1514,18 @@ __ham_chgpg_recover_func(cp, my_dbc, countp, pgno, indx, vargs)
 		if (F_ISSET(opdcp, C_DELETED))
 			F_SET(lcp, H_DELETED);
 		/*
-		 * We can't close a cursor while we have the
-		 * dbp mutex locked, since c_close reacquires
-		 * it.  It should be safe to drop the mutex
-		 * here, though, since newly opened cursors
-		 * are put only at the end of the tailq and
-		 * the cursor we're adjusting can't be closed
-		 * under us.
+		 * We can't close a cursor while we hold the cursor-queue
+		 * partition mutex, since __dbc_close reacquires it.  Drop the
+		 * partition mutex __db_walk_cursors holds -- the one this
+		 * cursor lives in -- and tell the caller to rescan.  It should
+		 * be safe to drop it here, since newly opened cursors are put
+		 * only at the end of the tailq and the cursor we're adjusting
+		 * can't be closed under us.
 		 */
-		MUTEX_UNLOCK(cp->dbp->env, cp->dbp->mutex);
+		cqp = DB_CURSOR_PART(cp);
+		CQ_UNLOCK(cp->dbp->env, cqp);
 		ret = __dbc_close(lcp->opd);
-		MUTEX_LOCK(cp->dbp->env, cp->dbp->mutex);
+		CQ_LOCK(cp->dbp->env, cqp);
 		if (ret != 0)
 			return (ret);
 		lcp->opd = NULL;
