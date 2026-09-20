@@ -44,7 +44,7 @@ each waiter burns up to **4,800** test-and-set attempts on one shared cacheline
 per acquisition (`MUTEX_SPINS_PER_PROCESSOR` = 50 × 96 CPUs,
 `src/dbinc/mutex.h:30`, `src/mutex/mut_region.c:56-60`), and every successful
 acquisition *writes* to that cacheline twice (`mutexp->pid`/`tid`,
-`src/mutex/mut_tas.c:205-206`). A spin-count probe that is pure configuration —
+`src/mutex/mut_tas.c:203-204`). A spin-count probe that is pure configuration —
 no code change — moves throughput more than any critical-section surgery is
 projected to. That reorders the proposals: **D0 (spin/handoff tuning, no format
 break, no durability argument) before D1 (reserve-then-copy, format break, hard
@@ -78,6 +78,30 @@ saturated serial stage downstream: removing contention upstream of a serialized
 bottleneck moves the queue rather than shortening it. Every committing
 transaction must append to the log, and today the append is serialized. This is
 the stage that has to change for the others to pay off.
+
+## North-star check
+
+This RFC recommends **no library change**, so nothing here breaks anything
+today. The check below is what each *proposed* design would have to satisfy, and
+it is the reason the ranking came out as it did.
+
+| Constraint | D0 (fewer appends) | D1 (reserve-then-copy) | D2 (consolidation) | D3 (backpressure) |
+|---|---|---|---|---|
+| Embedded / no server process | OK | OK | OK — but note D2 needs no background thread, unlike InnoDB's model | OK |
+| ACID | OK | **At risk** — see multi-process below | OK with leader-completes-for-members | OK |
+| Crash recovery | OK; byte order and back-chain unchanged | **At risk** — a reserve-then-die hole is virtual EOF (`log_get.c:1238-1240`), so recovery silently truncates | Hazard bounded to leader death, equivalent to today's "holder dies with latch" | OK |
+| All access methods (B-tree/Hash/Queue/Recno/Heap) | **Needs verification** — `__db_pitem` has callers in several AMs (Risk 2) | OK, AM-agnostic | OK, AM-agnostic | OK |
+| Multi-process correctness | OK | **Fails as specified.** PG and InnoDB are single-process; libdb's buffer is shared across mutually untrusting processes and `__mut_failchk` only reclaims `DB_MUTEX_PROCESS_ONLY` mutexes (`mut_failchk.c:50-52`). Needs a crash-visible reservation + a `failchk` completion pass before it is admissible. | Admissible with the leader-completes mitigation | OK |
+| On-disk log format | **Log version bump** (new record type) — forward-compatible, the standard path | Unchanged | Unchanged | Unchanged |
+| Region format / ABI (`__env_struct_sig`) | **Unchanged** — no new region field | **Breaks** — new fields in `struct __log` (`env_sig.c:76`) | **Breaks** — slot array in the region | Unchanged if the lag is derived from existing `DB_LOG_STAT` fields |
+
+**The gate, stated plainly.** D1 is the only design that fails a north-star
+constraint outright rather than merely needing work: in libdb's multi-process
+configuration it converts a *detectable* failure (a process dying while holding
+the log latch wedges the environment into `DB_RUNRECOVERY`) into *silent data
+loss* (a hole that recovery reads as end-of-log). That is disqualifying on its
+own, independently of the performance findings, and it is the single most
+important difference between libdb and the two systems whose pattern D1 copies.
 
 ## `__log_put` anatomy
 
@@ -124,7 +148,7 @@ complication:** measurement says the data movement is not what costs (§Findings
 
 **Precedent for splitting work out of this exact critical section already
 exists in this exact function.** `__log_putr` accepts a checksum its caller
-computed *outside* the latch, and the comment at `:844-852` names it as an
+computed *outside* the latch, and the comment at `:846-852` names it as an
 optimization: *"If we were passed in a nonzero checksum, our caller calculated
 the checksum before acquiring the log mutex, as an optimization."* The
 `LOG_HDR_SUM` at `:868` then folds in the two fields (`prev`, `len`) that were
@@ -170,7 +194,7 @@ strictly ascending, gap-free byte sequence per file**:
 
 1. **Forward scan stops at the first bad record.** `__log_recover`
    (`src/log/log.c:303`) positions at the start of the last file and walks
-   `DB_NEXT` until `__logc_get` fails (`src/log/log.c:373-381`); the end of the
+   `DB_NEXT` until `__logc_get` fails (`src/log/log.c:375-381`); the end of the
    log is *defined* as where that walk stops, and `lp->lsn` is set from it
    (`src/log/log.c:393-397`). A hole in the middle of the file therefore
    truncates the log at the hole — **every record after it is silently lost**,
@@ -340,7 +364,7 @@ one.** Silo's serialization order within an epoch is recovered from
 transaction-local read/write sets, and recovery merges per-core logs by epoch.
 This requires that no transaction's outcome depend on intra-epoch order across
 logs. libdb's redo records carry **page-LSN preconditions** (`CHECK_LSN`,
-`src/dbinc/log.h:412`; `__log_check_page_lsn` at `:2256`), i.e. physiological
+`src/dbinc/log.h:411`; `__log_check_page_lsn` at `:2256`), i.e. physiological
 redo against a specific page image — so a merge that reorders two records
 touching the same page is unsound. **Silo's decentralisation does not transfer.**
 Its epoch idea *does* inform backpressure (§D0/D3).
@@ -384,7 +408,7 @@ availability of an *independent* order per partition. A single-node ACID engine
 cannot use it, for a reason more specific than "it needs a total order":
 
 - libdb's redo is **physiological** — a record says "apply this delta to page
-  P, whose LSN must be X" (`CHECK_LSN`, `src/dbinc/log.h:412`). Two
+  P, whose LSN must be X" (`CHECK_LSN`, `src/dbinc/log.h:411`). Two
   transactions touching the same page produce records whose replay order is
   fixed by the page-LSN chain. Partitioning the log by transaction or by thread
   puts those two records in different partitions with no defined relative
@@ -493,7 +517,7 @@ D1 as a first move, and it was worth measuring before designing.
 
 `test/bench/p5_cslen.c` models the critical section standalone under a
 BDB-shaped TAS latch (including the owner-identity write to the same cacheline
-that `mut_tas.c:205-206` performs), A/Bing copy-inside (mode 0, today) against
+that `mut_tas.c:203-204` performs), A/Bing copy-inside (mode 0, today) against
 reserve-inside-copy-outside (mode 1, the PG/InnoDB shape), 157-byte records,
 each arm run twice, alternating:
 
@@ -585,7 +609,7 @@ Resolved with a control that is valid at **every** thread count.
 `DB_TXN_NOT_DURABLE` on the DB handle keeps full transactions, full locking and
 the same commit path, but `__log_put_record_int` takes the `is_durable == 0`
 branch and queues the record on the transaction instead of appending it
-(`log_put.c:2081-2090`) — so the log region latch is never taken for data
+(`log_put.c:2278-2302`) — so the log region latch is never taken for data
 records. Verified by the harness reporting **0.00 records per row**. 5 reps,
 medians:
 
@@ -705,7 +729,7 @@ becomes maybe ~100 ns, per the model.
    counts that matter** (Findings 1–2). D0 and batching each showed multiples.
 2. **The multi-process crash hazard is real and specific** (§Multi-process). A
    process dying between reserve and fill leaves a zero-filled hole while
-   holding no lock. By `log_get.c:1238-1240` and `log.c:373-381` that hole is
+   holding no lock. By `log_get.c:1238-1240` and `log.c:375-381` that hole is
    *virtual EOF*: recovery stops there and **silently discards every committed
    transaction after it.** PG and InnoDB are immune because a dead writer means
    a dead server and a full replay; libdb promises `failchk` recovery of a
@@ -798,7 +822,7 @@ saturation.
 
 - **Partitioned/sharded WAL with per-partition order** (Kafka/Redpanda/Silo/
   Taurus shape). Physiological redo's page-LSN precondition (`CHECK_LSN`,
-  `src/dbinc/log.h:412`) makes a cross-log merge unsound, and the format carries
+  `src/dbinc/log.h:411`) makes a cross-log merge unsound, and the format carries
   no dependency vector. §Prior art has the full argument. Not a patch to libdb;
   a different engine.
 - **Removing the `hdr->prev` back-chain** to make reservations independent. It
@@ -832,7 +856,7 @@ design at all.
 3. **The 14× hold-time inflation with thread count is unexplained in detail.**
    Consistent with coherence traffic on the latch line, but I have not measured
    cache misses per acquisition. If part of it is the two owner-identity stores
-   (`mut_tas.c:205-206`), a cheaper acquisition would help *every* latch in the
+   (`mut_tas.c:203-204`), a cheaper acquisition would help *every* latch in the
    engine, not just the log's — a much larger prize than P5. **Open, and the
    highest-value follow-up here.**
 4. **`tas_spins` is not the lever it first appeared to be.** An early single-rep

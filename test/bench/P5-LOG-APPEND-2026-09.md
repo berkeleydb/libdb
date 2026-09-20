@@ -106,7 +106,7 @@ help, because at 32 KB per write the device is doing ~2,600 IOPS out of 494k.
 
 Standalone model: two counter bumps plus a 157-byte memcpy into a shared ring,
 under a TAS latch that writes owner identity into the same cacheline as
-`mut_tas.c:205-206` does. mode 0 = copy inside the latch (today); mode 1 =
+`mut_tas.c:203-204` does. mode 0 = copy inside the latch (today); mode 1 =
 reserve inside, copy outside (PG/InnoDB). Each arm twice, alternating:
 
 | t | mode 0 acq/s | mode 1 acq/s | mode 0 mean hold | mode 1 mean hold | mode 0 p99 | mode 1 p99 |
@@ -230,7 +230,7 @@ it.
 **Valid at every thread count.** `DB_TXN_NOT_DURABLE` on the DB handle keeps full
 transactions, full locking and the same commit path, but
 `__log_put_record_int` takes the `is_durable == 0` branch and queues the record
-on the transaction rather than appending it (`src/log/log_put.c:2081-2090`), so
+on the transaction rather than appending it (`src/log/log_put.c:2278-2302`), so
 the log region latch is never taken for data records. The harness confirms
 **0.00 records per row**. 5 reps, medians:
 
