@@ -89,10 +89,10 @@
  * File modes.
  */
 #ifdef DB_WIN32
-#ifndef S_IREAD				/* WinCE doesn't have S_IREAD. */
+#ifndef S_IREAD
 #define	S_IREAD		0
 #endif
-#ifndef S_IWRITE			/* WinCE doesn't have S_IWRITE. */
+#ifndef S_IWRITE
 #define	S_IWRITE	0
 #endif
 #ifndef	S_IRUSR

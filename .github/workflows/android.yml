@@ -65,9 +65,29 @@ jobs:
         id: ndk
         uses: nttld/setup-ndk@v1
         with:
-          # r29 matches the nixpkgs ndk-bundle this path was validated against.
-          ndk-version: r29
-          local-cache: true
+          # r27c is an LTS release with the conventional layout: bin/ holds a
+          # working per-API wrapper (aarch64-linux-androidNN-clang), a real
+          # clang, ld.lld and the llvm-* tools.
+          #
+          # r29 was pinned here originally with a comment claiming it had been
+          # validated.  It had not: this job has failed on EVERY run since it was
+          # added, and continue-on-error hid that at the workflow level.  r29
+          # ships the per-API wrappers but not the sibling `clang' they exec, and
+          # its ld.lld is not where a directly-invoked clang-NN looks for it, so
+          # bypassing the wrapper trades one missing tool for another.
+          #
+          # build_android.sh now discovers the toolchain rather than assuming a
+          # layout, so it works on both; this pin is just a version whose layout
+          # is known good, so the job can finally prove the cross-build.
+          ndk-version: r27c
+          # local-cache: false deliberately.  With caching on, a partially
+          # populated cache entry gets restored and the per-API wrapper becomes
+          # unrunnable -- which then silently routes into build_android.sh's
+          # fallback path and fails later, at the linker, instead of failing here.
+          # One green run followed by a red one on the SAME pin is how that showed
+          # up. A fresh download each time costs a couple of minutes and makes the
+          # result mean something.
+          local-cache: false
 
       - name: Cross-build libdb.so (aarch64)
         env:

@@ -102,10 +102,25 @@ extern "C" {
  * before reading or writing, make a last panic check.  Obviously, there's still
  * a window, but it's very, very small.
  */
+/*
+ * Berkeley DB sets DB_ENV_NOIO on an environment it is tearing down after a
+ * panic, together with DB_ENV_NOPANIC -- and NOPANIC makes PANIC_ISSET (and so
+ * PANIC_CHECK above) false, so this second clause is what actually stops the
+ * I/O on that path.  It must therefore stay.
+ *
+ * It used to test DB_ENV_NOFLUSH, which is a PUBLIC flag meaning "do not flush
+ * the cache on close" (dist/api_flags:221, implemented at env_open.c:844).  The
+ * two are unrelated, so an application that legitimately set DB_NOFLUSH turned
+ * this into an unconditional `return (0)' inside __os_physwrite's write loop and
+ * both arms of __os_io: every read and write in the library reported success and
+ * moved no data.  The observable result was a zero-length region file and SIGBUS
+ * in __env_alloc_init for a shared environment, or DB_PAGE_NOTFOUND on the first
+ * DB->open for a private one -- defect P8, present verbatim since Oracle 5.1.29.
+ */
 #define	LAST_PANIC_CHECK_BEFORE_IO(env)					\
 	PANIC_CHECK(env);                                               \
 	if (env != NULL &&						\
-	    F_ISSET((env)->dbenv, DB_ENV_NOFLUSH))			\
+	    F_ISSET((env)->dbenv, DB_ENV_NOIO))				\
 	    return (0)							\
 									\
 /* DB filehandle. */

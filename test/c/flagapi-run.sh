@@ -23,25 +23,31 @@
 # every check here grades a file created or removed, a syscall made or not made,
 # a stat counter that moved, a record visible or not, or an elapsed time.
 #
-# THREE ENGINE DEFECTS THIS TIER FOUND, ALL RECORDED AS XFAIL
+# THREE ENGINE DEFECTS THIS TIER FOUND -- ALL THREE NOW FIXED
 #
-#   P6  DB_BACKUP_NO_LOGS is accepted and IGNORED.  It appears exactly once in
-#       all of src/ -- db_backup.c's accepted-flag mask -- and is read nowhere.
-#       Measured: a plain backup copied 62 log files, the same backup with the
-#       flag copied the same 62.
-#   P7  DB_INORDER + DB_CONSUME across a deleted record HANGS at 98% CPU.  The
-#       retry label in __qamc_get (src/qam/qam.c:691) is hit 22 times for the
-#       default arm and >100,000 times, without terminating, under the flag.
-#   P8  DB_NOFLUSH makes an environment unusable: SIGBUS creating a shared
-#       environment (the region file is left zero-length), DB_PAGE_NOTFOUND on a
-#       private one.  LAST_PANIC_CHECK_BEFORE_IO (src/dbinc/os.h:105) expands to
-#       an unconditional `return (0)` inside every __os_physwrite/__os_io under
-#       DB_ENV_NOFLUSH, so __db_file_extend never extends the region.
+#   P6  DB_BACKUP_NO_LOGS was accepted and IGNORED: it appeared exactly twice in
+#       the tree (its #define and db_backup.c's accepted-flag mask) and was read
+#       nowhere, so a backup taken with the flag copied all 62 log files.
+#       Fixed by guarding the backup_read_log_dir call.
+#   P7  DB_INORDER + DB_CONSUME across a deleted record HUNG at 98% CPU with no
+#       concurrency: the local `first' advances past the hole but the persistent
+#       meta->first_recno cannot, and the is_first guard demanded they agree, so
+#       retry reset the cursor onto the hole forever.  Fixed in __qamc_get.
+#   P8  DB_NOFLUSH made an environment unusable (SIGBUS shared, DB_PAGE_NOTFOUND
+#       private) because LAST_PANIC_CHECK_BEFORE_IO returned 0 from every
+#       __os_physwrite/__os_io under the PUBLIC DB_ENV_NOFLUSH.  Fixed by keying
+#       that suppression on a new internal-only DB_ENV_NOIO.
 #
-# None is fixed here: an engine defect found by a new test gets its own reviewed
-# change.  Each XFAIL names the defect, and each test flips to PASS with no edit
-# once it is fixed.  FLAGAPI_STRICT=1 refuses the XFAIL allowance, which is how
-# these are shown to have teeth rather than being comments about defects.
+# Each of the three flipped from XFAIL to PASS with NO EDIT to its test, which is
+# what the XFAIL mechanism was for.  Their XFAIL branches have since been turned
+# into FAIL branches: with the defects fixed, the old signature means a
+# regression, not an expectation.
+#
+# Consequently FLAGAPI_STRICT=1 now passes, and the tier's must-fail teeth no
+# longer come from an open XFAIL -- they come from test/c/flagapi-sabotage.sh,
+# which removes the DB_BACKUP_NO_LOGS guard and requires this tier to notice.
+# The XFAIL grading below is kept because it costs nothing and the next defect
+# this tier finds will want it.
 #
 # Usage:  ./flagapi-run.sh [build_dir]     (default: ../../build_unix)
 # Env:    CC, TIMEOUT (per-run seconds, default 300), FLAGAPI_STRICT=1

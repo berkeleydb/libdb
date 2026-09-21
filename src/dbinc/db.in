@@ -2458,6 +2458,14 @@ struct __db_env {
 #define DB_ENV_NOFLUSH		0x00080000 /* DB_NOFLUSH set */
 #define	DB_ENV_MPOOL_AIO	0x00100000 /* DB_MPOOL_AIO set */
 #define	DB_ENV_TXN_SERIALIZABLE	0x00200000 /* DB_TXN_SERIALIZABLE set */
+/*
+ * Internal only, never settable through DB_ENV->set_flags: suppress all file
+ * I/O because the environment is being torn down after a panic.  This used to
+ * be spelled DB_ENV_NOFLUSH, which is a PUBLIC flag, so an application that set
+ * DB_NOFLUSH silently got "every read and write returns success and does
+ * nothing" -- see the comment on LAST_PANIC_CHECK_BEFORE_IO in dbinc/os.h.
+ */
+#define	DB_ENV_NOIO		0x00400000 /* Panic teardown: do no file I/O */
 	u_int32_t flags;
 
 	/* DB_ENV PUBLIC HANDLE LIST BEGIN */
