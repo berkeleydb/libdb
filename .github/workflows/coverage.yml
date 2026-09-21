@@ -7,7 +7,7 @@
 #
 # WHAT CHANGED, AND WHY
 #
-# docs/design/testing-program-2026-09.md found three things wrong here:
+# test/TESTING-PROGRAM.md found three things wrong here:
 #
 #   1. "baseline.txt exists but nothing fails when coverage DROPS."  The old
 #      ratchet step emitted ::warning and always succeeded, on a job that was

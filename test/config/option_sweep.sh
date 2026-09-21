@@ -124,7 +124,7 @@ compat185|--enable-compat185
 #
 # One-at-a-time sweeping cannot see interactions, and 2^54 is not a target.  This
 # is a small NAMED list where each entry carries a reason it is worth a leg --
-# not a random sample.  docs/design/testing-program-2026-09.md names the first
+# not a random sample.  test/TESTING-PROGRAM.md names the first
 # four; each reason below says what specifically could break that neither option
 # alone exercises.
 #

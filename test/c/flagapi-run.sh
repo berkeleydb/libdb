@@ -6,7 +6,7 @@
 # WHY A SECOND RUNNER
 #
 # test/c/flag-run.sh covers the seven runtime I/O and durability flags.
-# docs/design/testing-program-2026-09.md then measured the whole surface and
+# test/TESTING-PROGRAM.md then measured the whole surface and
 # found 112 of 229 public API flags referenced by NO test at all.  This runner
 # covers the next two priority bands from that document:
 #

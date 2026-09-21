@@ -1,4 +1,12 @@
-# D3 — backpressure at the API boundary: what it is and why it comes first
+# RFC 0009: WAL backpressure at the API boundary
+
+- **Status:** Draft
+- **Type:** Prospective
+- **Author:** libdb maintainers
+- **Date:** 2026-09-21
+- **Tracking:** P5 / RFC 0008 design D3
+
+---
 
 Explains RFC 0008's D3 proposal, with the claims re-verified in source.
 

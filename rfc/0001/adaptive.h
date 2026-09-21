@@ -2,7 +2,7 @@
  * libdb LSM prototype: unified adaptive controller.
  *
  * One rolling-window + cooldown core drives two orthogonal adaptation axes
- * (see docs/design/lsm.md):
+ * (see rfc/0001-adaptive-lsm.md):
  *
  *   - STRUCTURE axis: how much LSM to run for the whole store
  *       SINGLE  <->  HYBRID  <->  MULTILEVEL        (structure-adaptive)

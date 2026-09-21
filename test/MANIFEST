@@ -161,7 +161,7 @@ leak	batch_diff@readset-997
 # ---------------------------------------------------------------------------
 # Tier: flag -- runtime I/O and durability FLAG BEHAVIOUR.  test/c/flag-run.sh
 #
-# Closes gap G15 (docs/design/perf-gate-gaps.md).  DB_DIRECT, DB_DIRECT_DB,
+# Closes gap G15 (rfc/0011-test-coverage-gaps.md).  DB_DIRECT, DB_DIRECT_DB,
 # DB_DSYNC_DB, DB_LOG_DIRECT, DB_LOG_DSYNC, DB_LOG_WRNOSYNC and DB_NOSYNC were
 # referenced by ZERO tests; the only test that mentioned one of them checked
 # that set_flags ACCEPTED it, which is how defect P2 shipped -- a flag under
@@ -183,7 +183,7 @@ leak	batch_diff@readset-997
 #   direct_db reports XFAIL against P2 on hardware whose kernel tolerates an
 #   unaligned O_DIRECT buffer; XFAIL counts as a verdict that held.  direct_log
 #   no longer has an XFAIL allowance at all -- P3 is fixed
-#   (docs/design/p3-log-odirect.md) and a failed transactional open under
+#   (test/c/P3-LOG-ODIRECT.md) and a failed transactional open under
 #   DB_LOG_DIRECT is now a hard FAIL.
 # ---------------------------------------------------------------------------
 flag	control
@@ -246,7 +246,7 @@ flag	closesync@count	optional
 # Tier: flagapi -- API FLAG BEHAVIOUR, second wave.  test/c/flagapi-run.sh
 #
 # The `flag` tier above covers the seven runtime I/O and durability flags.
-# docs/design/testing-program-2026-09.md then measured the WHOLE surface and
+# test/TESTING-PROGRAM.md then measured the WHOLE surface and
 # found 112 of 229 public API flags (48%) referenced by NO test at all.  This
 # tier covers the next two priority bands from that document, in defect-yield
 # order:

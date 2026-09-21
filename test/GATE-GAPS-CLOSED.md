@@ -1,6 +1,6 @@
 # Closing the gates the performance run exposed
 
-`docs/design/perf-gate-gaps.md` identified four structural gaps that let three
+`rfc/0011-test-coverage-gaps.md` identified four structural gaps that let three
 defects through 34 CI jobs. This is what was built to close them, what each
 gate asserts, and — the part that matters — how each gate was shown to have
 teeth in **both** directions.

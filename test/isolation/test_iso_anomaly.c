@@ -865,7 +865,7 @@ g2_antidep(iso_scenario *sc, iso_state *st, iso_txn *t)
  *
  * If a change ever removed read locks / SIREAD markers from the descent, this
  * scenario would start committing both sides under DB_TXN_SERIALIZABLE -- the
- * exact bug TidesDB has (docs/design/tidesdb-comparison.md).
+ * exact bug TidesDB has (test/bench/TIDESDB-COMPARISON.md).
  *
  * Slots: 0 = number of markers stored.
  * ---------------------------------------------------------------------------

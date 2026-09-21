@@ -21,12 +21,12 @@ record of what we decided and why.
 
 Not every design document is a proposal. Where the risk is the *interaction*
 between already-shipped subsystems rather than any single change,
-[`docs/design/`](../docs/design) holds normative notes describing current
+Normative RFCs in this directory describe current
 `master`:
 
 | Note | What it states |
 |---|---|
-| [`global-invariants.md`](../docs/design/global-invariants.md) | The invariants that hold **across** subsystems (lock manager + SSI, txn region, mpool/MVCC, WAL, checkpoint, failchk, recovery, rsnap, cursor sharding) at a checkpoint, at a crash, and at a region re-attach — plus the global lock order, the dangerous subsystem pairs, and where coverage is thin. |
+| [`global-invariants.md`](../rfc/0010-global-invariants.md) | The invariants that hold **across** subsystems (lock manager + SSI, txn region, mpool/MVCC, WAL, checkpoint, failchk, recovery, rsnap, cursor sharding) at a checkpoint, at a crash, and at a region re-attach — plus the global lock order, the dangerous subsystem pairs, and where coverage is thin. |
 
 ## RFC lifecycle / status
 

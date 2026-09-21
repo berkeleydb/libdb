@@ -57,7 +57,7 @@ The leverage is not a cheaper refcount. It is **not having a shared-cacheline
 refcount on the read path at all.**
 
 **Corroborated since this RFC was drafted.** A separate investigation
-(`docs/design/read-descent-locks.md`, merged) measured the *other* per-page read
+(`test/bench/READ-DESCENT-LOCKS.md`, merged) measured the *other* per-page read
 cost — the lock manager — and found it already minimal: a read descent takes
 **one** lock, on the leaf, **depth-independent** (1.000 locks/read at 2, 3 and 4
 levels), because interior pages are latch-coupled through buffer pins and never

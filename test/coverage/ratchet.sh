@@ -3,7 +3,7 @@
 #
 # WHY BRANCH, AND WHY LINE COVERAGE MUST NOT GATE
 #
-# docs/design/testing-program-2026-09.md: every defect found in that cycle --
+# test/TESTING-PROGRAM.md: every defect found in that cycle --
 # P1..P5, U7 -- lived in a branch that a test REACHED but never took the other
 # way.  A line executed once with one outcome of a two-way branch counts as
 # fully covered, so line coverage rises while that class of defect is untouched.

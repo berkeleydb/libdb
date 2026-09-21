@@ -549,7 +549,7 @@ env_getters_pre_open(dbenv)
 	 * which drove the setter's two branches and then claimed credit for the
 	 * flag.  It could not fail while the flag was completely non-functional,
 	 * and the flag WAS: under DB_DIRECT_DB no database can be opened at all
-	 * (defect P2, docs/design/perf-gate-gaps.md).  Two `checks` went up and a
+	 * (defect P2, rfc/0011-test-coverage-gaps.md).  Two `checks` went up and a
 	 * dead public flag shipped -- the vacuous-green pattern one layer out,
 	 * where a coverage test raises coverage without exercising behaviour.
 	 *

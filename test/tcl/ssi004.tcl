@@ -7,8 +7,9 @@
 # TEST	ssi004
 # TEST	Serializable Snapshot Isolation under a partitioned lock manager.
 # TEST
-# TEST	Regression for the commit-time pivot-flag race (docs/design/
-# TEST	ssi-pivot-race.md).  The pivot flags TXN_DTL_RCONF/TXN_DTL_WCONF are
+# TEST	Regression for the commit-time pivot-flag race (see
+# TEST	rfc/0003-ssi-serializable-snapshot-isolation.md).  The pivot flags
+# TEST	TXN_DTL_RCONF/TXN_DTL_WCONF are
 # TEST	set on a transaction detail by writers in the lock manager and read
 # TEST	by __txn_commit.  Under multiple lock partitions the flag writes hold
 # TEST	only a per-partition mutex, so before the fix a write from a writer in

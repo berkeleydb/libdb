@@ -1,6 +1,6 @@
 #!/bin/sh
 # aio-stall-run.sh -- the reproducer harness for the os_aio deferred-pin stall
-# (issue S1, fixed; see docs/design/os-aio-deadlock-fix.md).
+# (issue S1, fixed; see test/c/OS-AIO-DEADLOCK-FIX.md).
 #
 # WHY THIS EXISTS AS A SCRIPT
 #

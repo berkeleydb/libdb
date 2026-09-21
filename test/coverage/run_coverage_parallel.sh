@@ -5,7 +5,7 @@
 #
 # THE PROBLEM THIS SOLVES
 #
-# docs/design/testing-program-2026-09.md: "The Coverage workflow is 34 minutes
+# test/TESTING-PROGRAM.md: "The Coverage workflow is 34 minutes
 # in a single job -- the longest thing in CI and entirely serial."  Measured on
 # an idle 32-vCPU box, that splits roughly as
 #
@@ -51,7 +51,7 @@
 # The merged branch total is compared against the serial baseline by the ratchet
 # (test/coverage/ratchet.sh) exactly as the serial run is.  If parallelising lost
 # coverage, the ratchet fails -- the speed work cannot quietly buy time with
-# coverage.  Measured results are in docs/design/testing-program-improvements.md.
+# coverage.  Measured results are in test/TESTING-IMPROVEMENTS.md.
 #
 # Usage:
 #	test/coverage/run_coverage_parallel.sh
