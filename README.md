@@ -252,10 +252,10 @@ obvious, or purely-internal changes do not need an RFC.
 ### Cross-subsystem design notes
 
 Where the risk is the *interaction* between already-shipped subsystems rather
-than any single change, the reasoning lives in [`docs/design/`](docs/design) as a
+than any single change, the reasoning lives in [`rfc/`](rfc) as a
 normative note about current `master` rather than as a proposal:
 
-- [`docs/design/global-invariants.md`](docs/design/global-invariants.md) — the
+- [`rfc/0010-global-invariants.md`](rfc/0010-global-invariants.md) — the
   invariants that hold **across** the lock manager (+SSI), the transaction
   region, mpool/MVCC, the WAL, checkpoint, failchk, recovery, the btree
   root-snapshot read path and cursor sharding: what must be true **at a

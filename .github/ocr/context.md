@@ -164,7 +164,7 @@ A behavioral change without tests is WIP, not commit-ready:
   (the SSI work is guarded by multi-process stress tests like `ssi009`).
 - Scalability/performance claims must be **measured** against the benchmark
   harness, not asserted (ROADMAP #17).
-- Design docs live in `docs/design/`; a non-trivial design should reference or
+- Design docs are RFCs in `rfc/`; a non-trivial design should reference or
   update the relevant one.
 
 ## Minimalism — the "ponytail" discipline

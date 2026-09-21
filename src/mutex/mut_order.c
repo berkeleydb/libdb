@@ -2,7 +2,7 @@
  * See the file LICENSE for redistribution information.
  *
  * DIAGNOSTIC-only mechanical lock-order checker.  The specification is
- * docs/design/global-invariants.md section 4 (A3); the design rationale, the
+ * rfc/0010-global-invariants.md section 4 (A3); the design rationale, the
  * node-identity correction and the scope statement are in
  * src/dbinc/lock_order.h.  This closes named gap G9.
  *
@@ -379,7 +379,7 @@ lo_report(env, why, held, newp)
 	else
 		__db_errx(env, DB_STR_A("2084",
 		    "  declared order: rank %d must not be taken before rank %d "
-		    "(see docs/design/global-invariants.md A3)", "%d %d"),
+		    "(see rfc/0010-global-invariants.md A3)", "%d %d"),
 		    held->rank, newp->rank);
 
 	__db_errx(env, DB_STR("2081", "  latches held by this thread:"));

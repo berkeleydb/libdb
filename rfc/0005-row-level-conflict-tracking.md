@@ -639,5 +639,5 @@ result, not a wasted RFC.
   covers range scans and gaps, with a test that *fails* when the predicate is
   removed (the TidesDB shape is the negative example to test against), and
   (iii) an answer for the page-level ww deadlocks that dominate on Zipfian keys.
-  Evidence: `test/bench/` false-abort data and `docs/design/global-invariants.md`
+  Evidence: `test/bench/` false-abort data and `rfc/0010-global-invariants.md`
   invariant D10.

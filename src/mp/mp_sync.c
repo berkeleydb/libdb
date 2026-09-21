@@ -346,7 +346,7 @@ __memp_sync_int(env, dbmfp, trickle_max, flags, wrote_totalp, interruptedp)
 	 * until the write is reaped, and the window used to be reaped only
 	 * when nflight reached MEMP_AIO_WINDOW.  That made the deferred path
 	 * hold pins across waits, which produced two distinct permanent
-	 * stalls, both measured with gdb (see docs/design/os-aio-deadlock-fix.md):
+	 * stalls, both measured with gdb (see test/c/OS-AIO-DEADLOCK-FIX.md):
 	 *
 	 *  A) HOLD-AND-BLOCK.  The latch winner blocked in
 	 *     MUTEX_READLOCK(bhp->mtx_buf) below for a NEW buffer while

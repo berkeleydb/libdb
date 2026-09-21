@@ -1,8 +1,8 @@
 /*
  * See the file LICENSE for redistribution information.
  *
- * DIAGNOSTIC-only mechanical lock-order checker.  See docs/design/
- * global-invariants.md section 4 (A3, "The global lock order") -- this file is
+ * DIAGNOSTIC-only mechanical lock-order checker.  See
+ * rfc/0010-global-invariants.md section 4 (A3, "The global lock order") -- this file is
  * the machine-readable form of that partial order, and gap G9 is what it
  * closes.
  *

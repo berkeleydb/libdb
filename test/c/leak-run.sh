@@ -263,7 +263,7 @@ elif [ "$aio_rc" = 124 ]; then
 	    "${TIMEOUT}s)"
 	echo "    This is the os_aio deferred-pin stall REGRESSING.  It was" \
 	    "fixed by draining the async window before either wait in"
-	echo "    __memp_sync_int; see docs/design/os-aio-deadlock-fix.md." \
+	echo "    __memp_sync_int; see test/c/OS-AIO-DEADLOCK-FIX.md." \
 	    "Capture 'thread apply all bt full' and check whether the"
 	echo "    use_aio==1 frame is blocked at the mtx_buf readlock or" \
 	    "spinning in the retry loop with nflight > 0."

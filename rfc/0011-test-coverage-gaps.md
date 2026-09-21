@@ -1,4 +1,15 @@
-# Why the performance run found defects that CI did not
+# RFC 0011: Test-coverage gaps that let shipped defects through
+
+- **Status:** Accepted
+- **Type:** Normative
+- **Author:** libdb maintainers
+- **Date:** 2026-09-21
+- **Tracking:** gap register G12-G15; defects P2, P6-P8, U7
+
+> **Normative.** The G-numbers defined here are cited from CI workflows,
+> `test/KNOWN-ISSUES.md` and several test drivers.
+
+---
 
 The 2026-09 cross-engine campaign (`test/bench/TPROC-XENGINE-2026-09.md`) surfaced
 two defects and one performance characteristic that no gate in this repository could

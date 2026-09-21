@@ -319,7 +319,7 @@ if fails:
           "while WiredTiger rises monotonically to 96.  The mechanism is P1, "
           "the PGNO_BASE_MD allocation convoy (__db_new holds the metadata "
           "page write-locked until commit, across its own fsync).")
-    print("See docs/design/perf-gate-gaps.md and "
+    print("See rfc/0011-test-coverage-gaps.md and "
           "test/bench/BTREE-LOCK-SCOPE-2026-09.md.")
     sys.exit(1)
 

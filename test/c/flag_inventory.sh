@@ -3,11 +3,11 @@
 #
 # WHY A SCRIPT RATHER THAN A NUMBER IN A DOCUMENT
 #
-# docs/design/testing-program-2026-09.md reports "112 of 229 public API flags
+# test/TESTING-PROGRAM.md reports "112 of 229 public API flags
 # referenced by NO test."  A number in a document goes stale the moment someone
 # adds a flag or a test, and cannot be re-derived without guessing the method.
 # This script IS the method, so the figure in
-# docs/design/testing-program-improvements.md can be regenerated and disputed.
+# test/TESTING-IMPROVEMENTS.md can be regenerated and disputed.
 #
 # THE THREE-WAY DISTINCTION THAT MATTERS
 #

@@ -17,7 +17,7 @@
  * That is an acceptance check, not a behaviour test.  It cannot fail while the
  * flag is completely non-functional -- and the flag IS completely
  * non-functional: under DB_DIRECT_DB no database can be opened at all (defect
- * P2, docs/design/perf-gate-gaps.md), because __fop_read_meta hands an
+ * P2, rfc/0011-test-coverage-gaps.md), because __fop_read_meta hands an
  * unaligned stack buffer to an O_DIRECT read.  A whole public flag was dead and
  * the coverage counter went up.
  *
@@ -476,7 +476,7 @@ m_datafile(const char *name, u_int32_t env_flag, long want)
 			verdict(name, "XFAIL",
 			    "DB->open under DB_DIRECT_DB failed EINVAL -- "
 			    "defect P2 (__fop_read_meta unaligned buffer), "
-			    "see docs/design/perf-gate-gaps.md");
+			    "see rfc/0011-test-coverage-gaps.md");
 			(void)dbenv->close(dbenv, 0);
 			return (0);
 		}
@@ -534,7 +534,7 @@ m_logfile(const char *name, u_int32_t log_flag, long want)
 		 * __os_io unaligned buffers of arbitrary length at arbitrary
 		 * offsets, so the first transactional open failed EINVAL.  P3 is
 		 * fixed (__log_write_direct restages each write into aligned
-		 * whole blocks; see docs/design/p3-log-odirect.md), so the
+		 * whole blocks; see test/c/P3-LOG-ODIRECT.md), so the
 		 * allowance is GONE and a failed open here is a hard FAIL -- a
 		 * regression, not a recorded expectation.
 		 */

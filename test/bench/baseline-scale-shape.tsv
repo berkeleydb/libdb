@@ -16,7 +16,7 @@
 # COMMITTED BASELINE SHAPE for the G12/G13 scaling-shape gate.
 #
 # This file records tpm(t=8), tpm(t=32) and tpm(t=96) as first-class artifacts,
-# per docs/design/perf-gate-gaps.md: "a single-threaded number would have shown
+# per rfc/0011-test-coverage-gaps.md: "a single-threaded number would have shown
 # these engines as equals".
 #
 # THE GATE DOES NOT COMPARE AGAINST THESE NUMBERS.  It asserts a SHAPE within

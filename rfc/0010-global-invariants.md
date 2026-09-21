@@ -1,4 +1,16 @@
-# Global invariants — cross-subsystem design note
+# RFC 0010: Global invariants across subsystems
+
+- **Status:** Accepted
+- **Type:** Normative
+- **Author:** libdb maintainers
+- **Date:** 2026-09-21
+- **Tracking:** cited from `src/mutex/mut_order.c` (A3) and `src/dbinc/lock_order.h`; gap register G1-G15
+
+> **Normative.** This RFC is the specification the DIAGNOSTIC lock-order checker
+> encodes, and its A-numbers and G-numbers are cited from shipped source and from
+> `test/KNOWN-ISSUES.md`. Changing an A- or G-number here changes those citations.
+
+---
 
 - **Status:** Normative (describes current `master`)
 - **Scope:** the invariants that hold *across* subsystems, not within one
@@ -563,7 +575,7 @@ table.
 | **R3** region-only vs. logged | Implicitly by every `test/sim` scenario (regions are recreated on recover) plus `test_sim_recover_idempotent` | **Weak as a stated invariant** — see **G6**: nothing asserts that no *new* piece of region state became load-bearing for recovery. The table in §3 is currently the only artifact. |
 | **A1** region compat gate | `__env_struct_sig` is mechanical and self-enforcing; the CI `abi-drift` gate covers the header/ABI side | **Adequate but untested end to end** — see **G7**: no test attaches a deliberately mismatched region and asserts `DB_VERSION_MISMATCH`. |
 | **A2** failchk contract | `test/sim/mp_failchk_pilot` + `test/sim/mp-failchk.sh` (two real processes, shared non-`DB_PRIVATE` region, victim killed while holding a write lock, survivor runs `failchk`), `ssi009` (multi-process) | **This is the fork's only executable multi-process fault test.** Good that it exists; narrow — one kill point, one fault, uncontrolled interleaving (its own header says so). See **G8**. |
-| **A3** global lock order | `src/mutex/mut_order.c` — a `DIAGNOSTIC`-only per-thread checker over this order (gap **G9**), plus `test/lockmatrix` for lock *modes* and `mvcc_purge_stress` under TSan | **Mechanically enforced for the region-level latches**, which are the ones whose misordering hangs multiple processes. Found one real violation (the `lk_partitions=1` self-deadlock, **since fixed in v2026.09.6** and now covered by a regression gate) and corrected five errors in the order as documented — see the corrections under §4. **Not** covered: `mtx_buf` (a pin, not a latch), so the os_aio stall class is invisible to it; that defect (S1) is **fixed structurally** in `__memp_sync_int` instead, and one of its two variants stalls while RUNNABLE — acquiring nothing — so no acquisition-time checker could see it at all. See **G9** and `docs/design/os-aio-deadlock-fix.md`. |
+| **A3** global lock order | `src/mutex/mut_order.c` — a `DIAGNOSTIC`-only per-thread checker over this order (gap **G9**), plus `test/lockmatrix` for lock *modes* and `mvcc_purge_stress` under TSan | **Mechanically enforced for the region-level latches**, which are the ones whose misordering hangs multiple processes. Found one real violation (the `lk_partitions=1` self-deadlock, **since fixed in v2026.09.6** and now covered by a regression gate) and corrected five errors in the order as documented — see the corrections under §4. **Not** covered: `mtx_buf` (a pin, not a latch), so the os_aio stall class is invisible to it; that defect (S1) is **fixed structurally** in `__memp_sync_int` instead, and one of its two variants stalls while RUNNABLE — acquiring nothing — so no acquisition-time checker could see it at all. See **G9** and `test/c/OS-AIO-DEADLOCK-FIX.md`. |
 | **D5** rsnap | Correctness rides on the whole read path: TCL suite, `test/sim` btree scenarios, `db_verify`. `DB_NO_RSNAP` gives an A/B switch (`bt_search.c:56-70`) | **Indirect.** See **G10**: no test targets the specific race (root change between LSN check and child fetch), and no test asserts the `DB_NO_RSNAP` A/B produces identical results. |
 | **D6** wired frames | `mp_alloc` skips wired singletons; the cap is arithmetic. `test/bench` covers the throughput side | **Weak.** See **G4**. |
 | **D7** cursor sharding | TCL suite exercises cursors heavily; whole-handle iteration paths are exercised by `db_close` / `associate` / `partition` tests | **Weak for the specific hazard.** See **G11**. |
@@ -663,7 +675,7 @@ table.
   held across arbitrary caller work rather than an ordered latch (`__memp_fget`
   returns holding it). So the checker would **not** by itself have caught the
   os_aio stall (S1, **since fixed** — see
-  `docs/design/os-aio-deadlock-fix.md`), whose shape is hold-and-wait-on-a-pin,
+  `test/c/OS-AIO-DEADLOCK-FIX.md`), whose shape is hold-and-wait-on-a-pin,
   not a latch misordering. That fix implements exactly the rule named here — do
   not wait while holding deferred-write pins — but enforces it *structurally in
   `__memp_sync_int`* rather than as a checker rule, and it has to cover **two**

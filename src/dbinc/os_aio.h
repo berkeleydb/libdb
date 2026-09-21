@@ -125,7 +125,7 @@ typedef struct __db_aio_backend {
  * Fixed in __memp_sync_int by never waiting while holding deferred pins: drain
  * the window before the retry-loop yield, and MUTEX_TRY_READLOCK + drain before
  * the blocking mtx_buf acquire.  Both are needed; each alone leaves one variant.
- * See docs/design/os-aio-deadlock-fix.md and the comment at that acquire.
+ * See test/c/OS-AIO-DEADLOCK-FIX.md and the comment at that acquire.
  *
  * It was never the cross-reap corruption this latch fixes: lost=0 and
  * db_recover + db_verify were clean every time, whereas master SEGVs in

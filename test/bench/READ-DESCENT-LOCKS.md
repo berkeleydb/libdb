@@ -166,11 +166,11 @@ conflict detection.** SSI arms only on `DB_TXN_SERIALIZABLE`
 (`src/txn/txn.c:319-322`), so a probe written against plain `DB_TXN_SNAPSHOT`
 passes vacuously — see §4, where that trap is handled explicitly.
 
-This is invariant **D10** (`docs/design/global-invariants.md`): phantom
+This is invariant **D10** (`rfc/0010-global-invariants.md`): phantom
 prevention is *emergent* from page granularity. The marker is per **page**, so a
 scan unavoidably marks every leaf it touches, and an insert must write-lock the
 leaf it lands on. Refining or removing the read set silently loses phantom
-prevention — the TidesDB bug (`docs/design/tidesdb-comparison.md`).
+prevention — the TidesDB bug (`test/bench/TIDESDB-COMPARISON.md`).
 
 MVCC adds a second, independent edge-recording path for the same reader:
 `__memp_si_rwconflict` (`src/mp/mp_fget.c:113-170`, called from `mp_fget.c:369`)

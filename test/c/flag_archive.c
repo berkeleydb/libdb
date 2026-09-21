@@ -2,7 +2,7 @@
  * See the file LICENSE for redistribution information.
  *
  * flag_archive.c -- BEHAVIOUR tests for the DB_ENV->log_archive and
- * DB_ENV->backup flag sets, which docs/design/testing-program-2026-09.md
+ * DB_ENV->backup flag sets, which test/TESTING-PROGRAM.md
  * found referenced by ZERO tests:
  *
  *	DB_ARCH_ABS, DB_ARCH_DATA, DB_ARCH_LOG, DB_ARCH_REMOVE,
@@ -761,7 +761,7 @@ m_backup_nologs(const char *name)
 		    "arm: %d) -- the flag is ACCEPTED AND IGNORED: "
 		    "DB_BACKUP_NO_LOGS appears exactly once in src/, in "
 		    "db_backup.c's accepted-flag mask, and is never tested. "
-		    "Defect P6, see docs/design/testing-program-improvements.md",
+		    "Defect P6, see test/TESTING-IMPROVEMENTS.md",
 		    nlogs, flogs);
 	else
 		verdict(name, "PASS",

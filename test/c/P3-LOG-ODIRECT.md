@@ -1,6 +1,6 @@
 # P3 — `DB_LOG_DIRECT` could not complete a transactional open
 
-Defect P3 (`docs/design/perf-gate-gaps.md`, gap G15 family). Fixed in
+Defect P3 (`rfc/0011-test-coverage-gaps.md`, gap G15 family). Fixed in
 `src/log/log_put.c:__log_write_direct`.
 
 ## The defect

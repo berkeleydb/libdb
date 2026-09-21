@@ -403,7 +403,7 @@ jobs:
   # --------------------------------------------------------------------------
   # API FLAG BEHAVIOUR, second wave (test/c/flagapi-run.sh).
   #
-  # docs/design/testing-program-2026-09.md measured the whole flag surface and
+  # test/TESTING-PROGRAM.md measured the whole flag surface and
   # found 112 of 229 public API flags (48%) referenced by NO test.  The
   # flagbehaviour job above covers seven of them; this job covers the next two
   # priority bands, in defect-yield order: backup/archive first (DB_ARCH_REMOVE

@@ -1,7 +1,7 @@
 # Testing-program improvements: API flag behaviour, a branch ratchet, and a
 # faster coverage job
 
-Work done 2026-09-20 against `docs/design/testing-program-2026-09.md`, which is
+Work done 2026-09-20 against `test/TESTING-PROGRAM.md`, which is
 the measured baseline this builds on. Branch: `test/coverage-and-speed`.
 
 Everything below was measured on a dedicated idle 32-vCPU EC2 box (`/nvme`, XFS
@@ -299,7 +299,7 @@ test/coverage/baseline.txt      branch=40.4, branch_tolerance=0.3
 .github/workflows/coverage.yml  wired in, no longer advisory
 ```
 
-`docs/design/testing-program-2026-09.md`: "`baseline.txt` exists but nothing
+`test/TESTING-PROGRAM.md`: "`baseline.txt` exists but nothing
 fails when coverage *drops*." The old step emitted `::warning` and always
 succeeded, on a job that was additionally `continue-on-error` — so a coverage
 regression was reported by nothing that could stop it.

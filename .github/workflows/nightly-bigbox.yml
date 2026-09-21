@@ -15,7 +15,7 @@
 #
 #   * a self-hosted runner with >= 32 cores, labelled `self-hosted, bigbox`, or
 #   * an on-demand cloud instance (the measurements in
-#     docs/design/gate-gaps-closed.md were taken on a c6id.24xlarge: 96 vCPU,
+#     test/GATE-GAPS-CLOSED.md were taken on a c6id.24xlarge: 96 vCPU,
 #     185 GiB, local NVMe), or
 #   * a larger GitHub-hosted runner from a paid runner group.
 #
@@ -48,8 +48,8 @@
 #   Compiling it alone would not have caught P2 either: --enable-o_direct builds
 #   perfectly and fails at runtime.  Hence the smoke run.
 #
-# See docs/design/perf-gate-gaps.md (the analysis) and
-# docs/design/gate-gaps-closed.md (what these gates assert and their teeth).
+# See rfc/0011-test-coverage-gaps.md (the analysis) and
+# test/GATE-GAPS-CLOSED.md (what these gates assert and their teeth).
 
 name: Nightly big-box gates (scaling shape / configure options)
 

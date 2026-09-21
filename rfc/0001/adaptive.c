@@ -1,6 +1,6 @@
 /*-
  * libdb LSM prototype: unified adaptive controller implementation.
- * See adaptive.h and docs/design/lsm.md.
+ * See adaptive.h and rfc/0001-adaptive-lsm.md.
  */
 #include "adaptive.h"
 

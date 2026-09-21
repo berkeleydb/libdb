@@ -2,7 +2,7 @@
 # test/c/flag-run.sh -- build and run the runtime I/O / durability FLAG
 # BEHAVIOUR tests (test/c/flag_behaviour.c).
 #
-# Closes gap G15 (docs/design/perf-gate-gaps.md): six documented public flags --
+# Closes gap G15 (rfc/0011-test-coverage-gaps.md): six documented public flags --
 # DB_DIRECT, DB_DIRECT_DB, DB_DSYNC_DB, DB_LOG_DIRECT, DB_LOG_DSYNC,
 # DB_LOG_WRNOSYNC, DB_NOSYNC -- were referenced by ZERO tests.  The only test
 # that mentioned one of them (test/c/cov_api_surface.c) checked that set_flags
@@ -42,7 +42,7 @@
 #
 # direct_log has NO XFAIL allowance any more.  P3 (the log write path handing
 # __os_io unaligned buffers of arbitrary length at arbitrary offsets) is fixed in
-# src/log/log_put.c:__log_write_direct -- see docs/design/p3-log-odirect.md -- so
+# src/log/log_put.c:__log_write_direct -- see test/c/P3-LOG-ODIRECT.md -- so
 # a failed transactional open under DB_LOG_DIRECT is a hard FAIL here.
 #
 # TEETH.  FLAGB_STRICT=1 refuses the XFAIL allowance, so a mode still reporting

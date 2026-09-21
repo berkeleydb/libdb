@@ -2,7 +2,7 @@
  * See the file LICENSE for redistribution information.
  *
  * flag_misc.c -- BEHAVIOUR tests for public API flags that
- * docs/design/testing-program-2026-09.md found referenced by ZERO tests, and
+ * test/TESTING-PROGRAM.md found referenced by ZERO tests, and
  * which are neither I/O/durability (test/c/flag_behaviour.c) nor
  * archive/backup (test/c/flag_archive.c).
  *
@@ -1007,7 +1007,7 @@ m_inorder(const char *name, const char *arm)
 		    "return within 20s across a deleted record -- defect P7, an "
 		    "unbounded retry loop in __qamc_get (src/qam/qam.c:691; "
 		    "retry-label hit count >100000 vs 22 for the default arm). "
-		    "See docs/design/testing-program-improvements.md\n");
+		    "See test/TESTING-IMPROVEMENTS.md\n");
 	for (;;) {
 		memset(&key, 0, sizeof(key));
 		memset(&data, 0, sizeof(data));
@@ -2166,7 +2166,7 @@ m_noflush(const char *name, const char *arm)
 		    "Defect P8 -- LAST_PANIC_CHECK_BEFORE_IO (src/dbinc/os.h:"
 		    "105) returns 0 from every __os_physwrite/__os_io under "
 		    "DB_ENV_NOFLUSH, so __db_file_extend never extends the "
-		    "region. See docs/design/testing-program-improvements.md",
+		    "region. See test/TESTING-IMPROVEMENTS.md",
 		    drc, dsig, SIGBUS, prc);
 	else
 		verdict(name, "FAIL",

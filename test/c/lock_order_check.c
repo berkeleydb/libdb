@@ -7,7 +7,7 @@
  * A/B so that it cannot go vacuously green.
  *
  * The subject is a REAL, pre-existing self-deadlock, not a synthetic reversal.
- * docs/design/global-invariants.md A3 draws an edge
+ * rfc/0010-global-invariants.md A3 draws an edge
  * "object partition -> TXN_SYSTEM_LOCK", but those are the SAME latch: the
  * lock, txn and log regions all alias renv->mtx_regenv (lock_region.c:179,
  * txn_region.c:118, log.c:224).  With lk_partitions == 1, LOCK_SYSTEM_LOCK is
