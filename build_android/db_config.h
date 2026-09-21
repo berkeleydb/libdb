@@ -317,9 +317,6 @@
 /* Define to 1 to use VMS mutexes. */
 /* #undef HAVE_MUTEX_VMS */
 
-/* Define to 1 to use VxWorks mutexes. */
-/* #undef HAVE_MUTEX_VXWORKS */
-
 /* Define to 1 to use the MSVC compiler and Windows mutexes. */
 /* #undef HAVE_MUTEX_WIN32 */
 
@@ -540,9 +537,6 @@
 /* Define to 1 if you have the `vsnprintf' function. */
 #define HAVE_VSNPRINTF 1
 
-/* Define to 1 if building on VxWorks. */
-/* #undef HAVE_VXWORKS */
-
 /* Define to 1 if you have the `yield' function. */
 /* #undef HAVE_YIELD */
 
@@ -560,16 +554,16 @@
 #define PACKAGE_NAME "Berkeley DB"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Berkeley DB 5.3.28"
+#define PACKAGE_STRING "Berkeley DB 2026.0.9"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "db-5.3.28"
+#define PACKAGE_TARNAME "db-2026.0.9"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL "http://www.oracle.com/technology/software/products/berkeley-db/index.html"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.3.28"
+#define PACKAGE_VERSION "2026.0.9"
 
 /* The size of `char', as computed by sizeof. */
 #define SIZEOF_CHAR 1

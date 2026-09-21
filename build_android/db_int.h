@@ -24,8 +24,15 @@
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
 #endif
-#ifdef HAVE_VXWORKS
-#include <selectLib.h>
+#endif
+
+/*
+ * getrandom(2) is declared in <sys/random.h> on glibc and in <unistd.h> on
+ * some others; include the header when we have it so os_csprng.c can call it.
+ */
+#ifdef HAVE_GETRANDOM
+#ifdef HAVE_SYS_RANDOM_H
+#include <sys/random.h>
 #endif
 #endif
 
@@ -40,11 +47,7 @@
 #endif
 #endif
 
-#ifdef HAVE_VXWORKS
-#include <net/uio.h>
-#else
 #include <sys/uio.h>
-#endif
 
 #if defined(HAVE_REPLICATION_THREADS)
 #ifdef HAVE_SYS_SOCKET_H
@@ -644,12 +647,13 @@ typedef enum {
 	if ((ip) != NULL) {						\
 		DB_ASSERT(env, ((ip)->dbth_state == THREAD_ACTIVE  ||	\
 		    (ip)->dbth_state == THREAD_FAILCHK));		\
-		(ip)->dbth_state = THREAD_OUT;				\
+		if ((ip)->dbth_state != THREAD_FAILCHK)			\
+			(ip)->dbth_state = THREAD_OUT;			\
 	}								\
 } while (0)
 #else
 #define	ENV_LEAVE(env, ip) do {						\
-	if ((ip) != NULL)						\
+	if ((ip) != NULL && (ip)->dbth_state != THREAD_FAILCHK)		\
 		(ip)->dbth_state = THREAD_OUT;				\
 } while (0)
 #endif
