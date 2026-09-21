@@ -108,6 +108,8 @@ if ! "$CC" --version >/dev/null 2>&1 ; then
 	fi
 	if [ -n "$real" ] ; then
 		echo "note: $CC is not runnable; using $real --target=${TRIPLE}${API}" >&2
+		echo "note: a working NDK should not need this path -- if it triggers in" >&2
+		echo "      CI, suspect a partially populated toolchain cache." >&2
 		CC="$real"
 		case "$real" in
 		*/clang) CXX="${real}++" ;;
@@ -210,6 +212,30 @@ EOF
 echo "== NDK:  $NDK"
 echo "== CC:   $CC $TARGETFLAG $TOOLDIRFLAG"
 echo "== out:  $BUILDDIR/libdb.so"
+
+# Prove the toolchain can LINK before handing it to meson.  meson's own failure
+# for a missing ld.lld is "Unable to detect linker for compiler ...", which sends
+# you looking at the compiler; this says plainly that the linker is absent.  It
+# also stops a fallback-resolved clang from being accepted when it cannot in fact
+# produce a binary -- which is how a partially cached NDK turned one green run
+# into a red one on the same pin.
+probe=$(mktemp -d)
+echo 'int main(void){return 0;}' > "$probe/t.c"
+if ! $CC $TARGETFLAG $TOOLDIRFLAG -shared -o "$probe/t.so" "$probe/t.c" \
+    2>"$probe/err" ; then
+	echo "error: the resolved toolchain cannot link." >&2
+	echo "  CC: $CC $TARGETFLAG $TOOLDIRFLAG" >&2
+	sed 's/^/    /' "$probe/err" >&2
+	if grep -q "ld.lld" "$probe/err" 2>/dev/null ; then
+		echo "  ld.lld is missing from this NDK.  In CI this is usually a" >&2
+		echo "  partially populated toolchain cache -- see local-cache in" >&2
+		echo "  .github/workflows/android.yml." >&2
+	fi
+	rm -rf "$probe"
+	exit 2
+fi
+rm -rf "$probe"
+echo "== link probe: ok"
 
 meson setup "$BUILDDIR" "$ROOT" --cross-file "$CROSS" --wipe 2>/dev/null \
   || meson setup "$BUILDDIR" "$ROOT" --cross-file "$CROSS"

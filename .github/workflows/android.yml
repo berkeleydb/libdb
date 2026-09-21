@@ -80,7 +80,14 @@ jobs:
           # layout, so it works on both; this pin is just a version whose layout
           # is known good, so the job can finally prove the cross-build.
           ndk-version: r27c
-          local-cache: true
+          # local-cache: false deliberately.  With caching on, a partially
+          # populated cache entry gets restored and the per-API wrapper becomes
+          # unrunnable -- which then silently routes into build_android.sh's
+          # fallback path and fails later, at the linker, instead of failing here.
+          # One green run followed by a red one on the SAME pin is how that showed
+          # up. A fresh download each time costs a couple of minutes and makes the
+          # result mean something.
+          local-cache: false
 
       - name: Cross-build libdb.so (aarch64)
         env:
