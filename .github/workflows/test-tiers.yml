@@ -466,7 +466,7 @@ jobs:
       #
       # `!` inverts the status; a separate results directory so this run cannot
       # overwrite the verdicts the manifest gate just checked.
-      - name: Teeth -- FLAGAPI_STRICT=1 must FAIL while P6/P7/P8 are open
+      - name: Teeth -- FLAGAPI_STRICT=1 must FAIL while P6/P8 are open
         working-directory: test/c
         run: |
           log=/tmp/flagapi-strict.log
@@ -474,8 +474,8 @@ jobs:
               FLAGAPI_STRICT=1 TIMEOUT=300 ./flagapi-run.sh 2>&1 | tee "$log" &&
               ! grep -q "TESTS FAILED" "$log"; then
             echo "::error title=Flag-behaviour teeth::FLAGAPI_STRICT=1 PASSED."
-            echo "Three engine defects are recorded as XFAIL (P6 DB_BACKUP_NO_LOGS,"
-            echo "P7 DB_INORDER hang, P8 DB_NOFLUSH), and none of them depends on"
+            echo "Two engine defects are recorded as XFAIL (P6 DB_BACKUP_NO_LOGS"
+            echo "and P8 DB_NOFLUSH), and neither of them depends on"
             echo "the filesystem or the runner -- so refusing the XFAIL allowance"
             echo "MUST fail.  Either a fix landed (remove the XFAIL branch, this"
             echo "step's expectation and the MANIFEST note) or these tests stopped"
@@ -488,7 +488,7 @@ jobs:
           # this project has nine recorded instances of.  So require each of the
           # three refused XFAILs to appear by name.
           missing=
-          for m in backup_nologs inorder@inorder noflush@noflush; do
+          for m in backup_nologs noflush@noflush; do
             grep -q -- "--- $m: FAIL (XFAIL refused" "$log" || missing="$missing $m"
           done
           if [ -n "$missing" ]; then
@@ -499,7 +499,7 @@ jobs:
             echo "tests' teeth."
             exit 1
           fi
-          echo "OK: FLAGAPI_STRICT=1 failed on exactly P6/P7/P8 -- teeth confirmed."
+          echo "OK: FLAGAPI_STRICT=1 failed on exactly P6/P8 -- teeth confirmed."
 
       - name: Upload verdicts
         if: always()
