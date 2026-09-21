@@ -33,12 +33,40 @@ if [ ! -d "$NDK/toolchains" ]; then
   [ -n "$nested" ] && NDK=$(dirname "$(dirname "$(dirname "$(dirname "$(dirname "$nested")")")")")
 fi
 
+# NDK r27+ still used linux-x86_64; do not assume it, because when the guess is
+# wrong every path below is silently empty and the failure surfaces as meson's
+# "Unknown compiler(s)".  Prefer the host tag that actually has a bin/ directory.
 case "$(uname -s)" in
-  Linux)  HOSTTAG=linux-x86_64 ;;
-  Darwin) HOSTTAG=darwin-x86_64 ;;
+  Linux)  HOSTTAGS="linux-x86_64 linux-aarch64" ;;
+  Darwin) HOSTTAGS="darwin-x86_64 darwin-arm64" ;;
   *) echo "error: unsupported build host $(uname -s)" >&2; exit 2 ;;
 esac
-BIN="$NDK/toolchains/llvm/prebuilt/$HOSTTAG/bin"
+
+BIN=""
+for h in $HOSTTAGS ; do
+	if [ -d "$NDK/toolchains/llvm/prebuilt/$h/bin" ] ; then
+		BIN="$NDK/toolchains/llvm/prebuilt/$h/bin" ; HOSTTAG=$h ; break
+	fi
+done
+# Last resort: find any bin/ holding a clang, whatever the layout is called.
+if [ -z "$BIN" ] ; then
+	found=$(find "$NDK" -type f -name 'clang' -perm -u+x 2>/dev/null | head -1)
+	if [ -n "$found" ] ; then
+		BIN=$(dirname "$found") ; HOSTTAG="(discovered)"
+	else
+		BIN=""
+	fi
+fi
+if [ -z "$BIN" ] || [ ! -d "$BIN" ] ; then
+	echo "error: no NDK toolchain bin/ under $NDK" >&2
+	echo "  tried host tags: $HOSTTAGS" >&2
+	echo "  prebuilt/ contains:" >&2
+	ls "$NDK/toolchains/llvm/prebuilt" 2>/dev/null | sed 's/^/    /' >&2 ||
+	    echo "    (no toolchains/llvm/prebuilt at all)" >&2
+	echo "  NDK root contains:" >&2
+	ls "$NDK" 2>/dev/null | head -12 | sed 's/^/    /' >&2
+	exit 2
+fi
 
 case "$ABI" in
   aarch64) TRIPLE=aarch64-linux-android;   CPUFAM=aarch64; CPU=aarch64 ;;
