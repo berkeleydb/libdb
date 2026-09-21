@@ -174,16 +174,29 @@ jobs:
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # continue-on-error here, plus the outcome check below, so an unusable role
+      # SKIPS rather than fails.  The config check above cannot catch this: the
+      # ARN is present and well-formed, the account behind it is simply gone, and
+      # that is only discoverable by attempting the assume.
       - name: Configure AWS credentials (OIDC)
+        id: aws
         if: steps.cfg.outputs.ok == 'true'
+        continue-on-error: true
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           role-session-name: ocr-review-${{ github.run_id }}
 
+      - name: Note when the role cannot be assumed
+        if: steps.cfg.outputs.ok == 'true' && steps.aws.outcome != 'success'
+        run: |
+          echo "::notice title=OCR review skipped::could not assume"
+          echo "${{ vars.AWS_ROLE_ARN }} via OIDC. Repoint vars.AWS_ROLE_ARN at a"
+          echo "live account whose trust policy allows this repository."
+
       - name: Start LiteLLM proxy (Bedrock bridge)
-        if: steps.cfg.outputs.ok == 'true'
+        if: steps.cfg.outputs.ok == 'true' && steps.aws.outcome == 'success'
         run: |
           if [ -z "$OCR_BEDROCK_MODEL" ]; then
             echo "::error::vars.OCR_BEDROCK_MODEL is not set (e.g. bedrock/converse/us.anthropic.claude-opus-4-1-20250805-v1:0)"
@@ -201,7 +214,7 @@ jobs:
           echo "::error::LiteLLM did not become ready in time"; cat /tmp/litellm.log; exit 1
 
       - name: Configure OCR
-        if: steps.cfg.outputs.ok == 'true'
+        if: steps.cfg.outputs.ok == 'true' && steps.aws.outcome == 'success'
         run: |
           ocr config set llm.url http://127.0.0.1:4000/v1/chat/completions
           ocr config set llm.auth_token "$LITELLM_MASTER_KEY"
@@ -210,7 +223,7 @@ jobs:
           ocr config set language English
 
       - name: Run OCR review
-        if: steps.cfg.outputs.ok == 'true'
+        if: steps.cfg.outputs.ok == 'true' && steps.aws.outcome == 'success'
         run: |
           ocr review \
             --from "origin/${{ steps.pr.outputs.base_ref }}" \
@@ -226,7 +239,7 @@ jobs:
           echo "----- LiteLLM log (tail) -----"; tail -n 50 /tmp/litellm.log || true
 
       - name: Post review to PR
-        if: steps.cfg.outputs.ok == 'true'
+        if: steps.cfg.outputs.ok == 'true' && steps.aws.outcome == 'success'
         uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
