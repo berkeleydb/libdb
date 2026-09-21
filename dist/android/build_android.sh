@@ -133,33 +133,40 @@ CROSS="$BUILDDIR.cross.txt"
 mkdir -p "$BUILDDIR"
 
 # llvm-ar / llvm-strip / llvm-ranlib normally sit beside clang, but r29 has
-# already shown that "beside clang" is not a safe assumption -- so resolve each
-# one the same way: try $BIN, then a versioned name, then anywhere under the NDK,
-# and only fail once nothing answers.  Values land in AR/STRIP/RANLIB.
+# already shown that "beside clang" is not safe to assume.  Resolve each the same
+# way as the compiler, and accept SYMLINKS as well as regular files: llvm-strip
+# and llvm-ranlib are symlinks to llvm-objcopy and llvm-ar in some NDKs, and a
+# `find -type f' search silently skips them.  llvm-ar and ar are interchangeable
+# on a clang toolchain, so the un-prefixed name is tried too.
 find_tool() {
 	_want=$1
-	for _c in "$BIN/$_want" $(ls -1 "$BIN/$_want"-[0-9]* 2>/dev/null | sort -Vr) ; do
+	for _c in "$BIN/$_want" "$BIN/${_want#llvm-}" \
+	    $(ls -1 "$BIN/$_want"-[0-9]* 2>/dev/null | sort -Vr) ; do
 		[ -x "$_c" ] && { echo "$_c" ; return 0 ; }
 	done
-	_c=$(find "$NDK" -type f \( -name "$_want" -o -name "$_want-[0-9]*" \) \
-	    -perm -u+x 2>/dev/null | sort -Vr | head -1)
-	[ -n "$_c" ] && { echo "$_c" ; return 0 ; }
-	# llvm-* are drop-in for the plain names on a clang toolchain.
-	_c=$(find "$NDK" -type f -name "${_want#llvm-}" -perm -u+x 2>/dev/null | head -1)
-	[ -n "$_c" ] && { echo "$_c" ; return 0 ; }
+	for _n in "$_want" "$_want-[0-9]*" "${_want#llvm-}" ; do
+		_c=$(find "$NDK" \( -type f -o -type l \) -name "$_n" 2>/dev/null |
+		    sort -Vr | head -1)
+		if [ -n "$_c" ] && [ -x "$_c" ] ; then echo "$_c" ; return 0 ; fi
+	done
 	return 1
 }
 
-AR=$(find_tool llvm-ar) || { echo "error: NDK tool not found: llvm-ar" >&2 ; MISSING=1 ; }
-STRIP=$(find_tool llvm-strip) || { echo "error: NDK tool not found: llvm-strip" >&2 ; MISSING=1 ; }
-RANLIB=$(find_tool llvm-ranlib) || { echo "error: NDK tool not found: llvm-ranlib" >&2 ; MISSING=1 ; }
-if [ -n "${MISSING:-}" ] ; then
+# Only the archiver is REQUIRED.  meson builds a shared library perfectly well
+# with no `strip' or `ranlib' entry in the cross file, and this script's own strip
+# step is already best-effort -- so a missing one must not fail the build.  Being
+# strict about them is what turned an r29 layout change into a hard error.
+AR=$(find_tool llvm-ar) || {
+	echo "error: no archiver found (tried llvm-ar and ar)." >&2
 	echo "  searched $BIN and all of $NDK" >&2
-	echo "  bin/ non-wrapper entries:" >&2
 	ls -1 "$BIN" 2>/dev/null | grep -vE -- '-(clang|clang\+\+)$' |
-	    head -25 | sed 's/^/    /' >&2
+	    head -40 | sed 's/^/    /' >&2
 	exit 2
-fi
+}
+STRIP=$(find_tool llvm-strip)   || STRIP=""
+RANLIB=$(find_tool llvm-ranlib) || RANLIB=""
+[ -n "$STRIP" ]  || echo "note: no llvm-strip found; skipping the strip step" >&2
+[ -n "$RANLIB" ] || echo "note: no llvm-ranlib found; letting meson default it" >&2
 
 # meson accepts a LIST for a binary, so when we fell back to the untargeted
 # clang the --target goes here rather than into c_args -- that way it applies to
@@ -178,8 +185,6 @@ cat > "$CROSS" <<EOF
 c = $CBIN
 cpp = $CPPBIN
 ar = '$AR'
-strip = '$STRIP'
-ranlib = '$RANLIB'
 
 [host_machine]
 system = 'android'
@@ -187,6 +192,12 @@ cpu_family = '$CPUFAM'
 cpu = '$CPU'
 endian = 'little'
 EOF
+
+# strip/ranlib are optional: emit them only when found, so meson never tries to
+# exec an empty path.  sed inserts them under [binaries] rather than appending,
+# which would land them in [host_machine].
+[ -n "$STRIP" ]  && sed -i "s|^ar = .*|&\nstrip = '$STRIP'|" "$CROSS"
+[ -n "$RANLIB" ] && sed -i "s|^ar = .*|&\nranlib = '$RANLIB'|" "$CROSS"
 
 echo "== NDK:  $NDK"
 echo "== CC:   $CC $TARGETFLAG"
@@ -200,5 +211,6 @@ ninja -C "$BUILDDIR"
 # Copy it to $BUILDDIR/libdb.so so the artifact path stays stable.
 cp "$BUILDDIR/dist/libdb.so" "$BUILDDIR/libdb.so"
 
-"$STRIP" -o "$BUILDDIR/libdb.so.stripped" "$BUILDDIR/libdb.so" 2>/dev/null || true
+[ -n "$STRIP" ] && "$STRIP" -o "$BUILDDIR/libdb.so.stripped" \
+    "$BUILDDIR/libdb.so" 2>/dev/null || true
 file "$BUILDDIR/libdb.so"
