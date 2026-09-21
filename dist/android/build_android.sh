@@ -132,11 +132,34 @@ BUILDDIR="${BUILDDIR:-$ROOT/build-android}"
 CROSS="$BUILDDIR.cross.txt"
 mkdir -p "$BUILDDIR"
 
-# llvm-ar / llvm-strip / llvm-ranlib live beside clang; if the NDK layout moved
-# them too, say which one is missing rather than letting meson fail obscurely.
-for t in llvm-ar llvm-strip llvm-ranlib ; do
-	[ -x "$BIN/$t" ] || { echo "error: NDK tool not found: $BIN/$t" >&2 ; exit 2 ; }
-done
+# llvm-ar / llvm-strip / llvm-ranlib normally sit beside clang, but r29 has
+# already shown that "beside clang" is not a safe assumption -- so resolve each
+# one the same way: try $BIN, then a versioned name, then anywhere under the NDK,
+# and only fail once nothing answers.  Values land in AR/STRIP/RANLIB.
+find_tool() {
+	_want=$1
+	for _c in "$BIN/$_want" $(ls -1 "$BIN/$_want"-[0-9]* 2>/dev/null | sort -Vr) ; do
+		[ -x "$_c" ] && { echo "$_c" ; return 0 ; }
+	done
+	_c=$(find "$NDK" -type f \( -name "$_want" -o -name "$_want-[0-9]*" \) \
+	    -perm -u+x 2>/dev/null | sort -Vr | head -1)
+	[ -n "$_c" ] && { echo "$_c" ; return 0 ; }
+	# llvm-* are drop-in for the plain names on a clang toolchain.
+	_c=$(find "$NDK" -type f -name "${_want#llvm-}" -perm -u+x 2>/dev/null | head -1)
+	[ -n "$_c" ] && { echo "$_c" ; return 0 ; }
+	return 1
+}
+
+AR=$(find_tool llvm-ar) || { echo "error: NDK tool not found: llvm-ar" >&2 ; MISSING=1 ; }
+STRIP=$(find_tool llvm-strip) || { echo "error: NDK tool not found: llvm-strip" >&2 ; MISSING=1 ; }
+RANLIB=$(find_tool llvm-ranlib) || { echo "error: NDK tool not found: llvm-ranlib" >&2 ; MISSING=1 ; }
+if [ -n "${MISSING:-}" ] ; then
+	echo "  searched $BIN and all of $NDK" >&2
+	echo "  bin/ non-wrapper entries:" >&2
+	ls -1 "$BIN" 2>/dev/null | grep -vE -- '-(clang|clang\+\+)$' |
+	    head -25 | sed 's/^/    /' >&2
+	exit 2
+fi
 
 # meson accepts a LIST for a binary, so when we fell back to the untargeted
 # clang the --target goes here rather than into c_args -- that way it applies to
@@ -154,9 +177,9 @@ cat > "$CROSS" <<EOF
 [binaries]
 c = $CBIN
 cpp = $CPPBIN
-ar = '$BIN/llvm-ar'
-strip = '$BIN/llvm-strip'
-ranlib = '$BIN/llvm-ranlib'
+ar = '$AR'
+strip = '$STRIP'
+ranlib = '$RANLIB'
 
 [host_machine]
 system = 'android'
@@ -177,5 +200,5 @@ ninja -C "$BUILDDIR"
 # Copy it to $BUILDDIR/libdb.so so the artifact path stays stable.
 cp "$BUILDDIR/dist/libdb.so" "$BUILDDIR/libdb.so"
 
-"$BIN/llvm-strip" -o "$BUILDDIR/libdb.so.stripped" "$BUILDDIR/libdb.so" 2>/dev/null || true
+"$STRIP" -o "$BUILDDIR/libdb.so.stripped" "$BUILDDIR/libdb.so" 2>/dev/null || true
 file "$BUILDDIR/libdb.so"
