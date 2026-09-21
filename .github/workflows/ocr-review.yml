@@ -157,7 +157,25 @@ jobs:
           pip install "litellm[proxy] @ git+https://github.com/BerriAI/litellm.git@5be0797d24a2f26eb2123e13788f90055a59d91d"
           npm install -g @alibaba-group/open-code-review
 
+      # Skip cleanly, rather than failing eighteen steps in, when the Bedrock
+      # config is absent or unusable.  An advisory job that fails on every single
+      # PR trains everyone to ignore it, which costs more than having no reviewer.
+      - name: Check the Bedrock config is present
+        id: cfg
+        run: |
+          missing=
+          [ -n "${{ vars.AWS_ROLE_ARN }}" ]      || missing="$missing AWS_ROLE_ARN"
+          [ -n "${{ vars.AWS_REGION }}" ]        || missing="$missing AWS_REGION"
+          [ -n "${{ vars.OCR_BEDROCK_MODEL }}" ] || missing="$missing OCR_BEDROCK_MODEL"
+          if [ -n "$missing" ] ; then
+            echo "::notice title=OCR review skipped::missing repo vars:$missing"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure AWS credentials (OIDC)
+        if: steps.cfg.outputs.ok == 'true'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
@@ -165,6 +183,7 @@ jobs:
           role-session-name: ocr-review-${{ github.run_id }}
 
       - name: Start LiteLLM proxy (Bedrock bridge)
+        if: steps.cfg.outputs.ok == 'true'
         run: |
           if [ -z "$OCR_BEDROCK_MODEL" ]; then
             echo "::error::vars.OCR_BEDROCK_MODEL is not set (e.g. bedrock/converse/us.anthropic.claude-opus-4-1-20250805-v1:0)"
@@ -182,6 +201,7 @@ jobs:
           echo "::error::LiteLLM did not become ready in time"; cat /tmp/litellm.log; exit 1
 
       - name: Configure OCR
+        if: steps.cfg.outputs.ok == 'true'
         run: |
           ocr config set llm.url http://127.0.0.1:4000/v1/chat/completions
           ocr config set llm.auth_token "$LITELLM_MASTER_KEY"
@@ -190,6 +210,7 @@ jobs:
           ocr config set language English
 
       - name: Run OCR review
+        if: steps.cfg.outputs.ok == 'true'
         run: |
           ocr review \
             --from "origin/${{ steps.pr.outputs.base_ref }}" \
@@ -205,6 +226,7 @@ jobs:
           echo "----- LiteLLM log (tail) -----"; tail -n 50 /tmp/litellm.log || true
 
       - name: Post review to PR
+        if: steps.cfg.outputs.ok == 'true'
         uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
