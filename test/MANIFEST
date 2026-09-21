@@ -271,7 +271,9 @@ flag	closesync@count	optional
 #   backup_nologs   P6  DB_BACKUP_NO_LOGS accepted and IGNORED (it appears once
 #                       in all of src/, in db_backup.c's flag mask, and is read
 #                       nowhere).  Measured: 62 log files copied either way.
-#   inorder@inorder P7  DB_INORDER + DB_CONSUME across a deleted record HANGS at
+#   inorder@inorder P7  FIXED (PR #205).  This mode now reports PASS with no edit
+#                       to the driver -- which is what the in-driver watchdog was
+#                       for: the XFAIL retires itself when the defect goes away.
 #                       98% CPU (retry label in __qamc_get hit >100,000 times
 #                       without terminating, vs 22 for the default arm).
 #   noflush@noflush P8  DB_NOFLUSH makes an environment unusable: SIGBUS on a
