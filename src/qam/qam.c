@@ -877,7 +877,23 @@ dolock:	if (!with_delete || inorder || retrying) {
 		if ((ret = __memp_fget(mpf, &metapno,
 		     dbc->thread_info, dbc->txn, meta_mode, &meta)) != 0)
 			goto lerr;
-		if ((is_first && cp->recno != meta->first_recno) ||
+		/*
+		 * If we asked for the first record, restart when the head moved
+		 * while we were acquiring the record lock.
+		 *
+		 * `first' is the local head, which advances past records that
+		 * have been confirmed gone (see the DB_NEXT case below), while
+		 * meta->first_recno can only advance when a consume actually
+		 * SUCCEEDS.  So after skipping a deleted record the two
+		 * legitimately disagree, and comparing against the persistent
+		 * value alone would send us back to DB_FIRST, which resets
+		 * cp->recno to the hole we just skipped -- an unkillable
+		 * oscillation with no concurrency required (P7).  Accept either
+		 * notion of the head: when no record has been skipped the two
+		 * are equal and this is exactly the original test.
+		 */
+		if ((is_first && cp->recno != first &&
+		    cp->recno != meta->first_recno) ||
 		    (flags == DB_LAST && cp->recno != meta->cur_recno - 1)) {
 			if ((ret = __LPUT(dbc, lock)) != 0)
 				goto err;
