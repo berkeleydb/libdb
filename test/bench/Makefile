@@ -86,3 +86,10 @@ baseline: all
 .PHONY: baseline
 
 .PHONY: all clean
+
+# lsc_abort applies abort-heavy insert load in a growing tree, so an abort's
+# page-allocation UNDO lands while other threads are allocating.  It is the
+# evidence behind BTREE-LOCK-SCOPE-2026-09.md's 2PL-safety section: it applies
+# the load that would expose damage if the PGNO_BASE_MD hold were dropped early.
+lsc_abort: lsc_abort.c
+	$(CC) $(CFLAGS) $(INCLUDES) lsc_abort.c $(LIBS) -o $@
