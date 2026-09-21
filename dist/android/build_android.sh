@@ -76,35 +76,56 @@ case "$ABI" in
   *) echo "error: unknown ABI '$ABI' (aarch64|arm|x86_64|x86)" >&2; exit 2 ;;
 esac
 
-# The per-API wrapper (<triple><API>-clang) is a tiny shell script that execs the
-# real `clang` next to it with --target=<triple><API>.  NDK r29 ships the wrapper
-# but NOT that sibling clang in the same bin/ directory, so the wrapper exists,
-# is executable, and dies with
+# Resolve the actual compiler.  Three layouts have shipped:
 #
-#     .../aarch64-linux-android24-clang: line 4: .../bin/clang: No such file
+#   a) bin/<triple><API>-clang works directly (r25-r27 and earlier).
+#   b) the wrapper is present but its sibling `clang' is not, so running it dies
+#      with "bin/clang: No such file or directory" -- meson reports this only as
+#      the unhelpful "Unknown compiler(s)".  NDK r29 is in this shape: bin/ holds
+#      the per-API wrappers for every API level and NO bare clang.
+#   c) the real driver is present under a versioned name (clang-NN) or in a
+#      sibling directory, and must be driven with an explicit --target.
 #
-# which meson reports only as the unhelpful "Unknown compiler(s)".  So testing
-# -x is not enough: the compiler has to be RUN.  Prefer the wrapper when it
-# actually works, otherwise drive the real clang with an explicit --target, which
-# is all the wrapper was doing.
+# So testing -x is never sufficient: the compiler has to be RUN.
 CC="$BIN/${TRIPLE}${API}-clang"
 CXX="$BIN/${TRIPLE}${API}-clang++"
+TARGETFLAG=""
 if ! "$CC" --version >/dev/null 2>&1 ; then
-	if [ -x "$BIN/clang" ] && "$BIN/clang" --version >/dev/null 2>&1 ; then
-		echo "note: $CC is not runnable; using $BIN/clang --target=${TRIPLE}${API}" >&2
-		CC="$BIN/clang"
-		CXX="$BIN/clang++"
+	real=""
+	# Prefer an unversioned clang, then clang-NN (highest first), looking in
+	# bin/ and then anywhere under the NDK.
+	for cand in "$BIN/clang" $(ls -1 "$BIN"/clang-[0-9]* 2>/dev/null | sort -Vr) ; do
+		if [ -x "$cand" ] && "$cand" --version >/dev/null 2>&1 ; then
+			real="$cand" ; break
+		fi
+	done
+	if [ -z "$real" ] ; then
+		for cand in $(find "$NDK" -type f \( -name 'clang' -o -name 'clang-[0-9]*' \) \
+		    -perm -u+x 2>/dev/null | sort -Vr) ; do
+			if "$cand" --version >/dev/null 2>&1 ; then real="$cand" ; break ; fi
+		done
+	fi
+	if [ -n "$real" ] ; then
+		echo "note: $CC is not runnable; using $real --target=${TRIPLE}${API}" >&2
+		CC="$real"
+		case "$real" in
+		*/clang) CXX="${real}++" ;;
+		*)       CXX="$real" ;;   # clang-NN also compiles C++ via --target
+		esac
+		[ -x "$CXX" ] || CXX="$real"
 		TARGETFLAG="--target=${TRIPLE}${API}"
 	else
 		echo "error: no runnable NDK compiler found." >&2
-		echo "  tried: $BIN/${TRIPLE}${API}-clang" >&2
-		echo "  tried: $BIN/clang" >&2
-		echo "  bin/ contains:" >&2
-		ls "$BIN" 2>/dev/null | head -20 | sed 's/^/    /' >&2
+		echo "  tried: $BIN/${TRIPLE}${API}-clang (exists but did not run)" >&2
+		echo "  tried: $BIN/clang, $BIN/clang-NN, and any clang under $NDK" >&2
+		echo "  why the wrapper failed:" >&2
+		"$BIN/${TRIPLE}${API}-clang" --version 2>&1 | head -3 | sed 's/^/    /' >&2
+		echo "  non-wrapper entries in $BIN:" >&2
+		ls -1 "$BIN" 2>/dev/null | grep -vE -- '-(clang|clang\+\+)$' |
+		    head -25 | sed 's/^/    /' >&2
 		exit 2
 	fi
 fi
-TARGETFLAG="${TARGETFLAG:-}"
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 BUILDDIR="${BUILDDIR:-$ROOT/build-android}"
