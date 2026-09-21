@@ -749,19 +749,17 @@ m_backup_nologs(const char *name)
 		    ndbs);
 	else if (nlogs > 0)
 		/*
-		 * The flag is in DB_ENV->backup's accepted-flag mask
-		 * (db_backup.c:683) and is READ NOWHERE in src/ -- grep finds
-		 * exactly one reference, the mask itself.  So it is accepted
-		 * and ignored: log files land in the backup regardless.  That
-		 * is defect P6 and it is recorded, not hidden: this becomes a
-		 * PASS with no edit once the flag is implemented.
+		 * P6 is FIXED (the guard is at db_backup.c's
+		 * backup_read_log_dir call), so copying logs under the flag is
+		 * a real regression rather than a recorded expectation.  This
+		 * was an XFAIL while the flag was accepted-and-ignored; making
+		 * it a FAIL is what lets test/c/flagapi-sabotage.sh use this
+		 * mode as the tier's teeth.
 		 */
-		verdict(name, "XFAIL",
+		verdict(name, "FAIL",
 		    "DB_BACKUP_NO_LOGS copied %d log file(s) anyway (control "
-		    "arm: %d) -- the flag is ACCEPTED AND IGNORED: "
-		    "DB_BACKUP_NO_LOGS appears exactly once in src/, in "
-		    "db_backup.c's accepted-flag mask, and is never tested. "
-		    "Defect P6, see test/TESTING-IMPROVEMENTS.md",
+		    "arm: %d) -- the flag is being accepted and ignored, which "
+		    "is defect P6 reintroduced",
 		    nlogs, flogs);
 	else
 		verdict(name, "PASS",

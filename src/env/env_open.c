@@ -579,7 +579,7 @@ __env_close_pp(dbenv, flags)
 			(void)__file_handle_cleanup(env);
 			PANIC_CHECK(env);
 		}
-		F_SET(dbenv, DB_ENV_NOPANIC | DB_ENV_NOFLUSH);
+		F_SET(dbenv, DB_ENV_NOPANIC | DB_ENV_NOIO);
 	}
 
 	ENV_ENTER(env, ip);

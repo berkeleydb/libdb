@@ -8,6 +8,20 @@
 #
 # Required (repo settings — all repo *variables*, no secrets; auth is via GitHub OIDC):
 #   vars.AWS_ROLE_ARN       - IAM role to assume via OIDC (granting bedrock:InvokeModel*)
+#
+# OPERATIONAL NOTE (2026-09-21).  This job is continue-on-error, so its failures
+# do not block a merge -- but it HAS been failing, for two reasons worth naming:
+#
+#   1. The repo variable was created as OCR_BEDROCK_VARIABLE while every
+#      reference here reads OCR_BEDROCK_MODEL, so the model string arrived empty
+#      and the guard below tripped on every run.  Renamed 2026-09-21.
+#   2. vars.AWS_ROLE_ARN still points into AWS account 492372116879, which is no
+#      longer active.  Until it is repointed at a live account with an OIDC trust
+#      policy for this repo and bedrock:InvokeModel*, the "Configure AWS
+#      credentials" step cannot mint credentials and this job will keep failing.
+#      That is an infrastructure change, not a code change.
+#
+# Both are config, not source: nothing in the repository can fix (2).
 #   vars.AWS_REGION         - e.g. us-east-1
 #   vars.OCR_BEDROCK_MODEL  - LiteLLM model string for the Opus inference profile, e.g.
 #       bedrock/converse/us.anthropic.claude-opus-4-8
