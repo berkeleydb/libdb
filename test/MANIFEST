@@ -466,6 +466,7 @@ db	run_upgrade
 db	run_lock_priority_nullderef
 db	run_null_method_slots
 db	run_qam_extent_vrfy
+db	run_qam_inorder_consume
 db	run_db_verify_multifile
 db	run_qam_readpath_bound
 db	run_curadj_dup_partition
