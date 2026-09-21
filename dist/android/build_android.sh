@@ -90,6 +90,7 @@ esac
 CC="$BIN/${TRIPLE}${API}-clang"
 CXX="$BIN/${TRIPLE}${API}-clang++"
 TARGETFLAG=""
+TOOLDIRFLAG=""
 if ! "$CC" --version >/dev/null 2>&1 ; then
 	real=""
 	# Prefer an unversioned clang, then clang-NN (highest first), looking in
@@ -113,7 +114,14 @@ if ! "$CC" --version >/dev/null 2>&1 ; then
 		*)       CXX="$real" ;;   # clang-NN also compiles C++ via --target
 		esac
 		[ -x "$CXX" ] || CXX="$real"
+		# Driving clang directly loses whatever the wrapper set up for it.
+		# In particular clang looks for ld.lld on PATH and in its own
+		# install directory, and when the binary we found is clang-NN in a
+		# bin/ that clang does not consider its install root, it fails with
+		# 'Executable "ld.lld" doesn't exist'.  -B names that directory
+		# explicitly, which is what the wrapper was relying on.
 		TARGETFLAG="--target=${TRIPLE}${API}"
+		TOOLDIRFLAG="-B$(dirname "$real")"
 	else
 		echo "error: no runnable NDK compiler found." >&2
 		echo "  tried: $BIN/${TRIPLE}${API}-clang (exists but did not run)" >&2
@@ -172,8 +180,8 @@ RANLIB=$(find_tool llvm-ranlib) || RANLIB=""
 # clang the --target goes here rather than into c_args -- that way it applies to
 # meson's own compiler sanity check too, not just to our translation units.
 if [ -n "$TARGETFLAG" ] ; then
-	CBIN="['$CC', '$TARGETFLAG']"
-	CPPBIN="['$CXX', '$TARGETFLAG']"
+	CBIN="['$CC', '$TARGETFLAG', '$TOOLDIRFLAG']"
+	CPPBIN="['$CXX', '$TARGETFLAG', '$TOOLDIRFLAG']"
 else
 	CBIN="'$CC'"
 	CPPBIN="'$CXX'"
@@ -200,7 +208,7 @@ EOF
 [ -n "$RANLIB" ] && sed -i "s|^ar = .*|&\nranlib = '$RANLIB'|" "$CROSS"
 
 echo "== NDK:  $NDK"
-echo "== CC:   $CC $TARGETFLAG"
+echo "== CC:   $CC $TARGETFLAG $TOOLDIRFLAG"
 echo "== out:  $BUILDDIR/libdb.so"
 
 meson setup "$BUILDDIR" "$ROOT" --cross-file "$CROSS" --wipe 2>/dev/null \
