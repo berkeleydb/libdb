@@ -773,10 +773,17 @@ __db_backup(dbenv, target, ip, remove_max, flags)
 	}
 
 	/*
-	 * Copy all log files found in the log directory.
+	 * Copy all log files found in the log directory, unless the caller
+	 * asked us not to.  DB_BACKUP_NO_LOGS is documented as "back up only
+	 * the *.db files, do not backup the log files" (docs_src/api/c/
+	 * envbackup.md), but the flag was only ever validated in the accepted
+	 * mask below -- it was never read, so it silently did nothing and a
+	 * backup taken with it copied every log file anyway (defect P6).
+	 *
 	 * The log directory defaults to the home directory.
 	 */
-	if ((ret = backup_read_log_dir(dbenv, target, &copy_min, flags)) != 0)
+	if (!LF_ISSET(DB_BACKUP_NO_LOGS) &&
+	    (ret = backup_read_log_dir(dbenv, target, &copy_min, flags)) != 0)
 		goto err;
 	/*
 	 * If we're updating a snapshot, the lowest-numbered log file copied

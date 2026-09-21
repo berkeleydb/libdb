@@ -1003,11 +1003,12 @@ m_inorder(const char *name, const char *arm)
 	 */
 	if (isinorder)
 		arm_watchdog(20,
-		    "VERDICT inorder XFAIL DB_CONSUME under DB_INORDER did not "
-		    "return within 20s across a deleted record -- defect P7, an "
-		    "unbounded retry loop in __qamc_get (src/qam/qam.c:691; "
-		    "retry-label hit count >100000 vs 22 for the default arm). "
-		    "See test/TESTING-IMPROVEMENTS.md\n");
+		    "VERDICT inorder FAIL DB_CONSUME under DB_INORDER did not "
+		    "return within 20s across a deleted record -- that is defect "
+		    "P7 reintroduced, an unbounded retry loop in __qamc_get. "
+		    "Check that the is_first head comparison still accepts the "
+		    "local `first' as well as meta->first_recno (src/qam/qam.c); "
+		    "see test/db/run_qam_inorder_consume.sh\n");
 	for (;;) {
 		memset(&key, 0, sizeof(key));
 		memset(&data, 0, sizeof(data));
@@ -2159,14 +2160,20 @@ m_noflush(const char *name, const char *arm)
 		    "DB_NOFLUSH: both a shared and a private environment "
 		    "created, filled and read back -- defect P8 is fixed");
 	else if (dsig != 0 || drc == 4 || prc == 5)
-		verdict(name, "XFAIL",
-		    "DB_NOFLUSH breaks environment creation: shared arm "
-		    "rc=%d sig=%d (SIGBUS=%d expected: the region file is left "
+		/*
+		 * P8 is FIXED: the panic-teardown I/O suppression now keys on
+		 * the internal DB_ENV_NOIO rather than the public
+		 * DB_ENV_NOFLUSH (src/dbinc/os.h, src/dbinc/db.in), so a
+		 * DB_NOFLUSH environment does real I/O again.  Seeing the old
+		 * signature is therefore a regression, not an expectation.
+		 */
+		verdict(name, "FAIL",
+		    "DB_NOFLUSH breaks environment creation again: shared arm "
+		    "rc=%d sig=%d (SIGBUS=%d: the region file is left "
 		    "zero-length), private arm rc=%d (5 = DB->open failed). "
-		    "Defect P8 -- LAST_PANIC_CHECK_BEFORE_IO (src/dbinc/os.h:"
-		    "105) returns 0 from every __os_physwrite/__os_io under "
-		    "DB_ENV_NOFLUSH, so __db_file_extend never extends the "
-		    "region. See test/TESTING-IMPROVEMENTS.md",
+		    "That is defect P8 reintroduced -- check that "
+		    "LAST_PANIC_CHECK_BEFORE_IO still tests DB_ENV_NOIO and not "
+		    "DB_ENV_NOFLUSH",
 		    drc, dsig, SIGBUS, prc);
 	else
 		verdict(name, "FAIL",

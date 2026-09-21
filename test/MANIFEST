@@ -268,15 +268,15 @@ flag	closesync@count	optional
 # test once the engine is fixed.  FLAGAPI_STRICT=1 refuses the allowance, which
 # is how they are shown to have teeth.
 #
-#   backup_nologs   P6  DB_BACKUP_NO_LOGS accepted and IGNORED (it appears once
-#                       in all of src/, in db_backup.c's flag mask, and is read
-#                       nowhere).  Measured: 62 log files copied either way.
+#   backup_nologs   P6  FIXED (v2026.09.12) -- guarded at the backup_read_log_dir
+#                       call; now a FAIL branch, and the mode the tier's sabotage
+#                       teeth use (test/c/flagapi-sabotage.sh).
 #   inorder@inorder P7  FIXED (PR #205).  This mode now reports PASS with no edit
 #                       to the driver -- which is what the in-driver watchdog was
 #                       for: the XFAIL retires itself when the defect goes away.
 #                       98% CPU (retry label in __qamc_get hit >100,000 times
 #                       without terminating, vs 22 for the default arm).
-#   noflush@noflush P8  DB_NOFLUSH makes an environment unusable: SIGBUS on a
+#   noflush@noflush P8  FIXED (v2026.09.12) -- now a FAIL branch: SIGBUS on a
 #                       shared env (region file left zero-length),
 #                       DB_PAGE_NOTFOUND on a private one.
 #
