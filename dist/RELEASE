@@ -8,7 +8,7 @@
 # Format: YYYY.0M  (append .MICRO for a same-month re-release, e.g. 2026.09.1).
 # Bump YYYY.0M for the month you cut the release; MICRO for follow-ups.
 # ---------------------------------------------------------------------------
-DB_CALVER="2026.09.11"
+DB_CALVER="2026.09.12"
 
 # ---------------------------------------------------------------------------
 # FORMAT / ABI COMPATIBILITY LEVEL -- FROZEN at 5.3.37, do NOT bump for a
@@ -30,7 +30,7 @@ DB_VERSION_FULL="$DB_VERSION_FAMILY.$DB_VERSION_RELEASE.$DB_VERSION_MAJOR.$DB_VE
 
 DB_VERSION_UNIQUE_NAME=`printf "_%d%03d" $DB_VERSION_MAJOR $DB_VERSION_MINOR`
 
-DB_RELEASE_DATE="September 20, 2026"
+DB_RELEASE_DATE="September 21, 2026"
 # User-facing string leads with the CalVer identity; the frozen 5.3.37 is kept
 # as the parenthesised format/ABI compatibility level so tools that parse it
 # and existing environments still see a stable compat number.
