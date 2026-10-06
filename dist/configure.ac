@@ -587,11 +587,26 @@ if test "$db_cv_java" = "yes" -o "$db_cv_jdbc" = "yes"; then
         	       	sed -e '/ version /!d' -e 's/.*"\(.*\)".*/\1/'` ;;
 	esac
 	AC_MSG_RESULT($JAVA_VERSION)
-	case "$JAVA_VERSION" in
-	1.[[3456789]]* | 1.[[1-9]][[0-9]]* | [[23456789]]* ) ;;
-	* )
-		AC_MSG_ERROR([Java version 1.3 or higher required, got $JAVA_VERSION]) ;;
+	#
+	# Accept 1.3 and later.  The old glob list was
+	#
+	#	1.[[3456789]]* | 1.[[1-9]][[0-9]]* | [[23456789]]* )
+	#
+	# whose last arm matches a SINGLE leading digit 2-9, so every JDK from
+	# 10 to 19 inclusive was rejected -- "17.0.20.1" begins with a 1 and so
+	# only the 1.x arms could match it, and neither does.  JDK 9, 21 and 23
+	# passed, which is why this went unnoticed: the breakage is a hole in the
+	# middle of the range, not at the end.  Compare the major number
+	# numerically instead, mapping legacy 1.N to N.
+	JAVA_MAJOR=`echo "$JAVA_VERSION" | sed -e 's/^1\.\([[0-9]][[0-9]]*\).*/\1/' \
+	    -e 's/^\([[0-9]][[0-9]]*\).*/\1/'`
+	case "$JAVA_MAJOR" in
+	'' | *[[!0-9]]* )
+		AC_MSG_ERROR([cannot parse the Java version "$JAVA_VERSION"]) ;;
 	esac
+	if test "$JAVA_MAJOR" -lt 3; then
+		AC_MSG_ERROR([Java version 1.3 or higher required, got $JAVA_VERSION])
+	fi
 
 	# Because of the code that SWIG generates to cast between pointers and
 	# integers, we need to add the flag "-fno-strict-aliasing" to the gcc
