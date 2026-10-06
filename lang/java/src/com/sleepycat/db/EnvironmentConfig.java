@@ -4529,6 +4529,28 @@ True if the system has been configured to yield the processor
         /* Callbacks */
         if (backupHandler != oldConfig.backupHandler)
             dbenv.set_backup_callbacks(backupHandler, backupHandler, backupHandler);
+
+        /*
+         * The four backup tunables.  These accessors existed but were
+         * WRITE-ONLY: setBackupReadCount and friends stored to a private field
+         * and nothing ever pushed the value into the library, so calling them
+         * had no effect at all (defect U8).  DB_ENV->set_backup_config allocates
+         * the backup handle itself (__env_backup_alloc in src/env/env_backup.c),
+         * so unlike the getter these do not require a BackupHandler to have been
+         * installed first, and they can be applied in the ordinary diff style.
+         */
+        if (backup_read_count != oldConfig.backup_read_count)
+            dbenv.set_backup_config(
+                DbConstants.DB_BACKUP_READ_COUNT, backup_read_count);
+        if (backup_read_sleep != oldConfig.backup_read_sleep)
+            dbenv.set_backup_config(
+                DbConstants.DB_BACKUP_READ_SLEEP, backup_read_sleep);
+        if (backup_size != oldConfig.backup_size)
+            dbenv.set_backup_config(
+                DbConstants.DB_BACKUP_SIZE, backup_size);
+        if (backup_write_direct != oldConfig.backup_write_direct)
+            dbenv.set_backup_config(DbConstants.DB_BACKUP_WRITE_DIRECT,
+                backup_write_direct ? 1 : 0);
         if (feedbackHandler != oldConfig.feedbackHandler)
             dbenv.set_feedback(feedbackHandler);
         if (logRecordHandler != oldConfig.logRecordHandler)
@@ -4780,6 +4802,23 @@ True if the system has been configured to yield the processor
         messageHandler = dbenv.get_msgcall();
         panicHandler = dbenv.get_paniccall();
         backupHandler = dbenv.get_backup_handler();
+        /*
+         * The backup tunables read back only when a backup handle exists --
+         * DB_ENV->get_backup_config returns EINVAL when it does not (unlike the
+         * setter, which allocates one).  A handle is present exactly when a
+         * BackupHandler has been installed, so key off that rather than
+         * swallowing an exception.
+         */
+        if (backupHandler != null) {
+            backup_read_count =
+                dbenv.get_backup_config(DbConstants.DB_BACKUP_READ_COUNT);
+            backup_read_sleep =
+                dbenv.get_backup_config(DbConstants.DB_BACKUP_READ_SLEEP);
+            backup_size =
+                dbenv.get_backup_config(DbConstants.DB_BACKUP_SIZE);
+            backup_write_direct = dbenv.get_backup_config(
+                DbConstants.DB_BACKUP_WRITE_DIRECT) != 0;
+        }
         // XXX: replicationTransport and envid aren't available?
 
         /* Other settings */
