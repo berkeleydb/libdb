@@ -87,6 +87,7 @@ cat $d/src/dbinc/db.in $d/src/dbinc_auto/api_flags.in | sed -n \
     -e 's/^#.*[ 	]\(DB_[A-Z_0-9][A-Z_0-9]*\).*/\1/p' \
     -e 's/^#.*[ 	]\(DB2_[A-Z_0-9][A-Z_0-9]*\).*/\1/p' \
     -e 's/[	 ]\(DB_[A-Z_]*\)=[0-9].*/\1/p' \
+    -e 's/^[	 ]*\(DB_[A-Z_0-9]*\)[	 ]*=[	 ]*[0-9].*/\1/p' \
     -e d |
 while read name; do
 	skip=no
@@ -111,7 +112,7 @@ END_OF_TEXT
 
 sed '/^#/d' $p |
 while read name isdoc isinc isjava iscsharp; do
-	if `egrep -w "^#.*[ 	]$name|[	 ]$name=[0-9][0-9]*" \
+	if `egrep -w "^#.*[ 	]$name|[	 ]$name=[0-9][0-9]*|^[	 ]*$name[	 ]*=[	 ]*[0-9][0-9]*" \
 	    $d/src/dbinc/db.in $d/src/dbinc_auto/api_flags.in > /dev/null`; then
 		[ "X$isinc" != "XI" ] && {
 			echo "$name should not appear in db.in/api_flags.in"
