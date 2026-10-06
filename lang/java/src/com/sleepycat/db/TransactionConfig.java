@@ -37,6 +37,7 @@ public class TransactionConfig implements Cloneable {
     private boolean noSync = false;
     private boolean noWait = false;
     private boolean snapshot = false;
+    private boolean serializable = false;
     private boolean sync = false;
     private boolean writeNoSync = false;
     private boolean wait = false;
@@ -245,6 +246,48 @@ True if the transaction is configured for Snapshot Isolation.
     }
 
     /**
+    This transaction will execute with serializable snapshot isolation (SSI).
+    <p>
+    SSI is the snapshot substrate plus read-write antidependency tracking, so
+    this setting implies {@link #setSnapshot} -- a transaction configured this
+    way reads a consistent snapshot without taking read locks, and in addition
+    the environment detects the dangerous structures that let plain snapshot
+    isolation commit a write skew.  Where {@link #setSnapshot} would allow such
+    an anomaly, this setting causes one of the transactions involved to be
+    rolled back.
+    <p>
+    Databases read in the transaction should be configured with
+    {@link DatabaseConfig#setMultiversion}, as for plain snapshot isolation.
+    <p>
+    A transaction that is rolled back to preserve serializability throws
+    {@link DeadlockException}, so an application that already retries on
+    deadlock needs no new error handling.
+    <p>
+    Two restrictions follow from the implementation and are enforced by the
+    underlying library: this setting may not be used on a replication client,
+    and such a transaction may not be prepared for two-phase commit.
+
+    @param serializable
+    If true, the transaction executes with serializable snapshot isolation.
+    */
+    public void setSerializable(final boolean serializable) {
+        this.serializable = serializable;
+    }
+
+    /**
+Return true if the transaction is configured for serializable snapshot
+isolation (SSI).
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+True if the transaction is configured for serializable snapshot isolation.
+    */
+    public boolean getSerializable() {
+        return serializable;
+    }
+
+    /**
     Configure the transaction to write and synchronously flush the log
     it when commits.
     <p>
@@ -394,6 +437,7 @@ True if the transaction is configured for Snapshot Isolation.
         flags |= noSync ? DbConstants.DB_TXN_NOSYNC : 0;
         flags |= noWait ? DbConstants.DB_TXN_NOWAIT : 0;
         flags |= snapshot ? DbConstants.DB_TXN_SNAPSHOT : 0;
+        flags |= serializable ? DbConstants.DB_TXN_SERIALIZABLE : 0;
         flags |= sync ? DbConstants.DB_TXN_SYNC : 0;
         flags |= wait ? DbConstants.DB_TXN_WAIT : 0;
         flags |= writeNoSync ? DbConstants.DB_TXN_WRITE_NOSYNC : 0;

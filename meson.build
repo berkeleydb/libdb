@@ -22,7 +22,15 @@ cc = meson.get_compiler('c')
 # Berkeley DB's public db.h uses BSD type names (u_int, u_char, ...). glibc
 # only exposes those under _DEFAULT_SOURCE/_BSD_SOURCE; macOS/*BSD provide
 # them unconditionally, so this is a harmless no-op there.
-add_project_arguments('-D_DEFAULT_SOURCE', '-D_BSD_SOURCE', language: 'c')
+#
+# _GNU_SOURCE and _REENTRANT match the autoconf build's CFLAGS.  Without them,
+# c_std=c99 plus _BSD_SOURCE alone leaves glibc hiding POSIX declarations the
+# engine uses unconditionally -- pthread_rwlock_t is not even a known type name,
+# which silently turned the HAVE_PTHREAD_RWLOCK_REINIT_OKAY probe into "DID NOT
+# COMPILE" and so into a false negative. Part of U6: the two build systems must
+# agree on their feature macros or they agree on nothing downstream.
+add_project_arguments('-D_DEFAULT_SOURCE', '-D_BSD_SOURCE',
+    '-D_GNU_SOURCE', '-D_REENTRANT', language: 'c')
 
 # The real build: defines cc-derived config, generated headers, libdb, and the
 # docs/bench run-targets. Variables it sets (inc, db_h, db_int_h, db_int_def_h,

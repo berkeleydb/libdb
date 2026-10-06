@@ -208,11 +208,34 @@ free=struct.unpack_from('<I',b,28)[0]; flags=struct.unpack_from('<I',b,48)[0]
 uid=bytes(b[52:72])
 # v5: HASHHDR = lsn,pgno,magic(0-15) ver(16) psz(20) ovfl_point(24) last_freed(28)
 #     max_bucket..h_charkey(32-55) flags(56) spares[32](60-187) uid(188-207)
+#
+# The spares array must be written in the OLD encoding, not copied from the
+# modern metadata page.  __ham_30_hashmeta converts v5 -> v6 with
+#
+#     n_spares[0] = 1
+#     n_spares[i] = 1 + o_spares[i - 1]      for 1 <= i <= log2(max_bucket+1)
+#
+# because the old array held "extra pages allocated before the bucket that
+# begins the next doubling" while the new one holds "page number of that first
+# bucket MINUS its bucket number".  Copying the already-converted modern array
+# made the upgrade apply the conversion a SECOND time, so for the one-bucket
+# fixture n[1] became 1+1=2 instead of 1 and db_verify rejected the result with
+#
+#     BDB1101 Page 0: spares array entry 1 is invalid
+#
+# which is defect T3 -- the fixture was wrong, not the upgrade code.  Invert the
+# transform here so the fixture is a faithful v5 page.
+spares_v5 = bytearray(128)
+_nsp = list(struct.unpack_from('<32I', bytes(spares), 0))
+_max_entry = maxb.bit_length() - 1 if maxb > 0 else 0   # __db_log2(maxb+1)
+for _i in range(1, min(32, _max_entry + 1)):
+    struct.pack_into('<I', spares_v5, (_i - 1) * 4, max(_nsp[_i] - 1, 0))
 m=bytearray(psz); m[0:16]=b[0:16]
 struct.pack_into('<I',m,16,5); struct.pack_into('<I',m,20,psz)
 struct.pack_into('<I',m,24,0); struct.pack_into('<I',m,28,free)
 struct.pack_into('<6I',m,32,maxb,high,low,ff,nel,hck)
-struct.pack_into('<I',m,56,flags); m[60:188]=spares
+struct.pack_into('<I',m,56,flags); m[60:188]=spares_v5
+m[188:208]=uid
 wr('h_v5.db',bytes(m)+bytes(b[psz:]))
 # v6: HMETA30 = DBMETA30 header(56) + max_bucket..h_charkey(56-79) + spares[32](80-207)
 m=bytearray(psz); m[0:16]=b[0:16]

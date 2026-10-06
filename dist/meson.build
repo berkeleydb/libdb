@@ -19,12 +19,19 @@ root = '..'   # this file lives in dist/; project root is one level up.
 cdata = configuration_data()
 
 # Feature set (full library build). Toggle with -Dfeature=false if desired.
+#
+# U6: HAVE_DBM and HAVE_ATOMICFILEREAD are NOT in this list, because autoconf
+# does not define them by default -- dbm is opt-in (--enable-dbm, or implied by
+# --enable-tcl) and atomicfileread defaults to "no" and is only turned on for
+# platforms known to read and write files atomically
+# (dist/aclocal/options.m4:395).  Hardcoding them here made every meson build
+# differ from every autoconf build in two more capability bits.
 foreach feat : [
     'HAVE_HASH', 'HAVE_HEAP', 'HAVE_QUEUE', 'HAVE_VERIFY', 'HAVE_STATISTICS',
     'HAVE_REPLICATION', 'HAVE_REPLICATION_THREADS', 'HAVE_CRYPTO',
     'HAVE_COMPRESSION', 'HAVE_PARTITION', 'HAVE_MUTEX_SUPPORT',
-    'HAVE_SHARED_LATCHES', 'HAVE_64BIT_TYPES', 'HAVE_DBM',
-    'HAVE_LOG_CHECKSUM', 'HAVE_UPGRADE_SUPPORT', 'HAVE_ATOMICFILEREAD',
+    'HAVE_SHARED_LATCHES', 'HAVE_64BIT_TYPES',
+    'HAVE_LOG_CHECKSUM', 'HAVE_UPGRADE_SUPPORT',
     'HAVE_SIMPLE_THREAD_TYPE', 'HAVE_SYSTEM_INCLUDE_FILES', 'STDC_HEADERS']
   cdata.set(feat, 1)
 endforeach
@@ -38,7 +45,11 @@ cdata.set('HAVE_PTHREAD_SELF', 1)
 foreach h : [
     'dirent.h', 'dlfcn.h', 'execinfo.h', 'inttypes.h', 'stdint.h', 'stdio.h',
     'stdlib.h', 'string.h', 'strings.h', 'sys/select.h', 'sys/socket.h',
-    'sys/stat.h', 'sys/time.h', 'sys/types.h', 'time.h', 'unistd.h']
+    'sys/stat.h', 'sys/time.h', 'sys/types.h', 'time.h', 'unistd.h',
+    # U6: autoconf checks sys/random.h; db_int.in includes it under
+    # HAVE_GETRANDOM && HAVE_SYS_RANDOM_H, so omitting it here meant
+    # getrandom(2) was declared nowhere in a meson build.
+    'sys/random.h']
   if cc.has_header(h)
     cdata.set('HAVE_' + h.underscorify().to_upper(), 1)
   endif
@@ -56,13 +67,179 @@ foreach fn : [
     'sched_yield', 'select', 'setgid', 'setuid', 'shmget', 'sigaction',
     'snprintf', 'stat', 'strcasecmp', 'strcat', 'strchr', 'strdup', 'strerror',
     'strftime', 'strncat', 'strncmp', 'strrchr', 'strsep', 'strtol', 'strtoul',
-    'sysconf', 'time', 'vsnprintf']
+    'sysconf', 'time', 'vsnprintf',
+    # U6: autoconf checks these two (dist/configure.ac AC_CHECK_FUNCS) and the
+    # meson build did not, so os_csprng.c silently fell back to a weaker source
+    # under meson while the autoconf build used getrandom(2).
+    'getrandom', 'arc4random_buf']
   if cc.has_function(fn)
     cdata.set('HAVE_' + fn.to_upper(), 1)
   endif
 endforeach
 
 # Misc capability defines.
+
+# cc.run()/cc.links() do NOT inherit add_project_arguments, so every probe that
+# touches a POSIX declaration needs the project's feature macros passed
+# explicitly -- otherwise the probe compiles under different rules than the
+# library does, and answers a question about a dialect nothing is built in.
+probe_args = ['-D_DEFAULT_SOURCE', '-D_BSD_SOURCE', '-D_GNU_SOURCE',
+    '-D_REENTRANT']
+
+# U6: feature parity with the autoconf build.  Each probe below mirrors a
+# specific autoconf test, and all of them were MISSING from this file -- so
+# meson produced a library with different capabilities AND a different
+# __env_struct_sig() to the autoconf one, and an environment created by either
+# could not be attached by the other ("BDB1539 Build signature doesn't match
+# environment").  Keep these in step with dist/configure.ac and
+# dist/aclocal/mutex.m4.
+
+# Atomic operations: dist/aclocal/mutex.m4's db_cv_atomic "gcc/__atomic" tier,
+# which is the link test reproduced verbatim here.
+if cc.links('''#include <stdint.h>
+int main(void) {
+	uint32_t val32 = 1, exp32 = 1;
+	intptr_t valp = 1, expp = 1;
+	__atomic_add_fetch(&val32, 1, __ATOMIC_SEQ_CST);
+	__atomic_compare_exchange_n(&val32, &exp32, 2, 0,
+	    __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+	__atomic_compare_exchange_n(&valp, &expp, 2, 0,
+	    __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+	return (0);
+}''', args: probe_args, name: 'GCC __atomic builtins')
+  cdata.set('HAVE_ATOMIC_SUPPORT', 1)
+  cdata.set('HAVE_ATOMIC_BUILTINS', 1)
+  cdata.set('HAVE_ATOMIC_GCC_BUILTIN', 1)
+  if cc.sizeof('void *') >= 8
+    cdata.set('HAVE_ATOMIC_64BIT', 1)
+  endif
+endif
+
+# io_uring: header AND the library symbol, as AC_CHECK_LIB(uring, ...) does.
+# os_aio_uring.c is in the source list unconditionally and is whole-file guarded
+# on HAVE_IO_URING, so without this it compiled to nothing and the io_uring
+# backend was simply absent from a meson build.
+uring_dep = dependency('liburing', required: false)
+if not uring_dep.found()
+  uring_dep = cc.find_library('uring', required: false)
+endif
+if cc.has_header('liburing.h') and uring_dep.found() and \
+    cc.has_function('io_uring_queue_init', dependencies: uring_dep)
+  cdata.set('HAVE_IO_URING', 1)
+else
+  uring_dep = dependency('', required: false)
+endif
+
+# POSIX aio: aio_read may be in libc, librt or libaio.
+aio_dep = dependency('', required: false)
+if cc.has_header('aio.h')
+  if cc.has_function('aio_read')
+    cdata.set('HAVE_AIO_POSIX', 1)
+  else
+    foreach l : ['rt', 'aio']
+      cand = cc.find_library(l, required: false)
+      if cand.found() and cc.has_function('aio_read', dependencies: cand)
+        cdata.set('HAVE_AIO_POSIX', 1)
+        aio_dep = cand
+        break
+      endif
+    endforeach
+  endif
+endif
+
+# Thread-pool AIO offload: autoconf defines this whenever pthread.h exists.
+if cc.has_header('pthread.h')
+  cdata.set('HAVE_AIO_THREADPOOL', 1)
+endif
+
+# BSD kqueue+aio needs BOTH EVFILT_AIO and sigev_notify_kqueue; macOS has the
+# former only, which is why autoconf tests the member as well.
+if cc.has_member('struct sigevent', 'sigev_notify_kqueue',
+    prefix: '#include <signal.h>\n#include <aio.h>') and \
+    cc.has_header_symbol('sys/event.h', 'EVFILT_AIO')
+  cdata.set('HAVE_AIO_KQUEUE', 1)
+endif
+
+# SHM_LOCK for shmctl(2).
+if cc.has_header_symbol('sys/shm.h', 'SHM_LOCK')
+  cdata.set('HAVE_SHMCTL_SHM_LOCK', 1)
+endif
+
+# Test-and-set mutexes in x86-64 inline assembly, and the HYBRID configuration
+# that follows from having BOTH a pthreads mutex and a TAS one
+# (dist/aclocal/mutex.m4: `if test "$hybrid" = pthread/tas').  Missing these
+# meant a meson build used pure pthread mutexes where the autoconf build used
+# the hybrid spin-then-block path -- a different mutex implementation, not just
+# a different #define, and one of the layout inputs to __env_struct_sig().
+if host_machine.cpu_family() == 'x86_64' and cc.links('''
+int main(void) {
+	unsigned char tsl = 0;
+	__asm__ volatile("movl $1,%%eax; lock; xchgb %1,%%al; xorl $1,%%eax"
+	    : "=&qa" (tsl) : "m" (tsl) : "memory", "cc");
+	return (tsl);
+}''', args: probe_args, name: 'x86_64 gcc-assembly TAS mutex')
+  cdata.set('HAVE_MUTEX_X86_64_GCC_ASSEMBLY', 1)
+  # pthreads is unconditional above, so pthread + tas == hybrid.
+  cdata.set('HAVE_MUTEX_HYBRID', 1)
+endif
+
+# Whether a pthread cond/rwlock may be re-initialised over a previously
+# initialised one (dist/aclocal/mutex.m4's AM_PTHREADS_CONDVAR_DUPINITCHK and
+# AM_PTHREADS_RWLOCKVAR_DUPINITCHK).  These gate failchk recovery paths.
+#
+# autoconf uses AC_RUN_IFELSE, not a link test: the question is whether the
+# second init SUCCEEDS at runtime, and the program exits non-zero when it does
+# not.  A link test answers "does the symbol exist", which is always yes and
+# therefore the wrong question -- getting this wrong the first time set the cond
+# flag and left the rwlock flag unset, which is a divergence of its own.
+# cc.run() ABORTS a cross build ("Can not run test applications in this cross
+# environment"), so the run tests are guarded on meson.is_cross_build() and a
+# cross build uses a link test instead -- which is exactly what autoconf's third
+# AC_RUN_IFELSE argument does for the same reason.
+cond_src = '''#include <stdlib.h>
+#include <pthread.h>
+int main(void) {
+	pthread_cond_t cond;
+	pthread_condattr_t condattr;
+	exit(pthread_condattr_init(&condattr) ||
+	    pthread_cond_init(&cond, &condattr) ||
+	    pthread_cond_init(&cond, &condattr));
+}'''
+if meson.is_cross_build()
+  if cc.links(cond_src, dependencies: thread_dep, args: probe_args,
+      name: 'pthread_cond re-init (link only, cross)')
+    cdata.set('HAVE_PTHREAD_COND_REINIT_OKAY', 1)
+  endif
+else
+  cond_reinit = cc.run(cond_src, dependencies: thread_dep, args: probe_args,
+      name: 'pthread_cond re-init')
+  if cond_reinit.compiled() and (cond_reinit.returncode() == 0)
+    cdata.set('HAVE_PTHREAD_COND_REINIT_OKAY', 1)
+  endif
+endif
+
+rwlock_src = '''#include <stdlib.h>
+#include <pthread.h>
+int main(void) {
+	pthread_rwlock_t rwlock;
+	pthread_rwlockattr_t rwlockattr;
+	exit(pthread_rwlockattr_init(&rwlockattr) ||
+	    pthread_rwlock_init(&rwlock, &rwlockattr) ||
+	    pthread_rwlock_init(&rwlock, &rwlockattr));
+}'''
+if meson.is_cross_build()
+  if cc.links(rwlock_src, dependencies: thread_dep, args: probe_args,
+      name: 'pthread_rwlock re-init (link only, cross)')
+    cdata.set('HAVE_PTHREAD_RWLOCK_REINIT_OKAY', 1)
+  endif
+else
+  rwlock_reinit = cc.run(rwlock_src, dependencies: thread_dep, args: probe_args,
+      name: 'pthread_rwlock re-init')
+  if rwlock_reinit.compiled() and (rwlock_reinit.returncode() == 0)
+    cdata.set('HAVE_PTHREAD_RWLOCK_REINIT_OKAY', 1)
+  endif
+endif
+
 if cc.has_header_symbol('time.h', 'CLOCK_MONOTONIC')
   cdata.set('HAVE_CLOCK_MONOTONIC', 1)
 endif
@@ -407,6 +584,16 @@ libdb_srcnames = [
   'src/xa/xa.c',
 ]
 
+# mut_tas.c implements the test-and-set mutexes and has NO whole-file #ifdef --
+# it is compiled only when a TAS implementation was selected, which is how
+# autoconf treats it (ADDITIONAL_OBJS="mut_tas$o ..." inside the matching arm of
+# dist/aclocal/mutex.m4).  Adding it unconditionally builds it on platforms where
+# struct __db_mutex_t has no `tas' or `sharecount' member, which is exactly how
+# macOS failed: "no member named 'sharecount' in 'struct __db_mutex_t'".
+if cdata.has('HAVE_MUTEX_X86_64_GCC_ASSEMBLY')
+  libdb_srcnames += 'src/mutex/mut_tas.c'
+endif
+
 libdb_sources = []
 foreach s : libdb_srcnames
   libdb_sources += files(root / s)
@@ -433,7 +620,7 @@ endforeach
 
 libdb = library('db', libdb_sources, clib_sources, db_h, db_int_h, db_int_def_h, clib_port_h,
   include_directories: inc,
-  dependencies: thread_dep,
+  dependencies: [thread_dep, uring_dep, aio_dep],
   gnu_symbol_visibility: 'default',
   install: true)
 

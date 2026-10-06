@@ -2185,7 +2185,19 @@ __log_put_record_int(env, dbp, txnp, ret_lsnp,
 			} else {
 				LOGCOPY_32(env, bp, &dbt->size);
 				bp += sizeof(dbt->size);
-				memcpy(bp, dbt->data, dbt->size);
+				/*
+				 * A DBT may be non-NULL and still carry a NULL
+				 * data pointer when its size is 0 -- a caller
+				 * logging an empty record.  memcpy's arguments
+				 * are declared non-null regardless of the
+				 * length, so passing (NULL, 0) is undefined
+				 * behaviour even though no bytes move, and UBSan
+				 * reports it: "null pointer passed as argument
+				 * 2, which is declared to never be null".
+				 * Defect T5.
+				 */
+				if (dbt->size != 0)
+					memcpy(bp, dbt->data, dbt->size);
 			}
 			/* Process fields that need to be byte swapped. */
 			if (dbp != NULL && F_ISSET(dbp, DB_AM_SWAP)) {
@@ -2220,7 +2232,8 @@ __log_put_record_int(env, dbp, txnp, ret_lsnp,
 				LOGCOPY_32(env, bp, &header->size);
 				bp += sizeof(header->size);
 				pghdrstart = (PAGE *)bp;
-				memcpy(bp, header->data, header->size);
+				if (header->size != 0)
+					memcpy(bp, header->data, header->size);
 				if (has_data == 0 &&
 				    F_ISSET(dbp, DB_AM_SWAP) &&
 				    (ret = __db_pageswap(
@@ -2244,7 +2257,8 @@ __log_put_record_int(env, dbp, txnp, ret_lsnp,
 					return (ret);
 				LOGCOPY_32(env, bp, &data->size);
 				bp += sizeof(data->size);
-				memcpy(bp, data->data, data->size);
+				if (data->size != 0)
+					memcpy(bp, data->data, data->size);
 				if (F_ISSET(dbp, DB_AM_SWAP) &&
 				     F_ISSET(data, DB_DBT_APPMALLOC))
 					__os_free(env, data->data);
