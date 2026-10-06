@@ -19,7 +19,7 @@ from that release text, it means `T1`/`T2`/`T3`.
 | **T2** | ASan reports a bad free in the `lockmatrix` harness. In the harness, not the engine. | open |
 | **T3** | `run_upgrade` hash-v5 fixture missing, so the upgrade pass skips. | open, needs the fixture |
 | **T4** | `cutest` aborts (exit 134, `BDB2032` unlock 632). | open, pre-existing |
-| **T5** | `log_put.c` zero-length `memcpy` UBSan note. | open, benign but real |
+| **T5** | **FIXED.** The note was real UB, not merely pedantic: a `DBT` may be non-NULL and still carry a **NULL `data` pointer when `size` is 0** (a caller logging an empty record), and `memcpy`'s pointer arguments are declared non-null *regardless of the length* — so `memcpy(bp, NULL, 0)` is undefined even though no bytes move. Reproduced under UBSan with a 200-transaction driver storing zero-length data: `log_put.c:2188: runtime error: null pointer passed as argument 2, which is declared to never be null`, inside `__log_put_record_int`. The same shape was present at **three** sites (the `LOGREC_DATA`, `LOGREC_HDR` page-header and data copies); all three now skip the copy when the size is 0. After: **0** UBSan runtime errors on the same driver, `run_all` 20 PASS / 0 FAIL. | **fixed** |
 | **T6** | `clang` absent on some runners, so the lockmatrix tier runner cannot run there. | environmental |
 
 ## Shipped engine defects
