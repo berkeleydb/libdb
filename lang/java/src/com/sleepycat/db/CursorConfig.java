@@ -57,6 +57,15 @@ public class CursorConfig implements Cloneable {
     static { SNAPSHOT.setSnapshot(true); }
 
     /**
+    A convenience instance to configure read operations performed by the
+    cursor to run at serializable snapshot isolation (SSI), so that reads are
+    tracked for the read-write antidependencies that plain snapshot isolation
+    does not detect.
+    */
+    public static final CursorConfig SERIALIZABLE = new CursorConfig();
+    static { SERIALIZABLE.setSerializable(true); }
+
+    /**
     A convenience instance to specify the Concurrent Data Store environment
     cursor will be used to update the database.
     <p>
@@ -90,6 +99,7 @@ public class CursorConfig implements Cloneable {
     private boolean readCommitted = false;
     private boolean readUncommitted = false;
     private boolean snapshot = false;
+    private boolean serializable = false;
     private boolean writeCursor = false;
 
     /**
@@ -262,6 +272,38 @@ public class CursorConfig implements Cloneable {
     }
 
     /**
+    Configure read operations performed by the cursor to run at serializable
+    snapshot isolation (SSI).
+    <p>
+    This implies {@link #setSnapshot}: reads see the snapshot taken when the
+    cursor's transaction began, and in addition each key read is recorded so
+    that a read-write antidependency which would allow a serializability
+    anomaly causes one of the transactions involved to be rolled back with
+    {@link DeadlockException}.
+    <p>
+    As for plain snapshot isolation, the databases read should be configured
+    with {@link DatabaseConfig#setMultiversion}.
+
+    @param serializable
+    If true, the cursor's reads run at serializable snapshot isolation.
+    */
+    public void setSerializable(final boolean serializable) {
+        this.serializable = serializable;
+    }
+
+    /**
+    Return if read operations performed by the cursor are configured to run at
+    serializable snapshot isolation (SSI).
+    <p>
+    @return
+    If read operations performed by the cursor run at serializable snapshot
+    isolation.
+    */
+    public boolean getSerializable() {
+        return serializable;
+    }
+
+    /**
     Specify the Concurrent Data Store environment cursor will be used to
     update the database.
     <p>
@@ -294,6 +336,7 @@ public class CursorConfig implements Cloneable {
         flags |= readCommitted ? DbConstants.DB_READ_COMMITTED : 0;
         flags |= readUncommitted ? DbConstants.DB_READ_UNCOMMITTED : 0;
         flags |= snapshot ? DbConstants.DB_TXN_SNAPSHOT : 0;
+        flags |= serializable ? DbConstants.DB_TXN_SERIALIZABLE : 0;
         flags |= writeCursor ? DbConstants.DB_WRITECURSOR : 0;
         return db.cursor(txn, flags);
     }

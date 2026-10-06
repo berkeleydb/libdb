@@ -182,6 +182,7 @@ public class EnvironmentConfig implements Cloneable {
     private boolean txnNoWait = false;
     private boolean txnNotDurable = false;
     private boolean txnSnapshot = false;
+    private boolean txnSerializable = false;
     private boolean txnWriteNoSync = false;
     private boolean yieldCPU = false;
 
@@ -3683,6 +3684,40 @@ True if the handle is configured to run all transactions at snapshot
     }
 
     /**
+    Configure the database environment to run transactions at serializable
+    snapshot isolation (SSI) by default.  See
+    {@link TransactionConfig#setSerializable} for more information.
+    <p>
+    This is the environment-wide default: a transaction that names neither
+    isolation level, and has no parent to inherit one from, runs at SSI.
+    Because SSI implies the snapshot substrate, setting this also gives those
+    transactions snapshot reads.
+    <p>
+    This method may be called at any time during the life of the application.
+
+    @param txnSerializable
+    If true, configure the system to default to serializable snapshot
+    isolation.
+    */
+    public void setTxnSerializable(final boolean txnSerializable) {
+        this.txnSerializable = txnSerializable;
+    }
+
+    /**
+Return true if the handle is configured to run all transactions at
+serializable snapshot isolation (SSI).
+<p>
+This method may be called at any time during the life of the application.
+<p>
+@return
+True if the handle is configured to run all transactions at serializable
+snapshot isolation.
+    */
+    public boolean getTxnSerializable() {
+        return txnSerializable;
+    }
+
+    /**
     Configure the database environment to support at least txnMaxActive
     active transactions.
     <p>
@@ -4408,6 +4443,11 @@ True if the system has been configured to yield the processor
         if (!txnSnapshot && oldConfig.txnSnapshot)
             offFlags |= DbConstants.DB_TXN_SNAPSHOT;
 
+        if (txnSerializable && !oldConfig.txnSerializable)
+            onFlags |= DbConstants.DB_TXN_SERIALIZABLE;
+        if (!txnSerializable && oldConfig.txnSerializable)
+            offFlags |= DbConstants.DB_TXN_SERIALIZABLE;
+
         if (txnWriteNoSync && !oldConfig.txnWriteNoSync)
             onFlags |= DbConstants.DB_TXN_WRITE_NOSYNC;
         if (!txnWriteNoSync && oldConfig.txnWriteNoSync)
@@ -4700,6 +4740,7 @@ True if the system has been configured to yield the processor
         txnNoWait = ((envFlags & DbConstants.DB_TXN_NOWAIT) != 0);
         txnNotDurable = ((envFlags & DbConstants.DB_TXN_NOT_DURABLE) != 0);
         txnSnapshot = ((envFlags & DbConstants.DB_TXN_SNAPSHOT) != 0);
+        txnSerializable = ((envFlags & DbConstants.DB_TXN_SERIALIZABLE) != 0);
         txnWriteNoSync = ((envFlags & DbConstants.DB_TXN_WRITE_NOSYNC) != 0);
         yieldCPU = ((envFlags & DbConstants.DB_YIELDCPU) != 0);
 

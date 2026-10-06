@@ -21072,11 +21072,26 @@ printf %s "checking java version... " >&6; }
 	esac
 	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $JAVA_VERSION" >&5
 printf '%s\n' "$JAVA_VERSION" >&6; }
-	case "$JAVA_VERSION" in
-	1.[3456789]* | 1.[1-9][0-9]* | [23456789]* ) ;;
-	* )
-		as_fn_error $? "Java version 1.3 or higher required, got $JAVA_VERSION" "$LINENO" 5 ;;
+	#
+	# Accept 1.3 and later.  The old glob list was
+	#
+	#	1.[[3456789]]* | 1.[[1-9]][[0-9]]* | [[23456789]]* )
+	#
+	# whose last arm matches a SINGLE leading digit 2-9, so every JDK from
+	# 10 to 19 inclusive was rejected -- "17.0.20.1" begins with a 1 and so
+	# only the 1.x arms could match it, and neither does.  JDK 9, 21 and 23
+	# passed, which is why this went unnoticed: the breakage is a hole in the
+	# middle of the range, not at the end.  Compare the major number
+	# numerically instead, mapping legacy 1.N to N.
+	JAVA_MAJOR=`echo "$JAVA_VERSION" | sed -e 's/^1\.\([0-9][0-9]*\).*/\1/' \
+	    -e 's/^\([0-9][0-9]*\).*/\1/'`
+	case "$JAVA_MAJOR" in
+	'' | *[!0-9]* )
+		as_fn_error $? "cannot parse the Java version \"$JAVA_VERSION\"" "$LINENO" 5 ;;
 	esac
+	if test "$JAVA_MAJOR" -lt 3; then
+		as_fn_error $? "Java version 1.3 or higher required, got $JAVA_VERSION" "$LINENO" 5
+	fi
 
 	# Because of the code that SWIG generates to cast between pointers and
 	# integers, we need to add the flag "-fno-strict-aliasing" to the gcc
