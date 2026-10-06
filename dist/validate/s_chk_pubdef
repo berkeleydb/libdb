@@ -13,6 +13,14 @@ p=$d/dist/pubdef.in
 
 exitv=0
 
+# Each `while read' loop below is the right-hand side of a pipe, so it runs in a
+# SUBSHELL and an `exitv=1' set inside one is lost when that subshell exits.
+# That was defect U1: this script printed real failures and still exited 0, so
+# dist/s_validate reported it as passing whatever it found.  A marker FILE
+# survives the subshell; the parent consults it just before exiting.
+failed=__chk_pubdef_failed
+rm -f $failed
+
 # remove m4 doc tests, m4 has been removed for 4.8
 # TODO: add test for csharp const
 #cat <<END_OF_TEXT
@@ -62,17 +70,36 @@ Check that pubdef.in has everything listed in db.in plus api_flags.in.
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 END_OF_TEXT
 
+# Names that appear in db.in but are deliberately NOT part of the public API
+# surface pubdef.in tracks.  Each is excluded for a stated reason, because a
+# blanket skip would let a genuinely new public name through:
+#
+#   DB_CALVER        a version string macro, not an API name (and @-substituted)
+#   DB_CHKSUM_FAIL   internal error code, never returned to an application
+#   DB_CURSOR_NPART  internal sizing constant for the cq_parts[] cursor shards
+#   DB_ENV_NOIO      internal dbenv->flags bit, set only on panic teardown
+#
+# Add to this list only with a reason; the default for a new DB_* name in db.in
+# is that it belongs in pubdef.in.
+not_public="DB_CALVER DB_CHKSUM_FAIL DB_CURSOR_NPART DB_ENV_NOIO"
+
 cat $d/src/dbinc/db.in $d/src/dbinc_auto/api_flags.in | sed -n \
     -e 's/^#.*[ 	]\(DB_[A-Z_0-9][A-Z_0-9]*\).*/\1/p' \
     -e 's/^#.*[ 	]\(DB2_[A-Z_0-9][A-Z_0-9]*\).*/\1/p' \
     -e 's/[	 ]\(DB_[A-Z_]*\)=[0-9].*/\1/p' \
     -e d |
 while read name; do
+	skip=no
+	for n in $not_public; do
+		[ "$name" = "$n" ] && skip=yes
+	done
+	[ "$skip" = yes ] && continue
 	if `egrep -w "$name" $p > /dev/null`; then
 		:
 	else
 		echo "db.in/api_flags.in: $name is missing from $p"
 		exitv=1
+		: > $failed
 	fi
 done
 
@@ -89,11 +116,13 @@ while read name isdoc isinc isjava iscsharp; do
 		[ "X$isinc" != "XI" ] && {
 			echo "$name should not appear in db.in/api_flags.in"
 			exitv=1
+			: > $failed
 		}
 	else
 		[ "X$isinc" = "XI" ] && {
 			echo "$name does not appear in db.in/api_flags.in"
 			exitv=1
+			: > $failed
 		}
 	fi
 done
@@ -113,6 +142,7 @@ while read name; do
 	else
 		echo "$f: $name is missing from $p"
 		exitv=1
+		: > $failed
 	fi
 done
 
@@ -129,11 +159,13 @@ while read name isdoc isinc isjava iscsharp; do
 		[ "X$isjava" != "XJ" ] && {
 			echo "$name should not appear in $f"
 			exitv=1
+			: > $failed
 		}
 	else
 		[ "X$isjava" = "XJ" ] && {
 			echo "$name does not appear in $f"
 			exitv=1
+			: > $failed
 		}
 	fi
 done
@@ -155,11 +187,13 @@ while read name isdoc isinc isjava iscsharp; do
 		[ "X$isjava" != "XJ" ] && {
 			echo "$name should not appear in the Java API"
 			exitv=1
+			: > $failed
 		}
 	else
 		[ "X$isjava" = "XJ" ] && {
 			echo "$name does not appear in the Java API"
 			exitv=1
+			: > $failed
 		}
 	fi
 done
@@ -176,15 +210,23 @@ while read name isdoc isinc isjava iscsharp; do
 		[ "X$isjava" != "XN" ] && [ "X$isjava" != "XJ" ] && {
 			echo "$name should not appear in the Java native layer"
 			exitv=1
+			: > $failed
 		}
 	else
 		[ "X$isjava" = "XN" ] && {
 			echo "$name does not appear in the Java native layer"
 			exitv=1
+			: > $failed
 		}
 	fi
 done
 
 rm -f $t
+
+# Fold in anything the subshelled loops found.
+if [ -f $failed ] ; then
+	exitv=1
+	rm -f $failed
+fi
 
 exit $exitv

@@ -15,7 +15,7 @@ s=$d/src
 t1=__1
 t2=__2
 
-egrep -- "define.*DB_.*-309" $s/dbinc/db.in | awk '{print $2}' > $t1
+egrep -- "define.*DB_.*-309" $s/dbinc/db.in | awk '{print $2}' | sort > $t1
 sed -e '/^db_strerror/,/^}/{' \
     -e '/	case DB_/{' \
     -e 's/:.*//' \
@@ -24,11 +24,26 @@ sed -e '/^db_strerror/,/^}/{' \
     -e '}' \
     -e '}' \
     -e d \
-    < $s/common/db_err.c > $t2
+    < $s/common/db_err.c | sort > $t2
 
-cmp $t1 $t2 > /dev/null ||
-(echo "<<< db.h >>> db_strerror" && diff $t1 $t2 && exit 1)
+# Compare as SETS, not as sequences.  The question this script exists to answer
+# is "does every error value have a db_strerror() handler", and both sides are
+# extracted in source order, so a code appended to the end of db.in while its
+# handler sits mid-list in db_err.c is reported as a difference even though
+# nothing is missing.  That is exactly what DB_SNAPSHOT_CONFLICT and
+# DB_SNAPSHOT_UNSAFE did: both are defined AND handled, and this script still
+# printed a four-line diff for them.  Sorting both sides asks the real question.
+#
+# The failure is also reported through `exitv' rather than an `exit 1' inside a
+# subshell, where the old form put it -- the subshell exited, the script did not,
+# and dist/s_validate saw 0 whatever was found (defect U1).
+exitv=0
+if ! cmp $t1 $t2 > /dev/null ; then
+	echo "<<< db.h >>> db_strerror"
+	diff $t1 $t2
+	exitv=1
+fi
 
 rm -f $t1 $t2
 
-exit 0
+exit $exitv
