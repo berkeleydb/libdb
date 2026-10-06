@@ -192,9 +192,11 @@ endif
 # not.  A link test answers "does the symbol exist", which is always yes and
 # therefore the wrong question -- getting this wrong the first time set the cond
 # flag and left the rwlock flag unset, which is a divergence of its own.
-# cc.run() falls back to the link-only behaviour when cross-compiling, matching
-# autoconf's third AC_RUN_IFELSE argument.
-cond_reinit = cc.run('''#include <stdlib.h>
+# cc.run() ABORTS a cross build ("Can not run test applications in this cross
+# environment"), so the run tests are guarded on meson.is_cross_build() and a
+# cross build uses a link test instead -- which is exactly what autoconf's third
+# AC_RUN_IFELSE argument does for the same reason.
+cond_src = '''#include <stdlib.h>
 #include <pthread.h>
 int main(void) {
 	pthread_cond_t cond;
@@ -202,13 +204,21 @@ int main(void) {
 	exit(pthread_condattr_init(&condattr) ||
 	    pthread_cond_init(&cond, &condattr) ||
 	    pthread_cond_init(&cond, &condattr));
-}''', dependencies: thread_dep, args: probe_args,
-    name: 'pthread_cond re-init')
-if cond_reinit.compiled() and (cond_reinit.returncode() == 0)
-  cdata.set('HAVE_PTHREAD_COND_REINIT_OKAY', 1)
+}'''
+if meson.is_cross_build()
+  if cc.links(cond_src, dependencies: thread_dep, args: probe_args,
+      name: 'pthread_cond re-init (link only, cross)')
+    cdata.set('HAVE_PTHREAD_COND_REINIT_OKAY', 1)
+  endif
+else
+  cond_reinit = cc.run(cond_src, dependencies: thread_dep, args: probe_args,
+      name: 'pthread_cond re-init')
+  if cond_reinit.compiled() and (cond_reinit.returncode() == 0)
+    cdata.set('HAVE_PTHREAD_COND_REINIT_OKAY', 1)
+  endif
 endif
 
-rwlock_reinit = cc.run('''#include <stdlib.h>
+rwlock_src = '''#include <stdlib.h>
 #include <pthread.h>
 int main(void) {
 	pthread_rwlock_t rwlock;
@@ -216,10 +226,18 @@ int main(void) {
 	exit(pthread_rwlockattr_init(&rwlockattr) ||
 	    pthread_rwlock_init(&rwlock, &rwlockattr) ||
 	    pthread_rwlock_init(&rwlock, &rwlockattr));
-}''', dependencies: thread_dep, args: probe_args,
-    name: 'pthread_rwlock re-init')
-if rwlock_reinit.compiled() and (rwlock_reinit.returncode() == 0)
-  cdata.set('HAVE_PTHREAD_RWLOCK_REINIT_OKAY', 1)
+}'''
+if meson.is_cross_build()
+  if cc.links(rwlock_src, dependencies: thread_dep, args: probe_args,
+      name: 'pthread_rwlock re-init (link only, cross)')
+    cdata.set('HAVE_PTHREAD_RWLOCK_REINIT_OKAY', 1)
+  endif
+else
+  rwlock_reinit = cc.run(rwlock_src, dependencies: thread_dep, args: probe_args,
+      name: 'pthread_rwlock re-init')
+  if rwlock_reinit.compiled() and (rwlock_reinit.returncode() == 0)
+    cdata.set('HAVE_PTHREAD_RWLOCK_REINIT_OKAY', 1)
+  endif
 endif
 
 if cc.has_header_symbol('time.h', 'CLOCK_MONOTONIC')
