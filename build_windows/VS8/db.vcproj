@@ -242,6 +242,7 @@
     <File RelativePath="..\..\src\log\log_compare.c"/>
     <File RelativePath="..\..\src\log\log_debug.c"/>
     <File RelativePath="..\..\src\log\log_get.c"/>
+    <File RelativePath="..\..\src\log\log_handoff_trace.c"/>
     <File RelativePath="..\..\src\log\log_method.c"/>
     <File RelativePath="..\..\src\log\log_print.c"/>
     <File RelativePath="..\..\src\log\log_put.c"/>
@@ -271,6 +272,7 @@
     <File RelativePath="..\..\src\mutex\mut_alloc.c"/>
     <File RelativePath="..\..\src\mutex\mut_failchk.c"/>
     <File RelativePath="..\..\src\mutex\mut_method.c"/>
+    <File RelativePath="..\..\src\mutex\mut_order.c"/>
     <File RelativePath="..\..\src\mutex\mut_region.c"/>
     <File RelativePath="..\..\src\mutex\mut_stat.c"/>
     <File RelativePath="..\..\src\mutex\mut_win32.c"/>

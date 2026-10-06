@@ -275,6 +275,7 @@
     <ClCompile Include="..\..\src\log\log_compare.c"/>
     <ClCompile Include="..\..\src\log\log_debug.c"/>
     <ClCompile Include="..\..\src\log\log_get.c"/>
+    <ClCompile Include="..\..\src\log\log_handoff_trace.c"/>
     <ClCompile Include="..\..\src\log\log_method.c"/>
     <ClCompile Include="..\..\src\log\log_put.c"/>
     <ClCompile Include="..\..\src\log\log_stat.c"/>
@@ -298,6 +299,7 @@
     <ClCompile Include="..\..\src\mutex\mut_alloc.c"/>
     <ClCompile Include="..\..\src\mutex\mut_failchk.c"/>
     <ClCompile Include="..\..\src\mutex\mut_method.c"/>
+    <ClCompile Include="..\..\src\mutex\mut_order.c"/>
     <ClCompile Include="..\..\src\mutex\mut_region.c"/>
     <ClCompile Include="..\..\src\mutex\mut_stat.c"/>
     <ClCompile Include="..\..\src\mutex\mut_win32.c"/>
