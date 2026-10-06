@@ -472,14 +472,6 @@ libdb_srcnames = [
   'src/mutex/mut_failchk.c',
   'src/mutex/mut_method.c',
   'src/mutex/mut_pthread.c',
-  # mut_tas.c implements the test-and-set mutexes.  autoconf adds it to
-  # ADDITIONAL_OBJS whenever a TAS implementation is selected, so with
-  # HAVE_MUTEX_X86_64_GCC_ASSEMBLY (and therefore HAVE_MUTEX_HYBRID) set above,
-  # the library needs it or it fails to link: txn.c and friends call
-  # __db_tas_mutex_lock/unlock directly through the MUTEX_* macros.  It is
-  # whole-file guarded, so listing it unconditionally is safe -- on a build with
-  # no TAS mutex it compiles to nothing, exactly like os_aio_uring.c.
-  'src/mutex/mut_tas.c',
   'src/mutex/mut_region.c',
   'src/mutex/mut_stat.c',
   'src/os/os_abort.c',
@@ -573,6 +565,16 @@ libdb_srcnames = [
   'src/xa/xa_map.c',
   'src/xa/xa.c',
 ]
+
+# mut_tas.c implements the test-and-set mutexes and has NO whole-file #ifdef --
+# it is compiled only when a TAS implementation was selected, which is how
+# autoconf treats it (ADDITIONAL_OBJS="mut_tas$o ..." inside the matching arm of
+# dist/aclocal/mutex.m4).  Adding it unconditionally builds it on platforms where
+# struct __db_mutex_t has no `tas' or `sharecount' member, which is exactly how
+# macOS failed: "no member named 'sharecount' in 'struct __db_mutex_t'".
+if cdata.has('HAVE_MUTEX_X86_64_GCC_ASSEMBLY')
+  libdb_srcnames += 'src/mutex/mut_tas.c'
+endif
 
 libdb_sources = []
 foreach s : libdb_srcnames
