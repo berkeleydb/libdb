@@ -18,6 +18,21 @@ d=../..
 
 t=__1
 
+# The exclusions below are all SYSCALL-BOUNDARY uses, the same category as the
+# pread/pwrite/seek/ftruncate entries Oracle already listed: the kernel's own
+# prototype names off_t, so the cast is required rather than questionable.
+#
+#   os_aio_{posix,kqueue}.c  POSIX defines struct aiocb.aio_offset as off_t.
+#   os_aio_uring.c           io_uring_prep_{read,write} take an off_t offset.
+#   mp_backup.c              splits a byte offset into gigs + remainder for the
+#                            backup callback, and needs a type wide enough to
+#                            hold pgno * pagesize before the split.
+#
+# Note the header comment above records Oracle's own view that this check is
+# "really obsolete" because off_t is declared in db.h and the size difference is
+# caught at runtime.  It is kept because it still catches off_t leaking into
+# PERSISTENT structures, which is a real portability bug; these additions are
+# values that never outlive the call.
 egrep -w off_t $d/src/*/*.[ch] $d/util/*.[ch] $d/src/*/*.in |
 sed -e "/#undef off_t/d" \
     -e "/build_windows\//d" \
@@ -38,6 +53,13 @@ sed -e "/#undef off_t/d" \
     -e "/os_ext.h/d" \
     -e "/os.h/d" \
     -e "/os_flock.c/d" \
+    -e "/os_aio_posix.c:.*aio_offset/d" \
+    -e "/os_aio_kqueue.c:.*aio_offset/d" \
+    -e "/os_aio_uring.c:.*off_t off;/d" \
+    -e "/os_aio_uring.c:.*off = (off_t)aio->pgno/d" \
+    -e "/mp_backup.c:.*off_t t_off;/d" \
+    -e "/mp_backup.c:.*t_off = (off_t)first_pgno/d" \
+    -e "/mp_backup.c:.*off = (u_int32_t)(t_off - (off_t)gigs/d" \
     -e "/rep.h/d" \
     -e "/zerofill.c:.*stat_offset/d" \
     -e "/zerofill.c:.*write_offset/d" \

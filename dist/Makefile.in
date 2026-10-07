@@ -2887,7 +2887,7 @@ os_clock@o@: $(srcdir)/@OSDIR@/os_clock.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_config@o@: $(srcdir)/@OSDIR@/os_config.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
-os_csprng@o@: $(srcdir)/os/os_csprng.c
+os_csprng@o@: $(srcdir)/@OSDIR@/os_csprng.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<
 os_cpu@o@: $(srcdir)/@OSDIR@/os_cpu.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $<

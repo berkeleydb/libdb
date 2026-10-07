@@ -14,6 +14,22 @@ s=$d/src
 t1=__1
 
 egrep DB_RUNRECOVERY $s/*/*.c |
+# Three additions, all cases where returning the code is correct and panicking
+# would be wrong:
+#
+#   mut_pthread.c  failchk has found the mutex held by a process/thread that
+#                  is_alive() says is dead.  Returning DB_RUNRECOVERY is how
+#                  that is REPORTED to the caller; __env_panic here would panic
+#                  the environment from inside mutex acquisition.  The win32
+#                  twin of this exact line was already excluded just above --
+#                  the pthread one was simply missed.
+#   env_open.c     a COMPARISON (ret == DB_RUNRECOVERY) deciding whether to run
+#                  recovery, not a site that raises it.
+#   mp_sync.c      prose in a comment.
+#
+# Both of the latter two show why this check needs per-line exclusions rather
+# than a looser pattern: it greps for the token, so it cannot tell a raise from
+# a test or from English.
     sed -e '/__env_panic(.*, DB_RUNRECOVERY)/d' \
 	-e '/\/php_db4\//d' \
 	-e '/case DB_RUNRECOVERY:/d' \
@@ -27,6 +43,9 @@ egrep DB_RUNRECOVERY $s/*/*.c |
         -e '/mut_tas.c:.*Possibly DB_RUNRECOVERY if/d' \
         -e '/mut_win32.c:.*return (DB_RUNRECOVERY);/d' \
         -e '/mut_win32.c:.*ret = DB_RUNRECOVERY;/d' \
+        -e '/mut_pthread.c:.*ret = DB_RUNRECOVERY;/d' \
+        -e '/env_open.c:.*if (ret == DB_RUNRECOVERY \&\& !register_recovery \&\&/d' \
+        -e '/mp_sync.c:.*can no longer abandon a live window/d' \
 	-e '/rep_backup.c:.*Panic the env and return DB_RUNRECOVERY/d' \
 	-e '/rep_backup.c:.*DB_RUNRECOVERY?/d' \
 	-e '/txn.c:.* \* DB_RUNRECOVERY and we need to/d' \

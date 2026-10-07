@@ -15,6 +15,7 @@ exitv=0
 t1=__1
 t2=__2
 t3=__3
+t4=__4
 
 find $d -name '*.c' -o -name '*.cpp' |
     sed -e '/\/php_db4\//d' \
@@ -102,9 +103,29 @@ egrep '^#define' $d/src/dbinc/*.h $d/src/dbinc/*.in |
 	-e '/MAX[BGI].*SIZE/d' \
 	-e 's/(.*//' | sort > $t1
 
-find $d -name '*.c' -o -name '*.cpp' > $t2
+# Scope the search to TRACKED files, not the worktree.  `find` here walked
+# whatever happened to be on disk, which for s_chk_copyright produced 1,953
+# phantom findings from build dirs and scratch trees.  The failure mode for THIS
+# checker is the opposite and worse: a stray copy of a .c file in a build
+# directory makes a genuinely unused macro look used, so the checker goes quiet
+# instead of loud.  git ls-files makes the input set the repository.
+(cd $d && git ls-files -- '*.c' '*.cpp' '*.in' | sed "s;^;$d/;") > $t2 2>/dev/null ||
+    find $d -name '*.c' -o -name '*.cpp' > $t2
+
+# Inherited unused macros are allowlisted by name (U10) so that a NEW one still
+# fails.  Deliberately an exact-name match: a blanket pattern would also cover
+# later additions, which is the mistake this file exists to avoid.
+allow=$d/dist/validate/s_chk_defines.allow
+if test -f $allow ; then
+	sed -e 's/#.*//' -e 's/[ \t]*$//' -e '/^$/d' $allow | sort -u > $t4
+else
+	: > $t4
+fi
+
 for i in `cat $t1`; do
 	if egrep -w $i `cat $t2` > /dev/null; then
+	    :;
+	elif grep -qx "$i" $t4 ; then
 	    :;
 	else
 	    f=`egrep -l "#define.*$i" $d/src/dbinc/*.h  $d/src/dbinc/*.in |
@@ -116,9 +137,14 @@ done | sort -k 2 > $t3
 test -s $t3 && {
 	cat $t3
 	echo "FAIL: found unused #defines"
+	echo ""
+	echo "If the macro is genuinely dead, delete it.  If it is unused but"
+	echo "load-bearing (a portability fallback, a DIAGNOSTIC-only hook, or part"
+	echo "of a constant ladder that is only coherent as a whole), add it to"
+	echo "dist/validate/s_chk_defines.allow WITH A REASON."
 	exit 1
 }
 
-rm -f $t1 $t2 $t3
+rm -f $t1 $t2 $t3 $t4
 
 exit $exitv

@@ -16,6 +16,7 @@ cat << END_OF_CODE > t.c
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 int chk(FILE *, char *);
 
@@ -103,7 +104,22 @@ chk(fp, name)
 }
 END_OF_CODE
 
-cc t.c -o t
+# A failed compile must not be reported as a finding.  isspace() was used
+# without <ctype.h>, so on a compiler that treats implicit declarations as an
+# error this printed "FAIL: found __db_err calls ending with periods/newlines"
+# -- naming a defect in the SOURCE -- when in fact the checker's own helper had
+# not built and ./t did not exist.  Another instance of the project's signature
+# vacuous result, inverted: a fabricated failure rather than a fabricated pass.
+if cc t.c -o t 2>&1 ; then
+	:
+else
+	echo "FAIL: s_chk_newline could not compile its own helper (t.c)."
+	exit 1
+fi
+test -x ./t || {
+	echo "FAIL: s_chk_newline produced no ./t binary."
+	exit 1
+}
 if ./t $d/*/*/*.[ch] $d/*/*/*.cpp $d/*/*/*.in ; then
 	:
 else

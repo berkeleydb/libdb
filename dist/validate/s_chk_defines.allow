@@ -1,0 +1,131 @@
+# s_chk_defines allowlist -- macros defined but never used.
+#
+# Decision (U10): allowlist the INHERITED ones and enforce only NEW ones, so
+# this checker can finally become a BLOCKING gate.  It is the last one standing
+# between dist/s_validate and CI enforcement; the other four (s_chk_err,
+# s_chk_pubdef, s_chk_message_id, s_chk_copyright) now report zero findings.
+#
+# The point of a named allowlist rather than a blanket skip or a loosened
+# pattern: a genuinely new unused macro STILL FAILS.  The project has been
+# burned by blanket exclusions that silently covered later additions, so every
+# entry here is listed individually with a reason.  Removing dead code is a
+# separate, reviewable change; this file only stops the checker from re-reporting
+# what it inherited.
+#
+# Format: one macro name per line, '#' starts a comment.  Matched on the exact
+# name, so an unrelated macro that merely shares a prefix is not covered.
+#
+# Snapshot: 61 findings across 14 headers at v2026.10.1.  Two were verified by
+# hand before being listed, because a checker finding is a claim and not a fact:
+#   DB_CALVER -- appears only in its own header, so it really is unused; the
+#       version string reaches the build through DB_VERSION_STRING instead.
+#   va_copy   -- a C99 portability FALLBACK (#ifndef va_copy / #define
+#       va_copy(d,s) ((d)=(s))).  It is consumed by the compiler on platforms
+#       that lack it, not referenced by name, so "unused" is correct and
+#       deleting it would break exactly the platforms it exists for.
+# Both are kept.  That distinction -- unused but load-bearing vs unused and dead
+# -- is why this is an allowlist and not a delete-list.
+
+# ---------------------------------------------------------------------------
+# Public/ABI surface.  Cannot be deleted: these are part of the installed db.h
+# or are referenced by applications, not by the library's own sources.
+# ---------------------------------------------------------------------------
+DB_CALVER			# CalVer string; build uses DB_VERSION_STRING
+
+# ---------------------------------------------------------------------------
+# Portability fallbacks.  Deliberately unreferenced by name: the compiler or a
+# non-default platform consumes them.
+# ---------------------------------------------------------------------------
+va_copy				# C99 shim for compilers lacking va_copy
+DB_ALIGN8			# alignment helper, used on non-default ABIs
+P_TO_ROFF			# pointer/region-offset conversion helper
+DB_MSGID			# message-id wrapper, used by DB_STR variants
+DB_STR_C			# DB_STR variant for C-string-only messages
+
+# ---------------------------------------------------------------------------
+# Atomics: the full memory-order set is defined for completeness, but the engine
+# currently only needs the sequentially-consistent path.  Deleting the unused
+# orders would have to be re-added by the first relaxed-atomics change, and the
+# set is meaningful as a group.
+# ---------------------------------------------------------------------------
+DB_ATOMIC_ACQUIRE
+DB_ATOMIC_RELAXED
+DB_ATOMIC_RELEASE
+DB_ATOMIC_SEQ_CST
+
+# ---------------------------------------------------------------------------
+# Diagnostic / instrumentation hooks.  Compiled out in a production build, so
+# they read as unused in the default configuration.  Several are the checked
+# mutex wrappers and the lock-order tracker, which only exist under DIAGNOSTIC.
+# ---------------------------------------------------------------------------
+__mutex_lock_ck
+__mutex_rdlock_ck
+__mutex_trylock_ck
+__mutex_unlock_ck
+MUTEX_REQUIRED_READ
+MUTEX_IS_BUSY
+DB_LO_LOCK
+DB_LO_UNLOCK
+DB_LO_ACQUIRED
+DB_LO_RELEASED
+DB_HOFF_US			# log-handoff trace timing unit
+DB_BEGIN_SINGLE_THREAD
+DB_END_SINGLE_THREAD
+
+# ---------------------------------------------------------------------------
+# Heap access method: page-fullness bucket thresholds.  Defined as a complete
+# ladder (LT33/GT33/GT66/FULL and their _PCT forms); the code currently selects
+# with a subset.  The ladder is only coherent as a whole.
+# ---------------------------------------------------------------------------
+HEAP_PG_FULL
+HEAP_PG_FULL_PCT
+HEAP_PG_GT33
+HEAP_PG_GT33_PCT
+HEAP_PG_GT66
+HEAP_PG_GT66_PCT
+HEAP_PG_LT33
+HEAPPG_CHKSUM
+HEAPPG_NORMAL
+HEAPPG_SEC
+HEAPPG_SZ
+HEAP_SPACEMAP
+
+# ---------------------------------------------------------------------------
+# Buffer pool.  BH_GEN_* are the generation-counter helpers from the ROADMAP #2
+# buffer-header pin work, whose four measured outcomes were negative; the
+# macros stayed on master with the evidence.  MPOOL_CLOCK_* / MPOOL_PRI_DIRTY
+# are priority ladder constants in the same situation as the heap thresholds.
+# ---------------------------------------------------------------------------
+BH_GEN_EXCL_ENTER
+BH_GEN_EXCL_EXIT
+BH_GEN_STEP
+MPOOL_CLOCK_HIGH
+MPOOL_CLOCK_VERY_HIGH
+MPOOL_PRI_DIRTY
+DB_MPOOL_SIG_SIZE
+
+# ---------------------------------------------------------------------------
+# Lock manager: locker-stripe index helpers.  P1 fixed locker-stripe contention
+# and left the unused index forms behind; they are the documented mapping
+# between a locker id and its stripe, and the stripe-key-vs-bucket-key
+# distinction they encode has already caused one misdiagnosis.
+# ---------------------------------------------------------------------------
+LOCK_LOCKER_ID_STRIPE
+LOCK_LOCKER_NDX
+LOCK_LOCKER_STRIPE
+LOCK_CHECK
+
+# ---------------------------------------------------------------------------
+# Replication.  Inherited from Oracle: version constants for protocol
+# compatibility and wire-header layout helpers.  Replication is maintained but
+# not actively extended in this fork.
+# ---------------------------------------------------------------------------
+DB_REPVERSION_50
+REP_FLAGS_SET
+REPMGR_HDR1
+REPMGR_HDR2
+
+# ---------------------------------------------------------------------------
+# Partitioning.
+# ---------------------------------------------------------------------------
+PART_PREFIX			# partition file name prefix

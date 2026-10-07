@@ -35,8 +35,12 @@
 
 #ifdef HAVE_AIO_POSIX
 
+/*
+ * <aio.h> for aio_read/aio_write is not in db_int.h, so it belongs here.
+ * <errno.h> already comes from db_int.h above and is deliberately not repeated
+ * (s_chk_include flags a re-include).
+ */
 #include <aio.h>
-#include <errno.h>
 
 /* One in-flight op: its control block plus the caller's completion info. */
 typedef struct __aio_posix_op {

@@ -48,6 +48,12 @@ m=`grep '(\*[a-z][_a-z]*)' $s/dbinc/db.in |
 	#echo "$i..." > /dev/stderr
 	egrep -- "->$i\(" */*.[ch]
 done) |
+# The backup->{open,close,write} entries below are APPLICATION CALLBACKS
+# installed by DB_ENV->set_backup_callbacks(), the same category as the
+# is_alive / thread_id / rep_send exclusions: the library is MEANT to call out
+# through them, so the check's premise (DB must not call its own public API
+# internally) does not apply.  Listed individually rather than as a /backup->/
+# pattern so a new member of the struct still has to be considered.
 sed \
     -e '/Wrapper function for/d' \
     -e '/\/db.h:/d' \
@@ -70,6 +76,9 @@ sed \
     -e '/dbenv->thread_id(/d' \
     -e '/dbenv->thread_id_string(/d' \
     -e '/rep_util.c:.*ret = dbenv->rep_send(/d' \
+    -e '/backup->open(env->dbenv/d' \
+    -e '/backup->close(env->dbenv/d' \
+    -e '/backup->write(env->dbenv/d' \
     -e '/test_mutex.c:/d' \
     -e '/xa.c:/d' \
     -e '/repmgr\/repmgr_net.c.*env->close()/d'\

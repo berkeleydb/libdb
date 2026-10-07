@@ -13,8 +13,15 @@ d=../..
 t1=__1
 t2=__2
 
+# `| tee /tmp/o |` used to sit here: leftover debugging that wrote the file list
+# to a fixed, world-writable path.  It broke the checker outright when /tmp/o
+# happened to exist as a DIRECTORY (tee fails with "Is a directory", the
+# pipeline produces an empty $t1, and the run reports "FAIL: found includes
+# before include of db_config.h" with no file list -- a failure whose message
+# has nothing to do with its cause).  Removed rather than repointed: nothing
+# consumed it.
 (cd $d && find . -name '*.[chys]' -o -name '*.cpp' |
-    xargs egrep -l '#include.*db_config.h') | tee /tmp/o |
+    xargs egrep -l '#include.*db_config.h') |
     sed -e '/dbdemo.c$/d' \
         -e '/db_java_wrap.c$/d' \
         -e '/test\/stl\/base\/test.h$/d' \

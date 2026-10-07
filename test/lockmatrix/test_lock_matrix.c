@@ -50,19 +50,16 @@
  * failed, 2 = harness error.  An ASan abort (exit 1 from the sanitizer with
  * a heap-buffer-overflow report) is the #140 reproduction.
  */
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 /*
+ * db_config.h must come FIRST: it defines the feature macros (_GNU_SOURCE,
+ * _FILE_OFFSET_BITS, ...) that determine what the system headers declare, so
+ * including <errno.h> and friends ahead of it gives this file a different view
+ * of libc than the library it links against.
+ *
  * db_int.h for __os_free: lock_vec hands back memory allocated by
  * __os_malloc, which is not libc malloc (see the note at the free site
- * below).  test/c/test_log_verify.c includes it for the same reason.
+ * below).  test/c/test_log_verify.c includes it for the same reason.  It also
+ * pulls in the C headers this file needs, so they are not repeated here.
  */
 #include "db_config.h"
 #include "db_int.h"

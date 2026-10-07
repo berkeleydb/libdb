@@ -20,10 +20,17 @@
  *   - sizeof(BH) / sizeof(DB_MPOOL_HASH) / sizeof(DB_LOCKOBJ) / sizeof(BTREE),
  *     each of which is the fingerprint of exactly one arm.
  */
-#include <stdio.h>
-#include <stddef.h>
+/*
+ * db_config.h must be the FIRST include: it defines the feature macros
+ * (_GNU_SOURCE, _FILE_OFFSET_BITS, ...) that change what the system headers
+ * declare.  Including <stdio.h> ahead of it can give this file a different view
+ * of libc than the library it is measuring, which for a test that prints
+ * struct sizes as an arm fingerprint would be quietly wrong rather than broken.
+ * db_int.h pulls in the C headers this file needs.
+ */
 #include "db_config.h"
 #include "db_int.h"
+#include <stddef.h>
 #include "dbinc/db_page.h"
 #include "dbinc/btree.h"
 #include "dbinc/lock.h"

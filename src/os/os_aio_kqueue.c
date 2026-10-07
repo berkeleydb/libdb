@@ -34,11 +34,15 @@
 
 #ifdef HAVE_AIO_KQUEUE
 
+/*
+ * <sys/event.h> for kqueue/kevent and <aio.h> for aio_read/aio_write are not
+ * in db_int.h, so they belong here.  <sys/types.h>, <errno.h> and <unistd.h>
+ * are already included by db_int.h above and are deliberately NOT repeated:
+ * s_chk_include treats a re-include as a finding, because the second one
+ * silences the question of whether db_int.h still provides it.
+ */
 #include <sys/event.h>
-#include <sys/types.h>
 #include <aio.h>
-#include <errno.h>
-#include <unistd.h>
 
 /* One in-flight op: control block plus the caller's completion info. */
 typedef struct __aio_kq_op {

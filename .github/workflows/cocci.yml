@@ -416,12 +416,54 @@ jobs:
       # dist/s_validate drives the dist/validate/s_chk_* source checkers. It was
       # in NO workflow -- the same gap that hid test/c/leak-run.sh for two
       # releases -- so five duplicate DB_STR() message ids reached a release even
-      # though a checker for exactly that existed. Advisory for now: two checkers
-      # (s_chk_err, s_chk_pubdef) print failures and exit 0 (U1), so a hard gate
-      # here would be green-by-accident; fixing those is a separate change.
-      - name: Source checkers (dist/s_validate, advisory)
-        continue-on-error: true
-        run: cd dist && sh ./s_validate -v 2>&1 | tail -40
+      # though a checker for exactly that existed.
+      #
+      # Now BLOCKING. It was advisory because several checkers printed findings
+      # and exited 0, so a hard gate would have been green-by-accident. All 21
+      # now pass with rc=0, and each was given teeth in BOTH directions before
+      # being trusted here -- a deliberate violation was confirmed to produce
+      # rc=1 and name the file. What was wrong in the ones fixed to get here:
+      #
+      #   s_chk_defines   61 inherited unused macros, now allowlisted BY NAME in
+      #                   s_chk_defines.allow so a new one still fails (U10);
+      #                   also scoped its input to git ls-files, since walking
+      #                   the worktree let a stray build-dir copy of a .c file
+      #                   make an unused macro look used.
+      #   s_chk_newline   used isspace() without <ctype.h>, so its own helper
+      #                   failed to compile and the script reported a SOURCE
+      #                   defect -- a fabricated failure. The compile is now
+      #                   checked.
+      #   s_chk_inclconfig  a leftover `tee /tmp/o` broke the run outright
+      #                   whenever /tmp/o existed as a directory.
+      #   s_chk_osdir     compared two file lists with cmp, which is
+      #                   order-sensitive; identical membership in a different
+      #                   order read as a mismatch (same sequence-vs-set bug as
+      #                   s_chk_err). Comparing as sets exposed a REAL defect it
+      #                   had been masking: os_csprng@o@ hardcoded $(srcdir)/os/
+      #                   instead of @OSDIR@, so Windows builds compiled the
+      #                   POSIX CSPRNG and src/os_windows/os_csprng.c was never
+      #                   reachable from the autoconf build.
+      #
+      # If this starts failing, read the finding before loosening the checker:
+      # three of the four above were checker bugs, but the fourth was real.
+      - name: Source checkers (dist/s_validate)
+        # `| tail -40` MASKS the exit status: a pipeline reports the last
+        # command's rc, so `s_validate | tail` is 0 even when s_validate is 1.
+        # Making this blocking without addressing that would have produced a
+        # gate that can only ever pass -- the exact green-by-accident failure
+        # the advisory comment was worried about, reintroduced by the fix for
+        # it. Capture to a file, then exit on the real status.
+        run: |
+          set -u
+          cd dist
+          sh ./s_validate -v > /tmp/s_validate.log 2>&1
+          rc=$?
+          tail -40 /tmp/s_validate.log
+          if [ "$rc" -ne 0 ] ; then
+            echo "::error::dist/s_validate failed (rc=$rc); see the log above"
+            exit "$rc"
+          fi
+          echo "dist/s_validate: all checkers passed"
 
       - name: Compute the signature on the PR head and on the base
         id: sig

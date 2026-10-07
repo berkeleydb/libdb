@@ -14,9 +14,16 @@ s=$d/src
 t1=__1
 t2=__2
 
-egrep '/@OSDIR@/' $d/dist/Makefile.in | sed -e 's/@.*/.c/' > $t1
+# Compare the two as SETS, not as sequences.  `cmp` is order-sensitive, so the
+# check failed when the Makefile happened to list os_csprng.c before os_cpu.c
+# while ls(1) sorts os_cpu.c first -- identical membership, different order,
+# reported as a mismatch.  This is the same sequence-vs-set mistake already
+# found in s_chk_err, where the checker's only complaint was a false positive
+# for exactly this reason.  Membership is what matters here: the question is
+# whether every @OSDIR@ rule has a corresponding os_windows file and vice versa.
+egrep '/@OSDIR@/' $d/dist/Makefile.in | sed -e 's/@.*/.c/' | sort > $t1
 
-(cd $s/os_windows && ls os_*.c) > $t2
+(cd $s/os_windows && ls os_*.c) | sort > $t2
 
 cmp $t1 $t2 || {
 	echo "Makefile @OSDIR@ mismatch with os_windows files"
