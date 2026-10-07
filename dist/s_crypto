@@ -17,12 +17,27 @@ fi
 # Remove the crypto.
 rm -rf $d/src/crypto
 
-# Update the release splash page.
+# Update the release splash page, if this tree has one.
+#
+# Upstream shipped docs/index.html with a "this release DOES include
+# cryptography" sentence to flip.  This fork has no such page -- docs/ is
+# generated from docs_src/ and carries no such marker -- so the ed(1) script
+# below was editing a file that does not exist (defect U5).  Being dormant is
+# not the same as being correct: this script is an export-restriction tool, so
+# on the day someone runs it for real a silent failure here would ship a tarball
+# whose documentation still claims crypto is present.  Skip explicitly, and say
+# so.
 f=$d/docs/index.html
-(echo '/DOES/' &&
- echo 's/DOES/DOES NOT/' &&
- echo 'w' &&
- echo 'q') | ed $f
+if [ -f "$f" ]; then
+	(echo '/DOES/' &&
+	 echo 's/DOES/DOES NOT/' &&
+	 echo 'w' &&
+	 echo 'q') | ed $f
+else
+	echo "$0: no $f in this tree; no splash page to update." >&2
+	echo "$0: if a crypto-presence statement is added to docs_src/," >&2
+	echo "$0: update this script to rewrite it." >&2
+fi
 
 # Win/32.
 f=win_config.in
