@@ -14,13 +14,12 @@
 project('libdb', 'c',
   version: '2026.10.1',
   # Sleepycat, matching LICENSE (byte-identical to Oracle's) and README.md.
-  # This said 'Sleepycat' from the commit that added the
-  # meson build, which is backwards: README.md explains that every Berkeley DB
-  # release from 6.0 onward is AGPLv3 and is DELIBERATELY EXCLUDED from this
-  # fork precisely because AGPL is incompatible with redistributing under
-  # Sleepycat terms.  Claiming AGPL here asserted the licence the project
-  # exists to avoid, and it was the only place in the shipped tree that
-  # asserted any licence metadata at all.
+  # This field previously named a copyleft licence that this fork
+  # deliberately excludes: README.md explains that Berkeley DB releases from
+  # 6.0 onward carry one, which is incompatible with redistributing under
+  # Sleepycat terms, and are therefore intentionally absent from the
+  # historical archive.  This was the only licence metadata in the shipped
+  # tree, so the wrong value here was what a packager would have read.
   license: 'Sleepycat',
   meson_version: '>=0.56.0',
   default_options: ['c_std=c99', 'warning_level=1'])
