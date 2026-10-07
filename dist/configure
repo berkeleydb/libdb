@@ -909,6 +909,7 @@ with_tcl
 with_uniquename
 enable_readline
 enable_compile_commands
+with_uring
 enable_shared
 enable_static
 with_pic
@@ -1638,6 +1639,7 @@ Optional Packages:
   --with-stacksize=SIZE   Set the stack size for Berkeley DB threads.
   --with-tcl=DIR          Directory location of tclConfig.sh.
   --with-uniquename=NAME  Build a uniquely named library.
+  --without-uring         Do not use the Linux io_uring AIO backend.
   --with-pic              try to use only PIC/non-PIC objects [default=use
                           both]
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
@@ -6064,6 +6066,37 @@ LIBSO_LIBS="$LIBS"
 # kqueue+aio (BSD) > POSIX aio (Solaris/illumos, macOS) > thread-pool
 # offload (last-resort fallback).  All are optional -- without any, os_aio
 # falls back to synchronous I/O.
+# io_uring is detected by default where it exists, but it must be possible to
+# decline it: linking it adds a hard DT_NEEDED liburing.so.2 to libdb, so a
+# distribution packaging for a kernel or container runtime that does not permit
+# io_uring syscalls (seccomp profiles commonly block them) needs a way to build
+# without the dependency.  Previously there was none -- the detection above ran
+# unconditionally and the comment's claim that the backends are "all optional"
+# was true of the code but not of the build.
+
+# Check whether --with-uring was given.
+if test ${with_uring+y}
+then :
+  withval=$with_uring; with_uring="$withval"; uring_explicit="yes"
+else case e in #(
+  e) with_uring="yes"; uring_explicit="no" ;;
+esac
+fi
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking whether to use the io_uring AIO backend" >&5
+printf %s "checking whether to use the io_uring AIO backend... " >&6; }
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $with_uring" >&5
+printf '%s\n' "$with_uring" >&6; }
+# The detection runs UNCONDITIONALLY and only its use is gated.  This looks
+# redundant but is required: AC_CHECK_HEADER's first expansion also emits
+# autoconf's one-time compiler probes (notably the "options to detect undeclared
+# functions" setup) inline at that point.  Wrapping the first such check in a
+# shell `if` means that when the branch is not taken the setup never runs, and
+# the NEXT header check fails with "cannot make clang report undeclared
+# builtins" -- so --without-uring broke configure outright, in a way whose error
+# message named neither uring nor the real cause.  Probing an unused header is
+# cheap; losing the one-time setup is not.
+db_cv_uring_found="no"
 
 
 
@@ -7220,16 +7253,25 @@ fi
 printf '%s\n' "$ac_cv_lib_uring_io_uring_queue_init" >&6; }
 if test "x$ac_cv_lib_uring_io_uring_queue_init" = xyes
 then :
+  db_cv_uring_found="yes"
+fi
 
+fi
+
+if test "$with_uring" != "no" -a "$db_cv_uring_found" = "yes"; then
 
 printf '%s\n' "#define HAVE_IO_URING 1" >>confdefs.h
 
-		LIBSO_LIBS="$LIBSO_LIBS -luring"
-		LIBS="$LIBS -luring"
+	LIBSO_LIBS="$LIBSO_LIBS -luring"
+	LIBS="$LIBS -luring"
 fi
-
+# --with-uring asked for it explicitly, so a miss is an error rather than a
+# silent downgrade to synchronous I/O.  Plain ./configure stays auto-detecting.
+if test "$with_uring" != "no" -a "$uring_explicit" = "yes" \
+    -a "$db_cv_uring_found" = "no" ; then
+	as_fn_error $? "--with-uring: liburing not found.
+Install the liburing development files, or configure --without-uring." "$LINENO" 5
 fi
-
 
 # POSIX aio: aio_read/aio_write may live in libc (BSD/macOS) or librt
 # (Solaris/illumos, glibc).  Record the library so os_aio_posix links.
@@ -20428,7 +20470,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20431 "configure" */
+/* #line 20473 "configure" */
 public class Test {
 }
 EOF
@@ -20723,7 +20765,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20726: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20768: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20855,7 +20897,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20858 "configure" */
+/* #line 20900 "configure" */
 public class Test {
 }
 EOF
@@ -20892,7 +20934,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20895 "configure" */
+/* [#]line 20937 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);

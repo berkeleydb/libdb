@@ -471,6 +471,7 @@ db	run_qam_extent_vrfy
 db	run_qam_inorder_consume
 db	run_u9_serializable
 db	run_u8_backup_config
+db	run_handle_sizes
 db	run_meson_autoconf_parity
 db	run_windows_srclist
 db	run_db_verify_multifile

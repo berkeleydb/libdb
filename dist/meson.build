@@ -119,15 +119,31 @@ endif
 # os_aio_uring.c is in the source list unconditionally and is whole-file guarded
 # on HAVE_IO_URING, so without this it compiled to nothing and the io_uring
 # backend was simply absent from a meson build.
-uring_dep = dependency('liburing', required: false)
-if not uring_dep.found()
-  uring_dep = cc.find_library('uring', required: false)
-endif
-if cc.has_header('liburing.h') and uring_dep.found() and \
-    cc.has_function('io_uring_queue_init', dependencies: uring_dep)
-  cdata.set('HAVE_IO_URING', 1)
+#
+# The 'uring' option mirrors autoconf's --without-uring: linking the backend
+# adds a hard DT_NEEDED liburing.so.2 to libdb, and a packager targeting a
+# seccomp profile that blocks io_uring syscalls has to be able to decline it.
+# 'auto' detects, 'disabled' declines, 'enabled' fails the configure if liburing
+# is missing rather than silently dropping to synchronous I/O.
+uring_opt = get_option('uring')
+uring_dep = dependency('', required: false)
+if uring_opt.disabled()
+  message('io_uring AIO backend: disabled by -During=disabled')
 else
-  uring_dep = dependency('', required: false)
+  uring_dep = dependency('liburing', required: false)
+  if not uring_dep.found()
+    uring_dep = cc.find_library('uring', required: false)
+  endif
+  if cc.has_header('liburing.h') and uring_dep.found() and \
+      cc.has_function('io_uring_queue_init', dependencies: uring_dep)
+    cdata.set('HAVE_IO_URING', 1)
+  else
+    if uring_opt.enabled()
+      error('-During=enabled but liburing was not found. Install the ' +
+            'liburing development files, or configure -During=disabled.')
+    endif
+    uring_dep = dependency('', required: false)
+  endif
 endif
 
 # POSIX aio: aio_read may be in libc, librt or libaio.

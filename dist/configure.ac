@@ -221,12 +221,45 @@ LIBSO_LIBS="$LIBS"
 # kqueue+aio (BSD) > POSIX aio (Solaris/illumos, macOS) > thread-pool
 # offload (last-resort fallback).  All are optional -- without any, os_aio
 # falls back to synchronous I/O.
+# io_uring is detected by default where it exists, but it must be possible to
+# decline it: linking it adds a hard DT_NEEDED liburing.so.2 to libdb, so a
+# distribution packaging for a kernel or container runtime that does not permit
+# io_uring syscalls (seccomp profiles commonly block them) needs a way to build
+# without the dependency.  Previously there was none -- the detection above ran
+# unconditionally and the comment's claim that the backends are "all optional"
+# was true of the code but not of the build.
+AC_ARG_WITH(uring,
+	AS_HELP_STRING([--without-uring],
+	    [Do not use the Linux io_uring AIO backend.]),
+	[with_uring="$withval"; uring_explicit="yes"],
+	[with_uring="yes"; uring_explicit="no"])
+AC_MSG_CHECKING([whether to use the io_uring AIO backend])
+AC_MSG_RESULT([$with_uring])
+# The detection runs UNCONDITIONALLY and only its use is gated.  This looks
+# redundant but is required: AC_CHECK_HEADER's first expansion also emits
+# autoconf's one-time compiler probes (notably the "options to detect undeclared
+# functions" setup) inline at that point.  Wrapping the first such check in a
+# shell `if` means that when the branch is not taken the setup never runs, and
+# the NEXT header check fails with "cannot make clang report undeclared
+# builtins" -- so --without-uring broke configure outright, in a way whose error
+# message named neither uring nor the real cause.  Probing an unused header is
+# cheap; losing the one-time setup is not.
+db_cv_uring_found="no"
 AC_CHECK_HEADER(liburing.h, [
-	AC_CHECK_LIB(uring, io_uring_queue_init, [
-		AC_DEFINE(HAVE_IO_URING,
-		    1, [Define to 1 to use the Linux io_uring AIO backend.])
-		LIBSO_LIBS="$LIBSO_LIBS -luring"
-		LIBS="$LIBS -luring"])])
+	AC_CHECK_LIB(uring, io_uring_queue_init, [db_cv_uring_found="yes"])])
+if test "$with_uring" != "no" -a "$db_cv_uring_found" = "yes"; then
+	AC_DEFINE(HAVE_IO_URING,
+	    1, [Define to 1 to use the Linux io_uring AIO backend.])
+	LIBSO_LIBS="$LIBSO_LIBS -luring"
+	LIBS="$LIBS -luring"
+fi
+# --with-uring asked for it explicitly, so a miss is an error rather than a
+# silent downgrade to synchronous I/O.  Plain ./configure stays auto-detecting.
+if test "$with_uring" != "no" -a "$uring_explicit" = "yes" \
+    -a "$db_cv_uring_found" = "no" ; then
+	AC_MSG_ERROR([--with-uring: liburing not found.
+Install the liburing development files, or configure --without-uring.])
+fi
 
 # POSIX aio: aio_read/aio_write may live in libc (BSD/macOS) or librt
 # (Solaris/illumos, glibc).  Record the library so os_aio_posix links.

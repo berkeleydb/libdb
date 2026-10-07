@@ -4,3 +4,11 @@
 # library build never depends on hegel-c or the `hegel` server binary.
 option('hegel', type: 'feature', value: 'disabled',
   description: 'Build the Hegel property-based tests under test/pbt (needs hegel-c + the `hegel` server binary; pip install hegel-core).')
+
+# Mirrors autoconf's --without-uring. The io_uring backend adds a hard
+# DT_NEEDED liburing.so.2 to libdb, so declining it has to be possible for
+# packagers targeting runtimes whose seccomp profile blocks io_uring syscalls.
+# 'enabled' is a hard requirement rather than a preference: it fails the
+# configure instead of silently falling back to synchronous I/O.
+option('uring', type: 'feature', value: 'auto',
+  description: 'Linux io_uring AIO backend for the buffer pool')
