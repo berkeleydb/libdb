@@ -184,8 +184,30 @@ extern "C" {
 #undef TRACEBUF
 #undef TRASHIT
 
-#define	QUEUE_MACRO_DEBUG 0
-#if QUEUE_MACRO_DEBUG
+/*
+ * Renamed from QUEUE_MACRO_DEBUG, which POISONED the system <sys/queue.h>.
+ *
+ * This header #undefs the system queue macros above and then defines its own,
+ * so it must not leave behind a macro whose NAME the system header also tests.
+ * FreeBSD's <sys/queue.h> has
+ *
+ *	#ifdef QUEUE_MACRO_DEBUG
+ *	#warn Use QUEUE_MACRO_DEBUG_xxx instead (TRACE, TRASH and/or ASSERTIONS)
+ *
+ * and `#warn' is not a valid preprocessing directive -- clang rejects it
+ * outright.  Because the test is #ifdef, defining the macro to 0 still trips
+ * it.  Any translation unit that included db_int.h (hence this file) and then a
+ * system header reaching <sys/queue.h> failed to compile:
+ *
+ *	/usr/include/sys/queue.h:121:2: error: invalid preprocessing directive
+ *
+ * On FreeBSD that is src/os/os_aio_kqueue.c, via <sys/event.h> -- which is why
+ * the kqueue AIO backend had never once compiled on the only platform where it
+ * is enabled.  The name is private to this file (its own #if below is the only
+ * reader), so prefixing it is sufficient and changes no behaviour.
+ */
+#define	DB_QUEUE_MACRO_DEBUG 0
+#if DB_QUEUE_MACRO_DEBUG
 /* Store the last 2 places the queue element or head was altered */
 struct qm_trace {
 	char * lastfile;
@@ -216,7 +238,7 @@ struct qm_trace {
 #define	QMD_TRACE_HEAD(head)
 #define	TRACEBUF
 #define	TRASHIT(x)
-#endif	/* QUEUE_MACRO_DEBUG */
+#endif	/* DB_QUEUE_MACRO_DEBUG */
 
 /*
  * Singly-linked List declarations.

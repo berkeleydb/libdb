@@ -71,7 +71,10 @@
 set -e
 
 BUILD=${BUILD:-.}
-FIXTURE=${FIXTURE:-../test/db/fixtures/bdb4.7.db}
+# Anchored to this script, not the caller's cwd: ../test/db/... only resolves
+# when the build dir is inside the source tree.
+_HERE=$(cd "$(dirname "$0")" && pwd)
+FIXTURE=${FIXTURE:-$_HERE/fixtures/bdb4.7.db}
 WORK=${WORK:-UPGTEST}
 TIMEOUT=${TIMEOUT:-60}
 PYTHON=${PYTHON:-python3}

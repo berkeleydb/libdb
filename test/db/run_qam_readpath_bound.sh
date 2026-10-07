@@ -18,7 +18,13 @@
 set -e
 
 BUILD=${BUILD:-.}
-SRC=${SRC:-../test/db/qam_readpath_bound.c}
+# Anchor to THIS script's directory, not the caller's cwd.  ../test/db/X.c
+# only resolves when the build dir sits INSIDE the source tree; with a build
+# dir that is a sibling of the source tree -- the layout run_all.sh itself
+# documents, and the one the workflows use -- it resolved to nothing and the
+# compile failed with "no such file or directory".
+_HERE=$(cd "$(dirname "$0")" && pwd)
+SRC=${SRC:-$_HERE/qam_readpath_bound.c}
 HOME_DIR=${HOME_DIR:-QAM_READPATH_TESTDIR}
 TIMEOUT=${TIMEOUT:-180}
 

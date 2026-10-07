@@ -28,7 +28,13 @@
 set -e
 
 BUILD=${BUILD:-.}
-SRC=${SRC:-../test/db/hash_unsorted_cmp.c}
+# Anchor to THIS script's directory, not the caller's cwd.  ../test/db/X.c
+# only resolves when the build dir sits INSIDE the source tree; with a build
+# dir that is a sibling of the source tree -- the layout run_all.sh itself
+# documents, and the one the workflows use -- it resolved to nothing and the
+# compile failed with "no such file or directory".
+_HERE=$(cd "$(dirname "$0")" && pwd)
+SRC=${SRC:-$_HERE/hash_unsorted_cmp.c}
 HOME_DIR=${HOME_DIR:-HASH_UNSORTED_TESTDIR}
 TIMEOUT=${TIMEOUT:-180}
 
