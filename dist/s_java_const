@@ -16,7 +16,7 @@ trap 'rm -f $t; exit 0' 0 1 2 3 13 15
  echo &&
  echo 'public interface DbConstants' &&
  echo '{' &&
- for i in `egrep '^DB_.*J [C|\*]$' pubdef.in | awk '{print $1}'`; do \
+ for i in `egrep '^DB_.*[\t ]J$' pubdef.in | awk '{print $1}'`; do \
      sed -e ':a' -e '/\\$/N;s/\\\n[	 ]*/ /;ta' \
          ../src/dbinc_auto/api_flags.in ../src/dbinc/db.in | \
      egrep -w "^#define[	 ]$i|^[	 ][	 ]*$i" ;

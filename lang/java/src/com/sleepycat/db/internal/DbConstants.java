@@ -65,7 +65,6 @@ public interface DbConstants
     int DB_GROUP_CREATOR = 0x00000002;
     int DB_HASH = 2;
     int DB_HEAP = 6;
-    int DB_HEAP_FULL = -30996;
     int DB_HOTBACKUP_IN_PROGRESS = 0x00000800;
     int DB_IGNORE_LEASE = 0x00001000;
     int DB_IMMUTABLE_KEY = 0x00000002;
