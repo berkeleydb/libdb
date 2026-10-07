@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2026 libdb contributors.  All rights reserved.
  *
- * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ * SPDX-License-Identifier: Sleepycat
  *
  * See the file LICENSE for redistribution information.
  */
