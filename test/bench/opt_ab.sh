@@ -90,8 +90,12 @@ one() {
 	tag=$1; thr=$2; rep=$3
 	# The home dir is REUSED (never recreated per arm) so the layout that
 	# selects the bimodal mode is identical for every arm and every rep.
+	# The optimistic descent is OFF BY DEFAULT (opt-in via DB_OPTREAD; see
+	# __bam_opt_enabled). So the "opt" arm must OPT IN -- an empty env_extra
+	# here would make both arms identical and the A/B would silently measure
+	# nothing against nothing.
 	case "$tag" in
-	opt*)	env_extra="";;
+	opt*)	env_extra="DB_OPTREAD=1";;
 	*)	env_extra="DB_NO_OPTREAD=1";;
 	esac
 	line=$(cd "$HOME_DIR" && env $env_extra PIN_HOME="$HOME_DIR" \

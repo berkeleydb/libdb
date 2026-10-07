@@ -349,12 +349,42 @@ Required before any merge:
   record *before* re-reading the generation, which is what makes the eviction
   handshake (bump under exclusive latch, then scan pin lists) airtight.
 
-  *Risk 6 (torn reads) -- bounded.* `__bam_opt_child` is the only code touching an
+  *Risk 6 (torn reads) -- bounded FOR LIBDB, NOT FOR THE APPLICATION.* `__bam_opt_child` is the only code touching an
   unvalidated page: reads confined to the frame, `HOFFSET`/index-array/`BINTERNAL`
   bounds-checked before any dereference, no page pointer followed (an overflow
   key bails), nothing written. `bt_compare` is called only with a DBT inside the
   frame, so torn bytes can produce a wrong answer that validation discards, but
   not a fault.
+
+  **Amendment (2026-10).** The paragraph above is true and was still the wrong
+  conclusion, because it reasons only about libdb's own code. `bt_compare` is
+  **application** code, and before this feature it was only ever called on a
+  latched, pinned, self-consistent page. Containment is not consistency: the
+  bytes may be a torn mix of two page states, and `bi->len` may belong to a
+  different record than `bi->data`. A comparator that asserts on malformed
+  input, decodes a length or type prefix out of the key and then indexes or
+  loops on it, or scans for a terminator, can **fault, abort or loop** -- and
+  validation never runs, because the process is already gone. "Not a fault" was
+  a claim about the wrong body of code.
+
+  So enabling this **changes the documented contract of
+  `DB_ENV->set_bt_compare`**, and of `set_bt_prefix`, `set_dup_compare` and
+  `set_bt_compress` equally. A contract change is not something a default may
+  make silently, which is why the path is now opt-in. The requirement it imposes
+  is stated in full in `docs_src/api/c/dbset_bt_compare.md`: under `DB_OPTREAD`
+  the callback must be **total over arbitrary bytes**.
+
+  Empirical support for the stronger reading, rather than argument alone:
+  tracker item **M1** is a reproducible NULL-pointer SIGSEGV in this path (3 of
+  8 runs on a 64-vCPU box, `__memp_fget_opt_valid` with `bhp == 0x0`), found
+  while diagnosing G13. The safety story has already failed once in practice.
+
+  **What re-enabling by default would require:** the callback must not be
+  reached before validation. That means copying the candidate key's bytes into a
+  caller-supplied buffer, validating the frame, and only then comparing -- a copy
+  per interior level, which may erase the measured win. Until that is built and
+  re-measured, the 1.71x/2.05x numbers describe a configuration that is not the
+  default.
 
   *Risk 2 (eviction pin scan) -- acceptable.* `__memp_bh_pinned` is O(threads),
   off the hot path, and did not appear in any profile.
@@ -373,9 +403,19 @@ Required before any merge:
      rather than merely cheaper.
 
 - **Conditions / follow-ups:**
-  1. **Do not enable by default until the cursor-lifecycle mutex is addressed.**
-     It is now the t=96 wall on the per-key path and is outside this RFC.
-     `DB_NO_OPTREAD` makes the path inert.
+    1. **Do not enable by default until the cursor-lifecycle mutex is addressed.**
+       It is now the t=96 wall on the per-key path and is outside this RFC.
+
+       **This condition was violated.** The feature shipped ON BY DEFAULT in
+       v2026.09.12 and v2026.10.1 with only an opt-OUT (`DB_NO_OPTREAD`), the
+       opposite of what this line asks for. Corrected: the path is now **off by
+       default** and enabled by `DB_OPTREAD`; `DB_NO_OPTREAD` is still honoured
+       and takes precedence.
+
+       The default was also wrong for a second, more serious reason this RFC
+       under-weighted -- see the amendment to risk 6. The condition above is a
+       *performance* gate; the contract change is a *correctness* gate, and it
+       is the binding one.
   2. **Next target: the bucket mutex.** `__memp_fget_opt` still read-locks
      `hp->mtx_hash` to walk the hash chain safely, trading one atomic on the
      *frame* for one on the *bucket*. Favourable (the bucket line is contended by

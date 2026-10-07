@@ -57,11 +57,45 @@ static int __bam_opt_descend __P((DBC *,
 
 /*
  * __bam_opt_enabled --
- *	The optimistic (pin-free) interior descent of RFC 0007 phase 1.  On by
- *	default; DB_NO_OPTREAD in the environment turns it off.  ONE binary, ONE
- *	runtime switch is the only unconfounded way to A/B this (see the
- *	DB_PRIVATE layout warning atop test/bench/run_bench.sh), so the switch
- *	exists for the benchmark as much as for bisecting.  Read once, cached.
+ *	The optimistic (pin-free) interior descent of RFC 0007 phase 1.
+ *
+ *	OFF BY DEFAULT.  Set DB_OPTREAD in the environment to enable it.
+ *
+ *	WHY IT IS OFF.  __bam_opt_child calls the application's bt_compare
+ *	function on page bytes that have NOT YET BEEN VALIDATED -- the compare
+ *	happens at one point in __bam_opt_descend and the frame's generation is
+ *	checked several statements later.  The bounds checks in __bam_opt_child
+ *	guarantee CONTAINMENT (the DBT lies inside the page frame, no pointer is
+ *	followed, nothing is written), so libdb itself cannot fault.  They cannot
+ *	guarantee CONSISTENCY: the bytes may be a torn mix of two page states,
+ *	and bi->len may belong to a different record than bi->data.
+ *
+ *	For libdb's own comparators a torn read yields a wrong child, which
+ *	validation then discards -- harmless.  But bt_compare is APPLICATION
+ *	code, and before this feature it was only ever called on a latched,
+ *	pinned, self-consistent page.  A comparator that asserts on its input,
+ *	reads a length or type prefix out of the key bytes, or indexes a table by
+ *	a decoded field can fault, abort or loop on garbage -- and validation
+ *	never gets to run, because the process is already gone.  Enabling this
+ *	therefore CHANGES THE CONTRACT of DB_ENV->set_bt_compare, which is not
+ *	something a default should do silently.
+ *
+ *	It was on by default in v2026.09.12 and v2026.10.1.  That was wrong, and
+ *	not only on paper: tracker item M1 is a reproducible NULL-pointer
+ *	SIGSEGV in this path (3 of 8 runs on a 64-vCPU box,
+ *	__memp_fget_opt_valid with bhp == 0x0).
+ *
+ *	The measured win is real -- 1.71x per-key reads at t=32, 2.05x batched at
+ *	t=96 (test/bench/OPTIMISTIC-READS-2026-09.md) -- so the code stays, with
+ *	the cost of using it stated rather than assumed.  See
+ *	docs_src/api/c/set_bt_compare.md and RFC 0007 for the conditions under
+ *	which a deployment can take it.
+ *
+ *	DB_NO_OPTREAD is still honoured and still wins, so an existing script or
+ *	benchmark arm that sets it keeps meaning "off" rather than quietly
+ *	inverting.  ONE binary, ONE runtime switch remains the only unconfounded
+ *	way to A/B this (see the DB_PRIVATE layout warning atop
+ *	test/bench/run_bench.sh).  Read once, cached.
  */
 static int
 __bam_opt_enabled()
@@ -69,7 +103,8 @@ __bam_opt_enabled()
 	static int cached = -1;
 
 	if (cached == -1)
-		cached = getenv("DB_NO_OPTREAD") != NULL ? 0 : 1;
+		cached = (getenv("DB_NO_OPTREAD") == NULL &&
+		    getenv("DB_OPTREAD") != NULL) ? 1 : 0;
 	return (cached);
 }
 

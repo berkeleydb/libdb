@@ -36,7 +36,8 @@
  * env:   OPT_HOME (existing dir; reused by both arms -- see the DB_PRIVATE
  *          layout warning atop run_bench.sh)
  *        OPT_CACHE_MB (default 64; set small to force eviction)
- *        DB_NO_OPTREAD (set: optimistic descent off -- the control arm)
+ *        DB_OPTREAD    (set: optimistic descent ON -- it is OFF by default)
+ *        DB_NO_OPTREAD (set: forced off, overrides DB_OPTREAD -- control arm)
  */
 #include <sys/types.h>
 #include <pthread.h>
@@ -202,7 +203,16 @@ main(argc, argv)
 	}
 	cache_mb = getenv("OPT_CACHE_MB") == NULL ?
 	    64 : (unsigned)atoi(getenv("OPT_CACHE_MB"));
-	optoff = getenv("DB_NO_OPTREAD") != NULL;
+	/*
+	 * "Expected off" is now the DEFAULT, not just DB_NO_OPTREAD: the
+	 * optimistic descent is opt-in via DB_OPTREAD (it calls the
+	 * application's bt_compare on unvalidated page bytes -- see
+	 * __bam_opt_enabled in src/btree/bt_search.c).  This must mirror that
+	 * predicate exactly, including the precedence, or the probe will judge
+	 * an inert run by the firing criteria and report a spurious FAIL.
+	 */
+	optoff = getenv("DB_NO_OPTREAD") != NULL ||
+	    getenv("DB_OPTREAD") == NULL;
 
 	if ((ret = db_env_create(&env, 0)) != 0)
 		return (1);
@@ -318,8 +328,12 @@ main(argc, argv)
 	if (optoff) {
 		/* Control arm: the path must be entirely inert. */
 		if (p1 != p0 || t1 != t0) {
-			printf("FAIL opt-fires DB_NO_OPTREAD but path ran "
-			    "tries=%u pages=%u\n", t1 - t0, p1 - p0);
+			printf("FAIL opt-fires path ran while expected OFF "
+			    "(DB_NO_OPTREAD=%s DB_OPTREAD=%s) tries=%u "
+			    "pages=%u\n",
+			    getenv("DB_NO_OPTREAD") == NULL ? "unset" : "set",
+			    getenv("DB_OPTREAD") == NULL ? "unset" : "set",
+			    t1 - t0, p1 - p0);
 			return (1);
 		}
 		printf("VERDICT opt-fires-control inert\n");

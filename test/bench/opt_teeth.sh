@@ -79,7 +79,11 @@ build_probe() {
 echo "=== arm 1: optimistic ON (must run AND fire)"
 build_probe "$BUILD/libdb.a" "$WORK/opt_fires"
 find "$HOME_DIR" -mindepth 1 -delete
-OPT_HOME=$HOME_DIR OPT_CACHE_MB=$CACHE_MB \
+# DB_OPTREAD=1 is REQUIRED: the optimistic descent is OFF BY DEFAULT (it calls
+# the application's bt_compare on unvalidated page bytes -- see
+# __bam_opt_enabled). Without it arm 1 is inert and this tier would test
+# nothing, so the opt-in is part of the arm, not an environment detail.
+DB_OPTREAD=1 OPT_HOME=$HOME_DIR OPT_CACHE_MB=$CACHE_MB \
     "$WORK/opt_fires" "$NKEYS" "$READERS" "$WRITERS" "$SECS" \
     > "$WORK/on.txt" 2>&1 || true
 cat "$WORK/on.txt"
@@ -97,6 +101,26 @@ DB_NO_OPTREAD=1 OPT_HOME=$HOME_DIR OPT_CACHE_MB=$CACHE_MB \
 cat "$WORK/off.txt"
 grep -q "^VERDICT opt-fires-control inert" "$WORK/off.txt" ||
     fail "control arm not inert with DB_NO_OPTREAD set"
+
+# DB_NO_OPTREAD must still WIN over DB_OPTREAD, so a script that disables the
+# path keeps meaning "off" even if something later in its environment opts in.
+echo "=== arm 2b: DB_NO_OPTREAD beats DB_OPTREAD (precedence)"
+find "$HOME_DIR" -mindepth 1 -delete
+DB_NO_OPTREAD=1 DB_OPTREAD=1 OPT_HOME=$HOME_DIR OPT_CACHE_MB=$CACHE_MB \
+    "$WORK/opt_fires" "$NKEYS" "$READERS" "$WRITERS" "$SECS" \
+    > "$WORK/both.txt" 2>&1 || true
+grep -q "^VERDICT opt-fires-control inert" "$WORK/both.txt" ||
+    fail "DB_NO_OPTREAD did not override DB_OPTREAD"
+
+# And the DEFAULT -- neither variable set -- must be inert.  This is the arm
+# that fails if the default is ever flipped back on by accident.
+echo "=== arm 2c: no variable set at all (default MUST be off)"
+find "$HOME_DIR" -mindepth 1 -delete
+env -u DB_OPTREAD -u DB_NO_OPTREAD OPT_HOME=$HOME_DIR OPT_CACHE_MB=$CACHE_MB \
+    "$WORK/opt_fires" "$NKEYS" "$READERS" "$WRITERS" "$SECS" \
+    > "$WORK/dflt.txt" 2>&1 || true
+grep -q "^VERDICT opt-fires-control inert" "$WORK/dflt.txt" ||
+    fail "the optimistic path is ON BY DEFAULT -- it must be opt-in (DB_OPTREAD)"
 
 echo "=== arm 3: sabotaged library (BH.gen never bumped) -- MUST FAIL arm 1"
 SAB=$WORK/sab
@@ -134,7 +158,11 @@ mkdir -p "$SAB/build_unix"
 test -f "$SAB/build_unix/libdb.a" || fail "sabotaged libdb.a missing"
 build_probe "$SAB/build_unix/libdb.a" "$WORK/opt_fires_sab"
 find "$HOME_DIR" -mindepth 1 -delete
-OPT_HOME=$HOME_DIR OPT_CACHE_MB=$CACHE_MB \
+# DB_OPTREAD=1 here too, for the same reason as arm 1 and more sharply: without
+# it the sabotaged build would be INERT and produce no FAIL, so this arm would
+# "pass" while proving nothing. A must-fail arm that cannot run is the worst
+# kind of green.
+DB_OPTREAD=1 OPT_HOME=$HOME_DIR OPT_CACHE_MB=$CACHE_MB \
     "$WORK/opt_fires_sab" "$NKEYS" "$READERS" "$WRITERS" "$SECS" \
     > "$WORK/sab.txt" 2>&1 || true
 cat "$WORK/sab.txt"
@@ -145,6 +173,7 @@ if grep -q "^VERDICT opt-fires-teeth " "$WORK/sab.txt"; then
 	fail "sabotaged build produced the teeth verdict"
 fi
 
-echo "VERDICT opt-teeth all three arms behaved: on=fires off=inert sabotage=fails"
+echo "VERDICT opt-teeth all arms behaved: on=fires off=inert default=inert\
+ precedence=off sabotage=fails"
 hi_emit optimistic_teeth pass
 exit 0

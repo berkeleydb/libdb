@@ -91,6 +91,24 @@ The **bt_decompress_fcn** function is the application-specified Btree decompress
 
 The **bt_decompress_fcn** function must return 0 on success and a non-zero value on failure. If the decompressed data cannot fit in **key-\>data** or **data-\>data** (the size of which is available in the <a href="dbt.md" class="link" title="Chapter 4.  The DBT Handle">DBT</a>'s **ulen** field), the function should identify the required buffer size using the <a href="dbt.md" class="link" title="Chapter 4.  The DBT Handle">DBT</a>'s **size** field and return `DB_BUFFER_SMALL`.
 
+### Page bytes passed to this callback
+
+By default this callback is invoked only on a latched, pinned page, so its page
+bytes are a self-consistent snapshot of one committed page state.
+
+Setting `DB_OPTREAD` in the environment enables the optimistic (pin-free)
+interior descent, under which application callbacks reached from a page descent
+may be called on **unvalidated** page bytes: libdb guarantees the bytes lie
+inside the page frame, but not that they are consistent, and the content may be
+any byte sequence that happened to be in the frame. Such a callback must then be
+total over arbitrary bytes — it must terminate and must not fault for any
+content or any size.
+
+`DB_OPTREAD` is **off by default** for exactly this reason. The full statement
+of what is and is not guaranteed, and the list of callback shapes that are
+unsafe under it, is in
+<a href="dbset_bt_compare.md" class="xref" title="DB-&gt;set_bt_compare()">DB-&gt;set_bt_compare()</a>.
+
 ### Errors
 
 The `DB->set_bt_compress()` method may fail and return one of the following non-zero errors:

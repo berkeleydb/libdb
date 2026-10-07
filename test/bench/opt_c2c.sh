@@ -66,8 +66,10 @@ test -x "$BIN" || { echo "driver did not build" >&2; exit 1; }
 
 run_arm() {
 	arm=$1
+	# OFF BY DEFAULT, so the "opt" arm opts in explicitly -- otherwise both
+	# arms run the pinning path and the comparison is vacuous.
 	case "$arm" in
-	opt) extra="";;
+	opt) extra="DB_OPTREAD=1";;
 	*)   extra="DB_NO_OPTREAD=1";;
 	esac
 

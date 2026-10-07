@@ -43,6 +43,64 @@ The **bt_compare_fcn** function is the application-specified Btree comparison fu
 
 The **bt_compare_fcn** function must return an integer value less than, equal to, or greater than zero if the first key parameter is considered to be respectively less than, equal to, or greater than the second key parameter. In addition, the comparison function must cause the keys in the database to be <span class="emphasis">*well-ordered*</span>. The comparison function must correctly handle any key values used by the application (possibly including zero-length keys). In addition, when Btree key prefix comparison is being performed (see <a href="dbset_bt_prefix.md" class="xref" title="DB-&gt;set_bt_prefix()">DB-&gt;set_bt_prefix()</a> for more information), the comparison routine may be passed a prefix of any database key. The **data** and **size** fields of the <a href="dbt.md" class="link" title="Chapter 4.  The DBT Handle">DBT</a> are the only fields that may be used for the purposes of this comparison, and no particular alignment of the memory to which by the **data** field refers may be assumed.
 
+### Page bytes passed to the comparison function
+
+By default, `bt_compare_fcn` is called only on a page that libdb holds latched
+and pinned. The `dbt2` bytes are a self-consistent snapshot of one committed
+page state, and that is the contract you may rely on.
+
+**`DB_OPTREAD` weakens this contract.** It enables the optimistic (pin-free)
+interior descent described in RFC 0007, which walks interior pages with no pin
+and no latch and validates afterwards. Under `DB_OPTREAD`, and **only** under
+it, your comparison function may be called on *unvalidated* page bytes. Exactly
+what remains guaranteed, and what does not:
+
+**Still guaranteed.** `dbt2.data` and the `dbt2.size` bytes following it lie
+inside the page frame. libdb will not fault, will not follow a pointer out of
+the page, and will not write to it. A comparison performed on torn bytes
+produces a wrong child, which validation then detects and discards; the query
+still returns the correct answer.
+
+**No longer guaranteed.** The bytes may be a *torn mix of two different page
+states*. `dbt2.size` may describe one record while `dbt2.data` points into
+another. The content may be any byte sequence that happened to be in the frame,
+including sequences that never existed as a key in the database.
+
+Therefore, under `DB_OPTREAD` the comparison function **must be total over
+arbitrary bytes**: it must terminate, and it must not fault, abort, or raise,
+for *any* `dbt2` content and *any* `dbt2.size`. This is a stronger requirement
+than the usual one. A comparator is **not** safe here if it:
+
+- asserts, or calls `abort()`, on input it considers malformed;
+- reads a length, count, type tag, or offset out of the key bytes and then uses
+  it to index, loop, or dereference;
+- requires a terminator (such as a trailing `NUL`) to stop scanning;
+- indexes a lookup or collation table by a value decoded from the key, without
+  bounds-checking that value;
+- dereferences a pointer stored inside the key.
+
+A comparator that only compares bytes — `memcmp`, a fixed-width integer or
+fixed-layout struct comparison, or any function whose reads are bounded by
+`dbt2.size` alone — is safe.
+
+If you cannot state with certainty that your comparison function is total over
+arbitrary bytes, **do not set `DB_OPTREAD`.** The default is off precisely
+because this is a property libdb cannot verify for you, and the failure mode is
+a crash inside your own code on a page race, which is difficult to reproduce and
+whose stack will not obviously point here.
+
+The feature is disabled by default and is enabled only by setting `DB_OPTREAD`
+in the environment. `DB_NO_OPTREAD` forces it off and takes precedence, so a
+script may disable it unconditionally without inspecting the rest of the
+environment. The reported benefit is a 1.71x improvement in per-key read
+throughput at 32 threads and 2.05x on the batched API at 96 threads; see
+`test/bench/OPTIMISTIC-READS-2026-09.md` for the measurements and
+`rfc/0007-optimistic-read-validation.md` for the design and its open risks.
+
+Note that this affects the Btree comparison, prefix, duplicate-comparison and
+compression callbacks equally: any application function reached from an interior
+page descent is subject to the same weakened guarantee.
+
 ### Errors
 
 The `DB->set_bt_compare()` method may fail and return one of the following non-zero errors:

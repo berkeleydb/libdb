@@ -43,6 +43,24 @@ The **bt_prefix_fcn** function is the application-specific Btree prefix function
 
 The **bt_prefix_fcn** function must return the number of bytes of the second key parameter that would be required by the Btree key comparison function to determine the second key parameter's ordering relationship with respect to the first key parameter. If the two keys are equal, the key length should be returned. The prefix function must correctly handle any key values used by the application (possibly including zero-length keys). The **data** and **size** fields of the <a href="dbt.md" class="link" title="Chapter 4.  The DBT Handle">DBT</a> are the only fields that may be used for the purposes of this determination, and no particular alignment of the memory to which the **data** field refers may be assumed.
 
+### Page bytes passed to this callback
+
+By default this callback is invoked only on a latched, pinned page, so its page
+bytes are a self-consistent snapshot of one committed page state.
+
+Setting `DB_OPTREAD` in the environment enables the optimistic (pin-free)
+interior descent, under which application callbacks reached from a page descent
+may be called on **unvalidated** page bytes: libdb guarantees the bytes lie
+inside the page frame, but not that they are consistent, and the content may be
+any byte sequence that happened to be in the frame. Such a callback must then be
+total over arbitrary bytes — it must terminate and must not fault for any
+content or any size.
+
+`DB_OPTREAD` is **off by default** for exactly this reason. The full statement
+of what is and is not guaranteed, and the list of callback shapes that are
+unsafe under it, is in
+<a href="dbset_bt_compare.md" class="xref" title="DB-&gt;set_bt_compare()">DB-&gt;set_bt_compare()</a>.
+
 ### Errors
 
 The `DB->set_bt_prefix()` method may fail and return one of the following non-zero errors:
