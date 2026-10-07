@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_hash_func.c
  *	Property-based tests for the hash access method's key-hashing
  *	functions (src/hash/hash_func.c): __ham_func2 (Phong Vo linear

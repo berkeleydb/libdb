@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 /*
  * aio_uring_enospc_probe.c --
  *	Empirically exercise the io_uring backend's REAL write-error path,

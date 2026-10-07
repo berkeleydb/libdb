@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * pin_why: WHY does the perf/bhpin-r1 optimistic fast path FIRE on the workload
  * we are benchmarking?  A "neutral" result from a code path that never executes
  * is not a measurement of that path, so this is a gate on the whole R1 arm.

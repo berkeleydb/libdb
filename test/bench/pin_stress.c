@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * pin_stress: DB_PRIVATE concurrent reader/writer stress, which is the ONLY
  * configuration where perf/bhpin-r1's optimistic fast path fires (it is gated
  * on ENV_PRIVATE) -- so it is the only configuration in which a correctness

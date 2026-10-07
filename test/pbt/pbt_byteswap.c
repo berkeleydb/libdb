@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_byteswap.c
  *	Property-based tests for the byte-order swap macros in
  *	src/dbinc/db_swap.h (M_16_SWAP / M_32_SWAP / M_64_SWAP and the

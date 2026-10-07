@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 /*
  * CBMC harness: __dd_find (src/lock/lock_deadlock.c) -- the waits-for bitmap
  * cycle-detection core of deadlock detection.

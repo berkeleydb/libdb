@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 /*
  * CBMC harness: __ham_func4 (src/hash/hash_func.c) -- Chris Torek's hash,
  * the checksum core used by __db_chksum for the non-MAC (plain hash) path.

@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_defpfx.c
  *	Property-based tests for __bam_defpfx() -- Berkeley DB's default
  *	B-tree prefix routine (src/btree/bt_compare.c), used during

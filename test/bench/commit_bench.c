@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 /*
  * commit_bench -- measure commit throughput, fsyncs-per-commit and commit
  * latency percentiles under N concurrent fully-durable (DB_TXN_SYNC)

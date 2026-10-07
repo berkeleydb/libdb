@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_defcmp.c
  *	Property-based tests for __bam_defcmp() -- Berkeley DB's default
  *	B-tree/duplicate key comparison routine (src/btree/bt_compare.c,

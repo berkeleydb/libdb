@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * batch_bench: A/B driver for db_get_multiple() (one API crossing, one cursor
  * for N keys) versus N individual DB->get() calls.  The SAME binary does both
  * arms; the arm is argv[1].

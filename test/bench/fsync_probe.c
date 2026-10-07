@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 /*
  * fsync_probe -- raw fdatasync/fsync latency on this filesystem, and the
  * maximum achievable serial fsync rate, so we can tell how much of libdb's

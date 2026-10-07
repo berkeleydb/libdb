@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_hash_model.c
  *	Stateful model test: a random put/del/get sequence on a real
  *	in-memory Berkeley DB DB_HASH database is compared, after every

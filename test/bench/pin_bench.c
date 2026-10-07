@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * pin_bench: read-path A/B driver for the buffer-header-pin re-measurement.
  *
  * A fork of test/bench/batch_bench.c with the four things that measurement

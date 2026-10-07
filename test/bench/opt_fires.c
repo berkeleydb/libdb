@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * opt_fires: the TEETH TEST for RFC 0007 phase 1 (optimistic read validation).
  *
  * Two questions, and a "no" to either is a failure:

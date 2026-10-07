@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/fuzz/fuzz_util.h --
  *	Tiny shared helpers for the libdb fuzz harnesses: a fresh per-input
  *	scratch directory (so nothing leaks between inputs) and a helper to

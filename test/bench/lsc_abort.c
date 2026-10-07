@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * lsc_abort.c -- abort-heavy insert load, to test whether early release of the
  * PGNO_BASE_MD lock lets one transaction's abort damage another's allocation.
  *

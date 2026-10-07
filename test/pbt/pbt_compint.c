@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_compint.c
  *	Property-based tests for the integer-compression (varint) codec in
  *	src/common/db_compint.c: __db_compress_int / __db_decompress_int /
