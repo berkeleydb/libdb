@@ -39,7 +39,33 @@ cd "$HERE"
 . "$HERE/../harness.sh"
 hi_init lockmatrix "$HERE/.."
 
-CC=${CC:-clang}
+# Pick a compiler that can actually build the ASan libdb this tier needs.
+#
+# This used to be a bare CC=${CC:-clang}, so on a runner without clang the whole
+# tier could not run (defect T6).  gcc supports -fsanitize=address just as well
+# for our purposes, so prefer an explicit $CC, then clang, then gcc -- and verify
+# the choice by COMPILING with the sanitizer flag rather than by checking the
+# binary exists, because a gcc without libasan installed passes `command -v' and
+# then fails at link time.
+if [ -z "${CC:-}" ] ; then
+	for cand in clang gcc cc ; do
+		command -v "$cand" >/dev/null 2>&1 || continue
+		probe=${TMPDIR:-/tmp}/lm_ccprobe_$$
+		echo 'int main(void){return 0;}' > "$probe.c"
+		if "$cand" -fsanitize=address "$probe.c" -o "$probe" 2>/dev/null ; then
+			CC=$cand
+			rm -f "$probe" "$probe.c"
+			break
+		fi
+		rm -f "$probe" "$probe.c"
+	done
+fi
+if [ -z "${CC:-}" ] ; then
+	echo "run.sh: SKIP no compiler here supports -fsanitize=address"
+	echo "run.sh: tried clang, gcc, cc; set CC to override"
+	exit 0
+fi
+echo "run.sh: using CC=$CC"
 LIBDB_ASAN=${LIBDB_ASAN:-1}
 LOCK_TIMEOUT=${LOCK_TIMEOUT:-600}
 OUT="$HERE/build"
@@ -70,7 +96,11 @@ LDLIBS="${LDLIBS:--lpthread} -ldl -lpthread"
 
 # ASan on the harness too, so the harness's own DBTs are red-zoned.
 CFLAGS="-g -O1 -Wall -Wextra -Wno-unused-parameter -fsanitize=address"
-CFLAGS="$CFLAGS -I$LIBDB_BUILD -I$HERE"
+# -I the source root and src/ as well: test_lock_matrix.c includes db_int.h so
+# it can call __os_free, the matching deallocator for the memory lock_vec
+# hands back (see the note at the free site).  db_int.h then includes
+# dbinc/queue.h, which is only reachable with src/ on the path.
+CFLAGS="$CFLAGS -I$LIBDB_BUILD -I$HERE -I$HERE/../.. -I$HERE/../../src"
 
 [ -f "$LIBDBA" ] || {
 	echo "error: libdb.a not found at $LIBDBA -- build libdb first:" >&2

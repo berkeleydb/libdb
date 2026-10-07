@@ -184,6 +184,29 @@ jobs:
           fi
           echo "Generated headers are in sync. :white_check_mark:"
 
+      # ---- Java constants drift gate (BLOCKING) -----------------------------
+      # DbConstants.java is generated from src/dbinc/db.in and dist/RELEASE, and
+      # is COMMITTED.  Nothing regenerated it for five months, so it still said
+      # DB_VERSION 5.3.29 after the CalVer transition -- and db_javaJNI performs
+      # a version handshake at class-init, so EVERY Environment open threw
+      #
+      #   Berkeley DB library version 2026.0.9 doesn't match Java class
+      #   library version 5.3.29
+      #
+      # i.e. the Java binding was unloadable in every release since v2026.04 and
+      # no gate noticed.  src/dbinc_auto/ has had a drift gate for exactly this
+      # class of mistake; the Java side did not.
+      - name: Java-constants drift gate (blocking)
+        run: |
+          (cd dist && sh s_java_const)
+          if ! git diff --exit-code lang/java/src/com/sleepycat/db/internal/DbConstants.java; then
+            echo "::error::DbConstants.java drifted from dist/s_java_const output."
+            echo "::error::It is generated from src/dbinc/db.in and dist/RELEASE."
+            echo "::error::Re-run 'cd dist && sh s_java_const' and commit the result."
+            exit 1
+          fi
+          echo "Java constants are in sync. :white_check_mark:"
+
       # ---- Everything below is advisory ------------------------------------
       - name: Flag-bit inventory (early warning context)
         continue-on-error: true
