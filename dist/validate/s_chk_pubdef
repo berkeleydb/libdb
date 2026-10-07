@@ -22,7 +22,9 @@ failed=__chk_pubdef_failed
 rm -f $failed
 
 # remove m4 doc tests, m4 has been removed for 4.8
-# TODO: add test for csharp const
+# The C# column is gone: the binding was removed (commit a77b2119d), so
+# pubdef.in no longer has a fifth column and there is nothing to check.
+# The old "TODO: add test for csharp const" is retired with it.
 #cat <<END_OF_TEXT
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 #Check that pubdef.in has everything listed in m4.links.
@@ -111,7 +113,7 @@ Check that api_flags.in plus db.in has everything listed in pubdef.in.
 END_OF_TEXT
 
 sed '/^#/d' $p |
-while read name isdoc isinc isjava iscsharp; do
+while read name isdoc isinc isjava; do
 	if `egrep -w "^#.*[ 	]$name|[	 ]$name=[0-9][0-9]*|^[	 ]*$name[	 ]*=[	 ]*[0-9][0-9]*" \
 	    $d/src/dbinc/db.in $d/src/dbinc_auto/api_flags.in > /dev/null`; then
 		[ "X$isinc" != "XI" ] && {
@@ -155,9 +157,18 @@ END_OF_TEXT
 
 f=$j/internal/DbConstants.java
 sed '/^#/d' $p |
-while read name isdoc isinc isjava iscsharp; do
+while read name isdoc isinc isjava; do
 	if `egrep -w "int[	 ]$name =" $f > /dev/null`; then
-		[ "X$isjava" != "XJ" ] && {
+		# J requires the declaration.  N does not require it but must not
+		# FORBID it either: N means "reached through the Java native layer"
+		# (the DB_* -> exception mapping in libdb_java/java_except.i), and a
+		# code can be both mapped there and declared here.  DB_HEAP_FULL is
+		# exactly that -- mapped to HeapFullException in java_except.i AND
+		# declared in DbConstants.java -- while its ten peers
+		# (DB_LOCK_DEADLOCK, DB_RUNRECOVERY, the DB_REP_* codes) are mapped
+		# only.  Treating N as "must be absent" made the one row that has
+		# both impossible to mark correctly.
+		[ "X$isjava" != "XJ" ] && [ "X$isjava" != "XN" ] && {
 			echo "$name should not appear in $f"
 			exitv=1
 			: > $failed
@@ -183,7 +194,7 @@ cat $j/*.java $j/internal/Db.java $j/internal/DbEnv.java \
     $j/internal/db_javaJNI.java | sed '/\/\*\*/,/\*\// d' > $t
 
 sed '/^#/d' $p |
-while read name isdoc isinc isjava iscsharp; do
+while read name isdoc isinc isjava; do
 	if `egrep -w "$name" $t > /dev/null`; then
 		[ "X$isjava" != "XJ" ] && {
 			echo "$name should not appear in the Java API"
@@ -206,7 +217,7 @@ Check that all constants in pubdef.in are wrapped by the Java native layer.
 END_OF_TEXT
 
 sed '/^#/d' $p |
-while read name isdoc isinc isjava iscsharp; do
+while read name isdoc isinc isjava; do
 	if `egrep -w "$name" $d/lang/java/libdb_java/db_java_wrap.c > /dev/null`; then
 		[ "X$isjava" != "XN" ] && [ "X$isjava" != "XJ" ] && {
 			echo "$name should not appear in the Java native layer"

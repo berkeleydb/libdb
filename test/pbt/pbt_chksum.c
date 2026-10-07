@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_chksum.c
  *	Property-based tests for the page/log checksum in src/hmac/hmac.c:
  *	__db_chksum (compute) and __db_check_chksum (verify), on the

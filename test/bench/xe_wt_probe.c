@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 /*
  * xe_wt_probe.c -- ask WiredTiger itself which configuration options this
  * build accepts, instead of guessing from a header or a Python data file.

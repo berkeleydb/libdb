@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * pin_armed: prove each arm's build is actually ARMED, i.e. that the change
  * under test is compiled in rather than silently absent.  Six vacuous-green
  * measurements have shipped in this project; an arm that is byte-identical to

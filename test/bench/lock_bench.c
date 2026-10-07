@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * See the file LICENSE for redistribution information.
  *
  * lock_bench -- direct lock-manager throughput/scaling probe.

@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/lockmatrix/test_lock_matrix.c --
  *	Tier B3: exhaustive lock-mode matrix through the lock-list paths.
  *

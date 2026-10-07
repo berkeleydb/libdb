@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/repiso/rep_iso.h --
  *	Shared declarations for the two-site replication isolation harness.
  */

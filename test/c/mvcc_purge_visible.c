@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * See the file LICENSE for redistribution information.
  *
  * mvcc_purge_visible.c -- correctness gate for the #138 proactive

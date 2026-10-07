@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 /*
  * CBMC harness: __db_ret_okitem (src/db/db_ret.c) -- the page-item bounds
  * validator whose absence was bug #67 (an OOB read on corrupt page input).

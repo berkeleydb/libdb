@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/fuzz/make_seeds.c --
  *	Generate the seed-corpus inputs the fuzzers bootstrap from.  Run
  *	once (via run.sh or by hand) to produce:

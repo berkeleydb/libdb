@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * See the file LICENSE for redistribution information.
  *
  * config_smoke.c -- the RUNTIME half of the configure-option sweep (gap G14).

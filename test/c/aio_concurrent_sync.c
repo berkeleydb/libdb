@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * See the file LICENSE for redistribution information.
  *
  * aio_concurrent_sync.c -- concurrency proof for the async (os_aio) buffer-pool

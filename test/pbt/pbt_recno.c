@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_recno.c
  *	End-to-end property tests for the recno (record-number) access
  *	method, src/btree/bt_recno.c, over a real in-memory DB_RECNO.

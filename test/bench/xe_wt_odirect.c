@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 /*
  * xe_wt_odirect.c -- does WiredTiger's `direct_io=[data]` actually open data
  * files with O_DIRECT in this build?

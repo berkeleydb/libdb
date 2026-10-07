@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_put_get.c
  *	End-to-end property test: put/get round-trip on a real in-memory
  *	Berkeley DB B-tree.  Exercises db_create + DB->open (in-memory,

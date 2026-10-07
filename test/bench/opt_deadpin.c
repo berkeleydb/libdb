@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * opt_deadpin: RFC 0007 risk 4 -- a stale pin record left by a DEAD process
  * must NOT block eviction, while a live thread's pin record MUST.
  *
