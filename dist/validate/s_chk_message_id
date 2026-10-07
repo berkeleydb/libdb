@@ -46,8 +46,12 @@ rm msg_id_unsorted
 maxline=`cat msg_id_list | wc -l`
 
 # The exception for duplicate messages
-rep_dup_msg_id=`grep -E "\"[0-9]{4}" -r "$HERE/../../dist/gen_msg.awk" -o | \
-    sed "s/\"//g"`
+# There used to be an allowlist here: gen_msg.awk emitted ONE id (3675) for
+# all 29 generated "too few input bytes" errors, so this script extracted
+# that id and downgraded its duplicates to [EXPECTED].  gen_msg.awk now
+# allocates a distinct id per message from a per-subsystem base (U3), so
+# there is nothing left to excuse and a duplicate is a plain error again.
+rep_dup_msg_id=""
 lastnum=""
 for (( i = 1; i <= $maxline ; i++ ))
 do

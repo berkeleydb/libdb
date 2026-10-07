@@ -15,9 +15,20 @@ DIR="rep repmgr"
 for i in $DIR; do
 	for f in ../src/$i/*.msg; do
 		subsystem=`basename $f .msg`
+		# Distinct message-id base per subsystem: see the toofew_msgid
+		# comment in gen_msg.awk.  rep gets 5200+, repmgr 5300+ --
+		# verified free across every tracked source file (util/ occupies
+		# 5001-5139).  rep emits 13 ids, repmgr 16.
+		case $i in
+		rep)	msgid_base=5200 ;;
+		repmgr)	msgid_base=5300 ;;
+		*)	echo "s_message: no msgid_base for subsystem $i" >&2
+			exit 1 ;;
+		esac
 		awk -f gen_msg.awk \
 		    -v header_file=$header \
-		    -v source_file=$source < $f
+		    -v source_file=$source \
+		    -v msgid_base=$msgid_base < $f
 
 		f=../src/dbinc_auto/${subsystem}_automsg.h
 		cmp $header $f > /dev/null 2>&1 ||
