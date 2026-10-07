@@ -101,6 +101,17 @@ retry:	LOCK_LOCKERS(env, lrp);
 			 * so the tracker's original framing of S5 as a
 			 * one-partition problem was wrong and the v2026.09.6
 			 * latch-alias fix was never going to address it.
+			 *
+			 * The mode test below deliberately MIRRORS __lock_vec's
+			 * PUT_READ path (lock.c:569-571) rather than asking
+			 * !IS_WRITELOCK(): the question is not "is this a read
+			 * lock" but "would PUT_READ release it".  IS_WRITELOCK is
+			 * false for DB_LOCK_SIREAD, which is the very mode
+			 * PUT_READ retains, so using it here would conclude that
+			 * progress is possible and restore the spin.  If PUT_READ
+			 * ever releases another mode, ADD IT HERE IN THE SAME
+			 * COMMIT.  Baselined in dist/cocci/baseline.txt; the
+			 * reasoning is in rfc/0003/lock-mode-audit.md.
 			 */
 			if (lip->id >= TXN_MINIMUM) {
 				released = 0;

@@ -148,6 +148,32 @@ Both Coccinelle rules are wired into the existing baseline gate, so they fail on
 `dist/cocci/baseline.txt`. The inventory script is **not** baselined: it is
 absolute.
 
+#### Baselined site: `src/lock/lock_failchk.c` (S5, 2026-10)
+
+The S5 fix added a `LOCK_MODE_READTEST` match, and the rule was right to flag
+it — this is the same issue #140 family as the defect being fixed, so it is
+worth stating why the site is nonetheless correct.
+
+The guard asks "does this dead transactional locker hold anything
+`__lock_failchk` can actually release?" The only release it performs is
+`DB_LOCK_PUT_READ`, and that path (`src/lock/lock.c:569-571`) releases exactly
+`DB_LOCK_READ` and `DB_LOCK_READ_UNCOMMITTED`. So the predicate is a
+**deliberate mirror of a specific other site**, not an attempt to describe
+"every non-write mode" — which is precisely the distinction the rule's own
+guidance draws, and `lock.c`'s `PUT_READ` test is itself baselined two lines
+above for the same reason.
+
+`!IS_WRITELOCK(m)` would be **wrong** here: it is true for `DB_LOCK_SIREAD`,
+and a SIREAD marker is exactly what `PUT_READ` deliberately retains. Using it
+would make the guard conclude progress is possible, restoring the infinite
+loop the fix removes.
+
+The coupling is therefore real and load-bearing: **if `PUT_READ` ever learns to
+release another mode, this predicate must gain it in the same commit.** The
+regression test (`test/db/run_s5_failchk_spin.sh`) fails if they disagree, since
+a mode `PUT_READ` releases but the guard does not recognise means the guard
+`continue`s past a locker that could have been cleaned.
+
 ### Known limitation
 
 Coccinelle cannot express "a `switch` over `db_lockmode_t` that is missing a
