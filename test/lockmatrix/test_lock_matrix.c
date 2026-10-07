@@ -51,6 +51,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+/*
+ * db_int.h for __os_free: lock_vec hands back memory allocated by
+ * __os_malloc, which is not libc malloc (see the note at the free site
+ * below).  test/c/test_log_verify.c includes it for the same reason.
+ */
+#include "db_config.h"
+#include "db_int.h"
 #include "db.h"
 
 /*
@@ -420,29 +427,27 @@ list_shape(db_lockop_t op, const char *opname, int nwrite, int nsiread,
 		lm_fail("%s with nwrite=%d nsiread=%d nread=%d -> %s",
 		    opname, nwrite, nsiread, nread, rc_name(rc));
 	/*
-	 * Do NOT free(objlist.data).
+	 * Free with __os_free, NOT free().
 	 *
-	 * lock_vec allocates it with __os_malloc (src/lock/lock.c, the
-	 * DB_LOCK_PUT_ALL / PUT_READ / UPGRADE_WRITE arm), and __os_malloc
+	 * lock_vec allocates objlist->data with __os_malloc (src/lock/lock.c,
+	 * the DB_LOCK_PUT_ALL / PUT_READ / UPGRADE_WRITE arm), and __os_malloc
 	 * prepends a db_allocinfo_t header and hands back an OFFSET pointer
-	 * (src/os/os_alloc.c) -- and may route through DB_GLOBAL(j_malloc) if
-	 * the application installed its own allocator.  So the address the
-	 * caller sees was never returned by libc malloc, and free()ing it is
-	 * invalid: ASan reported exactly that,
+	 * (src/os/os_alloc.c) -- optionally from DB_GLOBAL(j_malloc) if the
+	 * application installed its own allocator.  So the address the caller
+	 * sees was never returned by libc malloc, and free()ing it is invalid:
+	 * ASan reported exactly that (defect T2),
 	 *
 	 *   attempting free on address which was not malloc()-ed
 	 *     #1 list_shape test_lock_matrix.c:423
 	 *
-	 * which is defect T2.  The engine's own callers use __os_free
-	 * (src/txn/txn.c:1015, :1540), which is internal and not reachable from
-	 * a public-API test program like this one.  Leaking a few DBT-sized
-	 * blocks in a short-lived matrix harness is the correct trade: the
-	 * alternative is either an invalid free or linking the test against
-	 * libdb internals purely to call the matching deallocator.
-	 *
-	 * ponytail: a public DB_ENV->lock_vec_free would remove the choice;
-	 * worth proposing if another public-API caller needs the list.
+	 * Not freeing at all is equally wrong -- this tier runs under ASan with
+	 * leak detection on, and LeakSanitizer fails the build.  __os_free is
+	 * the matching deallocator and is reachable because this file includes
+	 * db_int.h, which is the same thing test/c/test_log_verify.c does for
+	 * the identical reason.
 	 */
+	if (objlist.data != NULL)
+		__os_free(NULL, objlist.data);
 
 	memset(&req, 0, sizeof(req));
 	req.op = DB_LOCK_PUT_ALL;
