@@ -96,7 +96,11 @@ LDLIBS="${LDLIBS:--lpthread} -ldl -lpthread"
 
 # ASan on the harness too, so the harness's own DBTs are red-zoned.
 CFLAGS="-g -O1 -Wall -Wextra -Wno-unused-parameter -fsanitize=address"
-CFLAGS="$CFLAGS -I$LIBDB_BUILD -I$HERE"
+# -I the source root and src/ as well: test_lock_matrix.c includes db_int.h so
+# it can call __os_free, the matching deallocator for the memory lock_vec
+# hands back (see the note at the free site).  db_int.h then includes
+# dbinc/queue.h, which is only reachable with src/ on the path.
+CFLAGS="$CFLAGS -I$LIBDB_BUILD -I$HERE -I$HERE/../.. -I$HERE/../../src"
 
 [ -f "$LIBDBA" ] || {
 	echo "error: libdb.a not found at $LIBDBA -- build libdb first:" >&2
