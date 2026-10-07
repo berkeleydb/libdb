@@ -59,14 +59,28 @@ sh_l_as_string(l)
 	struct sh_le *ele = SH_LIST_FIRST(l, sh_le);
 	int i = 1;
 
+	/*
+	 * Bound every write.  This is only ever called from the FAILURE
+	 * reporting path, so by construction the list it is handed may be the
+	 * corrupt one the test just caught -- including a self-referential
+	 * link, which made this loop run off the end of buf and segfault
+	 * (defect T4: SIGSEGV at TestQueue.c:64, reported as a cutest crash).
+	 * A diagnostic printer must survive the bad input it exists to
+	 * describe, so truncate and say so rather than overrun.
+	 *
+	 * sizeof(buf) - 3 leaves room for the closing quote, a truncation
+	 * marker and the NUL.
+	 */
 	buf[0] = '"';
-	while (ele != NULL) {
+	while (ele != NULL && i < (int)sizeof(buf) - 3) {
 		buf[i] = ele->content;
 		ele = SH_LIST_NEXT(ele, sh_les, sh_le);
-		if (ele != NULL)
+		if (ele != NULL && i < (int)sizeof(buf) - 4)
 			buf[++i] = ' ';
 		i++;
 	}
+	if (ele != NULL)
+		buf[i++] = '>';		/* truncated: list longer than buf */
 	buf[i++] = '"';
 	buf[i] = '\0';
 	return buf;
@@ -341,14 +355,17 @@ sh_t_as_string(l)
 	struct sh_te *ele = SH_TAILQ_FIRST(l, sh_te);
 	int i = 1;
 
+	/* Bounded for the same reason as sh_l_as_string above (T4). */
 	buf[0] = '"';
-	while (ele != NULL) {
+	while (ele != NULL && i < (int)sizeof(buf) - 3) {
 		buf[i] = ele->content;
 		ele = SH_TAILQ_NEXT(ele, sh_tes, sh_te);
-		if (ele != NULL)
+		if (ele != NULL && i < (int)sizeof(buf) - 4)
 			buf[++i] = ' ';
 		i++;
 	}
+	if (ele != NULL)
+		buf[i++] = '>';
 	buf[i++] = '"';
 	buf[i] = '\0';
 	return (buf);

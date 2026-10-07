@@ -74,7 +74,7 @@ __rep_bulk_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5200",
 	    "Not enough input bytes to fill a __rep_bulk message"));
 	return (EINVAL);
 }
@@ -139,7 +139,7 @@ __rep_control_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5201",
 	    "Not enough input bytes to fill a __rep_control message"));
 	return (EINVAL);
 }
@@ -188,7 +188,7 @@ __rep_egen_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5202",
 	    "Not enough input bytes to fill a __rep_egen message"));
 	return (EINVAL);
 }
@@ -393,7 +393,7 @@ __rep_fileinfo_unmarshal(env, version, argpp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5203",
 	    "Not enough input bytes to fill a __rep_fileinfo message"));
 	return (EINVAL);
 }
@@ -575,7 +575,7 @@ __rep_fileinfo_v6_unmarshal(env, version, argpp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5204",
 	    "Not enough input bytes to fill a __rep_fileinfo_v6 message"));
 	return (EINVAL);
 }
@@ -626,7 +626,7 @@ __rep_grant_info_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5205",
 	    "Not enough input bytes to fill a __rep_grant_info message"));
 	return (EINVAL);
 }
@@ -677,7 +677,7 @@ __rep_logreq_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5206",
 	    "Not enough input bytes to fill a __rep_logreq message"));
 	return (EINVAL);
 }
@@ -726,7 +726,7 @@ __rep_newfile_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5207",
 	    "Not enough input bytes to fill a __rep_newfile message"));
 	return (EINVAL);
 }
@@ -828,7 +828,7 @@ __rep_update_unmarshal(env, version, argpp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5208",
 	    "Not enough input bytes to fill a __rep_update message"));
 	return (EINVAL);
 }
@@ -889,7 +889,7 @@ __rep_vote_info_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5209",
 	    "Not enough input bytes to fill a __rep_vote_info message"));
 	return (EINVAL);
 }
@@ -946,7 +946,7 @@ __rep_vote_info_v5_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5210",
 	    "Not enough input bytes to fill a __rep_vote_info_v5 message"));
 	return (EINVAL);
 }
@@ -987,7 +987,7 @@ __rep_lsn_hist_key_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5211",
 	    "Not enough input bytes to fill a __rep_lsn_hist_key message"));
 	return (EINVAL);
 }
@@ -1034,7 +1034,7 @@ __rep_lsn_hist_data_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5212",
 	    "Not enough input bytes to fill a __rep_lsn_hist_data message"));
 	return (EINVAL);
 }
