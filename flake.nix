@@ -19,6 +19,21 @@
             inherit version;
             src = ./.;
             nativeBuildInputs = [ pkgs.meson pkgs.ninja pkgs.python3 pkgs.pkg-config ];
+              # liburing was missing here while the autoconf package below has
+              # it, so the DEFAULT package silently built without the io_uring
+              # backend. That asymmetry went unnoticed because detection used
+              # to fall back quietly to synchronous I/O.
+              #
+              # It stopped being quiet once `uring' became a meson feature
+              # option: nixpkgs' meson setup-hook passes
+              # -Dauto_features=enabled by default, which promotes every 'auto'
+              # feature to a HARD requirement, so the missing library became a
+              # configure error instead of a silent downgrade. Adding the input
+              # is the right fix rather than pinning -During=disabled: this
+              # package should have had the backend all along.
+              buildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [
+                pkgs.liburing  # io_uring AIO backend (HAVE_IO_URING)
+              ];
             # A thin meson.build at the repo root drives dist/meson.build; nix's
             # meson hooks find the root meson.build unchanged.
           };
