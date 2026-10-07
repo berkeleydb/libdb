@@ -99,6 +99,7 @@ dump_lockers(ENV *env, const char *tag)
 	DB_LOCKREGION *lrp;
 	DB_LOCKTAB *lt;
 	DB_LOCK *lp_unused;
+	DB_THREAD_INFO *ip;
 	struct __db_lock *lp;
 	u_int32_t i;
 	int nstuck, nseen;
@@ -109,6 +110,24 @@ dump_lockers(ENV *env, const char *tag)
 	lrp = lt->reginfo.primary;
 	nstuck = nseen = 0;
 
+	/*
+	 * ENV_ENTER is REQUIRED, not hygiene.  This function takes
+	 * LOCK_LOCKERS, and the dead child still holds that mutex, so the
+	 * acquisition goes down __db_pthread_mutex_lock's failchk arm
+	 * (mut_pthread.c:386), which calls __env_set_state(THREAD_VERIFY).
+	 * That asserts `ip != NULL' -- and without ENV_ENTER this thread has no
+	 * entry in the thread table, so it aborts:
+	 *
+	 *   BDB0059 assert failure: env_failchk.c/458:
+	 *       "ip != NULL && ip->dbth_state != THREAD_OUT"
+	 *
+	 * This cost me a false PASS: the first build I validated against was
+	 * configured WITHOUT --enable-diagnostic, where DB_ASSERT compiles to
+	 * nothing, so the test passed while the misuse was still there.  A
+	 * pristine --enable-diagnostic build is what caught it.  Any test that
+	 * reaches into a region directly needs this.
+	 */
+	ENV_ENTER(env, ip);
 	LOCK_LOCKERS(env, lrp);
 	for (i = 0; i < lrp->locker_t_size; i++)
 		SH_TAILQ_FOREACH(lip, &lt->locker_tab[i], links, __db_locker) {
@@ -172,6 +191,7 @@ dump_lockers(ENV *env, const char *tag)
 			(void)fflush(stdout);
 		}
 	UNLOCK_LOCKERS(env, lrp);
+	ENV_LEAVE(env, ip);
 	printf("  [%s] %d dead locker(s) examined, %d in the non-progress "
 	    "shape\n", tag, nseen, nstuck);
 	return (nstuck);
