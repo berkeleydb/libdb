@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_lsn.c
  *	Property-based tests for the log-sequence-number (LSN) wire codec
  *	in src/dbinc/db_swap.h: LOGCOPY_FROMLSN / LOGCOPY_TOLSN (and the

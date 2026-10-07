@@ -16,6 +16,31 @@ BEGIN {
 	CFILE=source_file;
 	HFILE=header_file;
 	maxmsg = 0;
+	#
+	# Message ids for the generated "too few input bytes" errors.
+	#
+	# Upstream emitted the SAME id (3675) for every one of these, and
+	# there are 29 of them across rep_automsg.c and repmgr_automsg.c --
+	# each carrying a DIFFERENT message, because the text interpolates the
+	# message name.  One id for 29 distinct strings defeats the purpose of
+	# the id (a translator cannot distinguish them) and trips
+	# dist/validate/s_chk_message_id.  This fork is a hard fork, so we
+	# allocate our own.  The highest id in use ANYWHERE in the tree -- src/,
+	# util/ and lang/dbm/, which is what dist/validate/s_chk_message_id
+	# scans -- is 5139, and util/ already occupies 5001-5139 densely.  So the
+	# bases below are 5200 and 5300, verified free across every tracked
+	# source file.  Checking only src/ was not enough and produced a
+	# collision with util/db_tuner.c on the first attempt.  Defect U3.
+	# gen_msg.awk is invoked ONCE PER .msg FILE (see dist/s_message), so a
+	# plain counter starting at the same value would restart for each
+	# subsystem and re-collide.  The caller passes a distinct base per
+	# subsystem via -v msgid_base=N.  The fallback is deliberately a
+	# value NO subsystem uses (9001): dist/validate/s_chk_message_id
+	# scans this file for four-digit literals, so a fallback equal to a
+	# real base would be reported as a duplicate of it.  Reaching the
+	# fallback means s_message did not pass a base, which the case
+	# statement there makes a hard error anyway.
+	toofew_msgid = (msgid_base == "" ? 9001 : msgid_base + 0);
 }
 /^[	]*PREFIX/ {
 	prefix = $2;
@@ -427,7 +452,8 @@ function emit_unmarshal()
 	printf("\treturn (0);\n\n") >> CFILE;
 
 	printf("too_few:\n") >> CFILE;
-	printf("\t__db_errx(env, DB_STR(\"3675\",\n") >> CFILE;
+	printf("\t__db_errx(env, DB_STR(\"%d\",\n", toofew_msgid) >> CFILE;
+	toofew_msgid++;
 	printf("\t    \"Not enough input bytes to fill a %s message\"));\n", \
 	    base_name) >> CFILE;
 	printf("\treturn (EINVAL);\n") >> CFILE;

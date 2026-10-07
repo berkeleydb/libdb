@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * Regression test for the NULL-dereference in DB_ENV->set_lk_priority() and
  * DB_ENV->get_lk_priority() (issue #148).
  *

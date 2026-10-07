@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 /*
  * P3's mechanism check: does __log_write_direct's staging arithmetic actually
  * satisfy all THREE O_DIRECT constraints, and does the file end up holding the

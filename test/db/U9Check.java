@@ -1,3 +1,11 @@
+/*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
 // U9 verification: the serializable accessors added to TransactionConfig,
 // CursorConfig and EnvironmentConfig must round-trip, must be independent of the
 // snapshot switch, and must be wired to DbConstants.DB_TXN_SERIALIZABLE in the

@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_log_compare.c
  *	Property-based tests for log_compare() (public API, db.h;
  *	src/log/log_compare.c wrapping the LOG_COMPARE macro in

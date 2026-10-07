@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_getlong.c
  *	Property-based tests for the numeric-argument parsers in
  *	src/common/db_getlong.c: __db_getlong / __db_getulong.

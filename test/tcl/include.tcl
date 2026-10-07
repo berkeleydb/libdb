@@ -1,3 +1,11 @@
+#
+# Copyright (c) 2026 libdb contributors.  All rights reserved.
+#
+# SPDX-License-Identifier: Sleepycat
+#
+# See the file LICENSE for redistribution information.
+#
+
 # Automatically built by dist/s_test; may require local editing.
 
 set tclsh_path @TCL_TCLSH@

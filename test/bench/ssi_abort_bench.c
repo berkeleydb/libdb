@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * libdb SSI abort-rate probe -- WRITE-SKEW schedule.
  *
  * Serializable Snapshot Isolation (DB_TXN_SERIALIZABLE) prevents write skew

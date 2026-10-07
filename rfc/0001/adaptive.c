@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * libdb LSM prototype: unified adaptive controller implementation.
  * See adaptive.h and rfc/0001-adaptive-lsm.md.
  */

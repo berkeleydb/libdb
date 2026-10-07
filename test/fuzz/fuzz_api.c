@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/fuzz/fuzz_api.c --
  *	Stateful public-API fuzzer: interpret the fuzz bytes as a bytecode
  *	program of DB operations and run it against a fresh private env.

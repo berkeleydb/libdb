@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * test/pbt/pbt_compress.c
  *	Property-based test for the btree default prefix-compression codec:
  *	__bam_defcompress / __bam_defdecompress (src/btree/bt_compress.c),

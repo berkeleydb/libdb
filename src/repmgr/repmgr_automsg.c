@@ -45,7 +45,7 @@ __repmgr_handshake_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5300",
 	    "Not enough input bytes to fill a __repmgr_handshake message"));
 	return (EINVAL);
 }
@@ -88,7 +88,7 @@ __repmgr_v3handshake_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5301",
 	    "Not enough input bytes to fill a __repmgr_v3handshake message"));
 	return (EINVAL);
 }
@@ -129,7 +129,7 @@ __repmgr_v2handshake_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5302",
 	    "Not enough input bytes to fill a __repmgr_v2handshake message"));
 	return (EINVAL);
 }
@@ -170,7 +170,7 @@ __repmgr_parm_refresh_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5303",
 	    "Not enough input bytes to fill a __repmgr_parm_refresh message"));
 	return (EINVAL);
 }
@@ -213,7 +213,7 @@ __repmgr_permlsn_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5304",
 	    "Not enough input bytes to fill a __repmgr_permlsn message"));
 	return (EINVAL);
 }
@@ -255,7 +255,7 @@ __repmgr_version_proposal_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5305",
 	    "Not enough input bytes to fill a __repmgr_version_proposal message"));
 	return (EINVAL);
 }
@@ -295,7 +295,7 @@ __repmgr_version_confirmation_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5306",
 	    "Not enough input bytes to fill a __repmgr_version_confirmation message"));
 	return (EINVAL);
 }
@@ -338,7 +338,7 @@ __repmgr_msg_hdr_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5307",
 	    "Not enough input bytes to fill a __repmgr_msg_hdr message"));
 	return (EINVAL);
 }
@@ -381,7 +381,7 @@ __repmgr_msg_metadata_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5308",
 	    "Not enough input bytes to fill a __repmgr_msg_metadata message"));
 	return (EINVAL);
 }
@@ -448,7 +448,7 @@ __repmgr_membership_key_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5309",
 	    "Not enough input bytes to fill a __repmgr_membership_key message"));
 	return (EINVAL);
 }
@@ -488,7 +488,7 @@ __repmgr_membership_data_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5310",
 	    "Not enough input bytes to fill a __repmgr_membership_data message"));
 	return (EINVAL);
 }
@@ -530,7 +530,7 @@ __repmgr_member_metadata_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5311",
 	    "Not enough input bytes to fill a __repmgr_member_metadata message"));
 	return (EINVAL);
 }
@@ -599,7 +599,7 @@ __repmgr_gm_fwd_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5312",
 	    "Not enough input bytes to fill a __repmgr_gm_fwd message"));
 	return (EINVAL);
 }
@@ -640,7 +640,7 @@ __repmgr_membr_vers_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5313",
 	    "Not enough input bytes to fill a __repmgr_membr_vers message"));
 	return (EINVAL);
 }
@@ -709,7 +709,7 @@ __repmgr_site_info_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5314",
 	    "Not enough input bytes to fill a __repmgr_site_info message"));
 	return (EINVAL);
 }
@@ -750,7 +750,7 @@ __repmgr_connect_reject_unmarshal(env, argp, bp, max, nextp)
 	return (0);
 
 too_few:
-	__db_errx(env, DB_STR("3675",
+	__db_errx(env, DB_STR("5315",
 	    "Not enough input bytes to fill a __repmgr_connect_reject message"));
 	return (EINVAL);
 }

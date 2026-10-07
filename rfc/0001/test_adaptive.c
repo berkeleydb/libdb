@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * libdb LSM prototype: adaptive controller tests.
  *
  * Drives the controller with an Amethyst-style phase-shifting workload and

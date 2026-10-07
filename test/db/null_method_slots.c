@@ -1,4 +1,12 @@
 /*-
+ * Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
+ * See the file LICENSE for redistribution information.
+ */
+
+/*-
  * Regression test for the NULL-dereference pair in issue #149.
  *
  * 1. DB_ENV->rep_get_nsites() on a repmgr-configured but UNOPENED environment.
