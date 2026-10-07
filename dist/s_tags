@@ -42,16 +42,28 @@ echo "Building $f"
 rm -f $f
 
 # Figure out what flags this ctags accepts.
+#
+# The probe target used to be ../../src/db/db.c, a path that has never existed
+# in this repository -- upstream's layout had it, this fork's does not.  Every
+# probe therefore failed, silently (2>/dev/null), so `flags' stayed empty and
+# ctags always ran without -d -t -w (defect U4).  Probe against a file that is
+# actually here, and complain if even that is missing rather than degrading
+# quietly a second time.
+probe=../../src/db/db_iface.c
+if [ ! -f "$probe" ]; then
+	echo "$0: probe file $probe is missing; ctags flags not detected" >&2
+fi
 flags=""
-if ctags -d ../../src/db/db.c 2>/dev/null; then
+if ctags -d "$probe" 2>/dev/null; then
 	flags="-d $flags"
 fi
-if ctags -t ../../src/db/db.c 2>/dev/null; then
+if ctags -t "$probe" 2>/dev/null; then
 	flags="-t $flags"
 fi
-if ctags -w ../../src/db/db.c 2>/dev/null; then
+if ctags -w "$probe" 2>/dev/null; then
 	flags="-w $flags"
 fi
+rm -f tags.probe 2>/dev/null
 
 ctags $flags $files 2>/dev/null
 

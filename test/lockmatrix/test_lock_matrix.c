@@ -419,8 +419,30 @@ list_shape(db_lockop_t op, const char *opname, int nwrite, int nsiread,
 	if (rc != 0)
 		lm_fail("%s with nwrite=%d nsiread=%d nread=%d -> %s",
 		    opname, nwrite, nsiread, nread, rc_name(rc));
-	if (objlist.data != NULL)
-		free(objlist.data);
+	/*
+	 * Do NOT free(objlist.data).
+	 *
+	 * lock_vec allocates it with __os_malloc (src/lock/lock.c, the
+	 * DB_LOCK_PUT_ALL / PUT_READ / UPGRADE_WRITE arm), and __os_malloc
+	 * prepends a db_allocinfo_t header and hands back an OFFSET pointer
+	 * (src/os/os_alloc.c) -- and may route through DB_GLOBAL(j_malloc) if
+	 * the application installed its own allocator.  So the address the
+	 * caller sees was never returned by libc malloc, and free()ing it is
+	 * invalid: ASan reported exactly that,
+	 *
+	 *   attempting free on address which was not malloc()-ed
+	 *     #1 list_shape test_lock_matrix.c:423
+	 *
+	 * which is defect T2.  The engine's own callers use __os_free
+	 * (src/txn/txn.c:1015, :1540), which is internal and not reachable from
+	 * a public-API test program like this one.  Leaking a few DBT-sized
+	 * blocks in a short-lived matrix harness is the correct trade: the
+	 * alternative is either an invalid free or linking the test against
+	 * libdb internals purely to call the matching deallocator.
+	 *
+	 * ponytail: a public DB_ENV->lock_vec_free would remove the choice;
+	 * worth proposing if another public-API caller needs the list.
+	 */
 
 	memset(&req, 0, sizeof(req));
 	req.op = DB_LOCK_PUT_ALL;
