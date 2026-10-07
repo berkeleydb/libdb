@@ -44,6 +44,75 @@ const char *failure_reason_names[] = {
 	"expected to be at the head of the list"
 };
 
+/*
+ * ONE BACKING OBJECT FOR THE HEAD AND ITS ELEMENTS (defect T7).
+ *
+ * The shqueue.h macros are offset-based, not pointer-based: SH_PTR_TO_OFF()
+ * stores (u_int8_t *)elm - (u_int8_t *)head, and SH_LIST_FIRSTP() recovers
+ * the element as (u_int8_t *)head + offset.  That arithmetic is only defined
+ * when the head and the elements lie inside a single object -- which is
+ * exactly the situation the macros were written for, since in the engine both
+ * are carved out of one mapped region and reached as region-base + offset
+ * (R_ADDR(), src/dbinc/region.h).
+ *
+ * This harness used to calloc() the head and every element separately, so
+ * head + offset walked out of the head's own object.  That is undefined
+ * behaviour, and gcc -O1 and above acts on it: points-to analysis proves that
+ * nothing derived from `head' can alias the calloc()d block, concludes the
+ * block is unreachable once sh_l_insert_head() returns, and dead-store
+ * eliminates the writes to ele->content and ele->sh_les.  The element then
+ * reads back as all zeroes, so case 2 (INSERT_HEAD into an empty sh_list)
+ * verified as a one-element list whose content is NUL, and sh_l_discard()
+ * faulted walking it.  gcc -O0, and clang at every -O, happen to keep the
+ * stores, which is why this sat here unnoticed since the Oracle import.
+ *
+ * So the macros were never wrong and are unchanged; the test was invalid as
+ * written.  Allocating from one static pool restores the single-object
+ * property the macros require, and models a shared region accurately.
+ *
+ * Declared as an array of db_ssize_t so the pool is naturally aligned for the
+ * db_ssize_t link fields inside every SH_LIST_ENTRY/SH_TAILQ_ENTRY.
+ */
+static db_ssize_t tq_pool[1024];
+static size_t tq_pool_used;
+
+/*
+ * Drop everything handed out so far.  Called when a test case builds its
+ * list, by which point the previous case has been discarded.
+ */
+static void
+tq_pool_reset()
+{
+	tq_pool_used = 0;
+}
+
+/* Bump-allocate zeroed, aligned space from the pool. */
+static void *
+tq_alloc(len)
+	size_t len;
+{
+	void *p;
+
+	len = (len + sizeof(db_ssize_t) - 1) & ~(sizeof(db_ssize_t) - 1);
+	assert(tq_pool_used + len <= sizeof(tq_pool));
+	p = (u_int8_t *)tq_pool + tq_pool_used;
+	tq_pool_used += len;
+	memset(p, 0, len);
+	return (p);
+}
+
+/*
+ * The pool is released in one go by tq_pool_reset(), so releasing an
+ * individual element is a no-op.  It is kept as a function so the call sites
+ * below still read like the originals, and so that no local goes unused.
+ */
+static void
+tq_free(p)
+	void *p;
+{
+	(void)p;
+}
+
 SH_LIST_HEAD(sh_lq);
 struct sh_le {
 	char content;
@@ -93,14 +162,18 @@ sh_l_init(items)
 {
 	const char *c = items;
 	struct sh_le *ele = NULL, *last_ele = (struct sh_le*)-1;
-	struct sh_lq *l = calloc(1, sizeof(struct sh_lq));
+	struct sh_lq *l;
+
+	/* Each case starts from a fresh pool; the previous one is discarded. */
+	tq_pool_reset();
+	l = tq_alloc(sizeof(struct sh_lq));
 
 	SH_LIST_INIT(l);
 
 	while (*c != '\0') {
 		if (c[0] != ' ') {
 			last_ele = ele;
-			ele = calloc(1, sizeof(struct sh_le));
+			ele = tq_alloc(sizeof(struct sh_le));
 			ele->content = c[0];
 			if (SH_LIST_EMPTY(l))
 				SH_LIST_INSERT_HEAD(l, ele, sh_les, sh_le);
@@ -121,7 +194,7 @@ sh_l_remove_head(l)
 
 	SH_LIST_REMOVE_HEAD(l, sh_les, sh_le);
 	if (ele != NULL)
-		free(ele);
+		tq_free(ele);
 
 	return (l);
 }
@@ -140,7 +213,7 @@ sh_l_remove_tail(l)
 
 	if (ele) {
 		SH_LIST_REMOVE(ele, sh_les, sh_le);
-		free(ele);
+		tq_free(ele);
 	}
 	return (l);
 }
@@ -167,7 +240,7 @@ sh_l_insert_head(l, item)
 	struct sh_lq *l;
 	const char *item;
 {
-	struct sh_le *ele = calloc(1, sizeof(struct sh_le));
+	struct sh_le *ele = tq_alloc(sizeof(struct sh_le));
 
 	ele->content = item[0];
 	SH_LIST_INSERT_HEAD(l, ele, sh_les, sh_le);
@@ -188,11 +261,11 @@ sh_l_insert_tail(l, item)
 			last_ele = SH_LIST_NEXT(last_ele, sh_les, sh_le);
 
 	if (last_ele == NULL) {
-		ele = calloc(1, sizeof(struct sh_le));
+		ele = tq_alloc(sizeof(struct sh_le));
 		ele->content = item[0];
 		SH_LIST_INSERT_HEAD(l, ele, sh_les, sh_le);
 	} else {
-		ele = calloc(1, sizeof(struct sh_le));
+		ele = tq_alloc(sizeof(struct sh_le));
 		ele->content = item[0];
 		SH_LIST_INSERT_AFTER(last_ele, ele, sh_les, sh_le);
 	}
@@ -215,7 +288,7 @@ sh_l_insert_before(l, item, before_item)
 		before_ele = SH_LIST_NEXT(before_ele, sh_les, sh_le);
 	}
 	if (before_ele != NULL) {
-		ele = calloc(1, sizeof(struct sh_le));
+		ele = tq_alloc(sizeof(struct sh_le));
 		ele->content = item[0];
 		SH_LIST_INSERT_BEFORE(l, before_ele, ele, sh_les, sh_le);
 	}
@@ -237,7 +310,7 @@ sh_l_insert_after(l, item, after_item)
 		after_ele = SH_LIST_NEXT(after_ele, sh_les, sh_le);
 	}
 	if (after_ele != NULL) {
-		ele = calloc(1, sizeof(struct sh_le));
+		ele = tq_alloc(sizeof(struct sh_le));
 		ele->content = item[0];
 		SH_LIST_INSERT_AFTER(after_ele, ele, sh_les, sh_le);
 	}
@@ -252,10 +325,10 @@ sh_l_discard(l)
 
 	while ((ele = SH_LIST_FIRST(l, sh_le)) != NULL) {
 		SH_LIST_REMOVE(ele, sh_les, sh_le);
-		free(ele);
+		tq_free(ele);
 	}
 
-	free(l);
+	tq_free(l);
 }
 
 int
@@ -378,13 +451,17 @@ sh_t_init(items)
 {
 	const char *c = items;
 	struct sh_te *ele = NULL, *last_ele = (struct sh_te*)-1;
-	struct sh_tq *l = calloc(1, sizeof(struct sh_tq));
+	struct sh_tq *l;
+
+	/* Each case starts from a fresh pool; see sh_l_init(). */
+	tq_pool_reset();
+	l = tq_alloc(sizeof(struct sh_tq));
 
 	SH_TAILQ_INIT(l);
 
 	while (*c != '\0') {
 		if (c[0] != ' ') {
-			ele = calloc(1, sizeof(struct sh_te));
+			ele = tq_alloc(sizeof(struct sh_te));
 			ele->content = c[0];
 
 			if (SH_TAILQ_EMPTY(l))
@@ -408,7 +485,7 @@ sh_t_remove_head(l)
 	if (ele != NULL)
 		SH_TAILQ_REMOVE(l, ele, sh_tes, sh_te);
 
-	free(ele);
+	tq_free(ele);
 
 	return (l);
 }
@@ -427,7 +504,7 @@ sh_t_remove_tail(l)
 
 	if (ele != NULL) {
 		SH_TAILQ_REMOVE(l, ele, sh_tes, sh_te);
-		free(ele);
+		tq_free(ele);
 	}
 
 	return (l);
@@ -456,7 +533,7 @@ sh_t_insert_head(l, item)
 	struct sh_tq *l;
 	const char *item;
 {
-	struct sh_te *ele = calloc(1, sizeof(struct sh_te));
+	struct sh_te *ele = tq_alloc(sizeof(struct sh_te));
 
 	ele->content = item[0];
 	SH_TAILQ_INSERT_HEAD(l, ele, sh_tes, sh_te);
@@ -470,7 +547,7 @@ sh_t_insert_tail(l, item)
 	const char *item;
 {
 	struct sh_te *ele = 0;
-	ele = calloc(1, sizeof(struct sh_te));
+	ele = tq_alloc(sizeof(struct sh_te));
 	ele->content = item[0];
 	SH_TAILQ_INSERT_TAIL(l, ele, sh_tes);
 	return l;
@@ -492,7 +569,7 @@ sh_t_insert_before(l, item, before_item)
 	}
 
 	if (before_ele != NULL) {
-		ele = calloc(1, sizeof(struct sh_te));
+		ele = tq_alloc(sizeof(struct sh_te));
 		ele->content = item[0];
 		SH_TAILQ_INSERT_BEFORE(l, before_ele, ele, sh_tes, sh_te);
 	}
@@ -516,7 +593,7 @@ sh_t_insert_after(l, item, after_item)
 	}
 
 	if (after_ele != NULL) {
-		ele = calloc(1, sizeof(struct sh_te));
+		ele = tq_alloc(sizeof(struct sh_te));
 		ele->content = item[0];
 		SH_TAILQ_INSERT_AFTER(l, after_ele, ele, sh_tes, sh_te);
 	}
@@ -532,9 +609,9 @@ sh_t_discard(l)
 
 	while ((ele = SH_TAILQ_FIRST(l, sh_te)) != NULL) {
 		SH_TAILQ_REMOVE(l, ele, sh_tes, sh_te);
-		free(ele);
+		tq_free(ele);
 	}
-	free(l);
+	tq_free(l);
 }
 
 int
