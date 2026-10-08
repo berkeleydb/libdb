@@ -12,7 +12,7 @@
 #   meson test -C build --suite tiers   # isolation + lock-matrix tiers
 
 project('libdb', 'c',
-  version: '2026.10.1',
+  version: '2026.10.2',
   # Sleepycat, matching LICENSE (byte-identical to Oracle's) and README.md.
   # This field previously named a copyleft licence that this fork
   # deliberately excludes: README.md explains that Berkeley DB releases from

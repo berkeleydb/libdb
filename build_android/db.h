@@ -53,9 +53,9 @@ extern "C" {
  * level.  Use this to identify the community fork; use the MAJOR/MINOR/PATCH
  * triplet for format/ABI compatibility decisions.
  */
-#define	DB_CALVER	"2026.09.11"
-#define	DB_VERSION_STRING	"libdb 2026.09.11 (September 20, 2026)"
-#define	DB_VERSION_FULL_STRING	"libdb 2026.09.11 (September 20, 2026)"
+#define	DB_CALVER	"2026.10.2"
+#define	DB_VERSION_STRING	"libdb 2026.10.2 (October 8, 2026)"
+#define	DB_VERSION_FULL_STRING	"libdb 2026.10.2 (October 8, 2026)"
 
 /*
  * !!!
