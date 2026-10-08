@@ -63,6 +63,43 @@ win did not extend past t=8.
 with the refill that may follow. That is true but incomplete: the common path
 also mutates shared state under it.
 
+### Amendment (2026-10-09): the "refill is rare" claim was wrong
+
+An instrumented build on 64 vCPU at scale 96, t=32, counting inside
+`__lock_getlocker_int` and at the stripe-0 acquisition, measured per commit:
+
+| | per commit |
+|---|---:|
+| `__lock_getlocker_int` calls | 12.420 |
+| of which **create** a locker | **1.563** |
+| stripe-0 acquisitions | 1.563 |
+| creates as a share of stripe-0 acquisitions | **100.00%** |
+
+So **every stripe-0 acquisition is a create**, and there are 1.56 of them per
+transaction. The paragraph below said the refill "essentially never happens",
+citing 78 lockers allocated against a 2,000,000 maximum. That figure is
+`st_lockers`, a **high-water mark of allocated slots** — not a rate. Lockers are
+created and freed every transaction, so the free list is *recycled* constantly:
+the list is non-empty, the pop succeeds, and the region-wide mutations below run
+**on every create**.
+
+Two consequences:
+
+1. **"Hold stripe 0 only around the refill" is doubly wrong.** It was already
+   wrong because the common path mutates shared state; it is also wrong because
+   the "rare" path is not rare — `__env_alloc` refills are rare, but the free-list
+   *pop* that stripe 0 also guards is the hot path.
+2. **Per-stripe free lists are still the right direction, for a different
+   reason.** Not "the refill is rare so the latch is pure overhead", but "the pop
+   is hot and must become stripe-local". The design does not change; the
+   justification does, and the original one would have misled whoever implemented
+   it into expecting a cheap win from narrowing the latch.
+
+The lookup path (`__lock_getlocker_int` with an existing locker, 10.86 of the
+12.42 calls per commit) reaches stripe 0 only via `__lock_getlocker`'s wrapper,
+which the counts show is not where the acquisitions come from — so a
+lookup-only fast path would not help either.
+
 Per transaction, with the free list non-empty:
 
 1. `SH_TAILQ_REMOVE(&region->free_lockers, ...)` — pop from a **shared** free list
@@ -95,11 +132,13 @@ mutations become stripe-local and stripe 0 stops being on the hot path:
   (`lock_deadlock.c:509`), locker-id wraparound (`lock_id.c:112`, after 2^31
   ids), and failchk (`lock_id.c:646`).
 
-A cheaper intermediate, if the full sharding proves invasive: keep the shared
+~~A cheaper intermediate, if the full sharding proves invasive: keep the shared
 free list but make the emptiness test a relaxed atomic load outside the latch,
-taking stripe 0 only when it reads empty and re-checking under it. That removes
-the latch from the common path but leaves `nlockers` and the ulinks insert, so it
-is likely a partial win. **It must be measured, not assumed.**
+taking stripe 0 only when it reads empty and re-checking under it.~~
+**Withdrawn by the amendment above:** the emptiness test essentially always
+reads *non-empty*, and the latch is held for the pop that follows, so moving the
+test outside buys nothing. There is no cheap intermediate — the sharing itself
+has to go.
 
 ## Evidence standard for the fix
 
