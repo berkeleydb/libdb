@@ -816,6 +816,7 @@ typedef struct __bh_sample {
 /* True if the frame still holds exactly what the sample recorded. */
 #define	BH_SAMPLE_VALID(s)						\
 	(__os_atomic_thread_fence(),					\
+	 (s)->bhp != NULL &&						\
 	 (s)->bhp->gen == (s)->gen &&					\
 	 (s)->bhp->pgno == (s)->pgno &&					\
 	 (s)->bhp->mf_offset == (s)->mf_offset)

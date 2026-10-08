@@ -17,7 +17,8 @@
 #ifdef HAVE_STATISTICS
 static int  __lock_dump_locker
 		__P((ENV *, DB_MSGBUF *, DB_LOCKTAB *, DB_LOCKER *));
-static int  __lock_dump_object __P((DB_LOCKTAB *, DB_MSGBUF *, DB_LOCKOBJ *));
+static int  __lock_dump_object
+		__P((DB_LOCKTAB *, DB_MSGBUF *, DB_LOCKOBJ *, int));
 static int  __lock_print_all __P((ENV *, u_int32_t));
 static int  __lock_print_stats __P((ENV *, u_int32_t));
 static void __lock_print_header __P((ENV *));
@@ -479,8 +480,10 @@ __lock_print_all(env, flags)
 	DB_LOCKOBJ *op;
 	DB_LOCKREGION *lrp;
 	DB_LOCKTAB *lt;
+	DB_LOG *dblp;
 	DB_MSGBUF mb;
-	int i, j;
+	LOG *lg;
+	int fl_locked, i, j;
 	u_int32_t k;
 
 	lt = env->lk_handle;
@@ -544,15 +547,38 @@ __lock_print_all(env, flags)
 		__db_msg(env, "%s", DB_GLOBAL(db_line));
 		__db_msg(env, "Locks grouped by object:");
 		__lock_print_header(env);
+		/*
+		 * L1: mtx_filelist is taken HERE, outside the object walk.
+		 *
+		 * Resolving a page lock's file name needs mtx_filelist (rank
+		 * 20, DB_LO_RANK_HANDLE).  Doing that inside the walk took it
+		 * under an OBJECT_LOCK (rank 30, DB_LO_RANK_LOCK_PART) -- the
+		 * reverse of the declared order -- so the A3 checker reported
+		 * BDB2084 and panicked the environment with DB_RUNRECOVERY,
+		 * from `db_stat -l'.  Taking it first also means the whole dump
+		 * sees ONE consistent view of the file-name list rather than
+		 * re-locking per lock.
+		 *
+		 * lg_handle is NULL when logging is not configured; there are no
+		 * names to resolve then, and fl_locked stays 0 so nothing tries.
+		 */
+		fl_locked = 0;
+		if ((dblp = env->lg_handle) != NULL) {
+			lg = dblp->reginfo.primary;
+			MUTEX_LOCK(env, lg->mtx_filelist);
+			fl_locked = 1;
+		}
 		for (k = 0; k < lrp->object_t_size; k++) {
 			OBJECT_LOCK_NDX(lt, lrp, k);
 			SH_TAILQ_FOREACH(
 			    op, &lt->obj_tab[k], links, __db_lockobj) {
-				(void)__lock_dump_object(lt, &mb, op);
+				(void)__lock_dump_object(lt, &mb, op, fl_locked);
 				__db_msg(env, "%s", "");
 			}
 			OBJECT_UNLOCK(lt, lrp, k);
 		}
+		if (fl_locked)
+			MUTEX_UNLOCK(env, lg->mtx_filelist);
 	}
 
 	return (0);
@@ -633,24 +659,25 @@ retry:	SH_LIST_FOREACH(lp, &lip->heldby, locker_links, __db_lock) {
 }
 
 static int
-__lock_dump_object(lt, mbp, op)
+__lock_dump_object(lt, mbp, op, fl_locked)
 	DB_LOCKTAB *lt;
 	DB_MSGBUF *mbp;
 	DB_LOCKOBJ *op;
+	int fl_locked;			/* Caller already holds mtx_filelist. */
 {
 	struct __db_lock *lp;
 
 	SH_TAILQ_FOREACH(lp, &op->holders, links, __db_lock)
-		__lock_printlock(lt, mbp, lp, 1);
+		__lock_printlock_fl(lt, mbp, lp, 1, fl_locked);
 	SH_TAILQ_FOREACH(lp, &op->waiters, links, __db_lock)
-		__lock_printlock(lt, mbp, lp, 1);
+		__lock_printlock_fl(lt, mbp, lp, 1, fl_locked);
 	/*
 	 * SSI SIREAD markers live on their own list, not on holders: a mode
 	 * enumeration that walks only holders/waiters reports the object as
 	 * having no locks while markers still pin it (and pin their lockers).
 	 */
 	SH_TAILQ_FOREACH(lp, &op->sireaders, links, __db_lock)
-		__lock_printlock(lt, mbp, lp, 1);
+		__lock_printlock_fl(lt, mbp, lp, 1, fl_locked);
 	return (0);
 }
 
@@ -668,6 +695,7 @@ __lock_print_header(env)
 
 /*
  * __lock_printlock --
+ *	Print one lock.  Resolves the file name itself, taking mtx_filelist.
  *
  * PUBLIC: void __lock_printlock
  * PUBLIC:     __P((DB_LOCKTAB *, DB_MSGBUF *mbp, struct __db_lock *, int));
@@ -678,6 +706,36 @@ __lock_printlock(lt, mbp, lp, ispgno)
 	DB_MSGBUF *mbp;
 	struct __db_lock *lp;
 	int ispgno;
+{
+	__lock_printlock_fl(lt, mbp, lp, ispgno, 0);
+}
+
+/*
+ * __lock_printlock_fl --
+ *	__lock_printlock, but the caller may already hold mtx_filelist.
+ *
+ *	L1: resolving a page lock's file name takes mtx_filelist (rank 20,
+ *	DB_LO_RANK_HANDLE).  The object dump does it while holding an
+ *	OBJECT_LOCK (rank 30, DB_LO_RANK_LOCK_PART), which is the reverse of the
+ *	declared order and made the A3 checker report BDB2084 and panic the
+ *	environment -- reachable from `db_stat -l', a public utility.
+ *
+ *	The declared direction is the one the engine already relies on:
+ *	dbreg.c:283 -> log_put.c:174 takes mtx_filelist and THEN the system
+ *	lock.  So the dump was inverted, not the ranking.  The dump now takes
+ *	mtx_filelist once, before the object walk, and passes fl_locked=1 so it
+ *	is not taken again underneath.
+ *
+ * PUBLIC: void __lock_printlock_fl
+ * PUBLIC:     __P((DB_LOCKTAB *, DB_MSGBUF *mbp, struct __db_lock *, int, int));
+ */
+void
+__lock_printlock_fl(lt, mbp, lp, ispgno, fl_locked)
+	DB_LOCKTAB *lt;
+	DB_MSGBUF *mbp;
+	struct __db_lock *lp;
+	int ispgno;
+	int fl_locked;
 {
 	DB_LOCKOBJ *lockobj;
 	DB_MSGBUF mb;
@@ -764,8 +822,8 @@ __lock_printlock(lt, mbp, lp, ispgno)
 		memcpy(&pgno, ptr, sizeof(db_pgno_t));
 		fidp = (u_int32_t *)(ptr + sizeof(db_pgno_t));
 		type = *(u_int32_t *)(ptr + sizeof(db_pgno_t) + DB_FILE_ID_LEN);
-		(void)__dbreg_get_name(
-		    lt->env, (u_int8_t *)fidp, &fname, &dname);
+		(void)__dbreg_get_name_locked(
+		    lt->env, (u_int8_t *)fidp, &fname, &dname, fl_locked);
 		if (fname == NULL && dname == NULL)
 			__db_msgadd(env, mbp, "(%lx %lx %lx %lx %lx) ",
 			    (u_long)fidp[0], (u_long)fidp[1], (u_long)fidp[2],

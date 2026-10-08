@@ -721,6 +721,7 @@
 #define	__dbreg_id_to_fname __dbreg_id_to_fname@DB_VERSION_UNIQUE_NAME@
 #define	__dbreg_fid_to_fname __dbreg_fid_to_fname@DB_VERSION_UNIQUE_NAME@
 #define	__dbreg_get_name __dbreg_get_name@DB_VERSION_UNIQUE_NAME@
+#define	__dbreg_get_name_locked __dbreg_get_name_locked@DB_VERSION_UNIQUE_NAME@
 #define	__dbreg_do_open __dbreg_do_open@DB_VERSION_UNIQUE_NAME@
 #define	__dbreg_lazy_id __dbreg_lazy_id@DB_VERSION_UNIQUE_NAME@
 #define	__env_alloc_init __env_alloc_init@DB_VERSION_UNIQUE_NAME@
@@ -1159,6 +1160,7 @@
 #define	__lock_stat_print_pp __lock_stat_print_pp@DB_VERSION_UNIQUE_NAME@
 #define	__lock_stat_print __lock_stat_print@DB_VERSION_UNIQUE_NAME@
 #define	__lock_printlock __lock_printlock@DB_VERSION_UNIQUE_NAME@
+#define	__lock_printlock_fl __lock_printlock_fl@DB_VERSION_UNIQUE_NAME@
 #define	__lock_set_timeout __lock_set_timeout@DB_VERSION_UNIQUE_NAME@
 #define	__lock_set_timeout_internal __lock_set_timeout_internal@DB_VERSION_UNIQUE_NAME@
 #define	__lock_inherit_timeout __lock_inherit_timeout@DB_VERSION_UNIQUE_NAME@

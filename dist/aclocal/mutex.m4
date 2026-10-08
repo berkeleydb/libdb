@@ -239,7 +239,7 @@ if test "$db_cv_mutex" = no; then
 		# work fine with pthreads, so enable pthread detection for ARM64.
 		AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__aarch64__) || defined(_M_ARM64)
-		exit(0);
+		(void)0;  /* compile-only probe; nothing is run */
 #else
 		FAIL TO COMPILE/LINK
 #endif
@@ -341,58 +341,79 @@ if test "$db_cv_mutex" = no; then
 		AC_MSG_ERROR([unable to find UI mutex interfaces])
 	fi
 
-	# We're done testing for pthreads-style mutexes.  Next, check for
-	# test-and-set mutexes.  Check first for hybrid implementations,
-	# because we check for them even if we've already found a
-	# pthreads-style mutex and they're the most common architectures
-	# anyway.
-	#
-	# x86/gcc: FreeBSD, NetBSD, BSD/OS, Linux
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
-	#if (defined(i386) || defined(__i386__)) && defined(__GNUC__)
-		exit(0);
-	#else
-		FAIL TO COMPILE/LINK
-	#endif
-	]])], [db_cv_mutex="$db_cv_mutex/x86/gcc-assembly"])
-
-	# x86_64/gcc: FreeBSD, NetBSD, BSD/OS, Linux
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
-	#if (defined(x86_64) || defined(__x86_64__)) && defined(__GNUC__)
-		exit(0);
-	#else
-		FAIL TO COMPILE/LINK
-	#endif
-	]])], [db_cv_mutex="$db_cv_mutex/x86_64/gcc-assembly"])
-
-	# Solaris is one of the systems where we can configure hybrid mutexes.
-	# However, we require the membar_enter function for that, and only newer
-	# Solaris releases have it.  Check to see if we can configure hybrids.
-	AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-	#include <sys/atomic.h>
-	#include <sys/machlock.h>]], [[
-		typedef lock_t tsl_t;
-		lock_t x;
-		_lock_try(&x);
-		_lock_clear(&x);
-		membar_enter();
-	]])], [db_cv_mutex="$db_cv_mutex/Solaris/_lock_try/membar"])
-
-	# Sparc/gcc: SunOS, Solaris, ultrasparc assembler support
-	AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
-	#if defined(__sparc__) && defined(__GNUC__)
-		asm volatile ("membar #StoreStore|#StoreLoad|#LoadStore");
-		exit(0);
-	#else
-		FAIL TO COMPILE/LINK
-	#endif
-	]])], [db_cv_mutex="$db_cv_mutex/Sparc/gcc-assembly"])
-
-	# We're done testing for any hybrid mutex implementations.  If we did
-	# not find a pthreads-style mutex, but did find a test-and-set mutex,
-	# we set db_cv_mutex to "no/XXX" -- clean that up.
-	db_cv_mutex=`echo $db_cv_mutex | sed 's/^no\///'`
 fi
+
+# THE HYBRID/TAS PROBES MUST RUN UNCONDITIONALLY.
+#
+# They used to sit INSIDE the `if test "$db_cv_mutex" = no' block that ends just
+# above, which made them dead code on every platform that finds a pthreads
+# mutex -- because db_cv_mutex is no longer "no" by then.  That directly
+# contradicted the comment they carry, which says they are checked "even if
+# we've already found a pthreads-style mutex".  The code could not honour its
+# own stated intent.
+#
+# Consequence on Linux/x86_64: db_cv_mutex stayed "POSIX/pthreads/library"
+# instead of becoming "POSIX/pthreads/library/x86_64/gcc-assembly", so
+# hybrid never became pthread/tas, HAVE_MUTEX_HYBRID and
+# HAVE_MUTEX_X86_64_GCC_ASSEMBLY were never defined, and mut_tas.c was not
+# compiled in.  Meson defines both, which is why a meson-created environment
+# and an autoconf-created one could not attach to each other
+# (BDB0091 DB_VERSION_MISMATCH) -- tracker U6b.
+#
+# It also means any claim about tas_spins on this platform was a claim about
+# code that was not in the build.
+#
+# We're done testing for pthreads-style mutexes.  Next, check for
+# test-and-set mutexes.  Check first for hybrid implementations,
+# because we check for them even if we've already found a
+# pthreads-style mutex and they're the most common architectures
+# anyway.
+#
+# x86/gcc: FreeBSD, NetBSD, BSD/OS, Linux
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
+#if (defined(i386) || defined(__i386__)) && defined(__GNUC__)
+	(void)0;  /* compile-only probe; nothing is run */
+#else
+	FAIL TO COMPILE/LINK
+#endif
+]])], [db_cv_mutex="$db_cv_mutex/x86/gcc-assembly"])
+
+# x86_64/gcc: FreeBSD, NetBSD, BSD/OS, Linux
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
+#if (defined(x86_64) || defined(__x86_64__)) && defined(__GNUC__)
+	(void)0;  /* compile-only probe; nothing is run */
+#else
+	FAIL TO COMPILE/LINK
+#endif
+]])], [db_cv_mutex="$db_cv_mutex/x86_64/gcc-assembly"])
+
+# Solaris is one of the systems where we can configure hybrid mutexes.
+# However, we require the membar_enter function for that, and only newer
+# Solaris releases have it.  Check to see if we can configure hybrids.
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/atomic.h>
+#include <sys/machlock.h>]], [[
+	typedef lock_t tsl_t;
+	lock_t x;
+	_lock_try(&x);
+	_lock_clear(&x);
+	membar_enter();
+]])], [db_cv_mutex="$db_cv_mutex/Solaris/_lock_try/membar"])
+
+# Sparc/gcc: SunOS, Solaris, ultrasparc assembler support
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
+#if defined(__sparc__) && defined(__GNUC__)
+	asm volatile ("membar #StoreStore|#StoreLoad|#LoadStore");
+	(void)0;  /* compile-only probe; nothing is run */
+#else
+	FAIL TO COMPILE/LINK
+#endif
+]])], [db_cv_mutex="$db_cv_mutex/Sparc/gcc-assembly"])
+
+# We're done testing for any hybrid mutex implementations.  If we did
+# not find a pthreads-style mutex, but did find a test-and-set mutex,
+# we set db_cv_mutex to "no/XXX" -- clean that up.
+db_cv_mutex=`echo $db_cv_mutex | sed 's/^no\///'`
 
 # If we still don't have a mutex implementation yet, continue testing for a
 # test-and-set mutex implementation.
@@ -424,7 +445,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 	msem_init(&x, 0);
 	msem_lock(&x, 0);
 	msem_unlock(&x, 0);
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -441,7 +462,7 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 	msem_init(&x, 0);
 	msem_lock(&x, 0);
 	msem_unlock(&x, 0);
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 ]])], [db_cv_mutex=UNIX/msem_init])
 fi
 
@@ -463,7 +484,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__USLC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -520,7 +541,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__alpha) && defined(__DECC)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -531,7 +552,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__alpha) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -542,7 +563,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__arm__) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -553,7 +574,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if (defined(__mips) || defined(__mips__)) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -564,7 +585,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if (defined(__hppa) || defined(__hppa__)) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -575,7 +596,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if (defined(__powerpc__) || defined(__ppc__)) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -586,7 +607,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if (defined(mc68020) || defined(sun3)) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -597,7 +618,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__MVS__) && defined(__IBMC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -608,7 +629,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__s390__) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -619,7 +640,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__ia64) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -630,7 +651,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(_UTS)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -641,7 +662,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -652,7 +673,7 @@ fi
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__arm__) && !defined(__aarch64__) && defined(__GNUC__)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif
@@ -729,11 +750,16 @@ Solaris/lwp*)		ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 			    [Define to 1 to use the Solaris lwp threads mutexes.]);;
 UI/threads/library*)	ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_UI_THREADS);;
-*)			hybrid=no;;
 UI/threads*)		ADDITIONAL_OBJS="mut_pthread${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_UI_THREADS)
 			AH_TEMPLATE(HAVE_MUTEX_UI_THREADS,
 			    [Define to 1 to use the UNIX International mutexes.]);;
+# The catch-all MUST be last.  It used to sit above UI/threads*), which in a
+# shell `case' makes that arm unreachable -- a UI/threads mutex selection fell
+# into *) and was configured as hybrid=no with no mut_pthread object and no
+# HAVE_MUTEX_UI_THREADS.  Found while fixing U6b; the same file had two
+# independent ordering defects.
+*)			hybrid=no;;
 esac
 
 # Configure a test-and-set mutex implementation.
@@ -1091,7 +1117,7 @@ esac
 AC_CACHE_CHECK([for AArch64 architecture], db_cv_aarch64, [
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #if defined(__aarch64__) || defined(_M_ARM64)
-	exit(0);
+	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
 #endif

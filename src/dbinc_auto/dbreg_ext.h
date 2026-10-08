@@ -37,6 +37,7 @@ int __dbreg_id_to_db __P((ENV *, DB_TXN *, DB **, int32_t, int));
 int __dbreg_id_to_fname __P((DB_LOG *, int32_t, int, FNAME **));
 int __dbreg_fid_to_fname __P((DB_LOG *, u_int8_t *, int, FNAME **));
 int __dbreg_get_name __P((ENV *, u_int8_t *, char **, char **));
+int __dbreg_get_name_locked __P((ENV *, u_int8_t *, char **, char **, int));
 int __dbreg_do_open __P((ENV *, DB_TXN *, DB_LOG *, u_int8_t *, char *, DBTYPE, int32_t, db_pgno_t, void *, u_int32_t, u_int32_t));
 int __dbreg_lazy_id __P((DB *));
 

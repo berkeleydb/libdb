@@ -1494,6 +1494,14 @@ __memp_fget_opt(dbmfp, pgnoaddr, ip, sample, addrp)
  *	Has the frame this sample came from stayed exactly as it was?  Anything
  *	the caller read from the page is trustworthy only if this returns 1.
  *
+ *	A sample with a NULL bhp -- one that was never filled in, because
+ *	__memp_fget_opt failed or was never called -- answers 0.  "I hold no
+ *	sample" and "my sample is stale" mean the same thing to a caller: do not
+ *	trust what you read.  This matters because __memp_fget_opt_release is
+ *	NULL-tolerant and these two are documented as a pair the caller must use
+ *	together; the asymmetry invited a caller to check a sample before
+ *	knowing whether its fetch had succeeded, and faulted when one did.
+ *
  * PUBLIC: int __memp_fget_opt_valid __P((BH_SAMPLE *));
  */
 int

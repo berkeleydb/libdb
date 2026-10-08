@@ -25,7 +25,9 @@ set -u
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=$(cd "$HERE/../.." && pwd)
-ACDIR=${1:-"$SRC/build_unix"}
+# Note: this gate deliberately takes NO build-dir argument. It configures both
+# arms itself, because the whole point is to compare two DEFAULT builds; an
+# externally supplied dir of unknown configuration is what made it misreport.
 
 for t in meson ninja ; do
 	command -v $t >/dev/null 2>&1 || {
@@ -33,15 +35,46 @@ for t in meson ninja ; do
 		exit 0
 	}
 done
-[ -f "$ACDIR/db_config.h" ] || {
-	echo "run_meson_autoconf_parity.sh: SKIP no autoconf build at $ACDIR"
-	exit 0
-}
+
 
 work=${TMPDIR:-/tmp}/u6parity_$$
 MDIR=$work/meson
 rm -f "$work"/* 2>/dev/null
 mkdir -p "$work"
+
+# The autoconf arm is configured FRESH here rather than reusing whatever
+# $ACDIR happens to contain.
+#
+# Reusing it compared two different CONFIGURATIONS and blamed the build systems
+# for the difference. A build_unix left over from `configure --enable-diagnostic`
+# defines DIAGNOSTIC, which changes the size of structs env_sig.c hashes, so the
+# signatures differed (0xeae0caa0 vs 0xb86f77f0) and both cross-attach arms
+# failed with BDB0091 -- while the HAVE_* sets were already identical. The gate
+# was reporting a real symptom with the wrong cause, and would have kept failing
+# after U6b was genuinely fixed.
+#
+# meson is configured with defaults, so the autoconf arm must be too. Comparing
+# a default build against a default build is the only question this gate can
+# answer.
+ACDIR=$work/autoconf
+mkdir -p "$ACDIR"
+( cd "$ACDIR" && "$SRC/dist/configure" ) >"$work/acsetup.log" 2>&1 || {
+	echo "run_meson_autoconf_parity.sh: FAIL autoconf configure"
+	tail -5 "$work/acsetup.log" | sed 's/^/    /'
+	exit 1
+}
+[ -f "$ACDIR/db_config.h" ] || {
+	echo "run_meson_autoconf_parity.sh: FAIL autoconf configure produced no db_config.h"
+	exit 1
+}
+# The cross-attach arms link against both libraries, so the autoconf arm has to
+# be BUILT, not merely configured.
+( cd "$ACDIR" && make -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)" ) \
+    >"$work/acbuild.log" 2>&1 || {
+	echo "run_meson_autoconf_parity.sh: FAIL autoconf build"
+	tail -8 "$work/acbuild.log" | sed 's/^/    /'
+	exit 1
+}
 
 cleanup() { rm -f "$work"/* 2>/dev/null ; }
 trap cleanup EXIT INT TERM
