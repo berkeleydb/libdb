@@ -256,6 +256,93 @@ jobs:
         run: make ex_access 2>/dev/null || true
 
   # ----------------------------------------------------------------------------
+  # FreeBSD SHARED-LIBRARY build.
+  #
+  # THIS JOB EXISTS BECAUSE ITS ABSENCE SHIPPED TWO DEFECTS (F2, F3).
+  #
+  # GitHub has no FreeBSD runner, so this uses a VM action. That is a real cost
+  # -- a third-party action and a several-minute boot -- and it buys the one
+  # combination nothing else covers: a BSD make, a BSD libtool host triplet, and
+  # SHARED libraries. Each of the two defects needed all three to be visible:
+  #
+  #   F2  `freebsd1*' in libtool matched freebsd10..19, so every FreeBSD >= 10
+  #       silently built NO shared library. Invisible on Linux, where the glob
+  #       never matches, and invisible in a static build anywhere.
+  #   F3  BSD make leaves $< EMPTY for an explicit rule whose suffix is not
+  #       declared. The .o rules survived because .o is built in; the .lo rules
+  #       a SHARED build emits did not. Invisible on Linux (GNU make resolves $<
+  #       either way) AND invisible on FreeBSD while F2 kept it static-only.
+  #
+  # So this job asserts the ARTIFACT, not the exit status: a .so must exist and
+  # must export db_create. `make' returning 0 is what a static-only build does.
+  #
+  # NOT continue-on-error. An advisory job that has never passed is decorative;
+  # the Android job failed 18 runs in a row while the workflow reported success.
+  # If this breaks, it is telling you something no other job can.
+  # ----------------------------------------------------------------------------
+  freebsd-shared:
+    name: freebsd shared library
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + verify a shared library on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: '14.2'
+          usesh: true
+          # autoconf/libtool are NOT installed: this builds from the COMMITTED
+          # dist/configure, which is what a user untarring a release runs. If
+          # the committed configure carries the bad glob, this job fails -- which
+          # is the point. Regenerating here would test the generator instead.
+          prepare: pkg install -y gmake
+          run: |
+            set -e
+            echo "=== host triplet (this is what the libtool glob sees) ==="
+            uname -sr
+            mkdir -p build_unix && cd build_unix
+            ../dist/configure > conf.log 2>&1 || { tail -40 conf.log; exit 1; }
+
+            # F2's signature. The C tag's value is the first occurrence.
+            blt=$(grep -m1 '^build_libtool_libs=' libtool | cut -d= -f2)
+            echo "build_libtool_libs=$blt"
+            if [ "$blt" != "yes" ]; then
+                echo "::error::F2 REGRESSION: configure chose build_libtool_libs=$blt on $(uname -sr)."
+                echo "A default ./configure must build shared libraries here."
+                echo "Check the freebsd1.* case arms in dist/aclocal/libtool.m4,"
+                echo "then regenerate with dist/s_config."
+                exit 1
+            fi
+
+            # F3's signature is a build failure on the .lo rules.
+            gmake -j"$(sysctl -n hw.ncpu)" > build.log 2>&1 || {
+                echo "::error::FreeBSD shared build failed"
+                grep -iE 'error' build.log | head -20
+                exit 1
+            }
+
+            # ASSERT THE ARTIFACT. A static-only build also exits 0.
+            so=$(ls .libs/libdb-*.so* 2>/dev/null | head -1)
+            if [ -z "$so" ]; then
+                echo "::error::no shared library produced, despite build_libtool_libs=yes"
+                ls -la .libs 2>/dev/null | head -20
+                exit 1
+            fi
+            echo "shared library: $so"
+            file "$so"
+
+            # And it must be a real library, not an empty stub.
+            if ! nm -D "$so" 2>/dev/null | grep -q ' T db_create'; then
+                echo "::error::$so does not export db_create -- built, but not usable"
+                exit 1
+            fi
+
+            # Utilities link against it and run.
+            ./db_stat -V
+
+            echo "FreeBSD shared-library build OK: $so exports db_create"
+
+  # ----------------------------------------------------------------------------
   # TCL test suite: targeted subset on every push/PR (fast PR signal); the full
   # run is manual (workflow_dispatch full_tcl=true). The generous nightly full
   # suite lives in ci-extended.yml so it never gates PRs.
