@@ -1,0 +1,54 @@
+# G13 after B2: how much negative scaling is the ENGINE's?
+#
+# Host: c6id.8xlarge, 32 vCPU, Debian 12 (6.1.0), XFS on instance NVMe,
+# THP off, numa_balancing off. libdb at c0f541e6f (U6b fix live:
+# HAVE_MUTEX_HYBRID=1, so mut_tas.c is compiled in for the first time).
+# btree, -d nosync, 20s measured, 10s warmup. Arms AND thread counts
+# alternated within each rep.
+#
+# ARM A/B: one binary per arm, differing ONLY at the six DB_RMW call sites.
+#
+rep	arm	threads	commits	retries	retry_per_commit
+1	before	8	428523	116064	0.271
+1	after	8	568100	13349	0.023
+1	before	32	89651	511322	5.703
+1	after	32	485432	14801	0.030
+2	before	8	567991	157089	0.277
+2	after	8	564810	12709	0.023
+2	before	32	89309	507479	5.682
+2	after	32	524439	16378	0.031
+3	before	8	392299	108332	0.276
+3	after	8	563741	12975	0.023
+3	before	32	89347	509268	5.700
+3	after	32	538643	16631	0.031
+#
+# medians, t=8 -> t=32:
+#   before  428523 -> 89347   = -79.2%   (retry/commit 5.70 at t=32)
+#   after   564810 -> 524439  =  -7.1%   (retry/commit 0.031, 184x fewer)
+#
+# So the -76.8% originally attributed to the engine was substantially the
+# driver's missing DB_RMW. cv: before t=8 20.0%, after t=8 0.4%.
+#
+# --- THE GATE, same binary, reps=9, ONLY the warehouse count differs -------
+# scale	threads_lo	threads_hi	tpm_lo	tpm_hi	delta_pct	tol_pct	verdict
+96	8	32	1744346	1304111	-25.2	11.6	FAIL
+32	8	32	1534762	1480739	-3.5	11.2	PASS
+#
+# The gate defaults to SCALE=96; my A/B used 32, which is why they disagree.
+# Both are correct measurements of different working-set sizes.
+#
+# COUNTER-INTUITIVE AND LOAD-BEARING: scale 96 has MORE warehouses, hence LESS
+# per-row contention, yet scales WORSE. So the residual decline is not row
+# conflict. It is also not I/O: the scale-96 record set is 0.23 GiB against a
+# cache over 1 GB, and db_stat reports "Threads waited on page I/O: 0".
+#
+# --- WHERE THE RESIDUAL IS, measured at scale 96 --------------------------
+# subsystem	t=8	t=32	note
+mpool_bucket_waits	0	0	zero at BOTH thread counts
+mpool_region_waits	1	1	noise
+page_io_waits	0	0	working set is cache-resident
+lock_region_waits	774650	641738	6% of acquisitions at t=8, 9% at t=32
+lock_region_per_commit	1.125	1.603	1.4x more per unit of work at t=32
+#
+# The residual is the LOCK REGION latch. Not the buffer pool (zero waits), not
+# the log (RFC 0008 already measured that), and not the page cache.
