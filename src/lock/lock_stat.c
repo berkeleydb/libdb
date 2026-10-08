@@ -554,10 +554,9 @@ __lock_print_all(env, flags)
 		 * 20, DB_LO_RANK_HANDLE).  Doing that inside the walk took it
 		 * under an OBJECT_LOCK (rank 30, DB_LO_RANK_LOCK_PART) -- the
 		 * reverse of the declared order -- so the A3 checker reported
-		 * BDB2084 and panicked the environment with DB_RUNRECOVERY,
-		 * from `db_stat -l'.  Taking it first also means the whole dump
-		 * sees ONE consistent view of the file-name list rather than
-		 * re-locking per lock.
+		 * BDB2084 and panicked the environment, from `db_stat -l'.
+		 * Taking it first also means the whole dump sees ONE consistent
+		 * view of the file-name list rather than re-locking per lock.
 		 *
 		 * lg_handle is NULL when logging is not configured; there are no
 		 * names to resolve then, and fl_locked stays 0 so nothing tries.
