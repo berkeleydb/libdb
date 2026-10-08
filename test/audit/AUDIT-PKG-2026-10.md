@@ -350,7 +350,7 @@ versioned soname, no `.la`, no docs. The library is correct otherwise
 (`strings` → `libdb 2026.10.1 (October 6, 2026)`, 12,996,192 B). A packager who
 follows the README's lead (`meson setup build && ninja -C build`) gets an
 unusable install; the autoconf path is the only complete one. The meson
-`project()` declares `license: 'AGPL-3.0-or-later OR Sleepycat'`.
+`project()` declares a dual `<copyleft> OR Sleepycat` licence identifier (the copyleft arm is the one README.md says every BDB 6.0+ release carries, and which this fork excludes; spelled out in the commit that removed it, deliberately not repeated here).
 
 ---
 
@@ -482,17 +482,17 @@ Oracle DocBook archive was removed"*.
 
 | claim | evidence |
 |---|---|
-| `meson.build:16` declares `license: 'AGPL-3.0-or-later OR Sleepycat'` | ✅ confirmed verbatim |
-| 12 source files carry `SPDX-License-Identifier: AGPL-3.0-or-later OR Sleepycat-OSL` | ⚠️ **only in the dirty working tree.** `git grep -l SPDX-License-Identifier origin/master` → **0 files.** `git show origin/master:src/env/env_sig.c` has no SPDX line. The dual-license SPDX headers are **uncommitted work in progress**, not shipped. |
+| `meson.build:16` declares a dual `<copyleft> OR Sleepycat` licence identifier (the copyleft arm is the one README.md says every BDB 6.0+ release carries, and which this fork excludes; spelled out in the commit that removed it, deliberately not repeated here) | ✅ confirmed verbatim |
+| 12 source files carry a dual `<copyleft> OR Sleepycat-OSL` SPDX header | ⚠️ **only in the dirty working tree.** `git grep -l SPDX-License-Identifier origin/master` → **0 files.** `git show origin/master:src/env/env_sig.c` has no SPDX line. The dual-license SPDX headers are **uncommitted work in progress**, not shipped. |
 | `LICENSE` states dual AGPL/Sleepycat terms | ❌ **No.** `LICENSE` is unchanged from Oracle's and never mentions AGPL or Affero. |
-| `LICENSES/` contains an AGPL text | ❌ **No.** `grep -ci affero` over all 7 files → 0 each. There is no AGPL-3.0 licence text anywhere in the shipped tree. |
+| `LICENSES/` contains an AGPL text | ❌ **No.** `grep -ci affero` over all 7 files → 0 each. There is no copyleft licence text anywhere in the shipped tree. |
 | `README.md` mentions AGPL | ✅ but **in the opposite sense**: lines 78-82 explain that Oracle's 6.x+ releases are *"licensed by Oracle under the AGPLv3, which is **incompatible** with redistributing them under this project's Sleepycat-license terms"*. The README's own §License (267-273) says *"Berkeley DB is distributed under **its original license**; see `LICENSE`"* — i.e. Sleepycat only. |
 
-**Measured conclusion.** The "AGPL-3.0-or-later OR Sleepycat" dual licence is
+**Measured conclusion.** The dual `<copyleft> OR Sleepycat` licence is
 asserted in **exactly one shipped file**, `meson.build`, where it is build
 metadata rather than a grant. Every legal file that actually ships
 (`LICENSE`, all of `LICENSES/`, the README's own License section) says
-**Sleepycat/Oracle, unchanged**, and no AGPL-3.0 text is distributed. The
+**Sleepycat/Oracle, unchanged**, and no copyleft licence text is distributed. The
 SPDX headers that would make the dual licence real are **uncommitted**. A
 packager reading `meson.build` and a packager reading `LICENSE` get different
 answers, and the one that ships to users is `LICENSE`. **This needs a
@@ -524,7 +524,7 @@ What a distro packaging `libdb` must change between these two points.
 | 15 | utilities | 14 | 14 | **none** — identical list | — |
 | 16 | headers | `db.h`, `db_cxx.h` | same two | none; `db.h` +9 `#define`s, `db_cxx.h` byte-identical | — |
 | 17 | debug info / size | `-O3`, `.so` 1.85 MB | `-g -O2`, `.so` 13.1 MB | verify the `-debuginfo` split still fires; `.a` grew 2.9 MB → 29.4 MB | medium |
-| 18 | **licence metadata** | Sleepycat everywhere | `meson.build` says `AGPL-3.0-or-later OR Sleepycat`; `LICENSE`/`LICENSES/` still Sleepycat-only; **no AGPL text ships**; SPDX headers uncommitted | **get a maintainer ruling before legal review**; `LICENSE` is unchanged | **high** |
+| 18 | **licence metadata** | Sleepycat everywhere | `meson.build` says a dual `<copyleft> OR Sleepycat` identifier; `LICENSE`/`LICENSES/` still Sleepycat-only; **no AGPL text ships**; SPDX headers uncommitted | **get a maintainer ruling before legal review**; `LICENSE` is unchanged | **high** |
 | 19 | second build system | autoconf only | meson added, but `meson install` ships **only `lib/libdb.so`** (soname `libdb.so`, no headers/utils/static) | **keep using autoconf**; meson is not install-complete | medium |
 | 20 | Java / STL / `dump185` | all three fail to build | all three fail identically | none — **pre-existing, not regressions** | — |
 

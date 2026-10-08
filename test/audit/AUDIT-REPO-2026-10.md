@@ -506,7 +506,7 @@ The Java `*Config` classes picked up real accessors in the same range: `Environm
 
 | File | Role |
 |---|---|
-| `meson.build` (root, 44 lines) | thin shim: `project('libdb','c', version:'2026.10.1', license:'AGPL-3.0-or-later OR Sleepycat', meson_version:'>=0.56.0', default_options:['c_std=c99','warning_level=1'])`, then `subdir('dist')` |
+| `meson.build` (root, 44 lines) | thin shim: `project('libdb','c', version:'2026.10.1', license:'<copyleft> OR Sleepycater OR Sleepycat', meson_version:'>=0.56.0', default_options:['c_std=c99','warning_level=1'])`, then `subdir('dist')` |
 | `meson_options.txt` | one option: `hegel` (feature, default **disabled**) |
 | `dist/meson.build` (649 lines) | the real recipe: `configuration_data()` → `db_config.h`, generated headers, `libdb`, plus `docs`/`bench` run-targets |
 | `dist/meson/gen_header.py`, `run_docs.py`, `run_bench.py`, `db_subs.json`, `README-windows.md` | header generation + run-target drivers |

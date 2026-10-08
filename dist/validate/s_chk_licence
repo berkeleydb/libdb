@@ -1,0 +1,68 @@
+#!/bin/sh -
+#
+# Fail if the excluded copyleft licence identifier appears in any tracked file.
+#
+# WHY THIS EXISTS
+#
+# LICENSE is byte-identical to Oracle's Sleepycat licence at both the fork
+# baseline and HEAD, and README.md explains that every Berkeley DB release from
+# 6.0 onward carries a copyleft licence and is DELIBERATELY EXCLUDED from this
+# archive precisely because that licence is incompatible with redistributing
+# under Sleepycat terms.  So the identifier naming it must never appear as this
+# project's own licence metadata.
+#
+# It did, in meson.build's license: field, and from there it was copied into 176
+# SPDX headers.  Purging it took a history rewrite across 774 commits and a
+# force-push.
+#
+# Then it came back -- in documentation that QUOTED the defect as a finding.
+# That is why this check exists rather than relying on care: the string is
+# legitimate to discuss and illegitimate to declare, a distinction no author
+# reliably remembers and no scanner makes.  A licence scanner greps file
+# content; it does not parse prose, so a report describing the old value reads
+# to a scanner exactly like a file asserting it.  It also broke the obvious
+# verification command -- `git grep AGPL-3.0` stopped returning zero, which is
+# how the regression went unnoticed.
+#
+# Write about it by describing it, as test/audit/ now does, or name it only in a
+# commit message (which ships in history, not in a file a scanner reads).
+#
+# Scoped to TRACKED files: a build dir or scratch clone is not the repository,
+# and s_chk_copyright produced 1,953 phantom findings by walking the worktree.
+
+d=../..
+[ -f $d/LICENSE ] || {
+	echo 'FAIL: cannot find source distribution directory.'
+	exit 1
+}
+
+echo "=================================================="
+echo "Check for the excluded copyleft licence identifier."
+echo "=================================================="
+
+exitv=0
+
+# The identifier is assembled rather than written out, so that THIS FILE does
+# not trip the check it implements.
+pat="AGPL""-3.0"
+
+# git ls-files from the repo root; -I makes the match literal.
+hits=$( (cd $d && git grep -l -I -F -e "$pat" -- . 2>/dev/null) |
+    grep -v '^dist/validate/s_chk_licence$' )
+
+if [ -n "$hits" ] ; then
+	echo "FAIL: the excluded copyleft licence identifier appears in:"
+	echo "$hits" | sed 's/^/    /'
+	echo ""
+	echo "This project is Sleepycat-licensed.  If you are DESCRIBING the"
+	echo "historical defect, describe it without spelling the identifier --"
+	echo "see test/audit/AUDIT-PKG-2026-10.md, which does exactly that."
+	echo "If you are DECLARING a licence, the answer is Sleepycat."
+	exitv=1
+fi
+
+[ "$exitv" = 0 ] && echo "No occurrences.  (Bare 'AGPL'/'AGPLv3' in README.md and"
+[ "$exitv" = 0 ] && echo "test/bench/ is fine: those are true statements about ORACLE's"
+[ "$exitv" = 0 ] && echo "licensing of the releases this fork excludes.)"
+
+exit $exitv
