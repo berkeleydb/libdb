@@ -42,7 +42,41 @@ rep	arm	threads	commits	retries	retry_per_commit
 # conflict. It is also not I/O: the scale-96 record set is 0.23 GiB against a
 # cache over 1 GB, and db_stat reports "Threads waited on page I/O: 0".
 #
-# --- WHERE THE RESIDUAL IS, measured at scale 96 --------------------------
+# --- CORRECTION (2026-10-08) ---------------------------------------------
+#
+# The subsystem table below is WRONG and is kept only so the error is visible.
+# I collected it with `db_stat -l`, believing -l meant "lock". IT MEANS LOG.
+# So "lock_region_waits 774650 -> 641738" is the LOG region latch, and the
+# conclusion "the residual is the lock region latch" does not follow from it.
+#
+# The lock subsystem is `db_stat -c`. Re-measured correctly on a 64 vCPU
+# c6id.16xlarge at scale 96, stats CLEARED before each run, per-commit:
+#
+#   t   commits   part/cmt  lockeralloc/cmt  region/cmt  objq/cmt  conflict/cmt
+#   8    639029     0.1496          0.1189      1.1819    0.0005        0.1663
+#   16   391736     0.1899          0.2220      1.4552    0.0023        0.3373
+#   32   311811     0.2291          0.3446      1.4761    0.0058        0.5582
+#   64   270224     0.2902          0.6220      1.5028    0.0090        0.7667
+#
+# per-commit growth t=8 -> t=64:
+#   locker-alloc  5.2x   <-- fastest-growing LATCH wait, 15% of acquisitions
+#   lock-conflict 4.6x       (a consequence, not a latch)
+#   partition     1.9x
+#   region        1.3x
+#   obj-queue    18.8x       but absolute value is negligible (0.009/commit)
+#
+# THE SERIALIZATION POINT IS mtx_locker_stripe[0]. Despite living in the
+# stripe array it is NOT a stripe: lock.h:383 documents it as the LOCKER
+# ALLOCATION latch, guarding region-wide state with no per-bucket home (the
+# free_lockers list, the ulinks list, nlockers, and the lock_id/cur_maxid
+# counters). It is taken ~4x per transaction, by __lock_id,
+# __lock_getlocker (txn_begin, txn.c:588) and __lock_freelocker (txn end).
+#
+# __lock_getlocker holds it across the WHOLE call -- including the common case
+# where the free list is non-empty and only a bucket is touched -- purely to
+# make the free-list emptiness test atomic with the refill.
+#
+# --- SUPERSEDED (collected with the wrong db_stat flag) --------------------
 # subsystem	t=8	t=32	note
 mpool_bucket_waits	0	0	zero at BOTH thread counts
 mpool_region_waits	1	1	noise
