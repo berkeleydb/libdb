@@ -401,6 +401,23 @@ get_rec(int tbl, xe_txn *txn, uint32_t a, uint32_t b, uint32_t c,
 	return xe_get(g_tbl[tbl], txn, &k, out, outsz, NULL);
 }
 
+/*
+ * get_rec_rmw --
+ *	Read a record this transaction is about to WRITE.  B2: using get_rec for
+ *	that takes a read lock and then upgrades on the put, which deadlocks
+ *	against any concurrent transaction doing the same to the same row -- so
+ *	the driver generated contention unrelated to the engine.  See xe_get_rmw.
+ */
+static int
+get_rec_rmw(int tbl, xe_txn *txn, uint32_t a, uint32_t b, uint32_t c,
+    void *out, size_t outsz)
+{
+	xe_key k;
+
+	xe_key_enc(&k, a, b, c);
+	return xe_get_rmw(g_tbl[tbl], txn, &k, out, outsz, NULL);
+}
+
 static int
 put_rec(int tbl, xe_txn *txn, uint32_t a, uint32_t b, uint32_t c,
     const void *in, size_t insz)
@@ -438,7 +455,7 @@ again:
 	t0 = xe_now_us();
 	if ((ret = xe_txn_begin(&w->th, &txn, 0)) != XE_OK) return ret;
 
-	if ((ret = get_rec(TBL_DISTRICT, &txn, wid, did, 0, &di, sizeof(di))) != XE_OK)
+	if ((ret = get_rec_rmw(TBL_DISTRICT, &txn, wid, did, 0, &di, sizeof(di))) != XE_OK)
 		goto fail;
 	oid = di.next_o_id++;
 	if ((ret = put_rec(TBL_DISTRICT, &txn, wid, did, 0, &di, sz_dist)) != XE_OK)
@@ -447,7 +464,7 @@ again:
 	for (i = 0; i < nitems; i++) {
 		uint32_t iid = xe_rand_between(&w->rng, 0, ITEMS_PER_WH - 1);
 
-		if ((ret = get_rec(TBL_STOCK, &txn, wid, iid, 0, &st,
+		if ((ret = get_rec_rmw(TBL_STOCK, &txn, wid, iid, 0, &st,
 		    sizeof(st))) != XE_OK) goto fail;
 		st.quantity -= 1;
 		if (st.quantity < 10) st.quantity += 91;
@@ -498,19 +515,19 @@ again:
 	t0 = xe_now_us();
 	if ((ret = xe_txn_begin(&w->th, &txn, 0)) != XE_OK) return ret;
 
-	if ((ret = get_rec(TBL_WAREHOUSE, &txn, wid, 0, 0, &wh, sizeof(wh))) != XE_OK)
+	if ((ret = get_rec_rmw(TBL_WAREHOUSE, &txn, wid, 0, 0, &wh, sizeof(wh))) != XE_OK)
 		goto fail;
 	wh.ytd += amount;
 	if ((ret = put_rec(TBL_WAREHOUSE, &txn, wid, 0, 0, &wh, sz_wh)) != XE_OK)
 		goto fail;
 
-	if ((ret = get_rec(TBL_DISTRICT, &txn, wid, did, 0, &di, sizeof(di))) != XE_OK)
+	if ((ret = get_rec_rmw(TBL_DISTRICT, &txn, wid, did, 0, &di, sizeof(di))) != XE_OK)
 		goto fail;
 	di.ytd += amount;
 	if ((ret = put_rec(TBL_DISTRICT, &txn, wid, did, 0, &di, sz_dist)) != XE_OK)
 		goto fail;
 
-	if ((ret = get_rec(TBL_CUSTOMER, &txn, wid, cid, 0, &cu, sizeof(cu))) != XE_OK)
+	if ((ret = get_rec_rmw(TBL_CUSTOMER, &txn, wid, cid, 0, &cu, sizeof(cu))) != XE_OK)
 		goto fail;
 	cu.balance -= amount;
 	cu.ytd += amount;
@@ -657,7 +674,7 @@ again:
 	}
 
 	if (have) {
-		if ((ret = get_rec(TBL_ORDERS, &txn, wid, did, foundo,
+		if ((ret = get_rec_rmw(TBL_ORDERS, &txn, wid, did, foundo,
 		    &o, sizeof(o))) == XE_OK) {
 			o.carrier = 1;
 			if ((ret = put_rec(TBL_ORDERS, &txn, wid, did, foundo,

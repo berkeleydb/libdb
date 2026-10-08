@@ -975,9 +975,62 @@ xe_txn_abort(xe_txn *txn)
 
 /* ---------------- public: point operations ---------------- */
 
+/* Forward declaration: the flags-taking read worker is defined below. */
+static int xe_get_fl(xe_table *, xe_txn *, const xe_key *, void *, size_t,
+    size_t *, u_int32_t);
+static int xe_get(xe_table *, xe_txn *, const xe_key *, void *, size_t,
+    size_t *);
+
+/*
+ * xe_get_rmw --
+ *	Read a record that the caller is about to WRITE in the same transaction.
+ *
+ *	B2: xe_get passes flags 0, so every read-modify-write in this driver took
+ *	a READ lock and then upgraded it on the put.  Two threads that both read
+ *	the same row before either writes it deadlock by construction, and the
+ *	detector resolves it by aborting one -- so the driver manufactures
+ *	contention that has nothing to do with the engine's scalability.
+ *
+ *	Measured consequence before this existed (64 vCPU, TPROC-C): deadlocks
+ *	per commit rose 0.28 -> 3.23 from t=8 to t=32, cross-checked at ratio 1.01
+ *	against the driver's own retry counters, and do_payment -- which performs
+ *	three get->put upgrades -- was 67.30% of cycles at t=32.  Diluting the hot
+ *	rows 10x flipped the scaling verdict from FAIL -87.6% to PASS -0.3% on the
+ *	same binary, which is what identified the driver rather than the engine.
+ *
+ *	DB_RMW takes the WRITE lock on the read, so the upgrade cannot deadlock.
+ *	It is the documented tool for exactly this pattern.
+ *
+ *	NO WIREDTIGER EQUIVALENT, deliberately.  WT runs isolation=snapshot here
+ *	and has no lock-upgrade step to avoid: it detects write-write conflicts at
+ *	commit instead.  So the WT arm is unchanged and this is not a handicap
+ *	applied to one engine -- it removes an artefact that only the libdb arm
+ *	was paying.  Any cross-engine comparison must say which arm uses it.
+ */
+static int
+xe_get_rmw(xe_table *t, xe_txn *txn, const xe_key *key, void *val,
+    size_t valsz, size_t *gotsz)
+{
+	return (xe_get_fl(t, txn, key, val, valsz, gotsz,
+	    t->env->cfg.engine == XE_ENGINE_WT ? 0 : DB_RMW));
+}
+
 static int
 xe_get(xe_table *t, xe_txn *txn, const xe_key *key, void *val, size_t valsz,
     size_t *gotsz)
+{
+	return (xe_get_fl(t, txn, key, val, valsz, gotsz, 0));
+}
+
+/*
+ * xe_get_fl --
+ *	The read worker.  dbflags is passed to DB->get and is 0 for a plain read
+ *	or DB_RMW when the caller will write this record in the same txn.  It is
+ *	ignored by the WT arm, which has no equivalent (see xe_get_rmw).
+ */
+static int
+xe_get_fl(xe_table *t, xe_txn *txn, const xe_key *key, void *val, size_t valsz,
+    size_t *gotsz, u_int32_t dbflags)
 {
 	int ret;
 
@@ -1017,7 +1070,7 @@ xe_get(xe_table *t, xe_txn *txn, const xe_key *key, void *val, size_t valsz,
 		memset(&d, 0, sizeof(d));
 		d.data = val; d.ulen = (u_int32_t)valsz;
 		d.flags = DB_DBT_USERMEM;
-		ret = t->db->get(t->db, txn->dbtxn, &k, &d, 0);
+		ret = t->db->get(t->db, txn->dbtxn, &k, &d, dbflags);
 		if (ret == 0 && gotsz) *gotsz = d.size;
 		return xe_libdb_err(t->env, ret, "get");
 	}

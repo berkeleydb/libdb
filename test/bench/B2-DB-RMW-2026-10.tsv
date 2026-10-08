@@ -1,0 +1,25 @@
+# B2: DB_RMW on read-modify-write reads in the TPROC-C driver.
+#
+# Host: 8 vCPU (local), libdb 2026.10.1, btree, scale=4, t=8, 10s measured,
+# 5s warmup, -d nosync. Arms ALTERNATED within each rep; one binary per arm
+# differing only in get_rec vs get_rec_rmw at the six RMW sites.
+#
+# "before" = every read takes a READ lock and upgrades on the put.
+# "after"  = the six reads whose record is written in the same txn use DB_RMW.
+#
+# retry_per_commit is the figure that matters: it is the deadlock rate the
+# driver was manufacturing, independent of engine scalability.
+#
+rep	arm	commits	retries	retry_per_commit
+1	before	80410	170177	2.116
+1	after	131826	5799	0.044
+2	before	85678	179624	2.097
+2	after	124410	5357	0.043
+3	before	70213	151656	2.160
+3	after	113807	4885	0.043
+#
+# medians: commits 80410 -> 124410 (+54.7%); retry_per_commit 2.116 -> 0.043
+#          (49x fewer). cv: before 10.0%, after 7.3% -- both arms stable, so
+#          the difference is not noise.
+# errors: 0 in all five transaction types, both arms. payment -- 67.30% of
+#          cycles at t=32 in the G13 profile -- goes to ZERO retries.
