@@ -14706,7 +14706,8 @@ fi
       hardcode_shlibpath_var=no
       ;;
 
-    freebsd1*)
+    # See the freebsd1.* note above: `freebsd1*' swallowed FreeBSD 10-19.
+    freebsd1.*)
       ld_shlibs=no
       ;;
 
@@ -15708,7 +15709,12 @@ dgux*)
   shlibpath_var=LD_LIBRARY_PATH
   ;;
 
-freebsd1*)
+# NOTE the dot: `freebsd1*' also matches freebsd10 through freebsd19, so every
+# FreeBSD from 10 onward took this arm and got NO SHARED LIBRARY from a default
+# ./configure (enable_shared=yes is the default). `freebsd1.*' matches only the
+# real FreeBSD 1.x releases this arm is for. Fixed upstream in libtool; this
+# tree vendors a 2011 copy that predates the fix.
+freebsd1.*)
   dynamic_linker=no
   ;;
 
@@ -19622,7 +19628,12 @@ dgux*)
   shlibpath_var=LD_LIBRARY_PATH
   ;;
 
-freebsd1*)
+# NOTE the dot: `freebsd1*' also matches freebsd10 through freebsd19, so every
+# FreeBSD from 10 onward took this arm and got NO SHARED LIBRARY from a default
+# ./configure (enable_shared=yes is the default). `freebsd1.*' matches only the
+# real FreeBSD 1.x releases this arm is for. Fixed upstream in libtool; this
+# tree vendors a 2011 copy that predates the fix.
+freebsd1.*)
   dynamic_linker=no
   ;;
 
@@ -20470,7 +20481,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20473 "configure" */
+/* #line 20484 "configure" */
 public class Test {
 }
 EOF
@@ -20765,7 +20776,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20768: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20779: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20897,7 +20908,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20900 "configure" */
+/* #line 20911 "configure" */
 public class Test {
 }
 EOF
@@ -20934,7 +20945,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20937 "configure" */
+/* [#]line 20948 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);

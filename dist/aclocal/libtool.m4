@@ -2406,7 +2406,12 @@ dgux*)
   shlibpath_var=LD_LIBRARY_PATH
   ;;
 
-freebsd1*)
+# NOTE the dot: `freebsd1*' also matches freebsd10 through freebsd19, so every
+# FreeBSD from 10 onward took this arm and got NO SHARED LIBRARY from a default
+# ./configure (enable_shared=yes is the default). `freebsd1.*' matches only the
+# real FreeBSD 1.x releases this arm is for. Fixed upstream in libtool; this
+# tree vendors a 2011 copy that predates the fix.
+freebsd1.*)
   dynamic_linker=no
   ;;
 
@@ -5110,7 +5115,8 @@ _LT_EOF
       _LT_TAGVAR(hardcode_shlibpath_var, $1)=no
       ;;
 
-    freebsd1*)
+    # See the freebsd1.* note above: `freebsd1*' swallowed FreeBSD 10-19.
+    freebsd1.*)
       _LT_TAGVAR(ld_shlibs, $1)=no
       ;;
 

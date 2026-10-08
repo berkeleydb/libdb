@@ -21,7 +21,14 @@ t2=__2
 # found in s_chk_err, where the checker's only complaint was a false positive
 # for exactly this reason.  Membership is what matters here: the question is
 # whether every @OSDIR@ rule has a corresponding os_windows file and vice versa.
-egrep '/@OSDIR@/' $d/dist/Makefile.in | sed -e 's/@.*/.c/' | sort > $t1
+# Match the TARGET line only (`os_clock@o@: $(srcdir)/@OSDIR@/os_clock.c'),
+# not the recipe line beneath it. Both now mention @OSDIR@, because the compile
+# rules name their source explicitly instead of using $< -- BSD make leaves $<
+# empty for an explicit rule, which broke every shared-library build on
+# FreeBSD. Anchoring on the target keeps one entry per rule; without this the
+# checker saw every name twice and reported a mismatch against os_windows.
+egrep '^[a-z_0-9]+@o@:.*/@OSDIR@/' $d/dist/Makefile.in |
+    sed -e 's/@.*/.c/' | sort > $t1
 
 (cd $s/os_windows && ls os_*.c) | sort > $t2
 
