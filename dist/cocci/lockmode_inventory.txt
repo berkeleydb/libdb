@@ -85,12 +85,17 @@ site	src/lock/lock_list.c	__lock_get_list	mode-specific	reacquires listed object
 # --- diagnostics / printing (exhaustive switches) -------------------------
 # FIXED for #140's class: both printers previously fell through to
 # "UNKNOWN"/"UNKNOWN LOCK MODE" for SIREAD.  Now exhaustive and CI-enforced.
-exhaustive	src/lock/lock_stat.c	__lock_printlock
+# L1 (2026-10) split __lock_printlock into a thin wrapper plus
+# __lock_printlock_fl, which carries the fl_locked flag; the exhaustive mode
+# switch moved with the body. The gate caught the move -- it reported all seven
+# modes missing from a function that is now three lines long -- which is exactly
+# the behaviour wanted from an absolute, non-baselined check.
+exhaustive	src/lock/lock_stat.c	__lock_printlock_fl
 exhaustive	src/db/db_pr.c	__db_lockmode_to_string
 # FIXED for #140's class: walked only holders+waiters, so an object pinned only
 # by SIREAD markers printed as empty.  Now walks ->sireaders too.
 site	src/lock/lock_stat.c	__lock_dump_object	mode-specific	walks holders, waiters AND sireaders
-site	src/lock/lock_stat.c	__lock_dump_locker	mode-specific	walks heldby; mode printed by __lock_printlock
+site	src/lock/lock_stat.c	__lock_dump_locker	mode-specific	walks heldby; mode printed by __lock_printlock_fl
 
 # --- access-method lock decisions ----------------------------------------
 # Deliberately mode-specific: these choose a mode to REQUEST and decide lock
