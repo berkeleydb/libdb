@@ -17,6 +17,7 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0010](0010-global-invariants.md) | Global invariants across subsystems: the A-series partial orders the lock-order checker encodes, and the G-series gap register | Accepted | Normative |
 | [0011](0011-test-coverage-gaps.md) | Test-coverage gaps that let shipped defects through (G12-G15): scaling shape, configure-option sweep, runtime-flag behaviour | Accepted | Normative |
 | [0012](0012-locker-alloc-scaling.md) | `mtx_locker_stripe[0]`: the locker-allocation latch | Draft |
+| [0013](0013-cross-engine-campaign.md) | Cross-engine benchmark campaign: plan for review | Draft |
 
 <!-- Add a row per RFC. Keep the number 4-digit zero-padded and monotonic. -->
 
