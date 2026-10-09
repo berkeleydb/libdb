@@ -1,0 +1,238 @@
+diff --git a/src/lock/lock_id.c b/src/lock/lock_id.c
+index 98e2cbb14..7892a12cb 100644
+--- a/src/lock/lock_id.c
++++ b/src/lock/lock_id.c
+@@ -16,6 +16,32 @@
+ static int __lock_freelocker_int
+     __P((DB_LOCKTAB *, DB_LOCKREGION *, DB_LOCKER *, int));
+ 
++/*
++ * __lock_locker_mutex_reuse --
++ *	P13: is a freed locker allowed to retain its mtx_locker for the next
++ *	locker that recycles the slot?
++ *
++ *	On by default.  DB_NO_LOCKER_MUTEX_REUSE restores the pre-P13 behaviour
++ *	(one __mutex_alloc + one __mutex_free per locker, each taking the single
++ *	global MUTEX_SYSTEM_LOCK) so the A/B can be run on ONE binary with only a
++ *	runtime switch varying -- the form test/bench/run_bench.sh's DB_PRIVATE
++ *	warning requires.  Cached in a process-local static, like the
++ *	DB_NO_OPTREAD and DB_NO_GROUP_COMMIT switches; this is a pure
++ *	performance choice with no region-visible consequence, so unlike P12's
++ *	locker_shard it need not be stored in the region for attachers to
++ *	inherit: two processes disagreeing about it simply allocate mutexes at
++ *	different rates.
++ */
++static int
++__lock_locker_mutex_reuse()
++{
++	static int cached = -1;
++
++	if (cached == -1)
++		cached = getenv("DB_NO_LOCKER_MUTEX_REUSE") != NULL ? 0 : 1;
++	return (cached);
++}
++
+ /*
+  * __lock_id_pp --
+  *	ENV->lock_id pre/post processing.
+@@ -365,13 +391,22 @@ __lock_getlocker_int(lt, locker, create, retp)
+ 			break;
+ 	if (sh_locker == NULL && create) {
+ 		nlockers = 0;
+-		/* Create new locker and then insert it into hash table. */
+-		if ((ret = __mutex_alloc(env, MTX_LOGICAL_LOCK,
+-		    DB_MUTEX_LOGICAL_LOCK | DB_MUTEX_SELF_BLOCK,
+-		    &mutex)) != 0)
+-			return (ret);
+-		else
+-			MUTEX_LOCK(env, mutex);
++		/*
++		 * Create new locker and then insert it into hash table.
++		 *
++		 * P13: the mutex is acquired AFTER the locker is popped, not
++		 * before, because a recycled locker already carries the
++		 * mtx_locker it was allocated with on a previous use --
++		 * __lock_freelocker_int deliberately keeps it rather than
++		 * calling __mutex_free.  Reusing it means the hot path reaches
++		 * neither __mutex_alloc nor __mutex_free, and so never takes
++		 * MUTEX_SYSTEM_LOCK, a single global latch that was otherwise
++		 * paid twice per transaction.  Only a locker that has never
++		 * been used -- off the region's initial free list, or a fresh
++		 * refill batch, both of which set MUTEX_INVALID explicitly --
++		 * allocates one.  See __lock_freelocker_int for why retaining
++		 * a logical-lock mutex across recycling is sound.
++		 */
+ 		if ((sh_locker = SH_TAILQ_FIRST(
+ 		    &region->free_lockers, __db_locker)) == NULL) {
+ 			nlockers = region->stat.st_lockers >> 2;
+@@ -424,6 +459,14 @@ __lock_getlocker_int(lt, locker, create, retp)
+ 			if (nlockers == 0)
+ 				return (__lock_nomem(env, "locker entries"));
+ 			for (i = 0; i < nlockers; i++) {
++				/*
++				 * P13: __env_alloc memory is not zeroed, and the
++				 * reuse test below reads mtx_locker on a locker
++				 * that has never been used.  Mark it explicitly,
++				 * exactly as lock_region.c does for the initial
++				 * free list.
++				 */
++				sh_locker->mtx_locker = MUTEX_INVALID;
+ 				SH_TAILQ_INSERT_HEAD(&region->free_lockers,
+ 				    sh_locker, links, __db_locker);
+ 				sh_locker++;
+@@ -434,6 +477,22 @@ __lock_getlocker_int(lt, locker, create, retp)
+ 		}
+ 		SH_TAILQ_REMOVE(
+ 		    &region->free_lockers, sh_locker, links, __db_locker);
++		/*
++		 * P13: reuse this locker's retained mutex if it has one, else
++		 * allocate.  Unlike the pre-P13 code this runs with the locker
++		 * already popped, so on the allocation-failure path the locker
++		 * must go back on the free list rather than leak.
++		 */
++		if ((mutex = sh_locker->mtx_locker) == MUTEX_INVALID) {
++			if ((ret = __mutex_alloc(env, MTX_LOGICAL_LOCK,
++			    DB_MUTEX_LOGICAL_LOCK | DB_MUTEX_SELF_BLOCK,
++			    &mutex)) != 0) {
++				SH_TAILQ_INSERT_HEAD(&region->free_lockers,
++				    sh_locker, links, __db_locker);
++				return (ret);
++			}
++		}
++		MUTEX_LOCK(env, mutex);
+ 		++region->nlockers;
+ #ifdef HAVE_STATISTICS
+ 		STAT_PERFMON2(env, lock, nlockers, region->nlockers, locker);
+@@ -595,9 +654,77 @@ __lock_freelocker_int(lt, region, sh_locker, reallyfree)
+ 		LOCKER_HASH(lt, region, sh_locker->id, indx);
+ 		SH_TAILQ_REMOVE(&lt->locker_tab[indx], sh_locker,
+ 		    links, __db_locker);
+-		if (sh_locker->mtx_locker != MUTEX_INVALID &&
+-		    (ret = __mutex_free(env, &sh_locker->mtx_locker)) != 0)
+-			return (ret);
++		/*
++		 * P13: KEEP sh_locker->mtx_locker across recycling instead of
++		 * calling __mutex_free here.  That call, paired with the
++		 * __mutex_alloc on the create path, took MUTEX_SYSTEM_LOCK --
++		 * ONE global latch, twice per transaction, since a locker is
++		 * created and freed by every txn_begin/txn_end pair.  P12
++		 * measured that latch becoming ~11x more contended once the
++		 * locker-allocation latch stopped incidentally serialising
++		 * arrivals at it; see rfc/0012 and P12-NEGATIVE-RESULT.
++		 *
++		 * Soundness.  The mutex is a pure blocking primitive with no
++		 * persistent identity: it carries no locker state, it is only
++		 * ever copied into a DB_LOCK's mtx_lock so a waiter can block
++		 * on it (lock.c:1591, :1613), and it is held LOCKED for the
++		 * whole life of the locker (taken at create, dropped here).
++		 * The locker is unreachable at this point -- off its bucket
++		 * chain, heldby empty, so no DB_LOCK references it -- so no
++		 * other thread can observe the mutex between this unlock and
++		 * the next create's lock.  A recycled mutex and a freshly
++		 * allocated one are therefore indistinguishable to every
++		 * caller, which is exactly the property __mutex_refresh relies
++		 * on for lock.c's DB_LOCK mutexes.
++		 *
++		 * The mutex lives in the MUTEX region, not in this locker and
++		 * not in any process's heap: mtx_locker is a db_mutex_t, which
++		 * is an INDEX into the shared mutex array (MUTEXP_SET,
++		 * mutex_int.h), and it is allocated with neither
++		 * DB_MUTEX_PROCESS_ONLY nor ENV_PRIVATE semantics on a shared
++		 * env.  So a mutex retained by process A and inherited by a
++		 * locker that process B later recycles resolves, in B, to the
++		 * same shared DB_MUTEX -- which is precisely the property that
++		 * makes mtx_locker usable for cross-process blocking in the
++		 * first place.  Retaining it adds no new cross-process
++		 * assumption.
++		 *
++		 * Unlock it so the next user's MUTEX_LOCK is the uncontended
++		 * acquisition that __mutex_alloc + MUTEX_LOCK used to produce.
++		 * MUTEX_UNLOCK can only fail by panicking the environment, so
++		 * there is no status to propagate here.
++		 *
++		 * WHY NOT ON THE FAILCHK PATH.  lock_failchk.c:170 frees the
++		 * locker of a process that has DIED, and that locker's mutex is
++		 * still LOCKED by the corpse.  Unlocking a mutex this thread
++		 * does not own is undefined for pthreads, and a retained mutex
++		 * that stayed locked would self-deadlock the next locker to
++		 * recycle the slot at the MUTEX_LOCK below.  __mutex_free is the
++		 * path that copes: it calls __mutex_destroy, which has explicit
++		 * failchk handling (mut_pthread.c:723 skips the destroy for the
++		 * failchk thread rather than trusting the state).  So failchk
++		 * keeps the pre-P13 behaviour.  This costs nothing: failchk is
++		 * not a hot path, and the optimisation only needs the __txn_end
++		 * path.
++		 *
++		 * Mutexes retained on the free list are released by
++		 * __lock_env_refresh, which walks free_lockers at env close for
++		 * exactly this reason.  Without that the mutex region -- a
++		 * BOUNDED pool, mut_region.c:78 enforces dbenv->mutex_max --
++		 * would leak one slot per retained locker across an env
++		 * lifetime.
++		 *
++		 * DB_NO_LOCKER_MUTEX_REUSE restores the pre-P13 behaviour so
++		 * the A/B runs on one binary.
++		 */
++		if (sh_locker->mtx_locker != MUTEX_INVALID) {
++			if (__lock_locker_mutex_reuse() &&
++			    !F_ISSET(env->dbenv, DB_ENV_FAILCHK)) {
++				MUTEX_UNLOCK(env, sh_locker->mtx_locker);
++			} else if ((ret = __mutex_free(env,
++			    &sh_locker->mtx_locker)) != 0)
++				return (ret);
++		}
+ 		SH_TAILQ_INSERT_HEAD(&region->free_lockers, sh_locker,
+ 		    links, __db_locker);
+ 		SH_TAILQ_REMOVE(&region->lockers, sh_locker,
+diff --git a/src/lock/lock_region.c b/src/lock/lock_region.c
+index 290b6d9c2..9b2129d55 100644
+--- a/src/lock/lock_region.c
++++ b/src/lock/lock_region.c
+@@ -342,6 +342,15 @@ __lock_region_init(env, lt)
+ 
+ 	region->locker_mem_off = R_OFFSET(&lt->reginfo, lidp);
+ 	for (i = 0; i < region->stat.st_lockers; ++i) {
++		/*
++		 * P13: __env_alloc memory is not zeroed (it is CLEAR_BYTE-
++		 * filled only under DIAGNOSTIC), and __lock_getlocker_int now
++		 * reads mtx_locker on a never-used locker to decide whether a
++		 * mutex must be allocated.  Mark it explicitly.  The object and
++		 * lock free lists above already memset their entries for the
++		 * same reason.
++		 */
++		lidp->mtx_locker = MUTEX_INVALID;
+ 		SH_TAILQ_INSERT_HEAD(
+ 			&region->free_lockers, lidp, links, __db_locker);
+ 		++lidp;
+@@ -362,6 +371,7 @@ int
+ __lock_env_refresh(env)
+ 	ENV *env;
+ {
++	DB_LOCKER *lidp;
+ 	DB_LOCKREGION *lr;
+ 	DB_LOCKTAB *lt;
+ 	REGINFO *reginfo;
+@@ -403,6 +413,23 @@ __lock_env_refresh(env)
+ 
+ 		/* Discard the object partition array. */
+ 		__env_alloc_free(reginfo, R_ADDR(reginfo, lr->part_off));
++		/*
++		 * P13: lockers on the free list retain the mtx_locker they were
++		 * last used with (see __lock_freelocker_int), so release those
++		 * before the locker array itself goes away -- otherwise each one
++		 * orphans a slot in the mutex region, which is a BOUNDED pool
++		 * (mut_region.c:78 enforces dbenv->mutex_max).  Done before the
++		 * SH_TAILQ_INIT below, which is what makes the list walkable.
++		 *
++		 * Only the ENV_PRIVATE arm needs this.  A shared region outlives
++		 * this process: its free_lockers and their retained mutexes both
++		 * stay in the region for the next attacher, which is the same
++		 * pairing this process left, so there is nothing to reclaim and
++		 * freeing them here would corrupt a live region.
++		 */
++		SH_TAILQ_FOREACH(lidp, &lr->free_lockers, links, __db_locker)
++			if (lidp->mtx_locker != MUTEX_INVALID)
++				(void)__mutex_free(env, &lidp->mtx_locker);
+ 		SH_TAILQ_INIT(&lr->free_lockers);
+ 		__env_alloc_free(reginfo,
+ 		    R_ADDR(reginfo, lr->locker_mem_off));
