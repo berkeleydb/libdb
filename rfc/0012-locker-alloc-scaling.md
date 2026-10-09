@@ -10,7 +10,7 @@ See the file LICENSE for redistribution information.
 
 | | |
 |---|---|
-| Status | **Draft** — diagnosis complete and measured; no fix implemented |
+| Status | **Rejected** — implemented and measured; an ~18% throughput regression. See `test/bench/P12-NEGATIVE-RESULT-2026-10.md`. The diagnosis stands; the remedy does not. |
 | Tracker | `P12` |
 | Supersedes | nothing. Follows P1 (locker-stripe keying), G13 and B2. |
 
@@ -139,6 +139,34 @@ taking stripe 0 only when it reads empty and re-checking under it.~~
 reads *non-empty*, and the latch is held for the pop that follows, so moving the
 test outside buys nothing. There is no cheap intermediate — the sharing itself
 has to go.
+
+## Outcome: implemented, measured, rejected
+
+The design below was built and measured on 64 vCPU. It **removes the latch it
+targets** -- locker-alloc waits fall 10-50x -- and costs **~18% throughput at
+t>=16**, making the scaling shape worse rather than better.
+
+Every latch `db_stat -c` reports *improved*, so the cost went somewhere that
+report cannot see. The reusable finding, and the reason this RFC is worth
+keeping:
+
+> `__mutex_alloc` and `__mutex_free` take `MUTEX_SYSTEM_LOCK`
+> (`mutex_int.h:871`) -- **one global mutex, twice per transaction** -- and
+> `mtx_locker_stripe[0]` was incidentally acting as **admission control** in
+> front of it. Serialising locker creation meant threads arrived at that global
+> latch one at a time. Remove stripe 0 and 64 threads arrive together, turning
+> cheap waits on a lock-subsystem latch into expensive ones on the mutex region
+> (~11x worse, at an identical acquisition count, so pure contention).
+
+**So the ordering is wrong, not the idea.** `MUTEX_SYSTEM_LOCK` has to be
+addressed first; until it is, any successful de-serialisation of locker
+allocation will simply expose it. A per-locker mutex that does not require a
+global allocator latch -- or allocating locker mutexes in batches -- is the
+prerequisite.
+
+Full data, the three disproven hypotheses, and the unavoidable region-signature
+break: `test/bench/P12-NEGATIVE-RESULT-2026-10.md`. The implementation is kept
+as a diff at `test/bench/P12-IMPLEMENTATION.diff` rather than a branch.
 
 ## Evidence standard for the fix
 
