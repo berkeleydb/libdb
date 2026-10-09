@@ -214,6 +214,39 @@ __mutex_free(env, indxp)
 	if (!MUTEX_ON(env) || *indxp == MUTEX_INVALID)
 		return (0);
 
+	/*
+	 * F6: the slot may ALREADY have been reclaimed by __mutex_failchk.
+	 *
+	 * __mutex_failchk walks the mutex region by slot index and frees every
+	 * DB_MUTEX_PROCESS_ONLY mutex whose owning process has died
+	 * (mut_failchk.c:69).  It cannot clear the owner's db_mutex_t, because
+	 * it does not know who points at the slot -- so a structure that still
+	 * holds the id is left with a stale, non-INVALID reference.  Freeing it
+	 * again trips the DB_MUTEX_ALLOCATED assert in __mutex_free_int, and in
+	 * a production build (DB_ASSERT compiled out) silently corrupts the
+	 * mutex free list by linking the slot in twice.
+	 *
+	 * The reachable path: in a DB_PRIVATE environment every mutex is forced
+	 * PROCESS_ONLY (see the LF_SET above), so failchk reclaims a
+	 * TXN_DETAIL's mvcc_mtx, and __txn_env_refresh's snapshot sweep
+	 * (txn_region.c:517, same shape at :597) then frees it a second time on
+	 * env close.  Reproduced as: a child opens the env with DB_FAILCHK and
+	 * set_isalive, creates a locker and dies; the parent runs failchk and
+	 * closes the environment.
+	 *
+	 * Treating an already-free slot as "nothing to do" is the same contract
+	 * this function already applies to MUTEX_INVALID above.  The ALLOCATED
+	 * flag is the authoritative record of whether the slot is live, and it
+	 * is read under MUTEX_SYSTEM_LOCK by __mutex_free_int in the ordinary
+	 * case; here the race is with failchk, which holds that same latch
+	 * across its whole walk, so a slot that reads free has already been
+	 * fully returned to the free list rather than being mid-free.
+	 */
+	if (!F_ISSET(MUTEXP_SET(env, *indxp), DB_MUTEX_ALLOCATED)) {
+		*indxp = MUTEX_INVALID;
+		return (0);
+	}
+
 	return (__mutex_free_int(env, 1, indxp));
 }
 
