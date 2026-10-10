@@ -41,6 +41,34 @@ static int __lock_siclean_obj __P((ENV *, DB_LOCKOBJ *, DB_LSN *));
 static const char __db_lock_invalid[] = "%s: Lock is no longer valid";
 static const char __db_locker_invalid[] = "Locker is not valid";
 
+/*
+ * __lock_refresh_lock_mutex --
+ *	Should __lock_freelock re-arm a freed lock's (really: its locker's)
+ *	blocking mutex with __mutex_refresh's destroy+init, instead of simply
+ *	locking it when it is not already held?
+ *
+ *	Off by default -- see the enumeration in __lock_freelock for why the
+ *	destroy is unnecessary.  DB_LOCK_REFRESH_LOCK_MUTEX restores the
+ *	pre-F5 behaviour so the A/B can be run on ONE binary with only a
+ *	runtime switch varying, the form test/bench/run_bench.sh's DB_PRIVATE
+ *	warning requires.  Cached in a process-local static, like the
+ *	DB_NO_OPTREAD (bt_search.c) and DB_NO_GROUP_COMMIT (log_put.c)
+ *	switches: it is a pure performance choice with no region-visible
+ *	consequence, so unlike a region-stored tunable it need not be
+ *	inherited by attachers -- two processes disagreeing about it simply
+ *	re-arm their own lockers' mutexes by different means, and both means
+ *	leave the same postcondition.
+ */
+static int
+__lock_refresh_lock_mutex()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_LOCK_REFRESH_LOCK_MUTEX") != NULL ? 1 : 0;
+	return (cached);
+}
+
 #ifdef DEBUG
 extern void __db_loadme (void);
 #endif
@@ -2094,16 +2122,89 @@ __lock_freelock(lt, lockp, sh_locker, flags)
 
 	if (LF_ISSET(DB_LOCK_FREE)) {
 		/*
-		 * If the lock is not held we cannot be sure of its mutex
-		 * state so we refresh it.
+		 * Re-arm the holder locker's blocking mutex, which this lock
+		 * ALIASES.  It must be left LOCKED exactly once, by us.
+		 *
+		 * lockp->mtx_lock is NOT a per-lock mutex.  Its only non-
+		 * MUTEX_INVALID assignments (lock.c:1591, :1613) copy
+		 * sh_locker->mtx_locker, whose only assignment is at locker
+		 * creation (lock_id.c:448).  So the pthread object underneath
+		 * belongs to the LOCKER, outlives this lock, and is shared with
+		 * every other queued lock of the same locker.
+		 *
+		 * LOCKED is that mutex's armed/idle state under
+		 * DB_MUTEX_SELF_BLOCK: lock_id.c:374 MUTEX_LOCKs it at creation,
+		 * a waiter blocks by MUTEX_LOCKing it again (:1661), and whoever
+		 * grants or aborts the wait MUTEX_UNLOCKs it to wake the waiter
+		 * (__lock_promote :2528, __lock_remove_waiter :2595,
+		 * lock_deadlock.c :437, :623, :918).  A freed lock must therefore
+		 * hand the mutex back LOCKED, ready for the locker's next wait.
+		 *
+		 * ENUMERATION of the non-HELD/non-EXPIRED states reachable here
+		 * with mtx_lock != MUTEX_INVALID (mtx_lock is set only on the two
+		 * queueing paths, so the lock was always a waiter):
+		 *
+		 *   WAITING  queued at :1591 and never blocked on, or demoted by
+		 *            __lock_remove_waiter(DB_LSTAT_FREE) at :1625;
+		 *   PENDING  granted by __lock_promote, which UNLOCKed us, and we
+		 *            returned from the :1661 MUTEX_LOCK holding it;
+		 *   ABORTED  aborted by the detector (lock_deadlock.c:903/:918) or
+		 *            by __lock_put_internal (:1994 -> remove_waiter, which
+		 *            UNLOCKs at :2595), then likewise re-acquired at :1661;
+		 *   FREE     __lock_remove_waiter(DB_LSTAT_FREE), DB_LOCK_SWITCH.
+		 *
+		 * In every case the thread reaching here HOLDS the mutex: either
+		 * it never released it, or it returned from the :1661 MUTEX_LOCK
+		 * with it.  A waiter that is still blocked has not reached this
+		 * function, and no other thread puts a queued lock on the free
+		 * list without first going through __lock_remove_waiter, which
+		 * UNLOCKs (waking the owner) before the lock gets here.  So
+		 * "locked by a waiter still blocked" is unreachable, and
+		 * "locked by a waiter that went away" is a dead-process concern
+		 * that failchk, not this path, is responsible for
+		 * (__db_pthread_mutex_prep mut_pthread.c:247, mut_tas.c:151/:391
+		 * test is_alive under DB_ENV_FAILCHK).
+		 *
+		 * The pre-existing code reached the same postcondition with
+		 * __mutex_refresh() + MUTEX_LOCK(): a destroy+memset+init that
+		 * forced the mutex UNLOCKED so the following blocking MUTEX_LOCK
+		 * could not self-deadlock.  That is an unlock spelled as an
+		 * annihilation -- locked -> unlocked -> locked -- and it is a
+		 * round trip to the state we were already in.  On FreeBSD it is
+		 * also ruinous: libthr's pshared_gc() walks the whole process
+		 * pshared hash on every pthread_{mutex,cond}_destroy of a
+		 * PROCESS_SHARED object, one _umtx_op(UMTX_SHM_ALIVE) syscall per
+		 * live entry, and libdb holds one DB_MUTEX per buffer header.  One
+		 * destroy measured 3.8 us at 0 live shared objects and 5,245 us at
+		 * 32,000.  Since this fires per contended lock free, it capped
+		 * FreeBSD at one thread (F5: 117,124 commits at t=1, 1,644 at
+		 * t=2).  Linux is flat, but the round trip is wasted there too.
+		 *
+		 * So assert the postcondition instead of manufacturing it: lock
+		 * the mutex only if it is not already held.  MUTEX_IS_OWNED
+		 * (mutex_int.h) tests DB_MUTEX_LOCKED, which both backends set on
+		 * acquire and clear on release (mut_pthread.c:426/:446/:671,
+		 * mut_tas.c:203/:551).  It does not say WHO holds it -- but per the
+		 * enumeration above the only possible holder on this path is this
+		 * thread, which is exactly the question being asked.  The DB_MUTEX
+		 * is never destroyed here, so no pshared object is destroyed and
+		 * no waiter's wake can be lost.
+		 *
+		 * DB_LOCK_REFRESH_LOCK_MUTEX restores the destroy+init form so the
+		 * A/B can be run on ONE binary with only a runtime switch varying,
+		 * following the DB_NO_OPTREAD (bt_search.c) precedent.
 		 */
 		part_id = LOCK_PART(region, lockp->indx);
 		if (lockp->mtx_lock != MUTEX_INVALID &&
 		     lockp->status != DB_LSTAT_HELD &&
 		     lockp->status != DB_LSTAT_EXPIRED) {
-			if ((ret = __mutex_refresh(env, lockp->mtx_lock)) != 0)
-				return (ret);
-			MUTEX_LOCK(env, lockp->mtx_lock);
+			if (__lock_refresh_lock_mutex()) {
+				if ((ret = __mutex_refresh(env,
+				    lockp->mtx_lock)) != 0)
+					return (ret);
+				MUTEX_LOCK(env, lockp->mtx_lock);
+			} else if (!MUTEX_IS_OWNED(env, lockp->mtx_lock))
+				MUTEX_LOCK(env, lockp->mtx_lock);
 		}
 
 		lockp->status = DB_LSTAT_FREE;

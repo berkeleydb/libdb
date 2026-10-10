@@ -342,6 +342,15 @@ __lock_region_init(env, lt)
 
 	region->locker_mem_off = R_OFFSET(&lt->reginfo, lidp);
 	for (i = 0; i < region->stat.st_lockers; ++i) {
+		/*
+		 * P13: __env_alloc memory is not zeroed (it is CLEAR_BYTE-
+		 * filled only under DIAGNOSTIC), and __lock_getlocker_int now
+		 * reads mtx_locker on a never-used locker to decide whether a
+		 * mutex must be allocated.  Mark it explicitly.  The object and
+		 * lock free lists above already memset their entries for the
+		 * same reason.
+		 */
+		lidp->mtx_locker = MUTEX_INVALID;
 		SH_TAILQ_INSERT_HEAD(
 			&region->free_lockers, lidp, links, __db_locker);
 		++lidp;
@@ -362,6 +371,7 @@ int
 __lock_env_refresh(env)
 	ENV *env;
 {
+	DB_LOCKER *lidp;
 	DB_LOCKREGION *lr;
 	DB_LOCKTAB *lt;
 	REGINFO *reginfo;
@@ -403,6 +413,23 @@ __lock_env_refresh(env)
 
 		/* Discard the object partition array. */
 		__env_alloc_free(reginfo, R_ADDR(reginfo, lr->part_off));
+		/*
+		 * P13: lockers on the free list retain the mtx_locker they were
+		 * last used with (see __lock_freelocker_int), so release those
+		 * before the locker array itself goes away -- otherwise each one
+		 * orphans a slot in the mutex region, which is a BOUNDED pool
+		 * (mut_region.c:78 enforces dbenv->mutex_max).  Done before the
+		 * SH_TAILQ_INIT below, which is what makes the list walkable.
+		 *
+		 * Only the ENV_PRIVATE arm needs this.  A shared region outlives
+		 * this process: its free_lockers and their retained mutexes both
+		 * stay in the region for the next attacher, which is the same
+		 * pairing this process left, so there is nothing to reclaim and
+		 * freeing them here would corrupt a live region.
+		 */
+		SH_TAILQ_FOREACH(lidp, &lr->free_lockers, links, __db_locker)
+			if (lidp->mtx_locker != MUTEX_INVALID)
+				(void)__mutex_free(env, &lidp->mtx_locker);
 		SH_TAILQ_INIT(&lr->free_lockers);
 		__env_alloc_free(reginfo,
 		    R_ADDR(reginfo, lr->locker_mem_off));
