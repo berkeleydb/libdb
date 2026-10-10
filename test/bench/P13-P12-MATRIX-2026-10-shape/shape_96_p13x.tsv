@@ -1,0 +1,96 @@
+# libdb-scale-shape	v1
+# generated	2026-10-09T20:22:41Z
+# git_rev	unknown
+# hardware	c6id.16xlarge
+# vcpus	64
+# cpu_model	Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+# kernel	Linux 6.1.0-53-cloud-amd64
+# secs	30
+# warmup	10
+# tproc_scale	96
+# pad	256
+# cache_bytes	4294967296
+# reps	9
+# prewarm	1
+benchmark	config	threads	rep	metric	unit	value
+tproc-c	libdb	8	1	tpmC_like	tpm	1948048
+tproc-c	libdb	8	1	txn_per_sec	txn/s	32467.5
+tproc-c	libdb	8	1	committed	txns	974026
+tproc-c	libdb	32	1	tpmC_like	tpm	1021234
+tproc-c	libdb	32	1	txn_per_sec	txn/s	17020.6
+tproc-c	libdb	32	1	committed	txns	510618
+tproc-c	libdb	96	1	tpmC_like	tpm	955120
+tproc-c	libdb	96	1	txn_per_sec	txn/s	15918.7
+tproc-c	libdb	96	1	committed	txns	477561
+tproc-c	libdb	8	2	tpmC_like	tpm	1772892
+tproc-c	libdb	8	2	txn_per_sec	txn/s	29548.2
+tproc-c	libdb	8	2	committed	txns	886448
+tproc-c	libdb	32	2	tpmC_like	tpm	1131004
+tproc-c	libdb	32	2	txn_per_sec	txn/s	18850.1
+tproc-c	libdb	32	2	committed	txns	565503
+tproc-c	libdb	96	2	tpmC_like	tpm	957972
+tproc-c	libdb	96	2	txn_per_sec	txn/s	15966.2
+tproc-c	libdb	96	2	committed	txns	478987
+tproc-c	libdb	8	3	tpmC_like	tpm	1903502
+tproc-c	libdb	8	3	txn_per_sec	txn/s	31725.0
+tproc-c	libdb	8	3	committed	txns	951753
+tproc-c	libdb	32	3	tpmC_like	tpm	1087539
+tproc-c	libdb	32	3	txn_per_sec	txn/s	18125.7
+tproc-c	libdb	32	3	committed	txns	543771
+tproc-c	libdb	96	3	tpmC_like	tpm	993766
+tproc-c	libdb	96	3	txn_per_sec	txn/s	16562.8
+tproc-c	libdb	96	3	committed	txns	496884
+tproc-c	libdb	8	4	tpmC_like	tpm	2035373
+tproc-c	libdb	8	4	txn_per_sec	txn/s	33922.9
+tproc-c	libdb	8	4	committed	txns	1017689
+tproc-c	libdb	32	4	tpmC_like	tpm	1141224
+tproc-c	libdb	32	4	txn_per_sec	txn/s	19020.4
+tproc-c	libdb	32	4	committed	txns	570613
+tproc-c	libdb	96	4	tpmC_like	tpm	975316
+tproc-c	libdb	96	4	txn_per_sec	txn/s	16255.3
+tproc-c	libdb	96	4	committed	txns	487659
+tproc-c	libdb	8	5	tpmC_like	tpm	2079271
+tproc-c	libdb	8	5	txn_per_sec	txn/s	34654.5
+tproc-c	libdb	8	5	committed	txns	1039638
+tproc-c	libdb	32	5	tpmC_like	tpm	1157996
+tproc-c	libdb	32	5	txn_per_sec	txn/s	19299.9
+tproc-c	libdb	32	5	committed	txns	578999
+tproc-c	libdb	96	5	tpmC_like	tpm	984366
+tproc-c	libdb	96	5	txn_per_sec	txn/s	16406.1
+tproc-c	libdb	96	5	committed	txns	492184
+tproc-c	libdb	8	6	tpmC_like	tpm	2045897
+tproc-c	libdb	8	6	txn_per_sec	txn/s	34098.3
+tproc-c	libdb	8	6	committed	txns	1022951
+tproc-c	libdb	32	6	tpmC_like	tpm	1144979
+tproc-c	libdb	32	6	txn_per_sec	txn/s	19083.0
+tproc-c	libdb	32	6	committed	txns	572491
+tproc-c	libdb	96	6	tpmC_like	tpm	967520
+tproc-c	libdb	96	6	txn_per_sec	txn/s	16125.3
+tproc-c	libdb	96	6	committed	txns	483761
+tproc-c	libdb	8	7	tpmC_like	tpm	2032949
+tproc-c	libdb	8	7	txn_per_sec	txn/s	33882.5
+tproc-c	libdb	8	7	committed	txns	1016477
+tproc-c	libdb	32	7	tpmC_like	tpm	1111056
+tproc-c	libdb	32	7	txn_per_sec	txn/s	18517.6
+tproc-c	libdb	32	7	committed	txns	555529
+tproc-c	libdb	96	7	tpmC_like	tpm	937752
+tproc-c	libdb	96	7	txn_per_sec	txn/s	15629.2
+tproc-c	libdb	96	7	committed	txns	468877
+tproc-c	libdb	8	8	tpmC_like	tpm	2073870
+tproc-c	libdb	8	8	txn_per_sec	txn/s	34564.5
+tproc-c	libdb	8	8	committed	txns	1036937
+tproc-c	libdb	32	8	tpmC_like	tpm	1109836
+tproc-c	libdb	32	8	txn_per_sec	txn/s	18497.3
+tproc-c	libdb	32	8	committed	txns	554919
+tproc-c	libdb	96	8	tpmC_like	tpm	957578
+tproc-c	libdb	96	8	txn_per_sec	txn/s	15959.6
+tproc-c	libdb	96	8	committed	txns	478790
+tproc-c	libdb	8	9	tpmC_like	tpm	1981380
+tproc-c	libdb	8	9	txn_per_sec	txn/s	33023.0
+tproc-c	libdb	8	9	committed	txns	990692
+tproc-c	libdb	32	9	tpmC_like	tpm	1151378
+tproc-c	libdb	32	9	txn_per_sec	txn/s	19189.6
+tproc-c	libdb	32	9	committed	txns	575690
+tproc-c	libdb	96	9	tpmC_like	tpm	966366
+tproc-c	libdb	96	9	txn_per_sec	txn/s	16106.1
+tproc-c	libdb	96	9	committed	txns	483184

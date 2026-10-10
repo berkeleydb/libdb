@@ -1,0 +1,7 @@
+__env_struct_sig() via BUILD_DIR=<dir> bash dist/env_sig_print.sh, 2026-10-10, c6id.16xlarge
+t_base     0xb86f77f0   sizeof(DB_LOCKREGION)=1000
+t_P13      0xb86f77f0   sizeof(DB_LOCKREGION)=1000
+t_P12      0x0b67cec8   sizeof(DB_LOCKREGION)=5064
+t_P12P13   0x0b67cec8   sizeof(DB_LOCKREGION)=5064
+sizeof(DB_LOCKERSTRIPE)=64  LOCK_LOCKER_STRIPES=64  stripe_array=4096
+region_minus_stripe_array=968   968+40*64=3528 (the pre-padding figure)

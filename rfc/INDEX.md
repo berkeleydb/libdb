@@ -18,6 +18,7 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0011](0011-test-coverage-gaps.md) | Test-coverage gaps that let shipped defects through (G12-G15): scaling shape, configure-option sweep, runtime-flag behaviour | Accepted | Normative |
 | [0012](0012-locker-alloc-scaling.md) | `mtx_locker_stripe[0]`: the locker-allocation latch | Draft |
 | [0013](0013-cross-engine-campaign.md) | Cross-engine benchmark campaign: plan for review | Draft |
+| [0014](0014-typed-data-and-constraints.md) | Typed data and constraints: a codec socket ("modem") and a constraint layer, configure-time optional | Draft |
 
 <!-- Add a row per RFC. Keep the number 4-digit zero-padded and monotonic. -->
 
