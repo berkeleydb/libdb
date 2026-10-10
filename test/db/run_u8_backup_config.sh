@@ -14,7 +14,11 @@
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=$HERE/../../lang/java/src
-BUILD=${1:-"$HERE/../../build_unix"}
+# $1, else $BUILD (what run_all.sh sets), else the in-tree build_unix.
+# Honouring $BUILD matters: with only $1, run_all.sh -- which passes no
+# argument -- silently tested a stale ../../build_unix instead of the build
+# under test, or failed outright with a sibling build dir.
+BUILD=${1:-${BUILD:-"$HERE/../../build_unix"}}
 
 command -v javac >/dev/null 2>&1 || {
 	echo "run_u8_backup_config.sh: SKIP no javac on this host"

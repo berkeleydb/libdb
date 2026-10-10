@@ -11,7 +11,11 @@
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
-BUILD=${1:-"$HERE/../../build_unix"}
+# $1, else $BUILD (what run_all.sh sets), else the in-tree build_unix.
+# Honouring $BUILD matters: with only $1, run_all.sh -- which passes no
+# argument -- silently tested a stale ../../build_unix instead of the build
+# under test, or failed outright with a sibling build dir.
+BUILD=${1:-${BUILD:-"$HERE/../../build_unix"}}
 [ -d "$BUILD" ] && BUILD=$(cd "$BUILD" && pwd)
 SRC=$HERE/handle_sizes.c
 

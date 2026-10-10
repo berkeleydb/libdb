@@ -186,7 +186,16 @@ jobs:
           TCL
           # Generous per-test slowdown under TSan, but bounded so a hang fails
           # loudly instead of eating the whole runner budget.
+          # The pipe hides tclsh's status, and a run that hangs, crashes or
+          # never loads the library prints no FAIL line -- so "no bad line"
+          # alone passes a run that tested nothing. Require all six PASS lines
+          # as well, and keep the timeout's status via PIPESTATUS.
           timeout 1800 tclsh /tmp/tsan.tcl 2>&1 | tee /tmp/tsan.out
+          rc=${PIPESTATUS[0]}
+          npass=$(grep -c '^PASS ' /tmp/tsan.out || true)
+          echo "tclsh rc=$rc, PASS lines=$npass (want 6)"
+          test "$rc" -eq 0
+          test "$npass" -eq 6
           ! grep -qE "^FAIL|data race|WARNING: ThreadSanitizer" /tmp/tsan.out
 
   # ----------------------------------------------------------------------------

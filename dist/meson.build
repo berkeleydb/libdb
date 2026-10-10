@@ -71,8 +71,12 @@ foreach fn : [
     # U6: autoconf checks these two (dist/configure.ac AC_CHECK_FUNCS) and the
     # meson build did not, so os_csprng.c silently fell back to a weaker source
     # under meson while the autoconf build used getrandom(2).
-    'getrandom', 'arc4random_buf']
-  if cc.has_function(fn)
+    'getrandom', 'arc4random_buf',
+    # Also in AC_CHECK_FUNCS (configure.ac:910); used by os_yield.c:52.  glibc
+    # does not export it, so on Linux both builds leave it undefined; FreeBSD
+    # has it, and autoconf-only defining it showed up in the parity gate.
+    'pthread_yield']
+  if cc.has_function(fn, dependencies: thread_dep)
     cdata.set('HAVE_' + fn.to_upper(), 1)
   endif
 endforeach
@@ -265,8 +269,20 @@ endif
 if cc.has_member('struct stat', 'st_blksize', prefix: '#include <sys/stat.h>')
   cdata.set('HAVE_STRUCT_STAT_ST_BLKSIZE', 1)
 endif
-if host_machine.system() == 'darwin'
-  cdata.set('HAVE_GETOPT_OPTRESET', 1)   # BSD getopt has optreset
+# BSD getopt has optreset.  autoconf probes for it (configure.ac:825); meson
+# set it for darwin only, so a FreeBSD meson build differed from autoconf.
+if host_machine.system() in ['darwin', 'freebsd', 'openbsd', 'netbsd', 'dragonfly']
+  cdata.set('HAVE_GETOPT_OPTRESET', 1)
+endif
+# Mirrors dist/aclocal/options.m4:395-398 EXACTLY (solaris/aix/bsdi3/freebsd/
+# darwin).  It is not a cosmetic bit: it removes the backup-coordination
+# fields from MPOOLFILE (dbinc/mp.h:484), so it changes a SHARED struct and
+# therefore the environment signature.  Without it a FreeBSD meson build and
+# a FreeBSD autoconf build of the same tree could not attach each other's
+# environments (DB_VERSION_MISMATCH) -- run_meson_autoconf_parity.sh on
+# FreeBSD 14.5, pre-existing in v2026.10.3.
+if host_machine.system() in ['darwin', 'freebsd', 'sunos', 'aix']
+  cdata.set('HAVE_ATOMICFILEREAD', 1)
 endif
 cdata.set('HAVE_FCNTL_F_SETFD', 1)
 

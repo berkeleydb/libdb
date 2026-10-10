@@ -12,7 +12,7 @@
 set -u
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-BUILD=${1:-.}
+BUILD=${1:-${BUILD:-.}}
 BUILD=$(cd "$BUILD" && pwd)
 SRC="$HERE/qam_inorder_consume.c"
 

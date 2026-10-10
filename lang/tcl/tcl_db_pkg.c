@@ -825,11 +825,24 @@ bdb_EnvOpen(interp, objc, objv, ip, dbenvp)
 			for (j = 0; j < myobjc; j++) {
 				result = Tcl_GetIntFromObj(interp, myobjv1[j],
 				    &temp);
-				conflicts[j] = temp;
-				if (result != TCL_OK) {
-					__os_free(NULL, conflicts);
+				if (result != TCL_OK)
 					break;
-				}
+				conflicts[j] = temp;
+			}
+			/*
+			 * A non-integer matrix element used to free `conflicts'
+			 * and break out of the FOR loop only -- so control fell
+			 * through to set_lk_conflicts, which memcpy'd from the
+			 * freed buffer, and then freed it a second time.  ASan:
+			 * heap-use-after-free in __lock_set_lk_conflicts; a
+			 * --enable-diagnostic build crashes later, in __os_free
+			 * from __lock_env_destroy, reading a garbage size header.
+			 * Inherited from 5.3; lock002 reaches it.  Free once,
+			 * and leave the switch on error.
+			 */
+			if (result != TCL_OK) {
+				__os_free(NULL, conflicts);
+				break;
 			}
 			_debug_check();
 			ret = dbenv->set_lk_conflicts(dbenv,
