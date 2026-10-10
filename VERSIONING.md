@@ -52,6 +52,31 @@ Change the compatibility triplet **only** for a real format/ABI break, and then
 through the `ABI-BREAK-INTENDED` process (see `.github/workflows` abi-drift
 gate) — never merely to cut a release.
 
+### Region-only format changes do not move the triplet
+
+A change to a *shared region* struct (one hashed by `src/env/env_sig.c`) that
+touches no public ABI, no log record and no database page is gated by the
+**build signature**, not by the triplet. `env_region.c` compares the region's
+stamped signature against `__env_struct_sig()` and refuses to attach on a
+mismatch (`BDB1539` → `DB_VERSION_MISMATCH`), so a mixed-version attach fails
+cleanly without reading region bytes. Bumping MAJOR.MINOR for such a change would
+additionally change the soname and symbol mangling, and so break every
+dynamically-linked consumer, to signal something the signature already enforces.
+
+Such a change must still:
+
+1. carry `REGION-SIG-CHANGE-INTENDED` in its commit message (the `region-sig`
+   job in `.github/workflows/cocci.yml` fails without it);
+2. ship an upgrade note under `docs_src/guides/upgrading/` giving the
+   recover → remove regions → restart procedure;
+3. be called out as a **breaking change** in the release notes.
+
+The first such release was **v2026.10.5** (P12, per-stripe locker allocation,
+`0xb86f77f0` → `0x0b67cec8`). It was made deliberately: no release had been
+designated LTS, and the measured gain (+12% to +29% at 16–64 threads)
+outweighed a one-time region recreation. Once a release is designated LTS,
+region changes within that line are not allowed.
+
 ## Consuming code
 
 - Human / release identity → `DB_CALVER` (or the leading token of

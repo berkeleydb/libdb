@@ -89,6 +89,86 @@ extern "C" {
 	    (env)->lk_handle->reginfo.primary)->mtx_region)
 
 /*
+ * Cache-line size assumed for PADDING ONLY.  64 bytes on x86-64 and arm64.
+ *
+ * This is a PERFORMANCE hint, never a correctness requirement: if the real
+ * line size differs, the padding is merely the wrong size and nothing
+ * misbehaves.  It is the first such constant in the tree, so it is named
+ * rather than written inline at the one use site below.
+ *
+ * It exists because P12's per-stripe locker state is written by whichever core
+ * owns that stripe, so two stripes sharing a line make two unrelated cores
+ * contend one line -- the classic false-sharing trade where splitting one hot
+ * line into N yields N contended lines instead of none.
+ */
+#define	DB_CACHE_LINE_BYTES	64
+
+/*
+ * DB_LOCKERSTRIPE --
+ *	Per-stripe locker allocation state (P12).
+ *
+ * free_lockers, the in-use "lockers" (ulinks) list and the in-use count used
+ * to be ONE EACH, region-wide, mutated on every locker create and every
+ * locker free under mtx_locker_stripe[0].  That made stripe 0 a global
+ * serialization point on the txn_begin path: measured on 64 vCPU at scale 96,
+ * 100% of stripe-0 acquisitions were creates (1.563 per commit), and the wait
+ * grew 5.2x from t=8 to t=64 -- the fastest-growing latch wait in the
+ * subsystem.  The hot cost was the free-list POP, not the __env_alloc refill.
+ *
+ * Sharding them per stripe makes create and free touch only the one stripe
+ * they already hold for the locker's bucket chain.  The index is
+ * LOCK_LOCKER_STRIPE(bucket index) -- the SAME stripe that owns that chain --
+ * so the stripe's owner owns all four pieces of state outright, and a locker
+ * always returns to the stripe it came from (both directions are derived from
+ * its id).
+ *
+ * nlockers/maxnlockers are summed on demand (see __lock_nlockers): they are
+ * read only for statistics and the st_maxnlockers watermark.
+ *
+ * PADDED to a full cache line so adjacent stripes do not share one.  At its
+ * natural 40 bytes, 1.6 stripes fell in each 64-byte line, so cores working
+ * neighbouring stripes wrote the same line.
+ */
+typedef struct __db_lockerstripe { /* SHARED */
+	SH_TAILQ_HEAD(__flocker) free_lockers;	/* Free locker list. */
+	SH_TAILQ_HEAD(__lkrs) lockers;	/* In-use list (ulinks). */
+	u_int32_t	nlockers;	/* Lockers in use on this stripe. */
+	u_int32_t	maxnlockers;	/* Watermark of the above. */
+	/*
+	 * Explicit tail padding rather than __attribute__((aligned)): this
+	 * struct lives in a shared region whose layout must be identical for
+	 * every attaching process and is hashed into the build signature, so
+	 * its size must be a plain function of the declaration, not of
+	 * compiler attribute support.  The four fields above are 2 x 16 + 2 x 4
+	 * = 40 bytes on every supported platform (SH_TAILQ_HEAD is two
+	 * db_ssize_t); __lock_region_init asserts the total, so if any of that
+	 * changes the build fails rather than silently unpadding.
+	 */
+	u_int8_t	pad[24];
+} DB_LOCKERSTRIPE;
+
+/*
+ * Fail the build if DB_LOCKERSTRIPE stops being exactly one cache line.  The
+ * padding above is hand-computed, so without this an added field would halve
+ * the padding's effect and the only symptom would be a performance
+ * regression -- the hardest kind to attribute.
+ *
+ * A negative-width bitfield rather than _Static_assert: this header predates
+ * C11 by convention and the tree has no static-assert precedent.  It must be
+ * instantiated to fire, so __lock_region_init declares one (a STRUCT MEMBER is
+ * required -- the first attempt used a negative array bound in a function
+ * PROTOTYPE, which gcc accepts silently because an array parameter decays to a
+ * pointer before the bound is checked, so the assertion had no teeth).
+ * Verified to fail the build by growing pad[] until sizeof moved; note pad[23]
+ * is NOT a valid perturbation, since 8-byte struct alignment rounds it back
+ * to 64.
+ */
+typedef struct {
+	unsigned int db_lockerstripe_is_one_cache_line :
+	    ((sizeof(DB_LOCKERSTRIPE) == DB_CACHE_LINE_BYTES) ? 1 : -1);
+} DB_LOCKERSTRIPE_SIZE_CHECK;
+
+/*
  * DB_LOCKREGION --
  *	The lock shared region.
  */
@@ -105,18 +185,20 @@ typedef struct __db_lockregion { /* SHARED */
 	 * path read-locks one stripe (chosen by the locker's BUCKET index) so
 	 * the per-operation reader-count atomics spread across
 	 * LOCK_LOCKER_STRIPES cache lines instead of contending on a single
-	 * rwlock counter.  A locker create/free takes its one bucket stripe
-	 * exclusive plus stripe 0; stripe 0 is also the allocation latch for
-	 * free_lockers/lockers/nlockers/lock_id, and the representative mutex
-	 * for wait-time statistics.  Only the whole-table walks (deadlock
-	 * detector, failchk, stat) still lock all stripes exclusive.
+	 * rwlock counter.  A locker create or free takes its one bucket stripe
+	 * exclusive and nothing else -- that stripe owns both the bucket chain
+	 * and (since P12) the free list, ulinks list and counters the create
+	 * mutates, so there is no region-wide allocation latch on that path.
+	 * Stripe 0 remains the latch for the lock_id/cur_maxid counters and the
+	 * representative mutex for wait-time statistics.  Only the whole-table
+	 * walks (deadlock detector, failchk, stat, free-list exhaustion) still
+	 * lock all stripes exclusive.
 	 */
 	db_mutex_t	mtx_locker_stripe[LOCK_LOCKER_STRIPES];
 	SH_TAILQ_HEAD(__dobj) dd_objs;	/* objects with waiters */
 					/* free locker header */
         roff_t          locker_mem_off; /* block memory for lockers */
-	SH_TAILQ_HEAD(__flocker) free_lockers;
-	SH_TAILQ_HEAD(__lkrs) lockers;	/* list of lockers */
+	DB_LOCKERSTRIPE	locker_stripe[LOCK_LOCKER_STRIPES];
 
 	db_timeout_t	lk_timeout;	/* timeout for locks. */
 	db_timeout_t	tx_timeout;	/* timeout for txns. */
@@ -133,7 +215,24 @@ typedef struct __db_lockregion { /* SHARED */
 
 	u_int32_t	lock_id;	/* Current lock(er) id to allocate. */
 	u_int32_t	cur_maxid;	/* Current max lock(er) id. */
-	u_int32_t	nlockers;	/* Current number of lockers. */
+	/*
+	 * P12 A/B SWITCH.  1 = per-stripe locker allocation (the fix); 0 = all
+	 * locker allocation state on locker_stripe[0], guarded by stripe 0,
+	 * which is the pre-P12 behaviour.  Read ONCE from the environment
+	 * (DB_NO_LOCKER_SHARD) when the region is created and stored here, not
+	 * consulted per call, for two reasons:
+	 *
+	 *  - Correctness.  Two processes sharing a region MUST agree: a locker
+	 *    created on stripe 7's free list and freed by a process that thinks
+	 *    every locker lives on stripe 0 would corrupt both lists.  Storing
+	 *    the creator's choice in the region makes every attacher inherit it.
+	 *  - Measurement.  ONE binary with a runtime switch is the only
+	 *    unconfounded way to A/B this subsystem -- see the DB_PRIVATE layout
+	 *    warning atop test/bench/run_bench.sh, where per-arm builds produced
+	 *    a 1.65x "win" that was memory layout, not code.  Both arms here run
+	 *    the same binary over the same region layout.
+	 */
+	u_int32_t	locker_shard;
 	db_atomic_t	nsireaders;	/* SSI: approximate count of live SIREAD
 					   markers held by committed readers,
 					   used only to trigger best-effort GC
@@ -378,15 +477,22 @@ struct __db_lock { /* SHARED */
 	MUTEX_UNLOCK(env, (region)->mtx_dd)
 /*
  * The locker hash table is guarded by a set of striped shared latches
- * (mtx_locker_stripe[]).  Two distinct roles are multiplexed onto that array:
+ * (mtx_locker_stripe[]).  Each stripe owns, outright:
  *
- *  1. mtx_locker_stripe[0] is the LOCKER ALLOCATION latch.  It guards the
- *     region-wide state that has no per-bucket home: the free_lockers list,
- *     the `lockers' (ulinks) list every full-table walk uses, nlockers /
- *     stat.st_lockers, and the lock_id / cur_maxid id counters.
- *  2. mtx_locker_stripe[LOCK_LOCKER_STRIPE(indx)] owns the locker_tab[indx]
- *     bucket chains that map onto it.  Readers take it shared, writers take
- *     it exclusive.
+ *  1. the locker_tab[indx] bucket chains that map onto it
+ *     (LOCK_LOCKER_STRIPE(indx) == the stripe).  Readers take it shared,
+ *     writers exclusive.
+ *  2. its DB_LOCKERSTRIPE: free_lockers, the in-use ulinks list, and the
+ *     nlockers / maxnlockers counters.  A locker create pops from, and the
+ *     matching free pushes back to, the stripe that owns its bucket chain --
+ *     the SAME stripe, derived from the same id, so a locker can never be
+ *     returned to a stripe other than the one it came from.
+ *
+ * Stripe 0 additionally guards the region-wide lock_id / cur_maxid id
+ * counters (LOCK_LOCKER_ID_ALLOC), which have no per-stripe home because an
+ * id's stripe is not known until the id is chosen.  That is the ONLY remaining
+ * role for stripe 0 beyond its own bucket, and it is paid once per __lock_id
+ * call -- not on the txn_begin create path, which is the P12 fix.
  *
  * The stripe is keyed on the BUCKET INDEX, not on the locker id.  That is not
  * cosmetic: locker_t_size is a prime (__db_tablesize), so ids that differ by
@@ -396,24 +502,30 @@ struct __db_lock { /* SHARED */
  * chain concurrently.  Keying on the bucket makes a stripe the sole owner of
  * every chain it covers.
  *
- * LOCK ORDER.  Stripe 0 is always acquired FIRST and released LAST; a bucket
- * stripe is nested inside it, and no path ever holds two different bucket
- * stripes.  That makes the order total and deadlock-free.  LOCK_LOCKERS takes
- * all stripes ascending from 0, so it is a superset consistent with the same
- * order.  Because bucket 0's stripe IS stripe 0, LOCK_LOCKER_BUCKET skips the
- * nested acquire when they coincide (the latches are not recursive).  One
- * consequence is deliberate and cheap: a READER whose bucket happens to map
- * onto stripe 0 takes stripe 0 shared, so it blocks behind any writer
- * anywhere.  That is 1/LOCK_LOCKER_STRIPES of readers, and it is the price of
- * not adding a dedicated allocation mutex -- a new db_mutex_t in
- * __db_lockregion would change the environment signature (env/env_sig.c
- * hashes this struct) and so break compatibility with existing regions.
+ * LOCK ORDER.  No path holds two different bucket stripes at once, so the
+ * single-stripe paths are trivially ordered.  Where more than one stripe is
+ * needed the stripes are taken ASCENDING FROM 0 -- LOCK_LOCKERS takes all of
+ * them that way, and LOCK_LOCKERS_REST completes that same prefix-ordered set
+ * from a caller already holding stripe 0.  Ascending acquisition is what makes
+ * the order total and deadlock-free.
+ *
+ * BEFORE P12 this comment said "stripe 0 is always acquired FIRST and released
+ * LAST" and the create/free paths really did take it that way, because stripe 0
+ * was the allocation latch for region-wide free/ulinks/nlockers state.  Those
+ * three are now per-stripe (see DB_LOCKERSTRIPE), so the create and free paths
+ * take ONE stripe -- their bucket's -- and stripe 0 is no longer on them at
+ * all.  Nothing nests inside a bucket stripe, so there is nothing left for a
+ * stripe-0-first rule to order.
+ *
+ * A consequence of the previous design is also gone: a READER whose bucket
+ * mapped onto stripe 0 used to block behind any writer anywhere, because every
+ * writer held stripe 0.  Stripe 0 is now just a stripe for bucket purposes.
  *
  * LOCK_LOCKERS/UNLOCK_LOCKERS keep their original meaning: mutual exclusion of
- * the whole locker table, for paths that walk every bucket or touch more than
- * one locker's chain.  RDLOCK_LOCKER is the shared single-bucket read path;
- * LOCK_LOCKER_ALLOC + LOCK_LOCKER_BUCKET is the exclusive single-bucket write
- * path, which is what locker create and locker free need.
+ * the whole locker table, for paths that walk every bucket, walk every
+ * stripe's ulinks list, or touch more than one locker's chain.  RDLOCK_LOCKER
+ * is the shared single-bucket read path; LOCK_LOCKER_WRITE is the exclusive
+ * single-locker write path, which is what locker create and locker free need.
  */
 /*
  * Bucket index and bucket-keyed stripe index for a locker id.  (Expands
@@ -425,6 +537,23 @@ struct __db_lock { /* SHARED */
 #define	LOCK_LOCKER_ID_STRIPE(region, id)				\
 	LOCK_LOCKER_STRIPE(LOCK_LOCKER_NDX(region, id))
 
+/*
+ * The stripe whose DB_LOCKERSTRIPE holds a given locker's allocation state.
+ * Normally the stripe that owns its bucket chain; with the P12 switch off,
+ * always stripe 0 (the pre-P12 region-wide lists, which stripe 0 guarded).
+ */
+#define	LOCK_LOCKER_ALLOC_STRIPE(region, s)				\
+	((region)->locker_shard ? (s) : 0)
+
+/*
+ * The per-stripe allocation state for a locker id: free list, in-use ulinks
+ * list and counters.  Valid to touch only while that id's stripe is held
+ * exclusive (LOCK_LOCKER_WRITE, or LOCK_LOCKERS which covers all of them).
+ */
+#define	LOCK_LOCKER_ID_LS(region, id)					\
+	(&(region)->locker_stripe[LOCK_LOCKER_ALLOC_STRIPE(region,	\
+	    LOCK_LOCKER_ID_STRIPE(region, id))])
+
 #define	RDLOCK_LOCKER(env, region, id)					\
 	MUTEX_READLOCK(env,						\
 	    (region)->mtx_locker_stripe[LOCK_LOCKER_ID_STRIPE(region, id)])
@@ -433,19 +562,22 @@ struct __db_lock { /* SHARED */
 	    (region)->mtx_locker_stripe[LOCK_LOCKER_ID_STRIPE(region, id)])
 
 /*
- * The allocation latch on its own, for callers that touch only the region-wide
- * locker state (the id counters, the free list, the ulinks list) and no bucket
- * chain -- or that must hold it before the bucket is even known.
+ * Stripe 0 on its own, for the region-wide locker ID COUNTERS (lock_id,
+ * cur_maxid) only.  An id's own stripe cannot guard them: the stripe is not
+ * known until the id has been chosen.  This is NOT the old allocation latch --
+ * the free list, ulinks list and counters it used to cover are now per-stripe,
+ * and the create path does not take this at all.
  */
-#define	LOCK_LOCKER_ALLOC(env, region)					\
+#define	LOCK_LOCKER_ID_ALLOC(env, region)				\
 	MUTEX_LOCK(env, (region)->mtx_locker_stripe[0])
-#define	UNLOCK_LOCKER_ALLOC(env, region)				\
+#define	UNLOCK_LOCKER_ID_ALLOC(env, region)				\
 	MUTEX_UNLOCK(env, (region)->mtx_locker_stripe[0])
 
 /*
- * One locker's bucket stripe, exclusive, nested inside the allocation latch.
- * Skipped when the bucket maps onto stripe 0, which the caller already holds:
- * these latches are not recursive.
+ * As above, but skipping the acquire when the bucket maps onto stripe 0, which
+ * the caller is already holding (the latches are not recursive).  Used by
+ * __lock_id, which must hold stripe 0 across the id choice and the create that
+ * follows it, and by the switched-off arm of LOCK_LOCKER_WRITE.
  */
 #define	LOCK_LOCKER_BUCKET(env, region, id) do {			\
 	u_int32_t __bs = LOCK_LOCKER_ID_STRIPE(region, id);		\
@@ -456,6 +588,35 @@ struct __db_lock { /* SHARED */
 	u_int32_t __bs = LOCK_LOCKER_ID_STRIPE(region, id);		\
 	if (__bs != 0)							\
 		MUTEX_UNLOCK(env, (region)->mtx_locker_stripe[__bs]);	\
+} while (0)
+
+/*
+ * THE SINGLE-LOCKER WRITE PATH -- locker create and locker free.
+ *
+ * With the P12 sharding on (the default) this is ONE latch: the stripe that
+ * owns both the bucket chain and that stripe's free/ulinks/counters, taken
+ * exclusive.  With it off it is the pre-P12 pair -- stripe 0 for the (then
+ * region-wide) allocation state, plus the bucket stripe nested inside it,
+ * skipped when they coincide.  Both arms acquire ascending from 0, so the lock
+ * order is the same either way.
+ */
+#define	LOCK_LOCKER_WRITE(env, region, id) do {				\
+	if ((region)->locker_shard)					\
+		MUTEX_LOCK(env, (region)->mtx_locker_stripe[		\
+		    LOCK_LOCKER_ID_STRIPE(region, id)]);		\
+	else {								\
+		MUTEX_LOCK(env, (region)->mtx_locker_stripe[0]);	\
+		LOCK_LOCKER_BUCKET(env, region, id);			\
+	}								\
+} while (0)
+#define	UNLOCK_LOCKER_WRITE(env, region, id) do {			\
+	if ((region)->locker_shard)					\
+		MUTEX_UNLOCK(env, (region)->mtx_locker_stripe[		\
+		    LOCK_LOCKER_ID_STRIPE(region, id)]);		\
+	else {								\
+		UNLOCK_LOCKER_BUCKET(env, region, id);			\
+		MUTEX_UNLOCK(env, (region)->mtx_locker_stripe[0]);	\
+	}								\
 } while (0)
 
 #define	LOCK_LOCKERS(env, region) do {					\
@@ -470,11 +631,11 @@ struct __db_lock { /* SHARED */
 } while (0)
 
 /*
- * Escalation from the allocation latch to the whole table: stripes 1..N-1,
- * taken ascending while stripe 0 is already held, so the resulting hold is
- * exactly LOCK_LOCKERS and acquired in the same total order.  Used by the
- * single-bucket writers when they discover they need more than one bucket
- * (a free-list refill, or a locker with transaction-family links).
+ * Escalation from stripe 0 to the whole table: stripes 1..N-1, taken ascending
+ * while stripe 0 is already held, so the resulting hold is exactly
+ * LOCK_LOCKERS and acquired in the same ascending order.  Used by __lock_id
+ * for the id-wraparound rebuild, which must walk every stripe's ulinks list
+ * while holding the id counters.
  */
 #define	LOCK_LOCKERS_REST(env, region) do {				\
 	u_int32_t __s;							\

@@ -164,8 +164,18 @@ __lock_region_init(env, lt)
 	u_int32_t extra_locks, extra_objects, i, j, max;
 	u_int8_t *addr;
 	int lk_modes, ret;
+	/*
+	 * The DB_LOCKERSTRIPE size assertion (dbinc/lock.h) instantiated: the
+	 * negative-width bitfield only fires where the type is USED, and this
+	 * is the function that lays the stripe array out, so it is the right
+	 * place for "a stripe is still exactly one cache line" to be checked.
+	 * Never read -- it is a compile-time assertion, hence COMPQUIET.
+	 */
+	DB_LOCKERSTRIPE_SIZE_CHECK szchk;
 
 	dbenv = env->dbenv;
+	COMPQUIET(szchk.db_lockerstripe_is_one_cache_line, 0);
+	DB_ASSERT(env, sizeof(DB_LOCKERSTRIPE) == DB_CACHE_LINE_BYTES);
 
 	if ((ret = __env_alloc(&lt->reginfo,
 	    sizeof(DB_LOCKREGION), &lt->reginfo.primary)) != 0)
@@ -203,6 +213,16 @@ __lock_region_init(env, lt)
 	region->part_t_size = dbenv->lk_partitions;
 	region->lock_id = 0;
 	region->cur_maxid = DB_LOCK_MAXID;
+	/*
+	 * P12: per-stripe locker allocation, on unless DB_NO_LOCKER_SHARD is
+	 * set.  Read ONCE here, at region creation, and stored in the region --
+	 * see the locker_shard comment in dbinc/lock.h for why every attacher
+	 * must inherit the creator's choice rather than reading the environment
+	 * itself.  Sense is "off switch" so the benchmark arm that sets it keeps
+	 * meaning "off" rather than quietly inverting, the same convention as
+	 * DB_NO_OPTREAD (bt_search.c) and DB_NO_GROUP_COMMIT (log_put.c).
+	 */
+	region->locker_shard = getenv("DB_NO_LOCKER_SHARD") != NULL ? 0 : 1;
 	region->nmodes = lk_modes;
 	memset(&region->stat, 0, sizeof(region->stat));
 	region->stat.st_maxlocks = dbenv->lk_max;
@@ -259,9 +279,12 @@ __lock_region_init(env, lt)
 	 * The hot lock-get path looks up an existing locker (a read-only hash
 	 * walk) and takes one stripe shared, so many cores resolve their
 	 * locker concurrently without contending on a single rwlock reader
-	 * count; locker create, free, the deadlock detector's locker-list
-	 * walk, failchk, and stat take all stripes exclusive.  This removes the
-	 * per-operation global serialization on lock_get/lock_put.
+	 * count; locker create and free take one stripe EXCLUSIVE (the stripe
+	 * owns both the bucket chains and, since P12, the free list, in-use
+	 * list and counters they mutate), and the deadlock detector's
+	 * locker-list walk, failchk and stat take all stripes exclusive.  This
+	 * removes the per-operation global serialization on lock_get/lock_put
+	 * and, with P12, on txn_begin/txn_end.
 	 */
 	for (i = 0; i < LOCK_LOCKER_STRIPES; i++)
 		if ((ret = __mutex_alloc(env, MTX_LOCK_REGION,
@@ -331,9 +354,24 @@ __lock_region_init(env, lt)
 		}
 	}
 
-	/* Initialize lockers onto a free list.  */
-	SH_TAILQ_INIT(&region->lockers);
-	SH_TAILQ_INIT(&region->free_lockers);
+	/*
+	 * Initialize lockers onto per-stripe free lists (P12).
+	 *
+	 * Round-robin rather than contiguous chunks: st_lockers can be smaller
+	 * than LOCK_LOCKER_STRIPES (lk_init_lockers defaults to 0, and the
+	 * region sizing only guarantees 5 locks/objects per partition, nothing
+	 * about lockers), so a chunked split would give some stripes zero and
+	 * every create on those stripes would take the all-stripes refill path
+	 * from the first transaction onwards.  Round-robin spreads whatever
+	 * there is as widely as it goes.  With the switch off, every locker
+	 * lands on stripe 0, which is the single pre-P12 free list.
+	 */
+	for (i = 0; i < LOCK_LOCKER_STRIPES; i++) {
+		SH_TAILQ_INIT(&region->locker_stripe[i].lockers);
+		SH_TAILQ_INIT(&region->locker_stripe[i].free_lockers);
+		region->locker_stripe[i].nlockers = 0;
+		region->locker_stripe[i].maxnlockers = 0;
+	}
 	if ((ret =
 		__env_alloc(&lt->reginfo,
 		    sizeof(DB_LOCKER) * region->stat.st_lockers,
@@ -352,7 +390,9 @@ __lock_region_init(env, lt)
 		 */
 		lidp->mtx_locker = MUTEX_INVALID;
 		SH_TAILQ_INSERT_HEAD(
-			&region->free_lockers, lidp, links, __db_locker);
+			&region->locker_stripe[LOCK_LOCKER_ALLOC_STRIPE(region,
+			    LOCK_LOCKER_STRIPE(i))].free_lockers,
+			lidp, links, __db_locker);
 		++lidp;
 	}
 	return (0);
@@ -414,23 +454,30 @@ __lock_env_refresh(env)
 		/* Discard the object partition array. */
 		__env_alloc_free(reginfo, R_ADDR(reginfo, lr->part_off));
 		/*
-		 * P13: lockers on the free list retain the mtx_locker they were
+		 * P13: lockers on the free lists retain the mtx_locker they were
 		 * last used with (see __lock_freelocker_int), so release those
 		 * before the locker array itself goes away -- otherwise each one
 		 * orphans a slot in the mutex region, which is a BOUNDED pool
 		 * (mut_region.c:78 enforces dbenv->mutex_max).  Done before the
-		 * SH_TAILQ_INIT below, which is what makes the list walkable.
+		 * SH_TAILQ_INIT, which is what makes each list walkable.
 		 *
 		 * Only the ENV_PRIVATE arm needs this.  A shared region outlives
-		 * this process: its free_lockers and their retained mutexes both
+		 * this process: its free lockers and their retained mutexes both
 		 * stay in the region for the next attacher, which is the same
 		 * pairing this process left, so there is nothing to reclaim and
 		 * freeing them here would corrupt a live region.
+		 *
+		 * With P12 the free list is per stripe, so walk every stripe.
 		 */
-		SH_TAILQ_FOREACH(lidp, &lr->free_lockers, links, __db_locker)
-			if (lidp->mtx_locker != MUTEX_INVALID)
-				(void)__mutex_free(env, &lidp->mtx_locker);
-		SH_TAILQ_INIT(&lr->free_lockers);
+		for (j = 0; j < LOCK_LOCKER_STRIPES; j++) {
+			SH_TAILQ_FOREACH(lidp,
+			    &lr->locker_stripe[j].free_lockers,
+			    links, __db_locker)
+				if (lidp->mtx_locker != MUTEX_INVALID)
+					(void)__mutex_free(env,
+					    &lidp->mtx_locker);
+			SH_TAILQ_INIT(&lr->locker_stripe[j].free_lockers);
+		}
 		__env_alloc_free(reginfo,
 		    R_ADDR(reginfo, lr->locker_mem_off));
 	}

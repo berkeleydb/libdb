@@ -395,7 +395,7 @@ __dd_build(env, atype, bmp, nlockers, allocp, idmap, rejectp, pri_set)
 	locker_info *id_array;
 	db_timespec now, min_timeout;
 	u_int32_t *bitmap, count, dd;
-	u_int32_t *entryp, gen, id, indx, ndx, nentries, *tmpmap;
+	u_int32_t *entryp, gen, id, indx, ndx, nentries, stripe, *tmpmap;
 	u_int8_t *pptr;
 	int is_first, ret;
 
@@ -462,7 +462,14 @@ skip:		LOCK_DD(env, region);
 	 * to make sure the structures are large enough.
 	 */
 	LOCK_LOCKERS(env, region);
-	count = region->nlockers;
+	/*
+	 * The in-use locker count is the sum of the per-stripe counts (P12).
+	 * It is exact here and STAYS exact for the walk below, because
+	 * LOCK_LOCKERS holds every stripe across both -- which matters: `count'
+	 * sizes the bitmap and id_array that the walk then indexes, and the
+	 * DB_ASSERT(id < count) in that walk is what would catch a skew.
+	 */
+	count = __lock_nlockers(region);
 	if (count == 0) {
 		UNLOCK_LOCKERS(env, region);
 		LOCK_SYSTEM_UNLOCK(lt, region);
@@ -506,8 +513,15 @@ skip:		LOCK_DD(env, region);
 	 */
 	id = 0;
 	*pri_set = 0;
-	SH_TAILQ_FOREACH(lip, &region->lockers, ulinks, __db_locker) {
-		if (lip->master_locker == INVALID_ROFF) {
+	/* Per-stripe in-use lists (P12): walk every one.  All are held. */
+	for (stripe = 0; stripe < LOCK_LOCKER_STRIPES; stripe++) {
+		SH_TAILQ_FOREACH(lip,
+		    &region->locker_stripe[stripe].lockers,
+		    ulinks, __db_locker) {
+			if (lip->master_locker != INVALID_ROFF) {
+				lip->dd_id = DD_INVALID_ID;
+				continue;
+			}
 			DB_ASSERT(env, id < count);
 			lip->dd_id = id++;
 			id_array[lip->dd_id].id = lip->id;
@@ -528,9 +542,7 @@ skip:		LOCK_DD(env, region);
 			default:
 				break;
 			}
-		} else
-			lip->dd_id = DD_INVALID_ID;
-
+		}
 	}
 
 	/*

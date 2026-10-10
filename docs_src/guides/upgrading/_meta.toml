@@ -9,6 +9,7 @@ order = [
   "moreinfo",
   "introduction",
   "upgrade_process",
+  "upgrade_2026_10_5",
   "upgrade_4_7_toc",
   "upgrade_4_7_rtc",
   "upgrade_4_7_repapi",

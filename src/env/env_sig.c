@@ -36,9 +36,9 @@
  * shared memory.
  */
 #ifdef HAVE_MIXED_SIZE_ADDRESSING
-#define	__STRUCTURE_COUNT	41
+#define	__STRUCTURE_COUNT	42
 #else
-#define	__STRUCTURE_COUNT	(41 + 104)
+#define	__STRUCTURE_COUNT	(42 + 104)
 #endif
 
 /*
@@ -75,6 +75,7 @@ __env_struct_sig()
 	__ADD(__db_heap_stat);
 	__ADD(__db_qam_stat);
 	__ADD(__db_thread_info);
+	__ADD(__db_lockerstripe);
 	__ADD(__db_lockregion);
 	__ADD(__sh_dbt);
 	__ADD(__db_lockobj);
