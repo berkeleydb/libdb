@@ -190,7 +190,17 @@ jobs:
           # never loads the library prints no FAIL line -- so "no bad line"
           # alone passes a run that tested nothing. Require all six PASS lines
           # as well, and keep the timeout's status via PIPESTATUS.
-          timeout 1800 tclsh /tmp/tsan.tcl 2>&1 | tee /tmp/tsan.out
+          #
+          # That check immediately showed this job had NEVER tested anything
+          # since it was added (c978167cb): /usr/bin/tclsh is not
+          # TSan-instrumented, so `load libdb_tcl` failed with "undefined
+          # symbol: __tsan_atomic32_exchange" and the run printed no FAIL line.
+          # Preload clang's TSan runtime into tclsh. Children inherit it, and
+          # the only children these six tests spawn are tclsh (lock002,
+          # ssi009), which need it for the same reason.
+          TSAN_RT=$(clang -print-file-name=libclang_rt.tsan-x86_64.so)
+          test -f "$TSAN_RT" || { echo "no TSan runtime at $TSAN_RT"; exit 1; }
+          LD_PRELOAD="$TSAN_RT" timeout 1800 tclsh /tmp/tsan.tcl 2>&1 | tee /tmp/tsan.out
           rc=${PIPESTATUS[0]}
           npass=$(grep -c '^PASS ' /tmp/tsan.out || true)
           echo "tclsh rc=$rc, PASS lines=$npass (want 6)"
