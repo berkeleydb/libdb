@@ -7,8 +7,10 @@
   document says "TODO-VERIFY", the implementer runs the named probe *first*; the
   spec says what to do for each outcome.
 - **Citations** are `file:line` against `553b649a1`. §0-§2 were written against
-  `2d8397dfe`; `git diff --stat 2d8397dfe 553b649a1` touches none of the `src/`
-  files they cite (only `src/dbinc/lock.h`), so their line numbers still hold.
+  `2d8397dfe`. Between the two, `src/` changed only in `src/dbinc/lock.h`, so
+  §0-§1's `src/` citations still hold. `dist/meson.build` gained 9 lines at
+  `:122`, so §2.2's "uring block (`:132-151`)" is now `:141-160` and §2.3's
+  `dist/meson.build:535` is now `:544`; the implementer anchors on the text.
   No `TODO-VERIFY` remains: each was resolved in place (§10).
 
 Contents: §0 corrections to the RFC · §1 public API · §2 configure · §3 side
