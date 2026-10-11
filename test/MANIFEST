@@ -492,6 +492,7 @@ db	run_s4_mvcc_mtx_reuse
 db	run_m5_fname_cache
 db	run_foreign_disassoc_leak
 db	run_foreign_reassoc
+db	run_r1_revive
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is
