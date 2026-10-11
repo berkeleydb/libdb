@@ -2,11 +2,14 @@
 
 - **Implements:** `rfc/0014-typed-data-and-constraints.md`, decisions D1–D8
   ("Maintainer decisions taken for implementation").
-- **Branch:** `rfc14-typed`, cut from master `2d8397dfe`.
+- **Branch:** `rfc14-typed`, rebased onto master `553b649a1` (v2026.10.5).
 - **Audience:** the implementation agent. Every choice is made here. Where this
   document says "TODO-VERIFY", the implementer runs the named probe *first*; the
   spec says what to do for each outcome.
-- **Citations** are `file:line` against master `2d8397dfe`.
+- **Citations** are `file:line` against `553b649a1`. §0-§2 were written against
+  `2d8397dfe`; `git diff --stat 2d8397dfe 553b649a1` touches none of the `src/`
+  files they cite (only `src/dbinc/lock.h`), so their line numbers still hold.
+  No `TODO-VERIFY` remains: each was resolved in place (§10).
 
 Contents: §0 corrections to the RFC · §1 public API · §2 configure · §3 side
 table (D2) · §4 catalog (D3) · §5 fingerprint · §6 OPTREAD gate (D7) · §7 test
@@ -100,8 +103,9 @@ treats MEMCMP as setting EQUALIMAGE.
 **C12. Phase 1 typed databases refuse `DB_DUP`/`DB_DUPSORT`.** The RFC's
 generator table lists a generated `dup_compare`. Nothing in Phase 1's
 constraint set needs duplicates, and a duplicate set makes "the record" of a
-put ambiguous for `DB_CURRENT` and for UNIQUE (TODO-VERIFY: whether
-`__db_associate_arg` already refuses a `DB_DUP` primary). Refused in
+put ambiguous for `DB_CURRENT` and for UNIQUE. UNIQUE forces it in any case:
+`__db_associate_arg` already refuses a `DB_DUP` primary ("BDB0575 Primary
+databases may not be configured with duplicates", `src/db/db_iface.c:181-185`). Refused in
 `db_set_schema` and again at open (§3.5). Lift it in Phase 2 with the
 generated `dup_compare`.
 
@@ -230,9 +234,9 @@ secondary key cannot express its equality.
 
 | Name | Value | Returned by | `db_strerror` text | `DB_STR` id |
 |---|---|---|---|---|
-| `DB_CONSTRAINT_VIOLATION` | **-30966** | a put that fails NOT NULL / MAXLEN / VALID | `DB_CONSTRAINT_VIOLATION: A typed-database constraint was violated` | next free (TODO-VERIFY: `grep -rho 'DB_STR("0[0-9]*"' src lang \| sort -u \| tail`; 0211/0212 are the SSI pair) |
-| `DB_CODEC_MISMATCH` | **-30965** | `DB->open`: same codec name+version, different fingerprint | `DB_CODEC_MISMATCH: Codec behaviour differs from the database's record` | next free |
-| `DB_CODEC_MALFORMED` | **-30964** | codec / record-codec callbacks to libdb. libdb never returns it from a public call: the put hook maps it to `DB_CONSTRAINT_VIOLATION` | `DB_CODEC_MALFORMED: Value bytes are not well formed for their codec` | next free |
+| `DB_CONSTRAINT_VIOLATION` | **-30966** | a put that fails NOT NULL / MAXLEN / VALID | `DB_CONSTRAINT_VIOLATION: A typed-database constraint was violated` | **0216** (verified free: `git grep '"0216"'` is empty; 0207-0214 are taken in `db_err.c` / `os_csprng.c`; 0215 goes to §8.1) |
+| `DB_CODEC_MISMATCH` | **-30965** | `DB->open`: same codec name+version, different fingerprint | `DB_CODEC_MISMATCH: Codec behaviour differs from the database's record` | **0217** |
+| `DB_CODEC_MALFORMED` | **-30964** | codec / record-codec callbacks to libdb. libdb never returns it from a public call: the put hook maps it to `DB_CONSTRAINT_VIOLATION` | `DB_CODEC_MALFORMED: Value bytes are not well formed for their codec` | **0218** |
 
 The UNIQUE violation returns **`DB_KEYEXIST`** (D6), only on a typed primary.
 
@@ -290,7 +294,7 @@ int db_record_fixed __P((DB_RECORD_CODEC *, const char *, u_int32_t,
 | `dist/s_include` | Add `typed` to the directory loop (`for i in db btree clib common ... xa;`). That produces `src/dbinc_auto/typed_ext.h` and adds the three `EXTERN:` prototypes to `ext_prot.in` (and `ext_def.in` for unique names). Include `dbinc_auto/typed_ext.h` from `db_int.in` next to the other `*_ext.h` includes; its prototypes are harmless in a default build. |
 | `dist/s_sig` | Exclusion lines `/struct __db_codec {/d`, `/struct __db_record_codec {/d`, `/struct __db_constraint {/d`, `/struct __db_schema {/d` in the second sed (C2). Gate: `cd dist && sh s_sig && git diff --exit-code ../src/env/env_sig.c`. |
 | `dist/s_windows` | Regenerate `build_windows/db.h` (it seds `db.in`); no script change. |
-| `dist/pubdef.in` | Add, alphabetically: `DB2_AM_TYPED * I *`, `DB2_AM_TYPED_FILE * I *`, `DB_CODEC_EQUALIMAGE D I *`, `DB_CODEC_FIXED D I *`, `DB_CODEC_MALFORMED D I *`, `DB_CODEC_MEMCMP D I *`, `DB_CODEC_MISMATCH D I *`, `DB_CODEC_TOTAL D I *`, `DB_CONSTRAINT_MAXLEN D I *`, `DB_CONSTRAINT_NOT_NULL D I *`, `DB_CONSTRAINT_NULLS_NOT_DISTINCT D I *`, `DB_CONSTRAINT_UNIQUE D I *`, `DB_CONSTRAINT_VALID D I *`, `DB_CONSTRAINT_VIOLATION D I *`, `DB_TYPED_DATA D I *`, `DB_TYPED_KEY D I *`, `DB_TYPED_WHOLE D I *`. No `J` column: Java gets nothing in Phase 1 (TODO-VERIFY how `DB2_AM_EXCL` is listed and copy that). |
+| `dist/pubdef.in` | Add, alphabetically: `DB2_AM_TYPED * I *`, `DB2_AM_TYPED_FILE * I *`, `DB_CODEC_EQUALIMAGE D I *`, `DB_CODEC_FIXED D I *`, `DB_CODEC_MALFORMED D I *`, `DB_CODEC_MEMCMP D I *`, `DB_CODEC_MISMATCH D I *`, `DB_CODEC_TOTAL D I *`, `DB_CONSTRAINT_MAXLEN D I *`, `DB_CONSTRAINT_NOT_NULL D I *`, `DB_CONSTRAINT_NULLS_NOT_DISTINCT D I *`, `DB_CONSTRAINT_UNIQUE D I *`, `DB_CONSTRAINT_VALID D I *`, `DB_CONSTRAINT_VIOLATION D I *`, `DB_TYPED_DATA D I *`, `DB_TYPED_KEY D I *`, `DB_TYPED_WHOLE D I *`. No `J` column: Java gets nothing in Phase 1. The `DB2_*` rows copy `DB2_AM_EXCL * I *` (`dist/pubdef.in:567-569`). |
 | Java (`lang/java`, `s_java_const`) | **None.** `DbConstants.java` is generated from the `J` column of `pubdef.in`; with no `J`, nothing is emitted. No Java API for typed databases in Phase 1. |
 | Tcl (`lang/tcl`) | **None.** Tcl cannot create a typed database, so it never sees the new codes. |
 | C++ (`lang/cxx`) | **None.** `DbException` carries any integer code. |
@@ -427,7 +431,9 @@ typedef struct __typed_state {
 	u_int32_t	 nunique;	/* # of UNIQUE constraints (3.7) */
 	u_int32_t	 key_memcmp;	/* every key field MEMCMP */
 	u_int32_t	 key_equalimage;/* every key field EQUALIMAGE */
-	u_int8_t	 fp[20];	/* Fingerprint (§5) */
+	u_int32_t	 ncodecs;	/* distinct codecs, §4.2 order */
+	const DB_CODEC	**codecs;
+	u_int8_t	(*fp)[20];	/* one SHA-1 per codec (§5) */
 } TYPED_STATE;
 
 /* src/typed/typed.c */
@@ -532,11 +538,13 @@ A deferred close returns with the handle alive and comes back through
    `type == DB_BTREE`, not `DB_AM_DUP`, same `env`, not already a secondary;
    the field's codec is `EQUALIMAGE` (or `MEMCMP`) or has `sortkey` (§1.2); no
    two UNIQUE constraints share a `unique_db`.
-8. The handle has no application callback already set: `bt_compare`,
-   `bt_prefix`, `dup_compare`, `h_compare`, `h_hash` are the defaults
-   (TODO-VERIFY the default pointer values in `__bam_db_create` /
-   `__ham_db_create` and compare against those), and `DB_AM_DUP` is clear
-   (C12).
+8. The handle has no application callback already set: `bt_compare ==
+   __bam_defcmp` and `bt_prefix == __bam_defpfx` (the defaults,
+   `src/btree/bt_method.c:52-53`; `set_bt_compare` nulls `bt_prefix`,
+   `:287-289`), `h_hash == NULL` and `h_compare == NULL` (`src/hash/hash_method.c:46-47`;
+   the open fills a NULL `h_hash` with `__ham_func5`, `hash_open.c:105-107`,
+   `:265-266`, so compare *before* open only), `dup_compare == NULL`, and
+   `DB_AM_DUP` is clear (C12).
 
 ### 3.5 Phase 1 refusals (C9, C6, C12) and where each is enforced
 
@@ -837,8 +845,7 @@ is not fingerprinted. The documentation must say so.
 ### 5.2 When it is checked, and the errors
 
 Computed once, in `db_set_schema` (cold), and stored in the side table
-(`TYPED_STATE`: change §3.1's `fp[20]` to `u_int32_t ncodecs; const DB_CODEC
-**codecs; u_int8_t (*fp)[20];`, all inside the one allocation).
+(`TYPED_STATE.codecs` / `.fp`, §3.1, inside the one allocation).
 
 Checked in `__typed_open` against the catalog record (§4.2), for every
 non-recovery open of an existing typed subdatabase, before any callback is
@@ -1179,3 +1186,21 @@ update-index --chmod=+x`.
 Commits 1-2 change no behaviour in any build; from 3 on, only typed builds
 change. Commit 7 is the only edit in the shared put path besides the hook
 itself.
+
+---
+
+## §10 Resolved and deferred markers
+
+| Marker (where) | Resolution |
+|---|---|
+| §3 "filled in by the next commit", §4-§9 "TODO." (7) | written |
+| §1.3 `DB_STR` id | 0216/0217/0218, verified free; 0215 to §8.1 |
+| §1.6 `pubdef.in` `J` column | copies `DB2_AM_EXCL * I *` (`pubdef.in:567`) |
+| C12 associate DUP primary | already refused, `db_iface.c:181-185` |
+| §3.4 default callback pointers | `bt_method.c:52-53`, `hash_method.c:46-47` |
+| **Deferred, [UNSURE]** | |
+| §4.1 old-libdb `DB_TRUNCATE` of a typed subdatabase | the implementer probes it in commit 4 with the `typed_old_reader` fixture; no constraint can be skipped either way (§4.1) |
+| §8.3 R1 with overflow keys | the implementer extends `r1_revive` with case (c) first; delete-and-insert for all cases is the default |
+| §9 commit 12 `db_verify` behaviour on a typed subdatabase | probe first; verify calls no `*_metachk` |
+| C10 / §6.3 | `TOTAL` on a record codec remains a promise; libdb bounds what `field()` returns, not what it reads |
+
