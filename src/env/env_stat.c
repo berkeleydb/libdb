@@ -12,6 +12,7 @@
 #include "dbinc/db_page.h"
 #include "dbinc/db_am.h"
 #include "dbinc/lock.h"
+#include "dbinc/log.h"
 #include "dbinc/mp.h"
 #include "dbinc/txn.h"
 
@@ -155,7 +156,7 @@ __env_print_stats(env, flags)
 {
 	REGENV *renv;
 	REGINFO *infop;
-	char time_buf[CTIME_BUFLEN];
+	char lbuf[64], tagbuf[128], time_buf[CTIME_BUFLEN];
 
 	infop = env->reginfo;
 	renv = infop->primary;
@@ -178,9 +179,12 @@ __env_print_stats(env, flags)
 	__db_msg(env,
 	    "%.24s\tCreation time", __os_ctime(&renv->timestamp, time_buf));
 	STAT_HEX("Environment ID", renv->envid);
-	__mutex_print_debug_single(env,
-	    "Primary region allocation and reference count mutex",
-	    renv->mtx_regenv, flags);
+	/* RFC 0015 S7: say which subsystem latches alias this mutex. */
+	(void)snprintf(tagbuf, sizeof(tagbuf),
+	    "Primary region allocation and reference count mutex (%s)",
+	    __env_regenv_tag(env, renv->mtx_regenv, lbuf, sizeof(lbuf)) ==
+	    NULL ? "not shared" : lbuf);
+	__mutex_print_debug_single(env, tagbuf, renv->mtx_regenv, flags);
 	STAT_LONG("References", renv->refcnt);
 	__db_dlbytes(env, "Current region size",
 	    (u_long)0, (u_long)0, (u_long)infop->rp->size);
@@ -739,6 +743,46 @@ __db_dl(env, msg, value)
 		__db_msg(env, "%lu\t%s", value, msg);
 	else
 		__db_msg(env, "%luM\t%s (%lu)", value / 1000000, msg, value);
+}
+
+/*
+ * __env_regenv_tag --
+ *	RFC 0015 S7: the db_stat tag for a subsystem's "region locks" line.
+ *
+ *	LOCK_REGION_LOCK, TXN_SYSTEM_LOCK and LOG_SYSTEM_LOCK are ONE physical
+ *	mutex, renv->mtx_regenv (lock_region.c, txn_region.c and log.c each
+ *	copy it into their mtx_region), which is also the primary-region
+ *	allocator latch.  So `db_stat -c`, `-t` and `-l` print the same counter
+ *	under three names, and G13 and P12 each misattributed it once.  Say so
+ *	on the line itself, naming the subsystems that share it AT RUNTIME, by
+ *	mutex id: when a subsystem gets its own latch (RFC 0015 M1) it drops out
+ *	of the list, and a latch nobody else shares is not tagged at all.
+ *
+ * PUBLIC: const char *__env_regenv_tag
+ * PUBLIC:     __P((ENV *, db_mutex_t, char *, size_t));
+ */
+const char *
+__env_regenv_tag(env, mutex, buf, len)
+	ENV *env;
+	db_mutex_t mutex;
+	char *buf;
+	size_t len;
+{
+	db_mutex_t regenv;
+	int lk, tx, lg;
+
+	if (env->reginfo == NULL || mutex == MUTEX_INVALID ||
+	    (regenv = ((REGENV *)env->reginfo->primary)->mtx_regenv) != mutex)
+		return (NULL);
+	lk = env->lk_handle != NULL && ((DB_LOCKREGION *)
+	    env->lk_handle->reginfo.primary)->mtx_region == regenv;
+	tx = env->tx_handle != NULL && ((DB_TXNREGION *)
+	    env->tx_handle->reginfo.primary)->mtx_region == regenv;
+	lg = env->lg_handle != NULL && ((LOG *)
+	    env->lg_handle->reginfo.primary)->mtx_region == regenv;
+	(void)snprintf(buf, len, "env latch mtx_regenv, shared by%s%s%s",
+	    lk ? " lock" : "", tx ? " txn" : "", lg ? " log" : "");
+	return (buf);
 }
 
 /*

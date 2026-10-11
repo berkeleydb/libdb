@@ -170,6 +170,7 @@ __log_print_stats(env, flags)
 {
 	DB_LOG_STAT *sp;
 	int ret;
+	char tagbuf[80];
 
 	if ((ret = __log_stat(env, &sp, flags)) != 0)
 		return (ret);
@@ -218,7 +219,9 @@ __log_print_stats(env, flags)
 	__db_dl_pct(env,
 	    "The number of region locks that required waiting",
 	    (u_long)sp->st_region_wait, DB_PCT(sp->st_region_wait,
-	    sp->st_region_wait + sp->st_region_nowait), NULL);
+	    sp->st_region_wait + sp->st_region_nowait), __env_regenv_tag(env,
+	    ((LOG *)env->lg_handle->reginfo.primary)->mtx_region,
+	    tagbuf, sizeof(tagbuf)));
 
 	__os_ufree(env, sp);
 

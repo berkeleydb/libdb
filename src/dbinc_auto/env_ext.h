@@ -106,6 +106,7 @@ void __db_print_fh __P((ENV *, const char *, DB_FH *, u_int32_t));
 void __db_print_fileid __P((ENV *, u_int8_t *, const char *));
 void __db_util_pct __P((ENV *, const char *, u_long, u_long));
 void __db_dl __P((ENV *, const char *, u_long));
+const char *__env_regenv_tag __P((ENV *, db_mutex_t, char *, size_t));
 void __db_dl_pct __P((ENV *, const char *, u_long, int, const char *));
 void __db_dlbytes __P((ENV *, const char *, u_long, u_long, u_long));
 void __db_print_reginfo __P((ENV *, REGINFO *, const char *, u_int32_t));

@@ -217,7 +217,7 @@ __txn_print_stats(env, flags)
 	DB_TXN_STAT *sp;
 	u_int32_t i;
 	int ret;
-	char buf[DB_THREADID_STRLEN], time_buf[CTIME_BUFLEN];
+	char buf[DB_THREADID_STRLEN], tagbuf[80], time_buf[CTIME_BUFLEN];
 
 	dbenv = env->dbenv;
 
@@ -261,7 +261,9 @@ __txn_print_stats(env, flags)
 	__db_dl_pct(env,
 	    "The number of region locks that required waiting",
 	    (u_long)sp->st_region_wait, DB_PCT(sp->st_region_wait,
-	    sp->st_region_wait + sp->st_region_nowait), NULL);
+	    sp->st_region_wait + sp->st_region_nowait), __env_regenv_tag(env,
+	    ((DB_TXNREGION *)env->tx_handle->reginfo.primary)->mtx_region,
+	    tagbuf, sizeof(tagbuf)));
 
 	/*
 	 * Deployment health: utilization of the statically-sized transaction
