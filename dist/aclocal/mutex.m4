@@ -387,6 +387,20 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #endif
 ]])], [db_cv_mutex="$db_cv_mutex/x86_64/gcc-assembly"])
 
+# ARM64/AArch64 gcc/clang: FreeBSD, Linux, macOS.  A HYBRID probe, so it must
+# sit here with the x86 ones, not in the TAS-only list below, which runs only
+# when no pthreads mutex was found -- i.e. never on these platforms.  It used
+# to be there, and that is why aarch64 built as plain POSIX/pthreads/library:
+# every acquire a pthread call, and on FreeBSD every multi-process attach
+# exposed to B3 at t=1 (test/KNOWN-ISSUES.md).
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
+#if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__)
+	(void)0;  /* compile-only probe; nothing is run */
+#else
+	FAIL TO COMPILE/LINK
+#endif
+]])], [db_cv_mutex="$db_cv_mutex/ARM64/gcc-assembly"])
+
 # Solaris is one of the systems where we can configure hybrid mutexes.
 # However, we require the membar_enter function for that, and only newer
 # Solaris releases have it.  Check to see if we can configure hybrids.
@@ -658,17 +672,6 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 ]])], [db_cv_mutex=UTS/cc-assembly])
 fi
 
-# ARM64/AArch64/gcc: Modern ARM 64-bit (Apple Silicon, Linux ARM64, etc.)
-if test "$db_cv_mutex" = no; then
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
-#if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__)
-	(void)0;  /* compile-only probe; nothing is run */
-#else
-	FAIL TO COMPILE/LINK
-#endif
-]])], [db_cv_mutex=ARM64/gcc-assembly])
-fi
-
 # ARM32/gcc: ARM 32-bit systems
 if test "$db_cv_mutex" = no; then
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
@@ -780,7 +783,8 @@ ALPHA/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_ALPHA_GCC_ASSEMBLY)
 			AH_TEMPLATE(HAVE_MUTEX_ALPHA_GCC_ASSEMBLY,
 			    [Define to 1 to use the GCC compiler and Alpha assembly language mutexes.]);;
-ARM64/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
+*ARM64/gcc-assembly)	hybrid="$hybrid/tas"
+			ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			AC_DEFINE(HAVE_MUTEX_ARM64_GCC_ASSEMBLY)
 			AH_TEMPLATE(HAVE_MUTEX_ARM64_GCC_ASSEMBLY,
 			    [Define to 1 to use the GCC compiler and ARM64/AArch64 assembly language mutexes.]);;

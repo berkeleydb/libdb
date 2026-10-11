@@ -24844,6 +24844,35 @@ then :
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
+# ARM64/AArch64 gcc/clang: FreeBSD, Linux, macOS.  A HYBRID probe, so it must
+# sit here with the x86 ones, not in the TAS-only list below, which runs only
+# when no pthreads mutex was found -- i.e. never on these platforms.  It used
+# to be there, and that is why aarch64 built as plain POSIX/pthreads/library:
+# every acquire a pthread call, and on FreeBSD every multi-process attach
+# exposed to B3 at t=1 (test/KNOWN-ISSUES.md).
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+
+#if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__)
+	(void)0;  /* compile-only probe; nothing is run */
+#else
+	FAIL TO COMPILE/LINK
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  db_cv_mutex="$db_cv_mutex/ARM64/gcc-assembly"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
 # Solaris is one of the systems where we can configure hybrid mutexes.
 # However, we require the membar_enter function for that, and only newer
 # Solaris releases have it.  Check to see if we can configure hybrids.
@@ -25454,32 +25483,6 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
-# ARM64/AArch64/gcc: Modern ARM 64-bit (Apple Silicon, Linux ARM64, etc.)
-if test "$db_cv_mutex" = no; then
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-int
-main (void)
-{
-
-#if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__)
-	(void)0;  /* compile-only probe; nothing is run */
-#else
-	FAIL TO COMPILE/LINK
-#endif
-
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-  db_cv_mutex=ARM64/gcc-assembly
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
 # ARM32/gcc: ARM 32-bit systems
 if test "$db_cv_mutex" = no; then
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -25637,7 +25640,8 @@ ALPHA/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			printf '%s\n' "#define HAVE_MUTEX_ALPHA_GCC_ASSEMBLY 1" >>confdefs.h
 
 			;;
-ARM64/gcc-assembly)	ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
+*ARM64/gcc-assembly)	hybrid="$hybrid/tas"
+			ADDITIONAL_OBJS="mut_tas${o} $ADDITIONAL_OBJS"
 			printf '%s\n' "#define HAVE_MUTEX_ARM64_GCC_ASSEMBLY 1" >>confdefs.h
 
 			;;

@@ -212,6 +212,22 @@ int main(void) {
   cdata.set('HAVE_MUTEX_HYBRID', 1)
 endif
 
+# AArch64 test-and-set: dist/aclocal/mutex.m4's hybrid ARM64/gcc-assembly
+# probe, which is compile-only (an architecture test).  The implementation is
+# the compiler's __atomic builtins (src/dbinc/mutex_int.h), so the link test
+# here is the one thing that could actually be missing: outline atomics need
+# __aarch64_swp1_acq from the compiler runtime.
+if host_machine.cpu_family() == 'aarch64' and cc.links('''
+int main(void) {
+	volatile unsigned char tsl = 0;
+	int r = __atomic_exchange_n(&tsl, 1, __ATOMIC_ACQUIRE);
+	__atomic_store_n(&tsl, 0, __ATOMIC_RELEASE);
+	return (r);
+}''', args: probe_args, name: 'ARM64 gcc-assembly TAS mutex')
+  cdata.set('HAVE_MUTEX_ARM64_GCC_ASSEMBLY', 1)
+  cdata.set('HAVE_MUTEX_HYBRID', 1)
+endif
+
 # Whether a pthread cond/rwlock may be re-initialised over a previously
 # initialised one (dist/aclocal/mutex.m4's AM_PTHREADS_CONDVAR_DUPINITCHK and
 # AM_PTHREADS_RWLOCKVAR_DUPINITCHK).  These gate failchk recovery paths.
@@ -631,7 +647,8 @@ libdb_srcnames = [
 # dist/aclocal/mutex.m4).  Adding it unconditionally builds it on platforms where
 # struct __db_mutex_t has no `tas' or `sharecount' member, which is exactly how
 # macOS failed: "no member named 'sharecount' in 'struct __db_mutex_t'".
-if cdata.has('HAVE_MUTEX_X86_64_GCC_ASSEMBLY')
+if cdata.has('HAVE_MUTEX_X86_64_GCC_ASSEMBLY') or \
+    cdata.has('HAVE_MUTEX_ARM64_GCC_ASSEMBLY')
   libdb_srcnames += 'src/mutex/mut_tas.c'
 endif
 
