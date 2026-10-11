@@ -90,7 +90,6 @@
  * well inside TXNS.
  */
 #define	MAX_LOCKERS	4000
-#define	MUTEX_WARMUP_SLACK	8	/* P12 stripe warmup; measured, see (2b) */
 #define	MAX_OBJECTS	4000
 #define	MAX_LOCKS	4000
 #define	MAX_TXNS	2000
@@ -174,7 +173,7 @@ main(int argc, char *argv[])
 {
 	DB_TXN *txn, *reader;
 	DBT key, data;
-	struct sample s, base, peak, early, late;
+	struct sample s, base, peak, early, mid, late;
 	const char *mode;
 	u_int32_t txn_flags, dbflags;
 	char keybuf[64], databuf[VALUE_BYTES];
@@ -255,6 +254,7 @@ main(int argc, char *argv[])
 
 	take(&base);
 	peak = early = base;
+	memset(&mid, 0, sizeof(mid));
 	memset(&late, 0, sizeof(late));
 	sawtooth_down = 0;
 
@@ -399,7 +399,10 @@ main(int argc, char *argv[])
 				early.nsnapshot = s.nsnapshot;
 			if (s.mutex_inuse > early.mutex_inuse)
 				early.mutex_inuse = s.mutex_inuse;
-		} else if (completed > (TXNS * 2) / 3) {
+		} else if (completed <= (TXNS * 2) / 3) {
+			if (s.mutex_inuse > mid.mutex_inuse)
+				mid.mutex_inuse = s.mutex_inuse;
+		} else {
 			if (s.nlockers > late.nlockers)
 				late.nlockers = s.nlockers;
 			if (s.nsnapshot > late.nsnapshot)
@@ -560,30 +563,45 @@ main(int argc, char *argv[])
 		ret = 1;
 	}
 	/*
-	 * Mutex slots get a small WARMUP allowance, MEASURED rather than derived.
-	 * Since P12 + P13 (v2026.10.5) each of the 64 locker stripes keeps its own
-	 * free list, and each recycled locker keeps its mutex (P13). A stripe that
-	 * has not yet handed out a locker holds no retained mutex, so a few slots
-	 * fill in after the early window. That is a one-time ramp, not a leak.
-	 * Measured on FreeBSD 14.5, si138, early -> late peak:
-	 *     TXNS=6000 +2   24000 +3   60000 +2   240000 +0 (plateau at 1238)
-	 * DB_NO_LOCKER_SHARD=1 or DB_NO_LOCKER_MUTEX_REUSE=1 gives exactly +0.
+	 * Mutex slots: the population must be CONVERGING, i.e. it rises by less in
+	 * the last third than it did in the first two. A strict early-vs-late test
+	 * cannot tell P12's one-time warmup from a leak.
 	 *
-	 * Why 8 and not 64 (one per stripe, the theoretical ceiling): a first
-	 * version used 64 and had NO TEETH. An injected leak of one mutex per 50
-	 * transactions shows as only +42 over this 6000-txn run, and mutex_max
-	 * is 0 here so the (2c) utilization check does not see it either; 64
-	 * PASSED that leak. 8 is ~2.7x the largest warmup seen and ~5x below the
-	 * smallest leak this run can show. Verified both ways: the real workload
-	 * PASSes and the injected leak FAILs.
+	 * Since P12 + P13 (v2026.10.5) each of the 64 locker stripes keeps its own
+	 * free list and a recycled locker keeps its mutex. So the sawtooth's first
+	 * reclaims send lockers back to THEIR stripes, and the next creates, which
+	 * hash to other stripes, each allocate a mutex there once. Measured:
+	 *   CI, si137:      287 for 2500 txns, one step to 306, then flat to 6000
+	 *   FreeBSD, si138: early->late +2/+3/+2/+0 at 6k/24k/60k/240k txns
+	 *                   (thirds at 6k: 1230 / 1230 / 1232)
+	 * With DB_NO_LOCKER_SHARD=1 or DB_NO_LOCKER_MUTEX_REUSE=1 it is exactly
+	 * flat. A real leak rises at a CONSTANT rate per transaction, so its last
+	 * third climbs as much as its middle third:
+	 *   injected 1 mutex/50 txns, si137: 470 / 490 / 510   (+20, +20)
+	 *   injected 1 mutex/50 txns, si138: 1249 / 1269 / 1291 (+20, +22)
+	 * The rule: late - mid must be less than half of mid - early, with a floor
+	 * of 2 slots of noise. A warmup's later step is a fraction of its earlier
+	 * one; a constant-rate leak's is not. No constant is tuned to a run length.
+	 *
+	 * Three earlier versions were wrong, each found by measurement:
+	 * a 64-slot allowance PASSED the injected leak (+42 over the run, and
+	 * mutex_max=0 here, so (2c) is blind too); an 8-slot allowance failed CI's
+	 * legitimate +19 step; strict late > mid failed FreeBSD's legitimate +2.
 	 */
-	if (early.mutex_inuse != 0 &&
-	    late.mutex_inuse > early.mutex_inuse + MUTEX_WARMUP_SLACK) {
-		fprintf(stderr, "FAIL: peak mutex slots rose from %lu (early) "
-		    "to %lu (late), more than the %d-slot P12 stripe warmup allowance\n",
-		    (u_long)early.mutex_inuse, (u_long)late.mutex_inuse,
-		    MUTEX_WARMUP_SLACK);
-		ret = 1;
+	{
+		long d_early, d_late;
+
+		d_early = (long)mid.mutex_inuse - (long)early.mutex_inuse;
+		d_late = (long)late.mutex_inuse - (long)mid.mutex_inuse;
+		if (mid.mutex_inuse != 0 &&
+		    d_late > 2 && 2 * d_late >= d_early) {
+			fprintf(stderr, "FAIL: peak mutex slots not converging: "
+			    "%lu / %lu / %lu by thirds (+%ld then +%ld) -- a "
+			    "constant-rate rise is a leak\n",
+			    (u_long)early.mutex_inuse, (u_long)mid.mutex_inuse,
+			    (u_long)late.mutex_inuse, d_early, d_late);
+			ret = 1;
+		}
 	}
 
 	/*
