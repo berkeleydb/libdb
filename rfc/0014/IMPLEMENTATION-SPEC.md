@@ -105,6 +105,21 @@ put ambiguous for `DB_CURRENT` and for UNIQUE (TODO-VERIFY: whether
 `db_set_schema` and again at open (§3.5). Lift it in Phase 2 with the
 generated `dup_compare`.
 
+**C13. D3's "travels with `db_dump`/`db_load`" holds for the catalog records
+but not for the meta bit.** See §4.3. A round trip yields an untyped database
+that a typed open refuses. Fail-closed; `db_load` support is Phase 2.
+
+**C14. D5 holds only for a `db_recover` built with `--enable-typed`.** A
+default-build (or older) `db_recover` reaches the typed subdatabase's meta check
+through `__dbreg_do_open` → `__db_open` (`src/dbreg/dbreg_util.c:701`), gets
+`EINVAL` from `__db_fchk`, and `__dbreg_register_recover` forgives only `ENOENT`
+(`src/dbreg/dbreg_rec.c:144-167`), so recovery fails. That is fail-closed, and
+it is the correct result: a library that does not know the bit must not
+write the file. It means "standalone `db_recover` works with no codecs" is true
+of the typed build's utility, which links no application code, and not of
+an old one. `typed_recover` tests the first; `typed_old_reader` records the
+second.
+
 ---
 
 ## §1 Public API
@@ -532,13 +547,18 @@ i.e. inserted between `db_open.c:266` (`#endif` of the partition block) and
 
 ```c
 #ifdef HAVE_TYPED
-	if (F2_ISSET(dbp, DB2_AM_TYPED) && !F_ISSET(dbp, DB_AM_RECOVER) &&
+	if (F2_ISSET(dbp, DB2_AM_TYPED | DB2_AM_TYPED_FILE) &&
+	    !F_ISSET(dbp, DB_AM_RECOVER) &&
 	    (ret = __typed_open(dbp, ip, txn, fname, dname, flags)) != 0)
 		goto err;
 #endif
 ```
 
-A failure there is cleaned up by the caller exactly like any other open
+`DB2_AM_TYPED_FILE` is set by the meta check (§4.1), so the hook also runs for a
+schema-less open of a typed file, which is where §4.1's read-only rule lives.
+The `DB_AM_RECOVER` test is what keeps recovery's internal handles (schema-less,
+read-write, `dbreg_util.c:677`) out of that rule; `typed_recover`'s sabotage arm
+deletes it. A failure there is cleaned up by the caller exactly like any other open
 failure: the child/auto transaction aborts, or, non-transactionally, a created
 file or subdatabase is removed (`db_iface.c:1433-1445`).
 
@@ -904,7 +924,64 @@ a type codec. It cannot stop `field()` itself from reading out of bounds; only
 
 ## §7 Test plan
 
-TODO.
+### 7.1 Harness
+
+- Every runner is `test/db/run_<name>.sh` (handoff rule) and prints
+  `VERDICT <name> PASS|FAIL <reason>` and exits non-zero on FAIL. A hang is a
+  FAIL: each runner wraps its binary in the `run_with_timeout` idiom of
+  `test/db/run_curadj_dup_partition.sh`.
+- **Two tiers.** `db` (default build, existing CI step `ci.yml:108`) and a
+  **new tier `typed`**. Typed tests need a `--enable-typed` build, and a
+  runner that skips in a default build would be a vacuous green. So:
+  - `test/db/run_all.sh`: `TIER=${TIER:-db}`, and the awk selector at its line
+    27 becomes `$1 == tier` (with `-v tier="$TIER"`), and `hi_init "$TIER"`. One
+    line each; the `db` tier is unchanged.
+  - Each `typed` runner first does `grep -q '^#define HAVE_TYPED 1'
+    "$BUILD/db_config.h"` and emits `VERDICT <name> FAIL not-a-typed-build` if
+    absent. It never skips.
+  - CI: a new job in `ci.yml` configures `--enable-typed --enable-debug
+    CFLAGS=-fsanitize=address,undefined`, runs the existing `db` tier against
+    it (the gates must stay green in the typed build), then `TIER=typed sh
+    test/db/run_all.sh` and `./test/check_manifest.sh --tier typed`.
+- **Sabotage arms** are not in CI (they would be red). Each one is written as
+  a reversible `sed` or patch in `test/db/typed-sabotage.sh`, which applies
+  one arm, rebuilds, runs the one named test, requires FAIL, and reverts. That
+  follows `test/c/flagapi-sabotage.sh`. The implementer runs every arm on
+  `/tmp/s_impl` before each commit and pastes the FAIL lines into the commit
+  message. **A sabotage arm that passes means the test is wrong** (handoff).
+
+### 7.2 Tests
+
+| Test (`run_<name>.sh`) | Asserts | Sabotage: the exact revert that must make it FAIL | MANIFEST |
+|---|---|---|---|
+| `typed_footprint` | §2.4 items 1-4: default-build `.text` of `libdb-*.so` and `env_sig_print.sh` output equal master's; no `db_set_schema`/`__typed_` symbol in a default build, present in a typed one; `env_sig` equal default vs typed (D2) | (a) add an unguarded `int __typed_canary(void){return 1;}` to `db_cam.c` → item 1 FAIL. (b) delete the four `s_sig` exclusion lines and rerun `s_sig` → items 2 and 4 FAIL | `db` |
+| `handle_sizes` (existing runner, second registration) | `sizeof(DB)=1744` etc. hold **in the typed build** | add `void *typed_internal;` to `struct __db` under `#ifdef HAVE_TYPED` → FAIL | `typed` |
+| `typed_api` | every §3.4 rule returns `EINVAL` on its violation and a valid schema is accepted; §5.1 self-checks reject unordered vectors, a false MEMCMP, a false EQUALIMAGE; `db_get_schema` returns the deep copy (caller's arrays scribbled after the call do not change it); `db_set_schema` after open → `EINVAL` | (a) delete the `compare == NULL ⇒ MEMCMP` rule → that case FAILs. (b) delete the vector-order self-check → unordered-vectors case FAIL. (c) make the copy shallow (store the caller's `types` pointer) → deep-copy case FAIL | `typed` |
+| `typed_refusals` | `EINVAL` for: `fname == NULL`; `dname == NULL`; named in-memory; Heap/Queue/Recno schema; `DB_DUP` before and after `db_set_schema`; compression (`set_bt_compress`) and a pre-existing `BTM_COMPRESS` subdatabase; `set_bt_compare` after `db_set_schema`. Partitioning: the existing `ENOENT`/BDB0637 (`db_open.c:199-203`) | (a) delete the C6 block in `__db_open_arg` → the two C6 rows FAIL. (b) delete the compression check in `__typed_open` → both compression rows FAIL. (c) delete the callback-identity check → override row FAIL | `typed` |
+| `typed_notnull` | NOT NULL violated → `DB_CONSTRAINT_VIOLATION` (-30966) via `DB->put`, `DBC->put(DB_KEYFIRST)`, `DBC->put(DB_CURRENT)`, `DB_MULTIPLE_KEY` bulk (bulk stops at the bad pair; `key->doff` counts the good ones, `db_am.c:640-641`); the database is unchanged after each failure (a get returns the prior value or `DB_NOTFOUND`); a non-NULL put succeeds | delete the `__typed_put_check` call in `__dbc_put` → FAIL | `typed` |
+| `typed_maxlen` | field len = maxlen succeeds; maxlen + 1 → -30966; `DB_TYPED_WHOLE` same at the DBT boundary | (a) delete the hook → FAIL. (b) change `len > maxlen` to `len > maxlen + 1` → boundary row FAIL | `typed` |
+| `typed_valid` | a codec `validate` returning `DB_CODEC_MALFORMED` fails the put with -30966, **never** -30964; a record codec `validate` failure, same; an arbitrary error (`ENOMEM`) from a callback is passed through | delete the MALFORMED → VIOLATION mapping → the put returns -30964 → FAIL | `typed` |
+| `typed_partial` | `DB_DBT_PARTIAL` on key or data → `EINVAL`, record unchanged | delete §3.7 step 1 → partial put succeeds → FAIL | `typed` |
+| `typed_btree_cmp` | non-MEMCMP key codec (a reverse-order int): `DB_NEXT` scan is in codec order; malformed keys (field() fails) sort after all well-formed ones, in `memcmp`-then-length order; an all-MEMCMP key schema leaves `bt_compare == __bam_defcmp` (`get_bt_compare`) | do not install `__typed_bt_compare` → scan is bytewise → FAIL | `typed` |
+| `typed_hash` | Hash with a case-insensitive key codec: put "abc", get "AbC" finds it; put "ABC" overwrites (one record) | do not install `h_hash` → "AbC" lands in another bucket → FAIL | `typed` |
+| `typed_cmp_fuzz` | 10^6 random, truncated and torn key pairs into the installed comparator (from `get_bt_compare`) with a deliberately **lying** `field()` (returns slices past the end): no ASan/UBSan report; antisymmetry `sign(c(a,b)) == -sign(c(b,a))` holds; malformed-last holds. 60 s timeout | delete the §6.3 slice-bounds check → ASan heap-buffer-overflow → FAIL | `typed` |
+| `typed_optread` | `DB_OPTREAD=1`: key codec without `TOTAL` → open `EINVAL` and the message names the codec; record codec without `TOTAL` → same; with `TOTAL` → opens; MEMCMP key without `TOTAL` → opens; `DB_NO_OPTREAD=1 DB_OPTREAD=1` → opens; a Hash schema without `TOTAL` → opens. Each case is its own process (the setting is cached, §6.1) | delete the §6.2 check → first two rows FAIL | `typed` |
+| `typed_codec_mismatch` | process A creates with codec v1. B: v2 → `EINVAL`. C: v1 with a reversed `compare` → `DB_CODEC_MISMATCH` (-30965). D: schema missing the codec → `EINVAL`. E: v1 with a different `flags` → -30965. F: identical schema → opens and reads A's rows | skip the fingerprint comparison → C opens; the runner then prints a `DB_NEXT` scan under v1 showing C's inserts out of order (the reason the check exists) → FAIL | `typed` |
+| `typed_catalog_lifecycle` | after create, `__db_typed` has exactly the record of §4.2 (decoded field by field); `DB->remove` of the typed subdatabase deletes it; `DB->rename` moves it and the new name opens with the schema; a create inside an **aborted** txn leaves neither subdatabase nor record; `DB->truncate` keeps it | (a) delete the remove hook → stale record → FAIL. (b) delete the rename hook → new name fails "no catalog record" → FAIL | `typed` |
+| `typed_catalog_format` | catalog record with bad magic, format version 2, truncated length, codec index out of range → each open `EINVAL` | delete the version check → version-2 row FAIL | `typed` |
+| `typed_rdonly_noschema` | typed subdatabase opened with no schema and `DB_RDONLY` → opens, reads; without `DB_RDONLY` → `EINVAL`; the typed build's `db_dump` exits 0 and dumps it; `db_load` of that dump yields a file a typed open refuses (C13); `db_verify` output recorded (D8, §9 commit 12) | delete the §4.1 read-only rule → write open succeeds → FAIL | `typed` |
+| `typed_old_reader` | the committed fixtures `test/db/fixtures/typed_bt.db` and `typed_hash.db` (one typed subdatabase each plus `__db_typed`), opened by the **default** build, `DB_RDONLY` and not → `EINVAL` with "BDB0055"; if `LIBDB_OLD` names a `v2026.10.3` install, the same with it (that row is optional). In the `typed` tier, a companion check regenerates the fixtures and compares meta flags and catalog bytes to the committed ones, so the fixture cannot drift from the code | drop the `#ifdef HAVE_TYPED` around the widened `BTM_MASK`/hash mask → the default build opens the fixture → FAIL | `db` (+ regen check `typed`) |
+| `typed_unique` | two txns insert the same UNIQUE field value under 2PL, `DB_TXN_SNAPSHOT` and `DB_TXN_SERIALIZABLE`: exactly one commits; the loser gets `DB_KEYEXIST` (D6), or `DB_LOCK_DEADLOCK` and then `DB_KEYEXIST` on retry; after both, the primary and the unique index have one row each and agree. **Control:** an untyped non-DUP secondary in the same typed build still returns `EINVAL` (D6) | (a) the RFC's arm: `__typed_unique_cb` appends a per-call counter to the key → both commit → FAIL. (b) revert the D6 edit → loser sees `EINVAL` → FAIL. (c) make D6 unconditional → control FAIL | `typed` |
+| `typed_unique_mp` | the same race from two **processes** (fork, one env, `DB_REGISTER` off, `DB_INIT_LOCK`) with a barrier file | arm (a) above → FAIL | `typed` |
+| `typed_unique_nulls` | NULLS DISTINCT: two NULL rows both commit, no index entry; `NULLS_NOT_DISTINCT`: second NULL → `DB_KEYEXIST`; a non-NULL value that happens to equal the NULL image does not collide | (a) return a key instead of `DB_DONOTINDEX` for NULL → NULLS DISTINCT row FAIL. (b) drop the `0x01` prefix → collision row FAIL | `typed` |
+| `typed_unique_closed` | close `unique_db`, then put on the primary → `EINVAL` naming the constraint | delete §3.7 step 2 → put succeeds, duplicate stored → FAIL | `typed` |
+| `typed_recover` | populate under txns; fork a writer and `kill -9` it mid-txn; run the **typed build's** `db_recover -h` (no codecs) → exit 0; reopen with the schema; full scan through a reference model: committed rows present, the uncommitted absent, NOT NULL holds, unique index ↔ primary bijection | delete `!F_ISSET(dbp, DB_AM_RECOVER)` from the §3.5 hook → recovery's schema-less read-write opens are refused → `db_recover` exits non-zero → FAIL | `typed` |
+| `foreign_reassoc` (§8.1) | see §8.1 | revert the §8.1 fix | `db` |
+| `foreign_disassoc_leak` (§8.2) | see §8.2 | revert the §8.2 fix | `db` |
+| `r1_revive` (§8.3) | see §8.3 | revert the §8.3 fix | `db` |
+
+Not a test: the put-path cost on **untyped** databases in a typed build (D2's
+revisit condition) is a measurement, §9 commit 13.
 
 ## §8 Phase 0
 
