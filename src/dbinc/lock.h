@@ -129,6 +129,19 @@ extern "C" {
  * natural 40 bytes, 1.6 stripes fell in each 64-byte line, so cores working
  * neighbouring stripes wrote the same line.
  */
+/*
+ * The UNPADDED field list, declared separately only so its size can be
+ * measured to compute DB_LOCKERSTRIPE's pad. It must stay field-for-field
+ * identical to the head of DB_LOCKERSTRIPE; the size check below fails the
+ * build if the padded struct is not exactly one cache line, which is what
+ * a divergence between the two would cause. Never instantiated.
+ */
+struct __db_lockerstripe_fields {
+	SH_TAILQ_HEAD(__flocker_f) free_lockers;
+	SH_TAILQ_HEAD(__lkrs_f) lockers;
+	u_int32_t	nlockers;
+	u_int32_t	maxnlockers;
+};
 typedef struct __db_lockerstripe { /* SHARED */
 	SH_TAILQ_HEAD(__flocker) free_lockers;	/* Free locker list. */
 	SH_TAILQ_HEAD(__lkrs) lockers;	/* In-use list (ulinks). */
@@ -139,12 +152,20 @@ typedef struct __db_lockerstripe { /* SHARED */
 	 * struct lives in a shared region whose layout must be identical for
 	 * every attaching process and is hashed into the build signature, so
 	 * its size must be a plain function of the declaration, not of
-	 * compiler attribute support.  The four fields above are 2 x 16 + 2 x 4
-	 * = 40 bytes on every supported platform (SH_TAILQ_HEAD is two
-	 * db_ssize_t); __lock_region_init asserts the total, so if any of that
-	 * changes the build fails rather than silently unpadding.
+	 * compiler attribute support.
+	 *
+	 * The pad is COMPUTED from the fields, not hand-written. A first
+	 * version wrote pad[24] on the stated assumption that the fields are
+	 * "40 bytes on every supported platform". They are not: SH_TAILQ_HEAD
+	 * is two db_ssize_t, which is 4 bytes on ILP32, so the fields are 24
+	 * bytes there, the struct was 48, and the size check below broke the
+	 * 32-bit build (CI "ubuntu 32-bit", which is continue-on-error and so
+	 * did not fail the workflow). The assertion did its job; the pad was
+	 * wrong. DB_LOCKERSTRIPE_FIELDS is the field list, used once for the
+	 * real struct and once to measure it.
 	 */
-	u_int8_t	pad[24];
+	u_int8_t	pad[DB_CACHE_LINE_BYTES -
+	    sizeof(struct __db_lockerstripe_fields)];
 } DB_LOCKERSTRIPE;
 
 /*
