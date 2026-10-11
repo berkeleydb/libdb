@@ -637,7 +637,136 @@ The D6 edit (`EINVAL` → `DB_KEYEXIST` on a typed primary,
 
 ## §4 D3's catalog
 
-TODO.
+### 4.1 The fail-closed bit (it exists for Btree and Hash)
+
+**[FOUND] Old libdb rejects an unknown access-method meta flag on Btree and
+Hash.**
+
+- Btree: `__bam_metachk` calls `__db_fchk(env, "DB->open", btm->dbmeta.flags,
+  BTM_MASK)` (`src/btree/bt_open.c:156-158`). `BTM_MASK` is `0x0ff` and all
+  eight bits are taken (`src/dbinc/db_page.h:100-108`).
+- Hash: `__ham_metachk` calls `__db_fchk` with
+  `DB_HASH_DUP | DB_HASH_SUBDB | DB_HASH_DUPSORT` (`src/hash/hash_open.c:194-197`;
+  bits `0x01`, `0x02`, `0x04`, `db_page.h:131-133`).
+- `__db_fchk` (`src/common/db_err.c:28-34`) returns `__db_ferr`, which logs
+  "BDB0055 illegal flag specified to DB->open" and returns `EINVAL`
+  (`db_err.c:60-73`).
+- The same check, at the same lines, is in the `v2026.10.3` release
+  (`git show v2026.10.3:src/btree/bt_open.c`, line 157;
+  `git show v2026.10.3:src/hash/hash_open.c`, line 196).
+- **Subdatabases go through it too.** An existing subdatabase is opened by
+  `__fop_subdb_setup` → `__db_init_subdb` (`src/fileops/fop_util.c:886`), which
+  reads the subdatabase's own meta page and calls `__db_meta_setup`
+  (`src/db/db_open.c:391-397`), which calls `__bam_metachk` / `__ham_metachk`
+  (`db_open.c:630-641`). C6 makes every typed database a subdatabase, so this
+  is the path that matters.
+
+**Bits.** In `src/dbinc/db_page.h`, unconditionally (a `#define` is invisible to
+`s_sig`):
+
+```c
+#define	BTM_TYPED	0x100	/*	  Typed (RFC 0014); needs --enable-typed. */
+#define	DB_HASH_TYPED	0x08	/*	  Typed (RFC 0014); needs --enable-typed. */
+```
+
+`BTM_MASK` stays `0x0ff`. The accepted mask grows **only under
+`#ifdef HAVE_TYPED`**, at the two check sites:
+`BTM_MASK | BTM_TYPED` at `bt_open.c:157` and `... | DB_HASH_TYPED` at
+`hash_open.c:196`. On a match, `F2_SET(dbp, DB2_AM_TYPED_FILE)`.
+
+**Written** only when a typed subdatabase is *created*: in `__bam_init_meta`
+(`bt_open.c:433-450`, next to `BTM_COMPRESS`) and `__ham_init_meta`
+(`hash_open.c:301-306`), `#ifdef HAVE_TYPED if (F2_ISSET(dbp, DB2_AM_TYPED))`.
+The subdatabase create path builds the meta page with `__bam_init_meta`
+(`bt_open.c:641`) and logs the whole page with `__db_log_page`
+(`bt_open.c:642-643`, a `__crdel_metasub` record, `db.c:1340-1341`), so the bit
+is recovered and replicated with no new log record. (Hash: `hash_open.c:508`,
+same pattern.)
+
+**What each reader does:**
+
+| Reader | Result on a typed subdatabase |
+|---|---|
+| any release before this one, or this release built without `--enable-typed` | `DB->open` fails `EINVAL` (BDB0055), read-only or not. **Fail closed.** |
+| `--enable-typed`, handle with a matching schema | opens; §4.3 checks run |
+| `--enable-typed`, handle with **no** schema | `__typed_open` (§3.5) allows it only if `DB_AM_RDONLY` or the open is `DB_WRITEOPEN` (used only by `__db_subdb_remove`, `db_remove.c:406-407`; the only other reference is `fop_util.c:878`), else `EINVAL` "typed database: db_set_schema required to open for writing". This gives D8's read-only `db_dump`/`db_stat`. |
+| `--enable-typed`, schema given, existing subdatabase **without** the bit | `EINVAL` "database was not created typed". Phase 1 does not convert. |
+
+**[FOUND] Two holes, stated plainly:**
+
+1. **`DB->rename` does not read meta flags.** `__db_subdb_rename`
+   (`src/db/db_rename.c:316`) reads the subdatabase meta page only to copy its
+   `uid` (`:351-354`) and never calls `__db_meta_setup`. So an old libdb can
+   rename a typed subdatabase. The catalog is keyed by name (4.2), so the
+   renamed database then fails to open in a typed build (`EINVAL`, "no catalog
+   record") until it is renamed back. That is fail-closed for enforcement but
+   it strands the data; the documentation must say "rename typed databases only
+   with an `--enable-typed` libdb".
+2. **`DB_TRUNCATE` skips the meta check** (`db_open.c:630`, `:639`: `(oflags &
+   DB_TRUNCATE) == 0`), and the pre-truncate probe open swallows `EINVAL`
+   (`db_open.c:83`). `DB_TRUNCATE` is refused with locking or transactions
+   (`db_iface.c:1591-1596`). [UNSURE] whether an old libdb's `DB_TRUNCATE` of a
+   subdatabase rewrites its meta page without the bit; if it does, the result
+   is an *empty untyped* database plus a stale catalog record, which a typed
+   open refuses (row 4 above). Nothing is written that skips a constraint.
+
+**Heap, Queue, Recno:** refused by `db_set_schema` (§3.4 rule 2, D4).
+
+### 4.2 Name and record format
+
+- **Subdatabase name:** `__db_typed`, in the same file as the typed
+  subdatabases (D3). One record per typed subdatabase.
+- **Key:** the typed subdatabase's name, bytes without the NUL.
+- **Data**, all integers big-endian (the catalog is byte-order independent; the
+  meta page is not and is swapped by `__bam_mswap`):
+
+| Off | Size | Field |
+|---|---|---|
+| 0 | 4 | magic `0x44425459` ("DBTY") |
+| 4 | 4 | format version, **1** |
+| 8 | 4 | total record length |
+| 12 | 4 | `DBTYPE` |
+| 16 | 2 | `ncodecs` (distinct `DB_CODEC`s, first-use order: key fields, then data fields) |
+| … | | per codec: `u8 namelen`, name, `u32 version`, `u32 flags`, `u32 fixed_len`, `20` bytes fingerprint (§5) |
+| … | | per side (key, then data): `u8 present`; if present: `u8 namelen`, name, `u32 version`, `u32 flags`, `u32 nfields`, `nfields × u16` codec index |
+| … | | `u16 nconstraints`; each: `u32 kind`, `u32 side`, `u32 field`, `u32 maxlen`, `u32 flags`, `u8 namelen`, name |
+
+- **Reading:** wrong magic, a length that disagrees with the DBT, or any index
+  out of range ⇒ `EINVAL` "corrupt catalog record". Version `> 1` ⇒ `EINVAL`
+  "catalog format N not supported" (an older typed build fails closed on a
+  newer catalog).
+- The RFC's "list of record-codec versions written" is **skipped**: Phase 1
+  requires the record codec's name and version to equal the catalog's exactly.
+  Add the list (format version 2) when Phase 2 needs data-record evolution.
+- `unique_db` is not recorded: it is a handle. Its *name* is Phase 2 (FK
+  persistence wants the same thing).
+
+### 4.3 What is written when
+
+All catalog access is from `__typed_open` (§3.5) or the two lifecycle hooks
+below, on a short-lived internal handle (`__db_create_internal` +
+`__db_open(cdbp, ip, txn, fname, "__db_typed", DB_BTREE, …)`), in the caller's
+`txn`, closed before returning. ponytail: open/close per typed open; cache the
+handle if open latency matters.
+
+| Event | Catalog action |
+|---|---|
+| typed subdatabase **created** (`F_ISSET(dbp, DB_AM_CREATED)`, still set inside `__db_open`; cleared later at `db_iface.c:1426`) | create `__db_typed` if absent; `put` the record (overwrite: a non-transactional crash can leave a stale one). Same `txn`, so an aborted create leaves neither. |
+| typed subdatabase **opened** | `get`; missing ⇒ `EINVAL` "no catalog record"; parse; compare (§5). No write. |
+| `DB->remove` of a typed subdatabase | in `__db_subdb_remove` after `MU_REMOVE` (`db_remove.c:441-443`): `#ifdef HAVE_TYPED`, if `DB2_AM_TYPED_FILE` on `sdbp`, delete the record in `txn`. A missing record is not an error. |
+| `DB->rename` of a typed subdatabase | in `__db_subdb_rename` after `MU_RENAME` (`db_rename.c:365-367`): if the subdatabase's meta page has the bit (it is already fetched at `:351`; test the flag there and remember it), `get` old, `put` new, `del` old, in `txn`. |
+| `DB->truncate` | none |
+| whole-file remove / rename | none: the catalog is in the file |
+| recovery | none: catalog writes are ordinary logged puts (no new log record) |
+
+**[FOUND] — new correction C13:** D3's claim that the catalog "travels with the
+database through `db_dump`/`db_load`" is half true. The catalog records travel;
+the meta bit does not (`db_dump`'s header carries `duplicates=`/`dupsort=`,
+`src/db/db_pr.c:1819-1843`, and nothing typed). A dump/load round trip therefore
+produces an **untyped** database plus an orphan catalog record. A typed open of
+it fails "database was not created typed", so nothing is silently unenforced.
+Making `db_load` re-create typed databases needs a header keyword and is
+Phase 2. Hot backup and replication copy pages, so the bit survives them.
 
 ## §5 Multi-process codec fingerprint
 
