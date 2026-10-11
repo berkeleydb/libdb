@@ -489,7 +489,7 @@ thawed:			need_free = (atomic_dec(env, &bhp->ref) == 0);
 		STAT_SET_VERB(env, mpool, hash_longest,
 		    c_mp->stat.st_hash_longest,
 		    st_hsearch, __memp_fn(dbmfp), *pgnoaddr);
-	STAT_ADJUST_VERB(env, mpool, hash_examined, c_mp->stat.st_hash_searches,
+	STAT_ADJUST_VERB(env, mpool, hash_examined, c_mp->stat.st_hash_examined,
 	    st_hsearch, __memp_fn(dbmfp), *pgnoaddr);
 #endif
 

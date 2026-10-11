@@ -16,6 +16,33 @@
 #include "sim_buggify.h"		/* DST buggify points (--enable-dst only). */
 #endif
 
+/*
+ * __memp_put_counter_eager --
+ *	Should every __memp_fput bump c_mp->put_counter (the pre-RFC-0015-S3
+ *	behaviour), rather than only the put that actually releases a buffer
+ *	to the allocator?
+ *
+ *	Off by default: the allocator's give-up heuristic (mp_alloc.c) only
+ *	wants to know whether a buffer became reclaimable in this cache region
+ *	since it started scanning, and that is exactly a ref-to-reclaimable
+ *	drop, not any fput.  Counting only those takes the shared-line write
+ *	off the hot multi-pinned read path.  DB_MP_PUT_COUNTER_EAGER restores
+ *	the unconditional per-fput bump so the A/B can run on ONE binary with
+ *	only a runtime switch varying, following the DB_LOCK_REFRESH_LOCK_MUTEX
+ *	(lock.c) and DB_NO_OPTREAD (bt_search.c) precedents.  Cached in a
+ *	process-local static: it is a pure performance choice with no
+ *	region-visible consequence, so attachers need not agree.
+ */
+static int
+__memp_put_counter_eager()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_MP_PUT_COUNTER_EAGER") != NULL ? 1 : 0;
+	return (cached);
+}
+
 
 /*
  * __memp_fput_pp --
@@ -143,8 +170,19 @@ unpin:
 		return (__env_panic(env, EACCES));
 	}
 
-	/* Note the activity so allocation won't decide to quit. */
-	++c_mp->put_counter;
+	/*
+	 * Note the activity so allocation won't decide to quit.  The allocator
+	 * only snapshots this once it is already aggressive and compares it to
+	 * see whether a buffer became reclaimable meanwhile (mp_alloc.c), so
+	 * the signal we owe it is "did someone free a buffer in this region",
+	 * not "did someone call fput".  Bumping it on the ref-to-reclaimable
+	 * drop below (and nowhere else) keeps that exact meaning while taking
+	 * the shared-line write off every multi-pinned put -- the hot read
+	 * path, where the buffer stays pinned and never becomes a candidate.
+	 * RFC 0015 S3.  DB_MP_PUT_COUNTER_EAGER restores the per-fput bump.
+	 */
+	if (__memp_put_counter_eager())
+		++c_mp->put_counter;
 
 	if (ip != NULL) {
 		reginfo = env->reginfo;
@@ -197,6 +235,15 @@ unpin:
 		MUTEX_UNLOCK(env, bhp->mtx_buf);
 		return (0);
 	}
+
+	/*
+	 * This put released the buffer's last retaining reference, so it just
+	 * became a candidate for the allocator -- the one event the allocator's
+	 * give-up heuristic cares about.  Record it here, per cache region.
+	 * (Skipped when DB_MP_PUT_COUNTER_EAGER already bumped it above.)
+	 */
+	if (!__memp_put_counter_eager())
+		++c_mp->put_counter;
 
 	/* The buffer should not be accessed again. */
 #ifdef DIAG_MVCC
