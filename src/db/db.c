@@ -1299,8 +1299,6 @@ __db_disassociate_foreign(sdbp)
 
 	if (sdbp->s_foreign == NULL)
 		return (0);
-	if ((ret = __os_malloc(sdbp->env, sizeof(DB_FOREIGN_INFO), &tmp)) != 0)
-		return (ret);
 
 	fdbp = sdbp->s_foreign;
 	ret = 0;
