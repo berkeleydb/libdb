@@ -1209,3 +1209,43 @@ itself.
 | §9 commit 12 `db_verify` behaviour on a typed subdatabase | probe first; verify calls no `*_metachk` |
 | C10 / §6.3 | `TOTAL` on a record codec remains a promise; libdb bounds what `field()` returns, not what it reads |
 
+
+---
+
+## §11 Implementation deviations
+
+Each entry names the spec text, what was built instead, and the evidence.
+
+**V1 (P3, §8.3). The key item is replaced in place, not the pair.**
+§8.3's fallback reads "`__bam_ditem` the pair and redo the put as
+`DB_KEYFIRST` at `indx`". Built instead: when the revived slot's stored key
+bytes differ, `__bam_iitem`'s `DB_CURRENT` case deletes and re-adds **only the
+key item** at the same index (`__bam_ditem` + `__db_pitem`, both logged), then
+runs the existing data step unchanged. This is the shape case 4 already uses
+for data, and it keeps the index, so no `__bam_ca_di` cursor adjustment is
+needed. It is used for every key type, which is the spec's own stated default
+("delete-and-insert for every case"); `__bam_ritem` is not used. The helper is
+`__bam_revive_chk` (decides only), not `__bam_revive_key`; the §7 sabotage
+arm is therefore "delete the `__bam_revive_chk` call". Evidence
+(`r1_revive`, commit "btree: an equal-key put over a deleted slot kept the
+deleted key's bytes (R1)"): with a cursor pinned on the item, that cursor's
+`DB_CURRENT` reads the new key and data in all 12 pinned cases. These include
+overflow to overflow, keydata to overflow and back, and a 3 to 900-byte
+revive on a full leaf that must split first (asserted: 1 leaf before, 2 or
+more after). All txn cases survive delete-the-file plus `DB_RECOVER_FATAL`.
+
+**V2 (P3, §8.3). A key shared by an on-page duplicate set is not replaced.**
+§8.3 does not mention duplicates. With `DB_DUPSORT`, a put can revive one
+deleted member of an on-page set whose key item is shared (`inp[]` equal)
+with other members, some possibly live. Rewriting a shared key would mean
+splitting it off the set. `__bam_revive_chk` returns "no revive" for a shared
+key, which keeps today's behaviour for that case. Known ceiling (a
+`ponytail:` note in `bt_put.c`): a set whose members are all deleted and
+pinned, revived through one member, keeps the old key bytes. Typed databases
+refuse duplicates (C12), so Phase 1 does not depend on it.
+
+**V3 (P3, §8.3 test item (d)).** "Run `db_recover -c` on the txn-env case"
+is done in-process. The test deletes the `.db` file and reopens the env with
+`DB_RECOVER_FATAL`, which is what `db_recover -c` does. The file is then
+rebuilt from the log alone, a stronger check than recovering over an intact
+file. This avoids a dependence on the utility's path in a sibling build dir.
