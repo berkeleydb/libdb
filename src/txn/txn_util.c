@@ -400,6 +400,49 @@ dofree:
 }
 
 /*
+ * __txn_fname_recorded --
+ *	RFC 0015 M5: has this transaction already recorded this FNAME?  A
+ *	lock-free read of the per-transaction td->log_dbs array, used by the
+ *	cursor-create path (__db_cursor_int) to skip taking dbp->mutex and
+ *	calling __txn_record_fname for the 2nd and later cursor a transaction
+ *	opens on the same logged handle.  __txn_record_fname does this same
+ *	dedup scan internally, but only after the caller has taken dbp->mutex
+ *	-- the mutex every thread using the handle contends on, twice per
+ *	cursor (T-4).  The scan reads only td->log_dbs/td->nlog_dbs, which are
+ *	written solely by __txn_record_fname/__txn_dref_fname for THIS txn, and
+ *	a DB_TXN is used by one thread at a time, so the read needs no lock.
+ *	When it returns false the caller still locks and calls
+ *	__txn_record_fname, which re-checks under the lock and does the shared
+ *	fname->txn_ref increment -- so a stale false is merely the status quo,
+ *	never a missed increment.
+ *
+ * PUBLIC: int __txn_fname_recorded __P((ENV *, DB_TXN *, FNAME *));
+ */
+int
+__txn_fname_recorded(env, txn, fname)
+	ENV *env;
+	DB_TXN *txn;
+	FNAME *fname;
+{
+	DB_LOG *dblp;
+	DB_TXNMGR *mgr;
+	TXN_DETAIL *td;
+	roff_t fname_off, *np, *ldbs;
+	u_int32_t i;
+
+	if ((td = txn->td) == NULL)
+		return (0);
+	mgr = env->tx_handle;
+	dblp = env->lg_handle;
+	fname_off = R_OFFSET(&dblp->reginfo, fname);
+	ldbs = R_ADDR(&mgr->reginfo, td->log_dbs);
+	for (i = 0, np = ldbs; i < td->nlog_dbs; i++, np++)
+		if (*np == fname_off)
+			return (1);
+	return (0);
+}
+
+/*
  * PUBLIC: int __txn_record_fname __P((ENV *, DB_TXN *, FNAME *));
  */
 int

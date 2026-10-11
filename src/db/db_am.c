@@ -24,6 +24,33 @@ static int __dbc_set_priority __P((DBC *, DB_CACHE_PRIORITY));
 static int __dbc_get_priority __P((DBC *, DB_CACHE_PRIORITY* ));
 
 /*
+ * __db_fname_cache --
+ *	RFC 0015 M5: may the cursor-create path skip dbp->mutex and
+ *	__txn_record_fname when a lock-free scan shows this txn already
+ *	recorded this logged handle?
+ *
+ *	On by default.  __txn_record_fname is called under dbp->mutex for every
+ *	cursor a transaction opens on a logged handle, but it is a no-op (an
+ *	early return) once the txn has recorded that handle -- so the 2nd and
+ *	later cursors took the per-handle mutex, contended by every thread
+ *	using the handle, only to do nothing (T-4).  M5 does the dedup scan
+ *	lock-free first and skips the mutex when it hits.  DB_NO_FNAME_CACHE
+ *	restores the always-lock behaviour so the A/B runs on ONE binary with
+ *	only a runtime switch varying (the DB_NO_OPTREAD precedent).  Cached in
+ *	a process-local static: a pure performance choice with no
+ *	region-visible consequence.
+ */
+static int
+__db_fname_cache()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_NO_FNAME_CACHE") != NULL ? 0 : 1;
+	return (cached);
+}
+
+/*
  * __db_cursor_part --
  *	Return the cursor-queue partition index for the calling thread.
  *
@@ -134,7 +161,9 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	if (IS_REAL_TXN(txn) &&
 	    !LF_ISSET(DBC_OPD | DBC_DUPLICATE) &&
 	    !F_ISSET(dbp, DB_AM_RECOVER) &&
-	    dbp->log_filename != NULL && !IS_REP_CLIENT(env)) {
+	    dbp->log_filename != NULL && !IS_REP_CLIENT(env) &&
+	    !(__db_fname_cache() &&
+	    __txn_fname_recorded(env, txn, dbp->log_filename))) {
 		MUTEX_LOCK(env, dbp->mutex);
 		ret = __txn_record_fname(env, txn, dbp->log_filename);
 		MUTEX_UNLOCK(env, dbp->mutex);
