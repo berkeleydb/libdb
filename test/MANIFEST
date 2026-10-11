@@ -469,6 +469,7 @@ db	run_lock_priority_nullderef
 db	run_txn_remevent_leak
 db	run_compact_subdb_remove
 db	run_log_emfile_nopanic
+db	run_recover_foreign_file
 db	run_null_method_slots
 db	run_qam_extent_vrfy
 db	run_qam_inorder_consume

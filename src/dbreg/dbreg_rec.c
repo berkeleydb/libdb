@@ -160,10 +160,20 @@ __dbreg_register_recover(env, dbtp, lsnp, op, info)
 			}
 			/*
 			 * We treat ENOENT as OK since it's possible that
-			 * the file was renamed or deleted.
+			 * the file was renamed or deleted.  EINVAL means the
+			 * file still exists but is no longer a usable Berkeley
+			 * DB file (empty, truncated, or replaced by a foreign
+			 * file).  Recovery cannot restore logged state into it
+			 * and, like a missing file, must not fail the whole
+			 * recovery (which the environment-open path turns into
+			 * a panic, and a process abort in diagnostic builds)
+			 * for a condition an application can reach by leaving
+			 * such a file behind.  __dbreg_open_file has already
+			 * recorded the failed open and marked the fileid
+			 * deleted, so later records for it are skipped.
 			 * All other errors, we return.
 			 */
-			if (ret == ENOENT)
+			if (ret == ENOENT || ret == EINVAL)
 				ret = 0;
 		}
 		F_CLR(dblp, DBLOG_FORCE_OPEN);

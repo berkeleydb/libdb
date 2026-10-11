@@ -741,8 +741,20 @@ skip_open:
 err:		if (cstat == TXN_UNEXPECTED)
 			goto not_right;
 		return (ret);
-	} else if (ret == ENOENT) {
+	} else if (ret == ENOENT || ret == EINVAL) {
 		/*
+		 * ENOENT: the file is missing.  EINVAL: the file exists but is
+		 * no longer a usable Berkeley DB file (empty, truncated, or
+		 * replaced by a foreign file -- __fop_read_meta reports
+		 * "unexpected file type or format").  Recovery cannot restore
+		 * logged state into either, and must not fail the whole
+		 * recovery (which the environment-open path turns into a panic
+		 * and, in diagnostic builds, a process abort) for a condition
+		 * an application can reach by leaving such a file behind.
+		 * Treat EINVAL exactly like ENOENT: record the open as failed
+		 * and mark the fileid deleted so later records for it are
+		 * skipped.
+		 *
 		 * If the open failed with ENOENT, retry it as a named in-mem
 		 * database.  Some record types do not distinguish between a
 		 * named in-memory database and one on-disk.  Therefore, an
@@ -750,8 +762,12 @@ err:		if (cstat == TXN_UNEXPECTED)
 		 * access this as a named in-mem database will not find it
 		 * on-disk, and we need to try to open it in-memory too.
 		 *     But don't do this for [P]REOPEN, since we're already
-		 * handling those cases specially, above.
+		 * handling those cases specially, above.  Only ENOENT (truly
+		 * absent) is worth an in-memory retry; a foreign on-disk file
+		 * is not an in-memory database.
 		 */
+		if (ret == EINVAL)
+			goto skip_inmem;
 		if (try_inmem == 0 &&
 		    opcode != DBREG_PREOPEN && opcode != DBREG_REOPEN && 
 		    opcode != DBREG_XREOPEN) {
@@ -762,9 +778,11 @@ err:		if (cstat == TXN_UNEXPECTED)
 		} else if (try_inmem != 0)
 			CLR_INMEM(dbp);
 
+skip_inmem:
 		/*
-		 * If it exists neither on disk nor in memory
-		 * record that the open failed in the txnlist.
+		 * If it exists neither on disk nor in memory, or exists as a
+		 * foreign file (EINVAL), record that the open failed in the
+		 * txnlist.
 		 */
 		if (id != TXN_INVALID && (ret = __db_txnlist_update(env,
 		    info, id, TXN_UNEXPECTED, NULL, &ret_stat, 1)) != 0)
