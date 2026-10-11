@@ -7,6 +7,12 @@
 # TEST	mut003
 # TEST	Try doing mutex operations out of order.  Make sure 
 # TEST	we get appropriate errors.
+#
+# The errors are DIAGNOSTIC-only (mut_pthread.c, mut_tas.c), so this test
+# can only pass on an --enable-diagnostic build.  The match is on "already
+# unlocked", which both backends print: the pthread one says "lock already
+# unlocked" (BDB2025) and the TAS/hybrid one "unlock N already unlocked"
+# (BDB2032).  Matching the pthread wording alone failed on every hybrid build.
 
 proc mut003 { } {
 	source ./include.tcl
@@ -20,7 +26,7 @@ proc mut003 { } {
 	set mutex [$env mutex]
 	catch { $env mutex_unlock $mutex } res
 	error_check_good \
-	    already_unlocked [is_substr $res "lock already unlocked"] 1
+	    already_unlocked [is_substr $res "already unlocked"] 1
 	env_cleanup $testdir
 	
 	# Allocate and lock a mutex.  Try to unlock it twice.
@@ -31,7 +37,7 @@ proc mut003 { } {
 	error_check_good mutex_unlock [$env mutex_unlock $mutex] 0
 	catch { $env mutex_unlock $mutex } res
 	error_check_good \
-	    already_unlocked [is_substr $res "lock already unlocked"] 1
+	    already_unlocked [is_substr $res "already unlocked"] 1
 	env_cleanup $testdir
 
 }
