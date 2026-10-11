@@ -2422,7 +2422,10 @@ freebsd* | dragonfly*)
     objformat=`/usr/bin/objformat`
   else
     case $host_os in
-    freebsd[[123]]*) objformat=aout ;;
+    # Anchored (G18): freebsd[123]* also matched freebsd10..39. With no
+    # /usr/bin/objformat (gone since FreeBSD 13) every modern FreeBSD got the
+    # 1993 a.out naming: no libX.so link, so dlopen of the .so name failed.
+    freebsd[[123]].*) objformat=aout ;;
     *) objformat=elf ;;
     esac
   fi
@@ -2440,7 +2443,7 @@ freebsd* | dragonfly*)
   esac
   shlibpath_var=LD_LIBRARY_PATH
   case $host_os in
-  freebsd2*)
+  freebsd2.*)
     shlibpath_overrides_runpath=yes
     ;;
   freebsd3.[[01]]* | freebsdelf3.[[01]]*)
@@ -5124,7 +5127,7 @@ _LT_EOF
     # support.  Future versions do this automatically, but an explicit c++rt0.o
     # does not break anything, and helps significantly (at the cost of a little
     # extra space).
-    freebsd2.2*)
+    freebsd2.2.*)
       _LT_TAGVAR(archive_cmds, $1)='$LD -Bshareable -o $lib $libobjs $deplibs $linker_flags /usr/lib/c++rt0.o'
       _LT_TAGVAR(hardcode_libdir_flag_spec, $1)='-R$libdir'
       _LT_TAGVAR(hardcode_direct, $1)=yes
@@ -5132,7 +5135,7 @@ _LT_EOF
       ;;
 
     # Unfortunately, older versions of FreeBSD 2 do not have this feature.
-    freebsd2*)
+    freebsd2.*)
       _LT_TAGVAR(archive_cmds, $1)='$LD -Bshareable -o $lib $libobjs $deplibs $linker_flags'
       _LT_TAGVAR(hardcode_direct, $1)=yes
       _LT_TAGVAR(hardcode_minus_L, $1)=yes
@@ -6143,7 +6146,7 @@ if test "$_lt_caught_CXX_error" != yes; then
         esac
         ;;
 
-      freebsd[[12]]*)
+      freebsd[[12]].*)
         # C++ shared libraries reported to be fairly broken before
 	# switch to ELF
         _LT_TAGVAR(ld_shlibs, $1)=no

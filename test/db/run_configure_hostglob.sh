@@ -50,6 +50,21 @@ for os in netbsd openbsd dragonfly ; do
 	}
 done
 
+# G18: the GENERAL form of the same bug. Any freebsd case arm whose version is
+# one digit or a one-digit bracket class followed directly by `*' --
+# freebsd2*, freebsd[123]*, freebsd[12]*, freebsd2.2* is fine but
+# freebsd2* is not -- also matches the two-digit majors (freebsd20..39 for
+# freebsd2*/[123]*; freebsd10..29 for [12]*). freebsd[123]* gave every
+# modern FreeBSD the 1993 a.out library naming, so libdb_tcl had no .so link
+# and the Tcl suite could not load it. Anchor with the dot after the major.
+b=$(grep -nE '^[[:space:]]*(.*\|[[:space:]]*)?freebsd([0-9]|\[[0-9]+\])\*[[:space:]]*(\||\))' "$CONF" || true)
+[ -n "$b" ] && {
+	echo "run_configure_hostglob.sh: FAIL unanchored single-digit freebsd glob(s) (G18):"
+	echo "$b" | sed 's/^/    /'
+	echo "  freebsdN* and freebsd[N..]* also match two-digit majors. Use freebsdN.*"
+	rc=1
+}
+
 # The anchored form must actually be PRESENT, or this test would pass on a
 # configure that dropped the arm entirely (or on an empty file).
 n=$(grep -cE '^[[:space:]]*freebsd1\.\*[[:space:]]*\)' "$CONF" || true)

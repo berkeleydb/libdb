@@ -35,11 +35,13 @@ source: docs/installation/build_unix_freebsd.html
 
       To make this permanent, add `kern.ipc.umtx_vnode_persistent=1` to `/etc/sysctl.conf`.
 
-    - Build libdb with test-and-set mutexes, which do not use pthread objects at all:
+    - Build libdb with test-and-set mutexes, which do not use pthread objects at all (**x86_64 only**; there is no AArch64 test-and-set mutex in this release):
 
       ``` sh
       ../dist/configure --with-mutex=x86_64/gcc-assembly
       ```
+
+    On **aarch64 (arm64)**, `configure` selects plain pthread mutexes, so this limitation affects even single-threaded multi-process use, and the `sysctl` above is the only workaround. On amd64 the default hybrid mutex reaches the pthread object only under contention, so it is hit less often.
 
     Both were measured on FreeBSD 14.5: an environment created by an exited process, then driven by 1 to 8 threads, ran with no panics either way. A probe that reproduces the underlying behaviour without libdb is in `test/bench/pshared_attach_probe.c`.
 

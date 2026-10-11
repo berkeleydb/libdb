@@ -119,6 +119,15 @@ int main(void) {
   endif
 endif
 
+# Mirrors dist/aclocal/mutex.m4's db_cv_aarch64 probe, which defines
+# HAVE_ATOMIC_AARCH64 on any AArch64 target independent of the atomic tier.
+# No source file consumes it today, so it changes no struct; it is here so the
+# two builds' HAVE_* sets match, which run_meson_autoconf_parity.sh checks
+# (it failed on FreeBSD/arm64 c7gd.metal without this).
+if host_machine.cpu_family() == 'aarch64'
+  cdata.set('HAVE_ATOMIC_AARCH64', 1)
+endif
+
 # io_uring: header AND the library symbol, as AC_CHECK_LIB(uring, ...) does.
 # os_aio_uring.c is in the source list unconditionally and is whole-file guarded
 # on HAVE_IO_URING, so without this it compiled to nothing and the io_uring

@@ -63,7 +63,12 @@ echo "Compiling curadj_dup_partition against $LIB"
     -lpthread $LIBRPATH $EXTRALIBS \
     -o "$BUILD/curadj_dup_partition"
 
-rm -f "$HOME_DIR"/*.db 2>/dev/null || true
+# Start from an EMPTY home, regions included. Removing only *.db left the
+# previous run's __db.00N region files behind, so a second run (another arm,
+# another build) attached a region it did not create: on FreeBSD that is a
+# PANIC (a pshared mutex whose initialiser has exited, tracker row B3), and
+# between builds it is a DB_VERSION_MISMATCH. Either way a false red.
+[ -d "$HOME_DIR" ] && find "$HOME_DIR" -mindepth 1 -delete 2>/dev/null
 mkdir -p "$HOME_DIR"
 
 # `timeout` is GNU coreutils: present on Linux, absent on stock macOS (where it

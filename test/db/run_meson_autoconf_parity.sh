@@ -107,6 +107,7 @@ fi
 # 2. The observable consequence: cross-attach, both directions.
 cat > "$work/xattach.c" <<'EOF'
 #include <stdio.h>
+#include <unistd.h>
 #include <db.h>
 int main(int argc, char **argv) {
 	DB_ENV *e;
@@ -120,6 +121,12 @@ int main(int argc, char **argv) {
 	    DB_CREATE | DB_INIT_MPOOL | DB_INIT_TXN | DB_INIT_LOG | DB_INIT_LOCK,
 	    0644);
 	printf("%s rc=%d %s\n", argv[2], r, r ? db_strerror(r) : "OK");
+	/* "hold-*": keep the region mapped (see the B3 note below). */
+	if (r == 0 && argv[2][0] == 'h' && argv[2][1] == 'o') {
+		fflush(stdout);
+		for (;;)
+			sleep(60);
+	}
 	if (r == 0)
 		(void)e->close(e, 0);
 	return (r != 0);
@@ -148,10 +155,27 @@ for pair in 'xa:xm:autoconf-creates:meson-attaches' \
 	d=$work/env_$a
 	rm -f "$d"/* 2>/dev/null
 	mkdir -p "$d"
-	o1=$("$work/$a" "$d" "$an" 2>&1 | tail -1)
+	# The creator must still be ALIVE when the other build attaches. On
+	# FreeBSD a PROCESS_SHARED pthread mutex cannot be locked once its
+	# initialising process has exited and nothing else maps the region
+	# (libthr(3); tracker row B3), so a create-exit-then-attach sequence fails
+	# with DB_RUNRECOVERY there, for reasons that have nothing to do with
+	# meson/autoconf parity. So the CREATOR itself holds the region open
+	# ("*-hold" mode) while the other build attaches; a separate holder
+	# started after the creator exits is too late, because it is itself an
+	# attacher of an orphaned region. This still tests exactly what the gate
+	# is about -- the two builds' region layouts -- on every platform.
+	"$work/$a" "$d" "hold-$an" >"$work/hold_$a.out" 2>&1 &
+	holder=$!
+	for i in 1 2 3 4 5 6 7 8 9 10 ; do
+		grep -q 'rc=' "$work/hold_$a.out" 2>/dev/null && break
+		sleep 1
+	done
+	o1=$(sed -n 's/^hold-//p' "$work/hold_$a.out" | tail -1)
 	echo "  $o1"
-	echo "$o1" | grep -q 'rc=0' || { rc=1 ; continue ; }
+	echo "$o1" | grep -q 'rc=0' || { rc=1 ; kill "$holder" 2>/dev/null; continue ; }
 	o2=$("$work/$b" "$d" "$bn" 2>&1 | grep "^$bn" | tail -1)
+	kill "$holder" 2>/dev/null; wait "$holder" 2>/dev/null
 	echo "  $o2"
 	echo "$o2" | grep -q 'rc=0' || rc=1
 done
