@@ -189,20 +189,29 @@ __lock_detect(env, atype, rejectp)
 		return (ret);
 
 	/*
-	 * We need the cur_maxid from the txn region as well.  In order
-	 * to avoid tricky synchronization between the lock and txn
-	 * regions, we simply unlock the lock region and then lock the
-	 * txn region.  This introduces a small window during which the
-	 * transaction system could then wrap.  We're willing to return
-	 * the wrong answer for "oldest" or "youngest" in those rare
-	 * circumstances.
+	 * We need the cur_maxid from the txn region as well.  This used to
+	 * take TXN_SYSTEM_LOCK just to read it.  That latch is
+	 * renv->mtx_regenv -- the log/txn latch -- and the detector runs on
+	 * EVERY blocking lock request, so the read cost 0.6-0.8 acquisitions
+	 * and 3-7% of all that latch's waits per TPROC-C commit at t >= 8
+	 * (RFC 0015 E1, measured with DB_REGENV_PROF).
+	 *
+	 * A latch buys nothing here.  cur_maxid is an aligned u_int32_t,
+	 * written only under TXN_SYSTEM_LOCK (txn.c __txn_recycle_id,
+	 * txn_region.c __txn_id_set), so a relaxed atomic load cannot tear;
+	 * and the value is only a tie-breaker for "oldest"/"youngest" victim
+	 * selection (__dd_isolder), which the original code already accepted
+	 * could be stale ("we simply unlock the lock region and then lock the
+	 * txn region ... We're willing to return the wrong answer for
+	 * 'oldest' or 'youngest' in those rare circumstances").  The window
+	 * is the same; only the latch is gone.  A volatile load rather than
+	 * __atomic_load_n because this file is also built by MSVC
+	 * (build_windows); it is the same single aligned 32-bit load.
 	 */
-	if (TXN_ON(env)) {
-		TXN_SYSTEM_LOCK(env);
-		txn_max = ((DB_TXNREGION *)
+	if (TXN_ON(env))
+		txn_max = *(volatile u_int32_t *)&((DB_TXNREGION *)
 		    env->tx_handle->reginfo.primary)->cur_maxid;
-		TXN_SYSTEM_UNLOCK(env);
-	} else
+	else
 		txn_max = TXN_MAXIMUM;
 
 	killid = BAD_KILLID;
