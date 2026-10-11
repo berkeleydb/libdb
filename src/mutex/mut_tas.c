@@ -14,6 +14,58 @@
 static inline int __db_tas_mutex_lock_int
 	    __P((ENV *, db_mutex_t, db_timeout_t, int));
 static inline int __db_tas_mutex_readlock_int __P((ENV *, db_mutex_t, int));
+static u_int32_t __db_tas_backoff_max __P((void));
+
+/*
+ * Optional bounded exponential backoff between polls of a busy mutex.
+ *
+ * The spin loop polls the mutex after every MUTEX_PAUSE.  With N spinners on
+ * one latch, a release is seen by all N at once and all N try the
+ * interlocked acquire together: N read-for-ownership requests on the line the
+ * new owner must then write.  With DB_MUTEX_BACKOFF=<cap>, each failed poll
+ * doubles the number of pauses before the next one, up to <cap>; the pauses
+ * are charged to the same spin budget (mutex_set_tas_spins), so the time spun
+ * before yielding is unchanged and only the polling rate falls.
+ *
+ * OFF by default (cap 1 = one pause per poll, the historical loop), because
+ * it is unmeasured where it should matter.  On a 16-vCPU Graviton3, 16-64
+ * threads on one latch, test/bench/spin_lat.c: cap 16 was null and cap 64
+ * -7% at a 2 us critical section.  The coherence storm it targets needs
+ * many more cores on one line than that box has; it is an arm of
+ * test/bench/spinbench.sh for metal.  Read once per process; process-local
+ * (nothing is stored in the region), so processes sharing an environment
+ * may differ.
+ */
+static u_int32_t
+__db_tas_backoff_max()
+{
+	static u_int32_t cached = 0;
+	const char *p;
+	long v;
+
+	if (cached == 0) {
+		v = (p = getenv("DB_MUTEX_BACKOFF")) == NULL ?
+		    1 : strtol(p, NULL, 10);
+		cached = v < 1 ? 1 : v > 4096 ? 4096 : (u_int32_t)v;
+	}
+	return (cached);
+}
+
+/*
+ * One failed poll: pause `backoff' times, charge them to the spin budget,
+ * double `backoff' up to `backoff_max'.
+ */
+#define	TAS_BACKOFF() do {						\
+	u_int32_t __i;							\
+	for (__i = backoff; __i > 0; --__i)				\
+		MUTEX_PAUSE						\
+	if (nspins > backoff)						\
+		nspins -= backoff - 1;					\
+	else								\
+		nspins = 1;						\
+	if ((backoff <<= 1) > backoff_max)				\
+		backoff = backoff_max;					\
+} while (0)
 
 /*
  * __db_tas_mutex_init --
@@ -81,7 +133,7 @@ __db_tas_mutex_lock_int(env, mutex, timeout, nowait)
 	DB_MUTEXREGION *mtxregion;
 	DB_THREAD_INFO *ip;
 	db_timespec now, timespec;
-	u_int32_t nspins;
+	u_int32_t backoff, backoff_max, nspins;
 	int ret;
 #ifdef HAVE_MUTEX_HYBRID
 	const u_long micros = 0;
@@ -130,6 +182,8 @@ __db_tas_mutex_lock_int(env, mutex, timeout, nowait)
 	 * in the loop.
 	 */
 	ip = NULL;
+	backoff = 1;
+	backoff_max = __db_tas_backoff_max();
 
 loop:	/* Attempt to acquire the resource for N spins. */
 	for (nspins =
@@ -160,9 +214,10 @@ loop:	/* Attempt to acquire the resource for N spins. */
 				return (DB_LOCK_NOTGRANTED);
 			/*
 			 * Some systems (notably those with newer Intel CPUs)
-			 * need a small pause here. [#6975]
+			 * need a small pause here. [#6975]  With the default
+			 * backoff_max of 1 this is exactly one MUTEX_PAUSE.
 			 */
-			MUTEX_PAUSE
+			TAS_BACKOFF();
 			continue;
 		}
 
@@ -325,7 +380,7 @@ __db_tas_mutex_readlock_int(env, mutex, nowait)
 	DB_MUTEXREGION *mtxregion;
 	DB_THREAD_INFO *ip;
 	int lock;
-	u_int32_t nspins;
+	u_int32_t backoff, backoff_max, nspins;
 	int ret;
 #ifndef HAVE_MUTEX_HYBRID
 	u_long micros, max_micros;
@@ -360,6 +415,8 @@ __db_tas_mutex_readlock_int(env, mutex, nowait)
 	micros = 1000;
 	max_micros = F_ISSET(mutexp, DB_MUTEX_LOGICAL_LOCK) ? 10000 : 25000;
 #endif
+	backoff = 1;
+	backoff_max = __db_tas_backoff_max();
 
 loop:	/* Attempt to acquire the resource for N spins. */
 	for (nspins =
@@ -372,7 +429,7 @@ loop:	/* Attempt to acquire the resource for N spins. */
 			 * Some systems (notably those with newer Intel CPUs)
 			 * need a small pause here. [#6975]
 			 */
-			MUTEX_PAUSE
+			TAS_BACKOFF();
 			continue;
 		}
 
