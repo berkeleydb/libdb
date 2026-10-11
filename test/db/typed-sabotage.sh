@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary"
+ARMS="footprint_canary handle_sizes_typed"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -65,6 +65,37 @@ arm_footprint_canary_test="TIER=db sh $HERE/run_typed_footprint.sh"
 arm_footprint_canary_expect='^VERDICT typed_footprint FAIL.* 1\(\.text'
 arm_footprint_canary_rebuild=0	# the runner builds its own trees
 
+# §7.2 handle_sizes (typed): a field added to struct __db under HAVE_TYPED
+# grows sizeof(DB) in a typed build, so handle_sizes (typed tier) must FAIL.
+# Run this arm against a --enable-typed BUILD dir.  db.h is generated from
+# db.in by config.status (not by make), so the apply step edits db.in and
+# regenerates db.h in $BUILD; the test then recompiles handle_sizes against
+# the grown struct.  $B is the build dir, exported by the runner.
+arm_handle_sizes_typed_files="src/dbinc/db.in"
+arm_handle_sizes_typed_apply() {
+	# Insert the guarded field just before struct __db's closing brace,
+	# which immediately follows the flags2 line.  awk keeps real tabs.
+	awk '
+		/^\tu_int32_t flags2;/ && !done {
+			print; getline nl
+			if (nl == "};") {
+				print "#ifdef HAVE_TYPED"
+				print "\tvoid *typed_internal;"
+				print "#endif"
+				done = 1
+			}
+			print nl; next
+		}
+		{ print }
+		END { if (!done) exit 3 }
+	' "$REPO/src/dbinc/db.in" > "$REPO/src/dbinc/db.in.sab" || return 1
+	mv "$REPO/src/dbinc/db.in.sab" "$REPO/src/dbinc/db.in"
+	# Regenerate db.h (and the other config files) from the edited db.in.
+	( cd "$B" && sh ./config.status ) >/dev/null 2>&1
+}
+arm_handle_sizes_typed_test='TIER=typed sh "$HERE"/run_handle_sizes.sh "$B"'
+arm_handle_sizes_typed_expect='VERDICT handle_sizes FAIL'
+
 # ---------------------------------------------------------------------------
 
 [ "${1:-}" = -l ] && { for a in $ARMS ; do echo "$a" ; done ; exit 0 ; }
@@ -72,6 +103,8 @@ BUILD=${1:?usage: typed-sabotage.sh <build-dir> [arm ...]}
 BUILD=$(cd "$BUILD" && pwd) || exit 1
 shift
 want=${*:-$ARMS}
+B=$BUILD				# arms reference $B (build dir) and $HERE
+export B HERE
 
 save=$(mktemp -d) || exit 1
 rc=0
@@ -88,6 +121,12 @@ for a in $want ; do
 	done
 	restore() {
 		for f in $files ; do cp "$save/$f" "$REPO/$f" ; done
+		# db.h is generated from db.in by config.status; if the arm
+		# edited db.in, regenerate db.h so the restored build matches.
+		case " $files " in
+		*" src/dbinc/db.in "*)
+			( cd "$B" && sh ./config.status ) >/dev/null 2>&1 ;;
+		esac
 	}
 	trap 'restore ; exit 1' INT TERM
 

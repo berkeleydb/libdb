@@ -1249,3 +1249,65 @@ is done in-process. The test deletes the `.db` file and reopens the env with
 `DB_RECOVER_FATAL`, which is what `db_recover -c` does. The file is then
 rebuilt from the log alone, a stronger check than recovering over an intact
 file. This avoids a dependence on the utility's path in a sibling build dir.
+
+**V4 (Phase 1 commit 1, §2.4). The footprint gate's base is the parent of the
+first `src/typed/` commit, not the merge base with master.** §2.4 says
+`run_typed_footprint.sh` builds the base at `$(git merge-base HEAD master)`.
+Built instead: the base defaults to the parent of the oldest commit that added
+`src/typed/` (`git log --diff-filter=A -- src/typed | tail -1`, then `^`).
+Reason: the branch carries Phase 0 (P1-P3), which moves `libdb-*.so` `.text`
+legitimately and is approved; the merge base with master is *below* P1-P3, so
+item 1 (`.text` equal) would go red for a Phase 0 change that has nothing to do
+with the typed layer. The parent of the first typed commit sits *above* P1-P3
+and *below* the typed layer, so it isolates exactly the typed layer's cost to a
+default build -- which is what §2.4 is measuring. Evidence: on this branch
+`merge-base HEAD master` = `eb63c0ca1` (before P1-P3) while the chosen base =
+`f13921ff7` (P3's tip, the parent of commit 1); building both default and
+measuring `.text` shows commit 1 adds 0 bytes against `f13921ff7` and a
+non-zero delta against `eb63c0ca1` purely from P1-P3. `TYPED_FOOTPRINT_BASE`
+still overrides. The script also no longer uses `size -m`/`__text` for macOS
+(the gate host is FreeBSD/Linux, `size -A`) and ignores `CFLAGS/LDFLAGS/CPPFLAGS`
+so a sanitizer CI job measures the same default build. CI (`ci.yml` typed job)
+keeps `fetch-depth: 0` and lets the runner find the base; it no longer passes
+`TYPED_FOOTPRINT_BASE=$(git merge-base ...)`, which would reintroduce the
+Phase 0 false red. A later master merge that moves `.text` makes item 1 red for
+the wrong reason; the `ponytail:` note in the script names the fix (set
+`TYPED_FOOTPRINT_BASE` to that merge minus `src/typed`).
+
+**V5 (Phase 1 commit 1, gate `s_validate` on FreeBSD).** The gate
+`cd dist && sh ./s_validate` fails on the FreeBSD host at `s_chk_windef`
+("missing items in libdb.def file", the four `db_env_set_func_{assert,free,
+malloc,realloc}`), while it passes on Linux. Not a regression: master's
+identical `s_chk_windef` fails the same way under BSD sed. Root cause: the
+derived list used `sed -e '/db_env_set_func_\(assert\|free\|malloc\|
+realloc\)/p' -e '/db_env_set_func_/d'` in one invocation, relying on GNU
+sed's print-then-delete order; BSD sed deletes all four. Fixed by rewriting
+that step as an explicit keep-list under `sed -n` (`.../p` for the four, plus
+`/^db_env_set_func_/!p` for everything outside the family), which is byte-
+identical to the old GNU-sed output (verified: 14-line sorted `t2`, `cmp`
+equal) and produces the same four lines under both seds. This is the only way
+the handoff's `s_validate` gate can be green on the host it is told to run on;
+it changes no library behaviour and no exported symbol, so the default build
+stays byte-identical.
+
+**V6 (Phase 1 commit 1, test `handle_sizes` typed tier).** §7.2's sabotage for
+the typed `handle_sizes` is "add `void *typed_internal;` to `struct __db`
+under `#ifdef HAVE_TYPED` → FAIL". As written in commit 1, `handle_sizes.c`
+`#include`s the *public* `db.h` and the runner compiled it with no `HAVE_TYPED`
+define, so a field guarded by `#ifdef HAVE_TYPED` was invisible to the test
+even against a typed build's `db.h`: the sabotage PASSed (a vacuous green).
+Fixed: `run_handle_sizes.sh` now compiles the consumer with `-DHAVE_TYPED`
+when `$BUILD/db_config.h` has it, so the test measures the struct the way the
+library's own `.c` files see it -- which is the only size that matters, since
+these structs are library-allocated and opaque (A1). This is also the exact
+ABI hazard D2 forbids: a field added under `#ifdef HAVE_TYPED` to a public
+struct makes the library (built with the macro) and an application (built
+without) disagree on `sizeof(DB)`. On the real typed layer no such field
+exists, so the flag leaves `sizeof(DB)=1744` unchanged (verified) and only a
+wrong typed build trips it. Evidence: unsabotaged typed build with
+`-DHAVE_TYPED` -> `DB actual=1744 ... PASS`; with the sabotage field ->
+`DB actual=1752 ... FAIL 1 handle size(s) changed`. The sabotage arm
+`handle_sizes_typed` was added to `test/db/typed-sabotage.sh`; because `db.h`
+is generated from `db.in` by `config.status` (not by `make`), the arm edits
+`db.in` and re-runs `config.status` in the build dir before the test
+recompiles.

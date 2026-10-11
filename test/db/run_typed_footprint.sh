@@ -9,28 +9,37 @@
 # run_typed_footprint.sh -- RFC 0014 §2.4: --enable-typed must cost a default
 # build NOTHING, and must not move the region signature in either build (D2).
 #
-# Builds three libraries, all from scratch in a scratch dir:
-#   base     the merge base with master, plain dist/configure
+# Builds, from scratch in a scratch dir:
 #   head     this tree, plain dist/configure
 #   typed    this tree, dist/configure --enable-typed
+#   base     a typed-free reference, plain dist/configure (when one exists)
 # and asserts:
-#   1  .text of libdb-*.so: head == base, byte-exact
-#   2  env_sig_print.sh:    head == base
-#   3  exported db_set_schema / __typed_* symbols: none in head, some in
-#      typed (until the API exists -- commit 1-2 of §9 -- "typed" has none
-#      either, and item 3 reports that as "not yet applicable", never PASS
-#      for the typed half: see TYPED_API below)
+#   1  .text of libdb-*.so: head == base, byte-exact            (needs base)
+#   2  env_sig_print.sh:    head == base                        (needs base)
+#   3  exported db_set_schema / __typed_* symbols: none in head; some in
+#      typed once the API exists (TYPED_API, below)
 #   4  env_sig_print.sh:    typed == head (D2)
-# One VERDICT line names every item that failed.
+# One VERDICT line names every item that failed, and which items ran.
+#
+# THE BASE (spec §11 V4).  Items 1-2 compare against "HEAD minus the typed
+# layer": the parent of the commit that created src/typed/.  Not the merge
+# base with master (§2.4's wording): that also subtracts every NON-typed
+# change still on the branch -- Phase 0's P1-P3 move .text legitimately -- and
+# once typed is on master the merge base is HEAD itself, which measures
+# nothing.  The typed layer's own later commits all sit above that parent, so
+# any .text they add to a default build shows up here.
+# ponytail: valid while every commit above that parent is typed-layer work.
+# A master merged in later that moves .text makes item 1 red for the wrong
+# reason; then set TYPED_FOOTPRINT_BASE to "that merge, minus src/typed".
 #
 # Env:
-#   TYPED_FOOTPRINT_BASE  commit to compare against (default: merge base of
-#                         HEAD with master, else origin/master).  CI's shallow
-#                         checkout has neither, so CI must fetch and set this.
-#   TYPED_API             1 once db_set_schema exists (§9 commit 3), making
-#                         item 3's typed half mandatory.  Default: detected
-#                         from src/typed/typed.c.
+#   TYPED_FOOTPRINT_BASE  typed-free reference commit (default: the parent of
+#                         the first commit adding src/typed/)
+#   TYPED_API             1 once db_set_schema exists (§9 commit 3).
+#                         Default: detected from src/typed/typed.c.
 #   KEEP=1                keep the scratch dir.
+# CFLAGS/LDFLAGS/CPPFLAGS from the environment are ignored: all three builds
+# use configure's defaults, so a sanitizer job measures the same thing.
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -47,44 +56,64 @@ command -v git >/dev/null 2>&1 && git -C "$SRC" rev-parse HEAD >/dev/null 2>&1 |
 }
 BASE=${TYPED_FOOTPRINT_BASE:-}
 if [ -z "$BASE" ] ; then
-	for b in master origin/master ; do
-		BASE=$(git -C "$SRC" merge-base HEAD "$b" 2>/dev/null) && break
-		BASE=""
-	done
+	# The parent of the oldest commit that created src/typed/: the newest
+	# tree that has every non-typed change below the typed layer and none
+	# of the layer itself.  Needs history (CI: fetch-depth 0).
+	first=$(git -C "$SRC" log --format=%H --diff-filter=A -- src/typed \
+	    2>/dev/null | tail -1)
+	[ -n "$first" ] && BASE=$(git -C "$SRC" rev-parse -q --verify "$first^" 2>/dev/null)
 fi
-[ -n "$BASE" ] || {
-	verdict "FAIL no base commit (no master / origin/master; set TYPED_FOOTPRINT_BASE)"
+if [ -z "$BASE" ] && [ -d "$SRC/src/typed" ] &&
+    [ "$(git -C "$SRC" rev-parse --is-shallow-repository 2>/dev/null)" = true ] ; then
+	verdict "FAIL shallow clone: no history to find the typed-free base in (fetch-depth 0, or set TYPED_FOOTPRINT_BASE)"
 	exit 1
-}
-BASE=$(git -C "$SRC" rev-parse "$BASE") || { verdict "FAIL bad base $BASE" ; exit 1 ; }
+fi
+if [ -n "$BASE" ] ; then
+	BASE=$(git -C "$SRC" rev-parse --verify -q "$BASE^{commit}") || {
+		verdict "FAIL TYPED_FOOTPRINT_BASE is not a commit: $TYPED_FOOTPRINT_BASE"
+		exit 1
+	}
+	# A base whose tree is HEAD's is not a typed-free reference.
+	if [ "$(git -C "$SRC" rev-parse "$BASE^{tree}")" = \
+	    "$(git -C "$SRC" rev-parse "HEAD^{tree}")" ] ; then
+		echo "  base $BASE has HEAD's tree: no typed-free reference"
+		BASE=""
+	fi
+fi
 
 work=${TMPDIR:-/tmp}/typed_footprint_$$
 mkdir -p "$work" || exit 1
 cleanup() {
 	[ "${KEEP:-0}" = 1 ] && { echo "kept $work" ; return ; }
-	git -C "$SRC" worktree remove --force "$work/basesrc" >/dev/null 2>&1
+	[ -d "$work/basesrc" ] &&
+	    git -C "$SRC" worktree remove --force "$work/basesrc" >/dev/null 2>&1
 	[ -d "$work" ] && find "$work" -mindepth 1 -delete 2>/dev/null
 	rmdir "$work" 2>/dev/null
 }
 trap cleanup EXIT INT TERM
 
-git -C "$SRC" worktree add --detach "$work/basesrc" "$BASE" >/dev/null 2>&1 || {
-	verdict "FAIL git worktree add $BASE"
-	exit 1
-}
+if [ -n "$BASE" ] ; then
+	git -C "$SRC" worktree add --detach "$work/basesrc" "$BASE" >/dev/null 2>&1 || {
+		verdict "FAIL git worktree add $BASE"
+		exit 1
+	}
+fi
 
 # build <name> <srcdir> [configure args]
 build() {
 	_n=$1 ; _s=$2 ; shift 2
 	mkdir -p "$work/$_n"
-	( cd "$work/$_n" && "$_s/dist/configure" "$@" ) > "$work/$_n.cfg.log" 2>&1 &&
+	( unset CFLAGS LDFLAGS CPPFLAGS ; cd "$work/$_n" &&
+	    "$_s/dist/configure" "$@" ) > "$work/$_n.cfg.log" 2>&1 &&
 	    ( cd "$work/$_n" && $MAKE -j"$NCPU" ) > "$work/$_n.build.log" 2>&1 || {
 		echo "  $_n: build failed; last lines of $work/$_n.*.log:"
 		tail -5 "$work/$_n.build.log" "$work/$_n.cfg.log" 2>/dev/null | sed 's/^/    /'
 		return 1
 	}
 }
-build base "$work/basesrc" || { verdict "FAIL base build" ; exit 1 ; }
+if [ -n "$BASE" ] ; then
+	build base "$work/basesrc" || { verdict "FAIL base build" ; exit 1 ; }
+fi
 build head "$SRC" || { verdict "FAIL head build" ; exit 1 ; }
 build typed "$SRC" --enable-typed || { verdict "FAIL typed build" ; exit 1 ; }
 grep -q '^#define HAVE_TYPED 1' "$work/typed/db_config.h" || {
@@ -100,9 +129,7 @@ so() { ls "$work/$1"/.libs/libdb-*.so "$work/$1"/.libs/libdb-*.dylib 2>/dev/null
 text() {
 	_f=$(so "$1")
 	[ -n "$_f" ] || { echo "none" ; return ; }
-	# size -A is GNU/LLVM; macOS size(1) has no -A, use -m there.
-	size -A "$_f" 2>/dev/null | awk '$1 == ".text" { print $2 }' | grep . ||
-	    size -m "$_f" 2>/dev/null | awk '/Section __text/ { print $NF }'
+	size -A "$_f" 2>/dev/null | awk '$1 == ".text" { print $2 }'
 }
 sig() { BUILD_DIR="$work/$1" sh "$SRC/dist/env_sig_print.sh" "$2" 2>/dev/null ; }
 nsyms() {
@@ -113,13 +140,20 @@ nsyms() {
 }
 
 fail=""
-tb=$(text base) ; th=$(text head)
-echo "  1  .text  base=$tb head=$th"
-[ "$tb" != none ] && [ -n "$tb" ] && [ "$tb" = "$th" ] || fail="$fail 1(.text $tb->$th)"
-
-sb=$(sig base "$work/basesrc") ; sh_=$(sig head "$SRC") ; st=$(sig typed "$SRC")
-echo "  2  env_sig base=$sb head=$sh_"
-[ -n "$sb" ] && [ "$sb" = "$sh_" ] || fail="$fail 2(sig $sb->$sh_)"
+ran="3 4"
+sh_=$(sig head "$SRC") ; st=$(sig typed "$SRC")
+if [ -n "$BASE" ] ; then
+	ran="1 2 3 4"
+	tb=$(text base) ; th=$(text head)
+	echo "  1  .text  base=$tb head=$th"
+	[ -n "$tb" ] && [ "$tb" != none ] && [ "$tb" = "$th" ] ||
+	    fail="$fail 1(.text $tb->$th)"
+	sb=$(sig base "$work/basesrc")
+	echo "  2  env_sig base=$sb head=$sh_"
+	[ -n "$sb" ] && [ "$sb" = "$sh_" ] || fail="$fail 2(sig $sb->$sh_)"
+else
+	echo "  1,2 not measured: no typed-free base"
+fi
 
 nh=$(nsyms head) ; nt=$(nsyms typed)
 if [ -z "${TYPED_API:-}" ] ; then
@@ -137,7 +171,7 @@ echo "  4  env_sig head=$sh_ typed=$st"
 [ -n "$st" ] && [ "$st" = "$sh_" ] || fail="$fail 4(sig default $sh_ typed $st)"
 
 if [ -z "$fail" ] ; then
-	verdict "PASS base $BASE"
+	verdict "PASS items $ran${BASE:+ base $BASE}"
 	exit 0
 fi
 verdict "FAIL$fail"

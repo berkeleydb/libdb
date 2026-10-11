@@ -152,8 +152,11 @@ jobs:
   # untyped database), and then the typed tier runs against it.  The typed
   # runners FAIL, never skip, on a build without HAVE_TYPED, and the manifest
   # gate asserts the tier produced a verdict for every entry.
-  # typed_footprint (db tier) builds the merge base too, so this job needs
-  # master's history: fetch-depth 0, and TYPED_FOOTPRINT_BASE names it.
+  # typed_footprint (db tier) builds a typed-free reference too -- the parent
+  # of the first commit that added src/typed/ (spec §11 V4) -- so this job
+  # needs the branch's history: fetch-depth 0, and the runner finds the base
+  # itself.  The merge base with master is deliberately NOT used: it subtracts
+  # Phase 0's legitimate .text, so item 1 would go red for the wrong reason.
   # ----------------------------------------------------------------------------
   typed:
     name: typed (--enable-typed, asan+ubsan)
@@ -180,11 +183,9 @@ jobs:
           # they do not link against an instrumented libdb.a.
           CFLAGS: -fsanitize=address,undefined -fno-omit-frame-pointer -g
           ASAN_OPTIONS: detect_leaks=0
-        run: |
-          base=${{ github.event.pull_request.base.sha }}
-          [ -n "$base" ] || base=$(git rev-parse origin/master)
-          TYPED_FOOTPRINT_BASE=$(git merge-base "$base" HEAD) \
-            sh ../test/db/run_all.sh
+        # run_typed_footprint.sh finds its typed-free base from history
+        # (fetch-depth 0 above); do not set TYPED_FOOTPRINT_BASE.
+        run: sh ../test/db/run_all.sh
       - name: typed tier
         working-directory: build_unix
         env:

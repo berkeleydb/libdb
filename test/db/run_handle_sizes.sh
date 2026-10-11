@@ -45,9 +45,22 @@ fi
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
 
+# Measure the struct the way the LIBRARY was compiled: struct __db is
+# library-allocated and opaque (A1), so the size that matters is the one the
+# library's own .c files see.  Any HAVE_* that the build set and that could
+# reach a public struct's layout must be defined for this consumer too, or a
+# field added under such a guard (e.g. #ifdef HAVE_TYPED, D2's forbidden case)
+# would grow the library's struct while this test, compiling db.h without the
+# macro, still read the old size -- a vacuous green.  HAVE_TYPED is the only
+# such guard today; it legitimately leaves sizeof(DB) unchanged (D2), so this
+# flag changes nothing on a correct typed build and catches a wrong one.
+GUARDS=""
+grep -q '^#define HAVE_TYPED 1' "$BUILD/db_config.h" 2>/dev/null &&
+    GUARDS="$GUARDS -DHAVE_TYPED"
+
 BIN=$BUILD/handle_sizes
 rm -f "$BIN"
-"${CC:-cc}" -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$LIB" \
+"${CC:-cc}" -g -O1 ${CFLAGS:-} $GUARDS -I"$BUILD" "$SRC" "$LIB" \
     -lpthread $LIBRPATH $EXTRALIBS -o "$BIN" 2>&1 || {
 	echo "run_handle_sizes.sh: FAIL compile" ; exit 1 ; }
 # A stale binary would give a false pass.
