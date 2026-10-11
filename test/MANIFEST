@@ -467,6 +467,7 @@ db	run_recd_handlers
 db	run_upgrade
 db	run_lock_priority_nullderef
 db	run_txn_remevent_leak
+db	run_compact_subdb_remove
 db	run_null_method_slots
 db	run_qam_extent_vrfy
 db	run_qam_inorder_consume

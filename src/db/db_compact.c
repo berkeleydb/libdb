@@ -1034,7 +1034,10 @@ __db_move_metadata(dbc, metap, c_data, pgs_donep)
 	BTREE *bt;
 	DB *dbp, *mdbp;
 	DB_LOCK handle_lock;
+	DB_LOCKER *lock_locker;
+	DB_TXN *lock_txn;
 	HASH *ht;
+	db_lockmode_t lock_mode;
 	int ret, t_ret;
 
 	dbp = dbc->dbp;
@@ -1059,22 +1062,47 @@ __db_move_metadata(dbc, metap, c_data, pgs_donep)
 
 	/*
 	 * The handle lock for subdb's depends on the metadata page number:
-	 * swap the old one for the new one.
+	 * swap the old one for the new one.  Acquire the handle lock keyed on
+	 * the new metadata page under the right locker.  Three cases:
+	 *
+	 *   1. The dbp is still in an opening transaction (cur_txn): the lock
+	 *	is already recorded as an event on that txn, so remove the
+	 *	stale event, re-get WRITE under the txn locker and re-register
+	 *	the event (below).
+	 *
+	 *   2. The compact itself runs in a transaction (dbc->txn), but the
+	 *	dbp was opened earlier (cur_txn == NULL): get the lock under
+	 *	the *transaction* locker, WRITE, and register an event so it is
+	 *	traded to the handle locker at txn end.  Using the dbp's own
+	 *	handle locker here self-deadlocks when the new page's
+	 *	handle-lock object is already held by this same transaction --
+	 *	e.g. the page was freed by a dbremove of a sibling
+	 *	sub-database earlier in the txn, whose WRITE handle lock the
+	 *	txn still holds until commit.  The get would then block a
+	 *	thread against a lock it already owns under a different locker
+	 *	id, which no DB_TXN_NOWAIT or deadlock detection can break (it
+	 *	is not a cycle).
+	 *
+	 *   3. No transaction at all: get READ under the handle locker.
 	 */
 	if (STD_LOCKING(dbc)) {
-		/*
-		 * If this dbp is still in an opening transaction we need to
-		 * change its lock in the event.
-		 */
-		if (dbp->cur_txn != NULL)
+		lock_txn = dbp->cur_txn != NULL ? dbp->cur_txn : dbc->txn;
+		if (dbp->cur_txn != NULL) {
 			__txn_remlock(dbp->env,
 			    dbp->cur_txn, &dbp->handle_lock, DB_LOCK_INVALIDID);
+			lock_locker = dbp->cur_locker;
+			lock_mode = DB_LOCK_WRITE;
+		} else if (dbc->txn != NULL) {
+			lock_locker = dbc->txn->locker;
+			lock_mode = DB_LOCK_WRITE;
+		} else {
+			lock_locker = dbp->locker;
+			lock_mode = DB_LOCK_READ;
+		}
 
 		handle_lock = dbp->handle_lock;
 		if ((ret = __fop_lock_handle(dbp->env, dbp,
-		    dbp->cur_locker != NULL ? dbp->cur_locker : dbp->locker,
-		    dbp->cur_txn != NULL ? DB_LOCK_WRITE : DB_LOCK_READ,
-		    NULL, 0)) != 0)
+		    lock_locker, lock_mode, NULL, 0)) != 0)
 			goto err;
 
 		/* Move all the other handles to the new lock. */
@@ -1082,10 +1110,10 @@ __db_move_metadata(dbc, metap, c_data, pgs_donep)
 		    &handle_lock, &dbp->handle_lock)) != 0)
 			goto err;
 
-		/* Reregister the event. */
-		if (dbp->cur_txn != NULL)
+		/* Reregister the event so the lock is traded at txn end. */
+		if (lock_txn != NULL)
 			ret = __txn_lockevent(dbp->env,
-			    dbp->cur_txn, dbp, &dbp->handle_lock, dbp->locker);
+			    lock_txn, dbp, &dbp->handle_lock, dbp->locker);
 	}
 	if (dbp->log_filename != NULL)
 		dbp->log_filename->meta_pgno = dbp->meta_pgno;
