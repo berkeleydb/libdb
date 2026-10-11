@@ -1787,7 +1787,20 @@ __log_name(dblp, filenumber, namep, fhpp, flags)
 	 * If the open failed for reason other than the file
 	 * not being there, complain loudly, the wrong user
 	 * probably started up the application.
+	 *
+	 * Transient, process-local resource limits (out of file descriptors)
+	 * are not corruption and must not panic the whole environment: return
+	 * the error so the caller can close handles and retry.  Panicking here
+	 * on EMFILE/ENFILE would take down every thread and process sharing
+	 * the environment for a condition local to this process and this
+	 * moment.
 	 */
+	if (ret == EMFILE || ret == ENFILE) {
+		__db_err(env, ret, DB_STR_A("5316",
+		    "%s: log file open ran out of file descriptors", "%s"),
+		    *namep);
+		return (ret);
+	}
 	if (ret != ENOENT) {
 		__db_err(env, ret, DB_STR_A("2520",
 		    "%s: log file unreadable", "%s"), *namep);

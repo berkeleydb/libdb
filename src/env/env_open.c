@@ -1287,7 +1287,20 @@ err:	if (ret == 0)
 		 */
 		infop = env->reginfo;
 		if (infop != NULL && F_ISSET(infop, REGION_CREATE)) {
-			ret = __env_panic(env, ret);
+			/*
+			 * A transient, process-local resource shortage (out of
+			 * file descriptors) while bringing the regions up is not
+			 * corruption, and this process is the sole creator of the
+			 * region it is about to remove -- nothing else has
+			 * attached yet (we hold the exclusive creation lock).  Do
+			 * not panic (which aborts the process in diagnostic
+			 * builds): just remove the half-created regions and return
+			 * the error so the caller can free descriptors and retry.
+			 * This mirrors __log_name, which returns EMFILE/ENFILE to
+			 * the caller rather than panicking the environment.
+			 */
+			if (ret != EMFILE && ret != ENFILE)
+				ret = __env_panic(env, ret);
 
 			/* Refresh the DB_ENV so can use it to call remove. */
 			(void)__env_refresh(dbenv, orig_flags, rep_check);
