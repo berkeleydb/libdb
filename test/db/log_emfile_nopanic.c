@@ -206,7 +206,7 @@ region_run(const char *home)
 int
 main(int argc, char *argv[])
 {
-	char home[] = "./LOG_EMFILE_NOPANIC.XXXXXX";
+	char home[] = "/tmp/LOG_EMFILE_NOPANIC.XXXXXX";
 	int total;
 
 	(void)argc;
@@ -226,7 +226,7 @@ main(int argc, char *argv[])
 	total += fails;
 
 	/* The defect: EMFILE on a log open must not panic the environment. */
-	strcpy(home, "./LOG_EMFILE_NOPANIC.XXXXXX");
+	strcpy(home, "/tmp/LOG_EMFILE_NOPANIC.XXXXXX");
 	if (mkdtemp(home) == NULL)
 		return (printf("mkdtemp: inject\n"), 99);
 	printf(" EMFILE injected on log open:\n");
@@ -239,7 +239,7 @@ main(int argc, char *argv[])
 	 * the error is returned.
 	 */
 	fails = 0;
-	strcpy(home, "./LOG_EMFILE_NOPANIC.XXXXXX");
+	strcpy(home, "/tmp/LOG_EMFILE_NOPANIC.XXXXXX");
 	if (mkdtemp(home) == NULL)
 		return (printf("mkdtemp: region\n"), 99);
 	printf(" EMFILE injected on region open at env create:\n");

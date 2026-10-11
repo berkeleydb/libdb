@@ -213,7 +213,7 @@ done:	(void)e->close(e, 0);
 int
 main(int argc, char *argv[])
 {
-	char home[] = "./COMPACT_SUBDB_REMOVE.XXXXXX";
+	char home[] = "/tmp/COMPACT_SUBDB_REMOVE.XXXXXX";
 	int total;
 
 	(void)argc;
@@ -234,7 +234,7 @@ main(int argc, char *argv[])
 	total += fails;
 
 	/* The defect: remove s1, then compact the siblings, in one txn. */
-	strcpy(home, "./COMPACT_SUBDB_REMOVE.XXXXXX");
+	strcpy(home, "/tmp/COMPACT_SUBDB_REMOVE.XXXXXX");
 	if (mkdtemp(home) == NULL)
 		return (printf("mkdtemp: remove\n"), 99);
 	printf(" remove then compact:\n");

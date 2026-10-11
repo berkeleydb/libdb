@@ -62,6 +62,10 @@ echo "Compiling recover_foreign_file against $LIB"
 # another build) attached a region it did not create: on FreeBSD that is a
 # PANIC (a pshared mutex whose initialiser has exited, tracker row B3), and
 # between builds it is a DB_VERSION_MISMATCH. Either way a false red.
+# Clear any leftover of the home, whether a dir OR a stray file: on a reused
+# CI workspace (seen on the macOS runners) a prior run can leave the path as
+# something mkdir -p then refuses with "File exists", aborting under set -e.
+rm -f "$HOME_DIR" 2>/dev/null || true
 [ -d "$HOME_DIR" ] && find "$HOME_DIR" -mindepth 1 -delete 2>/dev/null
 mkdir -p "$HOME_DIR"
 
