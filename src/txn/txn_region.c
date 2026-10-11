@@ -144,6 +144,10 @@ __txn_init(env, mgr)
 	region->mtx_region = ((REGENV *)env->reginfo->primary)->mtx_regenv;
 	mgr->reginfo.mtx_alloc = region->mtx_region;
 
+	/* S5: recycle TXN_DETAILs through a region free list, off __env_alloc. */
+	if (getenv("DB_TXN_FREELIST") != NULL)
+		F_SET(region, TXN_REGION_FREELIST);
+
 	region->maxtxns = dbenv->tx_max;
 	region->inittxns = dbenv->tx_init;
 	region->last_txnid = TXN_MINIMUM;
@@ -163,6 +167,7 @@ __txn_init(env, mgr)
 
 	SH_TAILQ_INIT(&region->active_txn);
 	SH_TAILQ_INIT(&region->mvcc_txn);
+	SH_TAILQ_INIT(&region->free_txn);
 	return (ret);
 }
 

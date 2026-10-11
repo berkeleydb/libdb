@@ -248,6 +248,11 @@ struct __db_txnregion { /* SHARED */
 	u_int32_t n_hotbackup;		/* Num. of outstanding backup notices.*/
 
 #define	TXN_IN_RECOVERY	 0x01		/* environment is being recovered */
+#define	TXN_REGION_FREELIST 0x02	/* S5: recycle TXN_DETAILs via free_txn
+					 * instead of __env_alloc/_free on every
+					 * begin/end.  Latched by DB_TXN_FREELIST
+					 * at region create, recorded here so all
+					 * attaching processes agree. */
 	u_int32_t	flags;
 	/*
 	 * RFC 0015 S4: a bounded LIFO cache of initialised MTX_TXN_MVCC
@@ -267,6 +272,8 @@ struct __db_txnregion { /* SHARED */
 					/* active TXN list */
 	SH_TAILQ_HEAD(__active) active_txn;
 	SH_TAILQ_HEAD(__mvcc) mvcc_txn;
+					/* S5: free list of recycled details. */
+	SH_TAILQ_HEAD(__tdfree) free_txn;
 };
 
 /*

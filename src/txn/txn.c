@@ -536,8 +536,20 @@ __txn_begin_int(txn)
 	    region->cur_maxid != TXN_MAXIMUM)
 		region->last_txnid = TXN_MINIMUM - 1;
 
-	/* Allocate a new transaction detail structure. */
-	if ((ret =
+	/*
+	 * Allocate a new transaction detail structure.  S5: when the region
+	 * free list is enabled, pop a recycled detail (same fixed size) rather
+	 * than searching the allocator's size queues under TXN_SYSTEM_LOCK --
+	 * which we already hold.  __txn_end pushes details here.  Every field a
+	 * detail is read through is reset below (begin already assumes
+	 * __env_alloc does not zero -- see the si_ref comment), so a recycled
+	 * detail is no staler than a freshly-allocated one.  The list refills
+	 * from __env_alloc only when empty.
+	 */
+	if (F_ISSET(region, TXN_REGION_FREELIST) &&
+	    (td = SH_TAILQ_FIRST(&region->free_txn, __txn_detail)) != NULL) {
+		SH_TAILQ_REMOVE(&region->free_txn, td, links, __txn_detail);
+	} else if ((ret =
 	    __env_alloc(&mgr->reginfo, sizeof(TXN_DETAIL), &td)) != 0) {
 		__db_errx(env, DB_STR("4525",
 		    "Unable to allocate memory for transaction detail"));
@@ -2024,9 +2036,23 @@ __txn_end(txn, is_commit)
 	}
 
 	if (td != NULL) {
-		if (atomic_read(&td->si_ref) == 0)
-			__env_alloc_free(&mgr->reginfo, td);
-		else {
+		if (atomic_read(&td->si_ref) == 0) {
+			/*
+			 * S5: return the detail to the region free list for
+			 * __txn_begin_int to pop, instead of coalescing it back
+			 * into the allocator (__env_alloc_free walks the address
+			 * queue).  Both ends run under TXN_SYSTEM_LOCK, which we
+			 * hold.  Only the common, non-SSI path recycles; the SSI
+			 * parking path below is unchanged.  The name/log_dbs
+			 * sub-allocations were already freed above; only the
+			 * fixed-size detail struct is recycled.
+			 */
+			if (F_ISSET(region, TXN_REGION_FREELIST))
+				SH_TAILQ_INSERT_HEAD(&region->free_txn,
+				    td, links, __txn_detail);
+			else
+				__env_alloc_free(&mgr->reginfo, td);
+		} else {
 			/*
 			 * SSI: a committed snapshot-safe reader whose SIREAD
 			 * markers still reference this detail cannot be freed yet
