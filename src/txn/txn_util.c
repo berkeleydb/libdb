@@ -371,7 +371,13 @@ dofree:
 		/* Free resources here. */
 		switch (e->op) {
 		case TXN_REMOVE:
-			if (txn->parent != NULL)
+			/*
+			 * On commit a child's remove event was handed to its
+			 * parent above, and is freed when the parent ends.  On
+			 * abort the jump here skipped that hand-off: the event
+			 * is in no list, so it must be freed now.
+			 */
+			if (txn->parent != NULL && opcode != TXN_ABORT)
 				continue;
 			if (e->u.r.fileid != NULL)
 				__os_free(env, e->u.r.fileid);
