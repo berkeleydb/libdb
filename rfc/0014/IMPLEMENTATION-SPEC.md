@@ -781,6 +781,7 @@ handle if open latency matters.
 |---|---|
 | typed subdatabase **created** (`F_ISSET(dbp, DB_AM_CREATED)`, still set inside `__db_open`; cleared later at `db_iface.c:1426`) | create `__db_typed` if absent; `put` the record (overwrite: a non-transactional crash can leave a stale one). Same `txn`, so an aborted create leaves neither. |
 | typed subdatabase **opened** | `get`; missing ⇒ `EINVAL` "no catalog record"; parse; compare (§5). No write. |
+| crash between a **non-transactional** create and its catalog put | the subdatabase exists with the bit and no record; every later typed open fails "no catalog record" (fail closed); `DB->remove` still works (its hook ignores a missing record). Transactional creates have no such window. |
 | `DB->remove` of a typed subdatabase | in `__db_subdb_remove` after `MU_REMOVE` (`db_remove.c:441-443`): `#ifdef HAVE_TYPED`, if `DB2_AM_TYPED_FILE` on `sdbp`, delete the record in `txn`. A missing record is not an error. |
 | `DB->rename` of a typed subdatabase | in `__db_subdb_rename` after `MU_RENAME` (`db_rename.c:365-367`): if the subdatabase's meta page has the bit (it is already fetched at `:351`; test the flag there and remember it), `get` old, `put` new, `del` old, in `txn`. |
 | `DB->truncate` | none |
@@ -933,7 +934,9 @@ a type codec. It cannot stop `field()` itself from reading out of bounds; only
 
 ### 7.1 Harness
 
-- Every runner is `test/db/run_<name>.sh` (handoff rule) and prints
+- Every runner is `test/db/run_<name>.sh`, registered in `test/MANIFEST` as
+  `<tier>	run_<name>` (the existing `db`-tier convention, `MANIFEST:464-483`;
+  `run_all.sh` runs `$HERE/$2.sh`). It prints
   `VERDICT <name> PASS|FAIL <reason>` and exits non-zero on FAIL. A hang is a
   FAIL: each runner wraps its binary in the `run_with_timeout` idiom of
   `test/db/run_curadj_dup_partition.sh`.
