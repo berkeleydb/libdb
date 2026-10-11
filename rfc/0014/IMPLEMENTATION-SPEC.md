@@ -770,7 +770,78 @@ Phase 2. Hot backup and replication copy pages, so the bit survives them.
 
 ## §5 Multi-process codec fingerprint
 
-TODO.
+### 5.1 What is hashed
+
+One fingerprint per distinct `DB_CODEC`: SHA-1 (`__db_SHA1Init/Update/Final`,
+`src/hmac/sha1.c:197-257`, built unconditionally: `dist/srcfiles.in:172`,
+`dist/Makefile.in:310`), 20 bytes, over this byte stream (integers big-endian
+`u32`):
+
+1. `name` bytes, `version`, `flags` after C11 normalisation (MEMCMP ⇒ also
+   EQUALIMAGE), `fixed_len`, `nvectors`;
+2. each vector: `size`, then its bytes;
+3. for every ordered pair `(i, j)`, `i, j < nvectors`: `sign(compare(v_i, v_j))`
+   as `-1/0/1` (for a MEMCMP codec with `compare == NULL`, the sign of the
+   default bytewise order, `memcmp` then shorter-first);
+4. for every pair `i < j`: `equal(v_i, v_j) != 0` (or `compare == 0` if `equal`
+   is NULL);
+5. for every `i`: `hash(v_i)` if `hash != NULL`; `validate(v_i) == 0` if
+   `validate != NULL`; if `sortkey != NULL`, its output length and bytes
+   (two-call protocol of §1.2; output buffer `__os_malloc`'d once, sized by the
+   first call).
+
+≤ 256 vectors ⇒ ≤ 65 536 `compare` calls per codec per open. ponytail:
+all pairs, not adjacent pairs; drop to adjacent pairs if open latency ever
+matters.
+
+**Self-checks while hashing** (`db_set_schema` fails `EINVAL` naming the codec
+and the vector indices): vectors not in non-decreasing `compare` order
+(the RFC's "ordered list the codec must reproduce"); `sign(c(a,b)) !=
+-sign(c(b,a))`; `MEMCMP` claimed but `memcmp` sign differs on a pair;
+`EQUALIMAGE` claimed but `compare == 0` on two different byte strings, or
+`!= 0` on identical ones; `hash` differs on two vectors `equal` calls equal;
+`sortkey` order disagrees with `compare` order on a pair. These are checks of
+the codec's *claims* on the vectors, not proofs.
+
+The vectors are **part of the codec's identity at its version**. Changing the
+vector set without bumping `version` is a `DB_CODEC_MISMATCH`; bumping
+`version` is an `EINVAL` (5.2). Either way the database must be rebuilt. This
+is deliberate: the catalog has to compare like with like. (Upgrade path: store
+the vectors themselves in catalog format 2 and re-run them through the current
+codec, if applications need to grow their vector sets.)
+
+The **record codec** has no vectors, so it is identified by name, version,
+flags, `nfields` and the per-field codec indices only. Its `field()` behaviour
+is not fingerprinted. The documentation must say so.
+
+### 5.2 When it is checked, and the errors
+
+Computed once, in `db_set_schema` (cold), and stored in the side table
+(`TYPED_STATE`: change §3.1's `fp[20]` to `u_int32_t ncodecs; const DB_CODEC
+**codecs; u_int8_t (*fp)[20];`, all inside the one allocation).
+
+Checked in `__typed_open` against the catalog record (§4.2), for every
+non-recovery open of an existing typed subdatabase, before any callback is
+used. Written instead of checked when the subdatabase is created.
+
+| Condition (catalog vs. passed schema) | Error |
+|---|---|
+| a catalog codec name is absent from the schema | `EINVAL` "typed database requires codec %s v%u" |
+| same name, different `version` | `EINVAL` "typed database requires codec %s v%u, got v%u" |
+| same name and version; different `flags`, `fixed_len` or fingerprint | **`DB_CODEC_MISMATCH` (-30965)** "codec %s v%u behaves differently from the codec this database was created with" |
+| record codec name, version, flags, `nfields` or field→codec map differs; `DBTYPE` differs; constraint list differs (kind, side, field, maxlen, flags, name, in order) | `EINVAL` "schema differs from the database's catalog record" |
+| catalog record missing / corrupt / newer format | `EINVAL` (§4.2) |
+
+Per C5 the three new codes are -30966 (`DB_CONSTRAINT_VIOLATION`, puts, §3.7),
+-30965 (`DB_CODEC_MISMATCH`, this table) and -30964 (`DB_CODEC_MALFORMED`,
+callback-to-libdb only, never returned by a public call).
+
+Not checked: by `db_recover` or any `DB_AM_RECOVER` open (D5, §3.5); by a
+schema-less read-only open (§4.1), which installs no codec and so cannot
+misorder anything it writes, because it writes nothing.
+
+**Stated limit** (unchanged from the RFC): agreement on the vectors is all
+this proves.
 
 ## §6 The DB_OPTREAD gate (D7)
 
