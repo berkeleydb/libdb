@@ -985,7 +985,159 @@ revisit condition) is a measurement, §9 commit 13.
 
 ## §8 Phase 0
 
-TODO.
+Phase 0 is untyped: no `HAVE_TYPED`, every build. Each item has a `db`-tier
+runner. (RFC Phase 0 item 1 moved to Phase 1, C7.)
+
+### 8.1 `__db_associate_foreign` leaves a stale `f_primaries` entry (C8)
+
+**[FOUND] Defect.** `__db_associate_foreign` (`src/db/db_am.c:1143`) inserts
+`f_info` into `fdbp->f_primaries` (`:1174-1176`) and only then tests
+`pdbp->s_foreign != NULL`, returning `EINVAL` with the entry still linked
+(`:1184-1185`). `__db_associate_foreign_arg` (`src/db/db_iface.c:2169-2211`)
+does not check `s_foreign`, so the second call `fdbp2->associate_foreign(fdbp2,
+sdbp, ...)` on an already-associated secondary reaches that path. The entry
+points at `sdbp` while `sdbp->s_foreign` still names the first foreign database.
+
+**Hazards**, each from code read now:
+
+1. **Wrong cascade / wrong abort.** A delete in `fdbp2` runs `__dbc_del_foreign`
+   because `f_primaries` is non-empty (`db_cam.c:451-453`), walks the stale
+   entry (`:3105-3108`) and applies `DB_FOREIGN_ABORT`/`CASCADE`/`NULLIFY` to
+   `sdbp`'s primary, a relationship the `EINVAL` said was not created.
+2. **Disables a live FK check.** If `fdbp2` closes first, `__db_refresh` walks
+   its `f_primaries` and sets `f_info->dbp->s_foreign = NULL`
+   (`src/db/db.c:867-874`), clearing `sdbp`'s association with the *first*
+   foreign database. Inserts into `sdbp`'s primary then skip the foreign check
+   (`db_cam.c:1533-1537`) with no error.
+3. **Use-after-free.** If `sdbp` closes first, `__db_disassociate_foreign`
+   (`db.c:1293-1318`) walks `sdbp->s_foreign`'s list (the first foreign DB), not
+   `fdbp2`'s, so the stale entry survives `sdbp`'s free. A later delete in
+   `fdbp2` dereferences `f_info->dbp` (`db_cam.c:3106-3107`), as does
+   `fdbp2`'s close (`db.c:871`).
+
+**Fix** (`db_am.c`): test before allocating.
+
+```c
+	if (pdbp->s_foreign != NULL)
+		return (EINVAL);
+	if ((ret = __os_malloc(env, sizeof(DB_FOREIGN_INFO), &f_info)) != 0)
+		return (ret);
+```
+
+and delete the old test at `:1184-1185`. Give it a message:
+`__db_errx(env, DB_STR("0215", "Secondary index is already associated with a
+foreign database"))` (0215 is unused: `git grep '"0215"'` is empty; 0207-0214
+are taken, `src/common/db_err.c`, `os_csprng.c`). The lock-free test of
+`pdbp->s_foreign` matches today's code.
+
+**Test `foreign_reassoc`** (`db` tier). Primary P, secondary S, foreign F1 and
+F2, all in one env. `F1->associate_foreign(F1, S, NULL, DB_FOREIGN_CASCADE)`
+→ 0; `F2->associate_foreign(F2, S, NULL, DB_FOREIGN_CASCADE)` → must be
+`EINVAL`. Put `k → v` into P (S key `s`; `s` in F1 and F2). Then:
+(i) delete `s` from F2 → P must still hold `k` (hazard 1); (ii) close F2,
+then put a P record whose S key is absent from F1 → must be
+`DB_FOREIGN_CONFLICT` (hazard 2); (iii) a fresh run: close S, then delete from
+F2, under ASan → no report (hazard 3). The ASan arm runs with the
+`--enable-debug CFLAGS=-fsanitize=address` build the lockmatrix tier uses.
+**Sabotage:** restore the post-insert test (move the `s_foreign` check back below
+`LIST_INSERT_HEAD`) → (i) finds `k` cascaded away, (ii) succeeds, (iii) reports
+heap-use-after-free: each must FAIL.
+
+### 8.2 `__db_disassociate_foreign` leaks one allocation per close (C8)
+
+**[FOUND] Defect.** `src/db/db.c:1302-1303` mallocs `sizeof(DB_FOREIGN_INFO)`
+into `tmp`; `:1309` overwrites `tmp` with `LIST_NEXT(...)` before any use. Every
+`DB->close` of a secondary with `s_foreign != NULL` (called from `db.c:876-878`)
+leaks one block. The malloc's only effect is an `ENOMEM` return that leaves
+the list unedited.
+
+**Fix:** delete `db.c:1302-1303`. Nothing else changes.
+
+**Test `foreign_disassoc_leak`** (`db` tier): count allocations through
+`db_env_set_func_malloc`/`db_env_set_func_free` (`src/common/os_method.c:120`,
+`:74`; `__os_malloc` uses `DB_GLOBAL(j_malloc)`, `src/os/os_alloc.c:82-83`,
+and `__os_free` uses `j_free`, `:190-191`). Live count = mallocs − frees,
+counting `realloc` as neither. Open env, P, S, F; `associate`,
+`associate_foreign`; record the live count; then 100 × { close S; reopen S;
+re-associate both }; record again. **Asserts** the two counts are equal.
+**Control arm** in the same binary: the same loop without `associate_foreign`
+must also be flat, which proves the counter sees handle churn without false
+positives. **Sabotage:** restore the two lines → the delta is exactly 100 → FAIL.
+(Prefer the counter to LeakSanitizer: a leak inside a live environment is not
+reported by LSan until exit, and the env closes cleanly either way.)
+
+### 8.3 R1: an equal-key put revives a deleted item's key bytes
+
+**Reproduces** on this branch. Probe, run on `/tmp/s_impl` (FreeBSD 14.5,
+`dist/configure --enable-debug --enable-diagnostic`, tree `553b649a1`, the
+reporter's `~/ws/dbsql/.agent/libdb-bugs/r1_revive.c` unmodified, linked against
+`.libs/libdb-2026.0.a`):
+
+```
+libdb 2026.10.5 (October 10, 2026)
+control (deleter closed)       no-env stored key: "ABC"  (expected)
+another cursor on the item     no-env stored key: "abc"  (UNEXPECTED: old bytes)
+same cursor deletes and puts   no-env stored key: "abc"  (UNEXPECTED: old bytes)
+control (deleter closed)       txn    stored key: "ABC"  (expected)
+another cursor on the item     txn    stored key: "abc"  (UNEXPECTED: old bytes)
+same cursor deletes and puts   txn    stored key: "abc"  (UNEXPECTED: old bytes)
+```
+
+**[FOUND] Mechanism.** `__bamc_put` (`src/btree/bt_cursor.c:2143-2147`) finds an
+exact match (the comparator says equal); with no duplicates it sets
+`iiop = DB_CURRENT` (`:2174-2176`) whether or not the matched slot is deleted
+(the `IS_CUR_DELETED` test at `:2162` guards only `DB_NOOVERWRITE`).
+`__bam_iitem`'s `DB_CURRENT` case (`src/btree/bt_put.c:403-458`) clears the
+cursor-deleted state and replaces only the **data** item at `indx + 1`; the key
+item at `indx` is never written. So a slot kept only because a cursor
+references it (`B_DISSET`) comes back to life with its old key bytes.
+
+**Fix** (smallest correct one): in the `DB_CURRENT` case of `__bam_iitem`, when
+the slot being revived was deleted and the new key's bytes differ from the
+stored ones, replace the key item too:
+
+```c
+	case DB_CURRENT:
+		... existing __bam_ca_delete ...
+		if (TYPE(h) == P_LBTREE && key != NULL &&
+		    B_DISSET(GET_BKEYDATA(dbp, h, indx + O_INDX)->type) &&
+		    (ret = __bam_revive_key(dbc, h, indx, key)) != 0)
+			return (ret);
+```
+
+`__bam_revive_key` (new, static, `bt_put.c`): if the key item is `B_KEYDATA` with
+`len == key->size` and `memcmp` equal, do nothing; if it is `B_KEYDATA`,
+`key->size <= cp->ovflsize` (same rule as `:232`), and the space fits, call
+`__bam_ritem(dbc, h, indx, key, 0)` (`bt_put.c:703`; it logs a `__bam_repl`
+record, so recovery and replication see it); otherwise return
+`DB_NEEDSPLIT`-equivalent by falling back to delete-and-insert: `__bam_ditem` the
+pair and redo the put as `DB_KEYFIRST` at `indx`. The space accounting at
+`bt_put.c:255-274` must add `BKEYDATA_PSIZE(key->size) - BKEYDATA_PSIZE(old
+len)` for this case, so the split decision is made before anything is written.
+Only deleted slots change; replacing a **live** equal key keeps the stored key
+bytes, which is libdb's documented behaviour.
+
+This changes no format and no API, and makes `EQUALIMAGE` irrelevant to R1. The
+RFC suggested waiting for typed EQUALIMAGE; that is not needed, because the bug
+is the revival, not equality.
+
+[UNSURE] Overflow keys (`B_OVERFLOW` key items) and the off-page-duplicate
+case. The probe covers neither. The implementer must extend the test to a key
+longer than `ovflsize` before choosing between the `__bam_ritem` path and the
+delete-and-insert path for it. If delete-and-insert is used for every case, the
+code is shorter and the special cases go away; choose that unless the test shows
+a cursor-adjustment problem.
+
+**Test `r1_revive`** (`db` tier): the reporter's six cases, each judged on the
+stored key bytes, plus two **controls that must not change**: (a) a put of
+"ABC" over a *live* "abc" keeps "abc" (documented replace semantics); (b)
+`DB_NOOVERWRITE` over a live equal key returns `DB_KEYEXIST`. Plus (c) the same
+six cases with a 2000-byte key (overflow), and (d) run `db_recover -c` on the
+txn-env case and re-read: the key must still be "ABC" (proves the key change is
+logged). `VERDICT r1_revive PASS` iff all six read "ABC" and all controls hold.
+**Sabotage:** delete the `__bam_revive_key` call → the four non-control cases
+read "abc" → FAIL. That is the current tree's behaviour, so the arm's FAIL output
+is the probe output above.
 
 ## §9 Work breakdown
 
