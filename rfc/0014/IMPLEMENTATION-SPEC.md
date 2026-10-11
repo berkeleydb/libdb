@@ -845,7 +845,62 @@ this proves.
 
 ## §6 The DB_OPTREAD gate (D7)
 
-TODO.
+### 6.1 What "DB_OPTREAD set" means today
+
+**[FOUND]** It is a **process environment variable**, not a `DB_ENV` flag.
+`__bam_opt_enabled()` (`src/btree/bt_search.c:100-109`, `static`) returns
+`getenv("DB_NO_OPTREAD") == NULL && getenv("DB_OPTREAD") != NULL`, cached in
+a function-static on first call. The only application code it reaches is the
+Btree comparator: `__bam_opt_child` loads `bt_compare` (`:182`) and calls it on
+unvalidated interior-page bytes (`:230-233`). The optimistic path is taken only
+for `dbc->dbtype == DB_BTREE`, read-only, non-OPD, non-recnum descents
+(`:844-850`), so Hash, duplicate trees and writes never see torn bytes.
+
+### 6.2 The check
+
+In `__typed_open` (§3.5), before the catalog is touched:
+
+```c
+if (dbp->type == DB_BTREE && ts->key_rc != NULL && !ts->key_memcmp &&
+    __bam_optread_on()) {
+	/* key record codec, then each key field codec in field order */
+	if (!FLD_ISSET(ts->key_rc->flags, DB_CODEC_TOTAL))
+		-> EINVAL, "DB_OPTREAD is set and record codec %s is not DB_CODEC_TOTAL"
+	for each key-field codec c:
+		if (!FLD_ISSET(c->flags, DB_CODEC_TOTAL))
+			-> EINVAL, "DB_OPTREAD is set and codec %s is not DB_CODEC_TOTAL"
+}
+```
+
+- `__bam_optread_on` is a new two-line non-static wrapper around
+  `__bam_opt_enabled`, added to `bt_search.c` **inside `#ifdef HAVE_TYPED`**
+  with a `PUBLIC: #ifdef HAVE_TYPED` prototype (the conditional-prototype form
+  `s_include` already handles, e.g. `src/os/os_atomic.c:288-291`). Calling the
+  same cached function, rather than repeating the `getenv` test, keeps the gate
+  and the descent in agreement even if the application calls `setenv` later.
+  The default build's `bt_search.c` is unchanged.
+- **Data-side codecs are not gated:** they run only on the DBT being put
+  (§3.7) and in the UNIQUE callback, never on page bytes.
+- **MEMCMP keys are not gated:** the default comparator runs (§3.6), which is
+  bounded by construction.
+- The check runs per open, so a process that sets `DB_OPTREAD` after another
+  process created the database is still refused.
+
+### 6.3 What libdb itself guarantees inside `__typed_bt_compare` (C10)
+
+The record codec's `field()` is application code, so `TOTAL` is a promise.
+The generated comparator adds the one check libdb *can* make, per slice,
+before any type codec sees it:
+
+```c
+/* overflow-safe: p within [d, d+size], len within the rest */
+if (p < d || (size_t)(p - d) > size || len > size - (size_t)(p - d))
+	-> treat the record as malformed (sorts last, §3.6)
+```
+
+That turns a lying `field()` into a misordering, not an out-of-bounds read by
+a type codec. It cannot stop `field()` itself from reading out of bounds; only
+`TOTAL` covers that.
 
 ## §7 Test plan
 
