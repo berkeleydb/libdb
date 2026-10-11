@@ -765,6 +765,88 @@ MUTEX_UNSET(tsl_t *tsl) {
 #endif
 
 /*********************************************************************
+ * ARM64/AArch64 gcc/clang.
+ *********************************************************************/
+#ifdef HAVE_MUTEX_ARM64_GCC_ASSEMBLY
+typedef volatile unsigned char tsl_t;
+
+#ifdef LOAD_ACTUAL_MUTEX_CODE
+/*
+ * 0 is clear, 1 is set.
+ *
+ * The primitives are the compiler's __atomic builtins rather than hand-written
+ * asm, because the right instruction depends on the target and only the
+ * compiler knows the target:
+ *
+ *   -march=armv8.1-a or later (Graviton2+, Neoverse, Apple M*):
+ *	MUTEX_SET is one LSE `swpab' (swap byte, acquire).
+ *   -march=armv8-a with outline atomics (the clang and gcc >= 10 default):
+ *	a call to __aarch64_swp1_acq, which tests for LSE ONCE at load time
+ *	and uses `swpab' or an `ldaxrb'/`stxrb' retry loop.
+ *   -mno-outline-atomics on armv8.0:
+ *	an inline `ldaxrb'/`stxrb' loop.
+ * Inline `swpab' asm would SIGILL on armv8.0 cores (Cortex-A53/A72,
+ * Graviton1), which still run Linux and FreeBSD.
+ *
+ * MEMORY ORDERING.  AArch64 is weakly ordered; the x86 TSO argument ("a plain
+ * store is a release, a locked instruction is a full fence") does NOT carry
+ * over.  On AArch64 plain stores to different addresses can become visible
+ * out of program order, and a plain load can be satisfied before an earlier
+ * plain store is visible.  So each edge is made explicit:
+ *
+ * 1. Acquire: MUTEX_SET is an exchange with ACQUIRE semantics.  No load or
+ *    store in the critical section can be performed before the swap reads
+ *    0.  That is the whole of the acquire requirement, so MEMBAR_ENTER is
+ *    empty.  (The shared-latch acquire is __os_atomic_cas, SEQ_CST,
+ *    os_atomic.c, which is stronger still.)
+ *
+ * 2. Release: MUTEX_UNSET is a store-release (`stlrb').  Every store of the
+ *    critical section, INCLUDING the F_CLR(DB_MUTEX_LOCKED) that
+ *    __db_tas_mutex_unlock does immediately before it, is visible before
+ *    the lock byte reads 0.  A plain `*tsl = 0' -- correct on x86 -- would
+ *    let the next owner see the byte clear and then read stale data.
+ *
+ * 3. Release of an EXCLUSIVELY held SHARED latch: __db_tas_mutex_unlock
+ *    publishes it with atomic_init(&sharecount, 0), which is a RELAXED
+ *    store (os_atomic.c), preceded by MEMBAR_EXIT.  On x86 MEMBAR_EXIT can
+ *    be empty because TSO orders stores.  Here it is NOT optional: it is
+ *    the only thing ordering the critical section's stores before the
+ *    relaxed store, so it must be at least a release fence.  (Other weakly
+ *    ordered TAS ports -- ARM32, PPC, MIPS -- leave MEMBAR_EXIT empty and
+ *    carry this latent defect; they are not configured as hybrid here.)
+ *
+ * 4. The hybrid sleep/wake handshake is Dekker-shaped.  The unlocker STORES
+ *    the lock free and then LOADS mutexp->wait; a sleeper
+ *    (__db_hybrid_mutex_suspend) STORES wait++ and then LOADS the lock
+ *    state.  If either side's load may pass its own earlier store, both can
+ *    read the old value: the unlocker sees wait == 0 and signals nobody, and
+ *    the sleeper sees the lock held and sleeps forever -- a lost wakeup.
+ *    Acquire/release orderings do NOT forbid that outcome (it is the
+ *    store-buffering litmus test); only a store->load fence does.  So
+ *    MUTEX_MEMBAR is a full SEQ_CST fence (`dmb ish'), placed between the
+ *    store and the load on both sides (mut_tas.c, mut_pthread.c).
+ */
+#define	MUTEX_SET(tsl)							\
+	(__atomic_exchange_n((tsl), 1, __ATOMIC_ACQUIRE) == 0)
+#define	MUTEX_UNSET(tsl)	__atomic_store_n((tsl), 0, __ATOMIC_RELEASE)
+#define	MUTEX_INIT(tsl)		(MUTEX_UNSET(tsl), 0)
+#define	MUTEX_MEMBAR(addr)	({ __atomic_thread_fence(__ATOMIC_SEQ_CST); 1; })
+#define	MEMBAR_ENTER()
+#define	MEMBAR_EXIT()		__atomic_thread_fence(__ATOMIC_RELEASE)
+
+/*
+ * The spin-wait hint is `isb', not `yield'.  Measured on Neoverse-V1
+ * (Graviton3, test/bench/spin_hint_cost.c): `yield' costs 0.39 ns, exactly a
+ * `nop' -- it is an SMT hint and these cores have no SMT -- so a `yield'
+ * spin loop issues loads at full speed on the line the holder must write.
+ * `isb' costs 12.7 ns, close to x86 `pause' on Ice Lake (11.9 ns, same
+ * program), so the spin count means about the same wall time on both.
+ */
+#define	MUTEX_PAUSE		__asm__ volatile ("isb" : : : "memory");
+#endif
+#endif
+
+/*********************************************************************
  * x86/gcc (32- and 64-bit) assembly.
  *********************************************************************/
 #if defined(HAVE_MUTEX_X86_GCC_ASSEMBLY) || \
