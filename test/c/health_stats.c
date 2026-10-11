@@ -90,6 +90,7 @@
  * well inside TXNS.
  */
 #define	MAX_LOCKERS	4000
+#define	MUTEX_WARMUP_SLACK	8	/* P12 stripe warmup; measured, see (2b) */
 #define	MAX_OBJECTS	4000
 #define	MAX_LOCKS	4000
 #define	MAX_TXNS	2000
@@ -558,10 +559,30 @@ main(int argc, char *argv[])
 		    (u_long)early.nsnapshot, (u_long)late.nsnapshot);
 		ret = 1;
 	}
-	if (early.mutex_inuse != 0 && late.mutex_inuse > early.mutex_inuse) {
+	/*
+	 * Mutex slots get a small WARMUP allowance, MEASURED rather than derived.
+	 * Since P12 + P13 (v2026.10.5) each of the 64 locker stripes keeps its own
+	 * free list, and each recycled locker keeps its mutex (P13). A stripe that
+	 * has not yet handed out a locker holds no retained mutex, so a few slots
+	 * fill in after the early window. That is a one-time ramp, not a leak.
+	 * Measured on FreeBSD 14.5, si138, early -> late peak:
+	 *     TXNS=6000 +2   24000 +3   60000 +2   240000 +0 (plateau at 1238)
+	 * DB_NO_LOCKER_SHARD=1 or DB_NO_LOCKER_MUTEX_REUSE=1 gives exactly +0.
+	 *
+	 * Why 8 and not 64 (one per stripe, the theoretical ceiling): a first
+	 * version used 64 and had NO TEETH. An injected leak of one mutex per 50
+	 * transactions shows as only +42 over this 6000-txn run, and mutex_max
+	 * is 0 here so the (2c) utilization check does not see it either; 64
+	 * PASSED that leak. 8 is ~2.7x the largest warmup seen and ~5x below the
+	 * smallest leak this run can show. Verified both ways: the real workload
+	 * PASSes and the injected leak FAILs.
+	 */
+	if (early.mutex_inuse != 0 &&
+	    late.mutex_inuse > early.mutex_inuse + MUTEX_WARMUP_SLACK) {
 		fprintf(stderr, "FAIL: peak mutex slots rose from %lu (early) "
-		    "to %lu (late)\n",
-		    (u_long)early.mutex_inuse, (u_long)late.mutex_inuse);
+		    "to %lu (late), more than the %d-slot P12 stripe warmup allowance\n",
+		    (u_long)early.mutex_inuse, (u_long)late.mutex_inuse,
+		    MUTEX_WARMUP_SLACK);
 		ret = 1;
 	}
 
