@@ -12,21 +12,25 @@
 # verdict, which is a louder and more accurate signal than a missing line.
 #
 # Usage (from build_unix):  sh ../test/db/run_all.sh
-# Env: BUILD (default .), TIMEOUT
+# Env: BUILD (default .), TIMEOUT, TIER (default db; "typed" runs the RFC 0014
+#      runners, which need an --enable-typed build and FAIL rather than skip
+#      without one)
 
 set -u
 
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$HERE/../harness.sh"
-hi_init db "$HERE/.."
+TIER=${TIER:-db}
+export TIER	# runners registered in two tiers read it
+hi_init "$TIER" "$HERE/.."
 
 MANIFEST=${LIBDB_MANIFEST:-"$HERE/../MANIFEST"}
 rc=0
 
 # awk, not grep|cut: the manifest is whitespace-separated with comments.
-runners=$(awk '$1 == "db" && $1 !~ /^#/ { print $2 }' "$MANIFEST")
+runners=$(awk -v tier="$TIER" '$1 == tier && $1 !~ /^#/ { print $2 }' "$MANIFEST")
 [ -n "$runners" ] || {
-	echo "run_all.sh: no db entries in $MANIFEST" >&2
+	echo "run_all.sh: no $TIER entries in $MANIFEST" >&2
 	exit 1
 }
 

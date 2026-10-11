@@ -309,7 +309,8 @@ DTRACE_OBJS= @ADDITIONAL_OBJS@ @REPLACEMENT_OBJS@ @CRYPTO_OBJS@ \
 	os_tmpdir@o@ os_truncate@o@ os_uid@o@ os_unlink@o@ os_yield@o@ \
 	partition@o@ seq_stat@o@ sequence@o@ sha1@o@ snprintf@o@ txn@o@ \
 	txn_auto@o@ txn_chkpt@o@ txn_failchk@o@ txn_method@o@ txn_rec@o@ \
-	txn_recover@o@ txn_region@o@ txn_stat@o@ txn_util@o@ xa@o@ \
+	txn_recover@o@ txn_region@o@ txn_stat@o@ txn_util@o@ \
+	typed@o@ typed_catalog@o@ typed_gen@o@ xa@o@ \
 	xa_map@o@ zerofill@o@ \
 
 C_OBJS=	$(DTRACE_OBJS) @FINAL_OBJS@
@@ -3072,6 +3073,12 @@ txn_stat@o@: $(srcdir)/txn/txn_stat.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/txn/txn_stat.c
 txn_util@o@: $(srcdir)/txn/txn_util.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/txn/txn_util.c
+typed@o@: $(srcdir)/typed/typed.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/typed/typed.c
+typed_catalog@o@: $(srcdir)/typed/typed_catalog.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/typed/typed_catalog.c
+typed_gen@o@: $(srcdir)/typed/typed_gen.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/typed/typed_gen.c
 util_arg@o@: $(srcdir)/common/util_arg.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/common/util_arg.c
 util_cache@o@: $(srcdir)/common/util_cache.c

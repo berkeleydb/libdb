@@ -312,5 +312,8 @@ src/txn/txn_recover.c	android
 src/txn/txn_region.c	android
 src/txn/txn_stat.c	android
 src/txn/txn_util.c	android
+src/typed/typed.c
+src/typed/typed_catalog.c
+src/typed/typed_gen.c
 src/xa/xa.c
 src/xa/xa_map.c

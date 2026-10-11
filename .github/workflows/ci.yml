@@ -147,6 +147,57 @@ jobs:
         run: make -j$(nproc)
 
   # ----------------------------------------------------------------------------
+  # RFC 0014 typed build (spec §7.1).  An --enable-typed library under ASan +
+  # UBSan must keep the whole db tier green (the typed layer may not disturb an
+  # untyped database), and then the typed tier runs against it.  The typed
+  # runners FAIL, never skip, on a build without HAVE_TYPED, and the manifest
+  # gate asserts the tier produced a verdict for every entry.
+  # typed_footprint (db tier) builds the merge base too, so this job needs
+  # master's history: fetch-depth 0, and TYPED_FOOTPRINT_BASE names it.
+  # ----------------------------------------------------------------------------
+  typed:
+    name: typed (--enable-typed, asan+ubsan)
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure (typed + sanitizers)
+        working-directory: build_unix
+        run: >
+          ../dist/configure --enable-typed --enable-debug
+          "CFLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -g"
+          "LDFLAGS=-fsanitize=address,undefined"
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: db tier against the typed build
+        working-directory: build_unix
+        env:
+          # The test drivers must be built with the library's sanitizers or
+          # they do not link against an instrumented libdb.a.
+          CFLAGS: -fsanitize=address,undefined -fno-omit-frame-pointer -g
+          ASAN_OPTIONS: detect_leaks=0
+        run: |
+          base=${{ github.event.pull_request.base.sha }}
+          [ -n "$base" ] || base=$(git rev-parse origin/master)
+          TYPED_FOOTPRINT_BASE=$(git merge-base "$base" HEAD) \
+            sh ../test/db/run_all.sh
+      - name: typed tier
+        working-directory: build_unix
+        env:
+          CFLAGS: -fsanitize=address,undefined -fno-omit-frame-pointer -g
+          ASAN_OPTIONS: detect_leaks=0
+        run: TIER=typed sh ../test/db/run_all.sh
+      - name: Manifest gate (db and typed tiers)
+        if: always()
+        run: |
+          ./test/check_manifest.sh --tier db
+          ./test/check_manifest.sh --tier typed
+
+  # ----------------------------------------------------------------------------
   # ThreadSanitizer build + concurrency SMOKE (SSI / lock / mutex TCL subset).
   # Critical for the ongoing SSI/MVCC/atomics work; best-effort so it informs
   # without gating. NOT the full suite -- TSan slowdown would time out.

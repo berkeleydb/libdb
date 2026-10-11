@@ -216,6 +216,13 @@ AC_ARG_ENABLE(handoff-trace,
 	[db_cv_handoff_trace="$enable_handoff_trace"], [db_cv_handoff_trace="no"])
 AC_MSG_RESULT($db_cv_handoff_trace)
 
+AC_MSG_CHECKING(if --enable-typed option specified)
+AC_ARG_ENABLE(typed,
+	[AS_HELP_STRING([--enable-typed],
+			[Build the typed-data and constraint layer (RFC 0014).])],
+	[db_cv_typed="$enable_typed"], [db_cv_typed="no"])
+AC_MSG_RESULT($db_cv_typed)
+
 AC_MSG_CHECKING(if --enable-dump185 option specified)
 AC_ARG_ENABLE(dump185,
 	[AS_HELP_STRING([--enable-dump185],

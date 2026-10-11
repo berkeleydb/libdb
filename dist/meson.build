@@ -159,6 +159,13 @@ else
   endif
 endif
 
+# Typed data and constraints (RFC 0014); mirrors autoconf's --enable-typed.
+# src/typed/*.c are in the source list unconditionally and whole-file guarded
+# on HAVE_TYPED, the os_aio_uring.c pattern above.
+if get_option('typed').enabled()
+  cdata.set('HAVE_TYPED', 1)
+endif
+
 # POSIX aio: aio_read may be in libc, librt or libaio.
 aio_dep = dependency('', required: false)
 if cc.has_header('aio.h')
@@ -640,6 +647,9 @@ libdb_srcnames = [
   'src/txn/txn_stat.c',
   'src/txn/txn_util.c',
   'src/txn/txn.c',
+  'src/typed/typed.c',
+  'src/typed/typed_catalog.c',
+  'src/typed/typed_gen.c',
   'src/xa/xa_map.c',
   'src/xa/xa.c',
 ]

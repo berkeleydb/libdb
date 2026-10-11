@@ -175,6 +175,14 @@ if test "$db_cv_handoff_trace" = "yes"; then
 	AH_TEMPLATE(HAVE_HANDOFF_TRACE,
     [Define to 1 to instrument the group-commit handoff in __log_flush_int.])
 fi
+# Typed data and constraints (RFC 0014).  Off by default.  When off,
+# HAVE_TYPED is undefined, src/typed/*.c compile to nothing, and every hook
+# in the engine is #ifdef'd out: the library is the stock one.
+if test "$db_cv_typed" = "yes"; then
+	AC_DEFINE(HAVE_TYPED)
+	AH_TEMPLATE(HAVE_TYPED,
+    [Define to 1 to build the typed-data and constraint layer.])
+fi
 if test "$db_cv_debug_rop" = "yes"; then
 	AC_DEFINE(DEBUG_ROP)
 	AH_TEMPLATE(DEBUG_ROP,

@@ -19,6 +19,16 @@ BUILD=${1:-${BUILD:-"$HERE/../../build_unix"}}
 [ -d "$BUILD" ] && BUILD=$(cd "$BUILD" && pwd)
 SRC=$HERE/handle_sizes.c
 
+# Registered twice in test/MANIFEST: in the typed tier (TIER=typed, set by
+# run_all.sh) it must be measuring an --enable-typed build, or its PASS would
+# say nothing about D2 -- so a default build there is a FAIL, not a skip.
+if [ "${TIER:-db}" = typed ] &&
+    ! grep -q '^#define HAVE_TYPED 1' "$BUILD/db_config.h" 2>/dev/null ; then
+	echo "VERDICT handle_sizes FAIL not-a-typed-build ($BUILD)"
+	echo "run_handle_sizes.sh: FAIL"
+	exit 1
+fi
+
 LIB=""
 LIBRPATH=""
 for cand in "$BUILD"/libdb.a "$BUILD"/.libs/libdb-*.a ; do

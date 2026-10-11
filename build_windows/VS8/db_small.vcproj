@@ -286,6 +286,9 @@
     <File RelativePath="..\..\src\txn\txn_region.c"/>
     <File RelativePath="..\..\src\txn\txn_stat.c"/>
     <File RelativePath="..\..\src\txn\txn_util.c"/>
+    <File RelativePath="..\..\src\typed\typed.c"/>
+    <File RelativePath="..\..\src\typed\typed_catalog.c"/>
+    <File RelativePath="..\..\src\typed\typed_gen.c"/>
     <File RelativePath="..\..\src\xa\xa.c"/>
     <File RelativePath="..\..\src\xa\xa_map.c"/>
   </Files>
