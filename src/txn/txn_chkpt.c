@@ -414,12 +414,30 @@ __txn_getactive(env, lsnp)
 	mgr = env->tx_handle;
 	region = mgr->reginfo.primary;
 
+	/*
+	 * M1 (RFC 0015): begin_lsn is written inside __log_put under
+	 * LOG_SYSTEM_LOCK (DB_SET_TXN_LSNP; the two 32-bit stores at
+	 * log_put.c:189-190) and read here under TXN_SYSTEM_LOCK.  When the two
+	 * are one latch (default) that is atomic.  After the split they are
+	 * not, and this walk could read a torn non-zero (file set, offset not
+	 * yet).  The file==0||offset==0 guard below only makes a torn ZERO
+	 * safe.  So when split, hold the LOG latch across the walk too.  The
+	 * order is TXN-then-LOG, consistent with every other site (log.c drops
+	 * LOG before calling __txn_getactive, so nothing takes LOG-then-TXN).
+	 * This path is rare (checkpoint / MVCC eviction), so the extra latch is
+	 * cheap -- the RFC's recommended fix over widening begin_lsn to a
+	 * 64-bit atomic, which would touch DB_LSN handling everywhere.
+	 */
 	TXN_SYSTEM_LOCK(env);
+	if (F_ISSET(region, TXN_REGION_LATCHSPLIT) && LOGGING_ON(env))
+		LOG_SYSTEM_LOCK(env);
 	SH_TAILQ_FOREACH(td, &region->active_txn, links, __txn_detail)
 		if (td->begin_lsn.file != 0 &&
 		    td->begin_lsn.offset != 0 &&
 		    LOG_COMPARE(&td->begin_lsn, lsnp) < 0)
 			*lsnp = td->begin_lsn;
+	if (F_ISSET(region, TXN_REGION_LATCHSPLIT) && LOGGING_ON(env))
+		LOG_SYSTEM_UNLOCK(env);
 	TXN_SYSTEM_UNLOCK(env);
 
 	return (0);

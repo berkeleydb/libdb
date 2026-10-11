@@ -253,6 +253,10 @@ struct __db_txnregion { /* SHARED */
 					 * begin/end.  Latched by DB_TXN_FREELIST
 					 * at region create, recorded here so all
 					 * attaching processes agree. */
+#define	TXN_REGION_LATCHSPLIT 0x04	/* M1: mtx_region is a dedicated txn
+					 * latch, NOT aliased to mtx_regenv.
+					 * Latched by DB_TXN_LATCH_SPLIT at
+					 * region create (see txn_region.c). */
 	u_int32_t	flags;
 	/*
 	 * RFC 0015 S4: a bounded LIFO cache of initialised MTX_TXN_MVCC

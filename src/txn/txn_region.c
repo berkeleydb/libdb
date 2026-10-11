@@ -140,9 +140,29 @@ __txn_init(env, mgr)
 		}
 	}
 
-	/* We share the region so we need the same mutex. */
-	region->mtx_region = ((REGENV *)env->reginfo->primary)->mtx_regenv;
-	mgr->reginfo.mtx_alloc = region->mtx_region;
+	/*
+	 * mtx_region is normally aliased to the single env latch (mtx_regenv):
+	 * TXN_SYSTEM_LOCK, LOG_SYSTEM_LOCK and LOCK_SYSTEM_LOCK are then one
+	 * physical mutex (RFC 0015 §2).  M1 (DB_TXN_LATCH_SPLIT) gives the txn
+	 * region its own mutex so txn_begin/txn_end no longer serialise against
+	 * __log_put.  The choice is latched at create time and recorded in the
+	 * region flags so every attaching process agrees; the signature already
+	 * moved (free_txn below), so a pre-split region will not attach.
+	 *
+	 * The allocator latch (mtx_alloc) stays mtx_regenv in BOTH modes: rare
+	 * __env_alloc from the shared primary needs the one env allocator latch
+	 * (RFC 0015 M1), taken nested inside mtx_region.  S5 keeps it off the
+	 * hot path.
+	 */
+	if (getenv("DB_TXN_LATCH_SPLIT") != NULL) {
+		if ((ret = __mutex_alloc(
+		    env, MTX_TXN_REGION, 0, &region->mtx_region)) != 0)
+			return (ret);
+		F_SET(region, TXN_REGION_LATCHSPLIT);
+	} else
+		region->mtx_region =
+		    ((REGENV *)env->reginfo->primary)->mtx_regenv;
+	mgr->reginfo.mtx_alloc = ((REGENV *)env->reginfo->primary)->mtx_regenv;
 
 	/* S5: recycle TXN_DETAILs through a region free list, off __env_alloc. */
 	if (getenv("DB_TXN_FREELIST") != NULL)

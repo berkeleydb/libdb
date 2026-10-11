@@ -981,7 +981,7 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	DB_THREAD_INFO *ip;
 	u_int32_t ndx, part_id;
 	int did_abort, ihold, grant_dirty, no_dd, ret, rwconf, safe_si, t_ret;
-	int si_txn_lock;
+	int si_txn_lock, txn_split;
 	roff_t holder, sh_off;
 
 	/*
@@ -1056,9 +1056,17 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	 * LOCK_REGION_LOCK in __lock_put_internal and __lock_getobj, and the
 	 * part_t_size == 1 "goto alloc" in lock_alloc.incl); the SSI branch was
 	 * the one site that omitted it.
+	 *
+	 * M1 (RFC 0015): when the txn region runs its own latch
+	 * (TXN_REGION_LATCHSPLIT), TXN_SYSTEM_LOCK is NO LONGER the mutex our
+	 * LOCK_SYSTEM_LOCK caller holds, so even at part_t_size == 1 the SSI
+	 * branch must take it itself -- nested inside LOCK_SYSTEM_LOCK, which is
+	 * the consistent lock order (lock outer, txn inner).
 	 */
-	si_txn_lock = TXN_ON(env) && region->part_t_size != 1;
-	if (safe_si && TXN_ON(env) && region->part_t_size == 1) {
+	txn_split = TXN_ON(env) && F_ISSET((DB_TXNREGION *)
+	    env->tx_handle->reginfo.primary, TXN_REGION_LATCHSPLIT);
+	si_txn_lock = TXN_ON(env) && (region->part_t_size != 1 || txn_split);
+	if (safe_si && TXN_ON(env) && region->part_t_size == 1 && !txn_split) {
 		/*
 		 * Teeth for the reasoning above, in DIAGNOSTIC builds only: the
 		 * two latches really are one mutex, and it really is held here.
