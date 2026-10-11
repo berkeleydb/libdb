@@ -1141,4 +1141,41 @@ is the probe output above.
 
 ## §9 Work breakdown
 
-TODO.
+**Every commit:** build on `/tmp/s_impl` in a sibling build dir, in **both** a
+default and an `--enable-typed --enable-debug` configuration; run the
+handoff gates (`run_all.sh` `db` tier, `s_validate`, `s_execbits`,
+`s_chk_copyright`, `s_chk_licence`, `env_sig_print.sh`, `run_handle_sizes.sh`)
+in both, plus `TIER=typed run_all.sh` in the typed one; run the commit's
+sabotage arms and paste their FAIL lines into the commit message. New files get
+the SPDX header; `dist/` files need `git add -f`; runners need `git
+update-index --chmod=+x`.
+
+### Phase 0 (no `HAVE_TYPED`; may go to master on their own)
+
+| # | Commit | Tests (tier) |
+|---|---|---|
+| P1 | `db: __db_disassociate_foreign leaked one DB_FOREIGN_INFO per secondary close` (§8.2) | `foreign_disassoc_leak` (`db`) |
+| P2 | `db: associate_foreign linked f_info before refusing a second foreign DB` (§8.1) | `foreign_reassoc` (`db`) |
+| P3 | `btree: an equal-key put over a deleted slot kept the deleted key's bytes (R1)` (§8.3) | `r1_revive` (`db`); full TCL `test` suite subset in CI, because this touches `__bam_iitem` |
+
+### Phase 1
+
+| # | Commit | Tests (tier) |
+|---|---|---|
+| 1 | `typed: --enable-typed / meson typed option, empty guarded sources, build lists` (§2): options.m4, configure.ac, regenerated configure + config.hin, meson_options.txt, meson.build, srcfiles.in, Makefile.in, Windows project files, `src/typed/*.c` containing only the guard. Also: `run_all.sh` `TIER` (§7.1), `test/db/typed-sabotage.sh` skeleton, the CI job. | `typed_footprint` (`db`), `handle_sizes` (`typed`), `run_windows_srclist`, `run_meson_autoconf_parity` (`db`, must stay green) |
+| 2 | `typed: public declarations` (§1): `db.in` structs, flags, 3 error codes, `db_strerror` cases, `s_sig` exclusions, `pubdef.in`, `s_include` + `typed_ext.h`, regenerated `build_windows/db.h` | `typed_footprint` (second sabotage arm), `s_validate` (`s_chk_err`, `s_chk_pubdef`) |
+| 3 | `typed: side table, db_set_schema / db_get_schema / db_record_fixed, fingerprint` (§3.1-3.4, §5.1), release in `__db_close` | `typed_api` |
+| 4 | `typed: open hook, Phase 1 refusals, BTM_TYPED / DB_HASH_TYPED` (§3.5, §4.1), fixtures `test/db/fixtures/typed_{bt,hash}.db` | `typed_refusals`, `typed_old_reader` (`db` + regen check in `typed`) |
+| 5 | `typed: __db_typed catalog, fingerprint check, remove/rename hooks` (§4.2-4.3, §5.2) | `typed_codec_mismatch`, `typed_catalog_lifecycle`, `typed_catalog_format`, `typed_rdonly_noschema` |
+| 6 | `typed: __dbc_put hook -- NOT NULL, MAXLEN, VALID, partial-put refusal` (§3.7) | `typed_notnull`, `typed_maxlen`, `typed_valid`, `typed_partial` |
+| 7 | `typed: UNIQUE through a generated secondary; DB_KEYEXIST on typed primaries (D6)` (§3.6, §3.7 step 2, `db_cam.c:1699`) | `typed_unique`, `typed_unique_mp`, `typed_unique_nulls`, `typed_unique_closed` |
+| 8 | `typed: generated bt_compare / h_hash / h_compare; DB_OPTREAD gate` (§3.6, §6) | `typed_btree_cmp`, `typed_hash`, `typed_cmp_fuzz`, `typed_optread` |
+| 9 | `typed: db_recover with no codecs (D5)` | `typed_recover` |
+| 10 | `docs: typed databases` — `docs_src/api/c/db_set_schema.md`, `db_get_schema.md`, `db_record_fixed.md`, the three error codes in `program_errorret.md`, the fingerprint's stated limit, "rename only with a typed libdb" (§4.1), C13, C14, and a `DB_OPTREAD` cross-reference in `dbset_bt_compare.md` | `s_validate` doc checks |
+| 11 | `typed: sabotage runner complete` — every arm in §7.2 present in `typed-sabotage.sh`, all run on `/tmp/s_impl`, output in the commit message | — |
+| 12 | `util: say "typed database" where a utility cannot enforce it` (D8): `db_verify` and `db_dump`/`db_load` messages. **Starts with a probe:** what a default-build and a typed-build `db_verify` print for a typed subdatabase today. [UNSURE: no verify file calls `__bam_metachk` or `__ham_metachk` (grep of `src/db/db_vrfy.c`, `src/btree/bt_verify.c`, `src/hash/hash_verify.c`), so verify may accept the bit silently.] | `typed_rdonly_noschema` (verify row) |
+| 13 | `bench: untyped put cost in a typed build` — `test/bench` A/B of a default vs typed build, untyped Btree puts, the D2 revisit condition; results file only | none (measurement) |
+
+Commits 1-2 change no behaviour in any build; from 3 on, only typed builds
+change. Commit 7 is the only edit in the shared put path besides the hook
+itself.
