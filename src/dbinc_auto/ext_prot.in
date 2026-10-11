@@ -41,6 +41,9 @@ int log_compare __P((const DB_LSN *, const DB_LSN *));
 int db_env_set_win_security __P((SECURITY_ATTRIBUTES *sa));
 #endif
 int db_sequence_create __P((DB_SEQUENCE **, DB *, u_int32_t));
+int db_set_schema __P((DB *, const DB_SCHEMA *, u_int32_t));
+int db_get_schema __P((DB *, const DB_SCHEMA **));
+int db_record_fixed __P((DB_RECORD_CODEC *, const char *, u_int32_t, u_int32_t, const u_int32_t *, const u_int32_t *, const DB_CODEC **));
 #if DB_DBM_HSEARCH != 0
 int	 __db_ndbm_clearerr __P((DBM *));
 void	 __db_ndbm_close __P((DBM *));

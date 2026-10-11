@@ -38,7 +38,13 @@ egrep __P $d/src/dbinc_auto/ext_prot.in |
 	-e '/^db_env_set_func_malloc$/p' \
 	-e '/^db_env_set_func_realloc$/p' \
 	-e '/^db_env_set_func_/!p' |
-    sed '/^__/d' | sort > $t2
+    sed '/^__/d' |
+    # RFC 0014 typed-data entry points exist only with --enable-typed, which
+    # Windows never sets (the whole typed layer is HAVE_TYPED-guarded, §2.3),
+    # so they are not exported from the Windows DLL and are not in libdb.def.
+    sed -e '/^db_set_schema$/d' -e '/^db_get_schema$/d' \
+	-e '/^db_record_fixed$/d' |
+    sort > $t2
 
 if cmp -s $t1 $t2 ; then
 	:

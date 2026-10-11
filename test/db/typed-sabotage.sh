@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary handle_sizes_typed"
+ARMS="footprint_canary footprint_sig handle_sizes_typed"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -64,6 +64,39 @@ arm_footprint_canary_apply() {
 arm_footprint_canary_test="TIER=db sh $HERE/run_typed_footprint.sh"
 arm_footprint_canary_expect='^VERDICT typed_footprint FAIL.* 1\(\.text'
 arm_footprint_canary_rebuild=0	# the runner builds its own trees
+
+# §7.2 typed_footprint (b): make the typed structs re-enter the signature,
+# the exact failure dropping the four s_sig exclusions (C2) would cause.  Done
+# surgically on the committed env_sig.c rather than by rerunning s_sig: s_sig
+# regenerates the WHOLE file, which on this tree also re-adds pre-existing
+# structs env_sig.c's include set cannot see (a separate, pre-existing
+# staleness, spec §11 V7), breaking the build before the signature can be
+# compared.  Adding the four __ADD lines and bumping the count isolates the
+# one thing the exclusions prevent: the typed structs changing the sig.  The
+# footprint test builds its own trees from $REPO; the committed f13921ff7 base
+# has neither the structs nor the __ADD lines, so item 2 (base vs head) moves.
+arm_footprint_sig_files="src/env/env_sig.c"
+arm_footprint_sig_apply() {
+	awk '
+		/^#define[\t ]+__STRUCTURE_COUNT[\t ]+\(42 \+ 104\)/ {
+			sub(/104/, "108"); print; next
+		}
+		/^\t__ADD\(__db\);/ {
+			print
+			print "\t__ADD(__db_codec);"
+			print "\t__ADD(__db_record_codec);"
+			print "\t__ADD(__db_constraint);"
+			print "\t__ADD(__db_schema);"
+			done = 1; next
+		}
+		{ print }
+		END { if (!done) exit 3 }
+	' "$REPO/src/env/env_sig.c" > "$REPO/src/env/env_sig.c.sab" || return 1
+	mv "$REPO/src/env/env_sig.c.sab" "$REPO/src/env/env_sig.c"
+}
+arm_footprint_sig_test="TIER=db sh $HERE/run_typed_footprint.sh"
+arm_footprint_sig_expect='^VERDICT typed_footprint FAIL.*[24]\(sig'
+arm_footprint_sig_rebuild=0	# the runner builds its own trees
 
 # §7.2 handle_sizes (typed): a field added to struct __db under HAVE_TYPED
 # grows sizeof(DB) in a typed build, so handle_sizes (typed tier) must FAIL.

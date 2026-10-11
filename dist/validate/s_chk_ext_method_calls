@@ -17,6 +17,12 @@ t=__1
 echo ========================================================
 echo "Check that DB doesn't call DB or DB_ENV methods internally."
 echo ========================================================
+# compare/equal/hash/validate/sortkey/field are the RFC 0014 codec and
+# record-codec callbacks (struct __db_codec / __db_record_codec in db.in).
+# Like dup_compare and the backup/is_alive callbacks below, the library is
+# MEANT to call out through them, so the check's premise (DB must not call its
+# own public API internally) does not apply.  Excluded by exact member name so
+# a real new ->compare()-style DB method would still have to be considered.
 m=`grep '(\*[a-z][_a-z]*)' $s/dbinc/db.in |
    sed -e 's/^[^(]*(\*//' \
        -e 's/).*//' \
@@ -41,7 +47,13 @@ m=`grep '(\*[a-z][_a-z]*)' $s/dbinc/db.in |
        -e '/db_realloc/d' \
        -e '/dbt_usercopy/d' \
        -e '/dup_compare/d' \
-       -e '/s_callback/d' |
+       -e '/s_callback/d' \
+       -e '/^compare$/d' \
+       -e '/^equal$/d' \
+       -e '/^hash$/d' \
+       -e '/^validate$/d' \
+       -e '/^sortkey$/d' \
+       -e '/^field$/d' |
    sort -u`
 
 (cd $s && for i in $m; do

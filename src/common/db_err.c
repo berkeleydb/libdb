@@ -277,6 +277,15 @@ db_strerror(error)
 	case DB_BUFFER_SMALL:
 		return (DB_STR("0063",
 		    "DB_BUFFER_SMALL: User memory too small for return value"));
+	case DB_CODEC_MALFORMED:
+		return (DB_STR("0218",
+	    "DB_CODEC_MALFORMED: Value bytes are not well formed for their codec"));
+	case DB_CODEC_MISMATCH:
+		return (DB_STR("0217",
+	    "DB_CODEC_MISMATCH: Codec behaviour differs from the database's record"));
+	case DB_CONSTRAINT_VIOLATION:
+		return (DB_STR("0216",
+	    "DB_CONSTRAINT_VIOLATION: A typed-database constraint was violated"));
 	case DB_DONOTINDEX:
 		return (DB_STR("0064",
 		    "DB_DONOTINDEX: Secondary index callback returns null"));

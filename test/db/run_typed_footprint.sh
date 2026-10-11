@@ -35,8 +35,8 @@
 # Env:
 #   TYPED_FOOTPRINT_BASE  typed-free reference commit (default: the parent of
 #                         the first commit adding src/typed/)
-#   TYPED_API             1 once db_set_schema exists (§9 commit 3).
-#                         Default: detected from src/typed/typed.c.
+#   TYPED_API             1 once db_set_schema is DEFINED (§9 commit 3; a
+#                         prototype or EXTERN: comment is not enough).
 #   KEEP=1                keep the scratch dir.
 # CFLAGS/LDFLAGS/CPPFLAGS from the environment are ignored: all three builds
 # use configure's defaults, so a sanitizer job measures the same thing.
@@ -157,7 +157,14 @@ fi
 
 nh=$(nsyms head) ; nt=$(nsyms typed)
 if [ -z "${TYPED_API:-}" ] ; then
-	grep -q 'db_set_schema' "$SRC/src/typed/typed.c" 2>/dev/null && TYPED_API=1 || TYPED_API=0
+	# A function DEFINITION, not a prototype or EXTERN: comment: the symbol
+	# db_set_schema arrives in §9 commit 3 as a definition (`^db_set_schema(`
+	# at column 0, K&R style), while commit 2 only adds an `EXTERN:' comment
+	# and a declaration.  Matching the definition keeps TYPED_API=0 until the
+	# symbol can actually be exported, so item 3's typed half is not demanded
+	# of a build that has no code yet.
+	grep -Eq '^db_set_schema[ (]' "$SRC/src/typed/typed.c" 2>/dev/null &&
+	    TYPED_API=1 || TYPED_API=0
 fi
 echo "  3  typed symbols head=$nh typed=$nt (TYPED_API=$TYPED_API)"
 [ "$nh" -eq 0 ] || fail="$fail 3(head exports $nh typed symbols)"

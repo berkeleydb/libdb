@@ -1311,3 +1311,79 @@ wrong typed build trips it. Evidence: unsabotaged typed build with
 is generated from `db.in` by `config.status` (not by `make`), the arm edits
 `db.in` and re-runs `config.status` in the build dir before the test
 recompiles.
+
+**V7 (Phase 1 commit 2, §1.1). The typed struct block goes after the `DBTYPE`
+enum, not after `struct __db_dbt`.** §1.1 places the four typed structs in a
+"new block after `struct __db_dbt`". Built there, `db.h` does not compile:
+`struct __db_schema` has a by-value `DBTYPE type` member, and `DBTYPE` is a
+`typedef enum` defined ~1100 lines *below* `__db_dbt` (`db.in`'s enum, now at
+the `DB_BTREE=1 ... DB_UNKNOWN=5` block). `DB *` in `struct __db_constraint`
+is fine (forward-typedef'd early), but `DBTYPE` is not. Observed:
+`db.h:323: error: unknown type name 'DBTYPE'`, failing every engine `.c`.
+Built instead: the block is inserted immediately after the `} DBTYPE;` enum,
+which has `DBTYPE`, `DBT`, `DB`, and `u_int8_t` all in scope. Also fixed a
+`-Wcomment` warning: the record-codec `field()` comment read `*p/*len`, which
+clang parsed as a nested `/*`; reworded to "the returned (p, len)".
+
+**V8 (Phase 1 commit 2, §1.6 s_sig gate). `env_sig.c` is pre-existing-stale,
+so `git diff --exit-code` cannot be the D2 gate; the exclusions are proven
+differentially instead.** §1.6's gate is `cd dist && sh s_sig && git
+diff --exit-code ../src/env/env_sig.c`. On this branch (and identically on
+master) a bare `sh s_sig` already rewrites `env_sig.c`: the committed file is
+missing ~11 non-typed structs added to the tree without regeneration
+(`__cq_part`, `__bam_rsnap`, `__db_aio_op`, ...) and carries an SPDX header
+`s_sig` does not emit. Regenerating would pull in those structs, move the
+runtime signature (which the footprint gate pins at `0xe7904e69`), and even
+break the build (some stale structs are not visible to `env_sig.c`'s include
+set) -- a large, non-typed change that does not belong in commit 2. So
+`env_sig.c` is left as committed, and D2 is proven two ways that do not depend
+on it being in sync: (1) the footprint gate shows the runtime `env_sig` equal
+across the typed-free base, the default head, and the typed build
+(`0xe7904e69`); (2) differentially, `s_sig` WITH the four C2 exclusions emits
+`(42 + 115)` and no `__ADD(__db_codec|__db_record_codec|__db_constraint|
+__db_schema)`, while WITHOUT them it emits `(42 + 119)` and those four lines --
+so the exclusions are exactly what keep the typed structs out of the
+signature. The `typed_footprint` second sabotage arm (`footprint_sig`) injects
+those four `__ADD` lines into the committed `env_sig.c` directly (not via a
+full `s_sig` regen, for the same build-break reason) and the footprint gate's
+item 2 (base vs head signature) goes red: `2(sig 0xe7904e69->0xf9ff4329)`.
+
+**V9 (Phase 1 commit 2, §2.4 footprint item 4). The s_sig sabotage trips item
+2, not item 4.** §2.4's second arm says dropping the `s_sig` exclusion makes
+"items 2 and 4" fail. Item 4 compares the default and `--enable-typed` builds
+of the *same* tree, which share one `env_sig.c`; a signature edit moves both
+equally, so item 4 stays green. The regression shows up in item 2 (the
+typed-free base vs head), which is the measurement that actually encodes D2:
+"the typed layer did not move the signature versus a tree without it." The
+`footprint_sig` arm therefore asserts item 2.
+
+**V10 (Phase 1 commit 2, two validate scripts and one not_public entry).**
+Three gate scripts needed a one-line typed-aware edit, each a false
+positive the typed declarations would otherwise cause; none changes library
+behaviour:
+- `dist/validate/s_chk_ext_method_calls` extracts every `(*name)` function
+  pointer from `db.in` and forbids `->name(` calls in the engine. The RFC 0014
+  codec callbacks (`compare`, `equal`, `hash`, `validate`, `sortkey`, `field`)
+  are application callbacks the library is *meant* to invoke (the `dup_compare`
+  / backup-callback category already excluded); `compare` collided with
+  `partition.c`'s internal `ka->compare()`. Excluded by exact member name.
+- `dist/validate/s_chk_windef` compares `ext_prot.in` exports against
+  `build_windows/libdb.def`. The three typed entry points are now in
+  `ext_prot.in` but are not exported on Windows (the whole layer is
+  `HAVE_TYPED`-guarded and Windows never sets it, §2.3), so they are dropped
+  from the derived list rather than added to `libdb.def`.
+- `dist/validate/s_chk_pubdef` demands a `pubdef.in` row for every `DB_*`/`DB2_*`
+  `#define`. `DB2_TYPED_SLOT_SHIFT` is an internal bit position (not an API
+  constant and not in §1.6's pubdef list), so it joins `not_public` with a
+  reason, like `DB_CURSOR_NPART`. The function-like macro `DB2_TYPED_SLOT(dbp)`
+  is not extracted by the check's greedy sed, so it needs nothing.
+
+**V11 (Phase 1 commit 2, footprint TYPED_API detection).** The footprint
+runner auto-set `TYPED_API=1` once `grep -q 'db_set_schema'` matched
+`src/typed/typed.c`. Commit 2 adds an `EXTERN: ... db_set_schema` comment there
+(the prototype source) while the *definition* is still commit 3, so the old
+grep flipped `TYPED_API` on a commit that cannot yet export the symbol, making
+item 3 demand a typed export that does not exist. Changed to match a
+definition (`^db_set_schema[ (]`, K&R column 0), which the comment does not
+satisfy; `TYPED_API` stays 0 through commit 2 (verified: item 3 reports "not
+yet applicable").
