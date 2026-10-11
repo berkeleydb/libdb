@@ -54,7 +54,7 @@ for l in $(pkg-config --libs liburing 2>/dev/null); do EXTRALIBS="$EXTRALIBS $l"
 echo "Compiling compact_subdb_remove against $LIB"
 "${CC:-cc}" -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$LIB" \
     -lpthread $LIBRPATH $EXTRALIBS \
-    -o "$BUILD/compact_subdb_remove"
+    -o "$BUILD/compact_subdb_remove.t"
 
 # Start from an EMPTY home, regions included. Removing only *.db left the
 # previous run's __db.00N region files behind, so a second run (another arm,
@@ -64,9 +64,10 @@ echo "Compiling compact_subdb_remove against $LIB"
 # Clear any leftover of the home, whether a dir OR a stray file: on a reused
 # CI workspace (seen on the macOS runners) a prior run can leave the path as
 # something mkdir -p then refuses with "File exists", aborting under set -e.
-rm -f "$HOME_DIR" 2>/dev/null || true
-[ -d "$HOME_DIR" ] && find "$HOME_DIR" -mindepth 1 -delete 2>/dev/null
-mkdir -p "$HOME_DIR"
+# This driver homes itself under /tmp via mkdtemp; it ignores $HOME_DIR.
+# Do NOT create a dir named like the binary here: on a case-insensitive
+# filesystem (macOS) "COMPACT_SUBDB_REMOVE" folds onto "./compact_subdb_remove",
+# shadowing the compiled binary with a directory (rc=126, "is a directory").
 
 # `timeout` is GNU coreutils: present on Linux, absent on stock macOS (where it
 # is `gtimeout` if coreutils is installed).  Resolve it once; if neither exists,
@@ -87,7 +88,7 @@ run_with_timeout() {
 	fi
 }
 echo "Running compact_subdb_remove (timeout ${TIMEOUT}s)"
-if run_with_timeout "$TIMEOUT" "$BUILD/compact_subdb_remove"; then
+if run_with_timeout "$TIMEOUT" "$BUILD/compact_subdb_remove.t"; then
 	echo "run_compact_subdb_remove.sh: PASS"
 	exit 0
 else
