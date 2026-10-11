@@ -97,6 +97,14 @@ type codec. `DB_RECORD_CODEC` therefore gains a `flags` word that carries
 sign of `compare`, then `compare == 0` iff the bytes are identical. `db_set_schema`
 treats MEMCMP as setting EQUALIMAGE.
 
+**C12. Phase 1 typed databases refuse `DB_DUP`/`DB_DUPSORT`.** The RFC's
+generator table lists a generated `dup_compare`. Nothing in Phase 1's
+constraint set needs duplicates, and a duplicate set makes "the record" of a
+put ambiguous for `DB_CURRENT` and for UNIQUE (TODO-VERIFY: whether
+`__db_associate_arg` already refuses a `DB_DUP` primary). Refused in
+`db_set_schema` and again at open (§3.5). Lift it in Phase 2 with the
+generated `dup_compare`.
+
 ---
 
 ## §1 Public API
@@ -387,7 +395,245 @@ and is whole-file guarded (`src/os/os_aio_uring.c:30` `#ifdef HAVE_IO_URING`, `:
 
 ## §3 D2's side table
 
-TODO: filled in by the next commit.
+### 3.1 Data structure
+
+All of it lives in `src/typed/typed_int.h` (not scanned by `s_sig`, C2) and
+`src/typed/typed.c`.
+
+```c
+/* src/typed/typed_int.h */
+typedef struct __typed_state {
+	DB		*dbp;		/* Owner; DIAGNOSTIC asserts it. */
+	DB_SCHEMA	 schema;	/* Deep copy (§1.5); points into the */
+	DB_RECORD_CODEC	 key_rc, data_rc;	/* fields below, never into */
+	const DB_CODEC	**key_types, **data_types;	/* caller memory */
+	DB_CONSTRAINT	*constraints;	/* except DB_CODEC structs and */
+	char		*strings;	/* unique_db handles.  One alloc. */
+	u_int32_t	 nunique;	/* # of UNIQUE constraints (3.7) */
+	u_int32_t	 key_memcmp;	/* every key field MEMCMP */
+	u_int32_t	 key_equalimage;/* every key field EQUALIMAGE */
+	u_int8_t	 fp[20];	/* Fingerprint (§5) */
+} TYPED_STATE;
+
+/* src/typed/typed.c */
+#define	TYPED_NSLOTS	4096	/* ponytail: fixed table; 16 slot bits
+				 * allow 65535 if a process ever needs more. */
+static TYPED_STATE * volatile __typed_slot[TYPED_NSLOTS];  /* [0] unused */
+```
+
+- **Slot 0 means "untyped".** `DB2_TYPED_SLOT(dbp)` (§1.4) is 0 for every handle
+  that never called `db_set_schema`, because `db_create` zeroes the handle and
+  no code assigns `flags2` wholesale: every write is `F2_SET`/`F2_CLR` of a named
+  bit (`db_method.c:805-806`, `dbreg_util.c:699`, `log_print.c:360`;
+  `orig_flags2`, `db.in:1847`, is declared and never read or written anywhere in
+  `src/`). `__db_refresh` restores `dbp->flags` from `orig_flags`
+  (`db.c:1165`, `:1241`) and never touches `flags2`, so the slot survives a
+  refresh.
+- `DB2_AM_TYPED` is set iff the slot is non-zero. DIAGNOSTIC asserts the
+  invariant in `__typed_put_check` and `__typed_release`.
+- 4096 slots is 32 KB of `.bss`, present only in a `--enable-typed` build.
+  Exhaustion: `db_set_schema` returns `ENOMEM` with "more than 4095 typed DB
+  handles open in this process".
+
+### 3.2 Locking: none on any hot path
+
+No mutex is added, global or per-handle, on the put path or in a generated
+callback. The table is **written only by `db_set_schema` (claim) and
+`__typed_release` (free)**. Readers index it with the handle's own slot.
+
+- **Claim** (`db_set_schema`, before `DB->open`, cold): scan from a static
+  rotating hint for a `NULL` entry and install the state with
+  `__os_atomic_cas_ptr` (`src/os/os_atomic.c:294`), retrying on CAS failure.
+  The CAS is a full barrier, so the state's contents are visible before its
+  pointer is. No lock, so no `mtx_regenv` traffic (RFC 0015's top cliff).
+- **Read** (`__typed_put_check`, generated callbacks, hot): a plain load of
+  `__typed_slot[DB2_TYPED_SLOT(dbp)]`. This is safe without a barrier because
+  the slot is owned by that handle from `db_set_schema` to `DB->close`, and
+  another thread can only use the handle after it was handed the `DB *`,
+  which already required synchronisation after the CAS. Using a handle
+  concurrently with its own `DB->close` is already undefined in libdb.
+- **Free** (`__typed_release`, cold): store `NULL` into the slot with
+  `__os_atomic_cas_ptr(env, slot, ts, NULL)`, then `__os_free` the state. The
+  free cannot race a reader, by the same ownership argument.
+- The cost on an **untyped** database in an enabled build is one
+  `F2_ISSET(dbp, DB2_AM_TYPED)` test on a word in a cache line `__dbc_put`
+  already reads (`dbp->flags` is tested at `db_cam.c:2044`). In a default
+  build it is zero (`#ifdef HAVE_TYPED`).
+- **Rejected:** a `DB *`-keyed hash table (needs a lock or a lock-free hash for
+  a lookup the slot makes O(1)), and per-`ENV` storage (C3).
+
+### 3.3 Lifecycle
+
+| Event | Side-table effect | Where |
+|---|---|---|
+| `db_set_schema(dbp, s, 0)` | validate (3.4), allocate `TYPED_STATE` with `__os_malloc(dbp->env)`, claim slot, `F2_SET(dbp, DB2_AM_TYPED)`, store slot in bits 16-31, install callbacks (3.6) | `src/typed/typed.c` |
+| `DB->open` | `__typed_open` (3.5, §4, §5, §6). No table write. | `db_open.c:267`, see 3.5 |
+| failed `DB->open` | none: the caller must still `DB->close` the handle, which releases | — |
+| put | `__typed_put_check` reads only | 3.7 |
+| `DB->close`, including the deferred close of a handle whose close-log failed inside a txn | `__typed_release(dbp)`: free the state, free the slot, clear the bits | `db.c`, new lines between `:771` and `:773` (below) |
+| `DB->remove`, `DB->rename` on a `DB` handle | none beyond close: `__db_remove` and `__db_rename` end in `__db_close` (`db_remove.c:222`, `db_rename.c:210`), so the release above runs. Catalog effects are §4.4. | — |
+| `DB->truncate` | none: the schema belongs to the database, not its rows | — |
+| recovery, `db_recover` | none: recovery creates its handles internally and never calls `db_set_schema`; `__typed_open` is skipped when `DB_AM_RECOVER` is set (D5) | — |
+
+The release goes in `__db_close` (`src/db/db.c:749`) **after** the
+`deferred_close` early return (`:770-771`) and **before** `env->db_ref` is
+decremented and a `DB_ENV` private to the handle may be closed (`:783-788`),
+because the state was allocated against `dbp->env`:
+
+```c
+	if (deferred_close)
+		return (ret);
+#ifdef HAVE_TYPED
+	if (F2_ISSET(dbp, DB2_AM_TYPED))
+		__typed_release(dbp);
+#endif
+```
+
+A deferred close returns with the handle alive and comes back through
+`__db_close` once the transaction resolves, so the release runs exactly once.
+`__db_close` is the only place a `DB` is destroyed (`memset` + `__os_free`,
+`db.c:791-792`), so no handle can leak a slot.
+
+### 3.4 `db_set_schema` validation (all `EINVAL`, each with a `__db_errx` naming the item)
+
+1. `flags == 0`; `schema->flags == 0`; `DB_ILLEGAL_AFTER_OPEN`; not already typed.
+2. `schema->type` is `DB_BTREE` or `DB_HASH` (D4). Restrict `dbp->am_ok` with
+   `DB_ILLEGAL_METHOD`-equivalent so a later `DB->open` with another type fails.
+3. At least one of `key`, `data` non-NULL.
+4. Each record codec: `name` non-NULL, `strnlen(name, 256) < 256`;
+   `1 <= nfields <= 65535`; `field != NULL`; `types` non-NULL with no NULL
+   entry; `flags & ~DB_CODEC_TOTAL == 0`.
+5. Each distinct `DB_CODEC`: name as above; `flags` only the four defined bits;
+   `FIXED` ⇒ `fixed_len > 0`; `compare == NULL` ⇒ `MEMCMP`; `hash == NULL` ⇒
+   `EQUALIMAGE` (or `MEMCMP`, C11); `nvectors <= 256`; `nvectors >= 2` unless
+   `MEMCMP`; `vectors != NULL` iff `nvectors > 0`. Two codecs with the same
+   name and version must be the same pointer.
+6. `nconstraints <= 64`, `constraints != NULL` iff `nconstraints > 0`. Each:
+   known `kind`; `side` names a non-NULL record codec; `field < nfields`, or
+   `DB_TYPED_WHOLE` only with `MAXLEN`; `flags` only `NULLS_NOT_DISTINCT`, only
+   with `UNIQUE`; `name` non-NULL, ≤ 255 bytes, unique in the schema.
+7. `UNIQUE`: `side == DB_TYPED_DATA` (a key is unique already);
+   `unique_db != NULL`, opened (`F_ISSET(unique_db, DB_AM_OPEN_CALLED)`),
+   `type == DB_BTREE`, not `DB_AM_DUP`, same `env`, not already a secondary;
+   the field's codec is `EQUALIMAGE` (or `MEMCMP`) or has `sortkey` (§1.2); no
+   two UNIQUE constraints share a `unique_db`.
+8. The handle has no application callback already set: `bt_compare`,
+   `bt_prefix`, `dup_compare`, `h_compare`, `h_hash` are the defaults
+   (TODO-VERIFY the default pointer values in `__bam_db_create` /
+   `__ham_db_create` and compare against those), and `DB_AM_DUP` is clear
+   (C12).
+
+### 3.5 Phase 1 refusals (C9, C6, C12) and where each is enforced
+
+`__typed_open` is called from `__db_open` (`src/db/db_open.c:52`) after the
+access method and partition opens succeed and before the post-open test hook,
+i.e. inserted between `db_open.c:266` (`#endif` of the partition block) and
+`:267` (`DB_TEST_RECOVERY(... DB_TEST_POSTOPEN ...)`):
+
+```c
+#ifdef HAVE_TYPED
+	if (F2_ISSET(dbp, DB2_AM_TYPED) && !F_ISSET(dbp, DB_AM_RECOVER) &&
+	    (ret = __typed_open(dbp, ip, txn, fname, dname, flags)) != 0)
+		goto err;
+#endif
+```
+
+A failure there is cleaned up by the caller exactly like any other open
+failure: the child/auto transaction aborts, or, non-transactionally, a created
+file or subdatabase is removed (`db_iface.c:1433-1445`).
+
+| Refusal | Enforced at | Why there |
+|---|---|---|
+| **C6** `fname == NULL` or `dname == NULL` | `__db_open_arg` (`src/db/db_iface.c:1464`), new block before its `return (0)` at `:1615`, under `#ifdef HAVE_TYPED` | before any file is created |
+| **Partitioning** | **no new code.** C6 forces `dname != NULL`, and `__db_open` already refuses a partitioned handle with a subdatabase name (`db_open.c:199-203`, BDB0637, returns `ENOENT`). A subdatabase cannot carry partition metaflags, so the meta path (`db_open.c:671-675`) cannot set `p_internal` either. `typed_refusals` asserts the existing refusal. | already fail-closed |
+| **Compression** | `__typed_open`: `DB_IS_COMPRESSED(dbp)` ⇒ `EINVAL`, under `#ifdef HAVE_COMPRESSION` | compression can come from `set_bt_compress` *or* from `BTM_COMPRESS` on an existing file (`bt_open.c:245-250`), so only a post-AM-open check sees both |
+| **Partial puts** (`DB_DBT_PARTIAL` on key or data) | `__typed_put_check` (3.7), per put | not an open-time property |
+| **C12** `DB_DUP` / `DB_DUPSORT` | `db_set_schema` (3.4 rule 8) and again in `__typed_open` (`F_ISSET(dbp, DB_AM_DUP)`, which `__bam_metachk` / `__ham_metachk` set from the file, `bt_open.c:172-173`, `hash_open.c:199-200`) | a flag set after `db_set_schema`, or carried by the file, is caught at open |
+| callback overridden after `db_set_schema` | `__typed_open`: each of `bt_compare`, `bt_prefix`, `h_compare`, `h_hash` must equal what 3.6 installed | `set_bt_compare` etc. are existing methods that cannot be intercepted without editing them |
+
+### 3.6 Generated callbacks (installed by `db_set_schema`, through the existing setters)
+
+| Schema | Installed |
+|---|---|
+| Btree, `key == NULL` or every key field `MEMCMP` | nothing: default comparator and prefix |
+| Btree, otherwise | `bt_compare = __typed_bt_compare`; `bt_prefix = NULL` |
+| Hash, `key == NULL` or every key field `EQUALIMAGE` | nothing |
+| Hash, otherwise | `h_hash = __typed_h_hash` (per-field `hash`, combined with the same mixing `__ham_func5` uses on each field's 32-bit result, so the field split is part of the hash), `h_compare = __typed_h_compare` (0 iff every field's `equal` / `compare()==0`) |
+| each `UNIQUE` | at `__typed_open`, the internal associate of `unique_db` to `dbp` with `__typed_unique_cb` and no flags (no `DB_CREATE` populate: a non-empty primary with an empty unique index is a catalog mismatch, §4) |
+
+- `__typed_bt_compare(dbp, a, b)` is the RFC's bounded-walk comparator (§6):
+  walk both records with the record codec; malformed sorts after well-formed;
+  two malformed compare by `memcmp` then length; otherwise compare field by
+  field with each codec's `compare` (or `memcmp` for MEMCMP fields, with the
+  shorter-is-less rule).
+- Every generated callback fetches its state with the slot read of 3.2. If the
+  slot is 0 (some internal path cloned the callback pointer onto a fresh
+  handle), it DIAGNOSTIC-asserts and falls back to the byte order of
+  `__bam_defcmp` / `__ham_func5`, so it can misorder but cannot fault.
+- `__typed_unique_cb(sdbp, pkey, pdata, skey)`: state from
+  `sdbp->s_primary`'s slot; the constraint is the one whose `unique_db ==
+  sdbp`. `field()` the value; `isnull` ⇒ `DB_DONOTINDEX` (NULLS DISTINCT) or, with
+  `NULLS_NOT_DISTINCT`, a one-byte `0x00` key whose non-NULL images are all
+  prefixed `0x01`; `EQUALIMAGE`/`MEMCMP` ⇒ `skey` points into `pdata` (no copy);
+  else `sortkey()` into `__os_umalloc` memory with `DB_DBT_APPMALLOC`. A
+  `DB_CODEC_MALFORMED` from the codec becomes `DB_CONSTRAINT_VIOLATION`, which
+  fails the put through the existing callback-veto path (`db_cam.c:1522-1531`).
+
+### 3.7 The put hook
+
+**Site:** `src/db/db_cam.c`, in `__dbc_put` (`:2017`), inserted after
+`F_CLR(dbc, DBC_ERROR);` (`:2027`) and before the comment at `:2029`, i.e.
+*before* `flags` is rewritten (`:2043-2045`), because that rewrite turns
+`DB_UPDATE_SECONDARY` into `DB_KEYLAST` and the hook must skip internal
+secondary maintenance:
+
+```c
+#ifdef HAVE_TYPED
+	if (F2_ISSET(dbp, DB2_AM_TYPED) && flags != DB_UPDATE_SECONDARY &&
+	    (ret = __typed_put_check(dbc, key, data, flags)) != 0)
+		return (ret);
+#endif
+```
+
+It runs before `__dbc_put_primary` (`:2056-2058`), so a rejected record writes
+neither secondaries nor primary, and before `CDB_LOCKING_INIT` (`:2047`),
+because it touches no page. Every external put reaches it: `DB->put` calls
+`__dbc_put` once per pair, including inside both bulk loops
+(`db_am.c:583`, `:611`, `:638`, `:644`); `DBC->put` calls it from
+`__dbc_put_pp` (`db_iface.c:2947`); a `DB_FOREIGN_NULLIFY` rewrite of a
+primary does too (`db_cam.c:3232`). `DB_APPEND` on Btree/Hash fails in
+`__db_put` before any cursor put (`db_am.c:561-570`). The other in-tree
+callers are internal handles that are never typed (master database,
+`db.c:301`, `:361`, `:375`; verify, `db_vrfyutil.c:535`; log verify,
+`log_verify_int.c:437`, `log_verify_util.c:704`, `:1795`, `:1805`; partitions,
+`partition.c:1059`, refused above).
+
+`__typed_put_check(dbc, key, data, flags)`:
+
+1. `F_ISSET(key, DB_DBT_PARTIAL) || F_ISSET(data, DB_DBT_PARTIAL)` ⇒ `EINVAL`
+   ("partial puts are not supported on typed databases").
+2. If `ts->nunique > 0`: under the handle's own `dbp->mutex` (per handle, and
+   `MUTEX_INVALID` on a non-`DB_THREAD` handle), count `s_secondaries` entries
+   whose `s_callback == __typed_unique_cb`; fewer than `nunique` ⇒ `EINVAL`
+   ("UNIQUE index for constraint X was closed before its primary"). Without this
+   a closed `unique_db` silently stops enforcing UNIQUE: closing a secondary
+   just unlinks it (`db.c:860-861`). ponytail: list walk of ≤ 64 entries per put,
+   per-handle mutex only; cache a generation number if it ever shows in a
+   profile.
+3. Key side, if `schema.key != NULL` and `flags != DB_CURRENT` (a `DB_CURRENT`
+   put keeps the stored key, which was checked when it was written): run the
+   record codec's `validate` if set, then every key-side constraint.
+4. Data side, if `schema.data != NULL`: the same for the data DBT.
+5. Constraint semantics: `NOT_NULL` ⇒ `field()` reports `isnull`; `MAXLEN` ⇒
+   field `len` (or `DBT.size` for `DB_TYPED_WHOLE`) `> maxlen`; `VALID` ⇒ the
+   record codec's `validate` and every field's codec `validate` return 0.
+   `UNIQUE` is not checked here (3.6). A failure returns
+   `DB_CONSTRAINT_VIOLATION` after `__db_errx(env, "constraint %s violated")`.
+   `DB_CODEC_MALFORMED` from any callback becomes `DB_CONSTRAINT_VIOLATION`;
+   any other non-zero callback return is passed through unchanged.
+
+The D6 edit (`EINVAL` → `DB_KEYEXIST` on a typed primary,
+`db_cam.c:1699`) is the only other line in the put path; it is commit 7 (§9).
 
 ## §4 D3's catalog
 
