@@ -472,6 +472,32 @@ __txn_recycle_id(env, locked)
 }
 
 /*
+ * __txn_mvcc_mtx_reuse --
+ *	RFC 0015 S4: may a committed MVCC-writer txn's td->mvcc_mtx be retained
+ *	in the region cache for the next writer, instead of __mutex_free'd (and
+ *	__mutex_alloc'd on the next first dirty fget)?  Each of those takes the
+ *	single global MUTEX_SYSTEM_LOCK, twice per MVCC writer txn -- the P13
+ *	shape, and on FreeBSD each __mutex_free also pays libthr's O(N)
+ *	pshared_gc (the F4 mechanism).
+ *
+ *	On by default.  DB_NO_MVCC_MTX_REUSE restores the alloc/free-per-writer
+ *	behaviour so the A/B runs on ONE binary with only a runtime switch
+ *	varying, following the DB_NO_LOCKER_MUTEX_REUSE (lock_id.c) and
+ *	DB_NO_OPTREAD precedents.  Cached in a process-local static: it is a
+ *	pure performance choice, so attachers need not agree -- the cache is in
+ *	the shared region and any attacher may pop from or push to it.
+ */
+static int
+__txn_mvcc_mtx_reuse()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_NO_MVCC_MTX_REUSE") != NULL ? 0 : 1;
+	return (cached);
+}
+
+/*
  * __txn_begin_int --
  *	Normal DB version of txn_begin.
  */
@@ -543,6 +569,24 @@ __txn_begin_int(txn)
 	MAX_LSN(td->visible_lsn);
 	td->mvcc_ref = 0;
 	td->mvcc_mtx = MUTEX_INVALID;
+	/*
+	 * RFC 0015 S4: hand this detail a retained MTX_TXN_MVCC mutex from the
+	 * region cache if one is stashed, so the first dirty fget
+	 * (mp_fget.c:268) finds mvcc_mtx != MUTEX_INVALID and skips
+	 * __mutex_alloc (and __txn_end skips the matching __mutex_free).  We
+	 * hold TXN_SYSTEM_LOCK across this whole section, which is the same
+	 * latch __txn_end pushes under, so the stack needs no separate mutex.
+	 * A non-MVCC txn simply never touches the mutex; it is pushed back
+	 * unused at end.  Skipped under DB_ENV_FAILCHK (F6): a retained,
+	 * never-locked mutex has no owner for failchk to key on, so match
+	 * P13's rule and keep allocating/freeing per txn when failchk is on.
+	 */
+	if (__txn_mvcc_mtx_reuse() && !F_ISSET(dbenv, DB_ENV_FAILCHK) &&
+	    region->free_mvcc_mtx != INVALID_ROFF && region->free_mvcc_n != 0) {
+		db_mutex_t *mv;
+		mv = R_ADDR(&mgr->reginfo, region->free_mvcc_mtx);
+		td->mvcc_mtx = mv[--region->free_mvcc_n];
+	}
 	td->status = TXN_RUNNING;
 	td->flags = F_ISSET(txn, TXN_NOWAIT) ? TXN_DTL_NOWAIT : 0;
 	td->nlog_dbs = 0;
@@ -1962,9 +2006,21 @@ __txn_end(txn, is_commit)
 			td = NULL;
 		}
 		MUTEX_UNLOCK(env, mvcc_mtx);
-		if (td != NULL)
-			if ((ret = __mutex_free(env, &td->mvcc_mtx)) != 0)
+		if (td != NULL) {
+			/*
+			 * RFC 0015 S4: this committed writer kept no surviving
+			 * versions (mvcc_ref == 0), so its mutex is unreferenced.
+			 * Retain it in the region cache for the next writer
+			 * instead of __mutex_free (which, with the matching
+			 * __mutex_alloc on the next first dirty fget, takes the
+			 * global MUTEX_SYSTEM_LOCK twice per writer txn -- plus
+			 * FreeBSD pshared_gc on the destroy).  We hold
+			 * TXN_SYSTEM_LOCK, as __txn_mvcc_mtx_free requires.
+			 */
+			if ((ret = __txn_mvcc_mtx_free(env,
+			    region, &td->mvcc_mtx)) != 0)
 				return (__env_panic(env, ret));
+		}
 	}
 
 	if (td != NULL) {

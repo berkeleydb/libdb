@@ -249,6 +249,21 @@ struct __db_txnregion { /* SHARED */
 
 #define	TXN_IN_RECOVERY	 0x01		/* environment is being recovered */
 	u_int32_t	flags;
+	/*
+	 * RFC 0015 S4: a bounded LIFO cache of initialised MTX_TXN_MVCC
+	 * mutexes retained from committed MVCC-writer details, so the next
+	 * writer reuses one instead of taking MUTEX_SYSTEM_LOCK for an
+	 * alloc + a free per writer txn (the P13 shape for the MVCC mutex).
+	 * free_mvcc_mtx points at an array of region->maxtxns db_mutex_t;
+	 * free_mvcc_n is how many are currently stashed.  A pure cache: a
+	 * full stack frees normally, an empty stack allocates normally, so
+	 * it never fails and never bounds concurrency.  It is NOT the S5
+	 * TXN_DETAIL free list (that is a separate change on another branch);
+	 * these fields are additive and independent.
+	 */
+	roff_t		free_mvcc_mtx;	/* Array of retained MTX_TXN_MVCC. */
+	u_int32_t	free_mvcc_n;	/* Count currently stashed. */
+	u_int32_t	free_mvcc_max;	/* Capacity of the array. */
 					/* active TXN list */
 	SH_TAILQ_HEAD(__active) active_txn;
 	SH_TAILQ_HEAD(__mvcc) mvcc_txn;

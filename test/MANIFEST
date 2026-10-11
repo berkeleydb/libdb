@@ -487,6 +487,7 @@ db	run_qam_readpath_bound
 db	run_curadj_dup_partition
 db	run_s7_stat_truth
 db	run_s3_mpool_counters
+db	run_s4_mvcc_mtx_reuse
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is
