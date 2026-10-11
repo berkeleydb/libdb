@@ -597,3 +597,84 @@ __mutex_stat_print_pp(dbenv, flags)
 	return (__db_stat_not_built(dbenv->env));
 }
 #endif
+
+#ifdef DB_REGENV_PROF
+/*
+ * RFC 0015 E1 instrumentation (see dbinc/mutex.h).  A fixed open-addressed
+ * table keyed by call site, updated only while HOLDING mtx_regenv, so plain
+ * increments are exact and the probe adds no serialisation of its own.
+ * Printed to stderr at process exit as
+ *   REGENV_PROF <file>:<line> acq=<n> wait=<n>
+ * plus one REGENV_PROF_TOTAL line.  Process-local: run the measured process
+ * under it; a loader process prints its own table.
+ */
+#define	RP_SLOTS	1024
+static struct {
+	const char *file;
+	int line;
+	unsigned long acq, wait;
+} __rp_tab[RP_SLOTS];
+static int __rp_registered;
+
+static void
+__rp_dump(void)
+{
+	unsigned long ta, tw;
+	int i;
+
+	for (ta = tw = 0, i = 0; i < RP_SLOTS; i++) {
+		if (__rp_tab[i].file == NULL || __rp_tab[i].acq == 0)
+			continue;
+		fprintf(stderr, "REGENV_PROF %s:%d acq=%lu wait=%lu\n",
+		    __rp_tab[i].file, __rp_tab[i].line,
+		    __rp_tab[i].acq, __rp_tab[i].wait);
+		ta += __rp_tab[i].acq;
+		tw += __rp_tab[i].wait;
+	}
+	fprintf(stderr, "REGENV_PROF_TOTAL acq=%lu wait=%lu\n", ta, tw);
+}
+
+int
+__db_regenv_prof_lock(env, mutex, file, line)
+	ENV *env;
+	db_mutex_t mutex;
+	const char *file;
+	int line;
+{
+	REGENV *renv;
+	uintptr_t h;
+	int i, ret, waited;
+
+	if (env->reginfo == NULL || env->reginfo->primary == NULL ||
+	    (renv = env->reginfo->primary)->mtx_regenv != mutex)
+		return (__mutex_lock_ck(env, mutex));
+
+	waited = 0;
+	if ((ret = __mutex_trylock_ck(env, mutex)) != 0) {
+		if (ret != DB_LOCK_NOTGRANTED)
+			return (ret);
+		waited = 1;
+		if ((ret = __mutex_lock_ck(env, mutex)) != 0)
+			return (ret);
+	}
+	/* We hold the latch: the table insert below is serialised by it. */
+	if (!__rp_registered) {
+		__rp_registered = 1;
+		(void)atexit(__rp_dump);
+	}
+	h = ((uintptr_t)file >> 3) * 31 + (uintptr_t)line;
+	for (i = 0; i < RP_SLOTS; i++, h++) {
+		h %= RP_SLOTS;
+		if (__rp_tab[h].file == NULL) {
+			__rp_tab[h].file = file;
+			__rp_tab[h].line = line;
+		}
+		if (__rp_tab[h].file == file && __rp_tab[h].line == line) {
+			__rp_tab[h].acq++;
+			__rp_tab[h].wait += (unsigned long)waited;
+			break;
+		}
+	}
+	return (0);
+}
+#endif

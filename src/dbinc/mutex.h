@@ -263,11 +263,29 @@ __db_lo_wrap_acq(ENV *env, db_mutex_t mutex, int ret,
  * return value of the mutex routine.
  */
 #ifdef HAVE_MUTEX_SUPPORT
+#ifdef DB_REGENV_PROF
+/*
+ * RFC 0015 experiment E1: who acquires renv->mtx_regenv, and who WAITS for
+ * it, per call site.  Measurement-only; compiled in only with
+ * CPPFLAGS=-DDB_REGENV_PROF, never in a shipped build.  An acquire of the
+ * env-region latch is first tried without blocking; a failed try counts as
+ * a wait and then blocks as usual.  So the latch's semantics are unchanged,
+ * and "waited" means exactly "was held by someone else on arrival".  The
+ * table is process-local and printed at exit (src/mutex/mut_stat.c).
+ */
+int __db_regenv_prof_lock __P((ENV *, db_mutex_t, const char *, int));
+#define	MUTEX_LOCK(env, mutex) do {					\
+	if ((mutex) != MUTEX_INVALID &&					\
+	    __db_regenv_prof_lock(env, mutex, __FILE__, __LINE__) != 0)	\
+		return (DB_RUNRECOVERY);				\
+} while (0)
+#else
 #define	MUTEX_LOCK(env, mutex) do {					\
 	if ((mutex) != MUTEX_INVALID &&					\
 	    __mutex_lock_ck(env, mutex) != 0)				\
 		return (DB_RUNRECOVERY);				\
 } while (0)
+#endif
 
 /*
  * Always check the return value of MUTEX_TRYLOCK()!  Expect 0 on success,
