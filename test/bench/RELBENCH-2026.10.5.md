@@ -48,9 +48,31 @@ t=16–64, [`P13-P12-MATRIX-2026-10.md`](P13-P12-MATRIX-2026-10.md)).
 and log "region" locks are one physical mutex, `renv->mtx_regenv`. That is the next cliff, and RFC 0015's
 first medium proposal.
 
-## aarch64 — c7gd.metal, 64 vCPU, Graviton3
+## aarch64 — c7gd.metal, 64 vCPU, Graviton3 (Neoverse-V1)
 
-**Not measured to completion for this release.** The sweep started late (the arm box first ran the full
-correctness qualification) and the "old" arm's scale-96 loads run at the pre-F4 rate. Partial data is
-preserved where it finished; no aarch64 number is quoted. Correctness on aarch64 *was* qualified in full
-(see the release notes).
+Data: [`RELBENCH-2026.10.5-freebsd-arm64.tsv`](RELBENCH-2026.10.5-freebsd-arm64.tsv), 98 rows, 0 degenerate,
+**7 reps in every cell, every cell's cv ≤ 6%**. (Completed after the tag; published as an addendum.)
+
+| threads | 2026.10.5 tpm (cv) | old paths tpm (cv) | speedup | `c_region`/commit |
+|--:|--:|--:|--:|--:|
+| 1  | 47,606 (0.7%)  | 481 (5.9%) | **99×**  | 0.000 |
+| 2  | 82,609 (1.0%)  | 503 (3.9%) | **164×** | 0.026 |
+| 4  | 132,336 (0.6%) | 500 (4.5%) | **265×** | 0.060 |
+| 8  | 144,823 (2.3%) | 504 (3.8%) | **287×** | 0.088 |
+| 16 | 142,548 (2.0%) | 539 (3.8%) | **264×** | 0.097 |
+| 32 | 134,979 (1.4%) | 587 (3.5%) | **230×** | 0.092 |
+| 64 | 132,059 (1.6%) | 666 (2.9%) | **198×** | 0.099 |
+
+**Two things differ from x86_64, and both are explained by the mutex backend.** aarch64 has no TAS mutex in
+this tree, so `configure` selects plain `POSIX/pthreads/library`: every mutex acquire is a pthread call.
+
+1. **Absolute single-thread throughput is ~13× lower** (47.6 k vs 640.5 k tpm at t=1). Not CPU speed: a
+   pthread-backed mutex on FreeBSD pays a `_umtx_op` path the x86 hybrid's spin fast path avoids.
+2. **It scales flatter.** aarch64 plateaus from t=8 and holds within 9% to t=64; x86_64 peaks at t=4 and loses
+   70% by t=64. `c_region` waits per commit are **~10× lower on aarch64** (0.09 vs 0.91–1.09) — the slower
+   per-acquire path is itself admission control in front of `mtx_regenv`, the same mechanism RFC 0012 named.
+   This is the expected *shape* of a slower lock, not evidence that aarch64 is better at scaling.
+
+So the two platforms point at the same two follow-ups: an **AArch64 TAS/hybrid mutex** (which would also fix B3
+for arm64's default build), and **RFC 0015's `mtx_regenv` split**, which x86_64 shows is the cliff once the
+mutex path is fast. Expect the second to matter on aarch64 only after the first lands.
