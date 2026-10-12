@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow"
+ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -165,6 +165,56 @@ arm_typed_api_shallow_apply() {
 }
 arm_typed_api_shallow_test='TIER=typed sh "$HERE"/run_typed_api.sh "$B"'
 arm_typed_api_shallow_expect='VERDICT typed_api FAIL|FAIL \[1[34]\]'
+
+# §7.2 typed_refusals (a): delete the C6 block in __db_open_arg.  fname==NULL
+# and dname==NULL typed opens are then no longer refused there.
+arm_typed_refusals_c6_files="src/db/db_iface.c"
+arm_typed_refusals_c6_apply() {
+	edit src/db/db_iface.c \
+	    'if (F2_ISSET(dbp, DB2_AM_TYPED) && (fname == NULL || dname == NULL)) {' \
+	    'if (0 && F2_ISSET(dbp, DB2_AM_TYPED) && (fname == NULL || dname == NULL)) {'
+}
+arm_typed_refusals_c6_test='TIER=typed sh "$HERE"/run_typed_refusals.sh "$B"'
+arm_typed_refusals_c6_expect='VERDICT typed_refusals FAIL|FAIL \[[246]\]'
+
+# §7.2 typed_refusals (b): delete the compression check in __typed_open.
+# set_bt_compress and a pre-existing BTM_COMPRESS subdatabase are then
+# accepted.
+arm_typed_refusals_compress_files="src/typed/typed.c"
+arm_typed_refusals_compress_apply() {
+	edit src/typed/typed.c \
+	    '	if (dbp->type == DB_BTREE && dbp->bt_internal != NULL &&' \
+	    '	if (0 && dbp->type == DB_BTREE && dbp->bt_internal != NULL &&'
+}
+arm_typed_refusals_compress_test='TIER=typed sh "$HERE"/run_typed_refusals.sh "$B"'
+arm_typed_refusals_compress_expect='VERDICT typed_refusals FAIL|FAIL \[1[47]\]'
+
+# §7.2 typed_refusals (c): delete the callback-identity check in __typed_open.
+# A set_bt_compare after db_set_schema is then accepted at open.
+arm_typed_refusals_cb_files="src/typed/typed.c"
+arm_typed_refusals_cb_apply() {
+	edit src/typed/typed.c \
+	    '	if (ts != NULL && dbp->type == DB_BTREE && dbp->bt_internal != NULL) {' \
+	    '	if (0 && ts != NULL && dbp->type == DB_BTREE && dbp->bt_internal != NULL) {'
+}
+arm_typed_refusals_cb_test='TIER=typed sh "$HERE"/run_typed_refusals.sh "$B"'
+arm_typed_refusals_cb_expect='VERDICT typed_refusals FAIL|FAIL \[16\]'
+
+# §7.2 typed_old_reader: drop the #ifdef HAVE_TYPED guard on the widened mask
+# by making the DEFAULT (#else) fchk accept BTM_TYPED too, so a build without
+# the typed layer opens the fixture instead of refusing it (BDB0055).  Run
+# against the DEFAULT build dir ($B must be the default build for this arm).
+arm_typed_old_reader_mask_files="src/btree/bt_open.c src/hash/hash_open.c"
+arm_typed_old_reader_mask_apply() {
+	edit src/btree/bt_open.c \
+	    '	    __db_fchk(env, "DB->open", btm->dbmeta.flags, BTM_MASK)) != 0)' \
+	    '	    __db_fchk(env, "DB->open", btm->dbmeta.flags, BTM_MASK | BTM_TYPED)) != 0)' &&
+	edit src/hash/hash_open.c \
+	    '	    DB_HASH_DUP | DB_HASH_SUBDB | DB_HASH_DUPSORT)) != 0)' \
+	    '	    DB_HASH_DUP | DB_HASH_SUBDB | DB_HASH_DUPSORT | DB_HASH_TYPED)) != 0)'
+}
+arm_typed_old_reader_mask_test='TIER=db sh "$HERE"/run_typed_old_reader.sh "$B"'
+arm_typed_old_reader_mask_expect='VERDICT typed_old_reader FAIL|FAIL \['
 
 # ---------------------------------------------------------------------------
 

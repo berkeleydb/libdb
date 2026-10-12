@@ -264,6 +264,19 @@ __db_open(dbp, ip, txn, fname, dname, type, flags, mode, meta_pgno)
 	    __partition_open(dbp, ip, txn, fname, type, flags, mode, 1)) != 0)
 		goto err;
 #endif
+#ifdef HAVE_TYPED
+	/*
+	 * The typed-database open hook (RFC 0014 §3.5): Phase 1 refusals, and
+	 * (later commits) the catalog/fingerprint check.  It also runs for a
+	 * schema-less open of a typed file (DB2_AM_TYPED_FILE, set by the meta
+	 * check).  Recovery's internal handles are schema-less, read-write and
+	 * DB_AM_RECOVER, which this test keeps out (D5).
+	 */
+	if (F2_ISSET(dbp, DB2_AM_TYPED | DB2_AM_TYPED_FILE) &&
+	    !F_ISSET(dbp, DB_AM_RECOVER) &&
+	    (ret = __typed_open(dbp, ip, txn, fname, dname, flags)) != 0)
+		goto err;
+#endif
 	DB_TEST_RECOVERY(dbp, DB_TEST_POSTOPEN, ret, fname);
 
 	/*

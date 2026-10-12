@@ -494,6 +494,7 @@ db	run_foreign_disassoc_leak
 db	run_foreign_reassoc
 db	run_r1_revive
 db	run_typed_footprint
+db	run_typed_old_reader
 
 # ---------------------------------------------------------------------------
 # RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an
@@ -506,6 +507,8 @@ db	run_typed_footprint
 # ---------------------------------------------------------------------------
 typed	run_handle_sizes
 typed	run_typed_api
+typed	run_typed_refusals
+typed	run_typed_old_reader
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

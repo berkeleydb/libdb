@@ -768,4 +768,102 @@ db_get_schema(dbp, schemap)
 	*schemap = &ts->schema;
 	return (0);
 }
+
+/*
+ * __typed_open --
+ *	The DB->open hook for typed databases (spec §3.5).  Runs after the
+ *	access-method and partition opens succeed and before DB_TEST_POSTOPEN,
+ *	but not for recovery handles (DB_AM_RECOVER, checked by the caller).
+ *	In commit 4 it enforces the open-time Phase 1 refusals: compression,
+ *	DUP carried by an existing file, and a callback overridden after
+ *	db_set_schema.  The catalog/fingerprint check (§5.2), the read-only
+ *	schema-less rule (§4.1) and the UNIQUE associate (§3.6) are later
+ *	commits.
+ *
+ * PUBLIC: #ifdef HAVE_TYPED
+ * PUBLIC: int __typed_open __P((DB *, DB_THREAD_INFO *, DB_TXN *,
+ * PUBLIC:     const char *, const char *, u_int32_t));
+ * PUBLIC: #endif
+ */
+int
+__typed_open(dbp, ip, txn, fname, dname, flags)
+	DB *dbp;
+	DB_THREAD_INFO *ip;
+	DB_TXN *txn;
+	const char *fname, *dname;
+	u_int32_t flags;
+{
+	ENV *env;
+	TYPED_STATE *ts;
+	BTREE *bt;
+	HASH *ht;
+
+	env = dbp->env;
+	COMPQUIET(ip, NULL);
+	COMPQUIET(txn, NULL);
+	COMPQUIET(fname, NULL);
+	COMPQUIET(dname, NULL);
+	COMPQUIET(flags, 0);
+
+	ts = __typed_state(dbp);
+
+	/*
+	 * Compression (set_bt_compress or a BTM_COMPRESS file) is refused:
+	 * a compressed value's bytes are not the record the codec reads.  Only
+	 * a post-AM-open check sees both sources (bt_open.c sets DB_AM_COMPRESS
+	 * from the file).
+	 */
+#ifdef HAVE_COMPRESSION
+	if (dbp->type == DB_BTREE && dbp->bt_internal != NULL &&
+	    DB_IS_COMPRESSED(dbp)) {
+		__db_errx(env, DB_STR("5359",
+	    "typed database: compression is not supported in Phase 1"));
+		return (EINVAL);
+	}
+#endif
+
+	/*
+	 * DB_DUP / DB_DUPSORT (set after db_set_schema, or carried by the file
+	 * through __bam_metachk / __ham_metachk) is refused (C12): a duplicate
+	 * set makes "the record" of a put ambiguous.
+	 */
+	if (F_ISSET(dbp, DB_AM_DUP)) {
+		__db_errx(env, DB_STR("5360",
+	    "typed database: DB_DUP is not supported in Phase 1 (C12)"));
+		return (EINVAL);
+	}
+
+	/*
+	 * A callback overridden after db_set_schema is refused: set_bt_compare
+	 * and friends are existing methods that cannot be intercepted.  Commit
+	 * 3 installs no generated callback, so a typed handle must still carry
+	 * the defaults (Btree: __bam_defcmp / __bam_defpfx; Hash: NULL h_hash
+	 * before open-time filling, NULL h_compare).  Commit 8 compares against
+	 * the generated callbacks instead.
+	 */
+	if (ts != NULL && dbp->type == DB_BTREE && dbp->bt_internal != NULL) {
+		bt = dbp->bt_internal;
+		if (bt->bt_compare != __bam_defcmp ||
+		    bt->bt_prefix != __bam_defpfx) {
+			__db_errx(env, DB_STR("5361",
+		    "typed database: a comparator was set after db_set_schema"));
+			return (EINVAL);
+		}
+	}
+	if (ts != NULL && dbp->type == DB_HASH && dbp->h_internal != NULL) {
+		ht = dbp->h_internal;
+		/*
+		 * __ham_open fills a NULL h_hash with __ham_func5 at open, so by
+		 * the time this runs h_hash is non-NULL; only an application
+		 * h_compare (which open never sets) betrays an override here.
+		 */
+		if (ht->h_compare != NULL) {
+			__db_errx(env, DB_STR("5362",
+		    "typed database: an h_compare was set after db_set_schema"));
+			return (EINVAL);
+		}
+	}
+
+	return (0);
+}
 #endif /* HAVE_TYPED */

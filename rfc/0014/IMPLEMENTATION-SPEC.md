@@ -1387,3 +1387,40 @@ item 3 demand a typed export that does not exist. Changed to match a
 definition (`^db_set_schema[ (]`, K&R column 0), which the comment does not
 satisfy; `TYPED_API` stays 0 through commit 2 (verified: item 3 reports "not
 yet applicable").
+
+**V12 (Phase 1 commit 4, test `typed_old_reader` in the `db` tier).** §7.2
+registers `typed_old_reader` in the `db` tier and describes it only as "the
+default build refuses the fixture (BDB0055)". The handoff gate, however, runs
+the whole `db` tier in BOTH a default and an `--enable-typed` build each
+commit. Run against the typed library the plain refusal assertion is a false
+red: a typed build KNOWS `BTM_TYPED`, so it opens the fixture (the read-only
+rule is §4.1, commit 5). Built instead: the runner compiles the reader with
+`-DHAVE_TYPED` iff `$BUILD/db_config.h` has it (the `run_handle_sizes.sh`
+precedent), and the reader asserts the opposite outcome under that guard --
+refusal (EINVAL/BDB0055) without the macro, a successful schema-less open with
+it. Neither branch is a skip, so neither is vacuous: against the default build
+the only pass is a BDB0055 refusal, against the typed build the only pass is an
+open. The `typed_old_reader_mask` sabotage still runs against the default build
+(no `-DHAVE_TYPED`), where dropping the mask guard makes the default library
+open the fixture and the `#else` branch FAILs. Evidence (commit 4): db-tier vs
+default -> "refused EINVAL/BDB0055" 2/2 PASS; db-tier vs typed -> "opened
+(typed build knows the bit)" 2/2 PASS; mask sabotage vs default -> "RDONLY
+ret=0 ... FAIL". The typed-tier regen companion compares the committed and
+regenerated fixtures' `DBMETA.flags` word (file offset 32816 = subdatabase meta
+page 32768 + struct offset 48), which carries `BTM_TYPED`/`DB_HASH_TYPED`, so
+the fixture cannot drift from the code (`20010000` for the Btree, `0a000000`
+for the Hash).
+
+**V13 (Phase 1 commit 4, fixtures carry the meta bit but no catalog record).**
+§9 commit 4 lists "the on-disk fixtures" and §7.2's `typed_old_reader` names
+"one typed subdatabase each plus `__db_typed`". The committed fixtures carry
+the `BTM_TYPED`/`DB_HASH_TYPED` meta bit (commit 4) but NOT a `__db_typed`
+catalog subdatabase, because the catalog writer is commit 5. This is sufficient
+for every assertion `typed_old_reader` makes in commit 4: the refusal a reader
+without the bits gives is driven entirely by the unknown meta flag
+(`__db_fchk`/BDB0055), which `__db_typed` would not change. Commit 5
+regenerates the fixtures with the catalog present and extends the regen
+companion to the catalog bytes; the committed fixtures are refreshed then. The
+`db_set_schema`-created fixture in commit 4 is a typed subdatabase that a
+commit-5 typed open would reject with "no catalog record" -- which is why the
+fixtures are regenerated in commit 5, not reused.

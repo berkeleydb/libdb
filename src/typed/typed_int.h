@@ -12,7 +12,7 @@
  *
  * This header lives OUTSIDE src/dbinc/, so dist/s_sig does not scan it and
  * none of these structures enter the region signature (spec C2, C3).  It is
- * included only by src/typed/*.c, all of which are whole-file guarded on
+ * included only by the src/typed .c files, all whole-file guarded on
  * HAVE_TYPED.
  */
 
