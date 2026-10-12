@@ -505,6 +505,7 @@ db	run_typed_footprint
 # test live in test/db/typed-sabotage.sh (not CI: they are red by design).
 # ---------------------------------------------------------------------------
 typed	run_handle_sizes
+typed	run_typed_api
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

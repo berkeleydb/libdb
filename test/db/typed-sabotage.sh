@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary footprint_sig handle_sizes_typed"
+ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -128,6 +128,43 @@ arm_handle_sizes_typed_apply() {
 }
 arm_handle_sizes_typed_test='TIER=typed sh "$HERE"/run_handle_sizes.sh "$B"'
 arm_handle_sizes_typed_expect='VERDICT handle_sizes FAIL'
+
+# §7.2 typed_api (a): delete the "compare == NULL => MEMCMP" rule (§3.4 rule
+# 5).  A codec with no compare and no MEMCMP must then be accepted, so
+# typed_api's "no-compare non-MEMCMP codec -> EINVAL" check FAILs.
+arm_typed_api_memcmp_files="src/typed/typed.c"
+arm_typed_api_memcmp_apply() {
+	edit src/typed/typed.c \
+	    'if (c->compare == NULL && !memcmp_ok) {' \
+	    'if (0 && c->compare == NULL && !memcmp_ok) {'
+}
+arm_typed_api_memcmp_test='TIER=typed sh "$HERE"/run_typed_api.sh "$B"'
+arm_typed_api_memcmp_expect='VERDICT typed_api FAIL|FAIL \[7\]'
+
+# §7.2 typed_api (b): delete the vector-order self-check (§5.1).  An ascending
+# vector list for a descending (reverse) codec must then be accepted, so the
+# "unordered vectors -> EINVAL" check FAILs.
+arm_typed_api_vecorder_files="src/typed/typed_catalog.c"
+arm_typed_api_vecorder_apply() {
+	edit src/typed/typed_catalog.c \
+	    'if (cmp > 0) {' \
+	    'if (0 && cmp > 0) {'
+}
+arm_typed_api_vecorder_test='TIER=typed sh "$HERE"/run_typed_api.sh "$B"'
+arm_typed_api_vecorder_expect='VERDICT typed_api FAIL|FAIL \[8\]'
+
+# §7.2 typed_api (c): make the schema copy shallow -- point the stored record
+# codec at the CALLER's types[] array instead of the deep copy.  Scribbling
+# the caller's array after db_set_schema then changes what db_get_schema
+# returns, so the "types[] survives scribble" check FAILs.
+arm_typed_api_shallow_files="src/typed/typed.c"
+arm_typed_api_shallow_apply() {
+	edit src/typed/typed.c \
+	    'ts->key_rc.types = ts->key_types;' \
+	    'ts->key_rc.types = schema->key->types;'
+}
+arm_typed_api_shallow_test='TIER=typed sh "$HERE"/run_typed_api.sh "$B"'
+arm_typed_api_shallow_expect='VERDICT typed_api FAIL|FAIL \[1[34]\]'
 
 # ---------------------------------------------------------------------------
 

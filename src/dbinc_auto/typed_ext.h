@@ -6,6 +6,18 @@
 extern "C" {
 #endif
 
+#ifdef HAVE_TYPED
+void __typed_release __P((DB *));
+#endif
+#ifdef HAVE_TYPED
+int __typed_fingerprint __P((DB *, const DB_CODEC *, u_int8_t *));
+#endif
+#ifdef HAVE_TYPED
+int __typed_memcmp_order __P((const DBT *, const DBT *));
+#endif
+#ifdef HAVE_TYPED
+int __typed_codec_cmp __P((const DB_CODEC *, const DBT *, const DBT *));
+#endif
 
 #if defined(__cplusplus)
 }

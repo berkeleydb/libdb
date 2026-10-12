@@ -2570,6 +2570,18 @@
 #define	__txn_add_fe_watermark __txn_add_fe_watermark@DB_VERSION_UNIQUE_NAME@
 #define	__txn_flush_fe_files __txn_flush_fe_files@DB_VERSION_UNIQUE_NAME@
 #define	__txn_pg_above_fe_watermark __txn_pg_above_fe_watermark@DB_VERSION_UNIQUE_NAME@
+#ifdef HAVE_TYPED
+#define	__typed_release __typed_release@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_fingerprint __typed_fingerprint@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_memcmp_order __typed_memcmp_order@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_codec_cmp __typed_codec_cmp@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_rmid_to_env __db_rmid_to_env@DB_VERSION_UNIQUE_NAME@
 #define	__db_xid_to_txn __db_xid_to_txn@DB_VERSION_UNIQUE_NAME@
 #define	__db_map_rmid __db_map_rmid@DB_VERSION_UNIQUE_NAME@
