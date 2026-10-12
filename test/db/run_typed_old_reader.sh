@@ -81,14 +81,29 @@ if [ "$TIER" = typed ] ; then
 		[ -f "$work/$f" ] || { echo "  FAIL: regen missing $f" ; nf=1 ; }
 		[ -f "$FIX/$f" ] || { echo "  FAIL: committed missing $f" ; nf=1 ; }
 	done
-	# The typed subdatabase meta page sits at file offset 32768 (page 8 at
-	# the 4KB default pagesize; page 0 is the master database).  DBMETA.flags
-	# -- which carries BTM_TYPED (0x100) / DB_HASH_TYPED (0x08) -- is at
-	# struct offset 48, so file offset 32816.  Compare that 4-byte word
-	# between the committed and the regenerated fixture: equal means the
-	# fixture's typed-ness has not drifted from the code.  (uid and lsn
-	# differ run to run, so only the flags word is deterministic.)
-	flags_at() { od -A n -t x1 -j 32816 -N 4 "$1" | tr -d ' \n' ; }
+	# Return the DBMETA.flags word of the typed subdatabase meta page.
+	# DBMETA.flags is at struct offset 48 and carries BTM_TYPED (0x100,
+	# little-endian "20 01 00 00") / DB_HASH_TYPED (0x08, "0a 00 00 00").
+	# We SCAN every page for that word rather than hard-code a file offset:
+	# the committed fixtures place the typed subdb meta at page 8 (an older,
+	# larger layout) while the current typed_mkfixture places it at page 2,
+	# and a fixed offset reads past EOF of the smaller file.  The typed-ness
+	# is what must not drift from the code, not where the page lands.  The
+	# master-db and plain index meta pages carry "20 00 00 00" or zero; the
+	# first page whose flags are neither is the typed one.  (uid and lsn
+	# differ run to run, so only this flags word is deterministic.)
+	flags_at() {
+		_sz=$(wc -c < "$1") ; _pg=0
+		while [ $((_pg * 4096 + 52)) -le "$_sz" ] ; do
+			_fl=$(od -A n -t x1 -j $((_pg * 4096 + 48)) -N 4 "$1" \
+			    2>/dev/null | tr -d ' \n')
+			case $_fl in
+			00000000|20000000|'') ;;	# master / plain / none
+			*) echo "$_fl" ; return ;;	# the typed meta page
+			esac
+			_pg=$((_pg + 1))
+		done
+	}
 	for f in typed_bt.db typed_hash.db ; do
 		cf=$(flags_at "$FIX/$f")
 		rf=$(flags_at "$work/$f")
