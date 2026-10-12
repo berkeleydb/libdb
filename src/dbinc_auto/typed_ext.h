@@ -13,6 +13,9 @@ void __typed_release __P((DB *));
 int __typed_open __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, const char *, u_int32_t));
 #endif
 #ifdef HAVE_TYPED
+int __typed_put_check __P((DBC *, DBT *, DBT *, u_int32_t));
+#endif
+#ifdef HAVE_TYPED
 int __typed_fingerprint __P((DB *, const DB_CODEC *, u_int8_t *));
 #endif
 #ifdef HAVE_TYPED

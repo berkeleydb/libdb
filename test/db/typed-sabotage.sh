@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule"
+ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -271,6 +271,58 @@ arm_typed_rdonly_noschema_rule_apply() {
 }
 arm_typed_rdonly_noschema_rule_test='TIER=typed sh "$HERE"/run_typed_rdonly_noschema.sh "$B"'
 arm_typed_rdonly_noschema_rule_expect='VERDICT typed_rdonly_noschema FAIL|FAIL \[5\]'
+
+# §7.2 typed_notnull: delete the __typed_put_check call in __dbc_put -> no
+# constraint is checked, so a NOT NULL violation is stored.
+arm_typed_notnull_hook_files="src/db/db_cam.c"
+arm_typed_notnull_hook_apply() {
+	edit src/db/db_cam.c \
+	    '	if (F2_ISSET(dbp, DB2_AM_TYPED) && flags != DB_UPDATE_SECONDARY &&' \
+	    '	if (0 && F2_ISSET(dbp, DB2_AM_TYPED) && flags != DB_UPDATE_SECONDARY &&'
+}
+arm_typed_notnull_hook_test='TIER=typed sh "$HERE"/run_typed_notnull.sh "$B"'
+arm_typed_notnull_hook_expect='VERDICT typed_notnull FAIL|FAIL \[1\]'
+
+# §7.2 typed_maxlen (b): change "len > maxlen" to "len > maxlen + 1" at both
+# the field and whole-DBT sites, so a maxlen+1 field/DBT is wrongly accepted.
+arm_typed_maxlen_boundary_files="src/typed/typed.c"
+arm_typed_maxlen_boundary_apply() {
+	edit src/typed/typed.c \
+	    '			if (flen > con->maxlen)' \
+	    '			if (flen > con->maxlen + 1)' &&
+	edit src/typed/typed.c \
+	    '			if (dbt->size > con->maxlen)' \
+	    '			if (dbt->size > con->maxlen + 1)'
+}
+arm_typed_maxlen_boundary_test='TIER=typed sh "$HERE"/run_typed_maxlen.sh "$B"'
+arm_typed_maxlen_boundary_expect='VERDICT typed_maxlen FAIL|FAIL \[[24]\]'
+
+# §7.2 typed_valid: delete the DB_CODEC_MALFORMED -> DB_CONSTRAINT_VIOLATION
+# mapping in the codec-validate path, so a MALFORMED leaks out as -30964.
+arm_typed_valid_mapping_files="src/typed/typed.c"
+arm_typed_valid_mapping_apply() {
+	edit src/typed/typed.c \
+	    '				if (ret == DB_CODEC_MALFORMED)
+					goto violated;' \
+	    '				if (0 && ret == DB_CODEC_MALFORMED)
+					goto violated;'
+}
+arm_typed_valid_mapping_test='TIER=typed sh "$HERE"/run_typed_valid.sh "$B"'
+arm_typed_valid_mapping_expect='VERDICT typed_valid FAIL|FAIL \[[23]\]'
+
+# §7.2 typed_partial: delete step 1 (the DB_DBT_PARTIAL refusal), so a partial
+# put on a typed database is accepted.
+arm_typed_partial_step1_files="src/typed/typed.c"
+arm_typed_partial_step1_apply() {
+	edit src/typed/typed.c \
+	    '	if ((key != NULL && F_ISSET(key, DB_DBT_PARTIAL)) ||' \
+	    '	if ((key != NULL && 0) ||' &&
+	edit src/typed/typed.c \
+	    '	    (data != NULL && F_ISSET(data, DB_DBT_PARTIAL))) {' \
+	    '	    (data != NULL && 0)) {'
+}
+arm_typed_partial_step1_test='TIER=typed sh "$HERE"/run_typed_partial.sh "$B"'
+arm_typed_partial_step1_expect='VERDICT typed_partial FAIL|FAIL \[[12]\]'
 
 # ---------------------------------------------------------------------------
 

@@ -65,6 +65,8 @@ static int  __typed_build_state __P((DB *, const DB_SCHEMA *, TYPED_STATE **));
 static TYPED_STATE *__typed_state __P((DB *));
 static int  __typed_copy_schema __P((DB *, const DB_SCHEMA *, TYPED_STATE *));
 static void __typed_free_state __P((DB *, TYPED_STATE *));
+static int  __typed_check_side __P((DBC *, TYPED_STATE *, u_int32_t,
+		const DB_RECORD_CODEC *, const DBT *));
 
 /*
  * __typed_free_state --
@@ -895,5 +897,167 @@ __typed_open(dbp, ip, txn, fname, dname, flags)
 	if (F_ISSET(dbp, DB_AM_CREATED))
 		return (__typed_catalog_write(dbp, ip, txn, fname, dname, ts));
 	return (__typed_catalog_check(dbp, ip, txn, fname, dname, ts));
+}
+
+/*
+ * __typed_check_side --
+ *	Run the record-codec validate (if VALID is asked) and every constraint
+ *	on one side (key or data) of a put (spec §3.7 steps 3-5).  A codec
+ *	DB_CODEC_MALFORMED becomes DB_CONSTRAINT_VIOLATION; any other non-zero
+ *	callback return is passed through.
+ */
+static int
+__typed_check_side(dbc, ts, side, rc, dbt)
+	DBC *dbc;
+	TYPED_STATE *ts;
+	u_int32_t side;
+	const DB_RECORD_CODEC *rc;
+	const DBT *dbt;
+{
+	ENV *env;
+	const DB_CONSTRAINT *con;
+	const DB_CODEC *codec;
+	const u_int8_t *p;
+	u_int32_t i, flen;
+	int isnull, ret;
+
+	env = dbc->dbp->env;
+
+	for (i = 0; i < ts->schema.nconstraints; i++) {
+		con = &ts->schema.constraints[i];
+		if (con->side != side)
+			continue;
+
+		/* MAXLEN on the whole DBT needs no field(). */
+		if (con->kind == DB_CONSTRAINT_MAXLEN &&
+		    con->field == DB_TYPED_WHOLE) {
+			if (dbt->size > con->maxlen)
+				goto violated;
+			continue;
+		}
+
+		/* UNIQUE is enforced by the generated secondary, not here. */
+		if (con->kind == DB_CONSTRAINT_UNIQUE)
+			continue;
+
+		/* VALID over the whole record is handled once below. */
+		if (con->kind == DB_CONSTRAINT_VALID &&
+		    con->field == DB_TYPED_WHOLE)
+			continue;
+
+		/* Locate the field. */
+		p = NULL; flen = 0; isnull = 0;
+		if ((ret = rc->field(rc, dbt, con->field, &p, &flen,
+		    &isnull)) != 0) {
+			if (ret == DB_CODEC_MALFORMED)
+				goto violated;
+			return (ret);
+		}
+
+		switch (con->kind) {
+		case DB_CONSTRAINT_NOT_NULL:
+			if (isnull)
+				goto violated;
+			break;
+		case DB_CONSTRAINT_MAXLEN:
+			if (flen > con->maxlen)
+				goto violated;
+			break;
+		case DB_CONSTRAINT_VALID:
+			codec = rc->types[con->field];
+			if (!isnull && codec->validate != NULL &&
+			    (ret = codec->validate(codec, p, flen)) != 0) {
+				if (ret == DB_CODEC_MALFORMED)
+					goto violated;
+				return (ret);
+			}
+			break;
+		}
+		continue;
+
+violated:
+		__db_errx(env, DB_STR("5372",
+		    "typed database: constraint %s violated"), con->name);
+		return (DB_CONSTRAINT_VIOLATION);
+	}
+
+	/*
+	 * Record-codec validate: run it if this side has any VALID constraint
+	 * (whole-record or a field), per §3.7 step 5 ("VALID => the record
+	 * codec's validate and every field's codec validate return 0").
+	 */
+	if (rc->validate != NULL) {
+		for (i = 0; i < ts->schema.nconstraints; i++) {
+			con = &ts->schema.constraints[i];
+			if (con->side == side &&
+			    con->kind == DB_CONSTRAINT_VALID) {
+				if ((ret = rc->validate(rc, dbt)) != 0) {
+					if (ret == DB_CODEC_MALFORMED) {
+						__db_errx(env, DB_STR("5373",
+			    "typed database: record failed VALID (%s)"),
+						    con->name);
+						return (DB_CONSTRAINT_VIOLATION);
+					}
+					return (ret);
+				}
+				break;
+			}
+		}
+	}
+	return (0);
+}
+
+/*
+ * __typed_put_check --
+ *	The put-path constraint hook (spec §3.7), called from __dbc_put for a
+ *	typed handle.  Refuses partial puts, then runs the key- and data-side
+ *	constraints.  A DB_CURRENT put keeps the stored key, so the key side
+ *	is skipped for it.
+ *
+ * PUBLIC: #ifdef HAVE_TYPED
+ * PUBLIC: int __typed_put_check __P((DBC *, DBT *, DBT *, u_int32_t));
+ * PUBLIC: #endif
+ */
+int
+__typed_put_check(dbc, key, data, flags)
+	DBC *dbc;
+	DBT *key, *data;
+	u_int32_t flags;
+{
+	DB *dbp;
+	TYPED_STATE *ts;
+	int ret;
+
+	dbp = dbc->dbp;
+	if ((ts = __typed_state(dbp)) == NULL)
+		return (0);	/* DIAGNOSTIC: flag set but no state. */
+	DB_ASSERT(dbp->env, F2_ISSET(dbp, DB2_AM_TYPED));
+
+	/* Step 1: partial puts are not supported on typed databases. */
+	if ((key != NULL && F_ISSET(key, DB_DBT_PARTIAL)) ||
+	    (data != NULL && F_ISSET(data, DB_DBT_PARTIAL))) {
+		__db_errx(dbp->env, DB_STR("5374",
+	    "partial puts are not supported on typed databases"));
+		return (EINVAL);
+	}
+
+	/* Step 2 (UNIQUE-index-closed) is commit 7. */
+
+	/*
+	 * Step 3: key side, unless DB_CURRENT (which keeps the stored key,
+	 * already checked when it was written).
+	 */
+	if (ts->schema.key != NULL && flags != DB_CURRENT && key != NULL &&
+	    (ret = __typed_check_side(dbc, ts, DB_TYPED_KEY,
+	    ts->schema.key, key)) != 0)
+		return (ret);
+
+	/* Step 4: data side. */
+	if (ts->schema.data != NULL && data != NULL &&
+	    (ret = __typed_check_side(dbc, ts, DB_TYPED_DATA,
+	    ts->schema.data, data)) != 0)
+		return (ret);
+
+	return (0);
 }
 #endif /* HAVE_TYPED */

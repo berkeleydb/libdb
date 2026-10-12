@@ -513,6 +513,10 @@ typed	run_typed_codec_mismatch
 typed	run_typed_catalog_lifecycle
 typed	run_typed_catalog_format
 typed	run_typed_rdonly_noschema
+typed	run_typed_notnull
+typed	run_typed_maxlen
+typed	run_typed_valid
+typed	run_typed_partial
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

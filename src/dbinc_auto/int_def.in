@@ -2577,6 +2577,9 @@
 #define	__typed_open __typed_open@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifdef HAVE_TYPED
+#define	__typed_put_check __typed_put_check@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
 #define	__typed_fingerprint __typed_fingerprint@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifdef HAVE_TYPED

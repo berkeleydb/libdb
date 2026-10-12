@@ -2026,6 +2026,20 @@ __dbc_put(dbc, key, data, flags)
 	ret = 0;
 	F_CLR(dbc, DBC_ERROR);
 
+#ifdef HAVE_TYPED
+	/*
+	 * Typed-database constraint check (RFC 0014 §3.7).  Runs before the
+	 * flags rewrite below (which turns DB_UPDATE_SECONDARY into DB_KEYLAST),
+	 * so it can skip internal secondary maintenance, and before
+	 * __dbc_put_primary, so a rejected record writes neither secondaries
+	 * nor primary.  It touches no page, so it is also before
+	 * CDB_LOCKING_INIT.
+	 */
+	if (F2_ISSET(dbp, DB2_AM_TYPED) && flags != DB_UPDATE_SECONDARY &&
+	    (ret = __typed_put_check(dbc, key, data, flags)) != 0)
+		return (ret);
+#endif
+
 	/*
 	 * Putting to secondary indices is forbidden;  when we need to
 	 * internally update one, we're called with a private flag,
