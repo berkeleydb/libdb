@@ -306,6 +306,29 @@ __os_atomic_cas_ptr(env, p, oldval, newval)
 	    0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST));
 }
 
+#ifdef HAVE_TYPED
+/*
+ * __os_atomic_read_ptr --
+ *	Acquire load of a pointer-width atomic.  The ACQUIRE pairs with the
+ *	SEQ_CST compare-exchange in __os_atomic_cas_ptr so a lock-free table
+ *	can skip-check a slot without a C11 data race against the claiming
+ *	CAS.  Loaded through intptr_t to match the CAS's integer-atomic
+ *	spelling (uniform codegen; value-preserving for object pointers).
+ *
+ * PUBLIC: #if defined(HAVE_TYPED) && (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: void *__os_atomic_read_ptr
+ * PUBLIC:     __P((void *volatile *));
+ * PUBLIC: #endif
+ */
+void *
+__os_atomic_read_ptr(p)
+	void *volatile *p;
+{
+	return ((void *)(intptr_t)__atomic_load_n(
+	    (volatile intptr_t *)p, __ATOMIC_ACQUIRE));
+}
+#endif /* HAVE_TYPED */
+
 /*
  * __os_atomic_add --
  *	Atomically add a value, return the new value.
@@ -567,6 +590,32 @@ __os_atomic_cas_ptr(env, p, oldval, newval)
 	return (__sync_bool_compare_and_swap(
 	    (volatile intptr_t *)p, (intptr_t)oldval, (intptr_t)newval));
 }
+
+#ifdef HAVE_TYPED
+/*
+ * __os_atomic_read_ptr --
+ *	Acquire load of a pointer-width atomic (legacy __sync tier).  The
+ *	__sync builtins have no bare load, so a full barrier after a volatile
+ *	read gives acquire ordering, pairing with the __sync compare-and-swap
+ *	in __os_atomic_cas_ptr.
+ *
+ * PUBLIC: #if defined(HAVE_TYPED) && defined(HAVE_ATOMIC_SYNC_BUILTIN) && \
+ * PUBLIC:     defined(HAVE_ATOMIC_SUPPORT)
+ * PUBLIC: void *__os_atomic_read_ptr
+ * PUBLIC:     __P((void *volatile *));
+ * PUBLIC: #endif
+ */
+void *
+__os_atomic_read_ptr(p)
+	void *volatile *p;
+{
+	void *val;
+
+	val = *p;
+	__sync_synchronize();
+	return (val);
+}
+#endif /* HAVE_TYPED */
 
 /*
  * __os_atomic_add --
@@ -2686,3 +2735,34 @@ __os_atomic_cas_ptr(env, p, oldval, newval)
 #endif
 }
 #endif /* fallback __os_atomic_cas_ptr */
+
+/*
+ * __os_atomic_read_ptr -- generic fallback.
+ *
+ *	The GCC __atomic and legacy __sync tiers above define their own native
+ *	__os_atomic_read_ptr.  For every other tier an aligned pointer-width
+ *	load is already atomic on all supported platforms (the same premise the
+ *	sized __os_atomic_read relies on); the `volatile` keeps the compiler
+ *	from reordering or eliding it.  Only the native tiers carry an explicit
+ *	acquire fence; the pre-check caller treats the authoritative CAS, not
+ *	this load, as the claim.
+ *
+ * PUBLIC: #if defined(HAVE_TYPED) && \
+ * PUBLIC:     !(defined(HAVE_ATOMIC_GCC_BUILTIN) && \
+ * PUBLIC:     defined(HAVE_ATOMIC_SUPPORT)) && \
+ * PUBLIC:     !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && \
+ * PUBLIC:     defined(HAVE_ATOMIC_SUPPORT))
+ * PUBLIC: void *__os_atomic_read_ptr
+ * PUBLIC:     __P((void *volatile *));
+ * PUBLIC: #endif
+ */
+#if defined(HAVE_TYPED) && \
+    !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) &&  \
+    !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
+void *
+__os_atomic_read_ptr(p)
+	void *volatile *p;
+{
+	return (*p);
+}
+#endif /* fallback __os_atomic_read_ptr */

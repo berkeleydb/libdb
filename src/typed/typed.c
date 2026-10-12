@@ -53,7 +53,7 @@
  * never used: slot 0 means "untyped".
  */
 static TYPED_STATE * volatile __typed_slot[TYPED_NSLOTS];
-static u_int32_t __typed_hint;	/* rotating start for the claim scan. */
+static db_atomic_t __typed_hint_a;	/* rotating start for the claim scan. */
 
 static int  __typed_validate __P((DB *, const DB_SCHEMA *));
 static int  __typed_validate_rc __P((DB *, const DB_RECORD_CODEC *));
@@ -215,16 +215,25 @@ __typed_claim(dbp, ts, slotp)
 {
 	u_int32_t i, start, slot;
 
-	start = (__typed_hint % (TYPED_NSLOTS - 1)) + 1;
+	start = (atomic_read_relaxed(&__typed_hint_a) %
+	    (TYPED_NSLOTS - 1)) + 1;
 	for (i = 0; i < TYPED_NSLOTS - 1; i++) {
 		slot = start + i;
 		if (slot >= TYPED_NSLOTS)
 			slot -= (TYPED_NSLOTS - 1);
-		if (__typed_slot[slot] != NULL)
+		/*
+		 * Acquire load (not a plain read): pairs with the claiming
+		 * CAS below so skipping an occupied slot is not a C11 data
+		 * race.  The CAS remains the authoritative claim; a stale
+		 * value only costs this pass a retry.
+		 */
+		if (__os_atomic_read_ptr(
+		    (void *volatile *)&__typed_slot[slot]) != NULL)
 			continue;
 		if (__os_atomic_cas_ptr(dbp->env,
 		    (void *volatile *)&__typed_slot[slot], NULL, ts)) {
-			__typed_hint = slot;	/* benign racy hint */
+			/* benign hint; relaxed store clears the TSan race */
+			atomic_init(&__typed_hint_a, (atomic_value_t)slot);
 			*slotp = slot;
 			return (0);
 		}

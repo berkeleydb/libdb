@@ -47,6 +47,9 @@ int __os_atomic_cas __P((ENV *, db_atomic_t *, atomic_value_t, atomic_value_t));
 #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
 int __os_atomic_cas_ptr __P((ENV *, void *volatile *, void *, void *));
 #endif
+#if defined(HAVE_TYPED) && (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
+void *__os_atomic_read_ptr __P((void *volatile *));
+#endif
 #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
 atomic_value_t __os_atomic_add __P((ENV *, db_atomic_t *, atomic_value_t));
 #endif
@@ -82,6 +85,9 @@ int __os_atomic_cas __P((ENV *, db_atomic_t *, atomic_value_t, atomic_value_t));
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
 int __os_atomic_cas_ptr __P((ENV *, void *volatile *, void *, void *));
+#endif
+#if defined(HAVE_TYPED) && defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+void *__os_atomic_read_ptr __P((void *volatile *));
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
 atomic_value_t __os_atomic_add __P((ENV *, db_atomic_t *, atomic_value_t));
@@ -313,6 +319,9 @@ void __os_atomic_thread_fence __P((void));
 #endif
 #if !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) && !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
 int __os_atomic_cas_ptr __P((ENV *, void *volatile *, void *, void *));
+#endif
+#if defined(HAVE_TYPED) && !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) && !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
+void *__os_atomic_read_ptr __P((void *volatile *));
 #endif
 void __os_gettime __P((ENV *, db_timespec *, int));
 int __os_fs_notzero __P((void));

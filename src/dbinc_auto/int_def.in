@@ -1601,6 +1601,9 @@
 #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
 #define	__os_atomic_cas_ptr __os_atomic_cas_ptr@DB_VERSION_UNIQUE_NAME@
 #endif
+#if defined(HAVE_TYPED) && (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_read_ptr __os_atomic_read_ptr@DB_VERSION_UNIQUE_NAME@
+#endif
 #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
 #define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
@@ -1636,6 +1639,9 @@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
 #define	__os_atomic_cas_ptr __os_atomic_cas_ptr@DB_VERSION_UNIQUE_NAME@
+#endif
+#if defined(HAVE_TYPED) && defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_read_ptr __os_atomic_read_ptr@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
 #define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
@@ -1867,6 +1873,9 @@
 #endif
 #if !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) && !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
 #define	__os_atomic_cas_ptr __os_atomic_cas_ptr@DB_VERSION_UNIQUE_NAME@
+#endif
+#if defined(HAVE_TYPED) && !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) && !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
+#define	__os_atomic_read_ptr __os_atomic_read_ptr@DB_VERSION_UNIQUE_NAME@
 #endif
 #define	__os_gettime __os_gettime@DB_VERSION_UNIQUE_NAME@
 #define	__os_fs_notzero __os_fs_notzero@DB_VERSION_UNIQUE_NAME@
