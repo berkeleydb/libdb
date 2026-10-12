@@ -1547,3 +1547,64 @@ installed both case-forms hash identically and the get succeeds (test PASS);
 with the sabotage the get misses (sabotage FAIL, verified: "FAIL [2]: get AbC
 finds the abc record"). The count assertions are made relative to the populated
 baseline.
+
+**V21 (review nit N1, Phase 1 commit 11). A 3-isolation-level process race,
+typed_unique_iso, is added as the real guard for the SNAPSHOT check-then-insert
+hazard.** The shipped typed_unique_mp exercises only 2PL. The independent review
+observed that the dangerous UNIQUE hazard -- two MVCC snapshot transactions each
+reading "no such unique key" from their own snapshot and both inserting -- is
+not exercised by a 2PL-only race. typed_unique_iso (adapted from the reviewer's
+independent check) runs the fork+exec two-process race three times: 2PL,
+SNAPSHOT (env DB_MULTIVERSION, txn DB_TXN_SNAPSHOT) and SERIALIZABLE. Each level
+must resolve to exactly one winner and one DB_KEYEXIST loser, and after the race
+the primary and the unique index each hold one row and agree. Evidence: 3/3
+levels PASS; the sabotage arm typed_unique_iso_counter (append the primary key
+to the unique secondary key, so no two rows collide) FAILs 9 checks (winners/
+losers wrong and the bijection broken at every level). typed_unique_mp is kept
+as-is; typed_unique_iso is additive.
+
+**V22 (review nit N2, Phase 1 commit 11). The single-process UNIQUE sabotage
+now FAILs by a wrong answer, not a crash.** V17 recorded that the single-process
+typed_unique counter sabotage faulted (signal 11) rather than cleanly
+mis-committing, because the shared pkey-append apply dereferences a pkey the
+real callback marks COMPQUIET (NULL on the sequential path). The sabotage runner
+now uses TWO applies: typed_unique_counter (single process) appends a per-CALL
+static counter -- no deref, so the loser's put succeeds and the test FAILs on
+"loser got DB_KEYEXIST" (a clean wrong-answer, verified: "FAIL [1]: 2PL: loser
+got DB_KEYEXIST", VERDICT typed_unique FAIL 1 of 4 checks); the cross-process
+arms (typed_unique_counter_mp, typed_unique_iso_counter) keep the pkey-append,
+because a per-process static counter restarts at 0 and would not make the keys
+differ across processes. Both styles FAIL reliably; the single-process one now
+does so by showing the defect, not by crashing.
+
+**V23 (reviewer environmental caveat, re §1.6 / §8/V8). On FreeBSD `dist/s_sig`
+regenerates a non-typed `env_sig.c`, so §1.6's `git diff --exit-code
+env_sig.c` cannot be the D2 gate on this host.** The independent review confirmed
+on the FreeBSD build host that a bare `sh dist/s_sig` rewrites `src/env/env_sig.c`
+even with no typed change, because BSD `sed` differs from GNU `sed` in the
+structure-extraction step and because the committed `env_sig.c` is already stale
+at the merge base (pre-existing, non-typed structs never regenerated; the same
+condition V8 records). Therefore the D2 "signature unchanged" gate on this host
+is the RUNTIME check -- `dist/env_sig_print.sh` compiling and calling
+`__env_struct_sig()`, which prints `0xe7904e69` for the typed-free base, the
+default head and the --enable-typed build alike -- not a source `git diff` of the
+generated file. This is an environmental fact about the gate host, not a code
+change; it is logged so a future runner does not mistake the stale `env_sig.c`
+regeneration for a D2 regression.
+
+**V24 (Phase 1 commit 11, sabotage harness: per-arm build override).** Running
+the whole sabotage suite against the typed build left one arm,
+typed_old_reader_mask, reporting SABOTAGE NOT DETECTED: that arm widens the
+Btree/Hash meta-flag mask so a build that does NOT know the typed bit would open
+the fixture, which is only observable against a DEFAULT build (a typed build
+opens the fixture regardless -- V12). The suite takes one build dir, so a db-tier
+arm whose correctness depends on the default build was being run against the
+wrong one. Fix: an arm may set `arm_<id>_build` to the build dir it needs;
+typed_old_reader_mask sets it to `${DEF_BUILD:-$B/../r14-def}`, so when the suite
+is invoked against the typed build it auto-targets the default sibling (or an
+explicit DEF_BUILD). The runner builds and tests that arm against the override
+dir and rebuilds it clean afterwards. Verified: with the override,
+typed_old_reader_mask FAILs as required ("RDONLY ret=0 ... VERDICT
+typed_old_reader FAIL typed_bt.db 2 of 2 wrong") even when the suite is launched
+against /nvme/r14-typed. All 32 arms now FAIL as required: 31 against the typed
+build, typed_old_reader_mask against the default build it names.

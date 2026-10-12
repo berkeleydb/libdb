@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1 typed_unique_counter typed_unique_counter_mp typed_unique_d6 typed_unique_d6uncond typed_unique_nulls_donotindex typed_unique_nulls_prefix typed_unique_closed_step2 typed_btree_cmp_noinstall typed_hash_nohash typed_cmp_fuzz_bounds typed_optread_gate typed_recover_guard"
+ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1 typed_unique_counter typed_unique_counter_mp typed_unique_d6 typed_unique_d6uncond typed_unique_nulls_donotindex typed_unique_nulls_prefix typed_unique_closed_step2 typed_btree_cmp_noinstall typed_hash_nohash typed_cmp_fuzz_bounds typed_optread_gate typed_recover_guard typed_unique_iso_counter"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -215,6 +215,11 @@ arm_typed_old_reader_mask_apply() {
 }
 arm_typed_old_reader_mask_test='TIER=db sh "$HERE"/run_typed_old_reader.sh "$B"'
 arm_typed_old_reader_mask_expect='VERDICT typed_old_reader FAIL|FAIL \['
+# This arm proves a DEFAULT (non-HAVE_TYPED) build refuses the typed fixture;
+# widening the mask only matters there (a typed build opens the fixture anyway,
+# V12).  So it runs against the default build: $DEF_BUILD if set, else a sibling
+# r14-def of the typed build dir.
+arm_typed_old_reader_mask_build='${DEF_BUILD:-$B/../r14-def}'
 
 # §7.2 typed_codec_mismatch: skip the fingerprint comparison in the catalog
 # check.  A v1 schema with a REVERSED comparator (same name/version/flags,
@@ -275,8 +280,41 @@ arm_typed_rdonly_noschema_rule_expect='VERDICT typed_rdonly_noschema FAIL|FAIL \
 # §7.2 typed_unique (a) / typed_unique_mp: the RFC's arm -- __typed_unique_cb
 # appends a per-call counter to the key, so no two secondary keys ever
 # collide and both inserts of the same value commit.
+#
+# Review nit N2: the single-process arm uses a per-CALL static counter, which
+# produces a clean WRONG-ANSWER failure (the loser's put succeeds, so it does
+# not get DB_KEYEXIST) rather than a crash.  A per-call counter does not break
+# the cross-process arms (each process restarts the counter at 0 and the keys
+# still collide), so the MP / iso arms below use a separate apply that appends
+# the primary key instead -- distinct per row across processes.
 arm_typed_unique_counter_files="src/typed/typed_gen.c"
 arm_typed_unique_counter_apply() {
+	edit src/typed/typed_gen.c \
+'		if (!prefixed) {
+			skey->data = (void *)p;
+			skey->size = flen;
+			return (0);
+		}' \
+'		if (!prefixed) {
+			static u_int32_t ctr = 0;
+			u_int8_t *sb;
+			u_int32_t cv = ctr++;
+			if (__os_umalloc(env, flen + sizeof(cv), &sb) != 0)
+				return (ENOMEM);
+			if (flen > 0) memcpy(sb, p, flen);
+			memcpy(sb + flen, &cv, sizeof(cv));
+			skey->data = sb; skey->size = flen + sizeof(cv);
+			F_SET(skey, DB_DBT_APPMALLOC);
+			return (0);
+		}'
+}
+arm_typed_unique_counter_test='TIER=typed sh "$HERE"/run_typed_unique.sh "$B"'
+arm_typed_unique_counter_expect='VERDICT typed_unique FAIL|FAIL \[[147]\]'
+
+# The cross-process apply: append the primary key, so secondary keys differ per
+# row even across processes (a per-process static counter would restart at 0
+# and still collide).  Used by the MP and iso arms.
+arm_typed_unique_pkey_apply() {
 	edit src/typed/typed_gen.c \
 '		if (!prefixed) {
 			skey->data = (void *)p;
@@ -295,13 +333,21 @@ arm_typed_unique_counter_apply() {
 			return (0);
 		}'
 }
-arm_typed_unique_counter_test='TIER=typed sh "$HERE"/run_typed_unique.sh "$B"'
-arm_typed_unique_counter_expect='VERDICT typed_unique FAIL|FAIL \[[147]\]'
 
 arm_typed_unique_counter_mp_files="src/typed/typed_gen.c"
-arm_typed_unique_counter_mp_apply() { arm_typed_unique_counter_apply ; }
+arm_typed_unique_counter_mp_apply() { arm_typed_unique_pkey_apply ; }
 arm_typed_unique_counter_mp_test='TIER=typed sh "$HERE"/run_typed_unique_mp.sh "$B"'
 arm_typed_unique_counter_mp_expect='VERDICT typed_unique_mp FAIL'
+
+# Review nit N1: the same per-row key disambiguator breaks the 3-isolation-level
+# process race (typed_unique_iso): with the unique key made distinct per row,
+# BOTH children of a level commit, so winners=2 at that level.  This is the
+# clean wrong-answer FAIL that the dangerous SNAPSHOT check-then-insert race
+# relies on being caught.
+arm_typed_unique_iso_counter_files="src/typed/typed_gen.c"
+arm_typed_unique_iso_counter_apply() { arm_typed_unique_pkey_apply ; }
+arm_typed_unique_iso_counter_test='TIER=typed sh "$HERE"/run_typed_unique_iso.sh "$B"'
+arm_typed_unique_iso_counter_expect='VERDICT typed_unique_iso FAIL|winners=2'
 
 # §7.2 typed_unique (b): revert the D6 edit (DB_KEYEXIST on a typed primary),
 # so the loser sees EINVAL instead of DB_KEYEXIST.
@@ -507,7 +553,23 @@ for a in $want ; do
 	eval "tcmd=\${arm_${a}_test:-}"
 	eval "expect=\${arm_${a}_expect:-}"
 	eval "rebuild=\${arm_${a}_rebuild:-1}"
+	eval "abuild=\${arm_${a}_build:-}"
 	[ -n "$tcmd" ] || { echo "ARM $a: unknown arm" ; rc=1 ; continue ; }
+
+	# An arm may override the build dir it needs: a db-tier arm whose
+	# correctness depends on a DEFAULT (non-HAVE_TYPED) build (e.g.
+	# typed_old_reader_mask, V12) sets arm_<id>_build to the default build.
+	# It defaults to $DEF_BUILD, else a sibling r14-def of the typed build.
+	if [ -n "$abuild" ] ; then
+		abuild=$(eval "echo $abuild")
+		if [ ! -d "$abuild" ] ; then
+			echo "ARM $a: needs a default build dir ($abuild); set DEF_BUILD"
+			rc=1 ; continue
+		fi
+		abuild=$(cd "$abuild" && pwd)
+	else
+		abuild=$BUILD
+	fi
 
 	for f in $files ; do
 		mkdir -p "$save/$(dirname "$f")"
@@ -529,14 +591,21 @@ for a in $want ; do
 		restore ; rc=1 ; continue
 	fi
 	if [ "$rebuild" = 1 ] &&
-	    ! (cd "$BUILD" && $MAKE -j4) > "$BUILD/sabotage_$a.build.log" 2>&1 ; then
+	    ! (cd "$abuild" && $MAKE -j4) > "$abuild/sabotage_$a.build.log" 2>&1 ; then
 		echo "ARM $a: the sabotaged tree did not BUILD; proves nothing"
-		echo "       see $BUILD/sabotage_$a.build.log"
+		echo "       see $abuild/sabotage_$a.build.log"
 		restore ; rc=1 ; continue
 	fi
-	out=$(cd "$BUILD" && BUILD="$BUILD" eval "$tcmd" 2>&1)
+	# The test command references $B (build dir); point it at this arm's
+	# build for the duration of the run.
+	B=$abuild out=$(cd "$abuild" && B="$abuild" BUILD="$abuild" eval "$tcmd" 2>&1)
 	trc=$?
+	B=$BUILD
 	restore
+	# If this arm used a non-default build dir, rebuild it clean now (the
+	# final rebuild below only touches $BUILD).
+	[ "$abuild" != "$BUILD" ] &&
+	    (cd "$abuild" && $MAKE -j4) > "$abuild/sabotage_${a}_restore.log" 2>&1
 	trap - INT TERM
 	fl=$(echo "$out" | grep -E "$expect" | head -3)
 	if [ "$trc" -ne 0 ] && [ -n "$fl" ] ; then
