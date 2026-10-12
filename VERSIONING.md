@@ -77,6 +77,14 @@ designated LTS, and the measured gain (+12% to +29% at 16–64 threads)
 outweighed a one-time region recreation. Once a release is designated LTS,
 region changes within that line are not allowed.
 
+The second was **v2026.10.6** (RFC 0015 S4 retaining the TXN_DETAIL MVCC mutex
+across recycling, plus the AArch64 hybrid mutex that fixes B3 on ARM). The
+signature moved `0xe7904e69` → `0x56a06689` on both LP64 x86_64 and aarch64
+(the aarch64 mutex struct also grew, but the dominant txn-region additions land
+the hash at the same value on both). Still pre-LTS; the gain was correctness
+(B3 on ARM) plus scalability overhead reductions, against a one-time region
+recreation.
+
 ## Consuming code
 
 - Human / release identity → `DB_CALVER` (or the leading token of

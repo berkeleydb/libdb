@@ -2550,6 +2550,7 @@
 #define	__txn_id_set __txn_id_set@DB_VERSION_UNIQUE_NAME@
 #define	__txn_oldest_reader __txn_oldest_reader@DB_VERSION_UNIQUE_NAME@
 #define	__txn_reap_si_details __txn_reap_si_details@DB_VERSION_UNIQUE_NAME@
+#define	__txn_mvcc_mtx_free __txn_mvcc_mtx_free@DB_VERSION_UNIQUE_NAME@
 #define	__txn_add_buffer __txn_add_buffer@DB_VERSION_UNIQUE_NAME@
 #define	__txn_remove_buffer __txn_remove_buffer@DB_VERSION_UNIQUE_NAME@
 #define	__txn_stat_pp __txn_stat_pp@DB_VERSION_UNIQUE_NAME@
@@ -2561,6 +2562,7 @@
 #define	__txn_lockevent __txn_lockevent@DB_VERSION_UNIQUE_NAME@
 #define	__txn_remlock __txn_remlock@DB_VERSION_UNIQUE_NAME@
 #define	__txn_doevents __txn_doevents@DB_VERSION_UNIQUE_NAME@
+#define	__txn_fname_recorded __txn_fname_recorded@DB_VERSION_UNIQUE_NAME@
 #define	__txn_record_fname __txn_record_fname@DB_VERSION_UNIQUE_NAME@
 #define	__txn_dref_fname __txn_dref_fname@DB_VERSION_UNIQUE_NAME@
 #define	__txn_reset_fe_watermarks __txn_reset_fe_watermarks@DB_VERSION_UNIQUE_NAME@
