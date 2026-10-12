@@ -13,7 +13,8 @@
  *	row 3).  Create a typed subdatabase with a schema and one row; close;
  *	reopen schema-less DB_RDONLY (must open and read the row); reopen
  *	schema-less read-write (must EINVAL "db_set_schema required to open
- *	for writing").  db_dump/db_load/db_verify (D8) are commit 12.
+ *	for writing").  The db_dump/db_load/db_verify D8 behaviour is tested
+ *	separately by typed_util (commit 12).
  *
  *	Typed tier.  One VERDICT line.
  */

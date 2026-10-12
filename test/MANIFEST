@@ -495,6 +495,7 @@ db	run_foreign_reassoc
 db	run_r1_revive
 db	run_typed_footprint
 db	run_typed_old_reader
+db	run_typed_util
 
 # ---------------------------------------------------------------------------
 # RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an
@@ -528,6 +529,7 @@ typed	run_typed_cmp_fuzz
 typed	run_typed_optread
 typed	run_typed_recover
 typed	run_typed_unique_iso
+typed	run_typed_util
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

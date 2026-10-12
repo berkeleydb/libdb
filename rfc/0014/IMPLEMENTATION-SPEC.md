@@ -1608,3 +1608,38 @@ typed_old_reader_mask FAILs as required ("RDONLY ret=0 ... VERDICT
 typed_old_reader FAIL typed_bt.db 2 of 2 wrong") even when the suite is launched
 against /nvme/r14-typed. All 32 arms now FAIL as required: 31 against the typed
 build, typed_old_reader_mask against the default build it names.
+
+**V25 (Phase 1 commit 12, D8 utilities; the [UNSURE] db_verify probe
+resolved).** §9 commit 12 marked [UNSURE] whether db_verify sees the typed meta
+bit (no verify file calls *_metachk). Probed on the host against the committed
+fixtures: a whole-file db_verify SUCCEEDS SILENTLY in both the default and typed
+builds -- it checks page structure and never validates the access-method flag
+mask, so BTM_TYPED / DB_HASH_TYPED pass unmentioned (confirmed:
+"BDB5105 Verification succeeded", rc=0, no typed note, both builds). db_verify
+also has no -s option, so it cannot target a subdatabase. db_dump probed: a
+default-build "db_dump -s typedsub" fails closed ("BDB0055 illegal flag", C13);
+the typed build dumps the subdatabase schema-less; "db_dump -l" lists the
+__db_typed catalog in both builds.
+
+Built for D8:
+  - db_verify: __bam_vrfy_meta / __ham_vrfy_meta emit a NOTE (not an error;
+    verify still succeeds) when the meta page carries the typed bit --
+    "typed database; db_verify checks page structure only, not the schema or
+    its constraints" (DB_STR ids 1198 Btree / 1199 Hash). GUARDED on HAVE_TYPED
+    so the default library's .text is byte-unchanged (the typed_footprint gate
+    stays green); a default-build db_verify stays silent and a default-build
+    OPEN of the subdatabase is the one that fails closed.
+  - db_dump (utility, not in libdb.so, so no .text concern): prints a note on
+    stderr when it encounters the __db_typed catalog subdatabase -- the file is
+    typed, db_dump carries raw bytes only, and a db_load of the dump yields an
+    untyped database (C13). The default build's db_dump of the typed
+    subdatabase already fails closed (BDB0055); unchanged.
+  - db_load: no change. A dump never carries the typed meta bit (C13), so there
+    is nothing for db_load to "say"; the refusal happens at the later typed
+    open, already covered by typed_rdonly_noschema.
+
+Test typed_util (registered in BOTH tiers, no vacuous skip): the typed tier
+asserts the notes appear and verify still succeeds; the db tier asserts the
+default build prints NO note (byte-unchanged) and that "db_dump -s typedsub"
+fails closed with BDB0055. Sabotage typed_util_note (delete the Btree verify
+note) FAILs the typed-tier assertion.

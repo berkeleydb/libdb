@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1 typed_unique_counter typed_unique_counter_mp typed_unique_d6 typed_unique_d6uncond typed_unique_nulls_donotindex typed_unique_nulls_prefix typed_unique_closed_step2 typed_btree_cmp_noinstall typed_hash_nohash typed_cmp_fuzz_bounds typed_optread_gate typed_recover_guard typed_unique_iso_counter"
+ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1 typed_unique_counter typed_unique_counter_mp typed_unique_d6 typed_unique_d6uncond typed_unique_nulls_donotindex typed_unique_nulls_prefix typed_unique_closed_step2 typed_btree_cmp_noinstall typed_hash_nohash typed_cmp_fuzz_bounds typed_optread_gate typed_recover_guard typed_unique_iso_counter typed_util_note"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -535,6 +535,22 @@ arm_typed_recover_guard_apply() {
 }
 arm_typed_recover_guard_test='TIER=typed sh "$HERE"/run_typed_recover.sh "$B"'
 arm_typed_recover_guard_expect='VERDICT typed_recover FAIL|FAIL \[[0-9]+\]'
+
+# §9 commit 12 (D8): delete the typed note in __bam_vrfy_meta -> the typed-build
+# db_verify no longer says "typed database", so typed_util (typed tier) FAILs on
+# the BDB1198 assertion.
+arm_typed_util_note_files="src/btree/bt_verify.c"
+arm_typed_util_note_apply() {
+	edit src/btree/bt_verify.c \
+'	if (!LF_ISSET(DB_SALVAGE) &&
+	    F_ISSET(&meta->dbmeta, BTM_TYPED))
+		__db_msg(env, DB_STR_A("1198",' \
+'	if (0 && !LF_ISSET(DB_SALVAGE) &&
+	    F_ISSET(&meta->dbmeta, BTM_TYPED))
+		__db_msg(env, DB_STR_A("1198",'
+}
+arm_typed_util_note_test='TIER=typed sh "$HERE"/run_typed_util.sh "$B"'
+arm_typed_util_note_expect='VERDICT typed_util FAIL|FAIL: typed db_verify'
 
 # ---------------------------------------------------------------------------
 
