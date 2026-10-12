@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1 typed_unique_counter typed_unique_counter_mp typed_unique_d6 typed_unique_d6uncond typed_unique_nulls_donotindex typed_unique_nulls_prefix typed_unique_closed_step2 typed_btree_cmp_noinstall typed_hash_nohash typed_cmp_fuzz_bounds typed_optread_gate"
+ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1 typed_unique_counter typed_unique_counter_mp typed_unique_d6 typed_unique_d6uncond typed_unique_nulls_donotindex typed_unique_nulls_prefix typed_unique_closed_step2 typed_btree_cmp_noinstall typed_hash_nohash typed_cmp_fuzz_bounds typed_optread_gate typed_recover_guard"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -473,6 +473,22 @@ arm_typed_optread_gate_apply() {
 }
 arm_typed_optread_gate_test='TIER=typed sh "$HERE"/run_typed_optread.sh "$B"'
 arm_typed_optread_gate_expect='VERDICT typed_optread FAIL|FAIL \[[12]\]'
+
+# §7.2 typed_recover: delete the DB_AM_RECOVER guard from the §3.5 open hook
+# dispatch -> recovery's schema-less, read-write opens of the typed
+# subdatabases now reach __typed_open, which refuses a schema-less read-write
+# open ("db_set_schema required to open for writing"), so db_recover exits
+# non-zero and the test's "db_recover exited 0" check FAILs.
+arm_typed_recover_guard_files="src/db/db_open.c"
+arm_typed_recover_guard_apply() {
+	edit src/db/db_open.c \
+	    '	if (F2_ISSET(dbp, DB2_AM_TYPED | DB2_AM_TYPED_FILE) &&
+	    !F_ISSET(dbp, DB_AM_RECOVER) &&' \
+	    '	if (F2_ISSET(dbp, DB2_AM_TYPED | DB2_AM_TYPED_FILE) &&
+	    1 &&	/* sabotage: DB_AM_RECOVER guard removed */'
+}
+arm_typed_recover_guard_test='TIER=typed sh "$HERE"/run_typed_recover.sh "$B"'
+arm_typed_recover_guard_expect='VERDICT typed_recover FAIL|FAIL \[[0-9]+\]'
 
 # ---------------------------------------------------------------------------
 

@@ -526,6 +526,7 @@ typed	run_typed_btree_cmp
 typed	run_typed_hash
 typed	run_typed_cmp_fuzz
 typed	run_typed_optread
+typed	run_typed_recover
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is
