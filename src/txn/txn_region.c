@@ -143,25 +143,33 @@ __txn_init(env, mgr)
 	/*
 	 * mtx_region is normally aliased to the single env latch (mtx_regenv):
 	 * TXN_SYSTEM_LOCK, LOG_SYSTEM_LOCK and LOCK_SYSTEM_LOCK are then one
-	 * physical mutex (RFC 0015 §2).  M1 (DB_TXN_LATCH_SPLIT) gives the txn
-	 * region its own mutex so txn_begin/txn_end no longer serialise against
-	 * __log_put.  The choice is latched at create time and recorded in the
-	 * region flags so every attaching process agrees; the signature already
-	 * moved (free_txn below), so a pre-split region will not attach.
+	 * physical mutex (RFC 0015 §2).  M1 (DB_TXN_LATCH_SPLIT) was an
+	 * experiment to give the txn region its own mutex so txn_begin/txn_end
+	 * no longer serialise against __log_put.
 	 *
-	 * The allocator latch (mtx_alloc) stays mtx_regenv in BOTH modes: rare
-	 * __env_alloc from the shared primary needs the one env allocator latch
-	 * (RFC 0015 M1), taken nested inside mtx_region.  S5 keeps it off the
-	 * hot path.
+	 * DISABLED: a metal A/B (test/bench/METAL-AB-2026-10.md) proved the
+	 * split both (a) LOSES ~31% throughput at high thread counts -- the
+	 * extra handoff costs more than the saved serialisation, the P12
+	 * admission-control lesson -- and worse (b) SIGSEGVs under concurrency
+	 * at t>=32.  The split moves txn_begin off mtx_regenv, but the hot path
+	 * __txn_begin_pp -> __env_set_state -> __env_alloc still mutates the
+	 * shared region free list (env_alloc.c:354 SH_TAILQ_REMOVE) that
+	 * mtx_regenv protected; a split-latch holder and an mtx_regenv holder
+	 * then corrupt it.  __env_alloc on the txn path is NOT rare (every
+	 * txn_begin reaches it via THREAD_ACTIVE tracking), so the nested-under-
+	 * mtx_region allocator-latch argument above does not hold.  The switch
+	 * is kept inert so a future, correct split (one that keeps __env_alloc
+	 * serialised, or moves THREAD_ACTIVE off the region heap) can reuse the
+	 * plumbing; turning it on now would enable a known crash.
 	 */
 	if (getenv("DB_TXN_LATCH_SPLIT") != NULL) {
-		if ((ret = __mutex_alloc(
-		    env, MTX_TXN_REGION, 0, &region->mtx_region)) != 0)
-			return (ret);
-		F_SET(region, TXN_REGION_LATCHSPLIT);
-	} else
-		region->mtx_region =
-		    ((REGENV *)env->reginfo->primary)->mtx_regenv;
+		__db_errx(env, DB_STR("5317",
+	    "DB_TXN_LATCH_SPLIT is disabled: the latch split corrupts the "
+	    "region allocator under concurrency (see METAL-AB-2026-10.md). "
+	    "Ignoring."));
+	}
+	region->mtx_region =
+	    ((REGENV *)env->reginfo->primary)->mtx_regenv;
 	mgr->reginfo.mtx_alloc = ((REGENV *)env->reginfo->primary)->mtx_regenv;
 
 	/* S5: recycle TXN_DETAILs through a region free list, off __env_alloc. */

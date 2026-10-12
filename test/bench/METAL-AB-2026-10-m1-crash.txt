@@ -1,0 +1,683 @@
+(lldb) target create "/nvme/xe_tproc_c" --core "xe_tproc_c.core"
+Core file '/nvme/libdb/test/bench/xe_tproc_c.core' (x86_64) was loaded.
+(lldb) command source -s 0 '/tmp/btall.cmd'
+Executing commands in '/tmp/btall.cmd'.
+(lldb) thread backtrace all
+* thread #1, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+  * frame #0: 0x0000000822172e8c libdb-2026.0.so`__env_alloc(infop=0x0000100cbb236000, len=136, retp=0x00000008dbc80e00) at env_alloc.c:354:2
+    frame #1: 0x0000000822174d3a libdb-2026.0.so`__env_set_state(env=0x0000100cbb22a000, ipp=0x00000008dbc80e40, state=THREAD_ACTIVE) at env_failchk.c:497:14
+    frame #2: 0x00000008221ae536 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008dbc86f78, flags=1) at txn.c:183:2
+    frame #3: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc87a9c8, txn=0x00000008dbc86f70, rdonly=0) at xe_engine.h:925:14
+    frame #4: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc87a9c0) at xe_tproc_c.c:456:13 [inlined]
+    frame #5: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc87a9c0) at xe_tproc_c.c:772:21 [inlined]
+    frame #6: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc87a9c0) at xe_tproc_c.c:790:14
+    frame #7: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae53810) at thr_create.c:291:16
+  thread #2, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x0000000822c4efaa libc.so.7`__sys_mmap at mmap.S:4
+    frame #1: 0x00000008226dd045 libthr.so.3`_thr_stack_alloc(attr=0x0000100cbae540a8) at thr_stack.c:264:20
+    frame #2: 0x00000008226d1937 libthr.so.3`create_stack(pattr=<unavailable>) at thr_create.c:248:9 [inlined]
+    frame #3: 0x00000008226d1932 libthr.so.3`_pthread_create(thread=0x0000100cbc0985c8, attr=0x0000000000000000, start_routine=(xe_tproc_c`worker_main at xe_tproc_c.c:781), arg=0x0000100cbc88a5e8) at thr_create.c:108:6
+    frame #4: 0x0000000000204464 xe_tproc_c`main(argc=19, argv=0x000000082106e930) at xe_tproc_c.c:959:7
+    frame #5: 0x0000000822b9c530 libc.so.7`__libc_start1(argc=19, argv=0x000000082106e930, env=0x000000082106e9d0, cleanup=<unavailable>, mainX=(xe_tproc_c`main at xe_tproc_c.c:823)) at libc_start1.c:180:7
+    frame #6: 0x00000000002034d4 xe_tproc_c`_start at crt1_s.S:80
+  thread #3, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226d8cb0 libthr.so.3`pshared_lookup(key=0x0000000898800228) at thr_pshared.c:132:2 [inlined]
+    frame #1: 0x00000008226d8c95 libthr.so.3`__thr_pshared_offpage(key=0x0000000898800228, doalloc=0) at thr_pshared.c:238:9
+    frame #2: 0x00000008226d6103 libthr.so.3`check_and_init_mutex(mutex=0x0000000898800228, m=<unavailable>) at thr_mutex.c:597:8 [inlined]
+    frame #3: 0x00000008226d60f9 libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000898800228) at thr_mutex.c:751:8
+    frame #4: 0x000000082209f0e7 libdb-2026.0.so`__db_pthread_mutex_prep(env=0x0000100cbb22a000, mutex=0, mutexp=0x0000000898800228, exclusive=0) at mut_pthread.c:0
+    frame #5: 0x000000082209ef02 libdb-2026.0.so`__db_hybrid_mutex_suspend(env=0x0000100cbb22a000, mutex=1, timespec=0x0000000000000000, exclusive=1) at mut_pthread.c:563:13
+    frame #6: 0x000000082209e89c libdb-2026.0.so`__db_tas_mutex_lock_int(env=0x0000100cbb22a000, mutex=1, timeout=0, nowait=0) at mut_tas.c:310:13
+    frame #7: 0x000000082209e579 libdb-2026.0.so`__db_tas_mutex_lock(env=<unavailable>, mutex=<unavailable>, timeout=<unavailable>) at mut_tas.c:341:10 [artificial]
+    frame #8: 0x000000082213c3a9 libdb-2026.0.so`__mutex_alloc_int(env=0x0000100cbb22a000, locksys=1, alloc_id=9, flags=20, indxp=0x00000008a6956d08) at mut_alloc.c:92:3
+    frame #9: 0x000000082213c2fa libdb-2026.0.so`__mutex_alloc(env=<unavailable>, alloc_id=<unavailable>, flags=<unavailable>, indxp=<unavailable>) at mut_alloc.c:55:10 [artificial]
+    frame #10: 0x000000082213693b libdb-2026.0.so`__lock_getlocker_int(lt=0x0000100cbc049000, locker=2147483657, create=1, retp=0x0000100cbd400028) at lock_id.c:604:15
+    frame #11: 0x0000000822137381 libdb-2026.0.so`__lock_getlocker(lt=0x0000100cbc049000, locker=2147483657, create=1, retp=0x0000100cbd400028) at lock_id.c:388:9
+    frame #12: 0x00000008221aed98 libdb-2026.0.so`__txn_begin_int(txn=0x0000100cbd400000) at txn.c:644:3 [inlined]
+    frame #13: 0x00000008221aea1c libdb-2026.0.so`__txn_begin(env=0x0000100cbb22a000, ip=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008a695cf78, flags=<unavailable>) at txn.c:377:13
+    frame #14: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008a695cf78, flags=1) at txn.c:192:8
+    frame #15: 0x0000000000207365 xe_tproc_c`xe_txn_begin(th=0x0000100cbc700608, txn=0x00000008a695cf70, rdonly=0) at xe_engine.h:925:14
+    frame #16: 0x0000000000207333 xe_tproc_c`do_payment(w=0x0000100cbc700600) at xe_tproc_c.c:516:13 [inlined]
+    frame #17: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc700600) at xe_tproc_c.c:773:21 [inlined]
+    frame #18: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc700600) at xe_tproc_c.c:790:14
+    frame #19: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae43810) at thr_create.c:291:16
+  thread #4, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106521) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae47010, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae2b090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae2b090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae2b090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae2b090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae2b090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae2b090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae2b090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008a7656de8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008a7656de8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b1268, parent=0x0000000000000000, txnpp=0x00000008a765cf78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008a765cf78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000207365 xe_tproc_c`xe_txn_begin(th=0x0000100cbc710230, txn=0x00000008a765cf70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000207333 xe_tproc_c`do_payment(w=0x0000100cbc710228) at xe_tproc_c.c:516:13 [inlined]
+    frame #25: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc710228) at xe_tproc_c.c:773:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc710228) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae47010) at thr_create.c:291:16
+  thread #5, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x0000000822c4efaa libc.so.7`__sys_mmap at mmap.S:4
+    frame #1: 0x00000008226d8c14 libthr.so.3`__thr_pshared_offpage(key=0x000000089945e5d8, doalloc=1) at thr_pshared.c:247:8
+    frame #2: 0x00000008226d5dbe libthr.so.3`__Tthr_mutex_init(mutex=0x000000089945e5d8, mutex_attr=0x00000008a8b1ac20) at thr_mutex.c:397:9
+    frame #3: 0x000000082209eda9 libdb-2026.0.so`__db_pthread_mutex_init(env=0x0000100cbb22a000, mutex=<unavailable>, flags=20) at mut_pthread.c:140:3
+    frame #4: 0x000000082209e56d libdb-2026.0.so`__db_tas_mutex_init(env=<unavailable>, mutex=<unavailable>, flags=<unavailable>) at mut_tas.c:112:13 [artificial]
+    frame #5: 0x000000082213c4a8 libdb-2026.0.so`__mutex_alloc_int(env=<unavailable>, locksys=1, alloc_id=<unavailable>, flags=<unavailable>, indxp=0x00000008a8b1ad08) at mut_alloc.c:182:13
+    frame #6: 0x000000082213c2fa libdb-2026.0.so`__mutex_alloc(env=<unavailable>, alloc_id=<unavailable>, flags=<unavailable>, indxp=<unavailable>) at mut_alloc.c:55:10 [artificial]
+    frame #7: 0x000000082213693b libdb-2026.0.so`__lock_getlocker_int(lt=0x0000100cbc049000, locker=2147483656, create=1, retp=0x0000100cbd200028) at lock_id.c:604:15
+    frame #8: 0x0000000822137381 libdb-2026.0.so`__lock_getlocker(lt=0x0000100cbc049000, locker=2147483656, create=1, retp=0x0000100cbd200028) at lock_id.c:388:9
+    frame #9: 0x00000008221aed98 libdb-2026.0.so`__txn_begin_int(txn=0x0000100cbd200000) at txn.c:644:3 [inlined]
+    frame #10: 0x00000008221aea1c libdb-2026.0.so`__txn_begin(env=0x0000100cbb22a000, ip=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008a8b20f78, flags=<unavailable>) at txn.c:377:13
+    frame #11: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008a8b20f78, flags=1) at txn.c:192:8
+    frame #12: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc71fe58, txn=0x00000008a8b20f70, rdonly=0) at xe_engine.h:925:14
+    frame #13: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc71fe50) at xe_tproc_c.c:456:13 [inlined]
+    frame #14: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc71fe50) at xe_tproc_c.c:772:21 [inlined]
+    frame #15: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc71fe50) at xe_tproc_c.c:790:14
+    frame #16: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae47810) at thr_create.c:291:16
+  thread #6, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000f79ff399b59 ld-elf.so.1`symlook_obj1_gnu(req=0x00000008a8db48b8, obj=0x0000100cbae07408) at rtld.c:5067:11 [inlined]
+    frame #1: 0x00000f79ff399ae9 ld-elf.so.1`symlook_obj(req=0x00000008a8db48b8, obj=0x0000100cbae07408) at rtld.c:4867:9
+    frame #2: 0x00000f79ff39e66b ld-elf.so.1`symlook_list(req=0x00000008a8db4948, objlist=<unavailable>, dlp=0x00000008a8db4a38) at rtld.c:4777:13
+    frame #3: 0x00000f79ff39e463 ld-elf.so.1`symlook_global(req=0x00000008a8db4a80, donelist=0x00000008a8db4a38) at rtld.c:4666:8
+    frame #4: 0x00000f79ff398092 ld-elf.so.1`symlook_default(req=0x00000008a8db4a80, refobj=0x0000100cbae03808) at rtld.c:4725:9
+    frame #5: 0x00000f79ff397c45 ld-elf.so.1`find_symdef(symnum=15, refobj=0x0000100cbae03808, defobj_out=0x00000008a8db4bb0, flags=1, cache=0x0000000000000000, lockstate=0x00000008a8db4b20) at rtld.c:2027:8
+    frame #6: 0x00000f79ff3978f6 ld-elf.so.1`_rtld_bind(obj=0x0000100cbae03808, reloff=864) at rtld.c:1040:11
+    frame #7: 0x00000f79ff392fad ld-elf.so.1`_rtld_bind_start at rtld_start.S:124
+    frame #8: 0x000000082209efb5 libdb-2026.0.so`__db_pthread_mutex_condwait(env=0x0000100cbb22a000, mutex=<unavailable>, mutexp=0x00000008992139b8, timespec=0x0000000000000000) at mut_pthread.c:321:3 [inlined]
+    frame #9: 0x000000082209ef7c libdb-2026.0.so`__db_hybrid_mutex_suspend(env=0x0000100cbb22a000, mutex=132070, timespec=0x0000000000000000, exclusive=1) at mut_pthread.c:577:11
+    frame #10: 0x000000082209e89c libdb-2026.0.so`__db_tas_mutex_lock_int(env=0x0000100cbb22a000, mutex=132070, timeout=0, nowait=0) at mut_tas.c:310:13
+    frame #11: 0x000000082209e579 libdb-2026.0.so`__db_tas_mutex_lock(env=<unavailable>, mutex=<unavailable>, timeout=<unavailable>) at mut_tas.c:341:10 [artificial]
+    frame #12: 0x000000082213747d libdb-2026.0.so`__lock_getlocker(lt=0x0000100cbc049000, locker=2147483658, create=1, retp=0x0000100cbd800028) at lock_id.c:384:3
+    frame #13: 0x00000008221aed98 libdb-2026.0.so`__txn_begin_int(txn=0x0000100cbd800000) at txn.c:644:3 [inlined]
+    frame #14: 0x00000008221aea1c libdb-2026.0.so`__txn_begin(env=0x0000100cbb22a000, ip=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008a8dbaf78, flags=<unavailable>) at txn.c:377:13
+    frame #15: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008a8dbaf78, flags=1) at txn.c:192:8
+    frame #16: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc72fa80, txn=0x00000008a8dbaf70, rdonly=0) at xe_engine.h:925:14
+    frame #17: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc72fa78) at xe_tproc_c.c:456:13 [inlined]
+    frame #18: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc72fa78) at xe_tproc_c.c:772:21 [inlined]
+    frame #19: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc72fa78) at xe_tproc_c.c:790:14
+    frame #20: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae48010) at thr_create.c:291:16
+  thread #7, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106524) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae48810, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae37090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae37090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae37090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae37090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae37090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae37090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae37090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008aabb7de8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008aabb7de8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b2d08, parent=0x0000000000000000, txnpp=0x00000008aabbdf78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008aabbdf78, flags=1) at txn.c:192:8
+    frame #23: 0x00000000002079c3 xe_tproc_c`xe_txn_begin(th=0x0000100cbc73f6a8, txn=0x00000008aabbdf70, rdonly=1) at xe_engine.h:925:14
+    frame #24: 0x000000000020797e xe_tproc_c`do_stock_level(w=0x0000100cbc73f6a0) at xe_tproc_c.c:722:13 [inlined]
+    frame #25: 0x00000000002078fa xe_tproc_c`run_one(w=0x0000100cbc73f6a0) at xe_tproc_c.c:776:9 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc73f6a0) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae48810) at thr_create.c:291:16
+  thread #8, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x0000000000207f7c xe_tproc_c`xe_now_us at xe_engine.h:209:8 [inlined]
+    frame #1: 0x0000000000207f6b xe_tproc_c`do_delivery(w=0x0000100cbc74f2c8) at xe_tproc_c.c:615:7 [inlined]
+    frame #2: 0x0000000000207ec3 xe_tproc_c`run_one(w=0x0000100cbc74f2c8) at xe_tproc_c.c:775:21 [inlined]
+    frame #3: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc74f2c8) at xe_tproc_c.c:790:14
+    frame #4: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae49010) at thr_create.c:291:16
+  thread #9, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106526) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae49810, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae3f090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae3f090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae3f090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae3f090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae3f090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae3f090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae3f090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008b79b2de8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008b79b2de8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b2a28, parent=0x0000000000000000, txnpp=0x00000008b79b8f78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008b79b8f78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000207365 xe_tproc_c`xe_txn_begin(th=0x0000100cbc75eef8, txn=0x00000008b79b8f70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000207333 xe_tproc_c`do_payment(w=0x0000100cbc75eef0) at xe_tproc_c.c:516:13 [inlined]
+    frame #25: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc75eef0) at xe_tproc_c.c:773:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc75eef0) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae49810) at thr_create.c:291:16
+  thread #10, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x000000000020731c xe_tproc_c`xe_now_us at xe_engine.h:209:8 [inlined]
+    frame #1: 0x0000000000207310 xe_tproc_c`do_payment(w=0x0000100cbc76eb18) at xe_tproc_c.c:515:7 [inlined]
+    frame #2: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc76eb18) at xe_tproc_c.c:773:21 [inlined]
+    frame #3: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc76eb18) at xe_tproc_c.c:790:14
+    frame #4: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4a010) at thr_create.c:291:16
+  thread #11, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106528) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae4a810, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae69090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae69090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae69090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae69090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae69090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae69090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae69090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008b9e4cde8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008b9e4cde8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b2ae0, parent=0x0000000000000000, txnpp=0x00000008b9e52f78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008b9e52f78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc77e748, txn=0x00000008b9e52f70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc77e740) at xe_tproc_c.c:456:13 [inlined]
+    frame #25: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc77e740) at xe_tproc_c.c:772:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc77e740) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4a810) at thr_create.c:291:16
+  thread #12, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x0000000822c4efaa libc.so.7`__sys_mmap at mmap.S:4
+    frame #1: 0x0000000822cc50d8 libc.so.7`__je_pages_map(addr=<unavailable>, size=<unavailable>, alignment=<unavailable>, commit=0x00000008bbae9866) at jemalloc_pages.c:206:15
+    frame #2: 0x0000000822cc0bb5 libc.so.7`__je_extent_alloc_mmap(new_addr=<unavailable>, size=<unavailable>, alignment=<unavailable>, zero=0x00000008bbae9867, commit=<unavailable>) at jemalloc_extent_mmap.c:25:14
+    frame #3: 0x0000000822cbc890 libc.so.7`extent_alloc_core(tsdn=<unavailable>, arena=0x0000100cbde008c0, new_addr=0x0000000000000000, size=2097152, alignment=4096, zero=0x00000008bbae9867, commit=0x00000008bbae9866, dss_prec=<unavailable>) at jemalloc_extent.c:1223:13 [inlined]
+    frame #4: 0x0000000822cbc881 libc.so.7`extent_alloc_default_impl(tsdn=<unavailable>, arena=0x0000100cbde008c0, new_addr=0x0000000000000000, size=2097152, alignment=4096, zero=0x00000008bbae9867, commit=0x00000008bbae9866) at jemalloc_extent.c:1241:14 [inlined]
+    frame #5: 0x0000000822cbc86d libc.so.7`extent_grow_retained(tsdn=<unavailable>, arena=0x0000100cbde008c0, r_extent_hooks=0x00000008bbae9c10, size=12288, pad=0, alignment=<unavailable>, slab=<unavailable>, szind=<unavailable>, zero=<unavailable>, commit=<unavailable>) at jemalloc_extent.c:1335:9 [inlined]
+    frame #6: 0x0000000822cbc841 libc.so.7`extent_alloc_retained(tsdn=<unavailable>, arena=0x0000100cbde008c0, r_extent_hooks=0x00000008bbae9c10, new_addr=<unavailable>, size=12288, pad=0, alignment=<unavailable>, slab=<unavailable>, szind=<unavailable>, zero=<unavailable>, commit=<unavailable>) at jemalloc_extent.c:1480:12 [inlined]
+    frame #7: 0x0000000822cbc841 libc.so.7`__je_extent_alloc_wrapper(tsdn=0x0000100cbae6d090, arena=0x0000100cbde008c0, r_extent_hooks=0x00000008bbae9c10, new_addr=0x0000000000000000, size=12288, pad=0, alignment=4096, slab=<unavailable>, szind=14, zero=0x00000008bbae9c1f, commit=0x00000008bbae9c1e) at jemalloc_extent.c:1539:21
+    frame #8: 0x0000000822c9b8d4 libc.so.7`arena_slab_alloc_hard(tsdn=0x0000100cbae6d090, arena=0x0000100cbde008c0, r_extent_hooks=0x00000008bbae9c10, bin_info=0x0000000822d0c610, szind=14) at jemalloc_arena.c:1217:9 [inlined]
+    frame #9: 0x0000000822c9b899 libc.so.7`arena_slab_alloc(tsdn=0x0000100cbae6d090, arena=0x0000100cbde008c0, binind=14, binshard=0, bin_info=0x0000000822d0c610) at jemalloc_arena.c:1247:10 [inlined]
+    frame #10: 0x0000000822c9b852 libc.so.7`arena_bin_nonfull_slab_get(tsdn=0x0000100cbae6d090, arena=0x0000100cbde008c0, bin=0x0000100cbde08920, binind=14, binshard=0) at jemalloc_arena.c:1283:9 [inlined]
+    frame #11: 0x0000000822c9b6db libc.so.7`arena_bin_malloc_hard(tsdn=0x0000100cbae6d090, arena=0x0000100cbde008c0, bin=0x0000100cbde08920, binind=14, binshard=0) at jemalloc_arena.c:1319:9
+    frame #12: 0x0000000822c9b506 libc.so.7`__je_arena_tcache_fill_small(tsdn=0x0000100cbae6d090, arena=0x0000100cbde008c0, tcache=0x0000100cbae6d280, tbin=0x0000100cbae6d3e0, binind=14, prof_accumbytes=0) at jemalloc_arena.c:1407:16
+    frame #13: 0x0000000822cd9cb5 libc.so.7`__je_tcache_alloc_small_hard(tsdn=<unavailable>, arena=<unavailable>, tcache=<unavailable>, tbin=<unavailable>, binind=<unavailable>, tcache_success=0x00000008bbae9d30) at jemalloc_tcache.c:94:2
+    frame #14: 0x0000000822c8ec73 libc.so.7`tcache_alloc_small(tsd=0x0000100cbae6d090, arena=<unavailable>, tcache=0x0000100cbae6d280, size=<unavailable>, binind=14, zero=false, slow_path=false) at tcache_inlines.h:60:9
+    frame #15: 0x0000000822c8ec30 libc.so.7`arena_malloc(tsdn=0x0000100cbae6d090, arena=0x0000000000000000, size=<unavailable>, ind=14, zero=false, tcache=0x0000100cbae6d280, slow_path=false) at arena_inlines_b.h:165:11 [inlined]
+    frame #16: 0x0000000822c8ebc1 libc.so.7`iallocztm(tsdn=0x0000100cbae6d090, size=<unavailable>, ind=14, zero=false, tcache=0x0000100cbae6d280, is_internal=false, arena=0x0000000000000000, slow_path=false) at jemalloc_internal_inlines_c.h:53:8 [inlined]
+    frame #17: 0x0000000822c8ebc1 libc.so.7`imalloc_no_sample(sopts=<unavailable>, dopts=<unavailable>, tsd=0x0000100cbae6d090, size=<unavailable>, usize=384, ind=14) at jemalloc_jemalloc.c:1953:9 [inlined]
+    frame #18: 0x0000000822c8ebc1 libc.so.7`imalloc_body(sopts=<unavailable>, dopts=<unavailable>, tsd=0x0000100cbae6d090) at jemalloc_jemalloc.c:2153:16 [inlined]
+    frame #19: 0x0000000822c8ebc1 libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2262:10 [inlined]
+    frame #20: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=<unavailable>) at jemalloc_jemalloc.c:2293:2
+    frame #21: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008bbae9de8) at os_alloc.c:278:7 [inlined]
+    frame #22: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008bbae9de8) at os_alloc.c:239:13
+    frame #23: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b2e78, parent=0x0000000000000000, txnpp=0x00000008bbaeff78, flags=<unavailable>) at txn.c:237:13
+    frame #24: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008bbaeff78, flags=1) at txn.c:192:8
+    frame #25: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc78e370, txn=0x00000008bbaeff70, rdonly=0) at xe_engine.h:925:14
+    frame #26: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc78e368) at xe_tproc_c.c:456:13 [inlined]
+    frame #27: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc78e368) at xe_tproc_c.c:772:21 [inlined]
+    frame #28: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc78e368) at xe_tproc_c.c:790:14
+    frame #29: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4b010) at thr_create.c:291:16
+  thread #13, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106530) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae4b810, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae71090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae71090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae71090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae71090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae71090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae71090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae71090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008bcc86de8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008bcc86de8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b2b98, parent=0x0000000000000000, txnpp=0x00000008bcc8cf78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008bcc8cf78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000207fc3 xe_tproc_c`xe_txn_begin(th=0x0000100cbc79df98, txn=0x00000008bcc8cf70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000207f91 xe_tproc_c`do_delivery(w=0x0000100cbc79df90) at xe_tproc_c.c:616:13 [inlined]
+    frame #25: 0x0000000000207ec3 xe_tproc_c`run_one(w=0x0000100cbc79df90) at xe_tproc_c.c:775:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc79df90) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4b810) at thr_create.c:291:16
+  thread #14, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x000000082209e7b2 libdb-2026.0.so`__db_tas_mutex_lock_int(env=0x0000100cbb22a000, mutex=132045, timeout=0, nowait=0) at mut_tas.c:220:4
+    frame #1: 0x000000082209e579 libdb-2026.0.so`__db_tas_mutex_lock(env=<unavailable>, mutex=<unavailable>, timeout=<unavailable>) at mut_tas.c:341:10 [artificial]
+    frame #2: 0x000000082213747d libdb-2026.0.so`__lock_getlocker(lt=0x0000100cbc049000, locker=2147483659, create=1, retp=0x0000100cbdc00028) at lock_id.c:384:3
+    frame #3: 0x00000008221aed98 libdb-2026.0.so`__txn_begin_int(txn=0x0000100cbdc00000) at txn.c:644:3 [inlined]
+    frame #4: 0x00000008221aea1c libdb-2026.0.so`__txn_begin(env=0x0000100cbb22a000, ip=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008bd636f78, flags=<unavailable>) at txn.c:377:13
+    frame #5: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008bd636f78, flags=1) at txn.c:192:8
+    frame #6: 0x0000000000207365 xe_tproc_c`xe_txn_begin(th=0x0000100cbc7adbc0, txn=0x00000008bd636f70, rdonly=0) at xe_engine.h:925:14
+    frame #7: 0x0000000000207333 xe_tproc_c`do_payment(w=0x0000100cbc7adbb8) at xe_tproc_c.c:516:13 [inlined]
+    frame #8: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc7adbb8) at xe_tproc_c.c:773:21 [inlined]
+    frame #9: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc7adbb8) at xe_tproc_c.c:790:14
+    frame #10: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4c010) at thr_create.c:291:16
+  thread #15, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106532) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae4c810, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae79090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae79090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae79090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae79090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae79090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae79090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae79090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008c0784de8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008c0784de8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b2dc0, parent=0x0000000000000000, txnpp=0x00000008c078af78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008c078af78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000207365 xe_tproc_c`xe_txn_begin(th=0x0000100cbc7bd7e8, txn=0x00000008c078af70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000207333 xe_tproc_c`do_payment(w=0x0000100cbc7bd7e0) at xe_tproc_c.c:516:13 [inlined]
+    frame #25: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc7bd7e0) at xe_tproc_c.c:773:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc7bd7e0) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4c810) at thr_create.c:291:16
+  thread #16, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106533) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae4d010, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae7d090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae7d090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae7d090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae7d090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae7d090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae7d090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae7d090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008c1f7dde8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008c1f7dde8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b2f30, parent=0x0000000000000000, txnpp=0x00000008c1f83f78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008c1f83f78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc7cd410, txn=0x00000008c1f83f70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc7cd408) at xe_tproc_c.c:456:13 [inlined]
+    frame #25: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc7cd408) at xe_tproc_c.c:772:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc7cd408) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4d010) at thr_create.c:291:16
+  thread #17, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106534) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae4d810, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae81090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae81090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae81090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae81090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae81090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae81090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae81090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008c3087de8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008c3087de8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b2fe8, parent=0x0000000000000000, txnpp=0x00000008c308df78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008c308df78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc7dd038, txn=0x00000008c308df70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc7dd030) at xe_tproc_c.c:456:13 [inlined]
+    frame #25: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc7dd030) at xe_tproc_c.c:772:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc7dd030) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4d810) at thr_create.c:291:16
+  thread #18, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb209e40, id=106535) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae4e010, m=0x0000100cbb209e40, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb209e40, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000100cbb007a30) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000100cbb0079f0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000100cbb0079f0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822cbc58f libc.so.7`malloc_mutex_lock(tsdn=<unavailable>, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822cbc58a libc.so.7`extent_alloc_retained(tsdn=<unavailable>, arena=0x0000100cbb000980, r_extent_hooks=0x00000008c6bf57f0, new_addr=<unavailable>, size=28672, pad=0, alignment=4096, slab=<unavailable>, szind=27, zero=<unavailable>, commit=<unavailable>) at jemalloc_extent.c:1469:2 [inlined]
+    frame #9: 0x0000000822cbc55b libc.so.7`__je_extent_alloc_wrapper(tsdn=0x0000000000000000, arena=0x0000100cbb000980, r_extent_hooks=0x00000008c6bf57f0, new_addr=0x0000000000000000, size=28672, pad=0, alignment=4096, slab=<unavailable>, szind=27, zero=0x00000008c6bf57ff, commit=0x00000008c6bf57fe) at jemalloc_extent.c:1539:21
+    frame #10: 0x0000000822c9b8d4 libc.so.7`arena_slab_alloc_hard(tsdn=0x0000000000000000, arena=0x0000100cbb000980, r_extent_hooks=0x00000008c6bf57f0, bin_info=0x0000000822d0c818, szind=27) at jemalloc_arena.c:1217:9 [inlined]
+    frame #11: 0x0000000822c9b899 libc.so.7`arena_slab_alloc(tsdn=0x0000000000000000, arena=0x0000100cbb000980, binind=27, binshard=0, bin_info=0x0000000822d0c818) at jemalloc_arena.c:1247:10 [inlined]
+    frame #12: 0x0000000822c9b852 libc.so.7`arena_bin_nonfull_slab_get(tsdn=0x0000000000000000, arena=0x0000100cbb000980, bin=0x0000100cbb0096e0, binind=27, binshard=0) at jemalloc_arena.c:1283:9 [inlined]
+    frame #13: 0x0000000822c9b6db libc.so.7`arena_bin_malloc_hard(tsdn=0x0000000000000000, arena=0x0000100cbb000980, bin=0x0000100cbb0096e0, binind=27, binshard=0) at jemalloc_arena.c:1319:9
+    frame #14: 0x0000000822c9bda0 libc.so.7`arena_malloc_small(tsdn=0x0000000000000000, arena=0x0000100cbb000980, binind=27, zero=false) at jemalloc_arena.c:1474:9 [inlined]
+    frame #15: 0x0000000822c9bc91 libc.so.7`__je_arena_malloc_hard(tsdn=0x0000000000000000, arena=0x0000100cbb000980, size=3080, ind=27, zero=false) at jemalloc_arena.c:1526:10
+    frame #16: 0x0000000822c8d88a libc.so.7`arena_malloc(tsdn=0x0000000000000000, arena=<unavailable>, size=3080, ind=<unavailable>, zero=<unavailable>, tcache=0x0000000000000000, slow_path=true) at arena_inlines_b.h:176:9 [inlined]
+    frame #17: 0x0000000822c8d879 libc.so.7`iallocztm(tsdn=0x0000000000000000, size=3080, ind=<unavailable>, zero=<unavailable>, tcache=0x0000000000000000, is_internal=true, arena=<unavailable>, slow_path=true) at jemalloc_internal_inlines_c.h:53:8 [inlined]
+    frame #18: 0x0000000822c8d879 libc.so.7`a0ialloc(size=3080, zero=<unavailable>, is_internal=true) at jemalloc_jemalloc.c:244:9
+    frame #19: 0x0000000822c8e35a libc.so.7`__je_a0malloc(size=<unavailable>) at jemalloc_jemalloc.c:255:9 [inlined]
+    frame #20: 0x0000000822c8e34b libc.so.7`__je_arena_tdata_get_hard(tsd=0x0000100cbae85090, ind=0) at jemalloc_jemalloc.c:456:36
+    frame #21: 0x0000000822cc182f libc.so.7`arena_tdata_get(tsd=0x0000100cbae85090, ind=<unavailable>, refresh_if_missing=true) at jemalloc_internal_inlines_a.h:0 [inlined]
+    frame #22: 0x0000000822cc1827 libc.so.7`decay_ticker_get(tsd=0x0000100cbae85090, ind=<unavailable>) at jemalloc_internal_inlines_a.h:104:10 [inlined]
+    frame #23: 0x0000000822cc1827 libc.so.7`arena_decay_ticks(tsdn=0x0000100cbae85090, arena=0x0000100cbb000980, nticks=1) at arena_inlines_b.h:121:17 [inlined]
+    frame #24: 0x0000000822cc1827 libc.so.7`arena_decay_tick(tsdn=0x0000100cbae85090, arena=0x0000100cbb000980) at arena_inlines_b.h:135:2 [inlined]
+    frame #25: 0x0000000822cc1827 libc.so.7`__je_large_palloc(tsdn=0x0000100cbae85090, arena=<unavailable>, usize=<unavailable>, alignment=<unavailable>, zero=<unavailable>) at jemalloc_large.c:70:2
+    frame #26: 0x0000000822cda24d libc.so.7`ipallocztm(tsdn=0x0000100cbae85090, usize=<unavailable>, alignment=64, zero=true, tcache=0x0000000000000000, is_internal=true, arena=<unavailable>) at jemalloc_internal_inlines_c.h:78:8 [inlined]
+    frame #27: 0x0000000822cda237 libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae85090) at jemalloc_tcache.c:451:22
+    frame #28: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae85090) at jemalloc_tcache.c:402:3
+    frame #29: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #30: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae85090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #31: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #32: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #33: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #34: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #35: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008c6bf5de8) at os_alloc.c:278:7 [inlined]
+    frame #36: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008c6bf5de8) at os_alloc.c:239:13
+    frame #37: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b30a0, parent=0x0000000000000000, txnpp=0x00000008c6bfbf78, flags=<unavailable>) at txn.c:237:13
+    frame #38: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008c6bfbf78, flags=1) at txn.c:192:8
+    frame #39: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc7ecc60, txn=0x00000008c6bfbf70, rdonly=0) at xe_engine.h:925:14
+    frame #40: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc7ecc58) at xe_tproc_c.c:456:13 [inlined]
+    frame #41: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc7ecc58) at xe_tproc_c.c:772:21 [inlined]
+    frame #42: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc7ecc58) at xe_tproc_c.c:790:14
+    frame #43: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4e010) at thr_create.c:291:16
+  thread #19, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb209e40, id=106536) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae4e810, m=0x0000100cbb209e40, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb209e40, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000100cbb007a30) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000100cbb0079f0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000100cbb0079f0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822cbc58f libc.so.7`malloc_mutex_lock(tsdn=<unavailable>, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822cbc58a libc.so.7`extent_alloc_retained(tsdn=<unavailable>, arena=0x0000100cbb000980, r_extent_hooks=0x00000008c7cd87f0, new_addr=<unavailable>, size=28672, pad=0, alignment=4096, slab=<unavailable>, szind=27, zero=<unavailable>, commit=<unavailable>) at jemalloc_extent.c:1469:2 [inlined]
+    frame #9: 0x0000000822cbc55b libc.so.7`__je_extent_alloc_wrapper(tsdn=0x0000000000000000, arena=0x0000100cbb000980, r_extent_hooks=0x00000008c7cd87f0, new_addr=0x0000000000000000, size=28672, pad=0, alignment=4096, slab=<unavailable>, szind=27, zero=0x00000008c7cd87ff, commit=0x00000008c7cd87fe) at jemalloc_extent.c:1539:21
+    frame #10: 0x0000000822c9b8d4 libc.so.7`arena_slab_alloc_hard(tsdn=0x0000000000000000, arena=0x0000100cbb000980, r_extent_hooks=0x00000008c7cd87f0, bin_info=0x0000000822d0c818, szind=27) at jemalloc_arena.c:1217:9 [inlined]
+    frame #11: 0x0000000822c9b899 libc.so.7`arena_slab_alloc(tsdn=0x0000000000000000, arena=0x0000100cbb000980, binind=27, binshard=0, bin_info=0x0000000822d0c818) at jemalloc_arena.c:1247:10 [inlined]
+    frame #12: 0x0000000822c9b852 libc.so.7`arena_bin_nonfull_slab_get(tsdn=0x0000000000000000, arena=0x0000100cbb000980, bin=0x0000100cbb0096e0, binind=27, binshard=0) at jemalloc_arena.c:1283:9 [inlined]
+    frame #13: 0x0000000822c9b6db libc.so.7`arena_bin_malloc_hard(tsdn=0x0000000000000000, arena=0x0000100cbb000980, bin=0x0000100cbb0096e0, binind=27, binshard=0) at jemalloc_arena.c:1319:9
+    frame #14: 0x0000000822c9bda0 libc.so.7`arena_malloc_small(tsdn=0x0000000000000000, arena=0x0000100cbb000980, binind=27, zero=false) at jemalloc_arena.c:1474:9 [inlined]
+    frame #15: 0x0000000822c9bc91 libc.so.7`__je_arena_malloc_hard(tsdn=0x0000000000000000, arena=0x0000100cbb000980, size=3080, ind=27, zero=false) at jemalloc_arena.c:1526:10
+    frame #16: 0x0000000822c8d88a libc.so.7`arena_malloc(tsdn=0x0000000000000000, arena=<unavailable>, size=3080, ind=<unavailable>, zero=<unavailable>, tcache=0x0000000000000000, slow_path=true) at arena_inlines_b.h:176:9 [inlined]
+    frame #17: 0x0000000822c8d879 libc.so.7`iallocztm(tsdn=0x0000000000000000, size=3080, ind=<unavailable>, zero=<unavailable>, tcache=0x0000000000000000, is_internal=true, arena=<unavailable>, slow_path=true) at jemalloc_internal_inlines_c.h:53:8 [inlined]
+    frame #18: 0x0000000822c8d879 libc.so.7`a0ialloc(size=3080, zero=<unavailable>, is_internal=true) at jemalloc_jemalloc.c:244:9
+    frame #19: 0x0000000822c8e35a libc.so.7`__je_a0malloc(size=<unavailable>) at jemalloc_jemalloc.c:255:9 [inlined]
+    frame #20: 0x0000000822c8e34b libc.so.7`__je_arena_tdata_get_hard(tsd=0x0000100cbae89090, ind=0) at jemalloc_jemalloc.c:456:36
+    frame #21: 0x0000000822cc182f libc.so.7`arena_tdata_get(tsd=0x0000100cbae89090, ind=<unavailable>, refresh_if_missing=true) at jemalloc_internal_inlines_a.h:0 [inlined]
+    frame #22: 0x0000000822cc1827 libc.so.7`decay_ticker_get(tsd=0x0000100cbae89090, ind=<unavailable>) at jemalloc_internal_inlines_a.h:104:10 [inlined]
+    frame #23: 0x0000000822cc1827 libc.so.7`arena_decay_ticks(tsdn=0x0000100cbae89090, arena=0x0000100cbb000980, nticks=1) at arena_inlines_b.h:121:17 [inlined]
+    frame #24: 0x0000000822cc1827 libc.so.7`arena_decay_tick(tsdn=0x0000100cbae89090, arena=0x0000100cbb000980) at arena_inlines_b.h:135:2 [inlined]
+    frame #25: 0x0000000822cc1827 libc.so.7`__je_large_palloc(tsdn=0x0000100cbae89090, arena=<unavailable>, usize=<unavailable>, alignment=<unavailable>, zero=<unavailable>) at jemalloc_large.c:70:2
+    frame #26: 0x0000000822cda24d libc.so.7`ipallocztm(tsdn=0x0000100cbae89090, usize=<unavailable>, alignment=64, zero=true, tcache=0x0000000000000000, is_internal=true, arena=<unavailable>) at jemalloc_internal_inlines_c.h:78:8 [inlined]
+    frame #27: 0x0000000822cda237 libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae89090) at jemalloc_tcache.c:451:22
+    frame #28: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae89090) at jemalloc_tcache.c:402:3
+    frame #29: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #30: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae89090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #31: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #32: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #33: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #34: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #35: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008c7cd8de8) at os_alloc.c:278:7 [inlined]
+    frame #36: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008c7cd8de8) at os_alloc.c:239:13
+    frame #37: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b32e0, parent=0x0000000000000000, txnpp=0x00000008c7cdef78, flags=<unavailable>) at txn.c:237:13
+    frame #38: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008c7cdef78, flags=1) at txn.c:192:8
+    frame #39: 0x0000000000207365 xe_tproc_c`xe_txn_begin(th=0x0000100cbc7fc888, txn=0x00000008c7cdef70, rdonly=0) at xe_engine.h:925:14
+    frame #40: 0x0000000000207333 xe_tproc_c`do_payment(w=0x0000100cbc7fc880) at xe_tproc_c.c:516:13 [inlined]
+    frame #41: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc7fc880) at xe_tproc_c.c:773:21 [inlined]
+    frame #42: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc7fc880) at xe_tproc_c.c:790:14
+    frame #43: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4e810) at thr_create.c:291:16
+  thread #20, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb209e40, id=106537) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae4f010, m=0x0000100cbb209e40, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb209e40, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000100cbb007a30) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000100cbb0079f0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000100cbb0079f0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822cbc58f libc.so.7`malloc_mutex_lock(tsdn=<unavailable>, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822cbc58a libc.so.7`extent_alloc_retained(tsdn=<unavailable>, arena=0x0000100cbb000980, r_extent_hooks=0x00000008cc418a68, new_addr=<unavailable>, size=28672, pad=4096, alignment=64, slab=<unavailable>, szind=39, zero=<unavailable>, commit=<unavailable>) at jemalloc_extent.c:1469:2 [inlined]
+    frame #9: 0x0000000822cbc55b libc.so.7`__je_extent_alloc_wrapper(tsdn=<unavailable>, arena=0x0000100cbb000980, r_extent_hooks=0x00000008cc418a68, new_addr=0x0000000000000000, size=28672, pad=4096, alignment=64, slab=<unavailable>, szind=39, zero=0x00000008cc418abf, commit=0x00000008cc418a67) at jemalloc_extent.c:1539:21
+    frame #10: 0x0000000822c9a34a libc.so.7`__je_arena_extent_alloc_large(tsdn=<unavailable>, arena=0x0000100cbb000980, usize=28672, alignment=<unavailable>, zero=0x00000008cc418abf) at jemalloc_arena.c:448:12
+    frame #11: 0x0000000822cc1715 libc.so.7`__je_large_palloc(tsdn=0x0000100cbae8d090, arena=<unavailable>, usize=<unavailable>, alignment=<unavailable>, zero=<unavailable>) at jemalloc_large.c:47:43
+    frame #12: 0x0000000822cda24d libc.so.7`ipallocztm(tsdn=0x0000100cbae8d090, usize=<unavailable>, alignment=64, zero=true, tcache=0x0000000000000000, is_internal=true, arena=<unavailable>) at jemalloc_internal_inlines_c.h:78:8 [inlined]
+    frame #13: 0x0000000822cda237 libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae8d090) at jemalloc_tcache.c:451:22
+    frame #14: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae8d090) at jemalloc_tcache.c:402:3
+    frame #15: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #16: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae8d090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #17: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #19: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #20: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #21: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008cc418de8) at os_alloc.c:278:7 [inlined]
+    frame #22: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008cc418de8) at os_alloc.c:239:13
+    frame #23: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b3398, parent=0x0000000000000000, txnpp=0x00000008cc41ef78, flags=<unavailable>) at txn.c:237:13
+    frame #24: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008cc41ef78, flags=1) at txn.c:192:8
+    frame #25: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc80c4b0, txn=0x00000008cc41ef70, rdonly=0) at xe_engine.h:925:14
+    frame #26: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc80c4a8) at xe_tproc_c.c:456:13 [inlined]
+    frame #27: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc80c4a8) at xe_tproc_c.c:772:21 [inlined]
+    frame #28: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc80c4a8) at xe_tproc_c.c:790:14
+    frame #29: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4f010) at thr_create.c:291:16
+  thread #21, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb209e40, id=106538) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae4f810, m=0x0000100cbb209e40, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb209e40, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000100cbb007a30) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000100cbb0079f0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000100cbb0079f0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822cbc58f libc.so.7`malloc_mutex_lock(tsdn=<unavailable>, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822cbc58a libc.so.7`extent_alloc_retained(tsdn=<unavailable>, arena=0x0000100cbb000980, r_extent_hooks=0x00000008cc885a68, new_addr=<unavailable>, size=28672, pad=4096, alignment=64, slab=<unavailable>, szind=39, zero=<unavailable>, commit=<unavailable>) at jemalloc_extent.c:1469:2 [inlined]
+    frame #9: 0x0000000822cbc55b libc.so.7`__je_extent_alloc_wrapper(tsdn=<unavailable>, arena=0x0000100cbb000980, r_extent_hooks=0x00000008cc885a68, new_addr=0x0000000000000000, size=28672, pad=4096, alignment=64, slab=<unavailable>, szind=39, zero=0x00000008cc885abf, commit=0x00000008cc885a67) at jemalloc_extent.c:1539:21
+    frame #10: 0x0000000822c9a34a libc.so.7`__je_arena_extent_alloc_large(tsdn=<unavailable>, arena=0x0000100cbb000980, usize=28672, alignment=<unavailable>, zero=0x00000008cc885abf) at jemalloc_arena.c:448:12
+    frame #11: 0x0000000822cc1715 libc.so.7`__je_large_palloc(tsdn=0x0000100cbae91090, arena=<unavailable>, usize=<unavailable>, alignment=<unavailable>, zero=<unavailable>) at jemalloc_large.c:47:43
+    frame #12: 0x0000000822cda24d libc.so.7`ipallocztm(tsdn=0x0000100cbae91090, usize=<unavailable>, alignment=64, zero=true, tcache=0x0000000000000000, is_internal=true, arena=<unavailable>) at jemalloc_internal_inlines_c.h:78:8 [inlined]
+    frame #13: 0x0000000822cda237 libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae91090) at jemalloc_tcache.c:451:22
+    frame #14: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae91090) at jemalloc_tcache.c:402:3
+    frame #15: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #16: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae91090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #17: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #19: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #20: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #21: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008cc885de8) at os_alloc.c:278:7 [inlined]
+    frame #22: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008cc885de8) at os_alloc.c:239:13
+    frame #23: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b3450, parent=0x0000000000000000, txnpp=0x00000008cc88bf78, flags=<unavailable>) at txn.c:237:13
+    frame #24: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008cc88bf78, flags=1) at txn.c:192:8
+    frame #25: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc81c0d8, txn=0x00000008cc88bf70, rdonly=0) at xe_engine.h:925:14
+    frame #26: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc81c0d0) at xe_tproc_c.c:456:13 [inlined]
+    frame #27: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc81c0d0) at xe_tproc_c.c:772:21 [inlined]
+    frame #28: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc81c0d0) at xe_tproc_c.c:790:14
+    frame #29: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae4f810) at thr_create.c:291:16
+  thread #22, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106539) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae51010, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae95090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae95090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae95090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae95090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae95090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae95090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae95090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008ccfe4de8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008ccfe4de8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b3690, parent=0x0000000000000000, txnpp=0x00000008ccfeaf78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008ccfeaf78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000207365 xe_tproc_c`xe_txn_begin(th=0x0000100cbc82bd00, txn=0x00000008ccfeaf70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000207333 xe_tproc_c`do_payment(w=0x0000100cbc82bcf8) at xe_tproc_c.c:516:13 [inlined]
+    frame #25: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc82bcf8) at xe_tproc_c.c:773:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc82bcf8) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae51010) at thr_create.c:291:16
+  thread #23, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106540) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae51810, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbae99090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbae99090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbae99090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbae99090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae99090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae99090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae99090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008d067bde8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008d067bde8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b3748, parent=0x0000000000000000, txnpp=0x00000008d0681f78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008d0681f78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000207365 xe_tproc_c`xe_txn_begin(th=0x0000100cbc83b928, txn=0x00000008d0681f70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000207333 xe_tproc_c`do_payment(w=0x0000100cbc83b920) at xe_tproc_c.c:516:13 [inlined]
+    frame #25: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc83b920) at xe_tproc_c.c:773:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc83b920) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae51810) at thr_create.c:291:16
+  thread #24, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb209e40, id=106541) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae52010, m=0x0000100cbb209e40, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb209e40, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000100cbb007a30) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000100cbb0079f0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000100cbb0079f0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822cbc58f libc.so.7`malloc_mutex_lock(tsdn=<unavailable>, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822cbc58a libc.so.7`extent_alloc_retained(tsdn=<unavailable>, arena=0x0000100cbb000980, r_extent_hooks=0x00000008d0dc0a68, new_addr=<unavailable>, size=28672, pad=4096, alignment=64, slab=<unavailable>, szind=39, zero=<unavailable>, commit=<unavailable>) at jemalloc_extent.c:1469:2 [inlined]
+    frame #9: 0x0000000822cbc55b libc.so.7`__je_extent_alloc_wrapper(tsdn=<unavailable>, arena=0x0000100cbb000980, r_extent_hooks=0x00000008d0dc0a68, new_addr=0x0000000000000000, size=28672, pad=4096, alignment=64, slab=<unavailable>, szind=39, zero=0x00000008d0dc0abf, commit=0x00000008d0dc0a67) at jemalloc_extent.c:1539:21
+    frame #10: 0x0000000822c9a34a libc.so.7`__je_arena_extent_alloc_large(tsdn=<unavailable>, arena=0x0000100cbb000980, usize=28672, alignment=<unavailable>, zero=0x00000008d0dc0abf) at jemalloc_arena.c:448:12
+    frame #11: 0x0000000822cc1715 libc.so.7`__je_large_palloc(tsdn=0x0000100cbae9d090, arena=<unavailable>, usize=<unavailable>, alignment=<unavailable>, zero=<unavailable>) at jemalloc_large.c:47:43
+    frame #12: 0x0000000822cda24d libc.so.7`ipallocztm(tsdn=0x0000100cbae9d090, usize=<unavailable>, alignment=64, zero=true, tcache=0x0000000000000000, is_internal=true, arena=<unavailable>) at jemalloc_internal_inlines_c.h:78:8 [inlined]
+    frame #13: 0x0000000822cda237 libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbae9d090) at jemalloc_tcache.c:451:22
+    frame #14: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbae9d090) at jemalloc_tcache.c:402:3
+    frame #15: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #16: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbae9d090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #17: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #19: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #20: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #21: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008d0dc0de8) at os_alloc.c:278:7 [inlined]
+    frame #22: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008d0dc0de8) at os_alloc.c:239:13
+    frame #23: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b3988, parent=0x0000000000000000, txnpp=0x00000008d0dc6f78, flags=<unavailable>) at txn.c:237:13
+    frame #24: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008d0dc6f78, flags=1) at txn.c:192:8
+    frame #25: 0x0000000000206e21 xe_tproc_c`xe_txn_begin(th=0x0000100cbc84b550, txn=0x00000008d0dc6f70, rdonly=0) at xe_engine.h:925:14
+    frame #26: 0x0000000000206def xe_tproc_c`do_new_order(w=0x0000100cbc84b548) at xe_tproc_c.c:456:13 [inlined]
+    frame #27: 0x0000000000206d05 xe_tproc_c`run_one(w=0x0000100cbc84b548) at xe_tproc_c.c:772:21 [inlined]
+    frame #28: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc84b548) at xe_tproc_c.c:790:14
+    frame #29: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae52010) at thr_create.c:291:16
+  thread #25, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226cf0bc libthr.so.3`_umtx_op_err at _umtx_op_err.S:38
+    frame #1: 0x00000008226dec50 libthr.so.3`__thr_umutex_lock(mtx=0x0000100cbb20a1a0, id=106542) at thr_umtx.c:79:3
+    frame #2: 0x00000008226d821a libthr.so.3`mutex_lock_sleep(curthread=0x0000100cbae52810, m=0x0000100cbb20a1a0, abstime=0x0000000000000000) at thr_mutex.c:700:9
+    frame #3: 0x00000008226d60e7 libthr.so.3`mutex_lock_common(m=0x0000100cbb20a1a0, abstime=0x0000000000000000, cvattach=false, rb_onlist=false) at thr_mutex.c:734:9 [inlined]
+    frame #4: 0x00000008226d60aa libthr.so.3`__Tthr_mutex_lock(mutex=0x0000000822d0c200) at thr_mutex.c:753:9
+    frame #5: 0x0000000822cc4b46 libc.so.7`malloc_mutex_lock_final(mutex=0x0000000822d0c1c0) at mutex.h:153:2 [inlined]
+    frame #6: 0x0000000822cc4b3e libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000000822d0c1c0) at jemalloc_mutex.c:96:2
+    frame #7: 0x0000000822c8e4a9 libc.so.7`malloc_mutex_lock(tsdn=0x0000100cbaea1090, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #8: 0x0000000822c8e477 libc.so.7`__je_arena_choose_hard(tsd=0x0000100cbaea1090, internal=false) at jemalloc_jemalloc.c:534:3
+    frame #9: 0x0000000822cda615 libc.so.7`arena_choose_impl(tsd=0x0000100cbaea1090, arena=0x0000000000000000, internal=false) at jemalloc_internal_inlines_b.h:22:9 [inlined]
+    frame #10: 0x0000000822cda60b libc.so.7`arena_choose(tsd=0x0000100cbaea1090, arena=0x0000000000000000) at jemalloc_internal_inlines_b.h:63:9 [inlined]
+    frame #11: 0x0000000822cda60b libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbaea1090) at jemalloc_tcache.c:473:11
+    frame #12: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbaea1090) at jemalloc_tcache.c:402:3
+    frame #13: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #14: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbaea1090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #15: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #16: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #17: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #18: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #19: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008d6ab2de8) at os_alloc.c:278:7 [inlined]
+    frame #20: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008d6ab2de8) at os_alloc.c:239:13
+    frame #21: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b3a40, parent=0x0000000000000000, txnpp=0x00000008d6ab8f78, flags=<unavailable>) at txn.c:237:13
+    frame #22: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008d6ab8f78, flags=1) at txn.c:192:8
+    frame #23: 0x0000000000207365 xe_tproc_c`xe_txn_begin(th=0x0000100cbc85b178, txn=0x00000008d6ab8f70, rdonly=0) at xe_engine.h:925:14
+    frame #24: 0x0000000000207333 xe_tproc_c`do_payment(w=0x0000100cbc85b170) at xe_tproc_c.c:516:13 [inlined]
+    frame #25: 0x0000000000207219 xe_tproc_c`run_one(w=0x0000100cbc85b170) at xe_tproc_c.c:773:21 [inlined]
+    frame #26: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc85b170) at xe_tproc_c.c:790:14
+    frame #27: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae52810) at thr_create.c:291:16
+  thread #26, name = 'xe_tproc_c', stop reason = signal SIGSEGV
+    frame #0: 0x00000008226d6588 libthr.so.3`_thr_umutex_trylock(mtx=0x0000100cbb209e40, id=106543) at thr_umtx.h:83:6 [inlined]
+    frame #1: 0x00000008226d6581 libthr.so.3`__Tthr_mutex_trylock(mutex=0x0000100cbb007a30) at thr_mutex.c:631:8
+    frame #2: 0x0000000822cc4bcb libc.so.7`malloc_mutex_trylock_final(mutex=0x0000100cbb0079f0) at mutex.h:159:9 [inlined]
+    frame #3: 0x0000000822cc4bc3 libc.so.7`__je_malloc_mutex_lock_slow(mutex=0x0000100cbb0079f0) at jemalloc_mutex.c:70:25
+    frame #4: 0x0000000822cbc58f libc.so.7`malloc_mutex_lock(tsdn=<unavailable>, mutex=<unavailable>) at mutex.h:219:4 [inlined]
+    frame #5: 0x0000000822cbc58a libc.so.7`extent_alloc_retained(tsdn=<unavailable>, arena=0x0000100cbb000980, r_extent_hooks=0x00000008da8e27f0, new_addr=<unavailable>, size=28672, pad=0, alignment=4096, slab=<unavailable>, szind=27, zero=<unavailable>, commit=<unavailable>) at jemalloc_extent.c:1469:2 [inlined]
+    frame #6: 0x0000000822cbc55b libc.so.7`__je_extent_alloc_wrapper(tsdn=0x0000000000000000, arena=0x0000100cbb000980, r_extent_hooks=0x00000008da8e27f0, new_addr=0x0000000000000000, size=28672, pad=0, alignment=4096, slab=<unavailable>, szind=27, zero=0x00000008da8e27ff, commit=0x00000008da8e27fe) at jemalloc_extent.c:1539:21
+    frame #7: 0x0000000822c9b8d4 libc.so.7`arena_slab_alloc_hard(tsdn=0x0000000000000000, arena=0x0000100cbb000980, r_extent_hooks=0x00000008da8e27f0, bin_info=0x0000000822d0c818, szind=27) at jemalloc_arena.c:1217:9 [inlined]
+    frame #8: 0x0000000822c9b899 libc.so.7`arena_slab_alloc(tsdn=0x0000000000000000, arena=0x0000100cbb000980, binind=27, binshard=0, bin_info=0x0000000822d0c818) at jemalloc_arena.c:1247:10 [inlined]
+    frame #9: 0x0000000822c9b852 libc.so.7`arena_bin_nonfull_slab_get(tsdn=0x0000000000000000, arena=0x0000100cbb000980, bin=0x0000100cbb0096e0, binind=27, binshard=0) at jemalloc_arena.c:1283:9 [inlined]
+    frame #10: 0x0000000822c9b6db libc.so.7`arena_bin_malloc_hard(tsdn=0x0000000000000000, arena=0x0000100cbb000980, bin=0x0000100cbb0096e0, binind=27, binshard=0) at jemalloc_arena.c:1319:9
+    frame #11: 0x0000000822c9bda0 libc.so.7`arena_malloc_small(tsdn=0x0000000000000000, arena=0x0000100cbb000980, binind=27, zero=false) at jemalloc_arena.c:1474:9 [inlined]
+    frame #12: 0x0000000822c9bc91 libc.so.7`__je_arena_malloc_hard(tsdn=0x0000000000000000, arena=0x0000100cbb000980, size=3080, ind=27, zero=false) at jemalloc_arena.c:1526:10
+    frame #13: 0x0000000822c8d88a libc.so.7`arena_malloc(tsdn=0x0000000000000000, arena=<unavailable>, size=3080, ind=<unavailable>, zero=<unavailable>, tcache=0x0000000000000000, slow_path=true) at arena_inlines_b.h:176:9 [inlined]
+    frame #14: 0x0000000822c8d879 libc.so.7`iallocztm(tsdn=0x0000000000000000, size=3080, ind=<unavailable>, zero=<unavailable>, tcache=0x0000000000000000, is_internal=true, arena=<unavailable>, slow_path=true) at jemalloc_internal_inlines_c.h:53:8 [inlined]
+    frame #15: 0x0000000822c8d879 libc.so.7`a0ialloc(size=3080, zero=<unavailable>, is_internal=true) at jemalloc_jemalloc.c:244:9
+    frame #16: 0x0000000822c8e35a libc.so.7`__je_a0malloc(size=<unavailable>) at jemalloc_jemalloc.c:255:9 [inlined]
+    frame #17: 0x0000000822c8e34b libc.so.7`__je_arena_tdata_get_hard(tsd=0x0000100cbaea5090, ind=0) at jemalloc_jemalloc.c:456:36
+    frame #18: 0x0000000822cc182f libc.so.7`arena_tdata_get(tsd=0x0000100cbaea5090, ind=<unavailable>, refresh_if_missing=true) at jemalloc_internal_inlines_a.h:0 [inlined]
+    frame #19: 0x0000000822cc1827 libc.so.7`decay_ticker_get(tsd=0x0000100cbaea5090, ind=<unavailable>) at jemalloc_internal_inlines_a.h:104:10 [inlined]
+    frame #20: 0x0000000822cc1827 libc.so.7`arena_decay_ticks(tsdn=0x0000100cbaea5090, arena=0x0000100cbb000980, nticks=1) at arena_inlines_b.h:121:17 [inlined]
+    frame #21: 0x0000000822cc1827 libc.so.7`arena_decay_tick(tsdn=0x0000100cbaea5090, arena=0x0000100cbb000980) at arena_inlines_b.h:135:2 [inlined]
+    frame #22: 0x0000000822cc1827 libc.so.7`__je_large_palloc(tsdn=0x0000100cbaea5090, arena=<unavailable>, usize=<unavailable>, alignment=<unavailable>, zero=<unavailable>) at jemalloc_large.c:70:2
+    frame #23: 0x0000000822cda24d libc.so.7`ipallocztm(tsdn=0x0000100cbaea5090, usize=<unavailable>, alignment=64, zero=true, tcache=0x0000000000000000, is_internal=true, arena=<unavailable>) at jemalloc_internal_inlines_c.h:78:8 [inlined]
+    frame #24: 0x0000000822cda237 libc.so.7`__je_tsd_tcache_data_init(tsd=0x0000100cbaea5090) at jemalloc_tcache.c:451:22
+    frame #25: 0x0000000822cda14b libc.so.7`__je_tsd_tcache_enabled_data_init(tsd=0x0000100cbaea5090) at jemalloc_tcache.c:402:3
+    frame #26: 0x0000000822cdc660 libc.so.7`tsd_data_init(tsd=<unavailable>) at jemalloc_tsd.c:236:9 [inlined]
+    frame #27: 0x0000000822cdc64b libc.so.7`__je_tsd_fetch_slow(tsd=0x0000100cbaea5090, minimal=<unavailable>) at jemalloc_tsd.c:0
+    frame #28: 0x0000000822c8ea97 libc.so.7`tsd_fetch_impl(init=true, minimal=false) at tsd.h:355:10 [inlined]
+    frame #29: 0x0000000822c8ea8d libc.so.7`tsd_fetch at tsd.h:381:9 [inlined]
+    frame #30: 0x0000000822c8ea8d libc.so.7`imalloc(sopts=<unavailable>, dopts=<unavailable>) at jemalloc_jemalloc.c:2256:15 [inlined]
+    frame #31: 0x0000000822c8ea8d libc.so.7`__je_malloc_default(size=336) at jemalloc_jemalloc.c:2293:2
+    frame #32: 0x00000008221a48d2 libdb-2026.0.so`__os_malloc(env=<unavailable>, size=336, storep=0x00000008da8e2de8) at os_alloc.c:278:7 [inlined]
+    frame #33: 0x00000008221a48cd libdb-2026.0.so`__os_calloc(env=0x0000100cbb22a000, num=<unavailable>, size=336, storep=0x00000008da8e2de8) at os_alloc.c:239:13
+    frame #34: 0x00000008221ae6a2 libdb-2026.0.so`__txn_begin(env=<unavailable>, ip=0x00000008400b3af8, parent=0x0000000000000000, txnpp=0x00000008da8e8f78, flags=<unavailable>) at txn.c:237:13
+    frame #35: 0x00000008221ae618 libdb-2026.0.so`__txn_begin_pp(dbenv=<unavailable>, parent=0x0000000000000000, txnpp=0x00000008da8e8f78, flags=1) at txn.c:192:8
+    frame #36: 0x00000000002079c3 xe_tproc_c`xe_txn_begin(th=0x0000100cbc86ada0, txn=0x00000008da8e8f70, rdonly=1) at xe_engine.h:925:14
+    frame #37: 0x000000000020797e xe_tproc_c`do_stock_level(w=0x0000100cbc86ad98) at xe_tproc_c.c:722:13 [inlined]
+    frame #38: 0x00000000002078fa xe_tproc_c`run_one(w=0x0000100cbc86ad98) at xe_tproc_c.c:776:9 [inlined]
+    frame #39: 0x0000000000206c75 xe_tproc_c`worker_main(arg=0x0000100cbc86ad98) at xe_tproc_c.c:790:14
+    frame #40: 0x00000008226d1e22 libthr.so.3`thread_start(curthread=0x0000100cbae53010) at thr_create.c:291:16
+(lldb) quit
