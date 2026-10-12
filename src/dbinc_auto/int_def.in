@@ -2585,6 +2585,12 @@
 #ifdef HAVE_TYPED
 #define	__typed_codec_cmp __typed_codec_cmp@DB_VERSION_UNIQUE_NAME@
 #endif
+#ifdef HAVE_TYPED
+#define	__typed_catalog_remove __typed_catalog_remove@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_catalog_rename __typed_catalog_rename@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_rmid_to_env __db_rmid_to_env@DB_VERSION_UNIQUE_NAME@
 #define	__db_xid_to_txn __db_xid_to_txn@DB_VERSION_UNIQUE_NAME@
 #define	__db_map_rmid __db_map_rmid@DB_VERSION_UNIQUE_NAME@

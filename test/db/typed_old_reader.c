@@ -61,19 +61,31 @@ try_open(DB_ENV *dbenv, const char *file, int rdonly)
 	(void)dbp->close(dbp, 0);
 #ifdef HAVE_TYPED
 	/*
-	 * Linked against a typed build: it KNOWS BTM_TYPED, so a schema-less
-	 * open of a typed subdatabase succeeds in commit 4 (the read-only rule
-	 * is commit 5).  The point of this tier is the DEFAULT build's
-	 * refusal; here the only wrong outcome is a BDB0055 refusal, which
+	 * Linked against a typed build: it KNOWS BTM_TYPED.  A schema-less open
+	 * of a typed subdatabase is allowed ONLY read-only (RFC 0014 §4.1, from
+	 * commit 5); a read-write schema-less open is refused (EINVAL) because
+	 * writing without a schema could bypass the constraints.  So RDONLY
+	 * must open and RW must be refused -- and a BDB0055 (unknown flag)
 	 * would mean the typed build does not recognise its own bit.
 	 */
-	if (ret == 0)
-		printf("  ok   [%d]: %s opened (typed build knows the bit)\n",
-		    ncase, mode);
-	else {
-		printf("  FAIL [%d]: %s typed build refused ret=%d (%s) <%s>\n",
-		    ncase, mode, ret, db_strerror(ret), errbuf);
-		nfail++;
+	if (rdonly) {
+		if (ret == 0)
+			printf("  ok   [%d]: %s opened (typed build, read-only)\n",
+			    ncase, mode);
+		else {
+			printf("  FAIL [%d]: %s typed RDONLY refused ret=%d (%s) <%s>\n",
+			    ncase, mode, ret, db_strerror(ret), errbuf);
+			nfail++;
+		}
+	} else {
+		if (ret == EINVAL && strstr(errbuf, "BDB0055") == NULL)
+			printf("  ok   [%d]: %s refused (schema required to write)\n",
+			    ncase, mode);
+		else {
+			printf("  FAIL [%d]: %s typed RW ret=%d (%s) <%s>\n",
+			    ncase, mode, ret, db_strerror(ret), errbuf);
+			nfail++;
+		}
 	}
 #else
 	if (ret == EINVAL && strstr(errbuf, "BDB0055") != NULL)

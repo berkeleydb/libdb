@@ -63,6 +63,22 @@ typedef struct __typed_state {
 #define	TYPED_NSLOTS	4096	/* ponytail: fixed table; 16 slot bits allow
 				 * 65535 if a process ever needs more. */
 
+/*
+ * Cross-file internal prototypes for the typed layer.  These are declared
+ * here, not via s_include's PUBLIC markers, because they take TYPED_STATE *
+ * and TYPED_STATE lives only in this header -- a generated typed_ext.h
+ * prototype naming it would be visible (and unresolvable) in every TU that
+ * includes db_int.h.  The three typed .c files all include this header.
+ */
+struct __env;
+struct __db_thread_info;
+struct __db_txn;
+
+int __typed_catalog_write __P((DB *, struct __db_thread_info *,
+    struct __db_txn *, const char *, const char *, TYPED_STATE *));
+int __typed_catalog_check __P((DB *, struct __db_thread_info *,
+    struct __db_txn *, const char *, const char *, TYPED_STATE *));
+
 #if defined(__cplusplus)
 }
 #endif

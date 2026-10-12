@@ -21,6 +21,12 @@ int __typed_memcmp_order __P((const DBT *, const DBT *));
 #ifdef HAVE_TYPED
 int __typed_codec_cmp __P((const DB_CODEC *, const DBT *, const DBT *));
 #endif
+#ifdef HAVE_TYPED
+int __typed_catalog_remove __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, const char *));
+#endif
+#ifdef HAVE_TYPED
+int __typed_catalog_rename __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, const char *, const char *));
+#endif
 
 #if defined(__cplusplus)
 }

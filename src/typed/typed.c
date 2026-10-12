@@ -799,11 +799,6 @@ __typed_open(dbp, ip, txn, fname, dname, flags)
 	HASH *ht;
 
 	env = dbp->env;
-	COMPQUIET(ip, NULL);
-	COMPQUIET(txn, NULL);
-	COMPQUIET(fname, NULL);
-	COMPQUIET(dname, NULL);
-	COMPQUIET(flags, 0);
 
 	ts = __typed_state(dbp);
 
@@ -864,6 +859,41 @@ __typed_open(dbp, ip, txn, fname, dname, flags)
 		}
 	}
 
-	return (0);
+	/*
+	 * Schema-less open of a typed FILE (DB2_AM_TYPED_FILE but no schema):
+	 * allowed only read-only, or for the internal DB_WRITEOPEN probe that
+	 * __db_subdb_remove uses (§4.1 row 3).  This gives D8's read-only
+	 * db_dump/db_stat.  Such an open installs no codec and writes nothing,
+	 * so it cannot misorder anything; the catalog is not checked.
+	 */
+	if (ts == NULL) {
+		if (!F_ISSET(dbp, DB_AM_RDONLY) && !LF_ISSET(DB_WRITEOPEN)) {
+			__db_errx(env, DB_STR("5370",
+	    "typed database: db_set_schema required to open for writing"));
+			return (EINVAL);
+		}
+		return (0);
+	}
+
+	/*
+	 * Schema given but the subdatabase was not created typed (no meta bit):
+	 * Phase 1 does not convert (§4.1 row 4).
+	 */
+	if (!F_ISSET(dbp, DB_AM_CREATED) &&
+	    !F2_ISSET(dbp, DB2_AM_TYPED_FILE)) {
+		__db_errx(env, DB_STR("5371",
+	    "typed database %s: database was not created typed"),
+		    dname == NULL ? "" : dname);
+		return (EINVAL);
+	}
+
+	/*
+	 * Catalog (§4.3, §5.2): write the record when the subdatabase was just
+	 * created, else parse it and compare the schema and fingerprints.  Both
+	 * in the caller's txn, on a short-lived internal __db_typed handle.
+	 */
+	if (F_ISSET(dbp, DB_AM_CREATED))
+		return (__typed_catalog_write(dbp, ip, txn, fname, dname, ts));
+	return (__typed_catalog_check(dbp, ip, txn, fname, dname, ts));
 }
 #endif /* HAVE_TYPED */

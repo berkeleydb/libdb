@@ -1424,3 +1424,35 @@ companion to the catalog bytes; the committed fixtures are refreshed then. The
 `db_set_schema`-created fixture in commit 4 is a typed subdatabase that a
 commit-5 typed open would reject with "no catalog record" -- which is why the
 fixtures are regenerated in commit 5, not reused.
+
+**V14 (Phase 1 commit 5, fixtures refreshed; typed_old_reader RW now refused).**
+As foreseen in V13, commit 5 regenerated test/db/fixtures/typed_{bt,hash}.db so
+each now carries its `__db_typed` catalog record (the files grew from 2 to 3
+meta pages; the typed subdatabase meta flags stay at file offset 32816 =
+`0x00000120` Btree / `0x0000000a` Hash, so the typed-tier regen byte-compare is
+unchanged). Commit 5 also adds the §4.1 read-only rule, which changes what a
+typed build does with a SCHEMA-LESS open of a typed subdatabase: in commit 4 it
+opened read-write, in commit 5 it opens only read-only (DB_RDONLY) or for the
+internal DB_WRITEOPEN probe, and refuses a plain read-write schema-less open
+with EINVAL (not BDB0055). `typed_old_reader`'s `#ifdef HAVE_TYPED` branch was
+updated to match: RDONLY must open, read-write must be refused with EINVAL and
+NOT a BDB0055 (a BDB0055 would mean the typed build fails to recognise its own
+bit). The default-build branch is unchanged (BDB0055 refusal, both modes), and
+the `typed_old_reader_mask` sabotage still runs against the default build.
+
+**V15 (Phase 1 commit 5, internal typed prototypes live in typed_int.h, not
+the generated typed_ext.h).** `__typed_catalog_write` / `__typed_catalog_check`
+take a `TYPED_STATE *`, and `__typed_state` returns one. `TYPED_STATE` lives
+only in `src/typed/typed_int.h` (C2/C3 keep it out of any header `s_sig`
+scans), so a `PUBLIC:`-generated prototype naming it in `src/dbinc_auto/
+typed_ext.h` -- which `db_int.h` includes everywhere -- would be an
+unresolvable type in every engine TU. Built instead: the two catalog
+functions are declared directly in `typed_int.h` (included only by the three
+`src/typed/*.c` files) with forward `struct __db_thread_info`/`struct __db_txn`
+decls, and `__typed_state` is `static` to typed.c (commit 3). Only the typed
+functions that take purely public types (`__typed_release`,
+`__typed_fingerprint`, `__typed_memcmp_order`, `__typed_codec_cmp`,
+`__typed_open`, `__typed_catalog_remove`, `__typed_catalog_rename`) carry
+`PUBLIC:` markers and reach the generated header; the remove/rename pair is
+reached that way from db_remove.c / db_rename.c, which do not include
+typed_int.h.

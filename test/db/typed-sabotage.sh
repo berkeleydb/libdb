@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask"
+ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -215,6 +215,62 @@ arm_typed_old_reader_mask_apply() {
 }
 arm_typed_old_reader_mask_test='TIER=db sh "$HERE"/run_typed_old_reader.sh "$B"'
 arm_typed_old_reader_mask_expect='VERDICT typed_old_reader FAIL|FAIL \['
+
+# §7.2 typed_codec_mismatch: skip the fingerprint comparison in the catalog
+# check.  A v1 schema with a REVERSED comparator (same name/version/flags,
+# different fingerprint) is then accepted instead of DB_CODEC_MISMATCH.
+arm_typed_codec_mismatch_fp_files="src/typed/typed_catalog.c"
+arm_typed_codec_mismatch_fp_apply() {
+	edit src/typed/typed_catalog.c \
+	    '		    memcmp(p, ts->fp[i], 20) != 0) {' \
+	    '		    0) {'
+}
+arm_typed_codec_mismatch_fp_test='TIER=typed sh "$HERE"/run_typed_codec_mismatch.sh "$B"'
+arm_typed_codec_mismatch_fp_expect='VERDICT typed_codec_mismatch FAIL|FAIL \[3\]'
+
+# §7.2 typed_catalog_lifecycle (a): delete the remove hook -> the catalog
+# record is left behind after DB->remove.
+arm_typed_catalog_lifecycle_remove_files="src/db/db_remove.c"
+arm_typed_catalog_lifecycle_remove_apply() {
+	edit src/db/db_remove.c \
+	    '	if (F2_ISSET(sdbp, DB2_AM_TYPED_FILE) && (ret = __typed_catalog_remove(' \
+	    '	if (0 && F2_ISSET(sdbp, DB2_AM_TYPED_FILE) && (ret = __typed_catalog_remove('
+}
+arm_typed_catalog_lifecycle_remove_test='TIER=typed sh "$HERE"/run_typed_catalog_lifecycle.sh "$B"'
+arm_typed_catalog_lifecycle_remove_expect='VERDICT typed_catalog_lifecycle FAIL|FAIL \[4\]'
+
+# §7.2 typed_catalog_lifecycle (b): delete the rename hook -> the record does
+# not move, so the new name opens "no catalog record" and the old name lingers.
+arm_typed_catalog_lifecycle_rename_files="src/db/db_rename.c"
+arm_typed_catalog_lifecycle_rename_apply() {
+	edit src/db/db_rename.c \
+	    '	if (typed_subdb && (ret = __typed_catalog_rename(' \
+	    '	if (0 && typed_subdb && (ret = __typed_catalog_rename('
+}
+arm_typed_catalog_lifecycle_rename_test='TIER=typed sh "$HERE"/run_typed_catalog_lifecycle.sh "$B"'
+arm_typed_catalog_lifecycle_rename_expect='VERDICT typed_catalog_lifecycle FAIL|FAIL \[[89]\]|FAIL \[1[01]\]'
+
+# §7.2 typed_catalog_format: delete the version check -> a format-version-2
+# record is accepted (until a later field trips, so the version row FAILs).
+arm_typed_catalog_format_version_files="src/typed/typed_catalog.c"
+arm_typed_catalog_format_version_apply() {
+	edit src/typed/typed_catalog.c \
+	    '	if (ver > TYPED_CAT_VERSION) {' \
+	    '	if (0 && ver > TYPED_CAT_VERSION) {'
+}
+arm_typed_catalog_format_version_test='TIER=typed sh "$HERE"/run_typed_catalog_format.sh "$B"'
+arm_typed_catalog_format_version_expect='VERDICT typed_catalog_format FAIL|FAIL \[[67]\]'
+
+# §7.2 typed_rdonly_noschema: delete the §4.1 read-only rule -> a schema-less
+# read-write open of a typed subdatabase is then allowed.
+arm_typed_rdonly_noschema_rule_files="src/typed/typed.c"
+arm_typed_rdonly_noschema_rule_apply() {
+	edit src/typed/typed.c \
+	    '		if (!F_ISSET(dbp, DB_AM_RDONLY) && !LF_ISSET(DB_WRITEOPEN)) {' \
+	    '		if (0 && !F_ISSET(dbp, DB_AM_RDONLY) && !LF_ISSET(DB_WRITEOPEN)) {'
+}
+arm_typed_rdonly_noschema_rule_test='TIER=typed sh "$HERE"/run_typed_rdonly_noschema.sh "$B"'
+arm_typed_rdonly_noschema_rule_expect='VERDICT typed_rdonly_noschema FAIL|FAIL \[5\]'
 
 # ---------------------------------------------------------------------------
 
