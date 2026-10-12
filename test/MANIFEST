@@ -517,6 +517,10 @@ typed	run_typed_notnull
 typed	run_typed_maxlen
 typed	run_typed_valid
 typed	run_typed_partial
+typed	run_typed_unique
+typed	run_typed_unique_mp
+typed	run_typed_unique_nulls
+typed	run_typed_unique_closed
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

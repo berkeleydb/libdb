@@ -1697,6 +1697,21 @@ __dbc_put_secondaries(dbc,
 			    "Put results in a non-unique secondary key in an "
 			    "index not configured to support duplicates"));
 					ret = EINVAL;
+#ifdef HAVE_TYPED
+					/*
+					 * D6 (RFC 0014): a UNIQUE violation on a
+					 * TYPED primary is DB_KEYEXIST, not
+					 * EINVAL -- the typed layer enforces
+					 * UNIQUE through a generated non-DUP
+					 * secondary, and a duplicate key is the
+					 * SQL "key exists" condition.  Untyped
+					 * secondaries are unchanged.
+					 */
+					if (sdbp->s_primary != NULL &&
+					    F2_ISSET(sdbp->s_primary,
+					    DB2_AM_TYPED))
+						ret = DB_KEYEXIST;
+#endif
 				}
 				if (ret != DB_NOTFOUND && ret != DB_KEYEMPTY)
 					break;

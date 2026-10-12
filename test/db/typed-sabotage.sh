@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1"
+ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1 typed_unique_counter typed_unique_counter_mp typed_unique_d6 typed_unique_d6uncond typed_unique_nulls_donotindex typed_unique_nulls_prefix typed_unique_closed_step2"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -271,6 +271,100 @@ arm_typed_rdonly_noschema_rule_apply() {
 }
 arm_typed_rdonly_noschema_rule_test='TIER=typed sh "$HERE"/run_typed_rdonly_noschema.sh "$B"'
 arm_typed_rdonly_noschema_rule_expect='VERDICT typed_rdonly_noschema FAIL|FAIL \[5\]'
+
+# §7.2 typed_unique (a) / typed_unique_mp: the RFC's arm -- __typed_unique_cb
+# appends a per-call counter to the key, so no two secondary keys ever
+# collide and both inserts of the same value commit.
+arm_typed_unique_counter_files="src/typed/typed_gen.c"
+arm_typed_unique_counter_apply() {
+	edit src/typed/typed_gen.c \
+'		if (!prefixed) {
+			skey->data = (void *)p;
+			skey->size = flen;
+			return (0);
+		}' \
+'		if (!prefixed) {
+			u_int8_t *sb;
+			if (__os_umalloc(env, flen + pkey->size, &sb) != 0)
+				return (ENOMEM);
+			if (flen > 0) memcpy(sb, p, flen);
+			if (pkey->size > 0)
+				memcpy(sb + flen, pkey->data, pkey->size);
+			skey->data = sb; skey->size = flen + pkey->size;
+			F_SET(skey, DB_DBT_APPMALLOC);
+			return (0);
+		}'
+}
+arm_typed_unique_counter_test='TIER=typed sh "$HERE"/run_typed_unique.sh "$B"'
+arm_typed_unique_counter_expect='VERDICT typed_unique FAIL|FAIL \[[147]\]'
+
+arm_typed_unique_counter_mp_files="src/typed/typed_gen.c"
+arm_typed_unique_counter_mp_apply() { arm_typed_unique_counter_apply ; }
+arm_typed_unique_counter_mp_test='TIER=typed sh "$HERE"/run_typed_unique_mp.sh "$B"'
+arm_typed_unique_counter_mp_expect='VERDICT typed_unique_mp FAIL'
+
+# §7.2 typed_unique (b): revert the D6 edit (DB_KEYEXIST on a typed primary),
+# so the loser sees EINVAL instead of DB_KEYEXIST.
+arm_typed_unique_d6_files="src/db/db_cam.c"
+arm_typed_unique_d6_apply() {
+	edit src/db/db_cam.c \
+	    '						ret = DB_KEYEXIST;' \
+	    '						ret = EINVAL;'
+}
+arm_typed_unique_d6_test='TIER=typed sh "$HERE"/run_typed_unique.sh "$B"'
+arm_typed_unique_d6_expect='VERDICT typed_unique FAIL|FAIL \[[147]\]'
+
+# §7.2 typed_unique (c): make D6 unconditional (always DB_KEYEXIST), so the
+# untyped-secondary CONTROL case gets DB_KEYEXIST instead of EINVAL.
+arm_typed_unique_d6uncond_files="src/db/db_cam.c"
+arm_typed_unique_d6uncond_apply() {
+	edit src/db/db_cam.c \
+'					if (sdbp->s_primary != NULL &&
+					    F2_ISSET(sdbp->s_primary,
+					    DB2_AM_TYPED))' \
+'					if (1)'
+}
+arm_typed_unique_d6uncond_test='TIER=typed sh "$HERE"/run_typed_unique.sh "$B"'
+arm_typed_unique_d6uncond_expect='VERDICT typed_unique FAIL|FAIL \[10\]'
+
+# §7.2 typed_unique_nulls (a): return a key instead of DB_DONOTINDEX for a
+# NULL field under NULLS DISTINCT, so the two NULL rows collide.
+arm_typed_unique_nulls_donotindex_files="src/typed/typed_gen.c"
+arm_typed_unique_nulls_donotindex_apply() {
+	edit src/typed/typed_gen.c \
+	    '			return (DB_DONOTINDEX);	/* NULLS DISTINCT */' \
+	    '			;	/* NULLS DISTINCT (sabotage: fall through) */'
+}
+arm_typed_unique_nulls_donotindex_test='TIER=typed sh "$HERE"/run_typed_unique_nulls.sh "$B"'
+arm_typed_unique_nulls_donotindex_expect='VERDICT typed_unique_nulls FAIL|FAIL \[[234]\]'
+
+# §7.2 typed_unique_nulls (b): drop the 0x01 prefix on non-NULL images under
+# NULLS_NOT_DISTINCT, so a non-NULL 0x00 value collides with the NULL image.
+arm_typed_unique_nulls_prefix_files="src/typed/typed_gen.c"
+arm_typed_unique_nulls_prefix_apply() {
+	# Both EQUALIMAGE/MEMCMP and sortkey prefix sites.
+	"$PY" - "$REPO/src/typed/typed_gen.c" <<'PYEOF'
+import sys
+p=sys.argv[1]; s=open(p).read()
+n=s.count("out[0] = 0x01;")
+if n < 1: sys.exit("prefix anchor missing")
+s=s.replace("out[0] = 0x01;", "out[0] = 0x00;")
+open(p,"w").write(s)
+PYEOF
+}
+arm_typed_unique_nulls_prefix_test='TIER=typed sh "$HERE"/run_typed_unique_nulls.sh "$B"'
+arm_typed_unique_nulls_prefix_expect='VERDICT typed_unique_nulls FAIL|FAIL \[9\]'
+
+# §7.2 typed_unique_closed: delete step 2 (the closed-unique-index check), so
+# a put after the unique index is closed is silently accepted.
+arm_typed_unique_closed_step2_files="src/typed/typed.c"
+arm_typed_unique_closed_step2_apply() {
+	edit src/typed/typed.c \
+	    '		if (nfound < ts->nunique) {' \
+	    '		if (0 && nfound < ts->nunique) {'
+}
+arm_typed_unique_closed_step2_test='TIER=typed sh "$HERE"/run_typed_unique_closed.sh "$B"'
+arm_typed_unique_closed_step2_expect='VERDICT typed_unique_closed FAIL|FAIL \[[34]\]'
 
 # §7.2 typed_notnull: delete the __typed_put_check call in __dbc_put -> no
 # constraint is checked, so a NOT NULL violation is stored.

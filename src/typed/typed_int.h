@@ -78,6 +78,7 @@ int __typed_catalog_write __P((DB *, struct __db_thread_info *,
     struct __db_txn *, const char *, const char *, TYPED_STATE *));
 int __typed_catalog_check __P((DB *, struct __db_thread_info *,
     struct __db_txn *, const char *, const char *, TYPED_STATE *));
+TYPED_STATE *__typed_state __P((DB *));
 
 #if defined(__cplusplus)
 }

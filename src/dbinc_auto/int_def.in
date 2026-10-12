@@ -2594,6 +2594,9 @@
 #ifdef HAVE_TYPED
 #define	__typed_catalog_rename __typed_catalog_rename@DB_VERSION_UNIQUE_NAME@
 #endif
+#ifdef HAVE_TYPED
+#define	__typed_unique_cb __typed_unique_cb@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_rmid_to_env __db_rmid_to_env@DB_VERSION_UNIQUE_NAME@
 #define	__db_xid_to_txn __db_xid_to_txn@DB_VERSION_UNIQUE_NAME@
 #define	__db_map_rmid __db_map_rmid@DB_VERSION_UNIQUE_NAME@

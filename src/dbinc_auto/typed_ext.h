@@ -30,6 +30,9 @@ int __typed_catalog_remove __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, 
 #ifdef HAVE_TYPED
 int __typed_catalog_rename __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, const char *, const char *));
 #endif
+#ifdef HAVE_TYPED
+int __typed_unique_cb __P((DB *, const DBT *, const DBT *, DBT *));
+#endif
 
 #if defined(__cplusplus)
 }

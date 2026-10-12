@@ -1456,3 +1456,38 @@ functions that take purely public types (`__typed_release`,
 `PUBLIC:` markers and reach the generated header; the remove/rename pair is
 reached that way from db_remove.c / db_rename.c, which do not include
 typed_int.h.
+
+**V16 (Phase 1 commit 7, typed_unique is sequential; the concurrent race is
+typed_unique_mp).** §7.2's typed_unique says "two txns insert the same UNIQUE
+field value ... exactly one commits; the loser gets DB_KEYEXIST, or
+DB_LOCK_DEADLOCK and then DB_KEYEXIST on retry". A genuinely interleaved
+two-txn race in ONE process hangs: txn B blocks on txn A's write lock on the
+unique-index key, and with no background deadlock-detector thread and no
+competing waiter nothing re-invokes detection to expire B's lock timeout
+(detection runs on each conflicting REQUEST, not on an already-parked waiter),
+so B waits forever. Built instead: typed_unique runs A to COMMIT first, then B
+in a fresh transaction inserts the same value and must get DB_KEYEXIST --
+across all three isolation levels (2PL, DB_TXN_SNAPSHOT, DB_TXN_SERIALIZABLE,
+env opened DB_MULTIVERSION), proving the level does not change the outcome, plus
+the untyped-secondary control (still EINVAL, D6 is conditional). The genuinely
+concurrent check-then-insert race is typed_unique_mp, which forks + execs two
+real processes that block on each other's unique-index lock and resolve to
+exactly one winner and one DB_KEYEXIST loser (verified stable over repeated
+runs). This matches the handoff: "typed_unique_mp must use real processes
+(fork+exec), not threads".
+
+**V17 (Phase 1 commit 7, the single-process UNIQUE counter sabotage faults
+rather than committing twice).** §7.2's typed_unique arm (a) is
+"__typed_unique_cb appends a per-call counter to the key -> both commit".
+Built as a per-row key disambiguator (append the primary key, so it also
+breaks the cross-process typed_unique_mp arm, where a per-process static
+counter would not -- each process starts its counter at 0 and the keys still
+collide). Against the single-process typed_unique the sabotaged callback faults
+(signal 11) rather than cleanly committing twice; a crash is still a correct
+"sabotage detected" (non-zero exit, test FAILs), and the behaviour of
+deliberately corrupted callback code is undefined by construction. The clean,
+informative failure is the typed_unique_mp arm ("FAIL 3 checks: winners=2").
+Both arms FAIL when applied and PASS when restored. The two UNIQUE sabotage
+arms that matter for correctness are typed_unique_d6 (revert DB_KEYEXIST ->
+EINVAL: loser sees EINVAL) and typed_unique_d6uncond (make D6 unconditional:
+the untyped-secondary control breaks), both of which FAIL cleanly.

@@ -62,7 +62,6 @@ static int  __typed_collect_codecs __P((DB *, const DB_SCHEMA *,
 		const DB_CODEC **, u_int32_t *));
 static int  __typed_claim __P((DB *, TYPED_STATE *, u_int32_t *));
 static int  __typed_build_state __P((DB *, const DB_SCHEMA *, TYPED_STATE **));
-static TYPED_STATE *__typed_state __P((DB *));
 static int  __typed_copy_schema __P((DB *, const DB_SCHEMA *, TYPED_STATE *));
 static void __typed_free_state __P((DB *, TYPED_STATE *));
 static int  __typed_check_side __P((DBC *, TYPED_STATE *, u_int32_t,
@@ -187,12 +186,11 @@ __typed_copy_schema(dbp, schema, ts)
  * __typed_state --
  *	Return the TYPED_STATE for a handle, or NULL if untyped.  The hot-path
  *	readers (put check, callbacks) use this; it is just the indexed load.
- *	Static to this file in commit 3: TYPED_STATE lives only in typed_int.h
- *	(C2/C3 keep it out of any header s_sig scans), so it cannot appear in
- *	the generated typed_ext.h without being visible everywhere.  Commit 8's
- *	cross-file callbacks get it through a forward-declared opaque pointer.
+ *	Declared in typed_int.h (not the generated typed_ext.h): it names
+ *	TYPED_STATE, which C2/C3 keep out of any header s_sig scans and thus
+ *	out of a header every engine TU includes.
  */
-static TYPED_STATE *
+TYPED_STATE *
 __typed_state(dbp)
 	DB *dbp;
 {
@@ -561,6 +559,54 @@ __typed_validate(dbp, schema)
 				    con->name);
 				return (EINVAL);
 			}
+
+		/*
+		 * Rule 7: UNIQUE (RFC 0014 §3.4 rule 7).  side must be data (a
+		 * key is unique already); unique_db must be an open, non-DUP,
+		 * Btree, same-env handle, not already a secondary; the field's
+		 * codec must be EQUALIMAGE (or MEMCMP) or have a sortkey so a
+		 * secondary key can express equality; no two UNIQUE constraints
+		 * may share a unique_db.
+		 */
+		if (con->kind == DB_CONSTRAINT_UNIQUE) {
+			DB *udb = con->unique_db;
+			const DB_CODEC *fc;
+
+			if (con->side != DB_TYPED_DATA) {
+				__db_errx(env, DB_STR("5375",
+		    "typed schema: UNIQUE constraint %s must be on the data side"),
+				    con->name);
+				return (EINVAL);
+			}
+			if (udb == NULL ||
+			    !F_ISSET(udb, DB_AM_OPEN_CALLED) ||
+			    udb->type != DB_BTREE ||
+			    F_ISSET(udb, DB_AM_DUP) ||
+			    udb->env != env || udb->s_primary != NULL) {
+				__db_errx(env, DB_STR("5376",
+		    "typed schema: UNIQUE %s needs an open non-DUP Btree in the same env, not already a secondary"),
+				    con->name);
+				return (EINVAL);
+			}
+			fc = rc->types[con->field];
+			if (!FLD_ISSET(fc->flags,
+			    DB_CODEC_EQUALIMAGE | DB_CODEC_MEMCMP) &&
+			    fc->sortkey == NULL) {
+				__db_errx(env, DB_STR("5377",
+		    "typed schema: UNIQUE %s needs an EQUALIMAGE/MEMCMP codec or a sortkey"),
+				    con->name);
+				return (EINVAL);
+			}
+			for (k = 0; k < i; k++)
+				if (schema->constraints[k].kind ==
+				    DB_CONSTRAINT_UNIQUE &&
+				    schema->constraints[k].unique_db == udb) {
+					__db_errx(env, DB_STR("5378",
+		    "typed schema: two UNIQUE constraints share a unique_db (%s)"),
+					    con->name);
+					return (EINVAL);
+				}
+		}
 	}
 
 	/*
@@ -799,6 +845,9 @@ __typed_open(dbp, ip, txn, fname, dname, flags)
 	TYPED_STATE *ts;
 	BTREE *bt;
 	HASH *ht;
+	const DB_CONSTRAINT *con;
+	u_int32_t i;
+	int ret;
 
 	env = dbp->env;
 
@@ -894,9 +943,31 @@ __typed_open(dbp, ip, txn, fname, dname, flags)
 	 * created, else parse it and compare the schema and fingerprints.  Both
 	 * in the caller's txn, on a short-lived internal __db_typed handle.
 	 */
-	if (F_ISSET(dbp, DB_AM_CREATED))
-		return (__typed_catalog_write(dbp, ip, txn, fname, dname, ts));
-	return (__typed_catalog_check(dbp, ip, txn, fname, dname, ts));
+	if (F_ISSET(dbp, DB_AM_CREATED)) {
+		if ((ret = __typed_catalog_write(dbp, ip, txn, fname, dname,
+		    ts)) != 0)
+			return (ret);
+	} else if ((ret = __typed_catalog_check(dbp, ip, txn, fname, dname,
+	    ts)) != 0)
+		return (ret);
+
+	/*
+	 * Associate each UNIQUE constraint's unique_db to this primary with
+	 * __typed_unique_cb and no flags (RFC 0014 §3.6): no DB_CREATE populate,
+	 * because a non-empty primary with an empty unique index is a catalog
+	 * mismatch (§4).  A read-only or schema-less open never reaches here.
+	 */
+	if (ts->nunique > 0) {
+		for (i = 0; i < ts->schema.nconstraints; i++) {
+			con = &ts->schema.constraints[i];
+			if (con->kind != DB_CONSTRAINT_UNIQUE)
+				continue;
+			if ((ret = __db_associate(dbp, ip, txn,
+			    con->unique_db, __typed_unique_cb, 0)) != 0)
+				return (ret);
+		}
+	}
+	return (0);
 }
 
 /*
@@ -1026,7 +1097,9 @@ __typed_put_check(dbc, key, data, flags)
 {
 	DB *dbp;
 	TYPED_STATE *ts;
+	u_int32_t nfound;
 	int ret;
+	DB *sdbp;
 
 	dbp = dbc->dbp;
 	if ((ts = __typed_state(dbp)) == NULL)
@@ -1041,7 +1114,29 @@ __typed_put_check(dbc, key, data, flags)
 		return (EINVAL);
 	}
 
-	/* Step 2 (UNIQUE-index-closed) is commit 7. */
+	/*
+	 * Step 2: every UNIQUE index must still be associated (RFC 0014 §3.7).
+	 * Closing a unique_db just unlinks it from s_secondaries, which would
+	 * silently stop enforcing UNIQUE; count the associated __typed_unique_cb
+	 * secondaries under the handle's own mutex (per handle, MUTEX_INVALID on
+	 * a non-DB_THREAD handle) and refuse the put if any is gone.
+	 * ponytail: list walk of <= 64 entries per put, per-handle mutex only;
+	 * cache a generation number if it ever shows in a profile.
+	 */
+	if (ts->nunique > 0) {
+		nfound = 0;
+		MUTEX_LOCK(dbp->env, dbp->mutex);
+		for (sdbp = LIST_FIRST(&dbp->s_secondaries); sdbp != NULL;
+		    sdbp = LIST_NEXT(sdbp, s_links))
+			if (sdbp->s_callback == __typed_unique_cb)
+				++nfound;
+		MUTEX_UNLOCK(dbp->env, dbp->mutex);
+		if (nfound < ts->nunique) {
+			__db_errx(dbp->env, DB_STR("5379",
+	    "typed database: a UNIQUE index was closed before its primary"));
+			return (EINVAL);
+		}
+	}
 
 	/*
 	 * Step 3: key side, unless DB_CURRENT (which keeps the stored key,
