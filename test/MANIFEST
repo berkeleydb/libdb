@@ -522,6 +522,11 @@ typed	run_typed_unique_mp
 typed	run_typed_unique_nulls
 typed	run_typed_unique_closed
 
+typed	run_typed_btree_cmp
+typed	run_typed_hash
+typed	run_typed_cmp_fuzz
+typed	run_typed_optread
+
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is
 # ci-extended.yml and enumerating ~400 TCL tests here would be a second list

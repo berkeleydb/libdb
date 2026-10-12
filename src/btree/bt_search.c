@@ -108,6 +108,26 @@ __bam_opt_enabled()
 	return (cached);
 }
 
+#ifdef HAVE_TYPED
+/*
+ * __bam_optread_on --
+ *	Non-static wrapper over __bam_opt_enabled for the RFC 0014 DB_OPTREAD
+ *	gate (spec §6.2).  Calling the SAME cached function the descent uses,
+ *	rather than repeating the getenv test, keeps the open-time gate and the
+ *	read-time descent in exact agreement.  Default build: this file is
+ *	unchanged (the whole wrapper is HAVE_TYPED-guarded).
+ *
+ * PUBLIC: #ifdef HAVE_TYPED
+ * PUBLIC: int __bam_optread_on __P((void));
+ * PUBLIC: #endif
+ */
+int
+__bam_optread_on()
+{
+	return (__bam_opt_enabled());
+}
+#endif
+
 /*
  * Retry budget for one descent.  After this many validation failures the
  * descent gives up on the optimistic path and uses the ordinary pinning path

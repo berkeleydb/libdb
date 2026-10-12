@@ -31,6 +31,15 @@ int __typed_catalog_remove __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, 
 int __typed_catalog_rename __P((DB *, DB_THREAD_INFO *, DB_TXN *, const char *, const char *, const char *));
 #endif
 #ifdef HAVE_TYPED
+int __typed_bt_compare __P((DB *, const DBT *, const DBT *));
+#endif
+#ifdef HAVE_TYPED
+u_int32_t __typed_h_hash __P((DB *, const void *, u_int32_t));
+#endif
+#ifdef HAVE_TYPED
+int __typed_h_compare __P((DB *, const DBT *, const DBT *));
+#endif
+#ifdef HAVE_TYPED
 int __typed_unique_cb __P((DB *, const DBT *, const DBT *, DBT *));
 #endif
 

@@ -52,7 +52,7 @@ EOF
 # Arms.  ARMS lists them in run order.  Each test command runs in the build
 # dir with BUILD set; TIER is set to the test's MANIFEST tier.
 # ---------------------------------------------------------------------------
-ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1 typed_unique_counter typed_unique_counter_mp typed_unique_d6 typed_unique_d6uncond typed_unique_nulls_donotindex typed_unique_nulls_prefix typed_unique_closed_step2"
+ARMS="footprint_canary footprint_sig handle_sizes_typed typed_api_memcmp typed_api_vecorder typed_api_shallow typed_refusals_c6 typed_refusals_compress typed_refusals_cb typed_old_reader_mask typed_codec_mismatch_fp typed_catalog_lifecycle_remove typed_catalog_lifecycle_rename typed_catalog_format_version typed_rdonly_noschema_rule typed_notnull_hook typed_maxlen_boundary typed_valid_mapping typed_partial_step1 typed_unique_counter typed_unique_counter_mp typed_unique_d6 typed_unique_d6uncond typed_unique_nulls_donotindex typed_unique_nulls_prefix typed_unique_closed_step2 typed_btree_cmp_noinstall typed_hash_nohash typed_cmp_fuzz_bounds typed_optread_gate"
 
 # §7.2 typed_footprint (a): an unguarded symbol in an engine file must move
 # the default build's .text.
@@ -417,6 +417,62 @@ arm_typed_partial_step1_apply() {
 }
 arm_typed_partial_step1_test='TIER=typed sh "$HERE"/run_typed_partial.sh "$B"'
 arm_typed_partial_step1_expect='VERDICT typed_partial FAIL|FAIL \[[12]\]'
+
+# §7.2 typed_btree_cmp: do not install __typed_bt_compare -> the Btree uses
+# __bam_defcmp, so a reverse-order key scans bytewise (1,2,3) instead of codec
+# order (3,2,1), and the all-MEMCMP control is unaffected.
+arm_typed_btree_cmp_noinstall_files="src/typed/typed.c"
+arm_typed_btree_cmp_noinstall_apply() {
+	edit src/typed/typed.c \
+	    '		bt->bt_compare = __typed_bt_compare;' \
+	    '		bt->bt_compare = __bam_defcmp;	/* sabotage: no install */'
+}
+arm_typed_btree_cmp_noinstall_test='TIER=typed sh "$HERE"/run_typed_btree_cmp.sh "$B"'
+arm_typed_btree_cmp_noinstall_expect='VERDICT typed_btree_cmp FAIL|FAIL \[[0-9]+\]'
+
+# §7.2 typed_hash: do not install the generated h_hash -> "abc" and "AbC"
+# hash to different buckets (default __ham_func5 is byte-sensitive), so the
+# case-insensitive get misses.
+arm_typed_hash_nohash_files="src/typed/typed.c"
+arm_typed_hash_nohash_apply() {
+	edit src/typed/typed.c \
+	    '		ht->h_hash = __typed_h_hash;' \
+	    '		/* sabotage: no h_hash install (keeps __ham_func5) */ ;'
+}
+arm_typed_hash_nohash_test='TIER=typed sh "$HERE"/run_typed_hash.sh "$B"'
+arm_typed_hash_nohash_expect='VERDICT typed_hash FAIL|FAIL \[[0-9]+\]'
+
+# §7.2 typed_cmp_fuzz: delete the §6.3 slice-bounds check in __typed_walk_field
+# -> a lying field() that returns a slice past the end is handed to a type
+# codec, which reads off the end of the exact-sized heap block: ASan reports a
+# heap-buffer-overflow and the test dies on a signal / exits non-zero.
+arm_typed_cmp_fuzz_bounds_files="src/typed/typed_gen.c"
+arm_typed_cmp_fuzz_bounds_apply() {
+	edit src/typed/typed_gen.c \
+	    '	if (p < d || (size_t)(p - d) > size || len > size - (size_t)(p - d))
+		return (DB_CODEC_MALFORMED);' \
+	    '	if (0)	/* sabotage: §6.3 slice-bounds check deleted */
+		return (DB_CODEC_MALFORMED);'
+}
+arm_typed_cmp_fuzz_bounds_test='TIER=typed sh "$HERE"/run_typed_cmp_fuzz.sh "$B"'
+arm_typed_cmp_fuzz_bounds_expect='VERDICT typed_cmp_fuzz FAIL|heap-buffer-overflow|FAIL \[[0-9]+\]|died on signal'
+
+# §7.2 typed_optread: delete the §6.2 record-codec TOTAL check -> a non-TOTAL
+# record codec is no longer refused with DB_OPTREAD on, so cases 1 and 2 open
+# instead of returning EINVAL.
+arm_typed_optread_gate_files="src/typed/typed.c"
+arm_typed_optread_gate_apply() {
+	edit src/typed/typed.c \
+	    '		if (!FLD_ISSET(ts->schema.key->flags, DB_CODEC_TOTAL)) {' \
+	    '		if (0 && !FLD_ISSET(ts->schema.key->flags, DB_CODEC_TOTAL)) {' &&
+	edit src/typed/typed.c \
+	    '			if (!FLD_ISSET(ts->schema.key->types[i]->flags,
+			    DB_CODEC_TOTAL)) {' \
+	    '			if (0 && !FLD_ISSET(ts->schema.key->types[i]->flags,
+			    DB_CODEC_TOTAL)) {'
+}
+arm_typed_optread_gate_test='TIER=typed sh "$HERE"/run_typed_optread.sh "$B"'
+arm_typed_optread_gate_expect='VERDICT typed_optread FAIL|FAIL \[[12]\]'
 
 # ---------------------------------------------------------------------------
 

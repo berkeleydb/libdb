@@ -445,6 +445,9 @@
 #define	__bam_adjust __bam_adjust@DB_VERSION_UNIQUE_NAME@
 #define	__bam_nrecs __bam_nrecs@DB_VERSION_UNIQUE_NAME@
 #define	__bam_total __bam_total@DB_VERSION_UNIQUE_NAME@
+#ifdef HAVE_TYPED
+#define	__bam_optread_on __bam_optread_on@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__bam_get_root __bam_get_root@DB_VERSION_UNIQUE_NAME@
 #define	__bam_search __bam_search@DB_VERSION_UNIQUE_NAME@
 #define	__bam_stkrel __bam_stkrel@DB_VERSION_UNIQUE_NAME@
@@ -2593,6 +2596,15 @@
 #endif
 #ifdef HAVE_TYPED
 #define	__typed_catalog_rename __typed_catalog_rename@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_bt_compare __typed_bt_compare@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_h_hash __typed_h_hash@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_h_compare __typed_h_compare@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifdef HAVE_TYPED
 #define	__typed_unique_cb __typed_unique_cb@DB_VERSION_UNIQUE_NAME@

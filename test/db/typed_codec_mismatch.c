@@ -64,14 +64,30 @@ static DB_CODEC other = {
 	0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0
 };
 
+/* Single field spanning the whole record (the comparator reads it). */
+static int
+recfield(const DB_RECORD_CODEC *rc, const DBT *rec, u_int32_t i,
+    const u_int8_t **pp, u_int32_t *lenp, int *isnull)
+{
+	(void)rc;
+	if (i != 0)
+		return (DB_CODEC_MALFORMED);
+	*pp = rec->data; *lenp = rec->size; *isnull = 0;
+	return (0);
+}
+
 static DB_RECORD_CODEC *
 mkrc(DB_RECORD_CODEC *rc, DB_CODEC *c, const DB_CODEC **t)
 {
 	memset(rc, 0, sizeof(*rc));
 	rc->name = "k"; rc->version = 1; rc->flags = DB_CODEC_TOTAL;
 	rc->nfields = 1; rc->types = t;
-	rc->field = (int (*)(const DB_RECORD_CODEC *, const DBT *, u_int32_t,
-	    const u_int8_t **, u_int32_t *, int *))(void *)mkrc; /* non-NULL */
+	/*
+	 * A real single-field locator: field 0 is the whole record.  Commit 8
+	 * installs __typed_bt_compare, which actually calls field() on the
+	 * case-F read path, so a bogus field pointer would crash.
+	 */
+	rc->field = recfield;
 	t[0] = c;
 	return (rc);
 }

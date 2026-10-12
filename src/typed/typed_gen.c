@@ -19,6 +19,9 @@
 #include "db_config.h"
 
 #include "db_int.h"
+#include "dbinc/db_page.h"
+#include "dbinc/btree.h"
+#include "dbinc/hash.h"
 #include "typed_int.h"
 
 #ifdef HAVE_TYPED
@@ -105,6 +108,216 @@ db_record_fixed(rc, name, version, nfields, off, len, types)
 	rc->types = types;
 	rc->app_private = lay;
 	return (0);
+}
+
+/*
+ * __typed_walk_field --
+ *	Locate field i of a record with the record codec, applying the one
+ *	bounds check libdb can make (spec §6.3): the returned (p, len) slice
+ *	must lie inside rec, whatever a lying field() claims.  Returns 0 and
+ *	fills the returned (pp, lenp, isnull) on a well-formed field; returns
+ *	non-zero (the codec's error, or DB_CODEC_MALFORMED if the slice runs
+ *	off the end) to mean "treat the record as malformed".  This turns a
+ *	lying field() into a misordering, not an out-of-bounds read by a type
+ *	codec; it cannot stop field() itself from faulting -- only
+ *	DB_CODEC_TOTAL does.
+ */
+static int
+__typed_walk_field(rc, rec, i, pp, lenp, isnull)
+	const DB_RECORD_CODEC *rc;
+	const DBT *rec;
+	u_int32_t i;
+	const u_int8_t **pp;
+	u_int32_t *lenp;
+	int *isnull;
+{
+	const u_int8_t *d, *p;
+	u_int32_t len, size;
+	int ret;
+
+	*pp = NULL; *lenp = 0; *isnull = 0;
+	if ((ret = rc->field(rc, rec, i, pp, lenp, isnull)) != 0)
+		return (ret);
+	if (*isnull)
+		return (0);
+	/*
+	 * Overflow-safe (spec §6.3): p within [d, d+size], len within the
+	 * rest.  A field() that returns a slice outside rec makes the record
+	 * malformed; the type codec never sees those bytes.
+	 */
+	d = rec->data;
+	size = rec->size;
+	p = *pp;
+	len = *lenp;
+	if (p < d || (size_t)(p - d) > size || len > size - (size_t)(p - d))
+		return (DB_CODEC_MALFORMED);
+	return (0);
+}
+
+/*
+ * __typed_rec_cmp --
+ *	Compare two typed records field by field with the key record codec
+ *	(spec §3.6, the RFC's bounded-walk comparator).  Semantics:
+ *	  - a record whose field() reports malformed sorts AFTER every
+ *	    well-formed record;
+ *	  - two malformed records compare by memcmp of their raw bytes, then
+ *	    by length (a total order over arbitrary bytes);
+ *	  - otherwise, field by field: NULL sorts before non-NULL; a MEMCMP
+ *	    field compares by memcmp of the common prefix then shorter-is-less;
+ *	    any other field compares with its codec's compare().
+ *	Total over arbitrary bytes when every codec is DB_CODEC_TOTAL (the
+ *	DB_OPTREAD contract, gated in __typed_open).
+ */
+static int
+__typed_rec_cmp(rc, a, b)
+	const DB_RECORD_CODEC *rc;
+	const DBT *a, *b;
+{
+	const DB_CODEC *fc;
+	const u_int8_t *pa, *pb;
+	u_int32_t i, la, lb, min;
+	int na, nb, ia, ib, c;
+
+	for (i = 0; i < rc->nfields; i++) {
+		na = __typed_walk_field(rc, a, i, &pa, &la, &ia);
+		nb = __typed_walk_field(rc, b, i, &pb, &lb, &ib);
+		/* Malformed sorts last; two malformed -> raw memcmp+length. */
+		if (na != 0 || nb != 0) {
+			if (na != 0 && nb != 0) {
+				min = a->size < b->size ? a->size : b->size;
+				if (min != 0 &&
+				    (c = memcmp(a->data, b->data, min)) != 0)
+					return (c);
+				return (a->size < b->size ? -1 :
+				    a->size > b->size ? 1 : 0);
+			}
+			return (na != 0 ? 1 : -1);
+		}
+		/* NULL sorts before non-NULL. */
+		if (ia || ib) {
+			if (ia && ib)
+				continue;
+			return (ia ? -1 : 1);
+		}
+		fc = rc->types[i];
+		if (FLD_ISSET(fc->flags, DB_CODEC_MEMCMP) ||
+		    fc->compare == NULL) {
+			/* MEMCMP: common prefix, then shorter-is-less. */
+			min = la < lb ? la : lb;
+			if (min != 0 && (c = memcmp(pa, pb, min)) != 0)
+				return (c);
+			if (la != lb)
+				return (la < lb ? -1 : 1);
+		} else if ((c = fc->compare(fc, pa, la, pb, lb)) != 0)
+			return (c);
+	}
+	return (0);
+}
+
+/*
+ * __typed_bt_compare --
+ *	The generated bt_compare installed on a non-MEMCMP typed Btree key
+ *	(spec §3.6).  State comes from the handle's side-table slot; if the
+ *	slot is 0 (an internal path cloned the pointer onto a fresh handle) it
+ *	DIAGNOSTIC-asserts and falls back to __bam_defcmp's byte order, so it
+ *	can misorder but cannot fault.
+ *
+ * PUBLIC: #ifdef HAVE_TYPED
+ * PUBLIC: int __typed_bt_compare __P((DB *, const DBT *, const DBT *));
+ * PUBLIC: #endif
+ */
+int
+__typed_bt_compare(dbp, a, b)
+	DB *dbp;
+	const DBT *a, *b;
+{
+	TYPED_STATE *ts;
+
+	if ((ts = __typed_state(dbp)) == NULL || ts->schema.key == NULL) {
+		DB_ASSERT(dbp->env, ts != NULL && ts->schema.key != NULL);
+		return (__bam_defcmp(dbp, a, b));
+	}
+	return (__typed_rec_cmp(ts->schema.key, a, b));
+}
+
+/*
+ * __typed_h_hash --
+ *	The generated h_hash installed on a non-EQUALIMAGE typed Hash key
+ *	(spec §3.6).  Hashes each key field's bytes with its codec's hash()
+ *	(or __ham_func5 of the raw bytes for an EQUALIMAGE/MEMCMP field that
+ *	has no hash), then mixes the per-field results through __ham_func5 so
+ *	the field split is part of the hash.  A malformed record falls back to
+ *	hashing the raw bytes, matching the comparator's total order (a
+ *	malformed record is still placed deterministically).
+ *
+ * PUBLIC: #ifdef HAVE_TYPED
+ * PUBLIC: u_int32_t __typed_h_hash __P((DB *, const void *, u_int32_t));
+ * PUBLIC: #endif
+ */
+u_int32_t
+__typed_h_hash(dbp, key, len)
+	DB *dbp;
+	const void *key;
+	u_int32_t len;
+{
+	TYPED_STATE *ts;
+	const DB_RECORD_CODEC *rc;
+	const DB_CODEC *fc;
+	const u_int8_t *p;
+	DBT rec;
+	u_int32_t i, flen, h, fh;
+	int isnull;
+
+	if ((ts = __typed_state(dbp)) == NULL || ts->schema.key == NULL) {
+		DB_ASSERT(dbp->env, ts != NULL && ts->schema.key != NULL);
+		return (__ham_func5(dbp, key, len));
+	}
+	rc = ts->schema.key;
+	memset(&rec, 0, sizeof(rec));
+	rec.data = (void *)key;
+	rec.size = len;
+
+	h = 0;
+	for (i = 0; i < rc->nfields; i++) {
+		if (__typed_walk_field(rc, &rec, i, &p, &flen, &isnull) != 0)
+			return (__ham_func5(dbp, key, len));
+		if (isnull)
+			fh = 0;
+		else {
+			fc = rc->types[i];
+			fh = fc->hash != NULL ? fc->hash(fc, p, flen) :
+			    __ham_func5(dbp, p, flen);
+		}
+		/* Mix the field result in; the index i keeps the split part
+		 * of the hash, so {"ab",""} and {"a","b"} differ. */
+		h = __ham_func5(dbp, &fh, sizeof(fh)) ^ (h * 16777619u + i);
+	}
+	return (h);
+}
+
+/*
+ * __typed_h_compare --
+ *	The generated h_compare installed with __typed_h_hash (spec §3.6):
+ *	0 iff every key field's equal / compare()==0 holds.  Hash equality is
+ *	not enough -- two distinct values can collide -- so the bucket chain
+ *	needs this exact equality to find the record.
+ *
+ * PUBLIC: #ifdef HAVE_TYPED
+ * PUBLIC: int __typed_h_compare __P((DB *, const DBT *, const DBT *));
+ * PUBLIC: #endif
+ */
+int
+__typed_h_compare(dbp, a, b)
+	DB *dbp;
+	const DBT *a, *b;
+{
+	TYPED_STATE *ts;
+
+	if ((ts = __typed_state(dbp)) == NULL || ts->schema.key == NULL) {
+		DB_ASSERT(dbp->env, ts != NULL && ts->schema.key != NULL);
+		return (__bam_defcmp(dbp, a, b));
+	}
+	return (__typed_rec_cmp(ts->schema.key, a, b));
 }
 
 /*

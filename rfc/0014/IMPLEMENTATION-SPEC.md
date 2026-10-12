@@ -1491,3 +1491,59 @@ Both arms FAIL when applied and PASS when restored. The two UNIQUE sabotage
 arms that matter for correctness are typed_unique_d6 (revert DB_KEYEXIST ->
 EINVAL: loser sees EINVAL) and typed_unique_d6uncond (make D6 unconditional:
 the untyped-secondary control breaks), both of which FAIL cleanly.
+
+**V18 (Phase 1 commit 8, §3.6). The generated callbacks are installed in
+`__typed_open`, not in `db_set_schema` "through the existing setters".** §3.6's
+table header reads "installed by `db_set_schema`, through the existing
+setters". Built instead: `db_set_schema` installs nothing; `__typed_open`
+writes `bt->bt_compare`/`bt->bt_prefix` (Btree, non-MEMCMP key) and
+`ht->h_hash`/`ht->h_compare` (Hash, non-EQUALIMAGE key) directly on the
+internal struct, after the identity check proves the slots still hold the
+defaults. Two reasons the setter path cannot be used: (1) `bt_internal` /
+`h_internal` may not exist at `db_set_schema` time -- they are allocated by
+`__bam_db_create` / `__ham_db_create`, which `db_create(dbp, dbenv, 0)` (type
+unknown) defers to open; `db_set_schema`'s own rule-8 check already guards
+`dbp->bt_internal != NULL`, confirming it can be NULL there. (2) `__bam_set_bt_compare`
+/ `__ham_set_h_compare` both call `DB_ILLEGAL_AFTER_OPEN`, which fails inside
+`__typed_open` (the handle is mid-open). Writing the fields directly is exactly
+what those setters do minus the open guard they cannot pass here, and the
+identity check (commit 4, updated here) proves no application callback is being
+overwritten. For Hash the install also matches `__ham_open`'s behaviour, which
+only fills a NULL `h_hash` with `__ham_func5`; re-pointing it at
+`__typed_h_hash` after open is the same contract an application re-setting its
+hash on every open satisfies, and the newly created table is empty so no record
+was bucketed by the wrong hash. Evidence (`typed_btree_cmp`, `typed_hash`):
+with the install present a reverse-order key scans 3,2,1 and a case-insensitive
+Hash finds "AbC" through "abc"; the sabotage arms `typed_btree_cmp_noinstall`
+and `typed_hash_nohash` (which replace the install with the default) FAIL as
+required.
+
+**V19 (Phase 1 commit 8, test `typed_codec_mismatch`). The commit-5 test's
+placeholder `field()` is replaced with a real one, because commit 8's
+comparator reads it.** `typed_codec_mismatch` (commit 5) built its record codec
+with `rc->field` set to a cast of `mkrc` itself ("non-NULL" placeholder): commit
+5 installed no comparator, so nothing ever called `field()`. Commit 8 installs
+`__typed_bt_compare` on the non-MEMCMP `oint` key, and case F (identical schema,
+reads A's row) now calls `field()` -- the placeholder pointer crashed with
+signal 11. Fixed in commit 8 (the commit that changes the behaviour): the test
+now uses a real single-field locator (`recfield`, field 0 = whole record). This
+is the only pre-existing typed test with a fake `field` on a non-MEMCMP Btree
+key; every other typed Btree-key test uses a MEMCMP key codec (default
+comparator, no `field()` read) or a valid `field`, so none other needed a
+change. Evidence: `typed_codec_mismatch` 6/6 PASS after the fix, including case
+F's read; the `typed_codec_mismatch_fp` sabotage (skip the fingerprint
+comparison) still FAILs.
+
+**V20 (Phase 1 commit 8, `typed_hash` forces a low fill factor so the sabotage
+is deterministic).** §7.2's `typed_hash` sabotage is "do not install `h_hash` ->
+'AbC' lands in another bucket". With libdb's default fill factor a 5000-key
+table has only ~6 buckets, so `__ham_func5("abc") % 6` and `__ham_func5("AbC") %
+6` collide often and the differently-cased get still finds the record through
+`h_compare` alone -- the sabotage passed vacuously (observed). Built instead:
+`typed_hash` calls `set_h_ffactor(dbp, 2)` and populates 5000 distinct keys,
+giving ~2836 buckets (measured), so a byte-sensitive hash deterministically
+sends "abc" and "AbC" to different buckets. With the real `__typed_h_hash`
+installed both case-forms hash identically and the get succeeds (test PASS);
+with the sabotage the get misses (sabotage FAIL, verified: "FAIL [2]: get AbC
+finds the abc record"). The count assertions are made relative to the populated
+baseline.

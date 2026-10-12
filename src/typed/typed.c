@@ -911,6 +911,59 @@ __typed_open(dbp, ip, txn, fname, dname, flags)
 	}
 
 	/*
+	 * DB_OPTREAD gate (spec §6, D7).  The optimistic Btree read path calls
+	 * bt_compare on unvalidated interior-page bytes, so a non-MEMCMP typed
+	 * key's generated comparator must be total over arbitrary bytes -- it
+	 * calls the record codec's field() and each type codec on torn bytes.
+	 * Refuse the open if DB_OPTREAD is on and any key-side codec lacks
+	 * DB_CODEC_TOTAL.  Data-side codecs run only on the DBT being put, never
+	 * on page bytes, so they are not gated; MEMCMP keys use the bounded
+	 * default comparator, so they are not gated either.  Checked per open
+	 * (the setting is a process env var, cached in __bam_opt_enabled).
+	 */
+	if (ts != NULL && dbp->type == DB_BTREE && ts->schema.key != NULL &&
+	    !ts->key_memcmp && __bam_optread_on()) {
+		if (!FLD_ISSET(ts->schema.key->flags, DB_CODEC_TOTAL)) {
+			__db_errx(env, DB_STR("5380",
+	    "DB_OPTREAD is set and record codec %s is not DB_CODEC_TOTAL"),
+			    ts->schema.key->name);
+			return (EINVAL);
+		}
+		for (i = 0; i < ts->schema.key->nfields; i++)
+			if (!FLD_ISSET(ts->schema.key->types[i]->flags,
+			    DB_CODEC_TOTAL)) {
+				__db_errx(env, DB_STR("5381",
+		    "DB_OPTREAD is set and codec %s is not DB_CODEC_TOTAL"),
+				    ts->schema.key->types[i]->name);
+				return (EINVAL);
+			}
+	}
+
+	/*
+	 * Install the generated callbacks (spec §3.6).  Done here, not through
+	 * db_set_schema's setters: bt_internal/h_internal may not exist at
+	 * db_set_schema time (they are allocated at open), and the setters
+	 * refuse post-open with DB_ILLEGAL_AFTER_OPEN.  The identity checks
+	 * above proved the slots still hold the defaults, so writing them
+	 * directly is exactly what set_bt_compare/set_h_compare would do, minus
+	 * the open guard they cannot pass here.  A MEMCMP key (Btree) or an
+	 * all-EQUALIMAGE key (Hash) keeps the default byte path and installs
+	 * nothing, so get_bt_compare still returns __bam_defcmp (tested).
+	 */
+	if (ts != NULL && dbp->type == DB_BTREE && ts->schema.key != NULL &&
+	    !ts->key_memcmp) {
+		bt = dbp->bt_internal;
+		bt->bt_compare = __typed_bt_compare;
+		bt->bt_prefix = NULL;	/* a custom comparator cannot prefix. */
+	}
+	if (ts != NULL && dbp->type == DB_HASH && ts->schema.key != NULL &&
+	    !ts->key_equalimage) {
+		ht = dbp->h_internal;
+		ht->h_hash = __typed_h_hash;
+		ht->h_compare = __typed_h_compare;
+	}
+
+	/*
 	 * Schema-less open of a typed FILE (DB2_AM_TYPED_FILE but no schema):
 	 * allowed only read-only, or for the internal DB_WRITEOPEN probe that
 	 * __db_subdb_remove uses (§4.1 row 3).  This gives D8's read-only
