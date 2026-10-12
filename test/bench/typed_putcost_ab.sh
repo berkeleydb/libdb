@@ -28,8 +28,10 @@
 #  * The driver prepopulates the key range, so it measures steady-state
 #    overwrites, not an insert ramp (the commit_bench lesson).
 #  * The driver self-reports typed=0/1 (compiled with -DHAVE_TYPED iff the
-#    build's db_config.h has it); a run whose typed flag does not match the arm
-#    it was built for is rejected.
+#    build's db_config.h has it); each result row carries that flag in its own
+#    column, so a run whose typed flag does not match the arm it was built for
+#    is visible in the TSV (it is recorded, not silently dropped).  Check the
+#    column before trusting a comparison.
 #
 # This is a 16-vCPU-host directional probe by default; the numbers are LABELLED
 # as such.  The lead runs it on metal with -r/-s/-n raised.
