@@ -47,6 +47,14 @@ these.
    loop. Run it on FreeBSD x86_64 and aarch64 metal, and on Linux x86_64. Zero
    panics, zero verify errors, and a bounded mutex/locker population (the T10
    convergence rule).
+   - **Windows/MSVC x86_64** also runs the resource-accounting soak
+     (`test/soak/run_soak.ps1`) for 72 hours: the driver compiled with `cl.exe`
+     against the MSVC-built libdb, looping full open/close passes until the
+     duration elapses, every pass resource-steady. This is the first time the
+     engine is *executed* on Windows in the qualification program (the CI
+     windows job is build-only, `continue-on-error`). It stands in for the
+     TPROC-C/kill-9 arms, which have no Windows harness; a resource leak or a
+     region-accounting divergence on Windows fails it.
 9. `test/soak/` and `test/sim/` tiers green.
 10. The tracker has no open row tagged correctness. Every open row is either
     performance, or a documented limitation with a workaround.
