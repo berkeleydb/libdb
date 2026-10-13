@@ -387,14 +387,23 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
 #endif
 ]])], [db_cv_mutex="$db_cv_mutex/x86_64/gcc-assembly"])
 
-# ARM64/AArch64 gcc/clang: FreeBSD, Linux, macOS.  A HYBRID probe, so it must
+# ARM64/AArch64 gcc/clang: FreeBSD, Linux.  A HYBRID probe, so it must
 # sit here with the x86 ones, not in the TAS-only list below, which runs only
 # when no pthreads mutex was found -- i.e. never on these platforms.  It used
 # to be there, and that is why aarch64 built as plain POSIX/pthreads/library:
 # every acquire a pthread call, and on FreeBSD every multi-process attach
 # exposed to B3 at t=1 (test/KNOWN-ISSUES.md).
+#
+# Darwin/arm64 (Apple Silicon) is EXCLUDED: the AArch64 TAS primitives were
+# validated on FreeBSD/arm64 (Neoverse) and Linux, but on macOS the hybrid
+# sleep/wake path does not behave (run_mutex_stress produces no verdict -- the
+# binary crashes or hangs before progress).  macOS does not have the B3 umtx
+# defect the hybrid exists to fix, so it loses nothing by keeping the proven
+# POSIX/pthreads path, which is exactly what macOS used before the hybrid
+# landed.  See test/KNOWN-ISSUES.md (F1 / mutex-stress macOS).
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(, [[
-#if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__)
+#if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__) && \
+    !defined(__APPLE__)
 	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK
