@@ -49,7 +49,13 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#ifdef _WIN32
+#include <direct.h>		/* _mkdir */
+#include <windows.h>		/* for the rmtree below */
+#define	mkdir(d, m)	_mkdir(d)
+#else
 #include <unistd.h>
+#endif
 
 #include "db.h"
 
@@ -173,8 +179,14 @@ soak_rmtree(const char *dir)
 {
 	char cmd[600];
 
+#ifdef _WIN32
+	/* rd /s /q removes the tree; 2>nul swallows "not found". */
+	(void)snprintf(cmd, sizeof(cmd),
+	    "rd /s /q \"%s\" 2>nul", dir);
+#else
 	(void)snprintf(cmd, sizeof(cmd),
 	    "find '%s' -mindepth 1 -delete 2>/dev/null", dir);
+#endif
 	(void)system(cmd);
 }
 
