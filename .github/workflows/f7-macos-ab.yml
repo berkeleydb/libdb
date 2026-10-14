@@ -1,0 +1,136 @@
+# F7 / macOS hybrid-mutex A/B.  Dispatch-only measurement, never on push.
+#
+# Builds stock master twice on Apple Silicon -- once with the default
+# (POSIX/pthreads) mutex Darwin selects today, once with the AArch64 hybrid
+# forced by --with-mutex -- then runs, for each arm:
+#   correctness: run_mutex_stress (4 modes, teeth proven), lockmatrix, and the
+#                db-tier regression runners;
+#   performance: lock_bench (lock manager only) and scale_bench (rhot/wrand)
+#                at 1/2/4/8 threads, arms ALTERNATED within each rep.
+# Raw output is uploaded as an artifact; the decision is made from it.
+#
+# Hosted runners are small VMs (3-6 vCPU) -- a directional signal, not a
+# metal number.  The run says so in its own summary.
+name: macOS hybrid mutex A/B (F7)
+
+on:
+  workflow_dispatch:
+    inputs:
+      reps:
+        description: "reps per cell"
+        default: "7"
+      secs:
+        description: "seconds per cell"
+        default: "5"
+
+jobs:
+  ab:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-14, macos-latest]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host
+        run: |
+          sysctl -n machdep.cpu.brand_string hw.ncpu hw.perflevel0.physicalcpu 2>/dev/null || true
+          sw_vers
+      - name: Build both arms
+        run: |
+          set -eu
+          for arm in pthread hybrid; do
+            mkdir -p "b_$arm"; cd "b_$arm"
+            x=""
+            [ "$arm" = hybrid ] && x="--with-mutex=POSIX/pthreads/library/ARM64/gcc-assembly"
+            ../dist/configure $x CFLAGS="-O2 -g" > c.log 2>&1
+            make -j"$(sysctl -n hw.ncpu)" > m.log 2>&1
+            grep -E "^#define HAVE_MUTEX_(HYBRID|ARM64_GCC_ASSEMBLY|PTHREADS)" db_config.h | sed "s/^/  [$arm] /"
+            cd ..
+          done
+          # the hybrid arm MUST really be hybrid, or the A/B is meaningless
+          grep -q "define HAVE_MUTEX_HYBRID 1" b_hybrid/db_config.h
+          grep -q "define HAVE_MUTEX_ARM64_GCC_ASSEMBLY 1" b_hybrid/db_config.h
+          ! grep -q "define HAVE_MUTEX_HYBRID 1" b_pthread/db_config.h
+      - name: Correctness, both arms
+        run: |
+          set -u
+          rc=0
+          for arm in pthread hybrid; do
+            echo "=== $arm: run_mutex_stress ==="
+            sh test/db/run_mutex_stress.sh "b_$arm" || rc=1
+            echo "=== $arm: lockmatrix ==="
+            (cd test/lockmatrix && LIBDB_BUILD="$GITHUB_WORKSPACE/b_$arm" sh run.sh) || rc=1
+            echo "=== $arm: db-tier runners ==="
+            BUILD="$GITHUB_WORKSPACE/b_$arm" TIMEOUT=900 sh test/db/run_all.sh > "db_$arm.log" 2>&1 || rc=1
+            echo "  $arm run_all: $(grep -cE ': PASS' db_$arm.log) PASS, $(grep -cE 'FAILED \(exit' db_$arm.log) FAIL"
+            grep -E 'FAILED \(exit' "db_$arm.log" || true
+          done
+          exit $rc
+      - name: Performance A/B (alternated)
+        run: |
+          set -eu
+          R=${{ github.event.inputs.reps }}; S=${{ github.event.inputs.secs }}
+          for arm in pthread hybrid; do
+            for t in lock_bench scale_bench; do
+              cc -O2 -pthread -I"b_$arm" "test/bench/$t.c" "b_$arm/libdb.a" -o "$t.$arm"
+            done
+          done
+          # Output formats (checked against the sources, not guessed):
+          #   lock_bench:  "<threads> <ops/sec>" rows after a "# threads" header,
+          #                env home ./LOCKBENCHDIR (must exist), modes distinct|shared
+          #   scale_bench: "<wkld> <thr> <ops/sec> contention..." rows, home ./SCALEDB
+          # A missing or non-numeric value FAILS the step: a blank cell is a
+          # broken measurement, not a zero.
+          printf 'rep\tarm\tbench\tthreads\tops_per_sec\n' > ab.tsv
+          cell() {  # rep arm bench threads value
+            case "$5" in ''|*[!0-9.]*) echo "BAD CELL: $*"; exit 1 ;; esac
+            printf '%s\t%s\t%s\t%s\t%s\n' "$@" >> ab.tsv
+          }
+          for rep in $(seq 1 "$R"); do
+            if [ $((rep % 2)) -eq 1 ]; then order="pthread hybrid"; else order="hybrid pthread"; fi
+            for arm in $order; do
+              for th in 1 2 4 8; do
+                h=$(mktemp -d); cd "$h"
+                for mode in distinct shared; do
+                  mkdir -p LOCKBENCHDIR
+                  v=$("$GITHUB_WORKSPACE/lock_bench.$arm" "$S" 64 "$mode" "$th" 2>/dev/null | awk '!/^#/ && NF==2 {print $2}')
+                  cell "$rep" "$arm" "lock_$mode" "$th" "$v"
+                  find LOCKBENCHDIR -mindepth 1 -delete
+                done
+                for w in rhot wrand; do
+                  v=$("$GITHUB_WORKSPACE/scale_bench.$arm" "$w" 10000 "$S" "$th" 2>/dev/null | awk -v w="$w" '$1==w {print $3}')
+                  cell "$rep" "$arm" "scale_$w" "$th" "$v"
+                done
+                cd "$GITHUB_WORKSPACE"; find "$h" -mindepth 1 -delete; rmdir "$h"
+              done
+            done
+          done
+          cat ab.tsv
+          # medians per cell, hybrid/pthread ratio
+          python3 - <<'PY'
+          import csv, statistics as st, collections
+          d = collections.defaultdict(list)
+          for r in csv.DictReader(open('ab.tsv'), delimiter='\t'):
+              d[(r['bench'], int(r['threads']), r['arm'])].append(float(r['ops_per_sec']))
+          print(f"{'bench':14} {'thr':>3} {'pthread':>12} {'hybrid':>12} {'ratio':>6} {'cv_p%':>6} {'cv_h%':>6}")
+          for b, t in sorted({(b, t) for b, t, _ in d}):
+              p, h = d[(b, t, 'pthread')], d[(b, t, 'hybrid')]
+              mp, mh = st.median(p), st.median(h)
+              cv = lambda x: 100 * st.pstdev(x) / st.mean(x)
+              print(f"{b:14} {t:>3} {mp:>12.0f} {mh:>12.0f} {mh/mp:>6.2f} {cv(p):>6.1f} {cv(h):>6.1f}")
+          PY
+      - name: Region signature, both arms
+        run: |
+          for arm in pthread hybrid; do
+            echo "  $arm env_sig: $(BUILD_DIR=b_$arm sh dist/env_sig_print.sh . | tail -1)"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: f7-ab-${{ matrix.runner }}
+          path: |
+            ab.tsv
+            db_*.log
+            b_*/c.log
