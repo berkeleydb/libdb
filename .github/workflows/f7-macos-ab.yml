@@ -84,10 +84,11 @@ jobs:
           #   scale_bench: "<wkld> <thr> <ops/sec> contention..." rows, home ./SCALEDB
           # A missing or non-numeric value FAILS the step: a blank cell is a
           # broken measurement, not a zero.
-          printf 'rep\tarm\tbench\tthreads\tops_per_sec\n' > ab.tsv
+          TSV="$GITHUB_WORKSPACE/ab.tsv"   # ABSOLUTE: cell() runs inside a mktemp cwd
+          printf 'rep\tarm\tbench\tthreads\tops_per_sec\n' > "$TSV"
           cell() {  # rep arm bench threads value
             case "$5" in ''|*[!0-9.]*) echo "BAD CELL: $*"; exit 1 ;; esac
-            printf '%s\t%s\t%s\t%s\t%s\n' "$@" >> ab.tsv
+            printf '%s\t%s\t%s\t%s\t%s\n' "$@" >> "$TSV"
           }
           for rep in $(seq 1 "$R"); do
             if [ $((rep % 2)) -eq 1 ]; then order="pthread hybrid"; else order="hybrid pthread"; fi
@@ -108,12 +109,18 @@ jobs:
               done
             done
           done
-          cat ab.tsv
+          # 7 reps x 2 arms x 4 thread counts x 4 benches, plus the header.  A
+          # short file means rows were lost -- the first version of this step
+          # appended to a relative path from inside the temp dir and "passed"
+          # with a header-only TSV.
+          want=$(( R * 2 * 4 * 4 + 1 )); got=$(wc -l < "$TSV" | tr -d ' ')
+          [ "$got" -eq "$want" ] || { echo "ab.tsv has $got rows, want $want"; exit 1; }
+          cat "$TSV"
           # medians per cell, hybrid/pthread ratio
           python3 - <<'PY'
-          import csv, statistics as st, collections
+          import csv, os, statistics as st, collections
           d = collections.defaultdict(list)
-          for r in csv.DictReader(open('ab.tsv'), delimiter='\t'):
+          for r in csv.DictReader(open(os.environ['GITHUB_WORKSPACE']+'/ab.tsv'), delimiter='\t'):
               d[(r['bench'], int(r['threads']), r['arm'])].append(float(r['ops_per_sec']))
           print(f"{'bench':14} {'thr':>3} {'pthread':>12} {'hybrid':>12} {'ratio':>6} {'cv_p%':>6} {'cv_h%':>6}")
           for b, t in sorted({(b, t) for b, t, _ in d}):
