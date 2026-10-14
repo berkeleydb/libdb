@@ -33,20 +33,23 @@ $src  = Join-Path $here "test_soak_resources.c"
 $out  = Join-Path $here "build"
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 
-# The MSVC libdb static lib. The vs2010 solution's db project emits libdb.lib
-# (static) under the configuration's output dir; accept a couple of known names.
+# The MSVC libdb import library. The vs2010 solution's db project emits a DLL
+# (libdb<ver>.dll) plus its import lib (libdb<ver>.lib) under the configuration
+# output dir; link the import lib and put the DLL dir on PATH at run time.
 $lib = $null
-foreach ($cand in @("libdb.lib","libdb62.lib","libdb_static.lib")) {
+foreach ($cand in @("libdb.lib","libdb62.lib","libdb53.lib","libdb_static.lib")) {
     $p = Join-Path $root (Join-Path $Build $cand)
     if (Test-Path $p) { $lib = $p; break }
 }
 if (-not $lib) {
-    # fall back: first *.lib in the build dir that is not an import stub
-    $lib = (Get-ChildItem (Join-Path $root $Build) -Filter *.lib -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -notlike "*_imp*" } | Select-Object -First 1).FullName
+    # fall back: the libdb*.lib in the build dir (the import lib for the DLL)
+    $lib = (Get-ChildItem (Join-Path $root $Build) -Filter libdb*.lib -ErrorAction SilentlyContinue |
+            Select-Object -First 1).FullName
 }
 if (-not $lib) { Write-Error "no libdb .lib under $Build -- build the db project first"; exit 2 }
 Write-Host "lib: $lib"
+$dlldir = Split-Path -Parent $lib
+$env:Path = "$dlldir;$env:Path"   # so the libdb DLL loads at run time
 
 $winhdr = Join-Path $root "build_windows"   # Windows db.h / db_config.h live here
 $bin = Join-Path $out "test_soak_resources.exe"
