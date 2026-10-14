@@ -19,35 +19,43 @@
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
-
-# macOS/arm64: this driver crashes before printing any verdict (F7 in
-# test/KNOWN-ISSUES.md), independent of the mutex backend -- it still crashes
-# with the plain POSIX/pthreads build macOS uses (the AArch64 hybrid is not
-# selected on Darwin).  The crash is undiagnosed and needs a Mac to debug.  The
-# mutex it would exercise on macOS is the ordinary pthread path, already covered
-# by the whole TCL suite and every other test here, so skipping this one driver
-# on Darwin loses no coverage.  SKIP (not PASS -- we are not claiming it ran)
-# and exit 0; the test runs in full with teeth on every other platform.
-case "$(uname -s)" in
-Darwin)
-	echo "run_mutex_stress.sh: SKIP macOS -- test_mutex_stress crashes before" \
-	    "any verdict on Darwin (F7); the pthread mutex it would test is covered" \
-	    "by the rest of the suite. Not run here; runs fully on all other platforms."
-	exit 0
-	;;
-esac
-
 BUILD=${1:-${BUILD:-"$HERE/../../build_unix"}}
 [ -d "$BUILD" ] && BUILD=$(cd "$BUILD" && pwd)
 SRC=$HERE/../c/test_mutex_stress.c
 
+# Prefer the static library.  On macOS the .dylib carries a baked-in install
+# name (/usr/local/BerkeleyDB.<version>/lib/...) that takes precedence over
+# -rpath, so a binary linked against an uninstalled one is aborted by dyld
+# before main() runs.
 LIB="" ; LIBRPATH=""
-for cand in "$BUILD"/.libs/libdb-*.so "$BUILD"/.libs/libdb-*.dylib ; do
-	[ -f "$cand" ] && { LIB="$cand" ; break ; }
-done
-[ -n "$LIB" ] && LIBRPATH="-Wl,-rpath,$(cd "$BUILD/.libs" && pwd)"
-[ -n "$LIB" ] || [ ! -f "$BUILD/libdb.a" ] || LIB="$BUILD/libdb.a"
+[ -f "$BUILD/libdb.a" ] && LIB="$BUILD/libdb.a"
+if [ -z "$LIB" ] ; then
+	for cand in "$BUILD"/.libs/libdb-*.so "$BUILD"/.libs/libdb-*.dylib ; do
+		[ -f "$cand" ] && { LIB="$cand" ; break ; }
+	done
+	[ -n "$LIB" ] && LIBRPATH="-Wl,-rpath,$(cd "$BUILD/.libs" && pwd)"
+fi
 [ -n "$LIB" ] || { echo "run_mutex_stress.sh: FAIL no libdb library under $BUILD" ; exit 1 ; }
+
+# timeout(1) is GNU coreutils: present on Linux, absent on stock macOS (where it
+# is gtimeout if coreutils is installed).  Without either, run unbounded rather
+# than fail with rc=127; the driver's watchdog still catches a stall that starts
+# inside its measurement window.
+if command -v timeout >/dev/null 2>&1 ; then
+	TIMEOUT_CMD=timeout
+elif command -v gtimeout >/dev/null 2>&1 ; then
+	TIMEOUT_CMD=gtimeout
+else
+	TIMEOUT_CMD=""
+fi
+run_with_timeout() {
+	if [ -n "$TIMEOUT_CMD" ] ; then
+		"$TIMEOUT_CMD" "$@"
+	else
+		shift	# drop the seconds argument
+		"$@"
+	fi
+}
 
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
@@ -65,8 +73,12 @@ rc=0
 for a in "16 3 1" "16 3 0" "2 15 1 handoff" "2 15 0 handoff" ; do
 	clean ; mkdir -p "$H"
 	# shellcheck disable=SC2086
-	v=$(timeout 120 "$BIN" "$H" $a 2>&1 | grep '^VERDICT mutex_stress')
-	echo "  [$a] ${v:-NO VERDICT}"
+	out=$(run_with_timeout 120 "$BIN" "$H" $a 2>&1) ; brc=$?
+	v=$(printf '%s\n' "$out" | grep '^VERDICT mutex_stress')
+	echo "  [$a] ${v:-NO VERDICT (rc=$brc)}"
+	# Without a verdict the driver's own output is the only clue (a loader
+	# abort, a missing command), so show it rather than discard it.
+	[ -n "$v" ] || printf '%s\n' "$out" | tail -5 | sed 's/^/	| /'
 	case "$v" in "VERDICT mutex_stress PASS"*) ;; *) rc=1 ;; esac
 done
 clean ; rmdir "$H" 2>/dev/null
