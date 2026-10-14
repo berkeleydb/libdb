@@ -218,11 +218,9 @@ endif
 # here is the one thing that could actually be missing: outline atomics need
 # __aarch64_swp1_acq from the compiler runtime.
 #
-# Darwin/arm64 (Apple Silicon) is excluded, mirroring mutex.m4: the hybrid
-# sleep/wake path does not behave on macOS (run_mutex_stress produces no
-# verdict), and macOS lacks the B3 umtx defect the hybrid fixes, so it keeps
-# the proven POSIX/pthreads path it used before the hybrid landed.
-if host_machine.cpu_family() == 'aarch64' and host_machine.system() != 'darwin' and cc.links('''
+# Darwin/arm64 selects it too, mirroring mutex.m4 (the one-release exclusion
+# in 681026b49 rested on a test-runner bug, F7).
+if host_machine.cpu_family() == 'aarch64' and cc.links('''
 int main(void) {
 	volatile unsigned char tsl = 0;
 	int r = __atomic_exchange_n(&tsl, 1, __ATOMIC_ACQUIRE);
