@@ -69,6 +69,7 @@ jobs:
           done
           exit $rc
       - name: Performance A/B (alternated)
+        if: always()
         run: |
           set -eu
           R=${{ github.event.inputs.reps }}; S=${{ github.event.inputs.secs }}
@@ -122,6 +123,7 @@ jobs:
               print(f"{b:14} {t:>3} {mp:>12.0f} {mh:>12.0f} {mh/mp:>6.2f} {cv(p):>6.1f} {cv(h):>6.1f}")
           PY
       - name: Region signature, both arms
+        if: always()
         run: |
           for arm in pthread hybrid; do
             echo "  $arm env_sig: $(BUILD_DIR=b_$arm sh dist/env_sig_print.sh . | tail -1)"

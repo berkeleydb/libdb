@@ -68,6 +68,12 @@ fi
 echo "run.sh: using CC=$CC"
 LIBDB_ASAN=${LIBDB_ASAN:-1}
 LOCK_TIMEOUT=${LOCK_TIMEOUT:-600}
+# timeout(1) is GNU coreutils: absent on stock macOS (gtimeout if coreutils is
+# installed).  Resolve it the way run_mutex_stress.sh does; with neither, run
+# unbounded rather than fail every section with rc=127 before it starts.
+if command -v timeout >/dev/null 2>&1 ; then TIMEOUT_CMD=timeout
+elif command -v gtimeout >/dev/null 2>&1 ; then TIMEOUT_CMD=gtimeout
+else TIMEOUT_CMD="" ; fi
 OUT="$HERE/build"
 
 # Same mechanism as test/fuzz/check-crashes.sh: one shared ASan libdb under
@@ -129,7 +135,7 @@ cd "$OUT"
 rc=0
 for sec in ${*:-modes conflicts list}; do
 	echo "=== lockmatrix section: $sec"
-	if timeout "$LOCK_TIMEOUT" ./test_lock_matrix "$sec"; then
+	if ${TIMEOUT_CMD:+$TIMEOUT_CMD "$LOCK_TIMEOUT"} ./test_lock_matrix "$sec"; then
 		hi_emit "$sec" pass
 	else
 		src=$?
