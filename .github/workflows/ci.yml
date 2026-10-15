@@ -250,10 +250,9 @@ jobs:
   # posix-forced uses --enable-posixmutexes (intra-process pthread fast path).
   # All names verified against dist/aclocal/mutex.m4 + a local configure run.
   #
-  # The pthreads-library entry also runs the test/db runners and is blocking,
-  # so the plain pthreads mutex is tested on Linux whatever macOS selects.  It
-  # is what libdb uses on architectures without a test-and-set probe, such as
-  # ppc64le and riscv64.
+  # The pthreads-library entry also runs the test/db runners and is blocking.
+  # No other Linux job tests the plain pthreads mutex, which is what libdb
+  # selects on architectures without a hybrid probe (ppc64le, s390x, riscv64).
   # ----------------------------------------------------------------------------
   mutex-backends:
     name: mutex ${{ matrix.name }}
