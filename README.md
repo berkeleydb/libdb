@@ -43,6 +43,45 @@ soname (`libdb-2026.0`) change **only** through an announced, ABI-gated break,
 never silently. The internal `DB_VERSION_MAJOR.MINOR.PATCH` compatibility level
 is frozen and is not the release version; see [`VERSIONING.md`](VERSIONING.md).
 
+### Release cycle and LTS
+
+**Regular releases** come out when there is something worth shipping, and are
+named for the month they ship in (`v2026.10`, then `v2026.10.1`, `v2026.10.2`,
+… for later releases in the same month). A release can change the
+shared-memory region format if it measurably improves something. Such a change
+is announced in the release notes, gated by the build signature (a mismatched
+process fails with `DB_VERSION_MISMATCH` and reads nothing), and comes with an
+upgrade note in `docs_src/guides/upgrading/`. Database and log formats, the
+soname and the public ABI do not change in a regular release. Only the latest
+regular release gets fixes.
+
+**An LTS (long-term support) release** is a regular release that has also
+passed the LTS qualification in
+[`test/audit/QUALIFICATION-MATRIX.md`](test/audit/QUALIFICATION-MATRIX.md).
+That means a 72-hour resource-accounting soak with zero failures on Linux
+x86_64, FreeBSD x86_64, FreeBSD aarch64 and Windows/MSVC x86_64, in addition
+to the normal release bar. Declaring a release LTS is a promise about the
+**line** that starts from it:
+
+- **Frozen formats.** The on-disk, log and region formats, the soname, and the
+  public ABI do not change anywhere in the line. Every later release in it can
+  open an environment created by any earlier one, and processes from different
+  releases in the line can share one environment.
+- **Fixes only.** Releases in the line carry bug fixes, security fixes and
+  portability fixes. New features and performance work go to regular releases.
+- **Supported until the next LTS, plus a 12-month overlap.** When a new LTS is
+  declared, the previous line keeps getting fixes for 12 months so applications
+  have time to move.
+
+If you want a format that never changes underneath you, use an LTS release.
+If you want the newest work, use the latest regular release. Both are cut
+from `master`.
+
+| Release | Status |
+|---|---|
+| `v2026.10.7` | Latest regular release. **First LTS candidate**: in its 72-hour qualification soak. |
+| `v2026.10.6` | Superseded by `v2026.10.7`. Same engine on every platform except macOS arm64. |
+
 ### Browsing the archive
 
 ```sh
