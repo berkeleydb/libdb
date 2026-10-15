@@ -3596,11 +3596,11 @@ DB_VERSION_MINOR="0"
 
 DB_VERSION_PATCH="9"
 
-DB_CALVER="2026.10.6"
+DB_CALVER="2026.10.7"
 
-DB_VERSION_STRING='"libdb 2026.10.6 (October 12, 2026)"'
+DB_VERSION_STRING='"libdb 2026.10.7 (October 15, 2026)"'
 
-DB_VERSION_FULL_STRING='"libdb 2026.10.6 (October 12, 2026)"'
+DB_VERSION_FULL_STRING='"libdb 2026.10.7 (October 15, 2026)"'
 
 
 # Process all options before using them.
@@ -24844,20 +24844,18 @@ then :
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
-# ARM64/AArch64 gcc/clang: FreeBSD, Linux.  A HYBRID probe, so it must
+# ARM64/AArch64 gcc/clang: FreeBSD, Linux, macOS.  A HYBRID probe, so it must
 # sit here with the x86 ones, not in the TAS-only list below, which runs only
 # when no pthreads mutex was found -- i.e. never on these platforms.  It used
 # to be there, and that is why aarch64 built as plain POSIX/pthreads/library:
 # every acquire a pthread call, and on FreeBSD every multi-process attach
 # exposed to B3 at t=1 (test/KNOWN-ISSUES.md).
 #
-# Darwin/arm64 (Apple Silicon) is EXCLUDED: the AArch64 TAS primitives were
-# validated on FreeBSD/arm64 (Neoverse) and Linux, but on macOS the hybrid
-# sleep/wake path does not behave (run_mutex_stress produces no verdict -- the
-# binary crashes or hangs before progress).  macOS does not have the B3 umtx
-# defect the hybrid exists to fix, so it loses nothing by keeping the proven
-# POSIX/pthreads path, which is exactly what macOS used before the hybrid
-# landed.  See test/KNOWN-ISSUES.md (F1 / mutex-stress macOS).
+# Darwin/arm64 was excluded for one release (681026b49) on a misdiagnosis:
+# run_mutex_stress printed no verdict there, but the runner -- not the mutex --
+# was broken (F7: dyld install-name over -rpath, and no GNU timeout).  With the
+# runner fixed the hybrid passes on Apple Silicon with its teeth intact, so
+# macOS selects it again.
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -24865,8 +24863,7 @@ int
 main (void)
 {
 
-#if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__) && \
-    !defined(__APPLE__)
+#if (defined(__aarch64__) || defined(_M_ARM64)) && defined(__GNUC__)
 	(void)0;  /* compile-only probe; nothing is run */
 #else
 	FAIL TO COMPILE/LINK

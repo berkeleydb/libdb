@@ -85,6 +85,14 @@ the hash at the same value on both). Still pre-LTS; the gain was correctness
 (B3 on ARM) plus scalability overhead reductions, against a one-time region
 recreation.
 
+The third was **v2026.10.7**, on **macOS arm64 only**: the AArch64 hybrid mutex
+is selected there again by default (F7), moving that platform's signature
+`0xe0ad2911` → `0x2c8d3688`. Every other platform's build output is
+byte-identical to v2026.10.6 (same `db_config.h`, same `.text`, same signature,
+verified on Linux x86_64, FreeBSD x86_64 and FreeBSD aarch64), which is why the
+v2026.10.6 soak qualifies it there. This is the last region change before the
+first LTS; from the LTS tag on, the format is frozen within the line.
+
 ## Consuming code
 
 - Human / release identity → `DB_CALVER` (or the leading token of
