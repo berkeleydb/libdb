@@ -79,7 +79,7 @@ from `master`.
 
 | Release | Status |
 |---|---|
-| `v2026.10.7` | Latest regular release. **First LTS candidate**: in its 72-hour qualification soak. |
+| `v2026.10.7` | **First LTS release.** Qualified on the full matrix including a 72-hour resource-accounting soak on Linux x86_64, FreeBSD x86_64, FreeBSD aarch64 and Windows/MSVC x86_64, all clean. Start of the first LTS line: on-disk, log and region formats, the soname and the public ABI are frozen within it. |
 | `v2026.10.6` | Superseded by `v2026.10.7`. Same engine on every platform except macOS arm64. |
 
 ### Browsing the archive
