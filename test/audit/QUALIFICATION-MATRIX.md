@@ -60,3 +60,20 @@ these.
     performance, or a documented limitation with a workaround.
 11. The region signature, ABI and on-disk format are **frozen** from the LTS
     tag forward, which `VERSIONING.md` already states.
+
+## First LTS: v2026.10.7 (qualified 2026-10-16)
+
+The gates above were met and the LTS declared on **v2026.10.7**.
+
+- **Soak (gate 8):** 72-hour resource-accounting soak, zero failures on all
+  four platforms. Linux x86_64 ran the full 72h (8,913 passes, Oct 13 13:14 →
+  Oct 16 13:13Z); Windows/MSVC x86_64 ran the full 72h (4,600 passes over
+  4,320 minutes, `SOAK72_EXIT=0`); FreeBSD x86_64 and FreeBSD aarch64 ran
+  clean (every completed pass "resources stayed within tolerance", no
+  `SOAK_FAILED`). Each pass opens and closes a fresh long-lived environment, so
+  a resource leak or region-accounting divergence fails the arm.
+- **CI (gates 1–7):** green at job level on the release commit `a849cdbc5`
+  (10 workflows, 71 jobs, 0 failed).
+- **Frozen (gate 11):** the `2026.10.x` LTS line is frozen at the signatures in
+  the v2026.10.7 upgrade note — macOS arm64 `0x2c8d3688`, LP64 x86_64
+  `0x56a06689`, aarch64 `0x56a06689`. See `VERSIONING.md` §LTS lines.
