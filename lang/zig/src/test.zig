@@ -307,3 +307,153 @@ test "cursor on txn: close before commit (safe-build assert holds)" {
     try txn.commit();
 }
 
+// -- Phase 3 ---------------------------------------------------------------
+
+// Reverse-order integer comparator over 4-byte big-endian keys.
+fn revCompare(ctx: *anyopaque, x: []const u8, y: []const u8) c_int {
+    _ = ctx;
+    const xv = std.mem.readInt(u32, x[0..4], .big);
+    const yv = std.mem.readInt(u32, y[0..4], .big);
+    if (xv < yv) return 1; // reversed
+    if (xv > yv) return -1;
+    return 0;
+}
+
+test "custom bt_compare orders keys" {
+    const a = std.testing.allocator;
+    const home = try tempHome(a);
+    defer a.free(home);
+    var env = try libdb.Env.create();
+    defer env.deinit();
+    try env.open(home);
+
+    var dummy: u8 = 0;
+    const cbs = libdb.Callbacks{ .ctx = &dummy, .bt_compare = revCompare };
+    var db = try env.database().openWith("rev.db", &cbs);
+    defer db.deinit();
+
+    var i: u32 = 1;
+    while (i <= 5) : (i += 1) {
+        var kb: [4]u8 = undefined;
+        std.mem.writeInt(u32, &kb, i, .big);
+        try db.put(null, &kb, "x");
+    }
+    // First record under the reverse comparator must be the largest key (5).
+    var cur = try db.cursor(null);
+    defer cur.deinit();
+    const pair = (try cur.get(a, consts.DB_FIRST, null, null)).?;
+    defer a.free(pair.key);
+    defer a.free(pair.value);
+    try std.testing.expectEqual(@as(u32, 5), std.mem.readInt(u32, pair.key[0..4], .big));
+}
+
+// Secondary index: extract the first byte of the value as the secondary key.
+fn firstByte(ctx: *anyopaque, pkey: []const u8, pdata: []const u8) ?[]const u8 {
+    _ = ctx;
+    _ = pkey;
+    if (pdata.len == 0) return null; // DB_DONOTINDEX
+    return pdata[0..1];
+}
+
+test "secondary index lookup via associate + pget" {
+    const a = std.testing.allocator;
+    const home = try tempHome(a);
+    defer a.free(home);
+    var env = try libdb.Env.create();
+    defer env.deinit();
+    try env.open(home);
+
+    var primary = try env.openBtree("primary.db");
+    defer primary.deinit();
+    // secondary allows duplicates (many primaries share a first byte)
+    var secondary = try env.database().dup(false).open("secondary.db");
+    defer secondary.deinit();
+
+    var dummy: u8 = 0;
+    const ext = libdb.Extractor{ .ctx = &dummy, .extract = firstByte };
+    try primary.associate(null, &secondary, &ext);
+
+    try primary.put(null, "p1", "apple");
+    try primary.put(null, "p2", "apricot");
+    try primary.put(null, "p3", "banana");
+    try primary.put(null, "p4", ""); // skipped (DB_DONOTINDEX)
+
+    // look up by secondary key "a" -> some primary whose value starts with 'a'
+    const r = (try secondary.pget(a, null, "a")).?;
+    defer a.free(r.pkey);
+    defer a.free(r.data);
+    try std.testing.expect(r.data[0] == 'a');
+
+    // "b" -> banana / p3
+    const rb = (try secondary.pget(a, null, "b")).?;
+    defer a.free(rb.pkey);
+    defer a.free(rb.data);
+    try std.testing.expectEqualStrings("p3", rb.pkey);
+    try std.testing.expectEqualStrings("banana", rb.data);
+
+    // nothing indexed under the empty-value record
+    try std.testing.expect((try secondary.pget(a, null, "z")) == null);
+}
+
+test "bulk get equals N single gets" {
+    const a = std.testing.allocator;
+    const home = try tempHome(a);
+    defer a.free(home);
+    var env = try libdb.Env.create();
+    defer env.deinit();
+    try env.open(home);
+    var db = try env.openBtree("bulk.db");
+    defer db.deinit();
+
+    const n = 50;
+    var i: u32 = 0;
+    while (i < n) : (i += 1) {
+        var kb: [8]u8 = undefined;
+        const k = std.fmt.bufPrint(&kb, "k{d:0>4}", .{i}) catch unreachable;
+        var vb: [8]u8 = undefined;
+        const v = std.fmt.bufPrint(&vb, "v{d:0>4}", .{i}) catch unreachable;
+        try db.put(null, k, v);
+    }
+
+    var buf: [65536]u8 align(1024) = undefined;
+    var it = try db.bulk(null, &buf);
+    defer it.deinit();
+
+    var count: u32 = 0;
+    while (try it.next()) |pair| {
+        // cross-check each bulk record against a single get
+        const single = (try db.get(a, null, pair.key)).?;
+        defer a.free(single);
+        try std.testing.expectEqualStrings(single, pair.value);
+        count += 1;
+    }
+    try std.testing.expectEqual(@as(u32, n), count);
+}
+
+test "sequence increments" {
+    const a = std.testing.allocator;
+    const home = try tempHome(a);
+    defer a.free(home);
+    var env = try libdb.Env.create();
+    defer env.deinit();
+    try env.open(home);
+    var db = try env.openBtree("seq.db");
+    defer db.deinit();
+
+    var seq = try libdb.Sequence.open(&db, null, "ticket", true, .{ .initial = 100 });
+    defer seq.deinit();
+
+    try std.testing.expectEqual(@as(i64, 100), try seq.next(null, 1));
+    try std.testing.expectEqual(@as(i64, 101), try seq.next(null, 1));
+    try std.testing.expectEqual(@as(i64, 102), try seq.next(null, 1));
+    // a delta>1 reserves a block and returns its first value
+    try std.testing.expectEqual(@as(i64, 103), try seq.next(null, 5));
+    try std.testing.expectEqual(@as(i64, 108), try seq.next(null, 1));
+}
+
+test "drift gate: every baked constant is in the table" {
+    // The teeth are in the generated C program (see gen-drift-gate.zig and
+    // `zig build drift`); this guards that the Zig-side table was not left
+    // short of the public consts (a quick structural check).
+    try std.testing.expect(consts.all.len >= 60);
+}
