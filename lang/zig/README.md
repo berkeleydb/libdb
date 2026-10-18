@@ -1,47 +1,61 @@
-# libdb — Zig bindings
+<!-- SPDX-License-Identifier: Sleepycat -->
+# libdb — Zig binding
 
-Idiomatic Zig bindings for **libdb** (the community Berkeley DB fork).
+Idiomatic Zig bindings for libdb (the community Berkeley DB fork), per
+[RFC 0016](../../rfc/0016-rust-zig-bindings.md). Pinned to **Zig 0.16**.
 
-**Status: Phase 0** (the proof-of-shape from [RFC 0016](../../rfc/0016-rust-zig-bindings.md)).
-What works today: an owning `Env` and `Db` (`defer env.deinit()`), the
-error-union model (the control-flow negatives are modelled in return types —
-an absent key is `null`, not an error), and a borrowed-in / copy-out
-`put`/`get` round trip. Transactions, cursors, callbacks, secondary indices and
-bulk ops land in later phases — see the RFC.
+Three layers:
 
-## Layout
+- **Layer 0** — the C library (`db.h` + `libdb-2026.0.so`).
+- **Layer 1** — `shim.c`/`shim.h` (flat `libdb_<handle>_<method>` entry points so
+  the C compiler resolves method-pointer offsets) + `src/consts.zig` (the frozen
+  constant list) + the mirrored `DBT`.
+- **Layer 2** — `src/libdb.zig` — owning `Env`/`Db`/`Txn`/`Cursor`/`Sequence`,
+  error unions, allocator passed in, `defer deinit()`.
 
-```
-build.zig     Builds the `libdb` module; links the C library + the method shim.
-src/libdb.zig Layer 2: the safe, idiomatic API you import.
-shim.c/shim.h Layer 1 seam: flat C entry points for the handle methods, so Zig
-              never assumes a handle struct offset (the C compiler resolves
-              db->put via the real db.h). Shared concept with the Rust binding.
-src/test.zig  The Phase-0 test block (round trip).
-```
+A caller uses only Layer 2.
 
 ## Build & test
 
-Requires an installed libdb (`libdb-2026.0.so` + `db.h`). Default prefix is
-`/usr/local/BerkeleyDB.2026.0`; override with `-Dlibdb-prefix=...`.
-
 ```sh
 export LD_LIBRARY_PATH=/usr/local/BerkeleyDB.2026.0/lib
-zig build test --summary all
+zig build test --summary all                     # Debug
+zig build test -Doptimize=ReleaseSafe --summary all
+zig build test -Doptimize=ReleaseFast --summary all
+zig build drift                                  # the constant drift gate
+zig build example-kv                             # key/value CLI
+zig build example-counter                        # transactional counter + retry
+zig build example-address                        # secondary-index address book
 ```
 
-Pinned to **Zig 0.16**. Verified on FreeBSD 14 against libdb at the first LTS,
-`v2026.10.7`.
+Override the install prefix with `-Dlibdb-prefix=/path/to/BerkeleyDB`.
 
-## Example
+## A first program
 
 ```zig
+const libdb = @import("libdb");
+
 var env = try libdb.Env.create();
 defer env.deinit();
-try env.open("db-home");
+try env.open("/tmp/myenv");
+
 var db = try env.openBtree("data.db");
 defer db.deinit();
-try db.put("key", "value");
-const v = (try db.get(allocator, "key")).?;
-defer allocator.free(v);
+
+try db.put(null, "hello", "world");
+const a = std.heap.page_allocator;
+if (try db.get(a, null, "hello")) |v| {
+    defer a.free(v);
+    std.debug.print("{s}\n", .{v}); // world
+}
 ```
+
+## Documentation
+
+- [`reference.md`](reference.md) — the full API reference, organised like the std docs.
+- [`guide/`](guide/) — getting-started chapters (open env, put/get, txns + retry,
+  cursors, secondary indices, bulk).
+- [`MAPPING.md`](MAPPING.md) — a C-method → Zig cross-walk for Berkeley DB C users.
+
+Every public declaration carries a `///` doc-comment; `zig build-obj -femit-docs`
+renders them, and `reference.md` is the hand-written companion.
