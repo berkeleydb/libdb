@@ -20,6 +20,7 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0013](0013-cross-engine-campaign.md) | Cross-engine benchmark campaign: plan for review | Draft |
 | [0014](0014-typed-data-and-constraints.md) | Typed data and constraints: a codec socket ("modem") and a constraint layer, configure-time optional | Accepted (Phases 0–1) |
 | [0015](0015-multicore-scalability.md) | Multi-core scalability audit: every serialisation point, and the order to remove them | Draft |
+| [0016](0016-rust-zig-bindings.md) | Rust and Zig language bindings: idiomatic, zero-copy-capable API shims over the C library, with native-format docs and tests | Draft |
 
 <!-- Add a row per RFC. Keep the number 4-digit zero-padded and monotonic. -->
 
