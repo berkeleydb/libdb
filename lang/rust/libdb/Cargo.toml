@@ -1,0 +1,9 @@
+[package]
+name = "libdb"
+version = "0.0.0"
+edition = "2021"
+license = "Sleepycat"
+description = "Idiomatic Rust bindings for libdb (Berkeley DB fork)."
+
+[dependencies]
+libdb-sys = { path = "../libdb-sys" }
