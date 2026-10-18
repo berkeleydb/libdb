@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Sleepycat
+/* Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
  *
  * shim.c -- flat C entry points for the libdb handle methods a binding calls.
  *
@@ -17,6 +19,7 @@
  *
  * One line per wrapped method. Add here when Layer 2 grows; a missing symbol
  * is a link error, and the drift gate keeps the constants in step. */
+#include <sys/types.h>
 #include <db.h>
 
 /* ----- DB_ENV ----- */

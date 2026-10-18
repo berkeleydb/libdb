@@ -31,6 +31,8 @@ pub fn main(init: std.process.Init.Minimal) !void {
         \\ * bakes in; the compiler fails if any disagrees with the installed
         \\ * db.h. _Static_assert (not #if) is used because the DBTYPE values are
         \\ * enum constants, invisible to the preprocessor. */
+        \\#define _DEFAULT_SOURCE 1
+        \\#include <sys/types.h>
         \\#include <db.h>
         \\#include <stdio.h>
         \\

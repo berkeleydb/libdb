@@ -1,4 +1,7 @@
-/* SPDX-License-Identifier: Sleepycat
+/* Copyright (c) 2026 libdb contributors.  All rights reserved.
+ *
+ * SPDX-License-Identifier: Sleepycat
+ *
  * shim.h -- prototypes for the flat method entry points in shim.c, so a
  * binding's @cImport/@cInclude (Zig) or a hand-decl (Rust) sees them. The
  * flat `libdb_<handle>_<method>` symbols let the C compiler -- which reads the
@@ -7,6 +10,7 @@
  * method. */
 #ifndef LIBDB_SHIM_H
 #define LIBDB_SHIM_H
+#include <sys/types.h>
 #include <db.h>
 
 /* ---- DB_ENV ---- */

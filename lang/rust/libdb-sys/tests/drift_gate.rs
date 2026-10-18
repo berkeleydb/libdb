@@ -36,6 +36,12 @@ fn constants_match_installed_header() {
 
     // Generate the C from the binding's constant table.
     let mut c = String::new();
+    // db.h uses u_int/u_long (BSD type names). On glibc they are only visible
+    // with a feature macro + <sys/types.h>; on the BSDs they are default. Pull
+    // them in before db.h so this check compiles on Linux and the BSDs alike
+    // (a C program using db.h on Linux must do the same).
+    c.push_str("#define _DEFAULT_SOURCE 1\n");
+    c.push_str("#include <sys/types.h>\n");
     c.push_str("#include <db.h>\n");
     for (name, value) in libdb_sys::CONSTANTS {
         // Cast both sides to long long so a negative DB_* code compares as its

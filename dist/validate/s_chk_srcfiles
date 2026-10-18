@@ -31,6 +31,8 @@ find $d -type f |
         -e '/^lang\/java\/libdb_java\/java_stat_auto.c/d' \
         -e '/^lang\/perl\//d' \
         -e '/^lang\/php_db4\//d' \
+        -e '/^lang\/rust\//d' \
+        -e '/^lang\/zig\//d' \
         -e '/^test\//d' \
 	-e '/^test\/erlang/d' \
 	-e '/^test\/repmgr/d' \
