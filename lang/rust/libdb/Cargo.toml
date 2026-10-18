@@ -7,3 +7,6 @@ description = "Idiomatic Rust bindings for libdb (Berkeley DB fork)."
 
 [dependencies]
 libdb-sys = { path = "../libdb-sys" }
+
+[dev-dependencies]
+trybuild = "1.0"

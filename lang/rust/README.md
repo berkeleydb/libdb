@@ -2,15 +2,15 @@
 
 Idiomatic Rust bindings for **libdb** (the community Berkeley DB fork).
 
-**Status: Phase 1** (the core data path, from [RFC 0016](../../rfc/0016-rust-zig-bindings.md)).
-What works today: an owning `Env` and `Db` with builders (type, pagesize,
-duplicates), the error model (with the control-flow negatives demoted —
-`DB_NOTFOUND` is `Ok(None)`, not an error), `put`/`get`/`del`/`exists`, the
-three value-output forms (copy-out `get`, zero-alloc `get_into` with
-`DB_BUFFER_SMALL` grow-retry, and the borrowed-closure `with_value`), a captured
-error-callback diagnostic, and the compile-vs-runtime version check. The drift
-gate re-verifies every baked constant against the installed `db.h`. Transactions,
-cursors, callbacks, secondary indices and bulk ops land in later phases.
+**Status: Phase 2** (transactions + cursors, from [RFC 0016](../../rfc/0016-rust-zig-bindings.md)).
+What works today: the core data path (Phase 1) plus transactions (`Txn` with
+parent/snapshot/nowait, commit/abort consuming `self`, the `env.transact`
+deadlock-retry helper), cursors (`Cursor<'txn, 'db>` that cannot outlive its
+transaction, all the get opcodes, put/del/count/dup, and forward/backward
+iteration as a real `Iterator`). The lifecycle rules are proven by a `trybuild`
+ui test: a cursor outliving its txn, a handle used after `commit`, and a value
+escaping `with_value` are each a *compile* error. Callbacks, secondary indices,
+sequences and bulk ops land in Phase 3.
 
 ## Layout
 
