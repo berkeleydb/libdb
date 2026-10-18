@@ -51,6 +51,9 @@ pub(crate) fn open<'txn, 'db>(
 /// The `(key, value)` pair a cursor get yields, copied out.
 type Pair = (Vec<u8>, Vec<u8>);
 
+/// A `(secondary_key, primary_key, value)` triple a secondary `pget` yields.
+type Triple = (Vec<u8>, Vec<u8>, Vec<u8>);
+
 impl<'txn, 'db> Cursor<'txn, 'db> {
     fn enrich(&self, e: Error) -> Error {
         unsafe { (*self.env_err).enrich(e) }
@@ -191,6 +194,31 @@ impl<'txn, 'db> Cursor<'txn, 'db> {
             started: false,
             done: false,
         }
+    }
+
+    /// Secondary cursor `pget`: position by secondary opcode and return
+    /// `(secondary_key, primary_key, value)`. Only valid on a cursor over a
+    /// secondary database.
+    pub fn pget(&self, op: ffi::u_int32_t) -> Result<Option<Triple>> {
+        let mut sk = dbt_out(ffi::DB_DBT_MALLOC);
+        let mut pk = dbt_out(ffi::DB_DBT_MALLOC);
+        let mut d = dbt_out(ffi::DB_DBT_MALLOC);
+        let rc = unsafe { ffi::libdb_dbc_pget(self.ptr, &mut sk, &mut pk, &mut d, op) };
+        if rc == ffi::DB_NOTFOUND {
+            return Ok(None);
+        }
+        check(rc).map_err(|e| self.enrich(e))?;
+        Ok(Some(unsafe {
+            (take_malloc(&sk), take_malloc(&pk), take_malloc(&d))
+        }))
+    }
+
+    /// Bulk forward scan: fetch many records in one `DB_MULTIPLE_KEY` call and
+    /// walk the returned buffer with pure pointer arithmetic — zero per-record
+    /// allocation. The returned [`crate::BulkPairs`] borrows `buf`, so each
+    /// `(key, value)` is a slice into it.
+    pub fn bulk<'a>(&self, buf: &'a mut Vec<u8>) -> Result<crate::BulkPairs<'a>> {
+        crate::bulk::fetch(self.ptr, buf, |e| self.enrich(e))
     }
 }
 

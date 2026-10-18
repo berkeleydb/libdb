@@ -2,15 +2,15 @@
 
 Idiomatic Rust bindings for **libdb** (the community Berkeley DB fork).
 
-**Status: Phase 2** (transactions + cursors, from [RFC 0016](../../rfc/0016-rust-zig-bindings.md)).
-What works today: the core data path (Phase 1) plus transactions (`Txn` with
-parent/snapshot/nowait, commit/abort consuming `self`, the `env.transact`
-deadlock-retry helper), cursors (`Cursor<'txn, 'db>` that cannot outlive its
-transaction, all the get opcodes, put/del/count/dup, and forward/backward
-iteration as a real `Iterator`). The lifecycle rules are proven by a `trybuild`
-ui test: a cursor outliving its txn, a handle used after `commit`, and a value
-escaping `with_value` are each a *compile* error. Callbacks, secondary indices,
-sequences and bulk ops land in Phase 3.
+**Status: Phase 3** (callbacks, secondary indices, sequences, bulk — from
+[RFC 0016](../../rfc/0016-rust-zig-bindings.md)).
+What works today: the core data path and transactions/cursors (Phases 1–2) plus
+comparators (`bt_compare`/`dup_compare`) and a `h_hash` function via the
+callback trampoline (each thunk `catch_unwind`-wrapped so a panic cannot cross
+FFI), a secondary index (`associate` + `pget`, with `None` from the extractor
+skipping a record via `DB_DONOTINDEX`), 64-bit `Sequence`s, and zero-copy bulk
+retrieval (`Cursor::bulk`) as a native `Iterator` over the `DB_MULTIPLE_KEY`
+buffer with pure pointer arithmetic. Docs, guide and examples are Phase 4.
 
 ## Layout
 

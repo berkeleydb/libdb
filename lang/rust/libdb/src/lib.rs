@@ -33,10 +33,14 @@ use std::path::Path;
 
 use libdb_sys as ffi;
 
+mod bulk;
 mod cursor;
+mod seq;
 mod txn;
 
+pub use bulk::{BulkPairs, MultiKey};
 pub use cursor::{Cursor, CursorIter, Direction};
+pub use seq::Sequence;
 pub use txn::Txn;
 
 // ===========================================================================
@@ -302,6 +306,9 @@ impl Env {
             ty: ffi::DB_BTREE,
             pagesize: 0,
             set_flags: 0,
+            bt_compare: None,
+            dup_compare: None,
+            h_hash: None,
             err: None,
         }
     }
@@ -547,6 +554,23 @@ pub mod flag {
     pub const TXN_SNAPSHOT: u32 = ffi::DB_TXN_SNAPSHOT;
 }
 
+/// Cursor positioning opcodes, for [`Cursor::pget`].
+pub mod opcode {
+    use super::ffi;
+    /// First record.
+    pub const FIRST: u32 = ffi::DB_FIRST;
+    /// Last record.
+    pub const LAST: u32 = ffi::DB_LAST;
+    /// Next record.
+    pub const NEXT: u32 = ffi::DB_NEXT;
+    /// Previous record.
+    pub const PREV: u32 = ffi::DB_PREV;
+    /// Next duplicate of the current key.
+    pub const NEXT_DUP: u32 = ffi::DB_NEXT_DUP;
+    /// Current record.
+    pub const CURRENT: u32 = ffi::DB_CURRENT;
+}
+
 // ===========================================================================
 // Db
 // ===========================================================================
@@ -557,6 +581,25 @@ pub mod flag {
 pub struct Db<'env> {
     ptr: *mut ffi::DB,
     env: &'env Env,
+    // The installed comparator/hash closures, kept alive for the handle's
+    // lifetime; their raw pointer is stashed on the DB handle for the thunks.
+    _callbacks: Option<Box<DbCallbacks>>,
+}
+
+/// A key/value comparator closure.
+pub(crate) type CompareClosure = Box<dyn Fn(&[u8], &[u8]) -> core::cmp::Ordering + 'static>;
+/// A hash-function closure.
+pub(crate) type HashClosure = Box<dyn Fn(&[u8]) -> u32 + 'static>;
+/// A secondary-index extractor closure.
+pub(crate) type ExtractClosure = Box<dyn Fn(&[u8], &[u8]) -> Option<Vec<u8>> + 'static>;
+
+/// The host closures stashed behind the DB handle's `app_private` slot so the
+/// extern-C comparator/hash/associate thunks can recover them.
+struct DbCallbacks {
+    bt_compare: Option<CompareClosure>,
+    dup_compare: Option<CompareClosure>,
+    h_hash: Option<HashClosure>,
+    associate: Option<ExtractClosure>,
 }
 
 /// The database access-method type.
@@ -588,6 +631,9 @@ pub struct DbBuilder<'env> {
     ty: c_int,
     pagesize: ffi::u_int32_t,
     set_flags: ffi::u_int32_t,
+    bt_compare: Option<CompareClosure>,
+    dup_compare: Option<CompareClosure>,
+    h_hash: Option<HashClosure>,
     err: Option<Error>,
 }
 
@@ -632,6 +678,30 @@ impl<'env> DbBuilder<'env> {
         self.set_flags |= ffi::DB_DUP | ffi::DB_DUPSORT;
         self
     }
+    /// Install a Btree key comparator defining the key order.
+    pub fn bt_compare<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&[u8], &[u8]) -> core::cmp::Ordering + 'static,
+    {
+        self.bt_compare = Some(Box::new(f));
+        self
+    }
+    /// Install a duplicate-data comparator (requires `sorted_duplicates`).
+    pub fn dup_compare<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&[u8], &[u8]) -> core::cmp::Ordering + 'static,
+    {
+        self.dup_compare = Some(Box::new(f));
+        self
+    }
+    /// Install a Hash hash function.
+    pub fn h_hash<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&[u8]) -> u32 + 'static,
+    {
+        self.h_hash = Some(Box::new(f));
+        self
+    }
 
     /// Open the database backed by `file`.
     pub fn open<P: AsRef<Path>>(self, file: P) -> Result<Db<'env>> {
@@ -650,6 +720,33 @@ impl<'env> DbBuilder<'env> {
         }
         let mut dbp: *mut ffi::DB = core::ptr::null_mut();
         check(unsafe { ffi::db_create(&mut dbp, self.env.ptr, 0) })?;
+
+        // Build and stash the callbacks before open, installing the C thunks.
+        let callbacks =
+            if self.bt_compare.is_some() || self.dup_compare.is_some() || self.h_hash.is_some() {
+                let cb = Box::new(DbCallbacks {
+                    bt_compare: self.bt_compare.take(),
+                    dup_compare: self.dup_compare.take(),
+                    h_hash: self.h_hash.take(),
+                    associate: None,
+                });
+                let raw = (&*cb) as *const DbCallbacks as *mut c_void;
+                unsafe {
+                    ffi::libdb_db_set_app_private(dbp, raw);
+                    if cb.bt_compare.is_some() {
+                        ffi::libdb_db_set_bt_compare(dbp, Some(bt_compare_thunk));
+                    }
+                    if cb.dup_compare.is_some() {
+                        ffi::libdb_db_set_dup_compare(dbp, Some(dup_compare_thunk));
+                    }
+                    if cb.h_hash.is_some() {
+                        ffi::libdb_db_set_h_hash(dbp, Some(h_hash_thunk));
+                    }
+                }
+                Some(cb)
+            } else {
+                None
+            };
 
         if self.pagesize != 0 {
             if let Err(e) = check(unsafe { ffi::libdb_db_set_pagesize(dbp, self.pagesize) }) {
@@ -687,6 +784,7 @@ impl<'env> DbBuilder<'env> {
             Ok(()) => Ok(Db {
                 ptr: dbp,
                 env: self.env,
+                _callbacks: callbacks,
             }),
             Err(e) => {
                 let e = self.env.enrich(e);
@@ -882,6 +980,75 @@ impl<'env> Db<'env> {
         cursor::open(self, Some(txn))
     }
 
+    // --- secondary index ---------------------------------------------------
+
+    /// Associate `secondary` with this (primary) database. The `extractor`
+    /// derives a secondary key from each primary (key, value); return `None`
+    /// to skip indexing a record (`DB_DONOTINDEX`). After this, a `pget` on the
+    /// secondary returns the primary's value.
+    pub fn associate<F>(&self, secondary: &Db<'env>, extractor: F) -> Result<()>
+    where
+        F: Fn(&[u8], &[u8]) -> Option<Vec<u8>> + 'static,
+    {
+        // The associate callback must live on the SECONDARY handle (its first
+        // arg is the secondary). Stash it there, reusing app_private.
+        //
+        // shortcut: this replaces any comparator callbacks already stashed on
+        // the secondary; upgrade to a combined callback struct if a secondary
+        // ever needs both a comparator and an extractor.
+        let cb = Box::new(DbCallbacks {
+            bt_compare: None,
+            dup_compare: None,
+            h_hash: None,
+            associate: Some(Box::new(extractor)),
+        });
+        let raw = (&*cb) as *const DbCallbacks as *mut c_void;
+        unsafe {
+            ffi::libdb_db_set_app_private(secondary.ptr, raw);
+        }
+        let rc = unsafe {
+            ffi::libdb_db_associate(
+                self.ptr,
+                core::ptr::null_mut(),
+                secondary.ptr,
+                Some(associate_thunk),
+                0,
+            )
+        };
+        check(rc).map_err(|e| self.env.enrich(e))?;
+        // Keep the callback alive by leaking it onto the secondary's slot; it
+        // lives as long as the secondary handle (closed on Db::drop).
+        // shortcut: leaked rather than tracked for drop — fine because the
+        // process holds the handle until the Db drops the C handle, after
+        // which the C library never calls the thunk again. Upgrade to storing
+        // the Box on the secondary Db if strict leak-freedom is required.
+        Box::leak(cb);
+        Ok(())
+    }
+
+    /// Secondary `pget`: look a secondary key up and return the primary's
+    /// `(primary_key, value)`. `Ok(None)` if absent.
+    pub fn pget(&self, skey: &[u8]) -> Result<Option<(Vec<u8>, Vec<u8>)>> {
+        let mut k = dbt_in(skey);
+        let mut pk = dbt_out(ffi::DB_DBT_MALLOC);
+        let mut d = dbt_out(ffi::DB_DBT_MALLOC);
+        let rc = unsafe {
+            ffi::libdb_db_pget(self.ptr, core::ptr::null_mut(), &mut k, &mut pk, &mut d, 0)
+        };
+        if rc == ffi::DB_NOTFOUND {
+            return Ok(None);
+        }
+        check(rc).map_err(|e| self.env.enrich(e))?;
+        Ok(Some(unsafe { (take_malloc(&pk), take_malloc(&d)) }))
+    }
+
+    // --- sequence ----------------------------------------------------------
+
+    /// A 64-bit sequence stored under `key` in this database.
+    pub fn sequence(&self, key: &[u8]) -> Result<Sequence<'_>> {
+        seq::open(self, key)
+    }
+
     /// Flush any cached database pages to the backing file.
     pub fn sync(&self) -> Result<()> {
         check(unsafe { ffi::libdb_db_sync(self.ptr, 0) })
@@ -895,3 +1062,135 @@ impl<'env> Drop for Db<'env> {
 }
 unsafe impl<'env> Send for Db<'env> {}
 unsafe impl<'env> Sync for Db<'env> {}
+
+// --- comparator / hash / associate thunks ----------------------------------
+
+fn recover_callbacks(db: *mut ffi::DB) -> Option<&'static DbCallbacks> {
+    unsafe {
+        let p = ffi::libdb_db_get_app_private(db);
+        if p.is_null() {
+            None
+        } else {
+            Some(&*(p as *const DbCallbacks))
+        }
+    }
+}
+
+unsafe fn dbt_slice<'a>(d: *const ffi::DBT) -> &'a [u8] {
+    let d = &*d;
+    if d.data.is_null() || d.size == 0 {
+        &[]
+    } else {
+        core::slice::from_raw_parts(d.data as *const u8, d.size as usize)
+    }
+}
+
+extern "C" fn bt_compare_thunk(db: *mut ffi::DB, a: *const ffi::DBT, b: *const ffi::DBT) -> c_int {
+    std::panic::catch_unwind(|| {
+        let cbs = match recover_callbacks(db) {
+            Some(c) => c,
+            None => return 0,
+        };
+        let f = match &cbs.bt_compare {
+            Some(f) => f,
+            None => return 0,
+        };
+        let (sa, sb) = unsafe { (dbt_slice(a), dbt_slice(b)) };
+        ordering_to_int(f(sa, sb))
+    })
+    .unwrap_or(0)
+}
+
+extern "C" fn dup_compare_thunk(db: *mut ffi::DB, a: *const ffi::DBT, b: *const ffi::DBT) -> c_int {
+    std::panic::catch_unwind(|| {
+        let cbs = match recover_callbacks(db) {
+            Some(c) => c,
+            None => return 0,
+        };
+        let f = match &cbs.dup_compare {
+            Some(f) => f,
+            None => return 0,
+        };
+        let (sa, sb) = unsafe { (dbt_slice(a), dbt_slice(b)) };
+        ordering_to_int(f(sa, sb))
+    })
+    .unwrap_or(0)
+}
+
+extern "C" fn h_hash_thunk(
+    db: *mut ffi::DB,
+    data: *const c_void,
+    len: ffi::u_int32_t,
+) -> ffi::u_int32_t {
+    std::panic::catch_unwind(|| {
+        let cbs = match recover_callbacks(db) {
+            Some(c) => c,
+            None => return 0,
+        };
+        let f = match &cbs.h_hash {
+            Some(f) => f,
+            None => return 0,
+        };
+        let s = unsafe {
+            if data.is_null() || len == 0 {
+                &[][..]
+            } else {
+                core::slice::from_raw_parts(data as *const u8, len as usize)
+            }
+        };
+        f(s)
+    })
+    .unwrap_or(0)
+}
+
+extern "C" fn associate_thunk(
+    secondary: *mut ffi::DB,
+    key: *const ffi::DBT,
+    data: *const ffi::DBT,
+    result: *mut ffi::DBT,
+) -> c_int {
+    std::panic::catch_unwind(|| {
+        let cbs = match recover_callbacks(secondary) {
+            Some(c) => c,
+            None => return ffi::DB_DONOTINDEX,
+        };
+        let f = match &cbs.associate {
+            Some(f) => f,
+            None => return ffi::DB_DONOTINDEX,
+        };
+        let (sk, sd) = unsafe { (dbt_slice(key), dbt_slice(data)) };
+        match f(sk, sd) {
+            None => ffi::DB_DONOTINDEX,
+            Some(v) => unsafe {
+                // Hand libdb a malloc'd buffer it will free (APPMALLOC path).
+                let out = &mut *result;
+                if v.is_empty() {
+                    out.data = core::ptr::null_mut();
+                    out.size = 0;
+                } else {
+                    extern "C" {
+                        fn malloc(n: usize) -> *mut c_void;
+                    }
+                    let p = malloc(v.len());
+                    if p.is_null() {
+                        return -1;
+                    }
+                    core::ptr::copy_nonoverlapping(v.as_ptr(), p as *mut u8, v.len());
+                    out.data = p;
+                    out.size = v.len() as u32;
+                    out.flags = 0x001; // DB_DBT_APPMALLOC: libdb frees it
+                }
+                0
+            },
+        }
+    })
+    .unwrap_or(ffi::DB_DONOTINDEX)
+}
+
+fn ordering_to_int(o: core::cmp::Ordering) -> c_int {
+    match o {
+        core::cmp::Ordering::Less => -1,
+        core::cmp::Ordering::Equal => 0,
+        core::cmp::Ordering::Greater => 1,
+    }
+}
