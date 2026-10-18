@@ -155,6 +155,14 @@ pub const DB_READ_UNCOMMITTED: u_int32_t = 0x0000_0200;
 pub const DB_SET_LOCK_TIMEOUT: u_int32_t = 1;
 pub const DB_SET_TXN_TIMEOUT: u_int32_t = 2;
 
+// --- deadlock-detector policies (set_lk_detect) -----------------------------
+pub const DB_LOCK_DEFAULT: u_int32_t = 1;
+pub const DB_LOCK_MAXLOCKS: u_int32_t = 3;
+pub const DB_LOCK_MINWRITE: u_int32_t = 6;
+pub const DB_LOCK_OLDEST: u_int32_t = 7;
+pub const DB_LOCK_RANDOM: u_int32_t = 8;
+pub const DB_LOCK_YOUNGEST: u_int32_t = 9;
+
 // --- return codes -----------------------------------------------------------
 pub const DB_NOTFOUND: c_int = -30988;
 pub const DB_KEYEXIST: c_int = -30994;
@@ -238,6 +246,12 @@ pub const CONSTANTS: &[(&str, i64)] = &[
     ("DB_READ_UNCOMMITTED", DB_READ_UNCOMMITTED as i64),
     ("DB_SET_LOCK_TIMEOUT", DB_SET_LOCK_TIMEOUT as i64),
     ("DB_SET_TXN_TIMEOUT", DB_SET_TXN_TIMEOUT as i64),
+    ("DB_LOCK_DEFAULT", DB_LOCK_DEFAULT as i64),
+    ("DB_LOCK_MAXLOCKS", DB_LOCK_MAXLOCKS as i64),
+    ("DB_LOCK_MINWRITE", DB_LOCK_MINWRITE as i64),
+    ("DB_LOCK_OLDEST", DB_LOCK_OLDEST as i64),
+    ("DB_LOCK_RANDOM", DB_LOCK_RANDOM as i64),
+    ("DB_LOCK_YOUNGEST", DB_LOCK_YOUNGEST as i64),
     ("DB_NOTFOUND", DB_NOTFOUND as i64),
     ("DB_KEYEXIST", DB_KEYEXIST as i64),
     ("DB_LOCK_DEADLOCK", DB_LOCK_DEADLOCK as i64),
@@ -292,6 +306,7 @@ extern "C" {
     pub fn libdb_env_close(e: *mut DB_ENV, flags: u_int32_t) -> c_int;
     pub fn libdb_env_set_cachesize(e: *mut DB_ENV, gb: u_int32_t, b: u_int32_t, nc: c_int)
         -> c_int;
+    pub fn libdb_env_set_lk_detect(e: *mut DB_ENV, mode: u_int32_t) -> c_int;
     pub fn libdb_env_set_flags(e: *mut DB_ENV, flags: u_int32_t, onoff: c_int) -> c_int;
     pub fn libdb_env_set_errpfx(e: *mut DB_ENV, pfx: *const c_char);
     pub fn libdb_env_set_errcall(e: *mut DB_ENV, cb: Option<ErrcallFn>);

@@ -5,7 +5,6 @@
 //! count/dup).
 use libdb::{Direction, Env, TxnOptions};
 use std::path::PathBuf;
-use std::sync::Arc;
 
 fn tmp_home(name: &str) -> PathBuf {
     let mut p = std::env::temp_dir();
@@ -90,43 +89,69 @@ fn transact_commits_on_ok() {
 
 #[test]
 fn deadlock_retry_via_transact() {
-    // Two threads update the same two keys in opposite order; transact() must
-    // retry past the deadlock and both succeed. Each thread opens its own Db
-    // handle on the shared (Arc) env (a Db borrows the env, so it cannot be
-    // sent to a thread that outlives the stack env — open per-thread instead).
-    let (env, home) = open("deadlock");
-    let env = Arc::new(env);
-    {
-        let db = env.database().btree().open("d.db").unwrap();
-        db.put(b"x", b"0").unwrap();
-        db.put(b"y", b"0").unwrap();
-    }
-
-    let barrier = Arc::new(std::sync::Barrier::new(2));
-    let mut handles = Vec::new();
-    for i in 0..2 {
-        let env = Arc::clone(&env);
-        let barrier = Arc::clone(&barrier);
-        handles.push(std::thread::spawn(move || {
-            let db = env.database().btree().open("d.db").unwrap();
-            let (first, second): (&[u8], &[u8]) = if i == 0 { (b"x", b"y") } else { (b"y", b"x") };
-            barrier.wait();
-            // Up to 100 retries: deadlock resolution is probabilistic.
-            env.transact(100, |txn| {
-                db.tput(txn, first, b"1")?;
-                std::thread::yield_now();
-                db.tput(txn, second, b"1")?;
-                Ok(())
-            })
-            .expect("transact should retry past the deadlock");
-        }));
-    }
-    for h in handles {
-        h.join().unwrap();
-    }
+    // Two threads lock the two keys in opposite order under contention. Using
+    // DB_TXN_NOWAIT, a lock that would block fails *immediately* as a deadlock
+    // rather than waiting -- so a genuine cycle is resolved at once, transact()
+    // retries, and the test is GUARANTEED to terminate (no dependence on the
+    // deadlock-detector's timing). The env also sets a detector as the
+    // belt-and-suspenders path for the non-NOWAIT case.
+    //
+    // The env and the single shared db handle are opened once and borrowed
+    // into scoped threads (the db is free-threaded under DB_THREAD); opening a
+    // db per call would serialise on the open path, so we don't.
+    let home = tmp_home("deadlock");
+    let env = Env::builder()
+        .cachesize(0, 16 << 20)
+        .lock_detect(libdb::LockDetect::Default)
+        .open(&home)
+        .unwrap();
     let db = env.database().btree().open("d.db").unwrap();
+    db.put(b"x", b"0").unwrap();
+    db.put(b"y", b"0").unwrap();
+
+    let retried = std::sync::atomic::AtomicUsize::new(0);
+    let nowait = TxnOptions {
+        nowait: true,
+        ..Default::default()
+    };
+    const ITERS: usize = 60;
+    std::thread::scope(|s| {
+        for i in 0..2 {
+            let env = &env;
+            let db = &db;
+            let retried = &retried;
+            s.spawn(move || {
+                // thread 0 locks x then y; thread 1 locks y then x -> cyclic.
+                let (first, second): (&[u8], &[u8]) =
+                    if i == 0 { (b"x", b"y") } else { (b"y", b"x") };
+                for _ in 0..ITERS {
+                    let mut tries = 0u32;
+                    env.transact_opts(1000, nowait, |txn| {
+                        tries += 1;
+                        db.tput(txn, first, b"1")?;
+                        std::thread::yield_now();
+                        db.tput(txn, second, b"1")?;
+                        Ok(())
+                    })
+                    .expect("transact should retry past every deadlock/lock conflict");
+                    if tries > 1 {
+                        retried.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    }
+                }
+            });
+        }
+    });
+
     assert_eq!(db.get(b"x").unwrap().as_deref(), Some(&b"1"[..]));
     assert_eq!(db.get(b"y").unwrap().as_deref(), Some(&b"1"[..]));
+    // Over 400 contended transactions at least one must have hit a lock
+    // conflict and retried, proving transact() recovered (not merely
+    // serialised). This is the teeth: a binding that swallowed the retry would
+    // either hang or lose an update.
+    assert!(
+        retried.load(std::sync::atomic::Ordering::SeqCst) >= 1,
+        "at least one transaction must have hit a conflict and retried"
+    );
 
     drop(db);
     drop(env);

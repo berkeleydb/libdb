@@ -26,6 +26,8 @@ int libdb_env_close(DB_ENV *e, u_int32_t flags)
 { return e->close(e, flags); }
 int libdb_env_set_cachesize(DB_ENV *e, u_int32_t gb, u_int32_t b, int nc)
 { return e->set_cachesize(e, gb, b, nc); }
+int libdb_env_set_lk_detect(DB_ENV *e, u_int32_t mode)
+{ return e->set_lk_detect(e, mode); }
 int libdb_env_set_flags(DB_ENV *e, u_int32_t flags, int onoff)
 { return e->set_flags(e, flags, onoff); }
 void libdb_env_set_errpfx(DB_ENV *e, const char *pfx)

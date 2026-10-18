@@ -2,22 +2,27 @@
 //! Idiomatic Rust bindings for **libdb** (the community Berkeley DB fork).
 //!
 //! `libdb` wraps the C library's object model — an environment, databases,
-//! transactions and cursors — in owning Rust types whose destructors release
-//! the underlying handle exactly once, whose lifetimes encode the C ownership
-//! rules (an [`Env`] outlives its [`Db`]s, a [`Cursor`] cannot outlive its
-//! [`Txn`]), and whose errors demote the expected control-flow negatives
-//! (`DB_NOTFOUND` is `Ok(None)`, not an error).
+//! transactions, cursors and sequences — in owning Rust types whose
+//! destructors release the underlying handle exactly once, whose lifetimes
+//! encode the C ownership rules (an [`Env`] outlives its [`Db`]s, a [`Cursor`]
+//! cannot outlive its [`Txn`]), and whose errors demote the expected
+//! control-flow negatives (`DB_NOTFOUND` is `Ok(None)`, not an error).
 //!
-//! Through Phase 2: the core data path, transactions with the
-//! [`Env::transact`] deadlock-retry helper, and cursors as native iterators.
-//! Callbacks, secondary indices, sequences and bulk ops land in Phase 3.
+//! The value-facing API offers three output forms ([`Db::get`] copy-out,
+//! [`Db::get_into`] zero-alloc, [`Db::with_value`] borrowed), transactions with
+//! the [`Env::transact`] deadlock-retry helper, cursors as native iterators,
+//! comparators and a secondary index, 64-bit [`Sequence`]s, and zero-copy bulk
+//! retrieval. See the `guide/` for a chapter tour and `MAPPING.md` for the
+//! C-method cross-walk.
 //!
 //! # A first round trip
 //!
-//! ```no_run
+//! ```
+//! # let dir = std::env::temp_dir().join(format!("libdb_doc_{}", std::process::id()));
+//! # std::fs::create_dir_all(&dir).unwrap();
 //! let env = libdb::Env::builder()
-//!     .cachesize(0, 64 << 20)
-//!     .open("db-home")?;
+//!     .cachesize(0, 16 << 20)
+//!     .open(&dir)?;
 //! let db = env.database().btree().open("data.db")?;
 //! db.put(b"key", b"value")?;
 //! assert_eq!(db.get(b"key")?.as_deref(), Some(&b"value"[..]));
@@ -119,6 +124,29 @@ fn check(code: c_int) -> Result<()> {
 fn cpath(p: &Path) -> Result<CString> {
     CString::new(p.as_os_str().to_string_lossy().into_owned())
         .map_err(|_| Error::Usage("path contains an interior NUL"))
+}
+
+/// Jittered backoff between transaction retries. Sleeps a small, randomised
+/// time that grows with the attempt count (capped), so two symmetric
+/// contenders desynchronise and make progress instead of livelocking. The
+/// jitter is a cheap per-thread PRNG seeded from the clock and attempt — no
+/// dependency, good enough to break lockstep.
+fn backoff(attempt: u32) {
+    use std::hash::{Hash, Hasher};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    // Grow the window with the attempt (1..=~1ms) so persistent contenders
+    // spread out further each round and cannot livelock in lockstep.
+    let base = (1u64 << attempt.min(10)).min(1024); // microseconds, capped ~1ms
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    std::thread::current().id().hash(&mut h);
+    attempt.hash(&mut h);
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    now.hash(&mut h);
+    let jitter = h.finish() % base.max(1);
+    std::thread::sleep(Duration::from_micros(base + jitter));
 }
 
 // ===========================================================================
@@ -285,6 +313,37 @@ pub struct EnvBuilder {
     err: Option<Error>,
 }
 
+/// Deadlock-detector victim-selection policy for [`EnvBuilder::lock_detect`].
+/// When a deadlock is found, the chosen transaction is the one aborted (so a
+/// `lock_get` returns [`Error::Deadlock`] and [`Env::transact`] retries it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LockDetect {
+    /// The library's default policy.
+    Default,
+    /// Abort the locker holding the most locks.
+    MaxLocks,
+    /// Abort the locker with the fewest write locks.
+    MinWrite,
+    /// Abort the oldest locker.
+    Oldest,
+    /// Abort a randomly chosen locker.
+    Random,
+    /// Abort the youngest locker.
+    Youngest,
+}
+impl LockDetect {
+    fn to_ffi(self) -> ffi::u_int32_t {
+        match self {
+            LockDetect::Default => ffi::DB_LOCK_DEFAULT,
+            LockDetect::MaxLocks => ffi::DB_LOCK_MAXLOCKS,
+            LockDetect::MinWrite => ffi::DB_LOCK_MINWRITE,
+            LockDetect::Oldest => ffi::DB_LOCK_OLDEST,
+            LockDetect::Random => ffi::DB_LOCK_RANDOM,
+            LockDetect::Youngest => ffi::DB_LOCK_YOUNGEST,
+        }
+    }
+}
+
 impl Env {
     /// Begin building a new environment.
     pub fn builder() -> EnvBuilder {
@@ -333,33 +392,52 @@ impl Env {
     ///
     /// The deadlock-retry loop every transactional application needs, once.
     ///
-    /// ```no_run
-    /// # let env = libdb::Env::builder().open("h")?;
+    /// ```
+    /// # let dir = std::env::temp_dir().join(format!("libdb_doc_tx_{}", std::process::id()));
+    /// # std::fs::create_dir_all(&dir).unwrap();
+    /// # let env = libdb::Env::builder().open(&dir)?;
     /// # let db = env.database().btree().open("d.db")?;
     /// env.transact(10, |txn| {
     ///     db.tput(txn, b"n", b"1")?;
     ///     Ok(())
     /// })?;
+    /// assert_eq!(db.get(b"n")?.as_deref(), Some(&b"1"[..]));
     /// # Ok::<(), libdb::Error>(())
     /// ```
-    pub fn transact<F, T>(&self, retries: u32, mut body: F) -> Result<T>
+    pub fn transact<F, T>(&self, retries: u32, body: F) -> Result<T>
+    where
+        F: FnMut(&Txn<'_>) -> Result<T>,
+    {
+        self.transact_opts(retries, TxnOptions::default(), body)
+    }
+
+    /// [`Env::transact`] with explicit transaction options (e.g. `nowait` so a
+    /// blocked lock fails fast as a deadlock to retry, instead of waiting for
+    /// the deadlock detector). Both [`Error::Deadlock`] and
+    /// [`Error::LockNotGranted`] are treated as retryable.
+    pub fn transact_opts<F, T>(&self, retries: u32, opts: TxnOptions, mut body: F) -> Result<T>
     where
         F: FnMut(&Txn<'_>) -> Result<T>,
     {
         let mut attempt = 0u32;
         loop {
-            let txn = self.begin()?;
+            let txn = self.begin_opts(None, opts)?;
             match body(&txn) {
                 Ok(val) => {
                     txn.commit()?;
                     return Ok(val);
                 }
-                Err(Error::Deadlock) => {
+                Err(Error::Deadlock) | Err(Error::LockNotGranted) => {
                     txn.abort()?;
                     if attempt >= retries {
                         return Err(Error::Deadlock);
                     }
                     attempt += 1;
+                    // Jittered backoff so two symmetric contenders desynchronise
+                    // and make progress rather than livelocking (important with
+                    // NOWAIT, where a conflict fails instantly). Capped so a
+                    // real workload stays responsive.
+                    backoff(attempt);
                 }
                 Err(e) => {
                     txn.abort()?;
@@ -402,6 +480,24 @@ impl EnvBuilder {
         if self.err.is_none() {
             if let Err(e) =
                 check(unsafe { ffi::libdb_env_set_cachesize(self.ptr, gbytes, bytes, 1) })
+            {
+                self.err = Some(e);
+            }
+        }
+        self
+    }
+
+    /// Enable the deadlock detector with the given victim-selection policy.
+    ///
+    /// **Essential for concurrent transactions.** libdb does *not* detect
+    /// deadlocks on its own: without a detector (or a lock timeout), two
+    /// transactions that deadlock wait forever and [`Env::transact`] never
+    /// sees [`Error::Deadlock`] to retry on. Set this on any environment used
+    /// by more than one concurrent writer. [`LockDetect::Default`] is a sound
+    /// choice.
+    pub fn lock_detect(mut self, mode: LockDetect) -> Self {
+        if self.err.is_none() {
+            if let Err(e) = check(unsafe { ffi::libdb_env_set_lk_detect(self.ptr, mode.to_ffi()) })
             {
                 self.err = Some(e);
             }
@@ -906,6 +1002,18 @@ impl<'env> Db<'env> {
 
     /// Call `f` with a borrowed view of the value under `key`, valid only for
     /// the duration of the call. Zero heap allocation up to 256 bytes.
+    ///
+    /// ```
+    /// # let dir = std::env::temp_dir().join(format!("libdb_doc_wv_{}", std::process::id()));
+    /// # std::fs::create_dir_all(&dir).unwrap();
+    /// # let env = libdb::Env::builder().open(&dir)?;
+    /// # let db = env.database().btree().open("d.db")?;
+    /// db.put(b"k", b"borrowed")?;
+    /// // The slice is valid only inside the closure; here we read its length.
+    /// let len = db.with_value(b"k", |v| v.len())?;
+    /// assert_eq!(len, Some(8));
+    /// # Ok::<(), libdb::Error>(())
+    /// ```
     pub fn with_value<R, F>(&self, key: &[u8], f: F) -> Result<Option<R>>
     where
         F: FnOnce(&[u8]) -> R,
@@ -986,6 +1094,25 @@ impl<'env> Db<'env> {
     /// derives a secondary key from each primary (key, value); return `None`
     /// to skip indexing a record (`DB_DONOTINDEX`). After this, a `pget` on the
     /// secondary returns the primary's value.
+    ///
+    /// ```
+    /// # let dir = std::env::temp_dir().join(format!("libdb_doc_sec_{}", std::process::id()));
+    /// # std::fs::create_dir_all(&dir).unwrap();
+    /// # let env = libdb::Env::builder().open(&dir)?;
+    /// let people = env.database().btree().open("people.db")?;
+    /// let by_city = env.database().btree().sorted_duplicates().open("by_city.db")?;
+    /// // index each "name|city" value by its city field
+    /// people.associate(&by_city, |_k, v| {
+    ///     let bar = v.iter().position(|&c| c == b'|')?;
+    ///     Some(v[bar + 1..].to_vec())
+    /// })?;
+    /// people.put(b"1", b"ada|london")?;
+    /// // look the primary up through the secondary key
+    /// let (pk, val) = by_city.pget(b"london")?.unwrap();
+    /// assert_eq!(pk, b"1");
+    /// assert_eq!(val, b"ada|london");
+    /// # Ok::<(), libdb::Error>(())
+    /// ```
     pub fn associate<F>(&self, secondary: &Db<'env>, extractor: F) -> Result<()>
     where
         F: Fn(&[u8], &[u8]) -> Option<Vec<u8>> + 'static,
@@ -1045,6 +1172,17 @@ impl<'env> Db<'env> {
     // --- sequence ----------------------------------------------------------
 
     /// A 64-bit sequence stored under `key` in this database.
+    ///
+    /// ```
+    /// # let dir = std::env::temp_dir().join(format!("libdb_doc_seq_{}", std::process::id()));
+    /// # std::fs::create_dir_all(&dir).unwrap();
+    /// # let env = libdb::Env::builder().open(&dir)?;
+    /// # let db = env.database().btree().open("d.db")?;
+    /// let ids = db.sequence(b"order_id")?;
+    /// assert_eq!(ids.next()?, 1);
+    /// assert_eq!(ids.next()?, 2);
+    /// # Ok::<(), libdb::Error>(())
+    /// ```
     pub fn sequence(&self, key: &[u8]) -> Result<Sequence<'_>> {
         seq::open(self, key)
     }

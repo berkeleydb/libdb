@@ -187,6 +187,22 @@ impl<'txn, 'db> Cursor<'txn, 'db> {
     /// Iterate forward or backward over every record as a native
     /// [`Iterator`]. Each item is `Result<(key, value)>`; iteration ends at
     /// `DB_NOTFOUND`.
+    ///
+    /// ```
+    /// # let dir = std::env::temp_dir().join(format!("libdb_doc_it_{}", std::process::id()));
+    /// # std::fs::create_dir_all(&dir).unwrap();
+    /// # let env = libdb::Env::builder().open(&dir)?;
+    /// # let db = env.database().btree().open("d.db")?;
+    /// db.put(b"a", b"1")?;
+    /// db.put(b"b", b"2")?;
+    /// let keys: Vec<Vec<u8>> = db
+    ///     .cursor()?
+    ///     .iter(libdb::Direction::Forward)
+    ///     .map(|r| r.unwrap().0)
+    ///     .collect();
+    /// assert_eq!(keys, vec![b"a".to_vec(), b"b".to_vec()]);
+    /// # Ok::<(), libdb::Error>(())
+    /// ```
     pub fn iter(self, dir: Direction) -> CursorIter<'txn, 'db> {
         CursorIter {
             cursor: self,
@@ -217,6 +233,22 @@ impl<'txn, 'db> Cursor<'txn, 'db> {
     /// walk the returned buffer with pure pointer arithmetic — zero per-record
     /// allocation. The returned [`crate::BulkPairs`] borrows `buf`, so each
     /// `(key, value)` is a slice into it.
+    ///
+    /// ```
+    /// # let dir = std::env::temp_dir().join(format!("libdb_doc_bulk_{}", std::process::id()));
+    /// # std::fs::create_dir_all(&dir).unwrap();
+    /// # let env = libdb::Env::builder().open(&dir)?;
+    /// # let db = env.database().btree().open("d.db")?;
+    /// for i in 0..3 {
+    ///     db.put(format!("k{i}").as_bytes(), format!("v{i}").as_bytes())?;
+    /// }
+    /// let c = db.cursor()?;
+    /// let mut buf = Vec::new();
+    /// let pairs: Vec<_> = c.bulk(&mut buf)?.map(|(k, v)| (k.to_vec(), v.to_vec())).collect();
+    /// assert_eq!(pairs.len(), 3);
+    /// assert_eq!(pairs[0], (b"k0".to_vec(), b"v0".to_vec()));
+    /// # Ok::<(), libdb::Error>(())
+    /// ```
     pub fn bulk<'a>(&self, buf: &'a mut Vec<u8>) -> Result<crate::BulkPairs<'a>> {
         crate::bulk::fetch(self.ptr, buf, |e| self.enrich(e))
     }

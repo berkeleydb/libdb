@@ -2,15 +2,44 @@
 
 Idiomatic Rust bindings for **libdb** (the community Berkeley DB fork).
 
-**Status: Phase 3** (callbacks, secondary indices, sequences, bulk — from
-[RFC 0016](../../rfc/0016-rust-zig-bindings.md)).
-What works today: the core data path and transactions/cursors (Phases 1–2) plus
-comparators (`bt_compare`/`dup_compare`) and a `h_hash` function via the
-callback trampoline (each thunk `catch_unwind`-wrapped so a panic cannot cross
-FFI), a secondary index (`associate` + `pget`, with `None` from the extractor
-skipping a record via `DB_DONOTINDEX`), 64-bit `Sequence`s, and zero-copy bulk
-retrieval (`Cursor::bulk`) as a native `Iterator` over the `DB_MULTIPLE_KEY`
-buffer with pure pointer arithmetic. Docs, guide and examples are Phase 4.
+**Status: v1 complete** (all four phases of [RFC 0016](../../rfc/0016-rust-zig-bindings.md)).
+What the binding covers:
+
+- **Core data path** — an owning `Env` and `Db` with builders (type, pagesize,
+  duplicates, comparators), `put`/`get`/`del`/`exists`, and the three
+  value-output forms: copy-out `get`, zero-alloc `get_into` with a
+  `DB_BUFFER_SMALL` grow-retry, and the borrowed-closure `with_value`.
+- **Transactions** — `Txn` (parent/snapshot/nowait, commit/abort consuming
+  `self`, prepare/id/set_name/timeouts) and the `env.transact` deadlock-retry
+  helper (with jittered backoff). Set a detector with `.lock_detect(..)` or use
+  `transact_opts` with `nowait` for concurrent writers.
+- **Cursors** — `Cursor<'txn, 'db>` that cannot outlive its transaction, all the
+  get opcodes, put/del/count/dup/pget, and forward/backward iteration as a real
+  `Iterator`.
+- **Callbacks** — `bt_compare`/`dup_compare`/`h_hash` via the trampoline, each
+  thunk `catch_unwind`-wrapped so a panic cannot cross FFI.
+- **Secondary indices** — `associate` + `pget` (`None` skips a record via
+  `DB_DONOTINDEX`).
+- **Sequences** — 64-bit `Sequence` counters.
+- **Bulk** — `Cursor::bulk`, a zero-copy `Iterator` over the `DB_MULTIPLE_KEY`
+  buffer.
+
+The error model demotes the control-flow negatives (`DB_NOTFOUND` is `Ok(None)`,
+not an error). A **drift gate** re-verifies every baked constant against the
+installed `db.h` (`cargo test -p libdb-sys`), and a `trybuild` ui test proves the
+lifecycle rules (cursor-outlives-txn, use-after-commit, value-escapes-closure)
+are *compile* errors.
+
+## Documentation
+
+- **API reference:** `cargo doc --open` (rustdoc on every public item, with
+  runnable `/// ```` examples that `cargo test --doc` compiles and runs).
+- **Getting-started guide:** [`guide/`](guide/README.md) — chapters on opening an
+  env, put/get, transactions + retry, cursors, secondary indices and bulk.
+- **C-to-Rust cross-walk:** [`MAPPING.md`](MAPPING.md).
+- **Examples:** [`libdb/examples/`](libdb/examples/) — `kvstore` (a key/value CLI),
+  `counter` (a transactional counter via the retry helper), `address_book`
+  (a secondary-index lookup). Run with `cargo run --example <name>`.
 
 ## Layout
 
@@ -31,6 +60,8 @@ Requires an installed libdb (`libdb-2026.0.so` + `db.h`). Point at it with
 export LIBDB_DIR=/usr/local/BerkeleyDB.2026.0
 export LD_LIBRARY_PATH=$LIBDB_DIR/lib
 cargo test
+cargo test --doc
+cargo run --example kvstore
 ```
 
 Verified on FreeBSD 14 (clang 21, Rust 1.98) against libdb at the first LTS,
