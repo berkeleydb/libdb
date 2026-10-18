@@ -139,14 +139,14 @@ pub const Env = struct {
         if (safe) std.debug.assert(!self.closed);
     }
 
-    /// Allocate an environment handle. Configure it, then call `open`.
+    /// Allocate an environment handle. Configure it, then call `open`. The
+    /// self-pointer the errcall thunk needs is stashed by `open`/`rebind` once
+    /// the `Env` is at its final address (a by-value `create` return would make
+    /// a pointer stashed here dangle).
     pub fn create() Error!Env {
         var p: ?*c.DB_ENV = null;
         try check(c.db_env_create(&p, 0));
-        var self: Env = .{ .ptr = p.? };
-        // Stash a pointer to ourselves so the errcall thunk can find us.
-        _ = c.libdb_env_set_api1_internal(self.ptr, &self);
-        return self;
+        return .{ .ptr = p.? };
     }
 
     /// Re-stash the self pointer. `create` returns by value, so the caller's
