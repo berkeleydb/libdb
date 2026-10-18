@@ -15,11 +15,23 @@ fn compile_shim(include: &str) {
     let lib = format!("{}/libdbshim.a", out);
     let cc = env::var("CC").unwrap_or_else(|_| "cc".into());
     let st = Command::new(&cc)
-        .args(["-O2", "-fPIC", "-c", "src/shim.c", "-o", &obj, &format!("-I{}", include)])
-        .status().expect("run cc for shim.c");
+        .args([
+            "-O2",
+            "-fPIC",
+            "-c",
+            "src/shim.c",
+            "-o",
+            &obj,
+            &format!("-I{}", include),
+        ])
+        .status()
+        .expect("run cc for shim.c");
     assert!(st.success(), "shim.c failed to compile");
     let ar = env::var("AR").unwrap_or_else(|_| "ar".into());
-    let st = Command::new(&ar).args(["crs", &lib, &obj]).status().expect("run ar");
+    let st = Command::new(&ar)
+        .args(["crs", &lib, &obj])
+        .status()
+        .expect("run ar");
     assert!(st.success(), "ar failed");
     println!("cargo:rustc-link-search=native={}", out);
     println!("cargo:rustc-link-lib=static=dbshim");

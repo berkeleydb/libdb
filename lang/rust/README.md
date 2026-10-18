@@ -2,11 +2,15 @@
 
 Idiomatic Rust bindings for **libdb** (the community Berkeley DB fork).
 
-**Status: Phase 0** (the proof-of-shape from [RFC 0016](../../rfc/0016-rust-zig-bindings.md)).
-What works today: an owning `Env` and `Db`, the error model (with the
-control-flow negatives demoted — `DB_NOTFOUND` is `Ok(None)`, not an error), and
-a borrowed-in / copy-out `put`/`get` round trip. Transactions, cursors,
-callbacks, secondary indices and bulk ops land in later phases — see the RFC.
+**Status: Phase 1** (the core data path, from [RFC 0016](../../rfc/0016-rust-zig-bindings.md)).
+What works today: an owning `Env` and `Db` with builders (type, pagesize,
+duplicates), the error model (with the control-flow negatives demoted —
+`DB_NOTFOUND` is `Ok(None)`, not an error), `put`/`get`/`del`/`exists`, the
+three value-output forms (copy-out `get`, zero-alloc `get_into` with
+`DB_BUFFER_SMALL` grow-retry, and the borrowed-closure `with_value`), a captured
+error-callback diagnostic, and the compile-vs-runtime version check. The drift
+gate re-verifies every baked constant against the installed `db.h`. Transactions,
+cursors, callbacks, secondary indices and bulk ops land in later phases.
 
 ## Layout
 
@@ -35,8 +39,8 @@ Verified on FreeBSD 14 (clang 21, Rust 1.98) against libdb at the first LTS,
 ## Example
 
 ```rust
-let env = libdb::Env::create()?.cachesize(0, 64 << 20)?.open("db-home")?;
-let db  = env.database().open_btree("data.db")?;
+let env = libdb::Env::builder().cachesize(0, 64 << 20).open("db-home")?;
+let db  = env.database().btree().open("data.db")?;
 db.put(b"key", b"value")?;
 assert_eq!(db.get(b"key")?.as_deref(), Some(&b"value"[..]));
 ```

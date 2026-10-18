@@ -21,10 +21,11 @@ fn version_is_sane() {
 #[test]
 fn round_trip() {
     let home = tmp_home("rt");
-    let env = libdb::Env::create().unwrap()
-        .cachesize(0, 16 << 20).unwrap()
-        .open(&home).unwrap();
-    let db = env.database().open_btree("data.db").unwrap();
+    let env = libdb::Env::builder()
+        .cachesize(0, 16 << 20)
+        .open(&home)
+        .unwrap();
+    let db = env.database().btree().open("data.db").unwrap();
 
     db.put(b"alpha", b"one").unwrap();
     db.put(b"beta", b"two").unwrap();

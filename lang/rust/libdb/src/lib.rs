@@ -1,37 +1,64 @@
 // SPDX-License-Identifier: Sleepycat
 //! Idiomatic Rust bindings for **libdb** (the community Berkeley DB fork).
 //!
-//! This is the Phase-0 proof: it demonstrates the whole binding shape works
-//! end to end — an owning [`Env`] and [`Db`], the error model, and a
-//! borrowed-in / copy-out `put`/`get` round trip. Transactions, cursors,
-//! callbacks and bulk ops land in later phases (see `rfc/0016`).
+//! `libdb` wraps the C library's object model — an environment, databases,
+//! transactions, cursors and sequences — in owning Rust types whose
+//! destructors release the underlying handle exactly once, whose lifetimes
+//! encode the C ownership rules (an [`Env`] outlives its [`Db`]s), and whose
+//! errors demote the expected control-flow negatives (`DB_NOTFOUND` is
+//! `Ok(None)`, not an error).
+//!
+//! This is Phase 1: the core data path — an [`Env`] and [`Db`] builder, the
+//! three value-output forms, and the error + version model. Transactions,
+//! cursors, callbacks, secondary indices and bulk ops land in later phases.
+//!
+//! # A first round trip
 //!
 //! ```no_run
-//! let env = libdb::Env::create()?.cachesize(0, 64 << 20)?.open("db-home")?;
-//! let db  = env.database().open_btree("data.db")?;
+//! let env = libdb::Env::builder()
+//!     .cachesize(0, 64 << 20)
+//!     .open("db-home")?;
+//! let db = env.database().btree().open("data.db")?;
 //! db.put(b"key", b"value")?;
 //! assert_eq!(db.get(b"key")?.as_deref(), Some(&b"value"[..]));
 //! # Ok::<(), libdb::Error>(())
 //! ```
-use core::ffi::{c_int, CStr};
+#![warn(missing_docs)]
+
+use core::ffi::{c_int, c_void, CStr};
+use std::cell::RefCell;
 use std::ffi::CString;
 use std::path::Path;
+
 use libdb_sys as ffi;
 
-/// A libdb error: a typed DB-* code, an OS errno, or a usage error from the
-/// binding itself. The control-flow negatives (`DB_NOTFOUND`, `DB_KEYEXIST`,
-/// `DB_BUFFER_SMALL`) are NOT errors — they are modelled in the return types.
+// ===========================================================================
+// Errors
+// ===========================================================================
+
+/// A libdb error: a typed DB-range code, an OS errno, or a usage error from
+/// the binding itself.
+///
+/// The control-flow negatives (`DB_NOTFOUND`, `DB_KEYEXIST`,
+/// `DB_BUFFER_SMALL`) are **not** errors — they are modelled in the return
+/// types ([`Option`], [`Put`], [`GetInto`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
-    /// A deadlock; the transaction should abort and retry.
+    /// A deadlock: the transaction should abort and retry.
     Deadlock,
+    /// A lock was unavailable (`DB_NOWAIT` / a timeout).
+    LockNotGranted,
     /// The environment panicked; it must be recovered.
     RunRecovery,
-    /// Any other DB-range code (<0), with its number and message.
+    /// A secondary index is corrupt.
+    SecondaryBad,
+    /// Any other DB-range code (`< 0`), with its number and message. If an
+    /// error callback captured a diagnostic string, it is appended.
     Db(c_int, String),
-    /// An OS errno (>0), with its number and message.
+    /// An OS errno (`> 0`), with its number and message.
     Os(c_int, String),
-    /// A usage error detected in the binding (e.g. an interior NUL in a path).
+    /// A usage error detected by the binding (e.g. an interior NUL in a path,
+    /// or a callback that panicked).
     Usage(&'static str),
 }
 
@@ -39,7 +66,9 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Deadlock => write!(f, "deadlock (retry the transaction)"),
+            Error::LockNotGranted => write!(f, "lock not granted"),
             Error::RunRecovery => write!(f, "panic: run recovery"),
+            Error::SecondaryBad => write!(f, "secondary index corrupt"),
             Error::Db(c, m) | Error::Os(c, m) => write!(f, "{m} ({c})"),
             Error::Usage(s) => write!(f, "usage error: {s}"),
         }
@@ -47,85 +76,335 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 
-/// Map a C return code to `Result`, demoting the expected control-flow
-/// negatives per the caller (which passes them through as `Ok`).
+/// The crate result type.
+pub type Result<T> = core::result::Result<T, Error>;
+
 fn strerror(code: c_int) -> String {
     unsafe {
         let p = ffi::db_strerror(code);
-        if p.is_null() { String::new() } else { CStr::from_ptr(p).to_string_lossy().into_owned() }
+        if p.is_null() {
+            String::new()
+        } else {
+            CStr::from_ptr(p).to_string_lossy().into_owned()
+        }
     }
 }
-fn check(code: c_int) -> core::result::Result<(), Error> {
+
+/// Map a C return code to a `Result<()>`, demoting the typed negatives the
+/// caller handles separately (`DB_NOTFOUND`, `DB_KEYEXIST`, `DB_BUFFER_SMALL`
+/// are NOT routed here — the callers check them before calling `check`).
+fn check(code: c_int) -> Result<()> {
     match code {
         0 => Ok(()),
         ffi::DB_LOCK_DEADLOCK => Err(Error::Deadlock),
+        ffi::DB_LOCK_NOTGRANTED => Err(Error::LockNotGranted),
         ffi::DB_RUNRECOVERY => Err(Error::RunRecovery),
+        ffi::DB_SECONDARY_BAD => Err(Error::SecondaryBad),
         c if c < 0 => Err(Error::Db(c, strerror(c))),
         c => Err(Error::Os(c, strerror(c))),
     }
 }
-pub type Result<T> = core::result::Result<T, Error>;
 
 fn cpath(p: &Path) -> Result<CString> {
     CString::new(p.as_os_str().to_string_lossy().into_owned())
         .map_err(|_| Error::Usage("path contains an interior NUL"))
 }
 
+// ===========================================================================
+// Version
+// ===========================================================================
+
 /// The library version at run time, as `(major, minor, patch)`.
+///
+/// ```
+/// let (major, _minor, _patch) = libdb::version();
+/// assert_eq!(major, 2026);
+/// ```
 pub fn version() -> (i32, i32, i32) {
     let (mut a, mut b, mut c) = (0, 0, 0);
-    unsafe { ffi::db_version(&mut a, &mut b, &mut c); }
+    unsafe {
+        ffi::db_version(&mut a, &mut b, &mut c);
+    }
     (a, b, c)
 }
 
-// --- Env --------------------------------------------------------------------
+/// Check that the library this binary links at run time matches the `db.h` it
+/// was compiled against on the format/ABI level (major + minor). Returns an
+/// error on skew rather than letting a mismatched library corrupt data.
+///
+/// ```
+/// libdb::check_version().expect("header/library version skew");
+/// ```
+pub fn check_version() -> Result<()> {
+    let (rt_major, rt_minor, _) = version();
+    let (ct_major, ct_minor) = (ffi::DB_VERSION_MAJOR, ffi::DB_VERSION_MINOR);
+    if rt_major != ct_major || rt_minor != ct_minor {
+        return Err(Error::Db(
+            ffi::DB_RUNRECOVERY,
+            format!(
+                "libdb version skew: compiled against {ct_major}.{ct_minor}, \
+                 linked {rt_major}.{rt_minor}"
+            ),
+        ));
+    }
+    Ok(())
+}
+
+// ===========================================================================
+// DBT helpers
+// ===========================================================================
+
+/// Build a borrowed-input DBT pointing at `b` for the duration of a call.
+/// Guards the `size==0`/`data==NULL` shape (a real UB source in the C library).
+fn dbt_in(b: &[u8]) -> ffi::DBT {
+    let mut d = ffi::DBT::default();
+    if !b.is_empty() {
+        d.data = b.as_ptr() as *mut c_void;
+        d.size = b.len() as u32;
+    }
+    d
+}
+
+/// A fresh output DBT carrying only the given flags (e.g. `DB_DBT_MALLOC`).
+fn dbt_out(flags: ffi::u_int32_t) -> ffi::DBT {
+    ffi::DBT {
+        flags,
+        ..Default::default()
+    }
+}
+
+/// A USERMEM output DBT pointing into the caller's buffer.
+fn dbt_usermem(buf: &mut [u8]) -> ffi::DBT {
+    ffi::DBT {
+        data: buf.as_mut_ptr() as *mut c_void,
+        ulen: buf.len() as u32,
+        flags: ffi::DB_DBT_USERMEM,
+        ..Default::default()
+    }
+}
+
+/// Copy a DB-owned (MALLOC) output DBT into an owned `Vec`, freeing the DB
+/// buffer. Safe for the empty shape.
+unsafe fn take_malloc(d: &ffi::DBT) -> Vec<u8> {
+    if d.data.is_null() || d.size == 0 {
+        return Vec::new();
+    }
+    let s = core::slice::from_raw_parts(d.data as *const u8, d.size as usize);
+    let v = s.to_vec();
+    extern "C" {
+        fn free(p: *mut c_void);
+    }
+    free(d.data);
+    v
+}
+
+/// The result of a `put` with `NOOVERWRITE`: either the pair was stored, or a
+/// value already existed under the key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Put {
+    /// The pair was stored.
+    Stored,
+    /// A value already existed under the key; nothing was changed.
+    Exists,
+}
+
+/// A `get_into` outcome: the key was absent, the value fit (so many bytes
+/// written), or the caller's buffer was too small (grow to the size given).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GetInto {
+    /// The key was not found.
+    NotFound,
+    /// The value fit; this many bytes were written into the caller's buffer.
+    Fit(usize),
+    /// The buffer was too small; the value needs this many bytes.
+    TooSmall(usize),
+}
+
+// ===========================================================================
+// Env
+// ===========================================================================
 
 /// A database environment: the unit of caching, locking, logging and
-/// transactions. Create one, configure it, open it, then open databases in it.
+/// transactions. Create one via [`Env::builder`], configure it, open it, then
+/// open databases in it.
+///
+/// Opened with `DB_THREAD`, so the environment and its databases are
+/// free-threaded and this type is [`Send`] + [`Sync`].
 pub struct Env {
     ptr: *mut ffi::DB_ENV,
     open: bool,
+    // Boxed so its address is stable across moves of `Env`; the C error
+    // callback writes the last diagnostic string here.
+    diag: Box<RefCell<Option<String>>>,
 }
 
-/// Builder for an [`Env`] (config must happen before `open`).
+/// Builder for an [`Env`]. All configuration happens before [`EnvBuilder::open`].
 pub struct EnvBuilder {
     ptr: *mut ffi::DB_ENV,
+    extra_flags: ffi::u_int32_t,
+    diag: Box<RefCell<Option<String>>>,
+    capture_diag: bool,
+    err: Option<Error>,
 }
 
 impl Env {
-    /// Allocate a new environment handle.
-    pub fn create() -> Result<EnvBuilder> {
+    /// Begin building a new environment.
+    pub fn builder() -> EnvBuilder {
         let mut ptr: *mut ffi::DB_ENV = core::ptr::null_mut();
-        check(unsafe { ffi::db_env_create(&mut ptr, 0) })?;
-        Ok(EnvBuilder { ptr })
+        let rc = unsafe { ffi::db_env_create(&mut ptr, 0) };
+        EnvBuilder {
+            ptr,
+            extra_flags: 0,
+            diag: Box::new(RefCell::new(None)),
+            capture_diag: false,
+            err: check(rc).err(),
+        }
     }
-    /// Open a database in this environment.
+
+    /// Open a database in this environment (returns a [`DbBuilder`]).
     pub fn database(&self) -> DbBuilder<'_> {
-        DbBuilder { env: self, dbptr: core::ptr::null_mut(), ty: ffi::DB_BTREE }
+        DbBuilder {
+            env: self,
+            ty: ffi::DB_BTREE,
+            pagesize: 0,
+            set_flags: 0,
+            err: None,
+        }
+    }
+
+    /// Flush the transaction log and checkpoint the environment.
+    pub fn checkpoint(&self) -> Result<()> {
+        check(unsafe { ffi::libdb_env_txn_checkpoint(self.ptr, 0, 0, 0) })
+    }
+
+    /// The last diagnostic string the error callback captured, if any. Cleared
+    /// by reading it.
+    pub fn last_diagnostic(&self) -> Option<String> {
+        self.diag.borrow_mut().take()
+    }
+
+    // Used by the transaction and cursor modules in later phases.
+    #[allow(dead_code)]
+    fn as_ptr(&self) -> *mut ffi::DB_ENV {
+        self.ptr
+    }
+
+    fn take_diag(&self) -> Option<String> {
+        self.diag.borrow_mut().take()
+    }
+
+    /// Attach the last captured diagnostic to a DB error, if the env captured
+    /// one for this failing call.
+    fn enrich(&self, e: Error) -> Error {
+        if let (Error::Db(c, m), Some(d)) = (&e, self.take_diag()) {
+            Error::Db(*c, format!("{m}: {d}"))
+        } else {
+            e
+        }
     }
 }
 
 impl EnvBuilder {
-    /// Set the cache size (gigabytes + bytes). Must precede `open`.
-    pub fn cachesize(self, gbytes: u32, bytes: u32) -> Result<Self> {
-        check(unsafe { ffi::libdb_env_set_cachesize(self.ptr, gbytes, bytes, 1) })?;
-        Ok(self)
+    /// Set the cache size (gigabytes + bytes).
+    pub fn cachesize(mut self, gbytes: u32, bytes: u32) -> Self {
+        if self.err.is_none() {
+            if let Err(e) =
+                check(unsafe { ffi::libdb_env_set_cachesize(self.ptr, gbytes, bytes, 1) })
+            {
+                self.err = Some(e);
+            }
+        }
+        self
     }
-    /// Open the environment at `home`, creating a transactional environment.
-    pub fn open<P: AsRef<Path>>(self, home: P) -> Result<Env> {
-        let c = cpath(home.as_ref())?;
-        let flags = ffi::DB_CREATE | ffi::DB_INIT_MPOOL | ffi::DB_INIT_LOCK
-            | ffi::DB_INIT_LOG | ffi::DB_INIT_TXN | ffi::DB_THREAD;
+
+    /// Turn an environment behavior flag on (`onoff = true`) or off.
+    pub fn set_flag(mut self, flag: u32, onoff: bool) -> Self {
+        if self.err.is_none() {
+            if let Err(e) =
+                check(unsafe { ffi::libdb_env_set_flags(self.ptr, flag, onoff as c_int) })
+            {
+                self.err = Some(e);
+            }
+        }
+        self
+    }
+
+    /// Set the error-message prefix libdb prepends to diagnostics.
+    pub fn errpfx(self, pfx: &str) -> Self {
+        if let Ok(c) = CString::new(pfx) {
+            unsafe { ffi::libdb_env_set_errpfx(self.ptr, c.as_ptr()) };
+        }
+        self
+    }
+
+    /// Capture libdb's diagnostic strings into [`Env::last_diagnostic`] and the
+    /// error returned by a failing call.
+    pub fn capture_diagnostics(mut self) -> Self {
+        self.capture_diag = true;
+        self
+    }
+
+    /// Route libdb's informational messages to stderr via the message callback.
+    pub fn log_messages(self) -> Self {
+        unsafe { ffi::libdb_env_set_msgcall(self.ptr, Some(msgcall_thunk)) };
+        self
+    }
+
+    /// OR extra flags into the environment `open` call (advanced).
+    pub fn extra_open_flags(mut self, flags: u32) -> Self {
+        self.extra_flags |= flags;
+        self
+    }
+
+    /// Open the environment at `home` as a transactional, free-threaded
+    /// environment, creating it if necessary.
+    pub fn open<P: AsRef<Path>>(mut self, home: P) -> Result<Env> {
+        if let Some(e) = self.err.take() {
+            unsafe { ffi::libdb_env_close(self.ptr, 0) };
+            core::mem::forget(self);
+            return Err(e);
+        }
+        let c = match cpath(home.as_ref()) {
+            Ok(c) => c,
+            Err(e) => {
+                unsafe { ffi::libdb_env_close(self.ptr, 0) };
+                core::mem::forget(self);
+                return Err(e);
+            }
+        };
+        if self.capture_diag {
+            let p = (&*self.diag) as *const RefCell<Option<String>> as *mut c_void;
+            unsafe {
+                ffi::libdb_env_set_app_private(self.ptr, p);
+                ffi::libdb_env_set_errcall(self.ptr, Some(errcall_thunk));
+            }
+        }
+        let flags = ffi::DB_CREATE
+            | ffi::DB_INIT_MPOOL
+            | ffi::DB_INIT_LOCK
+            | ffi::DB_INIT_LOG
+            | ffi::DB_INIT_TXN
+            | ffi::DB_THREAD
+            | self.extra_flags;
         let r = check(unsafe { ffi::libdb_env_open(self.ptr, c.as_ptr(), flags, 0o644) });
         match r {
             Ok(()) => {
-                let env = Env { ptr: self.ptr, open: true };
-                core::mem::forget(self); // ownership moved into Env
+                let diag = std::mem::replace(&mut self.diag, Box::new(RefCell::new(None)));
+                let env = Env {
+                    ptr: self.ptr,
+                    open: true,
+                    diag,
+                };
+                core::mem::forget(self);
                 Ok(env)
             }
             Err(e) => {
-                // open failed: the handle is dead; close to release it.
-                unsafe { ffi::libdb_env_close(self.ptr, 0); }
+                let e = if let (Error::Db(c, m), Some(d)) = (&e, self.diag.borrow_mut().take()) {
+                    Error::Db(*c, format!("{m}: {d}"))
+                } else {
+                    e
+                };
+                unsafe { ffi::libdb_env_close(self.ptr, 0) };
                 core::mem::forget(self);
                 Err(e)
             }
@@ -135,104 +414,343 @@ impl EnvBuilder {
 
 impl Drop for EnvBuilder {
     fn drop(&mut self) {
-        // Only runs if open() was never called (both paths mem::forget self).
-        unsafe { ffi::libdb_env_close(self.ptr, 0); }
+        // Only runs if open() was never called (both open paths mem::forget).
+        unsafe { ffi::libdb_env_close(self.ptr, 0) };
     }
 }
 impl Drop for Env {
     fn drop(&mut self) {
-        if self.open { unsafe { ffi::libdb_env_close(self.ptr, 0); } }
+        if self.open {
+            unsafe { ffi::libdb_env_close(self.ptr, 0) };
+        }
     }
 }
 // Opened with DB_THREAD, so the environment is free-threaded.
 unsafe impl Send for Env {}
 unsafe impl Sync for Env {}
 
-// --- Db ---------------------------------------------------------------------
+/// The error-callback thunk: libdb calls it with the env, the prefix and the
+/// message; we recover the diag cell from `app_private` and store the message.
+/// Wrapped so a panic cannot cross the FFI boundary.
+extern "C" fn errcall_thunk(
+    env: *const ffi::DB_ENV,
+    _pfx: *const core::ffi::c_char,
+    msg: *const core::ffi::c_char,
+) {
+    let _ = std::panic::catch_unwind(|| unsafe {
+        let p = ffi::libdb_env_get_app_private(env as *mut ffi::DB_ENV);
+        if p.is_null() || msg.is_null() {
+            return;
+        }
+        let cell = &*(p as *const RefCell<Option<String>>);
+        let s = CStr::from_ptr(msg).to_string_lossy().into_owned();
+        *cell.borrow_mut() = Some(s);
+    });
+}
+
+/// The message-callback thunk: print the message to stderr.
+extern "C" fn msgcall_thunk(_env: *const ffi::DB_ENV, msg: *const core::ffi::c_char) {
+    let _ = std::panic::catch_unwind(|| unsafe {
+        if !msg.is_null() {
+            eprintln!("libdb: {}", CStr::from_ptr(msg).to_string_lossy());
+        }
+    });
+}
+
+// ===========================================================================
+// Db
+// ===========================================================================
 
 /// A database (a key/value store) inside an [`Env`]. Borrows the env so it
 /// cannot outlive it (the C library requires the env outlive every db).
+///
+/// Free-threaded (opened with `DB_THREAD`): [`Send`] + [`Sync`].
 pub struct Db<'env> {
     ptr: *mut ffi::DB,
-    _env: &'env Env,
+    env: &'env Env,
+}
+
+/// The database access-method type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DbType {
+    /// Sorted balanced tree (the default).
+    Btree,
+    /// Extended linear hash.
+    Hash,
+    /// Record-number indexed, variable length.
+    Recno,
+    /// Fixed-length records, queue semantics.
+    Queue,
+}
+impl DbType {
+    fn to_ffi(self) -> c_int {
+        match self {
+            DbType::Btree => ffi::DB_BTREE,
+            DbType::Hash => ffi::DB_HASH,
+            DbType::Recno => ffi::DB_RECNO,
+            DbType::Queue => ffi::DB_QUEUE,
+        }
+    }
 }
 
 /// Builder for a [`Db`].
 pub struct DbBuilder<'env> {
     env: &'env Env,
-    dbptr: *mut ffi::DB,
     ty: c_int,
+    pagesize: ffi::u_int32_t,
+    set_flags: ffi::u_int32_t,
+    err: Option<Error>,
 }
 
 impl<'env> DbBuilder<'env> {
-    /// Open a Btree database backed by `file`.
-    pub fn open_btree<P: AsRef<Path>>(mut self, file: P) -> Result<Db<'env>> {
+    /// Make this a Btree database (the default).
+    pub fn btree(mut self) -> Self {
         self.ty = ffi::DB_BTREE;
-        self.open(file)
+        self
     }
-    fn open<P: AsRef<Path>>(self, file: P) -> Result<Db<'env>> {
+    /// Make this a Hash database.
+    pub fn hash(mut self) -> Self {
+        self.ty = ffi::DB_HASH;
+        self
+    }
+    /// Make this a Recno (record-number) database.
+    pub fn recno(mut self) -> Self {
+        self.ty = ffi::DB_RECNO;
+        self
+    }
+    /// Make this a Queue database.
+    pub fn queue(mut self) -> Self {
+        self.ty = ffi::DB_QUEUE;
+        self
+    }
+    /// Set the access-method type explicitly.
+    pub fn db_type(mut self, ty: DbType) -> Self {
+        self.ty = ty.to_ffi();
+        self
+    }
+    /// Set the page size in bytes (power of two, 512..64K).
+    pub fn pagesize(mut self, bytes: u32) -> Self {
+        self.pagesize = bytes;
+        self
+    }
+    /// Allow unsorted duplicate data items for a key.
+    pub fn duplicates(mut self) -> Self {
+        self.set_flags |= ffi::DB_DUP;
+        self
+    }
+    /// Allow sorted duplicate data items for a key.
+    pub fn sorted_duplicates(mut self) -> Self {
+        self.set_flags |= ffi::DB_DUP | ffi::DB_DUPSORT;
+        self
+    }
+
+    /// Open the database backed by `file`.
+    pub fn open<P: AsRef<Path>>(mut self, file: P) -> Result<Db<'env>> {
+        if let Some(e) = self.err.take() {
+            return Err(e);
+        }
         let mut dbp: *mut ffi::DB = core::ptr::null_mut();
         check(unsafe { ffi::db_create(&mut dbp, self.env.ptr, 0) })?;
+
+        if self.pagesize != 0 {
+            if let Err(e) = check(unsafe { ffi::libdb_db_set_pagesize(dbp, self.pagesize) }) {
+                unsafe { ffi::libdb_db_close(dbp, 0) };
+                return Err(e);
+            }
+        }
+        if self.set_flags != 0 {
+            if let Err(e) = check(unsafe { ffi::libdb_db_set_flags(dbp, self.set_flags) }) {
+                unsafe { ffi::libdb_db_close(dbp, 0) };
+                return Err(e);
+            }
+        }
+
         let c = cpath(file.as_ref())?;
         let flags = ffi::DB_CREATE | ffi::DB_AUTO_COMMIT | ffi::DB_THREAD;
         let r = check(unsafe {
-            ffi::libdb_db_open(dbp, core::ptr::null_mut(), c.as_ptr(),
-                core::ptr::null(), self.ty, flags, 0o644)
+            ffi::libdb_db_open(
+                dbp,
+                core::ptr::null_mut(),
+                c.as_ptr(),
+                core::ptr::null(),
+                self.ty,
+                flags,
+                0o644,
+            )
         });
-        let _ = self.dbptr;
         match r {
-            Ok(()) => Ok(Db { ptr: dbp, _env: self.env }),
-            Err(e) => { unsafe { ffi::libdb_db_close(dbp, 0); } Err(e) }
+            Ok(()) => Ok(Db {
+                ptr: dbp,
+                env: self.env,
+            }),
+            Err(e) => {
+                let e = self.env.enrich(e);
+                unsafe { ffi::libdb_db_close(dbp, 0) };
+                Err(e)
+            }
         }
     }
 }
 
 impl<'env> Db<'env> {
-    /// Store `data` under `key`. Overwrites an existing value (Btree default).
+    // --- put ---------------------------------------------------------------
+
+    /// Store `data` under `key`, overwriting any existing value.
     pub fn put(&self, key: &[u8], data: &[u8]) -> Result<()> {
+        self.put_flags(key, data, 0).map(|_| ())
+    }
+
+    /// Store only if `key` is absent (`DB_NOOVERWRITE`). Returns whether it
+    /// was stored or already existed.
+    pub fn put_no_overwrite(&self, key: &[u8], data: &[u8]) -> Result<Put> {
+        self.put_flags(key, data, ffi::DB_NOOVERWRITE)
+    }
+
+    fn put_flags(&self, key: &[u8], data: &[u8], flags: ffi::u_int32_t) -> Result<Put> {
         let mut k = dbt_in(key);
         let mut d = dbt_in(data);
-        check(unsafe { ffi::libdb_db_put(self.ptr, core::ptr::null_mut(), &mut k, &mut d, 0) })
+        let rc =
+            unsafe { ffi::libdb_db_put(self.ptr, core::ptr::null_mut(), &mut k, &mut d, flags) };
+        if rc == ffi::DB_KEYEXIST {
+            return Ok(Put::Exists);
+        }
+        check(rc).map_err(|e| self.env.enrich(e))?;
+        Ok(Put::Stored)
     }
-    /// Fetch the value under `key`. Returns `Ok(None)` if the key is absent
-    /// (`DB_NOTFOUND` is not an error). The value is copied out of DB memory.
+
+    // --- get (copy-out, the default form) ----------------------------------
+
+    /// Fetch the value under `key`, copied out of DB memory. `Ok(None)` if the
+    /// key is absent (`DB_NOTFOUND` is not an error).
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
         let mut k = dbt_in(key);
-        let mut d = ffi::DBT::default();
-        d.flags = ffi::DB_DBT_MALLOC; // DB allocates; we copy then free.
+        let mut d = dbt_out(ffi::DB_DBT_MALLOC);
         let rc = unsafe { ffi::libdb_db_get(self.ptr, core::ptr::null_mut(), &mut k, &mut d, 0) };
         if rc == ffi::DB_NOTFOUND {
             return Ok(None);
         }
-        check(rc)?;
-        // Copy out, then free the DB-allocated buffer with libc free (the
-        // default allocator, since we did not override set_alloc).
-        let out = unsafe {
-            if d.data.is_null() || d.size == 0 {
-                Vec::new()
-            } else {
-                let s = core::slice::from_raw_parts(d.data as *const u8, d.size as usize);
-                let v = s.to_vec();
-                extern "C" { fn free(p: *mut core::ffi::c_void); }
-                free(d.data);
-                v
+        check(rc).map_err(|e| self.env.enrich(e))?;
+        Ok(Some(unsafe { take_malloc(&d) }))
+    }
+
+    // --- get_into (zero-alloc USERMEM, hot path) ---------------------------
+
+    /// Fetch the value under `key` into the caller's buffer with no allocation
+    /// (`DB_DBT_USERMEM`). If the buffer is too small, returns
+    /// [`GetInto::TooSmall`] with the needed size so the caller can grow and
+    /// retry. See [`Db::get_into_grow`] for the retry wrapped up.
+    pub fn get_into(&self, key: &[u8], buf: &mut [u8]) -> Result<GetInto> {
+        let mut k = dbt_in(key);
+        let mut d = dbt_usermem(buf);
+        let rc = unsafe { ffi::libdb_db_get(self.ptr, core::ptr::null_mut(), &mut k, &mut d, 0) };
+        if rc == ffi::DB_NOTFOUND {
+            return Ok(GetInto::NotFound);
+        }
+        if rc == ffi::DB_BUFFER_SMALL {
+            return Ok(GetInto::TooSmall(d.size as usize));
+        }
+        check(rc).map_err(|e| self.env.enrich(e))?;
+        Ok(GetInto::Fit(d.size as usize))
+    }
+
+    /// Like [`Db::get_into`] but on a too-small buffer it grows `buf` and
+    /// retries, so it always either returns the value length written or
+    /// `None`. Zero-alloc when the buffer already fits.
+    pub fn get_into_grow(&self, key: &[u8], buf: &mut Vec<u8>) -> Result<Option<usize>> {
+        if buf.is_empty() {
+            buf.resize(32, 0);
+        }
+        match self.get_into(key, buf.as_mut_slice())? {
+            GetInto::NotFound => Ok(None),
+            GetInto::Fit(n) => Ok(Some(n)),
+            GetInto::TooSmall(need) => {
+                buf.resize(need, 0);
+                match self.get_into(key, buf.as_mut_slice())? {
+                    GetInto::Fit(n) => Ok(Some(n)),
+                    GetInto::NotFound => Ok(None),
+                    GetInto::TooSmall(_) => Err(Error::Usage("value grew between retries")),
+                }
             }
-        };
-        Ok(Some(out))
+        }
+    }
+
+    // --- with_value (borrowed closure) -------------------------------------
+
+    /// Call `f` with a borrowed view of the value under `key`, valid only for
+    /// the duration of the call. The borrowed slice's lifetime cannot escape
+    /// the closure. Zero heap allocation for values up to 256 bytes (a stack
+    /// buffer); larger values use one temporary allocation.
+    ///
+    /// Returns `Ok(None)` and does not call `f` if the key is absent.
+    ///
+    /// (The C library forbids handing back its own internal pointer from a
+    /// `DB_THREAD` handle, so this reads into caller-side memory via
+    /// `DB_DBT_USERMEM` rather than aliasing DB-owned memory — still no copy
+    /// is exposed to the caller.)
+    pub fn with_value<R, F>(&self, key: &[u8], f: F) -> Result<Option<R>>
+    where
+        F: FnOnce(&[u8]) -> R,
+    {
+        let mut stack = [0u8; 256];
+        match self.get_into(key, &mut stack)? {
+            GetInto::NotFound => Ok(None),
+            GetInto::Fit(n) => Ok(Some(f(&stack[..n]))),
+            GetInto::TooSmall(need) => {
+                let mut heap = vec![0u8; need];
+                match self.get_into(key, &mut heap)? {
+                    GetInto::Fit(n) => Ok(Some(f(&heap[..n]))),
+                    GetInto::NotFound => Ok(None),
+                    GetInto::TooSmall(_) => Err(Error::Usage("value grew between retries")),
+                }
+            }
+        }
+    }
+
+    // --- del / exists ------------------------------------------------------
+
+    /// Delete the pair under `key`. Returns `Ok(false)` if the key was absent.
+    pub fn del(&self, key: &[u8]) -> Result<bool> {
+        let mut k = dbt_in(key);
+        let rc = unsafe { ffi::libdb_db_del(self.ptr, core::ptr::null_mut(), &mut k, 0) };
+        if rc == ffi::DB_NOTFOUND {
+            return Ok(false);
+        }
+        check(rc).map_err(|e| self.env.enrich(e))?;
+        Ok(true)
+    }
+
+    /// Test whether `key` exists, without returning the value.
+    pub fn exists(&self, key: &[u8]) -> Result<bool> {
+        let mut k = dbt_in(key);
+        let rc = unsafe { ffi::libdb_db_exists(self.ptr, core::ptr::null_mut(), &mut k, 0) };
+        if rc == ffi::DB_NOTFOUND {
+            return Ok(false);
+        }
+        check(rc).map_err(|e| self.env.enrich(e))?;
+        Ok(true)
+    }
+
+    /// Flush any cached database pages to the backing file.
+    pub fn sync(&self) -> Result<()> {
+        check(unsafe { ffi::libdb_db_sync(self.ptr, 0) })
     }
 }
 
 impl<'env> Drop for Db<'env> {
-    fn drop(&mut self) { unsafe { ffi::libdb_db_close(self.ptr, 0); } }
-}
-
-/// Build a borrowed-input DBT pointing at `b` for the duration of a call.
-/// Guards the `size==0`/`data==NULL` shape (a real UB source in the C library).
-fn dbt_in(b: &[u8]) -> ffi::DBT {
-    let mut d = ffi::DBT::default();
-    if !b.is_empty() {
-        d.data = b.as_ptr() as *mut core::ffi::c_void;
-        d.size = b.len() as u32;
+    fn drop(&mut self) {
+        unsafe { ffi::libdb_db_close(self.ptr, 0) };
     }
-    d
+}
+unsafe impl<'env> Send for Db<'env> {}
+unsafe impl<'env> Sync for Db<'env> {}
+
+/// Environment and database flag constants.
+pub mod flag {
+    use super::ffi;
+    /// Keep multiple versions of data (MVCC); enables snapshot isolation.
+    pub const MULTIVERSION: u32 = ffi::DB_MULTIVERSION;
+    /// Do not flush the log synchronously on commit (faster, less durable).
+    pub const TXN_NOSYNC: u32 = ffi::DB_TXN_NOSYNC;
+    /// Default new transactions to snapshot (MVCC) isolation.
+    pub const TXN_SNAPSHOT: u32 = ffi::DB_TXN_SNAPSHOT;
 }
