@@ -598,3 +598,56 @@ jobs:
         run: nix build .#libdb-meson --print-build-logs
       - name: Show result
         run: ls -l result/lib
+
+  # ----------------------------------------------------------------------------
+  # Language bindings (RFC 0016): build + test the Rust and Zig bindings against
+  # an installed libdb. Each binding ships a DRIFT GATE that fails if a constant
+  # it bakes in disagrees with the installed db.h, so an untracked header change
+  # turns this job red. Gating (not continue-on-error): shipped dev-line features.
+  # ----------------------------------------------------------------------------
+  language-bindings:
+    name: language bindings (rust + zig)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and install libdb
+        working-directory: build_unix
+        run: |
+          ../dist/configure --prefix=/usr/local/BerkeleyDB.2026.0
+          make -j"$(nproc)"
+          sudo make install
+      - name: Rust toolchain components
+        run: rustup component add clippy rustfmt || true
+      - name: Rust binding -- test, doc-test, clippy, fmt, examples
+        working-directory: lang/rust
+        env:
+          LIBDB_DIR: /usr/local/BerkeleyDB.2026.0
+          LD_LIBRARY_PATH: /usr/local/BerkeleyDB.2026.0/lib
+        run: |
+          cargo test
+          cargo test --doc
+          cargo clippy --all-targets -- -D warnings
+          cargo fmt --check
+          cargo run --example kvstore >/dev/null
+          cargo run --example counter >/dev/null
+          cargo run --example address_book >/dev/null
+      - name: Install Zig 0.16
+        run: |
+          curl -fsSL https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz -o /tmp/zig.tar.xz \
+            || curl -fsSL https://ziglang.org/builds/zig-x86_64-linux-0.16.0.tar.xz -o /tmp/zig.tar.xz
+          mkdir -p /opt/zig && tar -xJf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
+          echo /opt/zig >> "$GITHUB_PATH"
+      - name: Zig binding -- test (3 modes), drift gate, examples
+        working-directory: lang/zig
+        env:
+          LD_LIBRARY_PATH: /usr/local/BerkeleyDB.2026.0/lib
+        run: |
+          zig version
+          zig build test -Doptimize=Debug --summary all
+          zig build test -Doptimize=ReleaseSafe --summary all
+          zig build test -Doptimize=ReleaseFast --summary all
+          zig build drift
+          zig build example-kv >/dev/null
+          zig build example-counter >/dev/null
+          zig build example-address >/dev/null
