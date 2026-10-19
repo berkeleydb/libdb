@@ -1,0 +1,12 @@
+error[E0597]: `txn` does not live long enough
+  --> tests/ui/cursor_outlives_txn.rs:11:23
+   |
+ 9 |     let cursor = {
+   |         ------ borrow later stored here
+10 |         let txn = env.begin().unwrap();
+   |             --- binding `txn` declared here
+11 |         db.cursor_txn(&txn).unwrap()
+   |                       ^^^^ borrowed value does not live long enough
+12 |         // txn dropped here; `cursor` borrows it and escapes — error.
+13 |     };
+   |     - `txn` dropped here while still borrowed

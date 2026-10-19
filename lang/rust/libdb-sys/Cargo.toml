@@ -1,0 +1,9 @@
+[package]
+name = "libdb-sys"
+version = "0.0.0"
+edition = "2021"
+license = "Sleepycat"
+description = "Raw FFI (Layer 1) for libdb (Berkeley DB fork). Opaque handles, constants, DBT, method-pointer signatures."
+links = "db"
+
+[build-dependencies]

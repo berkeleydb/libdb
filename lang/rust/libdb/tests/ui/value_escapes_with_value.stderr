@@ -1,0 +1,8 @@
+error: lifetime may not live long enough
+  --> tests/ui/value_escapes_with_value.rs:10:58
+   |
+10 |     let escaped: Option<&[u8]> = db.with_value(b"k", |v| v).unwrap();
+   |                                                       -- ^ returning this value requires that `'1` must outlive `'2`
+   |                                                       ||
+   |                                                       |return type of closure is &'2 [u8]
+   |                                                       has type `&'1 [u8]`

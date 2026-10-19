@@ -1,0 +1,197 @@
+error[E0277]: `*mut libdb_sys::DBC` cannot be sent between threads safely
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |           s.spawn(move || {
+   |             ----- ^------
+   |             |     |
+   |  ___________|_____within this `{closure@$DIR/tests/ui/cursor_is_not_send.rs:20:17: 20:24}`
+   | |           |
+   | |           required by a bound introduced by this call
+21 | |             let _ = c2.first();
+22 | |         });
+   | |_________^ `*mut libdb_sys::DBC` cannot be sent between threads safely
+   |
+   = help: within `{closure@$DIR/tests/ui/cursor_is_not_send.rs:20:17: 20:24}`, the trait `Send` is not implemented for `*mut libdb_sys::DBC`
+note: required because it appears within the type `libdb::Cursor<'_, '_>`
+  --> src/cursor.rs
+   |
+   | pub struct Cursor<'txn, 'db> {
+   |            ^^^^^^
+note: required because it's used within this closure
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |         s.spawn(move || {
+   |                 ^^^^^^^
+note: required by a bound in `Scope::<'scope, 'env>::spawn`
+  --> $RUST/std/src/thread/scoped.rs
+   |
+   |     pub fn spawn<F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
+   |            ----- required by a bound in this associated function
+   |     where
+   |         F: FnOnce() -> T + Send + 'scope,
+   |                            ^^^^ required by this bound in `Scope::<'scope, 'env>::spawn`
+
+error[E0277]: `*const Env` cannot be sent between threads safely
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |           s.spawn(move || {
+   |             ----- ^------
+   |             |     |
+   |  ___________|_____within this `{closure@$DIR/tests/ui/cursor_is_not_send.rs:20:17: 20:24}`
+   | |           |
+   | |           required by a bound introduced by this call
+21 | |             let _ = c2.first();
+22 | |         });
+   | |_________^ `*const Env` cannot be sent between threads safely
+   |
+   = help: within `{closure@$DIR/tests/ui/cursor_is_not_send.rs:20:17: 20:24}`, the trait `Send` is not implemented for `*const Env`
+help: the trait `Send` is implemented for `Env`
+  --> src/lib.rs
+   |
+   | unsafe impl Send for Env {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+note: required because it appears within the type `libdb::Cursor<'_, '_>`
+  --> src/cursor.rs
+   |
+   | pub struct Cursor<'txn, 'db> {
+   |            ^^^^^^
+note: required because it's used within this closure
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |         s.spawn(move || {
+   |                 ^^^^^^^
+note: required by a bound in `Scope::<'scope, 'env>::spawn`
+  --> $RUST/std/src/thread/scoped.rs
+   |
+   |     pub fn spawn<F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
+   |            ----- required by a bound in this associated function
+   |     where
+   |         F: FnOnce() -> T + Send + 'scope,
+   |                            ^^^^ required by this bound in `Scope::<'scope, 'env>::spawn`
+
+error[E0277]: `*const ()` cannot be sent between threads safely
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |           s.spawn(move || {
+   |             ----- ^------
+   |             |     |
+   |  ___________|_____within this `{closure@$DIR/tests/ui/cursor_is_not_send.rs:20:17: 20:24}`
+   | |           |
+   | |           required by a bound introduced by this call
+21 | |             let _ = c2.first();
+22 | |         });
+   | |_________^ `*const ()` cannot be sent between threads safely
+   |
+   = help: within `{closure@$DIR/tests/ui/cursor_is_not_send.rs:20:17: 20:24}`, the trait `Send` is not implemented for `*const ()`
+note: required because it appears within the type `PhantomData<*const ()>`
+  --> $RUST/core/src/marker.rs
+   |
+   | pub struct PhantomData<T: PointeeSized>;
+   |            ^^^^^^^^^^^
+note: required because it appears within the type `libdb::Cursor<'_, '_>`
+  --> src/cursor.rs
+   |
+   | pub struct Cursor<'txn, 'db> {
+   |            ^^^^^^
+note: required because it's used within this closure
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |         s.spawn(move || {
+   |                 ^^^^^^^
+note: required by a bound in `Scope::<'scope, 'env>::spawn`
+  --> $RUST/std/src/thread/scoped.rs
+   |
+   |     pub fn spawn<F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
+   |            ----- required by a bound in this associated function
+   |     where
+   |         F: FnOnce() -> T + Send + 'scope,
+   |                            ^^^^ required by this bound in `Scope::<'scope, 'env>::spawn`
+
+error[E0277]: `*mut libdb_sys::DB_TXN` cannot be shared between threads safely
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |           s.spawn(move || {
+   |  ___________-----_^
+   | |           |
+   | |           required by a bound introduced by this call
+21 | |             let _ = c2.first();
+22 | |         });
+   | |_________^ `*mut libdb_sys::DB_TXN` cannot be shared between threads safely
+   |
+   = help: within `Txn<'_>`, the trait `Sync` is not implemented for `*mut libdb_sys::DB_TXN`
+note: required because it appears within the type `Txn<'_>`
+  --> src/txn.rs
+   |
+   | pub struct Txn<'env> {
+   |            ^^^
+   = note: required for `&Txn<'_>` to implement `Send`
+note: required because it appears within the type `PhantomData<&Txn<'_>>`
+  --> $RUST/core/src/marker.rs
+   |
+   | pub struct PhantomData<T: PointeeSized>;
+   |            ^^^^^^^^^^^
+note: required because it appears within the type `libdb::Cursor<'_, '_>`
+  --> src/cursor.rs
+   |
+   | pub struct Cursor<'txn, 'db> {
+   |            ^^^^^^
+note: required because it's used within this closure
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |         s.spawn(move || {
+   |                 ^^^^^^^
+note: required by a bound in `Scope::<'scope, 'env>::spawn`
+  --> $RUST/std/src/thread/scoped.rs
+   |
+   |     pub fn spawn<F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
+   |            ----- required by a bound in this associated function
+   |     where
+   |         F: FnOnce() -> T + Send + 'scope,
+   |                            ^^^^ required by this bound in `Scope::<'scope, 'env>::spawn`
+
+error[E0277]: `*const ()` cannot be shared between threads safely
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |           s.spawn(move || {
+   |  ___________-----_^
+   | |           |
+   | |           required by a bound introduced by this call
+21 | |             let _ = c2.first();
+22 | |         });
+   | |_________^ `*const ()` cannot be shared between threads safely
+   |
+   = help: within `Txn<'_>`, the trait `Sync` is not implemented for `*const ()`
+note: required because it appears within the type `PhantomData<*const ()>`
+  --> $RUST/core/src/marker.rs
+   |
+   | pub struct PhantomData<T: PointeeSized>;
+   |            ^^^^^^^^^^^
+note: required because it appears within the type `Txn<'_>`
+  --> src/txn.rs
+   |
+   | pub struct Txn<'env> {
+   |            ^^^
+   = note: required for `&Txn<'_>` to implement `Send`
+note: required because it appears within the type `PhantomData<&Txn<'_>>`
+  --> $RUST/core/src/marker.rs
+   |
+   | pub struct PhantomData<T: PointeeSized>;
+   |            ^^^^^^^^^^^
+note: required because it appears within the type `libdb::Cursor<'_, '_>`
+  --> src/cursor.rs
+   |
+   | pub struct Cursor<'txn, 'db> {
+   |            ^^^^^^
+note: required because it's used within this closure
+  --> tests/ui/cursor_is_not_send.rs:20:17
+   |
+20 |         s.spawn(move || {
+   |                 ^^^^^^^
+note: required by a bound in `Scope::<'scope, 'env>::spawn`
+  --> $RUST/std/src/thread/scoped.rs
+   |
+   |     pub fn spawn<F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
+   |            ----- required by a bound in this associated function
+   |     where
+   |         F: FnOnce() -> T + Send + 'scope,
+   |                            ^^^^ required by this bound in `Scope::<'scope, 'env>::spawn`

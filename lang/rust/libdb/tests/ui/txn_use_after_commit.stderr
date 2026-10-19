@@ -1,0 +1,15 @@
+error[E0382]: borrow of moved value: `txn`
+ --> tests/ui/txn_use_after_commit.rs:9:13
+  |
+7 |     let txn = env.begin().unwrap();
+  |         --- move occurs because `txn` has type `Txn<'_>`, which does not implement the `Copy` trait
+8 |     txn.commit().unwrap();
+  |         -------- `txn` moved due to this method call
+9 |     let _ = txn.id(); // use after move — error.
+  |             ^^^ value borrowed here after move
+  |
+note: `Txn::<'env>::commit` takes ownership of the receiver `self`, which moves `txn`
+ --> src/txn.rs
+  |
+  |     pub fn commit(mut self) -> Result<()> {
+  |                       ^^^^
