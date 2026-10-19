@@ -1,0 +1,57 @@
+error[E0277]: `Rc<u32>` cannot be sent between threads safely
+  --> tests/ui/callback_must_be_send_sync.rs:14:21
+   |
+14 |           .bt_compare(move |a, b| {
+   |            ---------- ^----------
+   |            |          |
+   |  __________|__________within this `{closure@$DIR/tests/ui/callback_must_be_send_sync.rs:14:21: 14:32}`
+   | |          |
+   | |          required by a bound introduced by this call
+15 | |             let _ = &rc;
+16 | |             a.cmp(b)
+17 | |         })
+   | |_________^ `Rc<u32>` cannot be sent between threads safely
+   |
+   = help: within `{closure@$DIR/tests/ui/callback_must_be_send_sync.rs:14:21: 14:32}`, the trait `Send` is not implemented for `Rc<u32>`
+note: required because it's used within this closure
+  --> tests/ui/callback_must_be_send_sync.rs:14:21
+   |
+14 |         .bt_compare(move |a, b| {
+   |                     ^^^^^^^^^^^
+note: required by a bound in `DbBuilder::<'env>::bt_compare`
+  --> src/lib.rs
+   |
+   |     pub fn bt_compare<F>(mut self, f: F) -> Self
+   |            ---------- required by a bound in this associated function
+   |     where
+   |         F: Fn(&[u8], &[u8]) -> core::cmp::Ordering + Send + Sync + 'static,
+   |                                                      ^^^^ required by this bound in `DbBuilder::<'env>::bt_compare`
+
+error[E0277]: `Rc<u32>` cannot be shared between threads safely
+  --> tests/ui/callback_must_be_send_sync.rs:14:21
+   |
+14 |           .bt_compare(move |a, b| {
+   |            ---------- ^----------
+   |            |          |
+   |  __________|__________within this `{closure@$DIR/tests/ui/callback_must_be_send_sync.rs:14:21: 14:32}`
+   | |          |
+   | |          required by a bound introduced by this call
+15 | |             let _ = &rc;
+16 | |             a.cmp(b)
+17 | |         })
+   | |_________^ `Rc<u32>` cannot be shared between threads safely
+   |
+   = help: within `{closure@$DIR/tests/ui/callback_must_be_send_sync.rs:14:21: 14:32}`, the trait `Sync` is not implemented for `Rc<u32>`
+note: required because it's used within this closure
+  --> tests/ui/callback_must_be_send_sync.rs:14:21
+   |
+14 |         .bt_compare(move |a, b| {
+   |                     ^^^^^^^^^^^
+note: required by a bound in `DbBuilder::<'env>::bt_compare`
+  --> src/lib.rs
+   |
+   |     pub fn bt_compare<F>(mut self, f: F) -> Self
+   |            ---------- required by a bound in this associated function
+   |     where
+   |         F: Fn(&[u8], &[u8]) -> core::cmp::Ordering + Send + Sync + 'static,
+   |                                                             ^^^^ required by this bound in `DbBuilder::<'env>::bt_compare`

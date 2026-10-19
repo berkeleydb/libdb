@@ -721,11 +721,13 @@ pub struct Db<'env> {
 }
 
 /// A key/value comparator closure.
-pub(crate) type CompareClosure = Box<dyn Fn(&[u8], &[u8]) -> core::cmp::Ordering + 'static>;
+pub(crate) type CompareClosure =
+    Box<dyn Fn(&[u8], &[u8]) -> core::cmp::Ordering + Send + Sync + 'static>;
 /// A hash-function closure.
-pub(crate) type HashClosure = Box<dyn Fn(&[u8]) -> u32 + 'static>;
+pub(crate) type HashClosure = Box<dyn Fn(&[u8]) -> u32 + Send + Sync + 'static>;
 /// A secondary-index extractor closure.
-pub(crate) type ExtractClosure = Box<dyn Fn(&[u8], &[u8]) -> Option<Vec<u8>> + 'static>;
+pub(crate) type ExtractClosure =
+    Box<dyn Fn(&[u8], &[u8]) -> Option<Vec<u8>> + Send + Sync + 'static>;
 
 /// The host closures stashed behind the DB handle's `app_private` slot so the
 /// extern-C comparator/hash/associate thunks can recover them.
@@ -823,7 +825,7 @@ impl<'env> DbBuilder<'env> {
     /// Install a Btree key comparator defining the key order.
     pub fn bt_compare<F>(mut self, f: F) -> Self
     where
-        F: Fn(&[u8], &[u8]) -> core::cmp::Ordering + 'static,
+        F: Fn(&[u8], &[u8]) -> core::cmp::Ordering + Send + Sync + 'static,
     {
         self.bt_compare = Some(Box::new(f));
         self
@@ -831,7 +833,7 @@ impl<'env> DbBuilder<'env> {
     /// Install a duplicate-data comparator (requires `sorted_duplicates`).
     pub fn dup_compare<F>(mut self, f: F) -> Self
     where
-        F: Fn(&[u8], &[u8]) -> core::cmp::Ordering + 'static,
+        F: Fn(&[u8], &[u8]) -> core::cmp::Ordering + Send + Sync + 'static,
     {
         self.dup_compare = Some(Box::new(f));
         self
@@ -839,7 +841,7 @@ impl<'env> DbBuilder<'env> {
     /// Install a Hash hash function.
     pub fn h_hash<F>(mut self, f: F) -> Self
     where
-        F: Fn(&[u8]) -> u32 + 'static,
+        F: Fn(&[u8]) -> u32 + Send + Sync + 'static,
     {
         self.h_hash = Some(Box::new(f));
         self
@@ -1159,7 +1161,7 @@ impl<'env> Db<'env> {
     /// ```
     pub fn associate<F>(&self, secondary: &Db<'env>, extractor: F) -> Result<()>
     where
-        F: Fn(&[u8], &[u8]) -> Option<Vec<u8>> + 'static,
+        F: Fn(&[u8], &[u8]) -> Option<Vec<u8>> + Send + Sync + 'static,
     {
         // The associate extractor must live on the SECONDARY handle (its first
         // callback arg is the secondary). The secondary's app_private already
