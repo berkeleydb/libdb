@@ -41,6 +41,35 @@ are *compile* errors.
   `counter` (a transactional counter via the retry helper), `address_book`
   (a secondary-index lookup). Run with `cargo run --example <name>`.
 
+## Thread safety
+
+`Env` and `Db` are opened with `DB_THREAD` and are `Send + Sync`: a single
+handle may be shared across threads (the `deadlock_retry_via_transact` test
+shares one `Env`/`Db` across scoped threads). The diagnostic slot the error
+callback writes is behind a `Mutex`, so even the cold `last_diagnostic()` path
+is race-free under sharing.
+
+**Transactions and cursors are single-thread.** The C library requires a
+transaction — and every cursor opened under it — to be used by one thread. The
+types encode this:
+
+- `Txn` is `Send` but **not** `Sync`: you may *move* a transaction to another
+  thread and use it serially, but not *share* it.
+- `Cursor` is **not** `Send`: it borrows the `Txn` (`&Txn`), and `&Txn` is
+  `!Send` because `Txn` is `!Sync`. The compiler therefore refuses to send a
+  cursor — or two cursors sharing one transaction — to another thread, which is
+  exactly the C rule (splitting a txn's cursors across threads causes a fatal
+  region error). See `tests/ui/cursor_is_not_send.rs`.
+
+### Allocator
+
+The crate hands libdb memory (secondary-key buffers from `associate`) and
+receives libdb-allocated memory (copy-out getters), allocating and freeing both
+through libdb's own allocator (`libdb_umalloc`/`libdb_ufree` →
+`__os_umalloc`/`__os_ufree`). This matches the process-global allocator hooks
+(`db_env_set_func_malloc`/`free`) or libc. It must **never** configure a
+per-env allocator (`DB_ENV->set_alloc`); the safe API does not expose one.
+
 ## Layout
 
 ```

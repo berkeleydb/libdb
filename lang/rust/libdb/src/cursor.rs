@@ -23,11 +23,20 @@ pub enum Direction {
 ///
 /// Lifetimes: `'txn` is the transaction it operates in (or the db's lifetime
 /// when not in a txn), `'db` is the database. A `Cursor` cannot outlive either.
+///
+/// Thread affinity: a cursor is **not** `Send`. The C library requires that a
+/// cursor — and every cursor sharing one transaction — be used by a single
+/// thread. We get this structurally: the `_txn` marker borrows the `Txn`
+/// (`&'txn Txn`), and because `Txn` is `!Sync`, `&Txn` is `!Send`, so the
+/// cursor is `!Send` with no `unsafe impl`. A non-txn cursor borrows the `Db`
+/// (via the same `'db`-tied marker) and is likewise `!Send`.
 pub struct Cursor<'txn, 'db> {
     ptr: *mut ffi::DBC,
     env_err: *const crate::Env,
     _not_sync: NotSync,
-    _txn: PhantomData<&'txn ()>,
+    // Borrow the real `Txn`, not `()`: `Txn: !Sync` makes `&Txn: !Send`, which
+    // makes the cursor `!Send` — exactly the C single-thread-affinity rule.
+    _txn: PhantomData<&'txn Txn<'db>>,
     _db: PhantomData<&'db ()>,
 }
 
@@ -69,36 +78,51 @@ impl<'txn, 'db> Cursor<'txn, 'db> {
         // pointer, and MALLOC on a DBT whose data already points at borrowed
         // memory is undefined. So seed the key via a USERMEM buffer that holds
         // the seed and is large enough for libdb to overwrite with the match.
-        let mut keybuf: Vec<u8> = Vec::new();
-        let mut k = if seed_key {
-            keybuf = Vec::with_capacity(key.len().max(256));
+        //
+        // The matched key (SET_RANGE in particular) can exceed the seed, so on
+        // DB_BUFFER_SMALL we grow the USERMEM key buffer to the size libdb
+        // reports and re-issue the same op (the value DBT stays MALLOC).
+        if !seed_key {
+            let mut k = dbt_out(ffi::DB_DBT_MALLOC);
+            let mut d = dbt_out(ffi::DB_DBT_MALLOC);
+            let rc = unsafe { ffi::libdb_dbc_get(self.ptr, &mut k, &mut d, op) };
+            if rc == ffi::DB_NOTFOUND {
+                return Ok(None);
+            }
+            check(rc).map_err(|e| self.enrich(e))?;
+            return Ok(Some(unsafe { (take_malloc(&k), take_malloc(&d)) }));
+        }
+
+        let mut cap = key.len().max(256);
+        loop {
+            let mut keybuf: Vec<u8> = Vec::with_capacity(cap);
             keybuf.extend_from_slice(key);
-            keybuf.resize(keybuf.capacity(), 0);
-            ffi::DBT {
+            keybuf.resize(cap, 0);
+            let mut k = ffi::DBT {
                 data: keybuf.as_mut_ptr() as *mut core::ffi::c_void,
                 size: key.len() as u32,
                 ulen: keybuf.len() as u32,
                 flags: ffi::DB_DBT_USERMEM,
                 ..Default::default()
+            };
+            let mut d = dbt_out(ffi::DB_DBT_MALLOC);
+            let rc = unsafe { ffi::libdb_dbc_get(self.ptr, &mut k, &mut d, op) };
+            if rc == ffi::DB_NOTFOUND {
+                return Ok(None);
             }
-        } else {
-            dbt_out(ffi::DB_DBT_MALLOC)
-        };
-        let mut d = dbt_out(ffi::DB_DBT_MALLOC);
-        let rc = unsafe { ffi::libdb_dbc_get(self.ptr, &mut k, &mut d, op) };
-        if rc == ffi::DB_NOTFOUND {
-            return Ok(None);
-        }
-        check(rc).map_err(|e| self.enrich(e))?;
-        let key_out = if seed_key {
+            if rc == ffi::DB_BUFFER_SMALL && (k.size as usize) > cap {
+                // The matched key is larger than the seed buffer: grow to the
+                // size libdb reported and retry. (No value was copied out on a
+                // BUFFER_SMALL return, so there is nothing to free.)
+                cap = k.size as usize;
+                continue;
+            }
+            check(rc).map_err(|e| self.enrich(e))?;
             // libdb wrote the matched key length into k.size, bytes into keybuf.
             keybuf.truncate(k.size as usize);
-            keybuf
-        } else {
-            unsafe { take_malloc(&k) }
-        };
-        let val = unsafe { take_malloc(&d) };
-        Ok(Some((key_out, val)))
+            let val = unsafe { take_malloc(&d) };
+            return Ok(Some((keybuf, val)));
+        }
     }
 
     /// Position on the first record and return it.
@@ -259,7 +283,6 @@ impl<'txn, 'db> Drop for Cursor<'txn, 'db> {
         unsafe { ffi::libdb_dbc_close(self.ptr) };
     }
 }
-unsafe impl<'txn, 'db> Send for Cursor<'txn, 'db> {}
 
 /// A forward/backward [`Iterator`] over a cursor's records.
 pub struct CursorIter<'txn, 'db> {

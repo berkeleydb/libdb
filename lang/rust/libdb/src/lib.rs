@@ -28,13 +28,36 @@
 //! assert_eq!(db.get(b"key")?.as_deref(), Some(&b"value"[..]));
 //! # Ok::<(), libdb::Error>(())
 //! ```
+//!
+//! # Allocator invariant
+//!
+//! This crate hands libdb memory (an `associate` secondary-key buffer) and
+//! receives libdb-allocated memory (copy-out getters), and it allocates/frees
+//! both through libdb's **own** allocator (`libdb_umalloc`/`libdb_ufree` in the
+//! shim, i.e. `__os_umalloc`/`__os_ufree`). This matches the process-global
+//! allocator hooks (`db_env_set_func_malloc`/`free`) and otherwise libc
+//! `malloc`/`free`. The one allocator configuration that would break this is a
+//! **per-env** allocator (`DB_ENV->set_alloc`), which libdb's own
+//! `FREE_IF_NEEDED` threads an env through: this crate must never configure one
+//! (the safe API does not expose it, and the shim does not wrap it).
+//!
+//! # Thread safety
+//!
+//! [`Env`] and [`Db`] are opened with `DB_THREAD` and are [`Send`] + [`Sync`]:
+//! the handles may be shared across threads. **Transactions and cursors are
+//! not** — the C library requires a transaction (and every cursor opened under
+//! it) to be used by a single thread. [`Txn`] is [`Send`] but `!Sync` (it may
+//! be *moved* to another thread and used serially, never *shared*), and a
+//! [`Cursor`] is `!Send` (it borrows the `Txn`, and `&Txn` is `!Send` because
+//! `Txn` is `!Sync`). The compiler enforces this: you cannot send a cursor,
+//! nor two cursors sharing one transaction, to another thread.
 #![warn(missing_docs)]
 
 use core::ffi::{c_int, c_void, CStr};
-use std::cell::RefCell;
 use std::ffi::CString;
 use std::marker::PhantomData;
 use std::path::Path;
+use std::sync::Mutex;
 
 use libdb_sys as ffi;
 
@@ -222,17 +245,22 @@ pub(crate) fn dbt_usermem(buf: &mut [u8]) -> ffi::DBT {
 }
 
 /// Copy a DB-owned (MALLOC) output DBT into an owned `Vec`, freeing the DB
-/// buffer. Safe for the empty shape.
+/// buffer through libdb's own allocator (`__os_ufree`, via the shim) rather
+/// than libc `free`, so the free matches whatever allocator libdb used to
+/// allocate the buffer. Safe for the empty shape.
+///
+/// # Allocator invariant
+/// This is only guaranteed to free with the right allocator while the crate
+/// never configures a **per-env** libdb allocator (`dbenv->set_alloc`). The
+/// safe API never does, and that path is not wrapped. See the crate-level
+/// allocator note.
 pub(crate) unsafe fn take_malloc(d: &ffi::DBT) -> Vec<u8> {
     if d.data.is_null() || d.size == 0 {
         return Vec::new();
     }
     let s = core::slice::from_raw_parts(d.data as *const u8, d.size as usize);
     let v = s.to_vec();
-    extern "C" {
-        fn free(p: *mut c_void);
-    }
-    free(d.data);
+    ffi::libdb_ufree(d.data);
     v
 }
 
@@ -297,18 +325,23 @@ pub(crate) type NotSync = PhantomData<*const ()>;
 /// A database environment. Create one via [`Env::builder`], configure it, open
 /// it, then open databases and begin transactions in it.
 ///
-/// Opened with `DB_THREAD`, so [`Send`] + [`Sync`].
+/// Opened with `DB_THREAD`, so [`Send`] + [`Sync`]: the handle itself may be
+/// shared across threads. The diagnostic slot captured by the error callback
+/// is held behind a [`Mutex`], so even the cold `&self` diagnostic paths are
+/// race-free. (See the thread-safety section of `README.md` for the
+/// txn/cursor single-thread rules, which `Send`/`Sync` on `Env`/`Db` do *not*
+/// relax.)
 pub struct Env {
     ptr: *mut ffi::DB_ENV,
     open: bool,
-    diag: Box<RefCell<Option<String>>>,
+    diag: Box<Mutex<Option<String>>>,
 }
 
 /// Builder for an [`Env`].
 pub struct EnvBuilder {
     ptr: *mut ffi::DB_ENV,
     extra_flags: ffi::u_int32_t,
-    diag: Box<RefCell<Option<String>>>,
+    diag: Box<Mutex<Option<String>>>,
     capture_diag: bool,
     err: Option<Error>,
 }
@@ -352,7 +385,7 @@ impl Env {
         EnvBuilder {
             ptr,
             extra_flags: 0,
-            diag: Box::new(RefCell::new(None)),
+            diag: Box::new(Mutex::new(None)),
             capture_diag: false,
             err: check(rc).err(),
         }
@@ -454,7 +487,7 @@ impl Env {
 
     /// The last diagnostic string the error callback captured, if any.
     pub fn last_diagnostic(&self) -> Option<String> {
-        self.diag.borrow_mut().take()
+        self.diag.lock().unwrap_or_else(|e| e.into_inner()).take()
     }
 
     pub(crate) fn as_ptr(&self) -> *mut ffi::DB_ENV {
@@ -462,7 +495,7 @@ impl Env {
     }
 
     fn take_diag(&self) -> Option<String> {
-        self.diag.borrow_mut().take()
+        self.diag.lock().unwrap_or_else(|e| e.into_inner()).take()
     }
 
     pub(crate) fn enrich(&self, e: Error) -> Error {
@@ -561,7 +594,7 @@ impl EnvBuilder {
             }
         };
         if self.capture_diag {
-            let p = (&*self.diag) as *const RefCell<Option<String>> as *mut c_void;
+            let p = (&*self.diag) as *const Mutex<Option<String>> as *mut c_void;
             unsafe {
                 ffi::libdb_env_set_app_private(self.ptr, p);
                 ffi::libdb_env_set_errcall(self.ptr, Some(errcall_thunk));
@@ -577,7 +610,7 @@ impl EnvBuilder {
         let r = check(unsafe { ffi::libdb_env_open(self.ptr, c.as_ptr(), flags, 0o644) });
         match r {
             Ok(()) => {
-                let diag = std::mem::replace(&mut self.diag, Box::new(RefCell::new(None)));
+                let diag = std::mem::replace(&mut self.diag, Box::new(Mutex::new(None)));
                 let env = Env {
                     ptr: self.ptr,
                     open: true,
@@ -587,7 +620,8 @@ impl EnvBuilder {
                 Ok(env)
             }
             Err(e) => {
-                let e = if let (Error::Db(c, m), Some(d)) = (&e, self.diag.borrow_mut().take()) {
+                let d = self.diag.lock().unwrap_or_else(|e| e.into_inner()).take();
+                let e = if let (Error::Db(c, m), Some(d)) = (&e, d) {
                     Error::Db(*c, format!("{m}: {d}"))
                 } else {
                     e
@@ -625,9 +659,13 @@ extern "C" fn errcall_thunk(
         if p.is_null() || msg.is_null() {
             return;
         }
-        let cell = &*(p as *const RefCell<Option<String>>);
-        let s = CStr::from_ptr(msg).to_string_lossy().into_owned();
-        *cell.borrow_mut() = Some(s);
+        let cell = &*(p as *const Mutex<Option<String>>);
+        // Never block the C library: if a Rust reader holds the lock, drop this
+        // diagnostic rather than wait inside libdb's error path.
+        if let Ok(mut g) = cell.try_lock() {
+            let s = CStr::from_ptr(msg).to_string_lossy().into_owned();
+            *g = Some(s);
+        }
     });
 }
 
@@ -691,11 +729,19 @@ pub(crate) type ExtractClosure = Box<dyn Fn(&[u8], &[u8]) -> Option<Vec<u8>> + '
 
 /// The host closures stashed behind the DB handle's `app_private` slot so the
 /// extern-C comparator/hash/associate thunks can recover them.
+///
+/// `bt_compare`/`dup_compare`/`h_hash` are fixed at build time. The `associate`
+/// extractor is installed later (by [`Db::associate`]) on the *secondary*
+/// handle, so it lives behind a [`Mutex`] and merges into whatever comparator
+/// closures the secondary already owns rather than replacing them. The box is
+/// owned by the `Db` (field `_callbacks`) and dropped with the handle — no
+/// leak — and never moves, so the raw pointer stashed in `app_private` stays
+/// valid for the handle's life.
 struct DbCallbacks {
     bt_compare: Option<CompareClosure>,
     dup_compare: Option<CompareClosure>,
     h_hash: Option<HashClosure>,
-    associate: Option<ExtractClosure>,
+    associate: Mutex<Option<ExtractClosure>>,
 }
 
 /// The database access-method type.
@@ -817,32 +863,30 @@ impl<'env> DbBuilder<'env> {
         let mut dbp: *mut ffi::DB = core::ptr::null_mut();
         check(unsafe { ffi::db_create(&mut dbp, self.env.ptr, 0) })?;
 
-        // Build and stash the callbacks before open, installing the C thunks.
-        let callbacks =
-            if self.bt_compare.is_some() || self.dup_compare.is_some() || self.h_hash.is_some() {
-                let cb = Box::new(DbCallbacks {
-                    bt_compare: self.bt_compare.take(),
-                    dup_compare: self.dup_compare.take(),
-                    h_hash: self.h_hash.take(),
-                    associate: None,
-                });
-                let raw = (&*cb) as *const DbCallbacks as *mut c_void;
-                unsafe {
-                    ffi::libdb_db_set_app_private(dbp, raw);
-                    if cb.bt_compare.is_some() {
-                        ffi::libdb_db_set_bt_compare(dbp, Some(bt_compare_thunk));
-                    }
-                    if cb.dup_compare.is_some() {
-                        ffi::libdb_db_set_dup_compare(dbp, Some(dup_compare_thunk));
-                    }
-                    if cb.h_hash.is_some() {
-                        ffi::libdb_db_set_h_hash(dbp, Some(h_hash_thunk));
-                    }
-                }
-                Some(cb)
-            } else {
-                None
-            };
+        // Always allocate and stash a callbacks box so that app_private is a
+        // stable pointer to a Db-owned struct: comparators (if any) are set now,
+        // and a later associate() merges its extractor into the SAME box rather
+        // than allocating/leaking a second one that would clobber comparators.
+        let cb = Box::new(DbCallbacks {
+            bt_compare: self.bt_compare.take(),
+            dup_compare: self.dup_compare.take(),
+            h_hash: self.h_hash.take(),
+            associate: Mutex::new(None),
+        });
+        let raw = (&*cb) as *const DbCallbacks as *mut c_void;
+        unsafe {
+            ffi::libdb_db_set_app_private(dbp, raw);
+            if cb.bt_compare.is_some() {
+                ffi::libdb_db_set_bt_compare(dbp, Some(bt_compare_thunk));
+            }
+            if cb.dup_compare.is_some() {
+                ffi::libdb_db_set_dup_compare(dbp, Some(dup_compare_thunk));
+            }
+            if cb.h_hash.is_some() {
+                ffi::libdb_db_set_h_hash(dbp, Some(h_hash_thunk));
+            }
+        }
+        let callbacks = Some(cb);
 
         if self.pagesize != 0 {
             if let Err(e) = check(unsafe { ffi::libdb_db_set_pagesize(dbp, self.pagesize) }) {
@@ -1117,22 +1161,17 @@ impl<'env> Db<'env> {
     where
         F: Fn(&[u8], &[u8]) -> Option<Vec<u8>> + 'static,
     {
-        // The associate callback must live on the SECONDARY handle (its first
-        // arg is the secondary). Stash it there, reusing app_private.
-        //
-        // shortcut: this replaces any comparator callbacks already stashed on
-        // the secondary; upgrade to a combined callback struct if a secondary
-        // ever needs both a comparator and an extractor.
-        let cb = Box::new(DbCallbacks {
-            bt_compare: None,
-            dup_compare: None,
-            h_hash: None,
-            associate: Some(Box::new(extractor)),
-        });
-        let raw = (&*cb) as *const DbCallbacks as *mut c_void;
-        unsafe {
-            ffi::libdb_db_set_app_private(secondary.ptr, raw);
-        }
+        // The associate extractor must live on the SECONDARY handle (its first
+        // callback arg is the secondary). The secondary's app_private already
+        // points at its Db-owned DbCallbacks box (installed at open); merge the
+        // extractor into that box's `associate` slot so it (a) drops with the
+        // secondary handle — no leak — and (b) preserves any dup_compare/h_hash
+        // the secondary was built with, rather than clobbering them.
+        let cb = secondary
+            ._callbacks
+            .as_ref()
+            .expect("every Db has an owned callbacks box");
+        *cb.associate.lock().unwrap_or_else(|e| e.into_inner()) = Some(Box::new(extractor));
         let rc = unsafe {
             ffi::libdb_db_associate(
                 self.ptr,
@@ -1143,13 +1182,6 @@ impl<'env> Db<'env> {
             )
         };
         check(rc).map_err(|e| self.env.enrich(e))?;
-        // Keep the callback alive by leaking it onto the secondary's slot; it
-        // lives as long as the secondary handle (closed on Db::drop).
-        // shortcut: leaked rather than tracked for drop — fine because the
-        // process holds the handle until the Db drops the C handle, after
-        // which the C library never calls the thunk again. Upgrade to storing
-        // the Box on the secondary Db if strict leak-freedom is required.
-        Box::leak(cb);
         Ok(())
     }
 
@@ -1292,7 +1324,8 @@ extern "C" fn associate_thunk(
             Some(c) => c,
             None => return ffi::DB_DONOTINDEX,
         };
-        let f = match &cbs.associate {
+        let guard = cbs.associate.lock().unwrap_or_else(|e| e.into_inner());
+        let f = match guard.as_ref() {
             Some(f) => f,
             None => return ffi::DB_DONOTINDEX,
         };
@@ -1300,16 +1333,17 @@ extern "C" fn associate_thunk(
         match f(sk, sd) {
             None => ffi::DB_DONOTINDEX,
             Some(v) => unsafe {
-                // Hand libdb a malloc'd buffer it will free (APPMALLOC path).
+                // Hand libdb a buffer it will free via FREE_IF_NEEDED ->
+                // __os_ufree (the APPMALLOC path). Allocate it through libdb's
+                // OWN allocator (the shim's libdb_umalloc) so the alloc/free
+                // pair matches; raw libc malloc would mismatch if a global
+                // allocator hook were installed.
                 let out = &mut *result;
                 if v.is_empty() {
                     out.data = core::ptr::null_mut();
                     out.size = 0;
                 } else {
-                    extern "C" {
-                        fn malloc(n: usize) -> *mut c_void;
-                    }
-                    let p = malloc(v.len());
+                    let p = ffi::libdb_umalloc(v.len());
                     if p.is_null() {
                         return -1;
                     }

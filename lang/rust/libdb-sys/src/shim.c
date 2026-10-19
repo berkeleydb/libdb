@@ -47,6 +47,29 @@ int libdb_env_txn_checkpoint(DB_ENV *e, u_int32_t kb, u_int32_t min, u_int32_t f
 void libdb_env_set_app_private(DB_ENV *e, void *p) { e->app_private = p; }
 void *libdb_env_get_app_private(DB_ENV *e) { return e->app_private; }
 
+/* ----- allocator ----- */
+/* Allocate/free a buffer through libdb's OWN allocator, so that memory the
+ * binding hands to libdb (an associate secondary-key buffer tagged
+ * DB_DBT_APPMALLOC) and memory libdb hands back to the binding (DB_DBT_MALLOC
+ * outputs) are released by the exact allocator libdb uses internally
+ * (FREE_IF_NEEDED -> __os_ufree). Passing a NULL env makes these honour the
+ * process-global allocator hooks (db_env_set_func_malloc/free) and otherwise
+ * fall back to the C library's malloc/free -- identical to what libdb's own
+ * __os_ufree does for a buffer with no per-env allocator. The binding must
+ * therefore never configure a PER-ENV allocator (dbenv->set_alloc); it does
+ * not, and that path is not wrapped. __os_umalloc/__os_ufree are exported
+ * entry points (os/os_alloc.c); declared here because they are not in db.h. */
+extern int __os_umalloc(void *env, size_t size, void *storep);
+extern void __os_ufree(void *env, void *ptr);
+void *libdb_umalloc(size_t size)
+{
+	void *p = 0;
+	if (__os_umalloc(0, size, &p) != 0)
+		return 0;
+	return p;
+}
+void libdb_ufree(void *p) { __os_ufree(0, p); }
+
 /* ----- DB ----- */
 int libdb_db_open(DB *d, DB_TXN *txn, const char *file, const char *database,
     int dbtype, u_int32_t flags, int mode)

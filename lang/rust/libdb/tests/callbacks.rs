@@ -196,3 +196,137 @@ fn comparator_panic_is_contained() {
     drop(env);
     let _ = std::fs::remove_dir_all(&home);
 }
+
+#[test]
+fn dup_compare_drives_duplicate_order() {
+    // Regression + coverage for the dup_compare thunk, which no test fired.
+    // A reverse-numeric duplicate comparator must drive the stored order of
+    // duplicate data items under one key: inserting "1","2","3" (as bytes)
+    // must iterate back as "3","2","1".
+    let (env, home) = open("dupcmp");
+    let db = env
+        .database()
+        .btree()
+        .sorted_duplicates()
+        // compare the duplicate DATA items in REVERSE byte order
+        .dup_compare(|a, b| b.cmp(a))
+        .open("d.db")
+        .unwrap();
+
+    for d in [b"1".as_slice(), b"2", b"3"] {
+        db.put(b"k", d).unwrap();
+    }
+
+    // walk the duplicates of "k" in stored order
+    let c = db.cursor().unwrap();
+    let mut dups = Vec::new();
+    let mut cur = c.set(b"k").unwrap();
+    while let Some((_, v)) = cur {
+        dups.push(v);
+        cur = c.next_dup().unwrap();
+    }
+    assert_eq!(
+        dups,
+        vec![b"3".to_vec(), b"2".to_vec(), b"1".to_vec()],
+        "reverse dup_compare must drive the duplicate order"
+    );
+
+    drop(c);
+    drop(db);
+    drop(env);
+    let _ = std::fs::remove_dir_all(&home);
+}
+
+#[test]
+fn h_hash_is_used_by_the_hash_db() {
+    // Regression + coverage for the h_hash thunk, which no test fired. We
+    // install a custom hash function that counts how many times it is called;
+    // storing and fetching records must invoke it, proving the thunk routes to
+    // the host closure (a hash DB that ignored our function would never bump
+    // the counter). The exact hash value is irrelevant to correctness — any
+    // function that distributes keys works — so we only assert it ran and the
+    // data round-trips.
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    let (env, home) = open("hhash");
+    let calls = Arc::new(AtomicUsize::new(0));
+    let calls_cb = Arc::clone(&calls);
+    let db = env
+        .database()
+        .hash()
+        .h_hash(move |data| {
+            calls_cb.fetch_add(1, Ordering::SeqCst);
+            // a trivial additive hash; sum the bytes
+            data.iter().fold(0u32, |a, &b| a.wrapping_add(b as u32))
+        })
+        .open("h.db")
+        .unwrap();
+
+    for i in 0..50u32 {
+        let k = format!("key{i}");
+        db.put(k.as_bytes(), b"v").unwrap();
+    }
+    // round-trip a few
+    assert_eq!(db.get(b"key0").unwrap().as_deref(), Some(&b"v"[..]));
+    assert_eq!(db.get(b"key49").unwrap().as_deref(), Some(&b"v"[..]));
+
+    assert!(
+        calls.load(Ordering::SeqCst) > 0,
+        "the custom h_hash must be invoked by the hash DB"
+    );
+
+    drop(db);
+    drop(env);
+    let _ = std::fs::remove_dir_all(&home);
+}
+
+#[test]
+fn secondary_with_dup_compare_keeps_both_callbacks() {
+    // Regression for S3/S4: associate() used to overwrite+leak the secondary's
+    // callbacks box, clobbering a user dup_compare. Here the secondary has a
+    // reverse dup_compare AND is associated; both must survive — the extractor
+    // indexes records, and the (duplicate) secondary keys must be ordered by
+    // the reverse comparator.
+    let (env, home) = open("sec_dupcmp");
+    let primary = env.database().btree().open("primary.db").unwrap();
+    let secondary = env
+        .database()
+        .btree()
+        .sorted_duplicates()
+        .dup_compare(|a, b| b.cmp(a)) // reverse: larger primary key first
+        .open("secondary.db")
+        .unwrap();
+
+    // index everything under a single constant secondary key so the PRIMARY
+    // keys become the duplicate data items whose order the dup_compare drives.
+    primary
+        .associate(&secondary, |_pk, _v| Some(b"group".to_vec()))
+        .unwrap();
+
+    primary.put(b"1", b"a").unwrap();
+    primary.put(b"2", b"b").unwrap();
+    primary.put(b"3", b"c").unwrap();
+
+    // pget by the single secondary key; a cursor scan of its duplicates yields
+    // the primary keys. If associate had clobbered dup_compare, the order would
+    // be the default (ascending 1,2,3); with it preserved it is reverse 3,2,1.
+    let c = secondary.cursor().unwrap();
+    let mut pks = Vec::new();
+    let mut cur = c.pget(libdb::opcode::FIRST).unwrap();
+    while let Some((_sk, pk, _v)) = cur {
+        pks.push(pk);
+        cur = c.pget(libdb::opcode::NEXT).unwrap();
+    }
+    assert_eq!(
+        pks,
+        vec![b"3".to_vec(), b"2".to_vec(), b"1".to_vec()],
+        "the secondary's dup_compare must survive associate() (reverse order)"
+    );
+
+    drop(c);
+    drop(secondary);
+    drop(primary);
+    drop(env);
+    let _ = std::fs::remove_dir_all(&home);
+}

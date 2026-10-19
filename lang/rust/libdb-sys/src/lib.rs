@@ -326,6 +326,10 @@ extern "C" {
     pub fn libdb_env_set_app_private(e: *mut DB_ENV, p: *mut c_void);
     pub fn libdb_env_get_app_private(e: *mut DB_ENV) -> *mut c_void;
 
+    // --- allocator (libdb's own, via os/os_alloc.c) ---
+    pub fn libdb_umalloc(size: usize) -> *mut c_void;
+    pub fn libdb_ufree(p: *mut c_void);
+
     // --- DB ---
     pub fn libdb_db_open(
         d: *mut DB,

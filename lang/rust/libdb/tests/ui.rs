@@ -23,4 +23,5 @@ fn ui_lifecycle_rules_are_compile_errors() {
     t.compile_fail("tests/ui/cursor_outlives_txn.rs");
     t.compile_fail("tests/ui/txn_use_after_commit.rs");
     t.compile_fail("tests/ui/value_escapes_with_value.rs");
+    t.compile_fail("tests/ui/cursor_is_not_send.rs");
 }

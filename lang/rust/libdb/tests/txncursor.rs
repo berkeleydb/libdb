@@ -329,3 +329,59 @@ fn snapshot_and_nowait_options_begin() {
     drop(env);
     let _ = std::fs::remove_dir_all(&home);
 }
+
+#[test]
+fn dropping_an_unresolved_txn_aborts_it() {
+    // Coverage for Txn::drop's abort-the-unresolved path (no test dropped an
+    // unresolved txn). A txn that writes a key and is then dropped WITHOUT
+    // commit/abort must roll back: the key must not be visible afterwards.
+    let (env, home) = open("dropunresolved");
+    let db = env.database().btree().open("d.db").unwrap();
+
+    {
+        let txn = env.begin().unwrap();
+        db.tput(&txn, b"k", b"v").unwrap();
+        assert_eq!(db.tget(&txn, b"k").unwrap().as_deref(), Some(&b"v"[..]));
+        // txn dropped here without commit/abort -> Drop aborts it.
+    }
+
+    // the write was rolled back by the drop-abort
+    assert_eq!(db.get(b"k").unwrap(), None);
+
+    drop(db);
+    drop(env);
+    let _ = std::fs::remove_dir_all(&home);
+}
+
+#[test]
+fn set_range_matches_a_key_larger_than_the_seed_buffer() {
+    // Regression + coverage for S2: a cursor set_range whose MATCHED key is
+    // larger than the 256-byte seed buffer must grow-retry, not surface a raw
+    // DB_BUFFER_SMALL. Store one key well over 256 bytes and set_range to a
+    // prefix below it; the full key must come back.
+    let (env, home) = open("bigkey");
+    let db = env.database().btree().open("d.db").unwrap();
+
+    let big_key = vec![b'z'; 1000]; // 1000-byte key, far past the 256 seed
+    db.put(&big_key, b"payload").unwrap();
+
+    let c = db.cursor().unwrap();
+    // seed with a short prefix "z"; the smallest key >= "z" is the 1000-byte key
+    let got = c.set_range(b"z").unwrap();
+    assert!(got.is_some(), "set_range must find the large key");
+    let (k, v) = got.unwrap();
+    assert_eq!(k.len(), 1000, "the full matched key must be returned");
+    assert_eq!(k, big_key);
+    assert_eq!(v, b"payload".to_vec());
+
+    // exact set on the big key, too (same seeded USERMEM path)
+    let c2 = db.cursor().unwrap();
+    let got2 = c2.set(&big_key).unwrap();
+    assert_eq!(got2.map(|p| p.0), Some(big_key.clone()));
+
+    drop(c);
+    drop(c2);
+    drop(db);
+    drop(env);
+    let _ = std::fs::remove_dir_all(&home);
+}
