@@ -47,7 +47,7 @@ pub fn main(init: std.process.Init) !void {
 
     // demo
     const seed = [_][2][]const u8{
-        .{ "apple", "red" },     .{ "banana", "yellow" },
+        .{ "apple", "red" },    .{ "banana", "yellow" },
         .{ "grape", "purple" },
     };
     for (seed) |kv| try db.put(null, kv[0], kv[1]);

@@ -38,7 +38,8 @@ pub fn main(init: std.process.Init.Minimal) !void {
         \\
     );
     for (consts.all) |e| {
-        try buf.print(a,
+        try buf.print(
+            a,
             "_Static_assert(({s}) == ({d}), \"drift: {s} != {d} in db.h\");\n",
             .{ e.name, e.value, e.name, e.value },
         );

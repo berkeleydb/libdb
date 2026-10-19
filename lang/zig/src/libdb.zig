@@ -108,7 +108,7 @@ pub fn checkVersion() Error!void {
 fn dbtIn(b: []const u8) c.DBT {
     var d: c.DBT = std.mem.zeroes(c.DBT);
     if (b.len != 0) {
-        d.data = @constCast(@ptrCast(b.ptr));
+        d.data = @ptrCast(@constCast(b.ptr));
         d.size = @intCast(b.len);
     }
     return d;
@@ -683,7 +683,7 @@ fn assocThunk(
     const skey = ext.extract(ext.ctx, dbtSlice(pkey.?.*), dbtSlice(pdata.?.*));
     if (skey) |s| {
         var r = result.?;
-        r.data = @constCast(@ptrCast(s.ptr));
+        r.data = @ptrCast(@constCast(s.ptr));
         r.size = @intCast(s.len);
         return 0;
     }

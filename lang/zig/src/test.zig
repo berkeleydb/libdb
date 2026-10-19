@@ -507,8 +507,6 @@ test "dup_compare and h_hash callback thunks run" {
 
     // Three dups under one key -> dup_compare orders them; the hash routes the
     // key. Read them back to prove both thunks fired and ordered the dups.
-    // (DB_FIRST, not DB_SET: an exact-match SET leaves the input key DBT
-    // pointing at borrowed bytes, so freeing a MALLOC'd key would be unsound.)
     try db.put(null, "k", "a");
     try db.put(null, "k", "c");
     try db.put(null, "k", "b");

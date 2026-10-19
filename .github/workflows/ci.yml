@@ -644,6 +644,7 @@ jobs:
           LD_LIBRARY_PATH: /usr/local/BerkeleyDB.2026.0/lib
         run: |
           zig version
+          zig fmt --check .
           zig build test -Doptimize=Debug --summary all
           zig build test -Doptimize=ReleaseSafe --summary all
           zig build test -Doptimize=ReleaseFast --summary all
