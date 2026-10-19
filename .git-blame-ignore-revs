@@ -6,4 +6,7 @@
 # (GitHub honors this file automatically.)
 #
 # Add the full 40-char SHA of each pure-reformatting / whitespace / mechanical
-# commit below, one per line, with a comment. None yet on the living fork.
+# commit below, one per line, with a comment.
+
+# build(windows): store five CRLF project files normalized (line endings only)
+c819afed4cba2a2f8e41aa5343231a1a6c6bb945
