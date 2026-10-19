@@ -48,7 +48,10 @@ A database environment. Create → configure → open; `defer env.deinit()`. Mus
 outlive every `Db`/`Txn`. Opened free-threaded (`DB_THREAD`).
 
 - `create() Error!Env` — allocate the handle.
-- `open(home: [*:0]const u8) Error!void` — open transactional + `DB_THREAD`.
+- `open(home: [*:0]const u8) Error!void` — open transactional + `DB_THREAD`,
+  and configure the deadlock detector (`DB_LOCK_DEFAULT`) so a real lock cycle
+  is broken rather than hanging (libdb does not auto-detect).
+- `lkDetect() Error!u32` — the configured detector policy (a `DB_LOCK_*`).
 - `deinit() void` — close; the handle is poisoned in safe builds afterwards.
 - `setCachesize(gbytes, bytes: u32) Error!void`
 - `setFlags(flags: u32, on: bool) Error!void` — e.g. `consts.DB_TXN_NOSYNC`.
@@ -58,7 +61,12 @@ outlive every `Db`/`Txn`. Opened free-threaded (`DB_THREAD`).
 - `database() DbBuilder` / `openBtree(file) Error!Db`
 - `begin(parent: ?*Txn, flags: u32) Error!Txn`
 - `transact(Ctx, ctx, op) Error!void` — run `op` in a txn, commit on success,
-  abort+retry on `error.Deadlock` (bounded at 10 attempts).
+  abort+retry on `error.Deadlock` (bounded at 10 attempts). Safe to call
+  concurrently: the inner txn uses `DB_TXN_NOWAIT`, so a lock conflict returns
+  promptly for the retry loop instead of blocking.
+
+Do **not** copy or move an `Env` after `open` (it stashes `&env` for the errcall
+thunk); keep it at a stable address, or call `rebind()` after relocating.
 
 ---
 
@@ -164,5 +172,8 @@ A 64-bit persistent counter backed by a key in a `Db`. `defer seq.deinit()`.
 ## The lifecycle, in safe builds
 
 `Debug`/`ReleaseSafe` poison each handle on close and `std.debug.assert` it is
-not reused; `ReleaseFast`/`ReleaseSmall` omit the check (the real artifact).
-`std.testing.allocator` leak-checks catch a missed `deinit`/`free`.
+not reused; `ReleaseFast`/`ReleaseSmall` omit the check (the real artifact). In
+the release builds a double-`deinit` is a double-free — the second `close` runs
+on an already-closed handle — just as a use-after-close is; the safe builds
+catch both, the release artifact does not. `std.testing.allocator` leak-checks
+catch a missed `deinit`/`free`.

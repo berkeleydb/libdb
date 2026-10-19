@@ -16,6 +16,9 @@
 //! Pinned to Zig 0.16.
 const std = @import("std");
 const builtin = @import("builtin");
+/// The binding's frozen `DB_*` constant list (see `consts.zig`); the values
+/// `Env`/`Db`/`Cursor`/`Txn` ops take come from here, drift-gate-verified
+/// against `db.h`.
 pub const consts = @import("consts.zig");
 const c = @cImport({
     @cInclude("shim.h");
@@ -84,8 +87,9 @@ pub fn version() struct { major: i32, minor: i32, patch: i32 } {
     return .{ .major = @intCast(a), .minor = @intCast(b), .patch = @intCast(p) };
 }
 
-/// Compile-time (header) major/minor the binding was built against.
+/// Compile-time (header) major the binding was built against.
 pub const header_major: i32 = c.DB_VERSION_MAJOR;
+/// Compile-time (header) minor the binding was built against.
 pub const header_minor: i32 = c.DB_VERSION_MINOR;
 
 /// Fail if the runtime library disagrees with the header the binding compiled
@@ -125,6 +129,12 @@ fn dbtSlice(d: c.DBT) []const u8 {
 /// `Env` must outlive every `Db`/`Txn` opened in it (RFC survey §7). Open with
 /// `DB_THREAD` (the default here) to share it across threads; `Txn` and
 /// `Cursor` are never free-threaded.
+///
+/// Do NOT copy or move an `Env` after `open`: `open` stashes `&env` behind the
+/// handle (for the errcall thunk) at the address it then lives at, so a moved
+/// copy would leave that pointer dangling and the next failing call would read
+/// a stale slot. Keep the `Env` at a stable address, or call `rebind()` after
+/// relocating it.
 pub const Env = struct {
     ptr: *c.DB_ENV,
     /// The last raw C return code decoded by this handle's methods.
@@ -191,14 +201,29 @@ pub const Env = struct {
         return self.err_buf[0..self.err_len];
     }
 
-    /// Open a transactional, free-threaded environment at `home`.
+    /// Open a transactional, free-threaded environment at `home`. Configures
+    /// the deadlock detector (`DB_LOCK_DEFAULT`) so a real lock cycle is
+    /// detected and one party is victimised with `DB_LOCK_DEADLOCK` -- libdb
+    /// does NOT auto-detect deadlocks, so without this a cycle would hang both
+    /// parties forever. This is what makes `transact` safe to call
+    /// concurrently (see `transact`).
     pub fn open(self: *Env, home: [*:0]const u8) Error!void {
         self.alive();
         self.rebind();
+        try check(c.libdb_env_set_lk_detect(self.ptr, consts.DB_LOCK_DEFAULT));
         const flags: u32 = consts.DB_CREATE | consts.DB_INIT_MPOOL |
             consts.DB_INIT_LOCK | consts.DB_INIT_LOG | consts.DB_INIT_TXN |
             consts.DB_THREAD;
         try check(c.libdb_env_open(self.ptr, home, flags, 0o644));
+    }
+
+    /// The configured deadlock-detector policy (a `consts.DB_LOCK_*` value).
+    /// `Env.open` sets `DB_LOCK_DEFAULT`.
+    pub fn lkDetect(self: *Env) Error!u32 {
+        self.alive();
+        var p: c.u_int32_t = 0;
+        try check(c.libdb_env_get_lk_detect(self.ptr, &p));
+        return @intCast(p);
     }
 
     /// Close the environment. The handle is dead afterwards.
@@ -233,6 +258,13 @@ pub const Env = struct {
     /// `error.Deadlock` (abort + begin again, up to `max_retries` times). This
     /// is the central transactional-BDB ergonomic win (RFC §6). `op` receives
     /// `ctx` and the live `*Txn`; it must not commit/abort the txn itself.
+    ///
+    /// Safe to call concurrently from multiple threads (each on its own `Txn`):
+    /// the inner txn begins with `DB_TXN_NOWAIT`, so a lock conflict returns
+    /// `DB_LOCK_DEADLOCK` promptly instead of blocking, and `Env.open`
+    /// configures the detector so a genuine cycle is broken -- either way the
+    /// retry loop makes progress rather than hanging. (A caller that wants to
+    /// block on locks should use `begin`/`commit` directly, not `transact`.)
     pub fn transact(
         self: *Env,
         comptime Ctx: type,
@@ -243,7 +275,7 @@ pub const Env = struct {
         const max_retries: usize = 10;
         var attempt: usize = 0;
         while (true) : (attempt += 1) {
-            var txn = try self.begin(null, 0);
+            var txn = try self.begin(null, consts.DB_TXN_NOWAIT);
             if (op(ctx, &txn)) |_| {
                 try txn.commit();
                 return;
@@ -297,31 +329,38 @@ pub const DbBuilder = struct {
     env: *Env,
     config: DbConfig = .{},
 
+    /// Select the Btree access method (the default).
     pub fn btree(self: DbBuilder) DbBuilder {
         var b = self;
         b.config.dbtype = consts.DB_BTREE;
         return b;
     }
+    /// Select the Hash access method.
     pub fn hash(self: DbBuilder) DbBuilder {
         var b = self;
         b.config.dbtype = consts.DB_HASH;
         return b;
     }
+    /// Select the Recno (record-number) access method.
     pub fn recno(self: DbBuilder) DbBuilder {
         var b = self;
         b.config.dbtype = consts.DB_RECNO;
         return b;
     }
+    /// Select the Queue access method.
     pub fn queue(self: DbBuilder) DbBuilder {
         var b = self;
         b.config.dbtype = consts.DB_QUEUE;
         return b;
     }
+    /// Set the database page size in bytes (power of two, 512..64K).
     pub fn pagesize(self: DbBuilder, ps: u32) DbBuilder {
         var b = self;
         b.config.pagesize = ps;
         return b;
     }
+    /// Allow duplicate data items per key; `sorted` picks `DB_DUPSORT` (sorted,
+    /// de-duplicated) over plain `DB_DUP` (insertion order).
     pub fn dup(self: DbBuilder, sorted: bool) DbBuilder {
         var b = self;
         b.config.dup = true;
@@ -409,6 +448,7 @@ pub const Db = struct {
         return .{ .ptr = dbp, .env = env, .cb = cb };
     }
 
+    /// Close the database handle. Dead afterwards (poisoned in safe builds).
     pub fn deinit(self: *Db) void {
         if (safe and self.closed) return;
         _ = c.libdb_db_close(self.ptr, 0);
@@ -656,6 +696,8 @@ pub const BulkIter = struct {
     started: bool = false,
     done: bool = false,
 
+    /// One bulk record: slices into the bulk buffer, valid until the next
+    /// `next`/`deinit`.
     pub const Pair = struct { key: []const u8, value: []const u8 };
 
     /// Yield the next (key, value) pair, or `null` at the end. Fetches another
@@ -702,8 +744,6 @@ pub const BulkIter = struct {
         self.pos = @ptrFromInt(@intFromPtr(self.data.data) + self.data.ulen - @sizeOf(u32));
     }
 
-    // Native reimplementation of DB_MULTIPLE_KEY_NEXT (db.in:1894). The buffer
-    // holds, growing downward from the end, pairs of (data-offset,data-len)
     // Native reimplementation of DB_MULTIPLE_KEY_NEXT (db.h). From the
     // cursor `pos`, the buffer holds, growing downward as u32s: key-offset,
     // key-len, data-offset, data-len; `pos` then moves 4 u32s lower. A
@@ -739,6 +779,7 @@ pub const BulkIter = struct {
         self.pos = @ptrFromInt(pp);
     }
 
+    /// Close the underlying cursor and end the bulk scan.
     pub fn deinit(self: *BulkIter) void {
         _ = c.libdb_dbc_close(self.cur);
         if (self.txn) |t| {
@@ -843,6 +884,8 @@ pub const Cursor = struct {
         if (safe) std.debug.assert(!self.closed);
     }
 
+    /// Close the cursor. Dead afterwards; decrements the txn's open-cursor
+    /// count in safe builds.
     pub fn deinit(self: *Cursor) void {
         if (safe and self.closed) return;
         _ = c.libdb_dbc_close(self.ptr);
@@ -905,7 +948,7 @@ pub const Cursor = struct {
     pub fn dup(self: *Cursor, position: bool) Error!Cursor {
         self.alive();
         var cp: ?*c.DBC = null;
-        const flags: u32 = if (position) 0x200 else 0; // DB_POSITION
+        const flags: u32 = if (position) consts.DB_POSITION else 0;
         try check(c.libdb_dbc_dup(self.ptr, &cp, flags));
         if (self.txn) |t| {
             if (safe) t.cursor_count += 1;
@@ -948,13 +991,17 @@ pub const Cursor = struct {
         return .{ .cur = self, .dir = dir, .started = false };
     }
 
+    /// Iteration direction for `Cursor.iterator`.
     pub const Direction = enum { forward, backward };
 
+    /// A forward/backward iterator over the db; each `next` copies into the
+    /// caller's allocator.
     pub const Iterator = struct {
         cur: *Cursor,
         dir: Direction,
         started: bool,
 
+        /// Yield the next pair (owned by `alloc`), or `null` at EOF.
         pub fn next(self: *Iterator, alloc: std.mem.Allocator) Error!?Pair {
             const op: u32 = if (!self.started) switch (self.dir) {
                 .forward => consts.DB_FIRST,
@@ -1022,6 +1069,8 @@ pub const Sequence = struct {
         return @intCast(v);
     }
 
+    /// Close the sequence handle (does not remove its backing record; see
+    /// `remove`). Dead afterwards.
     pub fn deinit(self: *Sequence) void {
         if (safe and self.closed) return;
         _ = c.libdb_seq_close(self.ptr, 0);

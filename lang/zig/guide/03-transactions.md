@@ -34,3 +34,11 @@ try env.transact(Ctx, .{ .db = &db, .delta = 1 }, bump);
 `transact` begins a transaction, runs your function, commits on success, and on
 `error.Deadlock` aborts and retries (bounded at 10 attempts). Your function must
 **not** commit or abort the txn itself.
+
+This is safe to call concurrently from multiple threads. Two things make the
+retry loop actually make progress instead of hanging, and the binding wires both
+for you: `Env.open` configures libdb's deadlock detector (`DB_LOCK_DEFAULT`) —
+libdb does **not** detect deadlocks on its own — and `transact`'s inner txn
+begins with `DB_TXN_NOWAIT`, so a lock conflict returns `error.Deadlock`
+promptly rather than blocking. (If you drive transactions by hand with
+`begin`/`commit` and want to *block* on locks, just don't pass `DB_TXN_NOWAIT`.)

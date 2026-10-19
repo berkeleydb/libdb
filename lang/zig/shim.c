@@ -40,6 +40,10 @@ int libdb_env_set_msgcall(DB_ENV *e, void (*cb)(const DB_ENV *, const char *))
 { e->set_msgcall(e, cb); return 0; }
 int libdb_env_txn_begin(DB_ENV *e, DB_TXN *parent, DB_TXN **tid, u_int32_t flags)
 { return e->txn_begin(e, parent, tid, flags); }
+int libdb_env_set_lk_detect(DB_ENV *e, u_int32_t policy)
+{ return e->set_lk_detect(e, policy); }
+int libdb_env_get_lk_detect(DB_ENV *e, u_int32_t *policyp)
+{ return e->get_lk_detect(e, policyp); }
 int libdb_env_set_api1_internal(DB_ENV *e, void *p)
 { e->api1_internal = p; return 0; }
 void *libdb_env_get_api1_internal(DB_ENV *e)

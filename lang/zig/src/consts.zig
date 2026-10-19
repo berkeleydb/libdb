@@ -51,6 +51,14 @@ pub const DB_READ_COMMITTED: u32 = 0x00000400;
 pub const DB_SET_TXN_TIMEOUT: u32 = 0x00000002;
 pub const DB_SET_LOCK_TIMEOUT: u32 = 0x00000001;
 
+// Deadlock-detector policy for DB_ENV->set_lk_detect (DB_LOCK_DEFAULT runs the
+// detector on every lock conflict and victimises a party -- libdb does NOT
+// auto-detect without this, so `Env.open` sets it; see `Env.transact`).
+pub const DB_LOCK_DEFAULT: u32 = 1;
+
+// Cursor->dup flag: duplicate the cursor at the same position.
+pub const DB_POSITION: u32 = 22;
+
 // Cursor get op codes
 pub const DB_CURRENT: u32 = 6;
 pub const DB_FIRST: u32 = 7;
@@ -139,6 +147,8 @@ pub const all = [_]Entry{
     .{ .name = "DB_READ_COMMITTED", .value = DB_READ_COMMITTED },
     .{ .name = "DB_SET_TXN_TIMEOUT", .value = DB_SET_TXN_TIMEOUT },
     .{ .name = "DB_SET_LOCK_TIMEOUT", .value = DB_SET_LOCK_TIMEOUT },
+    .{ .name = "DB_LOCK_DEFAULT", .value = DB_LOCK_DEFAULT },
+    .{ .name = "DB_POSITION", .value = DB_POSITION },
     .{ .name = "DB_CURRENT", .value = DB_CURRENT },
     .{ .name = "DB_FIRST", .value = DB_FIRST },
     .{ .name = "DB_LAST", .value = DB_LAST },

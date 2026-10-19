@@ -23,6 +23,8 @@ int libdb_env_set_errcall(DB_ENV *,
     void (*)(const DB_ENV *, const char *, const char *));
 int libdb_env_set_msgcall(DB_ENV *, void (*)(const DB_ENV *, const char *));
 int libdb_env_txn_begin(DB_ENV *, DB_TXN *, DB_TXN **, u_int32_t);
+int libdb_env_set_lk_detect(DB_ENV *, u_int32_t);
+int libdb_env_get_lk_detect(DB_ENV *, u_int32_t *);
 int libdb_env_set_api1_internal(DB_ENV *, void *);
 void *libdb_env_get_api1_internal(DB_ENV *);
 

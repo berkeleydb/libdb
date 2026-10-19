@@ -227,9 +227,28 @@ test "transact retries on Deadlock then succeeds" {
     var env = try libdb.Env.create();
     defer env.deinit();
     try env.open(home);
+    // The deadlock detector must be configured for a *real* lock cycle to
+    // surface as DB_LOCK_DEADLOCK (libdb does not auto-detect); Env.open wires
+    // it. Assert the claim is real before exercising the retry path.
+    try std.testing.expectEqual(consts.DB_LOCK_DEFAULT, try env.lkDetect());
     var fails: usize = 3;
     try env.transact(FlakyCtx, .{ .fails = &fails }, flaky);
     try std.testing.expectEqual(@as(usize, 0), fails);
+}
+
+test "lastError captures DB's diagnostic on a forced error" {
+    const a = std.testing.allocator;
+    const home = try tempHome(a);
+    defer a.free(home);
+    var env = try libdb.Env.create();
+    defer env.deinit();
+    try env.open(home);
+    // A page size below 512 is rejected by the open path -- a hard DB error
+    // that drives the errcall thunk -> err_buf capture. This is the only test
+    // that forces the error-reporting path (check's errno arm + lastError).
+    const r = env.database().pagesize(128).open("bad.db");
+    try std.testing.expectError(libdb.Error.System, r);
+    try std.testing.expect(env.lastError().len != 0);
 }
 
 test "cursor scan equals inserted set, forward and backward" {
@@ -428,6 +447,111 @@ test "bulk get equals N single gets" {
         count += 1;
     }
     try std.testing.expectEqual(@as(u32, n), count);
+}
+
+// Reverse-byte-order dup comparator and a trivial length-based hash, to cover
+// both callback thunks alongside bt_compare (only bt_compare was exercised).
+fn revDupCompare(ctx: *anyopaque, x: []const u8, y: []const u8) c_int {
+    _ = ctx;
+    return switch (std.mem.order(u8, x, y)) {
+        .lt => 1, // reversed
+        .gt => -1,
+        .eq => 0,
+    };
+}
+fn lenHash(ctx: *anyopaque, data: []const u8) u32 {
+    _ = ctx;
+    return @intCast(data.len);
+}
+
+test "dup_compare and h_hash callback thunks run" {
+    const a = std.testing.allocator;
+    const home = try tempHome(a);
+    defer a.free(home);
+    var env = try libdb.Env.create();
+    defer env.deinit();
+    try env.open(home);
+
+    // Hash db with a custom h_hash + sorted dups with a custom dup_compare: one
+    // open exercises both of the untested callback thunks.
+    var dummy: u8 = 0;
+    const cbs = libdb.Callbacks{
+        .ctx = &dummy,
+        .dup_compare = revDupCompare,
+        .h_hash = lenHash,
+    };
+    var db = try env.database().hash().dup(true).openWith("hd.db", &cbs);
+    defer db.deinit();
+
+    // Three dups under one key -> dup_compare orders them; the hash routes the
+    // key. Read them back to prove both thunks fired and ordered the dups.
+    // (DB_FIRST, not DB_SET: an exact-match SET leaves the input key DBT
+    // pointing at borrowed bytes, so freeing a MALLOC'd key would be unsound.)
+    try db.put(null, "k", "a");
+    try db.put(null, "k", "c");
+    try db.put(null, "k", "b");
+    var cur = try db.cursor(null);
+    defer cur.deinit();
+    // reverse dup order => first dup under the key is the largest byte ('c').
+    const first = (try cur.get(a, consts.DB_FIRST, null, null)).?;
+    defer a.free(first.key);
+    defer a.free(first.value);
+    try std.testing.expectEqualStrings("k", first.key);
+    try std.testing.expectEqualStrings("c", first.value);
+    try std.testing.expectEqual(@as(u32, 3), try cur.count());
+    // next dup is the next-largest byte ('b').
+    const second = (try cur.get(a, consts.DB_NEXT_DUP, null, null)).?;
+    defer a.free(second.key);
+    defer a.free(second.value);
+    try std.testing.expectEqualStrings("b", second.value);
+}
+
+test "cursor put/dup/del and Txn.discard" {
+    const a = std.testing.allocator;
+    const home = try tempHome(a);
+    defer a.free(home);
+    var env = try libdb.Env.create();
+    defer env.deinit();
+    try env.open(home);
+    var db = try env.openBtree("cur.db");
+    defer db.deinit();
+
+    // Cursor writes in a txn env require an explicit txn (no per-op auto-commit
+    // like DB->put has). Open the cursor on a txn, write/dup/count/del, commit.
+    {
+        var txn = try env.begin(null, 0);
+        {
+            var cur = try db.cursor(&txn);
+            defer cur.deinit();
+            try cur.put("x", "1", consts.DB_KEYLAST); // Cursor.put
+            try cur.put("y", "2", consts.DB_KEYLAST);
+            // the cursor is now positioned at the last put ('y'); dup at that
+            // position and read via the dup to exercise Cursor.dup(position).
+            var dupc = try cur.dup(true);
+            defer dupc.deinit();
+            const here = (try dupc.get(a, consts.DB_CURRENT, null, null)).?;
+            defer a.free(here.key);
+            defer a.free(here.value);
+            try std.testing.expectEqualStrings("y", here.key);
+            try std.testing.expectEqual(@as(u32, 1), try cur.count()); // Cursor.count
+            try cur.del(); // Cursor.del -- removes the current record ('y')
+        }
+        try txn.commit();
+    }
+    try std.testing.expect(try db.exists(null, "x"));
+    try std.testing.expect(!try db.exists(null, "y"));
+
+    // Txn.prepare + Txn.discard: discard is only valid on a prepared/restored
+    // txn (it panics the env otherwise -- see __txn_isvalid/TXN_OP_DISCARD), so
+    // prepare the txn first, then discard the handle. Exercises both paths.
+    {
+        var txn = try env.begin(null, 0);
+        try db.put(&txn, "z", "3");
+        var gid = std.mem.zeroes([128]u8);
+        gid[0] = 0x42;
+        try txn.prepare(&gid);
+        try txn.discard();
+    }
 }
 
 test "sequence increments" {
