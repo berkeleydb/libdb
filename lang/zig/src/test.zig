@@ -301,6 +301,28 @@ test "cursor scan equals inserted set, forward and backward" {
         defer a.free(pair.value);
         try std.testing.expectEqualStrings("c", pair.key);
     }
+    // Exact-match SET and GET_BOTH. For these ops libdb does not rewrite the
+    // input key DBT, so k.data still points at the caller's borrowed bytes
+    // when get() returns; freeing it as if DB had MALLOC'd it is a bad free.
+    {
+        var cur = try db.cursor(null);
+        defer cur.deinit();
+        const pair = (try cur.get(a, consts.DB_SET, "d", null)).?;
+        defer a.free(pair.key);
+        defer a.free(pair.value);
+        try std.testing.expectEqualStrings("d", pair.key);
+        try std.testing.expectEqualStrings("d", pair.value);
+        try std.testing.expect((try cur.get(a, consts.DB_SET, "zz", null)) == null);
+    }
+    {
+        var cur = try db.cursor(null);
+        defer cur.deinit();
+        const pair = (try cur.get(a, consts.DB_GET_BOTH, "b", "b")).?;
+        defer a.free(pair.key);
+        defer a.free(pair.value);
+        try std.testing.expectEqualStrings("b", pair.key);
+        try std.testing.expectEqualStrings("b", pair.value);
+    }
 }
 
 test "cursor on txn: close before commit (safe-build assert holds)" {

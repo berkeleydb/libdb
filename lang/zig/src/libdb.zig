@@ -120,6 +120,14 @@ fn dbtSlice(d: c.DBT) []const u8 {
     return @as([*]const u8, @ptrCast(d.data))[0..d.size];
 }
 
+/// Free a DB_DBT_MALLOC output DBT, unless libdb left it pointing at the
+/// caller's input bytes (exact-match ops like SET/GET_BOTH don't rewrite it).
+fn freeIfAllocated(d: c.DBT, input: ?[]const u8) void {
+    if (d.data == null) return;
+    if (input) |in| if (in.len != 0 and @intFromPtr(d.data) == @intFromPtr(in.ptr)) return;
+    std.c.free(d.data);
+}
+
 // ---------------------------------------------------------------------------
 // Environment (RFC 0016 §4, §8)
 // ---------------------------------------------------------------------------
@@ -914,8 +922,11 @@ pub const Cursor = struct {
         const rc = c.libdb_dbc_get(self.ptr, &k, &d, op);
         if (rc == consts.DB_NOTFOUND) return null;
         try check(rc);
-        defer std.c.free(k.data);
-        defer std.c.free(d.data);
+        // Free only what libdb allocated. For exact-match ops (SET, GET_BOTH)
+        // libdb leaves an input DBT untouched, so its data still points at the
+        // caller's borrowed bytes; freeing that is a bad free (segfault).
+        defer freeIfAllocated(k, key);
+        defer freeIfAllocated(d, data);
         return .{
             .key = try alloc.dupe(u8, dbtSlice(k)),
             .value = try alloc.dupe(u8, dbtSlice(d)),
