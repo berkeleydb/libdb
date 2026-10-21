@@ -1643,3 +1643,29 @@ asserts the notes appear and verify still succeeds; the db tier asserts the
 default build prints NO note (byte-unchanged) and that "db_dump -s typedsub"
 fails closed with BDB0055. Sabotage typed_util_note (delete the Btree verify
 note) FAILs the typed-tier assertion.
+
+**V26 (forward port onto post-LTS master; the footprint gate after merge).**
+V4's base (the parent of the first `src/typed/` commit) stops meaning anything
+once the layer is on master. A merge commit above it mixes in unrelated work
+that moves `.text`, which turns item 1 red for the wrong reason. A shallow
+clone (fetch-depth 1, as in the `posix` matrix that runs the `db` tier) has no
+parent at all, and there the gate used to FAIL outright. Built instead: a new
+item 0, `test/db/typed_guard_lint.sh`, checks the guarantee at the source.
+Every reference to a typed-layer identifier in `src/` and `util/` must sit
+inside `#ifdef HAVE_TYPED`. `src/typed/` and `dbinc_auto/` are excluded, and so
+are `#define` lines: `BTM_TYPED` and `DB_HASH_TYPED` are on-disk constants that
+emit no code. The lint needs no base, no build and no git, so it holds on master
+indefinitely. Items 1-2 run when a base exists and no merge sits above it, or
+when `TYPED_FOOTPRINT_BASE` is given. Otherwise they are reported as not
+measured, which is not a failure. Items 3-4 still need only HEAD. Lint sabotage,
+non-vacuous: (a) replacing the `__dbc_put` hook's `#ifdef HAVE_TYPED` with
+`#if 1` fails with both hook lines named; (b) a reference in an
+`#ifndef HAVE_TYPED` arm fails; (c) a reference in the `#else` arm of an
+`#ifdef HAVE_TYPED` fails; control: a nested `#ifdef DIAGNOSTIC` inside the
+guard passes.
+
+The forward port (cherry-pick of all 33 commits onto `3e55513eb`) needed two
+resolutions. `test/MANIFEST` had a pure append conflict and keeps both sides.
+Message ids BDB5316 and BDB5317 had meanwhile been taken on master (by
+`log_put.c` and the RFC 0015 M1 notice), so the typed pair moved to 5382 and
+5383.

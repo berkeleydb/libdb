@@ -14,6 +14,9 @@
 #   typed    this tree, dist/configure --enable-typed
 #   base     a typed-free reference, plain dist/configure (when one exists)
 # and asserts:
+#   0  every typed reference in src/ and util/ is inside #ifdef HAVE_TYPED
+#      (typed_guard_lint.sh; needs no base, so it is the item that survives
+#      the merge to master)
 #   1  .text of libdb-*.so: head == base, byte-exact            (needs base)
 #   2  env_sig_print.sh:    head == base                        (needs base)
 #   3  exported db_set_schema / __typed_* symbols: none in head; some in
@@ -29,12 +32,15 @@
 # nothing.  The typed layer's own later commits all sit above that parent, so
 # any .text they add to a default build shows up here.
 # ponytail: valid while every commit above that parent is typed-layer work.
-# A master merged in later that moves .text makes item 1 red for the wrong
-# reason; then set TYPED_FOOTPRINT_BASE to "that merge, minus src/typed".
+# A merge commit above the base (the typed PR landing on master, or master
+# merged in) breaks that, so items 1-2 then need an explicit
+# TYPED_FOOTPRINT_BASE and are otherwise skipped, as they are in a shallow
+# clone or a tarball.  Item 0 runs everywhere and carries the guarantee.
 #
 # Env:
 #   TYPED_FOOTPRINT_BASE  typed-free reference commit (default: the parent of
-#                         the first commit adding src/typed/)
+#                         the first commit adding src/typed/, if no merge
+#                         sits above it)
 #   TYPED_API             1 once db_set_schema is DEFINED (§9 commit 3; a
 #                         prototype or EXTERN: comment is not enough).
 #   KEEP=1                keep the scratch dir.
@@ -50,23 +56,26 @@ NCPU=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null ||
 
 verdict() { echo "VERDICT $NAME $*" ; }
 
-command -v git >/dev/null 2>&1 && git -C "$SRC" rev-parse HEAD >/dev/null 2>&1 || {
-	verdict "FAIL not a git checkout: the base build needs git"
-	exit 1
-}
+command -v git >/dev/null 2>&1 && git -C "$SRC" rev-parse HEAD >/dev/null 2>&1 ||
+    NOGIT=1
 BASE=${TYPED_FOOTPRINT_BASE:-}
-if [ -z "$BASE" ] ; then
+if [ -n "$BASE" ] && [ -n "${NOGIT:-}" ] ; then
+	verdict "FAIL TYPED_FOOTPRINT_BASE set but $SRC is not a git checkout"
+	exit 1
+fi
+if [ -z "$BASE" ] && [ -z "${NOGIT:-}" ] ; then
 	# The parent of the oldest commit that created src/typed/: the newest
 	# tree that has every non-typed change below the typed layer and none
-	# of the layer itself.  Needs history (CI: fetch-depth 0).
+	# of the layer itself.  Absent in a shallow clone.
 	first=$(git -C "$SRC" log --format=%H --diff-filter=A -- src/typed \
 	    2>/dev/null | tail -1)
 	[ -n "$first" ] && BASE=$(git -C "$SRC" rev-parse -q --verify "$first^" 2>/dev/null)
-fi
-if [ -z "$BASE" ] && [ -d "$SRC/src/typed" ] &&
-    [ "$(git -C "$SRC" rev-parse --is-shallow-repository 2>/dev/null)" = true ] ; then
-	verdict "FAIL shallow clone: no history to find the typed-free base in (fetch-depth 0, or set TYPED_FOOTPRINT_BASE)"
-	exit 1
+	if [ -n "$BASE" ] &&
+	    [ -n "$(git -C "$SRC" rev-list --merges "$BASE..HEAD" | head -1)" ] ; then
+		echo "  a merge sits above base $BASE: other work is mixed in, so"
+		echo "  items 1-2 need an explicit TYPED_FOOTPRINT_BASE"
+		BASE=""
+	fi
 fi
 if [ -n "$BASE" ] ; then
 	BASE=$(git -C "$SRC" rev-parse --verify -q "$BASE^{commit}") || {
@@ -140,10 +149,20 @@ nsyms() {
 }
 
 fail=""
-ran="3 4"
+ran="0 3 4"
+# Item 0 needs no base and no history: every typed reference in the engine is
+# inside #ifdef HAVE_TYPED.  It is the guarantee items 1-2 measure, checked at
+# the source, so it keeps holding once the typed layer is on master and the
+# base below it is old history (or absent, in a shallow clone).
+if ! sh "$HERE/typed_guard_lint.sh" "$SRC" > "$work/lint.out" 2>&1 ; then
+	echo "  0  unguarded typed references:" ; sed 's/^/     /' "$work/lint.out"
+	fail="$fail 0(unguarded typed code)"
+else
+	echo "  0  every typed reference is inside #ifdef HAVE_TYPED"
+fi
 sh_=$(sig head "$SRC") ; st=$(sig typed "$SRC")
 if [ -n "$BASE" ] ; then
-	ran="1 2 3 4"
+	ran="0 1 2 3 4"
 	tb=$(text base) ; th=$(text head)
 	echo "  1  .text  base=$tb head=$th"
 	[ -n "$tb" ] && [ "$tb" != none ] && [ "$tb" = "$th" ] ||
