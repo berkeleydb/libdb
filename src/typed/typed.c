@@ -238,7 +238,7 @@ __typed_claim(dbp, ts, slotp)
 			return (0);
 		}
 	}
-	__db_errx(dbp->env, DB_STR("5316",
+	__db_errx(dbp->env, DB_STR("5382",
 	    "more than 4095 typed DB handles open in this process"));
 	return (ENOMEM);
 }
@@ -289,7 +289,7 @@ __typed_validate_codec(dbp, c)
 
 	env = dbp->env;
 	if (c->name == NULL || strnlen(c->name, 256) >= 256) {
-		__db_errx(env, DB_STR("5317",
+		__db_errx(env, DB_STR("5383",
 		    "typed schema: codec name is NULL or too long"));
 		return (EINVAL);
 	}
