@@ -105,6 +105,10 @@ The Berkeley DB specific arguments are as follows:
 
   To build the Berkeley DB test suite, enter --enable-test as an argument to configure. To run the Berkeley DB test suite, you must also build the Tcl API. This argument should not be specified when configuring to build production binaries.
 
+- **--enable-typed**
+
+  To build the typed-data layer (RFC 0014), enter --enable-typed as an argument to configure; the meson equivalent is `-Dtyped=enabled`. It adds <a href="../../api/c/db_set_schema.md" class="olink">db_set_schema()</a>, <a href="../../api/c/db_get_schema.md" class="olink">db_get_schema()</a> and <a href="../../api/c/db_record_fixed.md" class="olink">db_record_fixed()</a>: a Btree or Hash subdatabase can declare record and field codecs, and libdb enforces NOT NULL, MAXLEN, VALID and UNIQUE on every put. It is off by default. A default build does not compile the layer: its library is byte-identical to one built from a tree without it, and the environment build signature is the same in both builds, so typed and default processes can share one environment. A default or older library refuses to open a typed subdatabase (`EINVAL`), so data written under a schema is never modified by a library that cannot enforce it.
+
 - **--enable-uimutexes**
 
   To force Berkeley DB to use the UNIX International (UI) mutex interfaces for underlying mutex support, enter --enable-uimutexes as an argument to configure. This is rarely necessary: UI mutexes will be selected automatically on systems where they are the preferred implementation.

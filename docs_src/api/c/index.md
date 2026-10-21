@@ -13,6 +13,9 @@ source: docs/api_reference/C/index.html
 | <a href="dbcompact.md" class="xref" title="DB-&gt;compact()">DB-&gt;compact()</a> | Compact a database |
 | <a href="db_copy.md" class="xref" title="db_copy">db_copy</a> | Copy a named database to a target directory |
 | <a href="dbcreate.md" class="xref" title="db_create">db_create</a> | Create a database handle |
+| <a href="db_get_schema.md" class="xref" title="db_get_schema">db_get_schema</a> | Return a typed handle's schema (`--enable-typed`) |
+| <a href="db_record_fixed.md" class="xref" title="db_record_fixed">db_record_fixed</a> | Build a fixed-layout record codec (`--enable-typed`) |
+| <a href="db_set_schema.md" class="xref" title="db_set_schema">db_set_schema</a> | Declare a schema and constraints for a database (`--enable-typed`) |
 | <a href="dbdel.md" class="xref" title="DB-&gt;del()">DB-&gt;del()</a> | Delete items from a database |
 | <a href="dberr.md" class="xref" title="DB-&gt;err()">DB-&gt;err()</a> | Error message |
 | <a href="dbexists.md" class="xref" title="DB-&gt;exists()">DB-&gt;exists()</a> | Return if an item appears in a database |
