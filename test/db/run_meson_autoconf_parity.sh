@@ -28,6 +28,12 @@ SRC=$(cd "$HERE/../.." && pwd)
 # Note: this gate deliberately takes NO build-dir argument. It configures both
 # arms itself, because the whole point is to compare two DEFAULT builds; an
 # externally supplied dir of unknown configuration is what made it misreport.
+# For the same reason the caller's compiler flags are dropped: a sanitizer job
+# exports CFLAGS=-fsanitize=... for its own test drivers, which would make the
+# autoconf arm an instrumented build whose probe cannot link without the
+# sanitizer runtime ("cannot build the autoconf probe").  The
+# run_typed_footprint.sh precedent.
+unset CFLAGS CPPFLAGS LDFLAGS CXXFLAGS
 
 for t in meson ninja ; do
 	command -v $t >/dev/null 2>&1 || {
