@@ -45,6 +45,7 @@ AC_SUBST(CXX)
 AC_SUBST(CXXFLAGS)
 AC_SUBST(DB_CONST)
 AC_SUBST(DB_PROTO1)
+AC_SUBST(DB_HAVE_TYPED)
 AC_SUBST(DB_PROTO2)
 AC_SUBST(DB_STRUCT_ALIGN8)
 AC_SUBST(DEFAULT_LIB)
@@ -178,7 +179,9 @@ fi
 # Typed data and constraints (RFC 0014).  Off by default.  When off,
 # HAVE_TYPED is undefined, src/typed/*.c compile to nothing, and every hook
 # in the engine is #ifdef'd out: the library is the stock one.
+DB_HAVE_TYPED=""
 if test "$db_cv_typed" = "yes"; then
+	DB_HAVE_TYPED="#define	DB_HAVE_TYPED	1"
 	AC_DEFINE(HAVE_TYPED)
 	AH_TEMPLATE(HAVE_TYPED,
     [Define to 1 to build the typed-data and constraint layer.])

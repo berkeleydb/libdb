@@ -22,6 +22,7 @@
 #   3  exported db_set_schema / __typed_* symbols: none in head; some in
 #      typed once the API exists (TYPED_API, below)
 #   4  env_sig_print.sh:    typed == head (D2)
+#   5  db.h defines DB_HAVE_TYPED in the typed build only
 # One VERDICT line names every item that failed, and which items ran.
 #
 # THE BASE (spec §11 V4).  Items 1-2 compare against "HEAD minus the typed
@@ -201,6 +202,17 @@ fi
 
 echo "  4  env_sig head=$sh_ typed=$st"
 [ -n "$st" ] && [ "$st" = "$sh_" ] || fail="$fail 4(sig default $sh_ typed $st)"
+
+# 5  The public feature macro tracks the build: db.h defines DB_HAVE_TYPED in
+# the typed build and nowhere in the default one, and no @DB_HAVE_TYPED@ is
+# left unsubstituted in either.
+mh=$(grep -c '^#define[[:space:]]*DB_HAVE_TYPED[[:space:]]*1$' "$work/head/db.h")
+mt=$(grep -c '^#define[[:space:]]*DB_HAVE_TYPED[[:space:]]*1$' "$work/typed/db.h")
+mu=$(cat "$work/head/db.h" "$work/typed/db.h" | grep -c '@DB_HAVE_TYPED@')
+echo "  5  DB_HAVE_TYPED in db.h: head=$mh typed=$mt unsubstituted=$mu"
+[ "$mh" -eq 0 ] && [ "$mt" -eq 1 ] && [ "$mu" -eq 0 ] ||
+    fail="$fail 5(DB_HAVE_TYPED head=$mh typed=$mt unsubstituted=$mu)"
+ran="$ran 5"
 
 if [ -z "$fail" ] ; then
 	verdict "PASS items $ran${BASE:+ base $BASE}"

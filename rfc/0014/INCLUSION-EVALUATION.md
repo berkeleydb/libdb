@@ -273,12 +273,11 @@ D1–D8 are in the RFC; this is the user-visible list.
   which a typed open then refuses. Loading as typed is Phase 2.
 - `DB->rename` of a typed subdatabase must be done with a typed library; a
   default build strands the catalog record (documented, fail-closed).
-- There is no compile-time feature macro in `db.h` for "this build has typed".
-  An application finds out by linking: `db_set_schema` is absent from a
-  default library. That is the stated fail-closed design, but it means the
-  public header declares prototypes the default library does not export.
-  **Suggested follow-up:** emit `#define DB_HAVE_TYPED 1` into `db.h` under
-  `--enable-typed`.
+- ~~No compile-time feature macro.~~ **Done:** `db.h` defines `DB_HAVE_TYPED`
+  (to 1) only in an `--enable-typed` / `-Dtyped=enabled` build. Autoconf,
+  meson, `s_windows` and `s_android` all substitute it. Footprint gate item 5
+  asserts it appears in the typed `db.h` only and is never left
+  unsubstituted.
 
 ## Not verified
 

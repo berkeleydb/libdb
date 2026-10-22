@@ -20,7 +20,13 @@ MAXLEN, VALID and UNIQUE. See RFC 0014 for the full model.
 `db_set_schema()` is available **only in an `--enable-typed` build**. In a
 default build the symbol is absent from the library, so a program that calls it
 fails to link: typed databases cannot be created, read or written by a build
-that does not understand them (fail-closed).
+that does not understand them (fail-closed). To test for the typed API at
+compile time, check `DB_HAVE_TYPED`: `db.h` defines it (to 1) only in an
+`--enable-typed` (meson `-Dtyped=enabled`) build.
+
+    #ifdef DB_HAVE_TYPED
+        ret = db_set_schema(dbp, &schema, 0);
+    #endif
 
 `db_set_schema()` is a **free function rather than a `DB` method** by design.
 Adding a method pointer to the `DB` handle would change `sizeof(DB)` (the public

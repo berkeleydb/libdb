@@ -787,6 +787,7 @@ DEFAULT_LIB_CXX
 DEFAULT_LIB
 DB_STRUCT_ALIGN8
 DB_PROTO2
+DB_HAVE_TYPED
 DB_PROTO1
 DB_CONST
 CXXFLAGS
@@ -3580,6 +3581,7 @@ topdir=`echo "$srcdir/.." | sed 's,/dist/\.\.,,'`
 
 
 
+
 # The Windows public header has two extra symbols we need to remove.
 
 
@@ -4644,7 +4646,9 @@ fi
 # Typed data and constraints (RFC 0014).  Off by default.  When off,
 # HAVE_TYPED is undefined, src/typed/*.c compile to nothing, and every hook
 # in the engine is #ifdef'd out: the library is the stock one.
+DB_HAVE_TYPED=""
 if test "$db_cv_typed" = "yes"; then
+	DB_HAVE_TYPED="#define	DB_HAVE_TYPED	1"
 	printf '%s\n' "#define HAVE_TYPED 1" >>confdefs.h
 
 
@@ -20512,7 +20516,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20515 "configure" */
+/* #line 20519 "configure" */
 public class Test {
 }
 EOF
@@ -20807,7 +20811,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20810: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20814: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20939,7 +20943,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20942 "configure" */
+/* #line 20946 "configure" */
 public class Test {
 }
 EOF
@@ -20976,7 +20980,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20979 "configure" */
+/* [#]line 20983 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);

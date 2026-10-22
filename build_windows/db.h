@@ -53,6 +53,12 @@ extern "C" {
 
 #undef __P
 #define	__P(protos)	protos
+/*
+ * DB_HAVE_TYPED is defined (to 1) only by an --enable-typed build, so an
+ * application can test for db_set_schema() and the rest of the typed API at
+ * compile time instead of discovering a missing symbol at link time.
+ */
+
 
 /*
  * Berkeley DB version information.
