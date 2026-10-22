@@ -102,13 +102,19 @@ main(int argc, char *argv[])
 	typed = 1;
 #endif
 
+	/*
+	 * set_cachesize before open (after open it is ignored, which left a
+	 * 256KB default cache that every put evicted from), and DB_THREAD on
+	 * both handles because the workers share them.
+	 */
 	if (db_env_create(&dbenv, 0) != 0 ||
-	    dbenv->open(dbenv, dir, DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE,
-	    0600) != 0) {
+	    dbenv->set_cachesize(dbenv, 0, 256 * 1024 * 1024, 1) != 0 ||
+	    dbenv->open(dbenv, dir,
+	    DB_CREATE | DB_INIT_MPOOL | DB_PRIVATE | DB_THREAD, 0600) != 0) {
 		printf("RESULT FAIL env\n"); return (1); }
-	(void)dbenv->set_cachesize(dbenv, 0, 256 * 1024 * 1024, 1);
 	if (db_create(&dbp, dbenv, 0) != 0 ||
-	    dbp->open(dbp, NULL, "pc.db", NULL, DB_BTREE, DB_CREATE, 0600) != 0) {
+	    dbp->open(dbp, NULL, "pc.db", NULL, DB_BTREE,
+	    DB_CREATE | DB_THREAD, 0600) != 0) {
 		printf("RESULT FAIL open\n"); return (1); }
 
 	/* Prepopulate the key range so timed puts are overwrites, not inserts. */
