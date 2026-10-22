@@ -1597,6 +1597,20 @@ __db_open_arg(dbp, txn, fname, dname, type, flags)
 
 	/* Subdatabase checks. */
 	if (dname != NULL) {
+		/*
+		 * DB_TRUNCATE truncates the FILE, and a subdatabase is only part
+		 * of one.  Unchecked, the pre-open in __db_open truncates the
+		 * whole file to zero bytes, destroying every other subdatabase
+		 * in it, and the open then fails anyway.  Refuse before any file
+		 * is touched.  A named in-memory database (fname == NULL) has no
+		 * file, so it is left as it was.
+		 */
+		if (LF_ISSET(DB_TRUNCATE) && fname != NULL) {
+			__db_errx(env, DB_STR("5384",
+	    "DB_TRUNCATE illegal with a subdatabase name: it would truncate the whole file"));
+			return (EINVAL);
+		}
+
 		/* QAM can only be done on in-memory subdatabases. */
 		if (type == DB_QUEUE && fname != NULL) {
 			__db_errx(env, DB_STR("0600",
