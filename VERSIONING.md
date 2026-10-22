@@ -118,7 +118,7 @@ a release LTS is a promise about the **line** that begins at it:
   applications have time to migrate.
 
 The line lives on the branch `lts/<base>` and ships `v<base>.N` patch releases
-(`RELEASING.md`). Its first patch release is **`v2026.10.7.1`**.
+(`RELEASING.md`). Its first patch release is **`v2026.10.7.1`** (in qualification as of 2026-10-22; PR #221).
 
 **`v2026.10.7` is the first LTS release.** It was qualified on the full matrix,
 including the 72-hour soak on all four platforms above (Linux: 8,913 passes;
