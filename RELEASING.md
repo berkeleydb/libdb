@@ -110,7 +110,8 @@ set differ.
    - `docs_src/_data/releases.toml`: a one-line note.
 3. **Qualify** against the gates in `QUALIFICATION-MATRIX.md`. A regular release
    runs gates 1–7. An LTS patch runs gates 1–5 and 7, plus these LTS checks:
-   - the region signature equals the line's frozen value on every platform;
+   - the region signature of the release equals the base tag's on every
+     platform (same host, same configure);
    - the default library's `.text` and the handle sizes equal the base tag's,
      apart from the fixed code;
    - every fixed bug has a test that FAILs on the base tag and PASSes on the

@@ -45,12 +45,17 @@ these.
 An LTS patch release (`v<base>.N`, cut from `lts/<base>`; see `RELEASING.md`)
 runs gates 1–5 and 7, plus:
 
-- **L1** The region signature equals the line's frozen value on every platform
-  in the table above (`env_sig_print.sh`).
+- **L1** The region signature is unchanged: on each platform, a build of the
+  release and a build of the base tag, configured the same way on the same
+  host, print the same `env_sig_print.sh` value. Compare the two builds rather
+  than against a constant. The value depends on the platform and the configure
+  options (a plain Debian build gives `0x841f4ea8`; FreeBSD gives
+  `0x56a06689`).
 - **L2** `run_handle_sizes.sh` passes, and the default library's `.text` differs
   from the base tag's only by the fixed code.
 - **L3** Every fixed bug has a regression test that FAILs on the base tag and
-  PASSes on the release, run on a platform where the bug reproduces.
+  PASSes on the release, on a platform where the bug reproduces. On every other
+  platform it PASSes on both.
 - **L4** Every commit on `lts/<base>` since the base tag carries a
   `(cherry picked from commit …)` trailer naming a commit on `master`, or its PR
   says why the fix is LTS-only.
