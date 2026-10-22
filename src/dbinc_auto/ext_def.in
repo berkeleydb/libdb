@@ -37,6 +37,9 @@
 #define	db_env_set_win_security db_env_set_win_security@DB_VERSION_UNIQUE_NAME@
 #endif
 #define	db_sequence_create db_sequence_create@DB_VERSION_UNIQUE_NAME@
+#define	db_set_schema db_set_schema@DB_VERSION_UNIQUE_NAME@
+#define	db_get_schema db_get_schema@DB_VERSION_UNIQUE_NAME@
+#define	db_record_fixed db_record_fixed@DB_VERSION_UNIQUE_NAME@
 #if DB_DBM_HSEARCH != 0
 #define	__db_ndbm_clearerr __db_ndbm_clearerr@DB_VERSION_UNIQUE_NAME@
 #define	__db_ndbm_close __db_ndbm_close@DB_VERSION_UNIQUE_NAME@

@@ -38,6 +38,12 @@ extern "C" {
 @DB_CONST@
 @DB_PROTO1@
 @DB_PROTO2@
+/*
+ * DB_HAVE_TYPED is defined (to 1) only by an --enable-typed build, so an
+ * application can test for db_set_schema() and the rest of the typed API at
+ * compile time instead of discovering a missing symbol at link time.
+ */
+@DB_HAVE_TYPED@
 
 /*
  * Berkeley DB version information.
@@ -160,7 +166,9 @@ struct __db;		typedef struct __db DB;
 struct __db_bt_stat;	typedef struct __db_bt_stat DB_BTREE_STAT;
 struct __db_channel;	typedef struct __db_channel DB_CHANNEL;
 struct __db_cipher;	typedef struct __db_cipher DB_CIPHER;
+struct __db_codec;	typedef struct __db_codec DB_CODEC;
 struct __db_compact;	typedef struct __db_compact DB_COMPACT;
+struct __db_constraint;	typedef struct __db_constraint DB_CONSTRAINT;
 struct __db_dbt;	typedef struct __db_dbt DBT;
 struct __db_distab;	typedef struct __db_distab DB_DISTAB;
 struct __db_env;	typedef struct __db_env DB_ENV;
@@ -189,12 +197,15 @@ struct __db_mutexmgr;	typedef struct __db_mutexmgr DB_MUTEXMGR;
 struct __db_preplist;	typedef struct __db_preplist DB_PREPLIST;
 struct __db_qam_stat;	typedef struct __db_qam_stat DB_QUEUE_STAT;
 struct __db_rep;	typedef struct __db_rep DB_REP;
+struct __db_record_codec;
+	typedef struct __db_record_codec DB_RECORD_CODEC;
 struct __db_rep_stat;	typedef struct __db_rep_stat DB_REP_STAT;
 struct __db_repmgr_conn_err;
 	typedef struct __db_repmgr_conn_err DB_REPMGR_CONN_ERR;
 struct __db_repmgr_site;typedef struct __db_repmgr_site DB_REPMGR_SITE;
 struct __db_repmgr_stat;typedef struct __db_repmgr_stat DB_REPMGR_STAT;
 struct __db_seq_record; typedef struct __db_seq_record DB_SEQ_RECORD;
+struct __db_schema;	typedef struct __db_schema DB_SCHEMA;
 struct __db_seq_stat;	typedef struct __db_seq_stat DB_SEQUENCE_STAT;
 struct __db_site;	typedef struct __db_site DB_SITE;
 struct __db_sequence;	typedef struct __db_sequence DB_SEQUENCE;
@@ -1307,6 +1318,81 @@ typedef enum {
 	DB_UNKNOWN=5			/* Figure it out on open. */
 } DBTYPE;
 
+/* Typed data (RFC 0014); used only with --enable-typed. */
+struct __db_codec {
+	const char *name;	/* Stable identity, <= 255 bytes, no NUL inside. */
+	u_int32_t   version;	/* Bump whenever compare/equal/hash/sortkey change. */
+#define	DB_CODEC_TOTAL		0x0001	/* Every function is total over any bytes. */
+#define	DB_CODEC_MEMCMP		0x0002	/* memcmp order == compare order. Implies EQUALIMAGE. */
+#define	DB_CODEC_EQUALIMAGE	0x0004	/* compare()==0 iff byte-identical. */
+#define	DB_CODEC_FIXED		0x0008	/* Every value is exactly fixed_len bytes. */
+	u_int32_t   flags;
+	u_int32_t   fixed_len;	/* Used iff DB_CODEC_FIXED. */
+
+	/*
+	 * Reads bounded by [p, p + len).  Must not allocate, lock, call libdb,
+	 * or fault.  Deterministic.  NULL compare is legal only with MEMCMP.
+	 */
+	int	  (*compare) __P((const DB_CODEC *, const u_int8_t *, u_int32_t,
+		      const u_int8_t *, u_int32_t));
+	int	  (*equal) __P((const DB_CODEC *, const u_int8_t *, u_int32_t,
+		      const u_int8_t *, u_int32_t));	/* NULL: compare()==0 */
+	u_int32_t (*hash) __P((const DB_CODEC *, const u_int8_t *, u_int32_t));
+				/* NULL only with EQUALIMAGE (bytes are hashed). */
+	int	  (*validate) __P((const DB_CODEC *, const u_int8_t *, u_int32_t));
+				/* 0 or DB_CODEC_MALFORMED; NULL: always valid */
+	int	  (*sortkey) __P((const DB_CODEC *, const u_int8_t *, u_int32_t,
+		      u_int8_t *, u_int32_t, u_int32_t *));
+				/* (in, inlen, out, outlen, &needed); optional.
+				 * outlen < needed: write nothing, set *needed,
+				 * return DB_BUFFER_SMALL. */
+	void	   *app_private;
+
+	const DBT  *vectors;	/* Golden vectors (data/size only). */
+	u_int32_t   nvectors;	/* 0..256.  >= 2 required unless MEMCMP. */
+};
+
+struct __db_record_codec {
+	const char *name;	/* <= 255 bytes */
+	u_int32_t   version;
+	u_int32_t   flags;	/* DB_CODEC_TOTAL only (C10). */
+	u_int32_t   nfields;	/* 1..65535 */
+	/* Locate field i.  Total, bounded by rec->size.  Malformed record:
+	 * return DB_CODEC_MALFORMED.  the returned (p, len) must lie inside rec. */
+	int (*field) __P((const DB_RECORD_CODEC *, const DBT *, u_int32_t,
+	    const u_int8_t **, u_int32_t *, int *));
+	int (*validate) __P((const DB_RECORD_CODEC *, const DBT *)); /* optional */
+	const DB_CODEC **types;	/* nfields entries, none NULL */
+	void *app_private;
+};
+
+struct __db_constraint {
+#define	DB_CONSTRAINT_NOT_NULL	1
+#define	DB_CONSTRAINT_MAXLEN	2
+#define	DB_CONSTRAINT_VALID	3	/* record + every field validates */
+#define	DB_CONSTRAINT_UNIQUE	4
+	u_int32_t   kind;
+#define	DB_TYPED_KEY		1
+#define	DB_TYPED_DATA		2
+	u_int32_t   side;	/* DB_TYPED_KEY or DB_TYPED_DATA */
+#define	DB_TYPED_WHOLE		0xffffffff	/* MAXLEN on the whole DBT */
+	u_int32_t   field;	/* field number, or DB_TYPED_WHOLE (MAXLEN only) */
+	u_int32_t   maxlen;	/* MAXLEN only */
+#define	DB_CONSTRAINT_NULLS_NOT_DISTINCT 0x0001	/* UNIQUE only */
+	u_int32_t   flags;
+	const char *name;	/* Reported in errors; <= 255 bytes; unique in schema */
+	DB	   *unique_db;	/* UNIQUE only: open, non-DUP, Btree, caller-owned */
+};
+
+struct __db_schema {
+	DBTYPE	type;			/* DB_BTREE or DB_HASH */
+	const DB_RECORD_CODEC *key;	/* NULL: key is untyped bytes */
+	const DB_RECORD_CODEC *data;	/* NULL: data is untyped bytes */
+	const DB_CONSTRAINT *constraints;
+	u_int32_t nconstraints;		/* 0..64 */
+	u_int32_t flags;		/* must be 0 in Phase 1 */
+};
+
 #define	DB_RENAMEMAGIC	0x030800	/* File has been renamed. */
 
 #define	DB_BTREEVERSION	9		/* Current btree version. */
@@ -1409,6 +1495,9 @@ typedef enum {
 #define	DB_VERSION_MISMATCH	(-30969)/* Environment version mismatch. */
 #define	DB_SNAPSHOT_CONFLICT	(-30968)/* SSI: conflicting snapshot update. */
 #define	DB_SNAPSHOT_UNSAFE	(-30967)/* SSI: potential snapshot anomaly. */
+#define	DB_CONSTRAINT_VIOLATION	(-30966)/* Typed: a constraint was violated. */
+#define	DB_CODEC_MISMATCH	(-30965)/* Typed: codec differs from the record. */
+#define	DB_CODEC_MALFORMED	(-30964)/* Typed: value bytes not well formed. */
 
 /* DB (private) error return codes. */
 #define	DB_ALREADY_ABORTED	(-30899)
@@ -1844,6 +1933,10 @@ struct __db {
 #define DB2_AM_EXCL		0x00000001 /* Exclusively lock the handle */ 
 #define DB2_AM_INTEXCL		0x00000002 /* Internal exclusive lock. */
 #define DB2_AM_NOWAIT		0x00000004 /* Do not wait for handle lock */ 
+#define DB2_AM_TYPED		0x00000008 /* Handle has a schema (db_set_schema) */
+#define DB2_AM_TYPED_FILE	0x00000010 /* Meta page carries BTM/HASH typed bit */
+#define	DB2_TYPED_SLOT_SHIFT	16	   /* flags2 bits 16-31: side-table slot */
+#define	DB2_TYPED_SLOT(dbp)	((dbp)->flags2 >> DB2_TYPED_SLOT_SHIFT)
 	u_int32_t orig_flags2;		   /* Second flags word; for refresh */ 
 	u_int32_t flags2;		   /* Second flags word */
 };

@@ -24,13 +24,27 @@ sed '/; /d' $f |
 	-e '/^;/d' |
     sort > $t1
 
+# Keep the four public db_env_set_func_* hooks (assert/free/malloc/realloc)
+# and drop the internal ones.  Done with an explicit keep-list under sed -n:
+# the old `-e .../p' then `-e /db_env_set_func_/d' in one sed relied on GNU
+# sed printing before the delete fired; BSD sed (the FreeBSD gate host) drops
+# all four, failing s_validate for a reason unrelated to the sources.
 egrep __P $d/src/dbinc_auto/ext_prot.in |
     sed '/^[a-z]/!d' |
     awk '{print $2}' |
-    sed -e 's/^\*//' \
-	-e '/db_env_set_func_\(assert\|free\|malloc\|realloc\)/p' \
-	-e '/db_env_set_func_/d' |
-    sed '/^__/d' | sort > $t2
+    sed -e 's/^\*//' |
+    sed -n -e '/^db_env_set_func_assert$/p' \
+	-e '/^db_env_set_func_free$/p' \
+	-e '/^db_env_set_func_malloc$/p' \
+	-e '/^db_env_set_func_realloc$/p' \
+	-e '/^db_env_set_func_/!p' |
+    sed '/^__/d' |
+    # RFC 0014 typed-data entry points exist only with --enable-typed, which
+    # Windows never sets (the whole typed layer is HAVE_TYPED-guarded, §2.3),
+    # so they are not exported from the Windows DLL and are not in libdb.def.
+    sed -e '/^db_set_schema$/d' -e '/^db_get_schema$/d' \
+	-e '/^db_record_fixed$/d' |
+    sort > $t2
 
 if cmp -s $t1 $t2 ; then
 	:

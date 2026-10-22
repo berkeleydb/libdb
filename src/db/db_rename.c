@@ -324,10 +324,16 @@ __db_subdb_rename(dbp, ip, txn, name, subdb, newname, flags)
 	ENV *env;
 	PAGE *meta;
 	int ret, t_ret;
+#ifdef HAVE_TYPED
+	int typed_subdb;
+#endif
 
 	mdbp = NULL;
 	meta = NULL;
 	env = dbp->env;
+#ifdef HAVE_TYPED
+	typed_subdb = 0;
+#endif
 
 	/*
 	 * We have not opened this dbp so it isn't marked as a subdb,
@@ -352,6 +358,18 @@ __db_subdb_rename(dbp, ip, txn, name, subdb, newname, flags)
 	    ip, txn, 0, &meta)) != 0)
 		goto err;
 	memcpy(dbp->fileid, ((DBMETA *)meta)->uid, DB_FILE_ID_LEN);
+#ifdef HAVE_TYPED
+	/*
+	 * Remember whether this subdatabase is typed, read from its meta page
+	 * while we hold it (RFC 0014 §4.3): BTM_TYPED on a Btree meta page,
+	 * DB_HASH_TYPED on a Hash meta page.  Used after MU_RENAME to move the
+	 * catalog record.
+	 */
+	if (TYPE((PAGE *)meta) == P_BTREEMETA)
+		typed_subdb = F_ISSET((DBMETA *)meta, BTM_TYPED) ? 1 : 0;
+	else if (TYPE((PAGE *)meta) == P_HASHMETA)
+		typed_subdb = F_ISSET((DBMETA *)meta, DB_HASH_TYPED) ? 1 : 0;
+#endif
 	if ((ret = __fop_lock_handle(env, dbp,
 	    (mdbp->cur_locker != NULL) ? mdbp->cur_locker : mdbp->locker,
 	    DB_LOCK_WRITE, NULL, NOWAIT_FLAG(txn))) != 0)
@@ -365,6 +383,16 @@ __db_subdb_rename(dbp, ip, txn, name, subdb, newname, flags)
 	if ((ret = __db_master_update(mdbp, dbp, ip, txn,
 	    subdb, dbp->type, MU_RENAME, newname, 0)) != 0)
 		goto err;
+
+#ifdef HAVE_TYPED
+	/*
+	 * Move the typed catalog record from subdb to newname (RFC 0014
+	 * §4.3), in the same txn.  A missing record is not an error.
+	 */
+	if (typed_subdb && (ret = __typed_catalog_rename(
+	    dbp, ip, txn, name, subdb, newname)) != 0)
+		goto err;
+#endif
 
 	DB_TEST_RECOVERY(dbp, DB_TEST_POSTDESTROY, ret, name);
 

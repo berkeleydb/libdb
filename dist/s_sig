@@ -21,6 +21,10 @@ sed -e '/__addrinfo/d' \
     -e '/__aes_cipher/d' \
     -e '/__cipher/d' \
     -e '/__channel/d' \
+    -e '/struct __db_codec {/d' \
+    -e '/struct __db_record_codec {/d' \
+    -e '/struct __db_constraint {/d' \
+    -e '/struct __db_schema {/d' \
     -e '/__queued_output/d' \
     -e '/__repmgr_connection/d' \
     -e '/__repmgr_message/d' \

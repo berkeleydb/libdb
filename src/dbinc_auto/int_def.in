@@ -445,6 +445,9 @@
 #define	__bam_adjust __bam_adjust@DB_VERSION_UNIQUE_NAME@
 #define	__bam_nrecs __bam_nrecs@DB_VERSION_UNIQUE_NAME@
 #define	__bam_total __bam_total@DB_VERSION_UNIQUE_NAME@
+#ifdef HAVE_TYPED
+#define	__bam_optread_on __bam_optread_on@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__bam_get_root __bam_get_root@DB_VERSION_UNIQUE_NAME@
 #define	__bam_search __bam_search@DB_VERSION_UNIQUE_NAME@
 #define	__bam_stkrel __bam_stkrel@DB_VERSION_UNIQUE_NAME@
@@ -1598,6 +1601,9 @@
 #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
 #define	__os_atomic_cas_ptr __os_atomic_cas_ptr@DB_VERSION_UNIQUE_NAME@
 #endif
+#if defined(HAVE_TYPED) && (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_read_ptr __os_atomic_read_ptr@DB_VERSION_UNIQUE_NAME@
+#endif
 #if (defined(HAVE_ATOMIC_STDATOMIC) || defined(HAVE_ATOMIC_GCC_BUILTIN)) && defined(HAVE_ATOMIC_SUPPORT)
 #define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
 #endif
@@ -1633,6 +1639,9 @@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
 #define	__os_atomic_cas_ptr __os_atomic_cas_ptr@DB_VERSION_UNIQUE_NAME@
+#endif
+#if defined(HAVE_TYPED) && defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
+#define	__os_atomic_read_ptr __os_atomic_read_ptr@DB_VERSION_UNIQUE_NAME@
 #endif
 #if defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)
 #define	__os_atomic_add __os_atomic_add@DB_VERSION_UNIQUE_NAME@
@@ -1864,6 +1873,9 @@
 #endif
 #if !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) && !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
 #define	__os_atomic_cas_ptr __os_atomic_cas_ptr@DB_VERSION_UNIQUE_NAME@
+#endif
+#if defined(HAVE_TYPED) && !(defined(HAVE_ATOMIC_GCC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT)) && !(defined(HAVE_ATOMIC_SYNC_BUILTIN) && defined(HAVE_ATOMIC_SUPPORT))
+#define	__os_atomic_read_ptr __os_atomic_read_ptr@DB_VERSION_UNIQUE_NAME@
 #endif
 #define	__os_gettime __os_gettime@DB_VERSION_UNIQUE_NAME@
 #define	__os_fs_notzero __os_fs_notzero@DB_VERSION_UNIQUE_NAME@
@@ -2570,6 +2582,42 @@
 #define	__txn_add_fe_watermark __txn_add_fe_watermark@DB_VERSION_UNIQUE_NAME@
 #define	__txn_flush_fe_files __txn_flush_fe_files@DB_VERSION_UNIQUE_NAME@
 #define	__txn_pg_above_fe_watermark __txn_pg_above_fe_watermark@DB_VERSION_UNIQUE_NAME@
+#ifdef HAVE_TYPED
+#define	__typed_release __typed_release@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_open __typed_open@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_put_check __typed_put_check@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_fingerprint __typed_fingerprint@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_memcmp_order __typed_memcmp_order@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_codec_cmp __typed_codec_cmp@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_catalog_remove __typed_catalog_remove@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_catalog_rename __typed_catalog_rename@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_bt_compare __typed_bt_compare@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_h_hash __typed_h_hash@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_h_compare __typed_h_compare@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TYPED
+#define	__typed_unique_cb __typed_unique_cb@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_rmid_to_env __db_rmid_to_env@DB_VERSION_UNIQUE_NAME@
 #define	__db_xid_to_txn __db_xid_to_txn@DB_VERSION_UNIQUE_NAME@
 #define	__db_map_rmid __db_map_rmid@DB_VERSION_UNIQUE_NAME@

@@ -159,6 +159,13 @@ else
   endif
 endif
 
+# Typed data and constraints (RFC 0014); mirrors autoconf's --enable-typed.
+# src/typed/*.c are in the source list unconditionally and whole-file guarded
+# on HAVE_TYPED, the os_aio_uring.c pattern above.
+if get_option('typed').enabled()
+  cdata.set('HAVE_TYPED', 1)
+endif
+
 # POSIX aio: aio_read may be in libc, librt or libaio.
 aio_dep = dependency('', required: false)
 if cc.has_header('aio.h')
@@ -347,10 +354,13 @@ gen_header = files('meson/gen_header.py')
 db_subs = files('meson/db_subs.json')
 
 # db.h = db.in + api_flags.in + ext_def.in + ext_prot.in (as dist/configure does).
+# DB_HAVE_TYPED: the public feature macro for the typed API (empty unless
+# -Dtyped=enabled), the same value autoconf substitutes.
+db_h_typed = get_option('typed').enabled() ? 'DB_HAVE_TYPED=#define\tDB_HAVE_TYPED\t1' : 'DB_HAVE_TYPED='
 db_h = custom_target('db.h', output: 'db.h',
   input: [root / 'src/dbinc/db.in', root / 'src/dbinc_auto/api_flags.in',
           root / 'src/dbinc_auto/ext_def.in', root / 'src/dbinc_auto/ext_prot.in'],
-  command: [py, gen_header, '@OUTPUT@', db_subs, '@INPUT@'],
+  command: [py, gen_header, '@OUTPUT@', db_subs, db_h_typed, '@INPUT@'],
   depend_files: db_subs)
 
 db_int_def_h = custom_target('db_int_def.h', output: 'db_int_def.h',
@@ -640,6 +650,9 @@ libdb_srcnames = [
   'src/txn/txn_stat.c',
   'src/txn/txn_util.c',
   'src/txn/txn.c',
+  'src/typed/typed.c',
+  'src/typed/typed_catalog.c',
+  'src/typed/typed_gen.c',
   'src/xa/xa_map.c',
   'src/xa/xa.c',
 ]

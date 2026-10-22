@@ -147,6 +147,19 @@ __ham_vrfy_meta(dbp, vdp, m, pgno, flags)
 	if (F_ISSET(&m->dbmeta, DB_HASH_DUPSORT))
 		F_SET(pip, VRFY_HAS_DUPSORT);
 	/* XXX: Why is the DB_HASH_SUBDB flag necessary? */
+#ifdef HAVE_TYPED
+	/*
+	 * Typed database (RFC 0014, D8): db_verify checks only physical page
+	 * structure, never the schema or its constraints.  Say so (a note, not
+	 * an error), as for Btree.  Guarded on HAVE_TYPED so the default build
+	 * is byte-unchanged (D2 / the typed_footprint gate).
+	 */
+	if (!LF_ISSET(DB_SALVAGE) &&
+	    F_ISSET(&m->dbmeta, DB_HASH_TYPED))
+		__db_msg(env, DB_STR_A("1199",
+	    "Page %lu: typed database; db_verify checks page structure only, not the schema or its constraints",
+		    "%lu"), (u_long)pgno);
+#endif
 
 	/* spares array */
 	for (i = 0; i < NCACHED && m->spares[i] != 0; i++) {

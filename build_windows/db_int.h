@@ -1123,6 +1123,7 @@ typedef struct __dbpginfo {
 #include "dbinc/os.h"
 #include "dbinc_auto/clib_ext.h"
 #include "dbinc_auto/common_ext.h"
+#include "dbinc_auto/typed_ext.h"
 
 /*******************************************************
  * Remaining Log.

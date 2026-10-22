@@ -153,9 +153,17 @@ __bam_metachk(dbp, name, btm)
 	 * Check application info against metadata info, and set info, flags,
 	 * and type based on metadata info.
 	 */
+#ifdef HAVE_TYPED
+	if ((ret = __db_fchk(env,
+	    "DB->open", btm->dbmeta.flags, BTM_MASK | BTM_TYPED)) != 0)
+		return (ret);
+	if (F_ISSET(&btm->dbmeta, BTM_TYPED))
+		F2_SET(dbp, DB2_AM_TYPED_FILE);
+#else
 	if ((ret =
 	    __db_fchk(env, "DB->open", btm->dbmeta.flags, BTM_MASK)) != 0)
 		return (ret);
+#endif
 
 	if (F_ISSET(&btm->dbmeta, BTM_RECNO)) {
 		if (dbp->type == DB_BTREE)
@@ -445,6 +453,10 @@ __bam_init_meta(dbp, meta, pgno, lsnp)
 #ifdef HAVE_COMPRESSION
 	if (DB_IS_COMPRESSED(dbp))
 		F_SET(&meta->dbmeta, BTM_COMPRESS);
+#endif
+#ifdef HAVE_TYPED
+	if (F2_ISSET(dbp, DB2_AM_TYPED))
+		F_SET(&meta->dbmeta, BTM_TYPED);
 #endif
 	if (dbp->type == DB_RECNO)
 		F_SET(&meta->dbmeta, BTM_RECNO);

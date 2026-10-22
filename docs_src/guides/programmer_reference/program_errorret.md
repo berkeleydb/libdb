@@ -63,3 +63,15 @@ The DB_SNAPSHOT_CONFLICT error is returned to a transaction started with the <a 
 **DB_SNAPSHOT_UNSAFE**
 
 The DB_SNAPSHOT_UNSAFE error is returned to a transaction started with the <a href="../../api/c/txnbegin.md" class="olink">DB_TXN_SNAPSHOT</a> flag (serializable snapshot isolation, SSI) when Berkeley DB detects a potential serializability anomaly through a read/write anti-dependency: the transaction sits as the pivot of a dangerous structure (it is both the read end and the write end of anti-dependency edges among committed and running transactions) that could otherwise produce a non-serializable schedule. The affected transaction is aborted rather than allowed to commit; the application may then retry it. As with DB_SNAPSHOT_CONFLICT, this return is specific to serializable snapshot isolation.
+
+**DB_CONSTRAINT_VIOLATION**
+
+The DB_CONSTRAINT_VIOLATION error is returned by a put on a typed database (see <a href="../../api/c/db_set_schema.md" class="olink">db_set_schema()</a>) when the value being written violates a declared constraint: a NOT NULL field is null, a MAXLEN field or whole DBT is too long, or a VALID constraint's record-codec or field-codec validation fails. The database is left unchanged. A codec that reports its bytes are not well formed (DB_CODEC_MALFORMED, below) during a put is also reported to the application as DB_CONSTRAINT_VIOLATION. This return is specific to databases configured with a schema in an <span class="emphasis">*--enable-typed*</span> build.
+
+**DB_CODEC_MISMATCH**
+
+The DB_CODEC_MISMATCH error is returned by <a href="../../api/c/dbopen.md" class="olink">DB-&gt;open()</a> on a typed database when a codec presented in the schema has the same name and version as the codec the database was created with, but behaves differently — its golden-vector fingerprint (compare, equal, hash, validate and sortkey over the recorded vectors) does not match the one stored in the database's catalog. This is the signal that two builds disagree about what a codec means while claiming the same identity; bump the codec's version whenever its behaviour changes so that an honest version difference is reported as EINVAL rather than as a silent mismatch. This return is specific to databases configured with a schema in an <span class="emphasis">*--enable-typed*</span> build.
+
+**DB_CODEC_MALFORMED**
+
+The DB_CODEC_MALFORMED error is the value a codec or record-codec callback returns to libdb to say that the bytes it was handed are not well formed for that codec. libdb never returns DB_CODEC_MALFORMED from a public call: on the put path it is mapped to DB_CONSTRAINT_VIOLATION (above). It is documented here only so that callback authors use the correct value. This return is specific to databases configured with a schema in an <span class="emphasis">*--enable-typed*</span> build.

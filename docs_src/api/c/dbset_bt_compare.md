@@ -101,6 +101,19 @@ Note that this affects the Btree comparison, prefix, duplicate-comparison and
 compression callbacks equally: any application function reached from an interior
 page descent is subject to the same weakened guarantee.
 
+**Typed databases (`--enable-typed`).** When a database has a schema (see
+<a href="db_set_schema.md" class="olink">db_set_schema()</a>) and a non-MEMCMP
+typed key, libdb installs its own generated Btree comparator. That comparator is
+total over arbitrary bytes *provided every codec it uses declares
+`DB_CODEC_TOTAL`* — the promise that the codec's `field()` locator and each type
+codec read only within the record they are handed. So that `DB_OPTREAD` cannot
+silently rely on an unmet promise, a typed <a href="dbopen.md" class="xref" title="DB-&gt;open()">DB-&gt;open()</a>
+**refuses** (with `EINVAL`, naming the codec) a non-MEMCMP typed Btree key whose
+record codec or any field codec lacks `DB_CODEC_TOTAL` while `DB_OPTREAD` is set.
+A MEMCMP key uses the bounded default comparator and is never gated. The record
+codec produced by <a href="db_record_fixed.md" class="olink">db_record_fixed()</a>
+is `DB_CODEC_TOTAL` by construction.
+
 ### Errors
 
 The `DB->set_bt_compare()` method may fail and return one of the following non-zero errors:

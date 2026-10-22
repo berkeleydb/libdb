@@ -191,10 +191,18 @@ __ham_metachk(dbp, name, hashm)
 	 * Check application info against metadata info, and set info, flags,
 	 * and type based on metadata info.
 	 */
+#ifdef HAVE_TYPED
+	if ((ret = __db_fchk(env, "DB->open", hashm->dbmeta.flags,
+	    DB_HASH_DUP | DB_HASH_SUBDB | DB_HASH_DUPSORT | DB_HASH_TYPED)) != 0)
+		return (ret);
+	if (F_ISSET(&hashm->dbmeta, DB_HASH_TYPED))
+		F2_SET(dbp, DB2_AM_TYPED_FILE);
+#else
 	if ((ret = __db_fchk(env,
 	    "DB->open", hashm->dbmeta.flags,
 	    DB_HASH_DUP | DB_HASH_SUBDB | DB_HASH_DUPSORT)) != 0)
 		return (ret);
+#endif
 
 	if (F_ISSET(&hashm->dbmeta, DB_HASH_DUP))
 		F_SET(dbp, DB_AM_DUP);
@@ -304,6 +312,10 @@ __ham_init_meta(dbp, meta, pgno, lsnp)
 		F_SET(&meta->dbmeta, DB_HASH_SUBDB);
 	if (dbp->dup_compare != NULL)
 		F_SET(&meta->dbmeta, DB_HASH_DUPSORT);
+#ifdef HAVE_TYPED
+	if (F2_ISSET(dbp, DB2_AM_TYPED))
+		F_SET(&meta->dbmeta, DB_HASH_TYPED);
+#endif
 
 #ifdef HAVE_PARTITION
 	if ((part = dbp->p_internal) != NULL) {

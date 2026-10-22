@@ -10,6 +10,7 @@
   "DB_VERSION_UNIQUE_NAME": "",
   "DB_CONST": "",
   "DB_PROTO1": "",
+  "DB_HAVE_TYPED": "",
   "DB_PROTO2": "",
   "db_seq_decl": "typedef int64_t db_seq_t;",
   "db_threadid_t_decl": "typedef pthread_t db_threadid_t;",

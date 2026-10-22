@@ -1697,6 +1697,21 @@ __dbc_put_secondaries(dbc,
 			    "Put results in a non-unique secondary key in an "
 			    "index not configured to support duplicates"));
 					ret = EINVAL;
+#ifdef HAVE_TYPED
+					/*
+					 * D6 (RFC 0014): a UNIQUE violation on a
+					 * TYPED primary is DB_KEYEXIST, not
+					 * EINVAL -- the typed layer enforces
+					 * UNIQUE through a generated non-DUP
+					 * secondary, and a duplicate key is the
+					 * SQL "key exists" condition.  Untyped
+					 * secondaries are unchanged.
+					 */
+					if (sdbp->s_primary != NULL &&
+					    F2_ISSET(sdbp->s_primary,
+					    DB2_AM_TYPED))
+						ret = DB_KEYEXIST;
+#endif
 				}
 				if (ret != DB_NOTFOUND && ret != DB_KEYEMPTY)
 					break;
@@ -2025,6 +2040,20 @@ __dbc_put(dbc, key, data, flags)
 	dbp = dbc->dbp;
 	ret = 0;
 	F_CLR(dbc, DBC_ERROR);
+
+#ifdef HAVE_TYPED
+	/*
+	 * Typed-database constraint check (RFC 0014 §3.7).  Runs before the
+	 * flags rewrite below (which turns DB_UPDATE_SECONDARY into DB_KEYLAST),
+	 * so it can skip internal secondary maintenance, and before
+	 * __dbc_put_primary, so a rejected record writes neither secondaries
+	 * nor primary.  It touches no page, so it is also before
+	 * CDB_LOCKING_INIT.
+	 */
+	if (F2_ISSET(dbp, DB2_AM_TYPED) && flags != DB_UPDATE_SECONDARY &&
+	    (ret = __typed_put_check(dbc, key, data, flags)) != 0)
+		return (ret);
+#endif
 
 	/*
 	 * Putting to secondary indices is forbidden;  when we need to

@@ -354,6 +354,9 @@
     <ClCompile Include="..\..\src\txn\txn_region.c"/>
     <ClCompile Include="..\..\src\txn\txn_stat.c"/>
     <ClCompile Include="..\..\src\txn\txn_util.c"/>
+    <ClCompile Include="..\..\src\typed\typed.c"/>
+    <ClCompile Include="..\..\src\typed\typed_catalog.c"/>
+    <ClCompile Include="..\..\src\typed\typed_gen.c"/>
     <ClCompile Include="..\..\src\xa\xa.c"/>
     <ClCompile Include="..\..\src\xa\xa_map.c"/>
   </ItemGroup>

@@ -121,6 +121,23 @@ __bam_vrfy_meta(dbp, vdp, meta, pgno, flags)
 		F_SET(pip, VRFY_HAS_DUPS);
 	if (F_ISSET(&meta->dbmeta, BTM_DUPSORT))
 		F_SET(pip, VRFY_HAS_DUPSORT);
+#ifdef HAVE_TYPED
+	/*
+	 * Typed database (RFC 0014, D8): db_verify checks only the physical
+	 * page structure, never the schema or its constraints -- it does not
+	 * load the application's codecs.  Say so, so a passing verify is not
+	 * read as "the typed invariants hold".  This is a note, not an error:
+	 * the structure can be sound while a constraint is not checkable here.
+	 * Guarded on HAVE_TYPED so the default build's .text is unchanged (D2 /
+	 * the typed_footprint gate); a default-build db_verify of a typed file
+	 * fails closed at open rather than here.
+	 */
+	if (!LF_ISSET(DB_SALVAGE) &&
+	    F_ISSET(&meta->dbmeta, BTM_TYPED))
+		__db_msg(env, DB_STR_A("1198",
+	    "Page %lu: typed database; db_verify checks page structure only, not the schema or its constraints",
+		    "%lu"), (u_long)pgno);
+#endif
 	if (F_ISSET(&meta->dbmeta, BTM_RECNUM))
 		F_SET(pip, VRFY_HAS_RECNUMS);
 	if (F_ISSET(pip, VRFY_HAS_RECNUMS) && F_ISSET(pip, VRFY_HAS_DUPS)) {

@@ -770,6 +770,17 @@ __db_close(dbp, txn, flags)
 	if (deferred_close)
 		return (ret);
 
+#ifdef HAVE_TYPED
+	/*
+	 * Release the typed side-table slot and free the schema copy (RFC
+	 * 0014 §3.3).  Must run before a handle-private DB_ENV may be closed
+	 * below, because the state was allocated against dbp->env.  __db_close
+	 * is the only place a DB is destroyed, so the slot cannot leak.
+	 */
+	if (F2_ISSET(dbp, DB2_AM_TYPED))
+		__typed_release(dbp);
+#endif
+
 	/* !!!
 	 * This code has an apparent race between the moment we read and
 	 * decrement env->db_ref and the moment we check whether it's 0.
@@ -1299,8 +1310,6 @@ __db_disassociate_foreign(sdbp)
 
 	if (sdbp->s_foreign == NULL)
 		return (0);
-	if ((ret = __os_malloc(sdbp->env, sizeof(DB_FOREIGN_INFO), &tmp)) != 0)
-		return (ret);
 
 	fdbp = sdbp->s_foreign;
 	ret = 0;

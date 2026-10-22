@@ -277,6 +277,24 @@ db_strerror(error)
 	case DB_BUFFER_SMALL:
 		return (DB_STR("0063",
 		    "DB_BUFFER_SMALL: User memory too small for return value"));
+#ifdef HAVE_TYPED
+	/*
+	 * Typed-layer error codes.  Guarded on HAVE_TYPED so a default build
+	 * is byte-identical to master (RFC 0014 D2 §2.4): the src/typed layer is
+	 * whole-file #ifdef HAVE_TYPED, so a default build can never return
+	 * these codes and falls through to the generic "Unknown error" path.
+	 * The enum values stay unconditional in db.h (public API).
+	 */
+	case DB_CODEC_MALFORMED:
+		return (DB_STR("0218",
+	    "DB_CODEC_MALFORMED: Value bytes are not well formed for their codec"));
+	case DB_CODEC_MISMATCH:
+		return (DB_STR("0217",
+	    "DB_CODEC_MISMATCH: Codec behaviour differs from the database's record"));
+	case DB_CONSTRAINT_VIOLATION:
+		return (DB_STR("0216",
+	    "DB_CONSTRAINT_VIOLATION: A typed-database constraint was violated"));
+#endif
 	case DB_DONOTINDEX:
 		return (DB_STR("0064",
 		    "DB_DONOTINDEX: Secondary index callback returns null"));

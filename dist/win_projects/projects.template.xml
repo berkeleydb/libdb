@@ -452,6 +452,9 @@
       <file name="src/txn/txn_region.c"/>
       <file name="src/txn/txn_stat.c"/>
       <file name="src/txn/txn_util.c"/>
+      <file name="src/typed/typed.c"/>
+      <file name="src/typed/typed_catalog.c"/>
+      <file name="src/typed/typed_gen.c"/>
       <file name="src/common/os_method.c"/>
       <file name="src/common/util_cache.c"/>
       <file name="src/common/util_log.c"/>
@@ -672,6 +675,9 @@
       <file name="src\txn\txn_region.c"/>
       <file name="src\txn\txn_stat.c"/>
       <file name="src\txn\txn_util.c"/>
+      <file name="src\typed\typed.c"/>
+      <file name="src\typed\typed_catalog.c"/>
+      <file name="src\typed\typed_gen.c"/>
       <file name="src\xa\xa.c"/>
       <file name="src\xa\xa_map.c"/>
     </files>

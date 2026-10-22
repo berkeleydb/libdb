@@ -105,6 +105,7 @@ typedef struct _btmeta33 {
 #define	BTM_SUBDB	0x020	/*	  Subdatabases. */
 #define	BTM_DUPSORT	0x040	/*	  Duplicates are sorted. */
 #define	BTM_COMPRESS	0x080	/*	  Compressed. */
+#define	BTM_TYPED	0x100	/*	  Typed (RFC 0014); needs --enable-typed. */
 #define	BTM_MASK	0x0ff
 	DBMETA	dbmeta;		/* 00-71: Generic meta-data header. */
 
@@ -131,6 +132,7 @@ typedef struct _hashmeta33 {
 #define	DB_HASH_DUP	0x01	/*	  Duplicates. */
 #define	DB_HASH_SUBDB	0x02	/*	  Subdatabases. */
 #define	DB_HASH_DUPSORT	0x04	/*	  Duplicates are sorted. */
+#define	DB_HASH_TYPED	0x08	/*	  Typed (RFC 0014); needs --enable-typed. */
 	DBMETA dbmeta;		/* 00-71: Generic meta-data page header. */
 
 	u_int32_t max_bucket;	/* 72-75: ID of Maximum bucket in use */

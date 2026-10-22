@@ -490,9 +490,49 @@ db	run_s7_stat_truth
 db	run_s3_mpool_counters
 db	run_s4_mvcc_mtx_reuse
 db	run_m5_fname_cache
+db	run_foreign_disassoc_leak
+db	run_foreign_reassoc
+db	run_r1_revive
+db	run_typed_footprint
+db	run_typed_old_reader
+db	run_typed_util
 db	run_truncate_subdb
 db	run_bamc_prev_alias
 db	run_mf_discard_order
+
+# ---------------------------------------------------------------------------
+# RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an
+# --enable-typed build (CI: the typed job in ci.yml).  Every runner here checks
+# for HAVE_TYPED in $BUILD/db_config.h and FAILS ("not-a-typed-build") rather
+# than skipping without it -- a skip in a default build would be a vacuous
+# green.  A name may appear in both tiers (run_handle_sizes): RESULT lines name
+# their tier, so the two verdicts are distinct.  Sabotage arms for every typed
+# test live in test/db/typed-sabotage.sh (not CI: they are red by design).
+# ---------------------------------------------------------------------------
+typed	run_handle_sizes
+typed	run_typed_api
+typed	run_typed_refusals
+typed	run_typed_old_reader
+typed	run_typed_codec_mismatch
+typed	run_typed_catalog_lifecycle
+typed	run_typed_catalog_format
+typed	run_typed_rdonly_noschema
+typed	run_typed_notnull
+typed	run_typed_maxlen
+typed	run_typed_valid
+typed	run_typed_partial
+typed	run_typed_unique
+typed	run_typed_unique_mp
+typed	run_typed_unique_nulls
+typed	run_typed_unique_closed
+
+typed	run_typed_btree_cmp
+typed	run_typed_hash
+typed	run_typed_cmp_fuzz
+typed	run_typed_optread
+typed	run_typed_recover
+typed	run_typed_unique_iso
+typed	run_typed_util
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

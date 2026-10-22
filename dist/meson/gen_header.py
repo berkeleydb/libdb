@@ -14,6 +14,11 @@ def main():
     out, subs_path = sys.argv[1], sys.argv[2]
     inputs = sys.argv[3:]
     subs = json.load(open(subs_path))
+    # KEY=VALUE arguments before the inputs override db_subs.json for options
+    # that depend on the build configuration (DB_HAVE_TYPED under -Dtyped).
+    while inputs and "=" in inputs[0] and not os.path.exists(inputs[0]):
+        key, _, val = inputs.pop(0).partition("=")
+        subs[key] = val
 
     # dist/RELEASE is the single source of truth for the version triplet and the
     # CalVer identity.  db_subs.json used to carry its own copies, and they drifted:

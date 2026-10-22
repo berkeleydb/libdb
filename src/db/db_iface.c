@@ -1626,6 +1626,21 @@ __db_open_arg(dbp, txn, fname, dname, type, flags)
 			F_CLR(dbp, DB_AM_CHKSUM | DB_AM_ENCRYPT);
 	}
 
+#ifdef HAVE_TYPED
+	/*
+	 * A typed database (db_set_schema) must be a named subdatabase in a
+	 * file (C6): the catalog __db_typed lives in the master database, which
+	 * only exists when both fname and dname are given; an in-memory or
+	 * one-per-file database has nowhere to hold it.  Enforced before any
+	 * file is created.
+	 */
+	if (F2_ISSET(dbp, DB2_AM_TYPED) && (fname == NULL || dname == NULL)) {
+		__db_errx(env, DB_STR("5363",
+	    "typed databases must be named subdatabases in a file"));
+		return (EINVAL);
+	}
+#endif
+
 	return (0);
 }
 

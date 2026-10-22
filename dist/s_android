@@ -109,6 +109,7 @@ s/@DB_VERSION_STRING@/"$DB_VERSION_STRING"/
 s/@DB_VERSION_FULL_STRING@/"$DB_VERSION_FULL_STRING"/
 s/@DB_VERSION_UNIQUE_NAME@//
 s/@DB_CONST@//
+s/@DB_HAVE_TYPED@//
 s/@DB_PROTO1@/#undef __P/
 s/@DB_PROTO2@/#define	__P(protos)	protos/
 /@platform_header@/d

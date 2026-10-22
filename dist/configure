@@ -787,6 +787,7 @@ DEFAULT_LIB_CXX
 DEFAULT_LIB
 DB_STRUCT_ALIGN8
 DB_PROTO2
+DB_HAVE_TYPED
 DB_PROTO1
 DB_CONST
 CXXFLAGS
@@ -874,6 +875,7 @@ enable_diagnostic
 enable_dst
 enable_faultinject
 enable_handoff_trace
+enable_typed
 enable_dump185
 enable_java
 enable_mingw
@@ -1588,6 +1590,8 @@ Optional Features:
                           and rounds-waited fairness). Changes the log region
                           layout and signature; for measurement only, never
                           for production.
+  --enable-typed          Build the typed-data and constraint layer (RFC
+                          0014).
   --enable-dump185        Build db_dump185(1) to dump 1.85 databases.
   --enable-java           Build Java API.
   --enable-mingw          Build Berkeley DB for MinGW.
@@ -3577,6 +3581,7 @@ topdir=`echo "$srcdir/.." | sed 's,/dist/\.\.,,'`
 
 
 
+
 # The Windows public header has two extra symbols we need to remove.
 
 
@@ -3986,6 +3991,20 @@ fi
 
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_handoff_trace" >&5
 printf '%s\n' "$db_cv_handoff_trace" >&6; }
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-typed option specified" >&5
+printf %s "checking if --enable-typed option specified... " >&6; }
+# Check whether --enable-typed was given.
+if test ${enable_typed+y}
+then :
+  enableval=$enable_typed; db_cv_typed="$enable_typed"
+else case e in #(
+  e) db_cv_typed="no" ;;
+esac
+fi
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_typed" >&5
+printf '%s\n' "$db_cv_typed" >&6; }
 
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-dump185 option specified" >&5
 printf %s "checking if --enable-dump185 option specified... " >&6; }
@@ -4621,6 +4640,16 @@ fi
 # field is added, and the library is bit-for-bit the stock one.
 if test "$db_cv_handoff_trace" = "yes"; then
 	printf '%s\n' "#define HAVE_HANDOFF_TRACE 1" >>confdefs.h
+
+
+fi
+# Typed data and constraints (RFC 0014).  Off by default.  When off,
+# HAVE_TYPED is undefined, src/typed/*.c compile to nothing, and every hook
+# in the engine is #ifdef'd out: the library is the stock one.
+DB_HAVE_TYPED=""
+if test "$db_cv_typed" = "yes"; then
+	DB_HAVE_TYPED="#define	DB_HAVE_TYPED	1"
+	printf '%s\n' "#define HAVE_TYPED 1" >>confdefs.h
 
 
 fi
@@ -20487,7 +20516,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20490 "configure" */
+/* #line 20519 "configure" */
 public class Test {
 }
 EOF
@@ -20782,7 +20811,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20785: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20814: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20914,7 +20943,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20917 "configure" */
+/* #line 20946 "configure" */
 public class Test {
 }
 EOF
@@ -20951,7 +20980,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20954 "configure" */
+/* [#]line 20983 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);

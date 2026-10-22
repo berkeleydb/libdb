@@ -1181,6 +1181,20 @@ __db_associate_foreign(fdbp, pdbp, callback, flags)
 	env = fdbp->env;
 	ret = 0;
 
+	/*
+	 * We don't allow the foreign db to be changed, because we currently
+	 * have no way of removing pdbp from the old foreign db's list of
+	 * primaries.  Refuse BEFORE linking f_info into fdbp->f_primaries: a
+	 * refused association must leave no entry behind, or fdbp's deletes
+	 * cascade into pdbp, fdbp's close clears pdbp's real foreign db, and
+	 * pdbp's close leaves fdbp holding a dangling pointer.
+	 */
+	if (pdbp->s_foreign != NULL) {
+		__db_errx(env, DB_STR("0215",
+	    "Secondary index is already associated with a foreign database"));
+		return (EINVAL);
+	}
+
 	if ((ret = __os_malloc(env, sizeof(DB_FOREIGN_INFO), &f_info)) != 0) {
 		return (ret);
 	}
@@ -1205,13 +1219,9 @@ __db_associate_foreign(fdbp, pdbp, callback, flags)
 	MUTEX_UNLOCK(env, fdbp->mutex);
 
 	/*
-	* Associate fdbp as pdbp's foreign db, for referential integrity
-	* checks.  We don't allow the foreign db to be changed, because we
-	* currently have no way of removing pdbp from the old foreign db's list
-	* of primaries.
-	*/
-	if (pdbp->s_foreign != NULL)
-		return (EINVAL);
+	 * Associate fdbp as pdbp's foreign db, for referential integrity
+	 * checks.
+	 */
 	pdbp->s_foreign = fdbp;
 
 	return (ret);

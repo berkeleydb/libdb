@@ -97,6 +97,9 @@ int __bam_rsearch __P((DBC *, db_recno_t *, u_int32_t, int, int *));
 int __bam_adjust __P((DBC *, int32_t));
 int __bam_nrecs __P((DBC *, db_recno_t *));
 db_recno_t __bam_total __P((DB *, PAGE *));
+#ifdef HAVE_TYPED
+int __bam_optread_on __P((void));
+#endif
 int __bam_get_root __P((DBC *, db_pgno_t, int, u_int32_t, int *));
 int __bam_search __P((DBC *, db_pgno_t, const DBT *, u_int32_t, int, db_recno_t *, int *));
 int __bam_stkrel __P((DBC *, u_int32_t));

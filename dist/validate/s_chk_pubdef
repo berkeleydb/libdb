@@ -80,10 +80,12 @@ END_OF_TEXT
 #   DB_CHKSUM_FAIL   internal error code, never returned to an application
 #   DB_CURSOR_NPART  internal sizing constant for the cq_parts[] cursor shards
 #   DB_ENV_NOIO      internal dbenv->flags bit, set only on panic teardown
+#   DB2_TYPED_SLOT_SHIFT  internal bit position for the typed side-table slot
+#                   packed into flags2 (RFC 0014); not an API constant
 #
 # Add to this list only with a reason; the default for a new DB_* name in db.in
 # is that it belongs in pubdef.in.
-not_public="DB_CALVER DB_CHKSUM_FAIL DB_CURSOR_NPART DB_ENV_NOIO"
+not_public="DB_CALVER DB_CHKSUM_FAIL DB_CURSOR_NPART DB_ENV_NOIO DB2_TYPED_SLOT_SHIFT"
 
 cat $d/src/dbinc/db.in $d/src/dbinc_auto/api_flags.in | sed -n \
     -e 's/^#.*[ 	]\(DB_[A-Z_0-9][A-Z_0-9]*\).*/\1/p' \

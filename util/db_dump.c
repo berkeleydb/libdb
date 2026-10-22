@@ -414,6 +414,19 @@ dump_sub(dbenv, parent_dbp, parent_name, pflag, keyflag)
 		memcpy(subdb, key.data, key.size);
 		subdb[key.size] = '\0';
 
+		/*
+		 * Typed database (RFC 0014, D8): the presence of the __db_typed
+		 * catalog subdatabase means this file carries a schema db_dump
+		 * cannot enforce -- a dump/load round trip drops the typed meta
+		 * bit and yields an untyped database (C13).  Say so, on stderr so
+		 * it does not corrupt the dump on stdout.
+		 */
+		if (strcmp(subdb, "__db_typed") == 0)
+			fprintf(stderr,
+	    "%s: %s contains a typed database; db_dump dumps raw bytes only, "
+	    "and a db_load of this dump produces an untyped database (RFC 0014)\n",
+			    progname, parent_name);
+
 		/* Create the DB object and open the file. */
 		if ((ret = db_create(&dbp, dbenv, 0)) != 0) {
 			dbenv->err(dbenv, ret, "db_create");

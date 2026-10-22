@@ -442,6 +442,16 @@ __db_subdb_remove(dbp, ip, txn, name, subdb, flags)
 	    sdbp, ip, txn, subdb, sdbp->type, MU_REMOVE, NULL, 0)) != 0)
 		goto err;
 
+#ifdef HAVE_TYPED
+	/*
+	 * Delete the typed catalog record for this subdatabase (RFC 0014
+	 * §4.3), in the same txn.  A missing record is not an error.
+	 */
+	if (F2_ISSET(sdbp, DB2_AM_TYPED_FILE) && (ret = __typed_catalog_remove(
+	    sdbp, ip, txn, name, subdb)) != 0)
+		goto err;
+#endif
+
 	DB_TEST_RECOVERY(sdbp, DB_TEST_POSTDESTROY, ret, name);
 
 DB_TEST_RECOVERY_LABEL

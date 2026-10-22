@@ -12,3 +12,8 @@ option('hegel', type: 'feature', value: 'disabled',
 # configure instead of silently falling back to synchronous I/O.
 option('uring', type: 'feature', value: 'auto',
   description: 'Linux io_uring AIO backend for the buffer pool')
+
+# Mirrors autoconf's --enable-typed.  OFF by default; 'disabled' must stay the
+# default or run_meson_autoconf_parity.sh's HAVE_* comparison fails.
+option('typed', type: 'feature', value: 'disabled',
+  description: 'Typed-data and constraint layer (RFC 0014)')
