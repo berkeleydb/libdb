@@ -82,6 +82,7 @@ both.
 
 | Release | Status |
 |---|---|
+| `v2026.10.7.1` | **Current LTS.** First patch release of the 2026.10.7 line (branch `lts/2026.10.7`): two data-correctness fixes (`DB_PREV` skipping records on aarch64; `DB_TRUNCATE` with a subdatabase name destroying the file) and a lock-order fix; formats unchanged. See the 2026.10.7.1 upgrade note. |
 | `v2026.10.7` | **First LTS release.** Qualified on the full matrix including a 72-hour resource-accounting soak on Linux x86_64, FreeBSD x86_64, FreeBSD aarch64 and Windows/MSVC x86_64, all clean. Start of the first LTS line: on-disk, log and region formats, the soname and the public ABI are frozen within it. |
 | `v2026.10.6` | Superseded by `v2026.10.7`. Same engine on every platform except macOS arm64. |
 

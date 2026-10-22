@@ -1,0 +1,38 @@
+host Linux x86_64 cpus=16 rel=ffb7d5bc base=a849cdbc DB_CALVER="2026.10.7.1"
+BUILD b_def ok mutex=POSIX/pthreads/library/x86_64/gcc-assembly version="libdb 2026.10.7 (October 15, 2026)"
+BUILD r_def ok mutex=POSIX/pthreads/library/x86_64/gcc-assembly version="libdb 2026.10.7.1 (October 22, 2026)"
+BUILD r_diag ok mutex=POSIX/pthreads/library/x86_64/gcc-assembly version="libdb 2026.10.7.1 (October 22, 2026)"
+BUILD r_tcl ok mutex=POSIX/pthreads/library/x86_64/gcc-assembly version="libdb 2026.10.7.1 (October 22, 2026)"
+BUILD b_tcl ok mutex=POSIX/pthreads/library/x86_64/gcc-assembly version="libdb 2026.10.7 (October 15, 2026)"
+BUILD b_diag ok mutex=POSIX/pthreads/library/x86_64/gcc-assembly version="libdb 2026.10.7 (October 15, 2026)"
+L1 env_sig base=0x841f4ea8 release=0x841f4ea8 -> PASS
+L2 .text base=1302060 release=1302044 (delta = the two fixes)
+L2 handle_sizes rc=0   VERDICT handle_sizes PASS all 6 handle sizes match the recorded values
+L2 soname base=libdb-2026.0.so release=libdb-2026.0.so
+L2 exported symbols base=1752 release=1752 removed=0 added=0
+L3 bamc_prev_alias on b_def: PASS (want FAIL) -> MISMATCH
+        ok   bt.db: truth=13333 DB_NEXT=13333 DB_PREV=13333
+        ok   rn.db: truth=13333 DB_NEXT=13333 DB_PREV=13333
+L3 bamc_prev_alias on r_def: PASS (want PASS) -> ok
+        ok   bt.db: truth=13333 DB_NEXT=13333 DB_PREV=13333
+        ok   rn.db: truth=13333 DB_NEXT=13333 DB_PREV=13333
+L3 truncate_subdb on b_def: FAIL (want FAIL) -> ok
+             truncate-open(victim) = 9 (Bad file descriptor)
+        FAIL a: DB_TRUNCATE with a subdatabase name is EINVAL
+        FAIL a: the other subdatabase still has its 2 rows
+L3 truncate_subdb on r_def: PASS (want PASS) -> ok
+             truncate-open(victim) = 22 (Invalid argument)
+L3 mf_discard_order on b_diag: FAIL (want FAIL) violations=1 -> ok
+L3 mf_discard_order on r_diag: PASS (want PASS) violations=0 -> ok
+TIER db b_def rc=0 pass=29 total=29 nonpass: 
+TIER db r_def rc=0 pass=32 total=32 nonpass: 
+TIER db r_diag rc=0 pass=32 total=32 nonpass: 
+TCL r_tcl rc=0 pass=21 fail=0 VERDICT_TOTAL_FAILED 0
+TCL b_tcl rc=0 pass=21 fail=0 VERDICT_TOTAL_FAILED 0
+S_VALIDATE rc=0
+S_EXECBITS rc=0
+S_CHK_COPYRIGHT rc=0
+S_CHK_LICENCE rc=0
+S_MESSAGE_ID rc=0 
+MESON_PARITY rc=0 run_meson_autoconf_parity.sh: PASS
+QUAL DONE
