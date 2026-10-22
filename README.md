@@ -74,8 +74,11 @@ to the normal release bar. Declaring a release LTS is a promise about the
   have time to move.
 
 If you want a format that never changes underneath you, use an LTS release.
-If you want the newest work, use the latest regular release. Both are cut
-from `master`.
+If you want the newest work, use the latest regular release. Regular releases
+are cut from `master`. An LTS line lives on its own branch (`lts/2026.10.7`),
+which receives only fixes backported from `master`, and ships patch releases
+numbered `<base>.N` (`v2026.10.7.1`). [`RELEASING.md`](RELEASING.md) describes
+both.
 
 | Release | Status |
 |---|---|
