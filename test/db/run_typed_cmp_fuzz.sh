@@ -74,8 +74,14 @@ work=$BUILD/TESTDIR_$NAME
 mkdir -p "$work"
 
 # halt_on_error=1 so the first OOB stops with a non-zero exit (the sabotage).
+# That is ASan's job; the sabotage arm expects "heap-buffer-overflow".  UBSan
+# stays on and reports, but it must not halt.  The engine's offsetof idiom
+# (SSZA, db_int.in: &((T *)0)->field[0]) is a "member access within null
+# pointer" to clang's UBSan, and every Btree open evaluates it
+# (bt_open.c:94), so halting there stopped the test before any fuzzing.
+# That is pre-existing, the same on master, and not the comparator.
 ASAN_OPTIONS=${ASAN_OPTIONS:-halt_on_error=1:abort_on_error=1}
-UBSAN_OPTIONS=${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1}
+UBSAN_OPTIONS=${UBSAN_OPTIONS:-print_stacktrace=1}
 export ASAN_OPTIONS UBSAN_OPTIONS
 
 TO=""
