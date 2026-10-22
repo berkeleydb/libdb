@@ -64,6 +64,9 @@ Gate 6 (the cross-release metal benchmark) is skipped unless a fix touches a
 hot path. Gate 8 (the soak) is skipped unless a fix touches resource lifetime.
 The release notes say which gates ran.
 
+The first LTS patch release, `v2026.10.7.1`, is recorded in
+[`QUAL-2026.10.7.1.md`](QUAL-2026.10.7.1.md).
+
 ## Additional gates for the LTS declaration
 
 8. **Soak:** a 72-hour TPROC-C run at the throughput knee, with hourly
