@@ -9,7 +9,7 @@
  * The optional integer maxcount parameter directs the script to exit once that
  * many mutex times have been accumulated.
  *
- * usage: apicalls.d { -p <pid> | -c "<program> [<args]" } [limit]
+ * usage: mutex.d { -p <pid> | -c "<program> [<args]" } [limit]
  *
  * Static probes: 
  *   mutex__suspend(unsigned mutex, unsigned exclusive, unsigned alloc_id);
@@ -32,43 +32,46 @@ dtrace:::BEGIN
 	maxcount = $1 != 0 ? $1 : -1;
 	mutexcount = 0;
 	printf("DB Mutex wait times for process %d; interrupt to display summary\n", $target);
+	/* Must match the MTX_* values in src/dbinc/mutex.h. */
 	idnames[1] = "APPLICATION";
 	idnames[2] = "ATOMIC_EMULATION";
 	idnames[3] = "DB_HANDLE";
 	idnames[4] = "ENV_DBLIST";
-	idnames[5] = "ENV_HANDLE";
-	idnames[6] = "ENV_REGION";
-	idnames[7] = "LOCK_REGION";
-	idnames[8] = "LOGICAL_LOCK";
-	idnames[9] = "LOG_FILENAME";
-	idnames[10] = "LOG_FLUSH";
-	idnames[11] = "LOG_HANDLE";
-	idnames[12] = "LOG_REGION";
-	idnames[13] = "MPOOLFILE_HANDLE";
-	idnames[14] = "MPOOL_BH";
-	idnames[15] = "MPOOL_FH";
-	idnames[16] = "MPOOL_FILE_BUCKET";
-	idnames[17] = "MPOOL_HANDLE";
-	idnames[18] = "MPOOL_HASH_BUCKET";
-	idnames[19] = "MPOOL_REGION";
-	idnames[20] = "MUTEX_REGION";
-	idnames[21] = "MUTEX_TEST";
-	idnames[22] = "REP_CHKPT";
-	idnames[23] = "REP_DATABASE";
-	idnames[24] = "REP_DIAG";
-	idnames[25] = "REP_EVENT";
-	idnames[26] = "REP_REGION";
-	idnames[27] = "REP_START";
-	idnames[28] = "REP_WAITER";
-	idnames[29] = "REPMGR";
-	idnames[30] = "SEQUENCE";
-	idnames[31] = "TWISTER";
-	idnames[32] = "TCL_EVENTS";
-	idnames[33] = "TXN_ACTIVE";
-	idnames[34] = "TXN_CHKPT";
-	idnames[35] = "TXN_COMMIT";
-	idnames[36] = "TXN_MVCC";
-	idnames[37] = "TXN_REGION";
+	idnames[5] = "ENV_EXCLDBLIST";
+	idnames[6] = "ENV_HANDLE";
+	idnames[7] = "ENV_REGION";
+	idnames[8] = "LOCK_REGION";
+	idnames[9] = "LOGICAL_LOCK";
+	idnames[10] = "LOG_FILENAME";
+	idnames[11] = "LOG_FLUSH";
+	idnames[12] = "LOG_HANDLE";
+	idnames[13] = "LOG_REGION";
+	idnames[14] = "MPOOLFILE_HANDLE";
+	idnames[15] = "MPOOL_BH";
+	idnames[16] = "MPOOL_FH";
+	idnames[17] = "MPOOL_FILE_BUCKET";
+	idnames[18] = "MPOOL_HANDLE";
+	idnames[19] = "MPOOL_HASH_BUCKET";
+	idnames[20] = "MPOOL_REGION";
+	idnames[21] = "MUTEX_REGION";
+	idnames[22] = "MUTEX_TEST";
+	idnames[23] = "REP_CHKPT";
+	idnames[24] = "REP_DATABASE";
+	idnames[25] = "REP_DIAG";
+	idnames[26] = "REP_EVENT";
+	idnames[27] = "REP_REGION";
+	idnames[28] = "REP_START";
+	idnames[29] = "REP_WAITER";
+	idnames[30] = "REPMGR";
+	idnames[31] = "SEQUENCE";
+	idnames[32] = "TWISTER";
+	idnames[33] = "TCL_EVENTS";
+	idnames[34] = "TXN_ACTIVE";
+	idnames[35] = "TXN_CHKPT";
+	idnames[36] = "TXN_COMMIT";
+	idnames[37] = "TXN_MVCC";
+	idnames[38] = "TXN_REGION";
+	idnames[39] = "MPOOL_AIO";
 }
 
 bdb$target:::mutex-suspend
