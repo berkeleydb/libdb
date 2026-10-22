@@ -144,8 +144,14 @@ sig() { BUILD_DIR="$work/$1" sh "$SRC/dist/env_sig_print.sh" "$2" 2>/dev/null ; 
 nsyms() {
 	_f=$(so "$1")
 	[ -n "$_f" ] || { echo 0 ; return ; }
+	# Exported (defined, external) symbols.  ELF: nm -D lists the dynamic
+	# table.  Mach-O has no -D; nm -gU lists the defined externals, and
+	# each name carries a leading underscore, which the pattern allows.
 	# grep -c prints 0 on no match and exits 1: no `|| echo 0'.
-	nm -D "$_f" 2>/dev/null | grep -c 'db_set_schema\|__typed_'
+	case $_f in
+	*.dylib) nm -gU "$_f" 2>/dev/null ;;
+	*)	nm -D --defined-only "$_f" 2>/dev/null || nm -D "$_f" 2>/dev/null ;;
+	esac | grep -c 'db_set_schema\|__typed_'
 }
 
 fail=""

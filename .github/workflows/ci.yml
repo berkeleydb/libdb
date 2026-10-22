@@ -183,6 +183,13 @@ jobs:
           # they do not link against an instrumented libdb.a.
           CFLAGS: -fsanitize=address,undefined -fno-omit-frame-pointer -g
           ASAN_OPTIONS: detect_leaks=0
+          # Per-runner timeout.  Under clang ASan+UBSan the two queue
+          # read-path runners (qam_extent_vrfy, qam_readpath_bound) need more
+          # than the 180 s default: qam_readpath_bound's hostile-meta walk
+          # takes 10 s uninstrumented on this runner and timed out (exit 124)
+          # instrumented.  This is the first job to run the db tier under
+          # sanitizers, so the defaults were never sized for it.
+          TIMEOUT: 900
         # run_typed_footprint.sh finds its typed-free base from history
         # (fetch-depth 0 above); do not set TYPED_FOOTPRINT_BASE.
         run: sh ../test/db/run_all.sh
@@ -191,6 +198,7 @@ jobs:
         env:
           CFLAGS: -fsanitize=address,undefined -fno-omit-frame-pointer -g
           ASAN_OPTIONS: detect_leaks=0
+          TIMEOUT: 900
         run: TIER=typed sh ../test/db/run_all.sh
       - name: Manifest gate (db and typed tiers)
         if: always()
