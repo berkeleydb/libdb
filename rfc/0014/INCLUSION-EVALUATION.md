@@ -132,7 +132,7 @@ minutes. The driver also shared handles across threads without `DB_THREAD`.
 Both are fixed in the forward port (commit 5 below), and the numbers above are
 from the fixed driver.
 
-## The five commits added in the forward port
+## The commits added in the forward port
 
 1. **`typed: renumber two message ids that master reused`.** BDB5316 and
    BDB5317 were allocated by typed before master used them for `log_put.c` and
@@ -160,6 +160,39 @@ from the fixed driver.
    without the env flags.
 5. **`bench: typed_putcost sizes its cache before open, opens DB_THREAD`.**
    The driver bug described in the put-cost section above.
+
+PR #217's CI then found four more gaps. Each one is in the branch's test
+harness or docs, and none is in `src/typed/`:
+
+6. **docs: one link** in `db_set_schema.md` was one `../` short. The docs
+   gate's offline lychee check caught it.
+7. **macOS: `typed_footprint` item 3** counted symbols with ELF-only `nm -D`,
+   which finds nothing in a Mach-O `.dylib`. It now uses `nm -gU` there.
+   **Sanitizer timeout:** the `typed` job is the first to run the `db` tier
+   under clang ASan+UBSan. `qam_extent_vrfy` and `qam_readpath_bound` exceeded
+   the 180 s default, so the job now sets `TIMEOUT=900`.
+8. **`typed_cmp_fuzz` under clang's `-fsanitize=function`.** That check
+   (clang-only) flags every call through a libdb method pointer, because the
+   definitions are K&R-style. With the runner's UBSan `halt_on_error` it
+   stopped the test before any fuzzing. The flag now goes last, behind a
+   compiler probe, since gcc rejects it.
+9. **`typed_cmp_fuzz` halted on the engine's `SSZA` offsetof idiom**
+   (`bt_open.c:94`), which clang UBSan flags as a "member access within null
+   pointer". UBSan now reports without halting. ASan, which the sabotage arm
+   relies on, still halts.
+
+After these, **PR #217 CI is green at job level**: 67 success, 6 skipped and
+0 failed, with the coverage ratchet still running at the time of writing.
+That includes the `typed` job (clang ASan+UBSan, 58 manifest verdicts,
+`typed_cmp_fuzz` 1,000,001 iterations with 0 ASan errors), every macOS cell,
+and the fetch-depth 1 `posix` cells, which report
+`VERDICT typed_footprint PASS items 0 3 4`.
+
+The clang UBSan log is full of pre-existing engine reports: `SSZA`
+null-member access (~600) and K&R function-type calls (~120). None is in
+`src/typed/`. They are a separate project ("make the engine UBSan-clean
+under clang"), and no master job currently runs the `db` tier under clang
+UBSan.
 
 ## Resolved: RFC §4.1's deferred question (old-library `DB_TRUNCATE`)
 
@@ -251,7 +284,8 @@ D1–D8 are in the RFC; this is the user-visible list.
 
 - Windows/MSVC build of `--enable-typed` (the project lists carry the typed
   sources; the CI windows job is build-only and does not enable typed).
-- macOS.
+- macOS beyond CI (CI's macOS cells run the default-build `db` tier, including
+  `typed_footprint`, and are green).
 - A metal put-cost A/B.
 - The ASan+UBSan tiers on aarch64 (Linux x86_64 only).
 - The aliasing fix's full TCL suite (only test001 and the `db` tier).
@@ -259,11 +293,12 @@ D1–D8 are in the RFC; this is the user-visible list.
 ## Merge checklist
 
 - [ ] Rebase-free: the branch is linear on `master`, so open a PR as is.
-- [ ] CI must show the new `typed` job green, and the `posix` matrix
-      (fetch-depth 1) green with the footprint gate reporting "items 0 3 4".
+- [x] CI: the new `typed` job is green, and the `posix` matrix (fetch-depth 1)
+      is green with the footprint gate reporting "items 0 3 4" (PR #217).
 - [ ] `REGION-SIG-CHANGE-INTENDED` is **not** needed: the signature is unchanged.
 - [ ] Update `rfc/INDEX.md`: 0014 → "Implemented (Phase 1), opt-in".
 - [ ] Release note in the next regular release, plus an upgrade-guide entry
       saying "no action needed; typed is opt-in".
-- [ ] Separately: PR `fix/bamc-strict-aliasing` → master and a `2026.10.x`
-      patch release; write and PR the `DB_TRUNCATE`+dname refusal.
+- [ ] Separately: #218 (`fix/bamc-strict-aliasing`) and #219
+      (`fix/truncate-subdb-refuse`), both green at job level (59/59), go to
+      master and then a `2026.10.x` LTS patch release.
