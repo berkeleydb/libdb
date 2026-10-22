@@ -140,10 +140,10 @@ The same measurement with bpftrace on Debian 12 (Linux 6.1, ext4 on local NVMe, 
 
 ```
 # bpftrace -q -e '
-  usdt:/nvme/w/bu/.libs/libdb-2026.0.so:bdb:log__flush_begin { @s[tid] = nsecs; }
-  usdt:/nvme/w/bu/.libs/libdb-2026.0.so:bdb:log__flush_end /@s[tid]/ {
+  usdt:/path/to/build_unix/.libs/libdb-2026.0.so:bdb:log__flush_begin { @s[tid] = nsecs; }
+  usdt:/path/to/build_unix/.libs/libdb-2026.0.so:bdb:log__flush_end /@s[tid]/ {
       @fsync_us = hist((nsecs - @s[tid]) / 1000); delete(@s[tid]); }
-  usdt:/nvme/w/bu/.libs/libdb-2026.0.so:bdb:txn__commit { @commits = count(); }
+  usdt:/path/to/build_unix/.libs/libdb-2026.0.so:bdb:txn__commit { @commits = count(); }
   interval:s:12 { exit(); }' &
 $ ./dtrace_drv /nvme/bx 8 2000
 
