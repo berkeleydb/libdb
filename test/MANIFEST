@@ -498,6 +498,7 @@ db	run_typed_old_reader
 db	run_typed_util
 db	run_truncate_subdb
 db	run_bamc_prev_alias
+db	run_mf_discard_order
 
 # ---------------------------------------------------------------------------
 # RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an
