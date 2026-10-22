@@ -166,6 +166,15 @@ if get_option('typed').enabled()
   cdata.set('HAVE_TYPED', 1)
 endif
 
+# --enable-dtrace is autoconf-only.  Meson would need the dtrace -h header as a
+# custom_target and, on FreeBSD and illumos, a dtrace -G pass that rewrites
+# every object before the link -- not done yet.  Fail loudly rather than build
+# a library a user believes is instrumented.
+if get_option('dtrace').enabled()
+  error('-Ddtrace=enabled is not implemented in the meson build yet; ' +
+        'use dist/configure --enable-dtrace')
+endif
+
 # POSIX aio: aio_read may be in libc, librt or libaio.
 aio_dep = dependency('', required: false)
 if cc.has_header('aio.h')
