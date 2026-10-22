@@ -91,7 +91,7 @@ results of its `compare`, `equal`, `hash`, `validate` and `sortkey` functions on
 the golden vectors the codec supplies. When a second process opens the
 database, libdb recomputes that fingerprint from the codecs in the presented
 schema and compares it to the stored one; a mismatch is reported as
-<a href="../guides/programmer_reference/program_errorret.md" class="olink">DB_CODEC_MISMATCH</a>.
+<a href="../../guides/programmer_reference/program_errorret.md" class="olink">DB_CODEC_MISMATCH</a>.
 
 **The fingerprint is a sampling check, not a proof of equivalence.** It can
 only observe the codec's behaviour on the finite set of golden vectors. Two
