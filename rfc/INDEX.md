@@ -18,7 +18,7 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0011](0011-test-coverage-gaps.md) | Test-coverage gaps that let shipped defects through (G12-G15): scaling shape, configure-option sweep, runtime-flag behaviour | Accepted | Normative |
 | [0012](0012-locker-alloc-scaling.md) | `mtx_locker_stripe[0]`: the locker-allocation latch | Draft |
 | [0013](0013-cross-engine-campaign.md) | Cross-engine benchmark campaign: plan for review | Draft |
-| [0014](0014-typed-data-and-constraints.md) | Typed data and constraints: a codec socket ("modem") and a constraint layer, configure-time optional | Accepted (Phases 0–1) |
+| [0014](0014-typed-data-and-constraints.md) | Typed data and constraints: a codec socket ("modem") and a constraint layer, configure-time optional | Implemented (Phases 0–1), opt-in `--enable-typed`; see [inclusion evaluation](0014/INCLUSION-EVALUATION.md) |
 | [0015](0015-multicore-scalability.md) | Multi-core scalability audit: every serialisation point, and the order to remove them | Draft |
 | [0016](0016-rust-zig-bindings.md) | Rust and Zig language bindings: idiomatic, zero-copy-capable API shims over the C library, with native-format docs and tests | Draft |
 
