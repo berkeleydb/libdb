@@ -291,13 +291,14 @@ D1–D8 are in the RFC; this is the user-visible list.
 
 ## Merge checklist
 
-- [ ] Rebase-free: the branch is linear on `master`, so open a PR as is.
+- [x] The PR is up to date with `master` (master merged in; no rebase).
 - [x] CI: the new `typed` job is green, and the `posix` matrix (fetch-depth 1)
       is green with the footprint gate reporting "items 0 3 4" (PR #217).
-- [ ] `REGION-SIG-CHANGE-INTENDED` is **not** needed: the signature is unchanged.
-- [ ] Update `rfc/INDEX.md`: 0014 → "Implemented (Phase 1), opt-in".
-- [ ] Release note in the next regular release, plus an upgrade-guide entry
-      saying "no action needed; typed is opt-in".
-- [ ] Separately: #218 (`fix/bamc-strict-aliasing`) and #219
-      (`fix/truncate-subdb-refuse`), both green at job level (59/59), go to
-      master and then a `2026.10.x` LTS patch release.
+- [x] `REGION-SIG-CHANGE-INTENDED` is **not** needed: the signature is unchanged.
+- [x] Update `rfc/INDEX.md`: 0014 → "Implemented (Phases 0–1), opt-in".
+- [ ] At the next regular release from `master` (RELEASING.md): a release
+      note, plus an upgrade-guide entry saying "no action needed; typed is
+      opt-in". This is part of that release commit, not this PR.
+- [x] Separately: #218 and #219 are merged to master. With #220 (a
+      lock-order fix the LTS qualification found), they are backported to the
+      LTS line as `v2026.10.7.1` (#221).
