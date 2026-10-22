@@ -530,6 +530,7 @@ typed	run_typed_optread
 typed	run_typed_recover
 typed	run_typed_unique_iso
 typed	run_typed_util
+db	run_bamc_prev_alias
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

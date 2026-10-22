@@ -133,14 +133,28 @@ static int  __bam_getlte __P((DBC *, DBT *, DBT *));
 	__cp->stream_start_pgno = PGNO_INVALID;				\
 } while (0)
 
-/* If on-page item is a deleted record. */
+/*
+ * If on-page item is a deleted record.
+ *
+ * These macros read the cursor position through BTREE_CURSOR *, the type
+ * every btree cursor routine writes it through, never through the generic
+ * DBC_INTERNAL *.  The two structs share their leading fields only by pasting
+ * the __DBC_INTERNAL macro into each, so to the compiler they are unrelated
+ * types: under strict aliasing a store through one does not alias a load
+ * through the other.  FreeBSD clang 21 -O2 on aarch64 used that to hoist the
+ * IS_CUR_DELETED load of indx above __bamc_prev's "cp->indx -= adjust"
+ * store, so the reverse walk tested the slot it had just left: DB_PREV
+ * skipped live records next to a deleted one, and the diagnostic build
+ * dereferenced a stale index and crashed (test001 btree, Test001.d).
+ */
 #undef	IS_DELETED
 #define	IS_DELETED(dbp, page, indx)					\
 	B_DISSET(GET_BKEYDATA(dbp, page,				\
 	    (indx) + (TYPE(page) == P_LBTREE ? O_INDX : 0))->type)
 #undef	IS_CUR_DELETED
 #define	IS_CUR_DELETED(dbc)						\
-	IS_DELETED((dbc)->dbp, (dbc)->internal->page, (dbc)->internal->indx)
+	IS_DELETED((dbc)->dbp, ((BTREE_CURSOR *)(dbc)->internal)->page,	\
+	    ((BTREE_CURSOR *)(dbc)->internal)->indx)
 
 /*
  * Test to see if two cursors could point to duplicates of the same key.
@@ -152,13 +166,16 @@ static int  __bam_getlte __P((DBC *, DBT *, DBT *));
  */
 #undef	IS_DUPLICATE
 #define	IS_DUPLICATE(dbc, i1, i2)					\
-	    (P_INP((dbc)->dbp,((PAGE *)(dbc)->internal->page))[i1] ==	\
-	     P_INP((dbc)->dbp,((PAGE *)(dbc)->internal->page))[i2])
+	    (P_INP((dbc)->dbp,						\
+	    ((PAGE *)((BTREE_CURSOR *)(dbc)->internal)->page))[i1] ==	\
+	     P_INP((dbc)->dbp,						\
+	    ((PAGE *)((BTREE_CURSOR *)(dbc)->internal)->page))[i2])
 #undef	IS_CUR_DUPLICATE
 #define	IS_CUR_DUPLICATE(dbc, orig_pgno, orig_indx)			\
 	(F_ISSET(dbc, DBC_OPD) ||					\
-	    (orig_pgno == (dbc)->internal->pgno &&			\
-	    IS_DUPLICATE(dbc, (dbc)->internal->indx, orig_indx)))
+	    (orig_pgno == ((BTREE_CURSOR *)(dbc)->internal)->pgno &&	\
+	    IS_DUPLICATE(dbc, ((BTREE_CURSOR *)(dbc)->internal)->indx,	\
+	    orig_indx)))
 
 /*
  * __bamc_init --
