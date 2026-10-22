@@ -40,6 +40,33 @@ these.
    release, with every quoted cell at cv ≤ 10%.
 7. Verify from a fresh clone of the **published** tag, not the local tree.
 
+## Gates for an LTS patch release
+
+An LTS patch release (`v<base>.N`, cut from `lts/<base>`; see `RELEASING.md`)
+runs gates 1–5 and 7, plus:
+
+- **L1** The region signature is unchanged: on each platform, a build of the
+  release and a build of the base tag, configured the same way on the same
+  host, print the same `env_sig_print.sh` value. Compare the two builds rather
+  than against a constant. The value depends on the platform and the configure
+  options (a plain Debian build gives `0x841f4ea8`; FreeBSD gives
+  `0x56a06689`).
+- **L2** `run_handle_sizes.sh` passes, and the default library's `.text` differs
+  from the base tag's only by the fixed code.
+- **L3** Every fixed bug has a regression test that FAILs on the base tag and
+  PASSes on the release, on a platform where the bug reproduces. On every other
+  platform it PASSes on both.
+- **L4** Every commit on `lts/<base>` since the base tag carries a
+  `(cherry picked from commit …)` trailer naming a commit on `master`, or its PR
+  says why the fix is LTS-only.
+
+Gate 6 (the cross-release metal benchmark) is skipped unless a fix touches a
+hot path. Gate 8 (the soak) is skipped unless a fix touches resource lifetime.
+The release notes say which gates ran.
+
+The first LTS patch release, `v2026.10.7.1`, is recorded in
+[`QUAL-2026.10.7.1.md`](QUAL-2026.10.7.1.md).
+
 ## Additional gates for the LTS declaration
 
 8. **Soak:** a 72-hour TPROC-C run at the throughput knee, with hourly
@@ -60,3 +87,20 @@ these.
     performance, or a documented limitation with a workaround.
 11. The region signature, ABI and on-disk format are **frozen** from the LTS
     tag forward, which `VERSIONING.md` already states.
+
+## First LTS: v2026.10.7 (qualified 2026-10-16)
+
+The gates above were met and the LTS declared on **v2026.10.7**.
+
+- **Soak (gate 8):** 72-hour resource-accounting soak, zero failures on all
+  four platforms. Linux x86_64 ran the full 72h (8,913 passes, Oct 13 13:14 →
+  Oct 16 13:13Z); Windows/MSVC x86_64 ran the full 72h (4,600 passes over
+  4,320 minutes, `SOAK72_EXIT=0`); FreeBSD x86_64 and FreeBSD aarch64 ran
+  clean (every completed pass "resources stayed within tolerance", no
+  `SOAK_FAILED`). Each pass opens and closes a fresh long-lived environment, so
+  a resource leak or region-accounting divergence fails the arm.
+- **CI (gates 1–7):** green at job level on the release commit `a849cdbc5`
+  (10 workflows, 71 jobs, 0 failed).
+- **Frozen (gate 11):** the `2026.10.x` LTS line is frozen at the signatures in
+  the v2026.10.7 upgrade note — macOS arm64 `0x2c8d3688`, LP64 x86_64
+  `0x56a06689`, aarch64 `0x56a06689`. See `VERSIONING.md` §LTS lines.
