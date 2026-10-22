@@ -141,6 +141,14 @@ provider bdb {
 
 /* Log - Transaction log  */
     probe log__read(unsigned read_count, unsigned logfile);
+    /*
+     * The log is about to be fsynced so that every record before
+     * file/offset is durable.  Group commit means one flush can cover
+     * many committing transactions.
+     */
+    probe log__flush_begin(unsigned file, unsigned offset);
+    /* The fsync for the flush begun by flush_begin returned 'ret'. */
+    probe log__flush_end(unsigned file, unsigned offset, int ret);
 
 /*
  * The mpool class monitors the allocation and management of memory,

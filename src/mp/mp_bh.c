@@ -657,6 +657,8 @@ __memp_bhwrite_async(dbmp, hp, mfp, bhp, aioc, w, deferredp)
 	w->io_ret = 0;
 	w->done = 0;
 
+	/* The async path is still a page write: keep mpool-write complete. */
+	PERFMON3(env, mpool, write, __memp_fn(dbmfp), bhp->pgno, bhp);
 	op.op = DB_IO_WRITE;
 	op.fhp = dbmfp->fhp;
 	op.pgno = bhp->pgno;
