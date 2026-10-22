@@ -37,7 +37,24 @@ The rules agents get wrong most:
 - Build, test and benchmark on EC2 (AWS profile `kiwi`, FreeBSD or Debian).
   Benchmarks run on metal. The local machine is for reading source, writing
   docs, and git/gh.
-- Temporary worktrees live in `/scratch/libdb/<name>`.
+
+## Housekeeping
+
+Everything an agent creates for this project lives in one place and is removed
+when its task ends:
+
+- **Worktrees** go in `/scratch/libdb/<name>`
+  (`git worktree add /scratch/libdb/<name> <branch>`). Never put them beside the
+  main checkout or in `/tmp`.
+- **Scratch files** (scripts, bundles, probes, PR bodies) go in
+  `/scratch/libdb/` too, not in `/tmp`, so they can be found and cleaned up.
+- **When a PR merges**, remove its worktree (`git worktree remove`), and delete
+  its local branch (`git branch -d`) and its remote branch.
+- **When EC2 work ends**, terminate the instance, then delete its key pair, its
+  `~/.ssh/*.pem` file and its security group. Everything the project creates is
+  tagged `owner=libdb-<tag>`.
+- Notes worth keeping become tracked files in `rfc/` or `test/`. A task state
+  file in `.agent/` is deleted once its task is done.
 
 ## Repo conventions
 
