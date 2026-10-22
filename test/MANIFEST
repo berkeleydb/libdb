@@ -491,6 +491,7 @@ db	run_s3_mpool_counters
 db	run_s4_mvcc_mtx_reuse
 db	run_m5_fname_cache
 db	run_bamc_prev_alias
+db	run_mf_discard_order
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is
