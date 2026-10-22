@@ -40,6 +40,25 @@ these.
    release, with every quoted cell at cv ≤ 10%.
 7. Verify from a fresh clone of the **published** tag, not the local tree.
 
+## Gates for an LTS patch release
+
+An LTS patch release (`v<base>.N`, cut from `lts/<base>`; see `RELEASING.md`)
+runs gates 1–5 and 7, plus:
+
+- **L1** The region signature equals the line's frozen value on every platform
+  in the table above (`env_sig_print.sh`).
+- **L2** `run_handle_sizes.sh` passes, and the default library's `.text` differs
+  from the base tag's only by the fixed code.
+- **L3** Every fixed bug has a regression test that FAILs on the base tag and
+  PASSes on the release, run on a platform where the bug reproduces.
+- **L4** Every commit on `lts/<base>` since the base tag carries a
+  `(cherry picked from commit …)` trailer naming a commit on `master`, or its PR
+  says why the fix is LTS-only.
+
+Gate 6 (the cross-release metal benchmark) is skipped unless a fix touches a
+hot path. Gate 8 (the soak) is skipped unless a fix touches resource lifetime.
+The release notes say which gates ran.
+
 ## Additional gates for the LTS declaration
 
 8. **Soak:** a 72-hour TPROC-C run at the throughput knee, with hourly

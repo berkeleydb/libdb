@@ -8,7 +8,9 @@ welcome.
 
 - **Target `master`.** The `historical` branch and the version tags
   (`v1.85` … `v5.1.29`, `v4.6.21-SSI`, …) are an immutable archive — do not
-  open PRs against them.
+  open PRs against them. A bug fix that an LTS line also needs still lands on
+  `master` first; label its PR `backport-lts`, and a maintainer cherry-picks it
+  onto the `lts/*` branch afterwards (see [`RELEASING.md`](../RELEASING.md)).
 - **One logical change per PR**, with a clear description of *what* changed and
   *why*, and how you tested it.
 - **Conventional Commits** for messages (`feat:`, `fix:`, `test:`, `docs:`,
