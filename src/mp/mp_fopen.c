@@ -1120,18 +1120,27 @@ __memp_mf_discard(dbmp, mfp, hp_locked)
 	 * Lock the bucket and delete from the list of MPOOLFILEs.
 	 * If this function is called by __memp_discard_all_mpfs,
 	 * the MPOOLFILE hash bucket is already locked.
+	 *
+	 * Flush the file while holding the bucket, before the region lock.
+	 * __memp_mf_sync needs the bucket (the path must not be renamed
+	 * under it), and the mpool region latch is an allocator latch taken
+	 * innermost (rfc/0010 A3, DB_LO_RANK_ALLOC).  Syncing after
+	 * MPOOL_SYSTEM_LOCK took the bucket under the allocator latch, the
+	 * inverse order, which the DIAGNOSTIC lock-order checker reports
+	 * (BDB2077) on a DB_TRUNCATE open of an existing file.  Nothing else
+	 * can reach this MPOOLFILE: deadfile is set and its mutex is gone.
 	 */
 	if (!hp_locked)
 		MUTEX_LOCK(env, hp->mtx_hash);
+	if (need_sync &&
+	    (t_ret = __memp_mf_sync(dbmp, mfp, 1)) != 0 && ret == 0)
+		ret = t_ret;
 	SH_TAILQ_REMOVE(&hp->hash_bucket, mfp, q, __mpoolfile);
 	if (!hp_locked)
 		MUTEX_UNLOCK(env, hp->mtx_hash);
 
 	/* Lock the region and collect stats and free the space. */
 	MPOOL_SYSTEM_LOCK(env);
-	if (need_sync &&
-	    (t_ret = __memp_mf_sync(dbmp, mfp, 0)) != 0 && ret == 0)
-		ret = t_ret;
 
 #ifdef HAVE_STATISTICS
 	/* Copy the statistics into the region. */
