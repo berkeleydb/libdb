@@ -30,16 +30,15 @@ RM="$RM -f"
 AC_CHECK_TOOL(MV, mv, none)
 test "$MV" = "none" && AC_MSG_ERROR([No mv utility found.])
 
-if test "$db_cv_systemtap" = "yes" -o "$db_cv_dtrace" = "yes"; then
-	AC_CHECK_TOOL(STAP, stap, none)
-	test "$STAP" = "none" -a "$db_cv_systemtap" = "yes" && \
-		AC_MSG_ERROR([No stap utility found.])
+# --enable-systemtap is a synonym for --enable-dtrace.  Building needs only
+# dtrace(1) and <sys/sdt.h>; stap is a runtime tool and is not looked for.
+if test "$db_cv_systemtap" = "yes"; then
 	db_cv_dtrace=yes
 fi
 
 if test "$db_cv_dtrace" = "yes"; then
 	AC_CHECK_TOOL(DTRACE, dtrace, none)
-	test "$DTRACE" = "none" && AC_MSG_ERROR([No dtrace utility found.])
+	test "$DTRACE" = "none" && AC_MSG_ERROR([No dtrace utility found. On Linux install systemtap-sdt-dev (Debian, Ubuntu) or systemtap-sdt-devel (Fedora, RHEL).])
 	# Sed and perl are needed only if events are added after building
 	# the distribution; if either is missing it is not an error for now.
 	AC_CHECK_TOOL(SED, sed, none)

@@ -172,7 +172,7 @@ mpool
     alloc_max_pages(unsigned max, unsigned region_id);
     alloc_pages(unsigned count, unsigned region_id);
 
-    backup_spins(unsigned spins, char *file, unsigned pgno);`
+    backup_spins(unsigned spins, char *file, unsigned pgno);
 
     # The aggressiveness of a buffer cache allocation increases as more
     # involved methods are needed in order to free up the requested space

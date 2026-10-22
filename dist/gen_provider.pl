@@ -4,6 +4,9 @@ $continuing = 0;
 $header_comment = 1;
 $single_line = undef;
 $multi_line = undef;
+# The header is printed here, not by s_include, so that the Makefile.in rule
+# that rebuilds db_provider.d when events.in is newer writes the same bytes.
+print "/*\n * DO NOT EDIT: automatically built by dist/s_include.\n * Oracle Berkeley DB DTrace Provider\n */\n";
 print "#include \"dbdefs.d\"\n\nprovider bdb {\n";
 
 while (<>) {

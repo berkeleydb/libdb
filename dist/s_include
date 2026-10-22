@@ -168,8 +168,4 @@ cmp $e_pfile $f > /dev/null 2>&1 ||
 
 # Make the DTrace provider description file from events.in
 rm -f db_provider.d
-(echo "/*"; \
- echo " * DO NOT EDIT: automatically built by dist/s_include."; \
- echo " * Oracle Berkeley DB DTrace Provider"; \
- echo " */"; \
-perl gen_provider.pl events.in)  > db_provider.d
+perl gen_provider.pl events.in > db_provider.d
