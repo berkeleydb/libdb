@@ -46,10 +46,25 @@ for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l
 # test's own field codec, so an unbounded len makes the test read past an
 # exact-sized heap block -- caught by the test binary's own instrumentation,
 # which is what makes a missing §6.3 check a visible heap-buffer-overflow.
+# -fno-sanitize=function: clang's function-type check (part of "undefined";
+# gcc has none) flags every call through a libdb method pointer, because the
+# K&R-style definitions (__db_open_pp and the rest) have no prototype type.
+# With halt_on_error that stopped the test at its first dbp->open, before any
+# fuzzing, and the run reported "no VERDICT line".  The check says nothing
+# about the comparator's bounds; ASan does, and stays fully on.
 SAN="-fsanitize=address,undefined -fno-omit-frame-pointer"
 BIN=$BUILD/$NAME
 rm -f "$BIN"
-"${CC:-cc}" -g -O1 $SAN ${CFLAGS:-} -I"$BUILD" "$SRC" "$LIB" \
+# -fno-sanitize=function goes LAST: a later -fsanitize=undefined (the CI
+# job's CFLAGS) would otherwise turn the check back on.  Only clang has the
+# check; gcc rejects the flag, so probe for it.
+NOFN=""
+echo 'int main(void){return 0;}' > "$BUILD/$NAME.probe.c"
+"${CC:-cc}" -fsanitize=undefined -fno-sanitize=function \
+    "$BUILD/$NAME.probe.c" -o "$BUILD/$NAME.probe" >/dev/null 2>&1 &&
+    NOFN="-fno-sanitize=function"
+rm -f "$BUILD/$NAME.probe.c" "$BUILD/$NAME.probe"
+"${CC:-cc}" -g -O1 $SAN ${CFLAGS:-} $NOFN -I"$BUILD" "$SRC" "$LIB" \
     -lpthread $LIBRPATH $EXTRALIBS -o "$BIN" 2>&1 || {
 	echo "VERDICT $NAME FAIL compile" ; exit 1 ; }
 test -x "$BIN" || { echo "VERDICT $NAME FAIL no binary produced" ; exit 1 ; }
