@@ -23,10 +23,15 @@ sed -e '/[	 ]db\.h'/d \
 for i in `cat $t1`; do
 	(cd $s && egrep "^#include[	 ].*[<\"]$i[>\"]" */*.[ch])
 done |
+# db_quickselect.h is a header-only helper shared with standalone benchmark
+# programs that do not include db_int.h (e.g. test/bench/fsync_probe.c), so it
+# needs <stddef.h> for size_t on its own.  In an engine translation unit
+# db_int.h is included first and the include is harmless.
 sed -e '/^build/d' \
     -e '/^clib\/getopt.c/d' \
     -e '/^dbinc\/mutex_int.h.*<sys\/mman.h>/d' \
     -e '/^dbinc\/win_db.h:/d' \
+    -e '/^dbinc\/db_quickselect.h.*<stddef.h>/d' \
     -e '/^mutex\/tm.c/d' \
     -e '/^os\/os_map.c.*<sys\/mman.h>/d' \
     > $t2
