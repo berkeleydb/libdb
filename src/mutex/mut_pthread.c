@@ -329,7 +329,8 @@ __db_pthread_mutex_condwait(env, mutex, mutexp, timespec)
 	 * different address in each process, so the same shared mutex has a
 	 * different address in a second process; its pthread_cond_wait() then
 	 * mismatches the stored binding and Darwin returns EINVAL, which libdb
-	 * escalates to a fatal PANIC/DB_RUNRECOVERY.  (Confirmed on Apple
+	 * escalates to a fatal panic (the environment must then run recovery).
+	 * (Confirmed on Apple
 	 * Silicon runners: the cond's bound-mutex word differs from the caller's
 	 * mutex address on the failing wait.)  There is no public Darwin API to
 	 * opt out of this binding, so on Darwin we do not park in the condvar at
