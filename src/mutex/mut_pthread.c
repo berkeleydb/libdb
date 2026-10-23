@@ -330,14 +330,13 @@ __db_pthread_mutex_condwait(env, mutex, mutexp, timespec)
 	 * different address in a second process; its pthread_cond_wait() then
 	 * mismatches the stored binding and Darwin returns EINVAL, which libdb
 	 * escalates to a fatal panic (the environment must then run recovery).
-	 * (Confirmed on Apple
-	 * Silicon runners: the cond's bound-mutex word differs from the caller's
-	 * mutex address on the failing wait.)  There is no public Darwin API to
-	 * opt out of this binding, so on Darwin we do not park in the condvar at
-	 * all: release the interlock, sleep briefly, and reacquire, letting the
-	 * caller re-poll the test-and-set state.  This is the same block-by-
-	 * polling strategy the pure test-and-set backend already uses, just
-	 * reached through the hybrid path.  The matching signal/broadcast in
+	 * Confirmed on Apple Silicon runners: the cond's bound-mutex word differs
+	 * from the caller's mutex address on the failing wait.  There is no public
+	 * Darwin API to opt out of this binding, so on Darwin we do not park in
+	 * the condvar at all: release the interlock, sleep briefly, and reacquire,
+	 * letting the caller re-poll the test-and-set state.  This is the same
+	 * block-by-polling strategy the pure test-and-set backend already uses,
+	 * just reached through the hybrid path.  The matching signal/broadcast in
 	 * __db_pthread_mutex_unlock takes no mutex and is harmless (a lost signal
 	 * only means the poller re-checks one slice later).
 	 *
