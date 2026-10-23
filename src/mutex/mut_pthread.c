@@ -63,6 +63,17 @@
 		(ret) = EAGAIN;						\
 } while (0)
 
+#ifdef __APPLE__
+/*
+ * How long the Darwin block-by-polling fallback sleeps between re-polls of the
+ * test-and-set state (microseconds).  See __db_pthread_mutex_condwait for why
+ * Darwin cannot park in a process-shared condition variable.  Kept small so
+ * contended multi-process wakeups stay responsive; a holder that unlocks is
+ * seen within one slice.
+ */
+#define	DB_MUTEX_DARWIN_POLL_USEC	100
+#endif
+
 /*
  * __db_pthread_mutex_init --
  *	Initialize a pthread mutex: either a native one or
@@ -310,6 +321,50 @@ __db_pthread_mutex_condwait(env, mutex, mutexp, timespec)
 #endif
 	PERFMON4(env, mutex, suspend, mutex, TRUE, mutexp->alloc_id, mutexp);
 
+#ifdef __APPLE__
+	/*
+	 * Darwin: a PTHREAD_PROCESS_SHARED condition variable records, inside
+	 * the shared cond object, a reference to the virtual ADDRESS of the
+	 * mutex it is first waited with.  libdb maps the mutex region at a
+	 * different address in each process, so the same shared mutex has a
+	 * different address in a second process; its pthread_cond_wait() then
+	 * mismatches the stored binding and Darwin returns EINVAL, which libdb
+	 * escalates to a fatal panic (the environment must then run recovery).
+	 * Confirmed on Apple Silicon runners: the cond's bound-mutex word differs
+	 * from the caller's mutex address on the failing wait.  There is no public
+	 * Darwin API to opt out of this binding, so on Darwin we do not park in
+	 * the condvar at all: release the interlock, sleep briefly, and reacquire,
+	 * letting the caller re-poll the test-and-set state.  This is the same
+	 * block-by-polling strategy the pure test-and-set backend already uses,
+	 * just reached through the hybrid path.  The matching signal/broadcast in
+	 * __db_pthread_mutex_unlock takes no mutex and is harmless (a lost signal
+	 * only means the poller re-checks one slice later).
+	 *
+	 * Only Darwin is affected; every other platform keeps the condvar wait
+	 * below unchanged, so their object code is byte-identical.
+	 */
+	(void)pthread_mutex_unlock(&mutexp->u.m.mutex);
+	__os_yield(env, 0, DB_MUTEX_DARWIN_POLL_USEC);
+	if (timespec != NULL) {
+		db_timespec now;
+		timespecclear(&now);
+		if (__clock_expired(env, &now, timespec)) {
+			/* Reacquire so the caller's contract (mutex held on
+			 * a non-fatal return) holds, then report the timeout. */
+			RET_SET_PTHREAD_LOCK(mutexp, ret);
+			if (ret != 0)
+				goto ret;
+			ret = DB_TIMEOUT;
+			goto ret;
+		}
+	}
+	RET_SET_PTHREAD_LOCK(mutexp, ret);
+	if (ret != 0)
+		/* Failure: mutex is not held; caller must not condwait again. */
+		goto ret;
+	/* ret == 0: mutex reacquired; safe for the caller to retry. */
+#else
+
 	if (timespec != NULL) {
 		RET_SET((pthread_cond_timedwait(&mutexp->u.m.cond,
 		    &mutexp->u.m.mutex, (struct timespec *) timespec)), ret);
@@ -343,6 +398,7 @@ __db_pthread_mutex_condwait(env, mutex, mutexp, timespec)
 			/* Failure, caller shouldn't condwait again. */
 			(void)pthread_mutex_unlock(&mutexp->u.m.mutex);
 	}
+#endif /* __APPLE__ */
 
 ret:
 	PERFMON4(env, mutex, resume, mutex, TRUE, mutexp->alloc_id, mutexp);
