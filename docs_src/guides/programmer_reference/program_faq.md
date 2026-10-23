@@ -15,6 +15,6 @@ source: docs/programmer_reference/program_faq.html
 
     Applications can be simplified and bugs avoided by creating wrapper classes around <a href="../../api/c/dbc.md" class="olink">DBC</a> and <a href="../../api/c/txn.md" class="olink">TXN</a> that call the appropriate cleanup method in the wrapper's destructor. By creating an instance of the wrappers on the stack, C++ scoping rules will ensure that the destructor is called before exception handling unrolls the block that contains the wrapper object.
 
-3.  **How do I handle a "pass 4" error when trying to run one of the example Performance Event Monitoring scripts on my Linux system? The library configured with --enable-dtrace and built without error.**
+3.  **My Linux library was configured with --enable-dtrace and built without error. Why can my tracer not find the `bdb` probes?**
 
-    A Linux installation can have SystemTap support for kernel probe points without including the kernel "utrace" module needed to use userspace probes. Pass 4 errors can occur when this required userspace support is not present.
+    First check that the probes are in the library: `readelf -n libdb-2026.0.so | grep -c 'Provider: bdb'` must print a number above zero. Then attach by the path of the library the process actually loads, with `-` in a probe name written `__` (`usdt:/path/to/libdb-2026.0.so:bdb:txn__commit`). bpftrace and perf need root, or `CAP_BPF` and `CAP_PERFMON`. See [Performance Event Monitoring](program_perfmon.md).

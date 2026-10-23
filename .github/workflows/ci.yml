@@ -433,6 +433,49 @@ jobs:
             echo "FreeBSD shared-library build OK: $so exports db_create"
 
   # ----------------------------------------------------------------------------
+  # Linux --enable-dtrace: the `bdb' USDT probes, built with ONLY
+  # systemtap-sdt-dev (sys/sdt.h + the /usr/bin/dtrace wrapper) -- no stap, no
+  # kernel debuginfo.  Blocking.  Asserts the artifact, not the exit status:
+  # the probes must be ELF notes in libdb, and bpftrace must see one fire.
+  # ----------------------------------------------------------------------------
+  dtrace-linux:
+    name: linux --enable-dtrace (USDT)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install systemtap-sdt-dev and bpftrace
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q systemtap-sdt-dev bpftrace
+          # The build must not depend on the SystemTap runtime.
+          if command -v stap; then echo "::error::stap is installed; this job must prove it is not needed"; exit 1; fi
+      - name: Configure
+        working-directory: build_unix
+        run: ../dist/configure --enable-dtrace
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: USDT notes are in libdb
+        working-directory: build_unix
+        run: |
+          so=$(ls .libs/libdb-*.so | head -1)
+          n=$(readelf -n "$so" | grep -c 'Provider: bdb' || true)
+          echo "bdb stapsdt notes in $so: $n"
+          if [ "$n" -eq 0 ]; then
+            echo "::error::--enable-dtrace built $so with no bdb USDT notes"
+            exit 1
+          fi
+          sudo bpftrace -l "usdt:$PWD/$so:bdb:*" | tee probes.txt
+          [ -s probes.txt ] || { echo "::error::bpftrace lists no bdb probes"; exit 1; }
+      - name: run_dtrace_probes (lists every probe, fires txn-commit under bpftrace)
+        working-directory: build_unix
+        run: |
+          sh ../test/db/run_dtrace_probes.sh | tee dtrace.log
+          # sudo is passwordless here, so the firing step must have run.
+          grep -q 'PASS' dtrace.log && ! grep -q 'SKIP' dtrace.log
+
+  # ----------------------------------------------------------------------------
   # TCL test suite: targeted subset on every push/PR (fast PR signal); the full
   # run is manual (workflow_dispatch full_tcl=true). The generous nightly full
   # suite lives in ci-extended.yml so it never gates PRs.

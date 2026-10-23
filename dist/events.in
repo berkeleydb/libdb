@@ -106,6 +106,12 @@ lock
 # Log - Transaction log 
 log
     read(unsigned read_count, unsigned logfile);
+    # The log is about to be fsynced so that every record before
+    # file/offset is durable.  Group commit means one flush can cover
+    # many committing transactions.
+    flush_begin(unsigned file, unsigned offset);
+    # The fsync for the flush begun by flush_begin returned 'ret'.
+    flush_end(unsigned file, unsigned offset, int ret);
 
 # The mpool class monitors the allocation and management of memory,
 # including the cache.
@@ -172,7 +178,7 @@ mpool
     alloc_max_pages(unsigned max, unsigned region_id);
     alloc_pages(unsigned count, unsigned region_id);
 
-    backup_spins(unsigned spins, char *file, unsigned pgno);`
+    backup_spins(unsigned spins, char *file, unsigned pgno);
 
     # The aggressiveness of a buffer cache allocation increases as more
     # involved methods are needed in order to free up the requested space

@@ -3315,8 +3315,8 @@ time@o@: $(srcdir)/clib/time.c
 # It has lower-case versions of the event class and type names.
 #
 # To list the DB static probes, try:
-#	[pfexec | sudo] dtrace -l -n 'bdb$target:::'  -c "<application> <args>"
-#	[sudo] stap -l 'process(".libs/libdb-@DB_VERSION_MAJOR@.@DB_VERSION_MINOR@.so").mark("*")'
+#	sudo dtrace -l -n 'bdb$target:::' -c "<application> <args>"	(native)
+#	readelf -n .libs/libdb-@DB_VERSION_MAJOR@.@DB_VERSION_MINOR@.so | grep -A1 'Provider: bdb'	(Linux)
 listevents listprobes: @LISTPROBES_DEPENDENCY@
 	@LISTPROBES_COMMAND@
 
@@ -3333,13 +3333,13 @@ db_provider.h : $(DTRACE_PROVIDER)
 	    $(SED) -e $(SED_PROVIDER_PATTERN) $@.tmp > $@) || $(RM) $@
 	@$(RM) $@.tmp
 
-# DTrace on platforms which require dtrace -G (e.g., Solaris) need to include
-# an extra object file when linking. This placeholder 'db_provider.lo' has a
-# special update rule which knows that the PIC object files may be in .libs.
-# If that directory exists, the object files located there are updated by a
-# separate dtrace -G call.
-#
-#	Should this be added to libtool's --mode=link step on Solaris?
+# Every dtrace except macOS's needs an extra object made by dtrace -G: the DOF
+# for FreeBSD and illumos (which also rewrites each probe site in the objects
+# named), the probe semaphores for Linux's SystemTap wrapper.  This placeholder
+# 'db_provider.lo' has a special update rule which knows that the PIC object
+# files may be in .libs; if that directory exists, the object files there are
+# updated by a separate dtrace -G call.  A failing dtrace -G must fail the
+# build: a library without this object does not link.
 #
 DTRACE_OFILES=`echo $(DTRACE_OBJS) " " | $(SED) -e 's/\.lo /\.o /g'`
 
@@ -3347,18 +3347,23 @@ db_provider@o@: db_provider.c $(DTRACE_OBJS) $(DTRACE_PROVIDER)
 	$(RM) db_provider.o .libs/db_provider.o
 	@# A compilation warning such as 'empty translation unit' is harmless.
 	$(CC) $(CFLAGS) $(DEPFLAGS) db_provider.c
+	@# Absolute paths: the .libs pass runs one directory down, and topdir
+	@# may be relative or absolute depending on how configure was invoked.
+	p=`cd $(distdir) && pwd`/db_provider.d; \
+	u=`cd $(utildir)/dtrace && pwd`; \
 	if test -f db_provider.o ; then \
-		$(DTRACE) -G @DTRACE_CPP@ -I$(utildir)/dtrace -s $(DTRACE_PROVIDER) $(DTRACE_OFILES) ; \
-	fi
+		$(DTRACE) -G @DTRACE_CPP@ -I$$u -s $$p -o db_provider.o \
+		    $(DTRACE_OFILES) || { $(RM) $@; exit 1; } ; \
+	fi; \
 	if test -f .libs/db_provider.o ; then \
-	    (cd .libs && \
-	      $(DTRACE) -G @DTRACE_CPP@ -I../$(utildir)/dtrace -s ../$(DTRACE_PROVIDER) $(DTRACE_OFILES)) || \
-	      $(RM) $@ ; \
+		(cd .libs && $(DTRACE) -G @DTRACE_CPP@ -I$$u -s $$p \
+		    -o db_provider.o $(DTRACE_OFILES)) || \
+		    { $(RM) $@; exit 1; } ; \
 	fi
 
 # db_provider.c is created as an empty file at configure time with
 # --enable-dtrace. If missing then configure should be re-run.
-# So far only Solaris needs it.
+# Every platform except macOS needs it.
 db_provider.c:
 	@echo "The file db_provider@o@ is used only for configurations requiring dtrace -G"
 	@echo "Re-run configure with --enable-dtrace if needed"

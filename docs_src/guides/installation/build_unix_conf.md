@@ -123,11 +123,11 @@ The Berkeley DB specific arguments are as follows:
 
 - **--enable-dtrace** \[**--enable-perfmon-statistics**\]
 
-  To build Berkeley DB with performance event monitoring probes add --enable-dtrace to the configuration options. Both native DTrace (on Solaris and Mac OS X) and the Statically Defined Tracing compatibility layer in Linux SystemTap version 1.1 or better are supported. That compatibility package may be called systemtap-sdt-devel; it includes `sys/sdt.h`.
+  Build the `bdb` USDT probes into the library so that DTrace (FreeBSD, illumos, Solaris, macOS) or bpftrace and perf (Linux) can trace a running application. configure uses the `dtrace` program on the `PATH`. On Linux that is the SystemTap wrapper: install `systemtap-sdt-dev` (Debian, Ubuntu) or `systemtap-sdt-devel` (Fedora, RHEL), which also provides `sys/sdt.h`. The SystemTap runtime is not needed. `--enable-systemtap` is a synonym.
 
-  If --enable-perfmon-statistics is combined with --enable-dtrace then additional probes are defined for the tracking variables from which DB's statistics are obtained. They allow DTrace and SystemTap access to these values when they are updated, are the basis of the statistics as displayed db_stat and the API functions that return statistics.
+  If --enable-perfmon-statistics is combined with --enable-dtrace, probes are also built in where the counters behind `db_stat` and the `*_stat` methods are updated. Each such probe passes the counter's new value.
 
-  The --enable-dtrace option may not be specified at the same time as --disable-statistics.
+  The --enable-dtrace option may not be specified at the same time as --disable-statistics. Without --enable-dtrace the library contains no probe code.
 
   For information on Berkeley DB Performance Event Monitoring, see the <a href="../../guides/programmer_reference/program_perfmon.md" class="olink">Performance Event Monitoring</a> section in the <span class="emphasis">*Programmer's Reference Guide*</span>.
 

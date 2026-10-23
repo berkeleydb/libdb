@@ -1234,6 +1234,7 @@ flush:	MUTEX_LOCK(env, lp->mtx_flush);
 
 	/* Sync all writes to disk. */
 	DB_HOFF_FSYNC_BEGIN(env);
+	PERFMON2(env, log, flush_begin, flush_lsn.file, flush_lsn.offset);
 #if defined(HAVE_DST)
 #if DB_DST_BUG(1)
 	/*
@@ -1246,7 +1247,9 @@ flush:	MUTEX_LOCK(env, lp->mtx_flush);
 	 */
 	ret = 0;
 #else
-	if ((ret = __os_fsync(env, dblp->lfhp)) != 0) {
+	ret = __os_fsync(env, dblp->lfhp);
+	PERFMON3(env, log, flush_end, flush_lsn.file, flush_lsn.offset, ret);
+	if (ret != 0) {
 		MUTEX_UNLOCK(env, lp->mtx_flush);
 		if (release)
 			LOG_SYSTEM_LOCK(env);
@@ -1255,7 +1258,9 @@ flush:	MUTEX_LOCK(env, lp->mtx_flush);
 	}
 #endif
 #else
-	if ((ret = __os_fsync(env, dblp->lfhp)) != 0) {
+	ret = __os_fsync(env, dblp->lfhp);
+	PERFMON3(env, log, flush_end, flush_lsn.file, flush_lsn.offset, ret);
+	if (ret != 0) {
 		MUTEX_UNLOCK(env, lp->mtx_flush);
 		if (release)
 			LOG_SYSTEM_LOCK(env);

@@ -17,3 +17,10 @@ option('uring', type: 'feature', value: 'auto',
 # default or run_meson_autoconf_parity.sh's HAVE_* comparison fails.
 option('typed', type: 'feature', value: 'disabled',
   description: 'Typed-data and constraint layer (RFC 0014)')
+
+# Mirrors autoconf's --enable-dtrace in NAME ONLY for now: the DTrace/USDT
+# build (dtrace -h header, dtrace -G post-link over every object) is not yet
+# wired into meson.  'enabled' fails the configure rather than building a
+# library without the probes; use dist/configure --enable-dtrace.
+option('dtrace', type: 'feature', value: 'disabled',
+  description: 'bdb DTrace/USDT probes (not yet implemented in meson; use autoconf --enable-dtrace)')

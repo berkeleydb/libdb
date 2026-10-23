@@ -499,6 +499,8 @@ db	run_typed_util
 db	run_truncate_subdb
 db	run_bamc_prev_alias
 db	run_mf_discard_order
+# SKIPs (passes) on a build without --enable-dtrace; see the script header.
+db	run_dtrace_probes
 
 # ---------------------------------------------------------------------------
 # RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an

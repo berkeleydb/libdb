@@ -724,7 +724,6 @@ INSTALL_PROGRAM
 db_cv_path_sh
 PERL
 SED
-STAP
 MV
 RM
 MKDIR
@@ -1612,8 +1611,7 @@ Optional Features:
                           Configure to enable stripped messages.
   --enable-dbm            Configure to enable the historic dbm interface.
   --enable-dtrace         Configure to build in dtrace static probes
-  --enable-systemtap      Configure to use systemtap to emulate dtrace static
-                          probes
+  --enable-systemtap      Synonym for --enable-dtrace (Linux SDT probes)
   --enable-perfmon-statistics
                           Configure to build in performance monitoring of
                           statistics values [default=no].
@@ -5430,113 +5428,9 @@ fi
 
 test "$MV" = "none" && as_fn_error $? "No mv utility found." "$LINENO" 5
 
-if test "$db_cv_systemtap" = "yes" -o "$db_cv_dtrace" = "yes"; then
-	if test -n "$ac_tool_prefix"; then
-  # Extract the first word of "${ac_tool_prefix}stap", so it can be a program name with args.
-set dummy ${ac_tool_prefix}stap; ac_word=$2
-{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-printf %s "checking for $ac_word... " >&6; }
-if test ${ac_cv_prog_STAP+y}
-then :
-  printf %s "(cached) " >&6
-else case e in #(
-  e) if test -n "$STAP"; then
-  ac_cv_prog_STAP="$STAP" # Let the user override the test.
-else
-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  case $as_dir in #(((
-    '') as_dir=./ ;;
-    */) ;;
-    *) as_dir=$as_dir/ ;;
-  esac
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
-    ac_cv_prog_STAP="${ac_tool_prefix}stap"
-    printf '%s\n' "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-fi ;;
-esac
-fi
-STAP=$ac_cv_prog_STAP
-if test -n "$STAP"; then
-  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $STAP" >&5
-printf '%s\n' "$STAP" >&6; }
-else
-  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf '%s\n' "no" >&6; }
-fi
-
-
-fi
-if test -z "$ac_cv_prog_STAP"; then
-  ac_ct_STAP=$STAP
-  # Extract the first word of "stap", so it can be a program name with args.
-set dummy stap; ac_word=$2
-{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-printf %s "checking for $ac_word... " >&6; }
-if test ${ac_cv_prog_ac_ct_STAP+y}
-then :
-  printf %s "(cached) " >&6
-else case e in #(
-  e) if test -n "$ac_ct_STAP"; then
-  ac_cv_prog_ac_ct_STAP="$ac_ct_STAP" # Let the user override the test.
-else
-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  case $as_dir in #(((
-    '') as_dir=./ ;;
-    */) ;;
-    *) as_dir=$as_dir/ ;;
-  esac
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
-    ac_cv_prog_ac_ct_STAP="stap"
-    printf '%s\n' "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-fi ;;
-esac
-fi
-ac_ct_STAP=$ac_cv_prog_ac_ct_STAP
-if test -n "$ac_ct_STAP"; then
-  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_ct_STAP" >&5
-printf '%s\n' "$ac_ct_STAP" >&6; }
-else
-  { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf '%s\n' "no" >&6; }
-fi
-
-  if test "x$ac_ct_STAP" = x; then
-    STAP="none"
-  else
-    case $cross_compiling:$ac_tool_warned in
-yes:)
-{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
-printf '%s\n' "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
-ac_tool_warned=yes ;;
-esac
-    STAP=$ac_ct_STAP
-  fi
-else
-  STAP="$ac_cv_prog_STAP"
-fi
-
-	test "$STAP" = "none" -a "$db_cv_systemtap" = "yes" && \
-		as_fn_error $? "No stap utility found." "$LINENO" 5
+# --enable-systemtap is a synonym for --enable-dtrace.  Building needs only
+# dtrace(1) and <sys/sdt.h>; stap is a runtime tool and is not looked for.
+if test "$db_cv_systemtap" = "yes"; then
 	db_cv_dtrace=yes
 fi
 
@@ -5645,7 +5539,7 @@ else
   DTRACE="$ac_cv_prog_DTRACE"
 fi
 
-	test "$DTRACE" = "none" && as_fn_error $? "No dtrace utility found." "$LINENO" 5
+	test "$DTRACE" = "none" && as_fn_error $? "No dtrace utility found. On Linux install systemtap-sdt-dev (Debian, Ubuntu) or systemtap-sdt-devel (Fedora, RHEL)." "$LINENO" 5
 	# Sed and perl are needed only if events are added after building
 	# the distribution; if either is missing it is not an error for now.
 	if test -n "$ac_tool_prefix"; then
@@ -20516,7 +20410,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20519 "configure" */
+/* #line 20413 "configure" */
 public class Test {
 }
 EOF
@@ -20811,7 +20705,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20814: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20708: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20943,7 +20837,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20946 "configure" */
+/* #line 20840 "configure" */
 public class Test {
 }
 EOF
@@ -20980,7 +20874,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20983 "configure" */
+/* [#]line 20877 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);
@@ -26380,9 +26274,6 @@ printf '%s\n' "$db_dep_track" >&6; }
 
 
 if test "$db_cv_systemtap" = "yes" ; then
-	if test "$DTRACE" != "dtrace"; then
-		as_fn_error $? "The dtrace program is missing; is systemtap v1.1 or better installed?" "$LINENO" 5
-	fi
 	db_cv_dtrace="yes"
 fi
 if test "$db_cv_dtrace" = "yes" ; then
@@ -26392,76 +26283,87 @@ fi
 
 DTRACE_CPP=-C
 if test "$db_cv_perfmon" = "yes" ; then
-    if test "$DTRACE" = "dtrace" ; then
-		ac_fn_c_check_header_compile "$LINENO" "sys/sdt.h" "ac_cv_header_sys_sdt_h" "$ac_includes_default"
+	if test "$db_cv_build_statistics" != "yes"; then
+		as_fn_error $? "--enable-dtrace cannot be combined with --disable-statistics" "$LINENO" 5
+	fi
+	ac_fn_c_check_header_compile "$LINENO" "sys/sdt.h" "ac_cv_header_sys_sdt_h" "$ac_includes_default"
 if test "x$ac_cv_header_sys_sdt_h" = xyes
 then :
   printf '%s\n' "#define HAVE_SYS_SDT_H 1" >>confdefs.h
 
 fi
 
-		# Generate the DTrace provider header file. This is duplicated
-		# in Makefile.in, to allow custom events to be added.
-		if test "$STAP" = "stap"; then
-		    # Linux DTrace support may have a bug with dtrace -C -h
-		    # The preprocessing isn't needed for -h on Linux,
-		    # so skip the unnecessary preprocessing.
-		    DTRACE_CPP=
-		fi
-		# The OS X version of dtrace prints a spurious line here.
-		if ! dtrace -h $DTRACE_CPP -I../util/dtrace -s ../dist/db_provider.d; then
-		    as_fn_error $? "Could not build db_provider.d: dtrace -h failed" "$LINENO" 5
-		fi
-		$RM db_provider.h.tmp
-		if ! mv db_provider.h db_provider.h.tmp ; then
-		    as_fn_error $? "Could not build db_provider.d: mv failed" "$LINENO" 5
-		elif ! sed -e \
-'/^#define[ 	]*BDB_[A-Z_]*(.*)/y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/' \
-db_provider.h.tmp > db_provider.h ; then
-		    as_fn_error $? "Could not build db_provider.d: sed failed" "$LINENO" 5
-		fi
-
-		# DTrace on Solaris needs to post-process .o files to both
-		# generate an additional .o as well as resolving the
-		# __dtrace___bdb___<xxx> symbols before putting them into
-		# libraries;  Mac OS X does not. Treat a failing dtrace -G
-		# command as the indicator sign that dtrace -G is unnecessary.
-		# If it is needed then create an empty .c file to be a
-		# placeholder for the PIC & non-PIC versions of the dtrace -G
-		# output file.  The root of this .c file must be the same as
-		# the root of the .d file -- i.e. db_provider -- for the
-		# dtrace -G lines at the end of Makefile.in to work correctly.
-		$RM db_provider.o
-		if dtrace -G $DTRACE_CPP -I../util/dtrace -s ../dist/db_provider.d 2> /dev/null && \
-		    test -f db_provider.o ; then
-			FINAL_OBJS="$FINAL_OBJS db_provider${o}"
-			rm -f db_provider.c
-			echo "" > db_provider.c
-		fi
-		printf '%s\n' "#define HAVE_DTRACE 1" >>confdefs.h
-
+	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking which kind of dtrace $DTRACE is" >&5
+printf %s "checking which kind of dtrace $DTRACE is... " >&6; }
+	if $DTRACE --help 2>&1 | grep -i systemtap > /dev/null; then
+		db_cv_dtrace_kind=sdt
+		# The wrapper parses the provider itself.  Running cpp first pulls
+		# in util/dtrace/dbdefs.d, whose D`type syntax the wrapper cannot
+		# parse; it then falls back to a regex parser and writes a header
+		# whose macros are named after a garbage provider.
+		DTRACE_CPP=
 	else
-		as_fn_error $? "No supported performance utility found." "$LINENO" 5
+		case "$host_os" in
+		darwin*)	db_cv_dtrace_kind=native;;
+		*)		db_cv_dtrace_kind="native, -G";;
+		esac
 	fi
+	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_dtrace_kind" >&5
+printf '%s\n' "$db_cv_dtrace_kind" >&6; }
+	if test "$db_cv_dtrace_kind" = sdt -a "$ac_cv_header_sys_sdt_h" != yes; then
+		as_fn_error $? "<sys/sdt.h> not found: install systemtap-sdt-dev (Debian, Ubuntu) or systemtap-sdt-devel (Fedora, RHEL)" "$LINENO" 5
+	fi
+
+	# Generate the DTrace provider header file. This is duplicated
+	# in Makefile.in, to allow custom events to be added.
+	$RM db_provider.h db_provider.h.tmp
+	if ! $DTRACE -h $DTRACE_CPP -I"$topdir/util/dtrace" \
+	    -s "$topdir/dist/db_provider.d" -o db_provider.h.tmp ; then
+		as_fn_error $? "Could not build db_provider.h: $DTRACE -h failed" "$LINENO" 5
+	fi
+	if ! sed -e \
+'/^#define[ 	]*BDB_[A-Z_]*(.*)/y/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/' \
+	    db_provider.h.tmp > db_provider.h ; then
+		as_fn_error $? "Could not build db_provider.h: sed failed" "$LINENO" 5
+	fi
+	$RM db_provider.h.tmp
+	# Exit 0 is not proof: the systemtap wrapper reports success after
+	# writing a header with no usable bdb macros.
+	if ! grep '^#define[ 	]*bdb_txn_begin(' db_provider.h > /dev/null; then
+		as_fn_error $? "$DTRACE -h wrote a db_provider.h with no bdb_txn_begin() macro" "$LINENO" 5
+	fi
+
+	# Every kind except macOS links an extra object made by dtrace -G:
+	# the DOF for native DTrace, the probe semaphores for sdt.  It used to
+	# be detected by running `dtrace -G' over the provider alone, but
+	# FreeBSD and illumos (since illumos 4248, 2013) refuse to build DOF
+	# with no probe sites, so the test failed there, the object was left
+	# out, and libdb did not link.  db_provider.c is an empty placeholder
+	# whose root must match db_provider.d for the Makefile.in rule.
+	if test "$db_cv_dtrace_kind" != native ; then
+		FINAL_OBJS="$FINAL_OBJS db_provider${o}"
+		$RM db_provider.c
+		echo "" > db_provider.c
+	fi
+	printf '%s\n' "#define HAVE_DTRACE 1" >>confdefs.h
+
 	printf '%s\n' "#define HAVE_PERFMON 1" >>confdefs.h
 
 	if test "$db_cv_perfmon_statistics" != "no" ; then
 		printf '%s\n' "#define HAVE_PERFMON_STATISTICS 1" >>confdefs.h
 
 	fi
-	# The method by which probes are listed depends on the underlying
-	# implementation; Linux's emulation of DTrace still uses the stap
-	# command at runtime.
+	# `make listprobes'.  sdt probes are ELF notes and can be read without
+	# privileges; native DTrace needs a process that has loaded libdb.
 
 
-        if test "$STAP" = "stap"; then
+	if test "$db_cv_dtrace_kind" = sdt; then
 		LISTPROBES_DEPENDENCY=.libs/libdb-$DB_VERSION_MAJOR.$DB_VERSION_MINOR$SOSUFFIX
-		LISTPROBES_COMMAND="stap -l 'process(\"$LISTPROBES_DEPENDENCY\").mark(\"*\")'"
-	elif test "$DTRACE" = "dtrace" ; then
+		LISTPROBES_COMMAND="readelf -n $LISTPROBES_DEPENDENCY | grep -A1 'Provider: bdb'"
+	else
 		LISTPROBES_DEPENDENCY=db_load
-		LISTPROBES_COMMAND="	# Run a simple command which uses the library without needing any setup.
-	sleep 1 | dtrace -l -n 'bdb\$\$target:::'  -c '.libs/db_load dummy.db'"
-        fi
+		LISTPROBES_COMMAND="LD_LIBRARY_PATH=.libs $DTRACE -l -n 'bdb\$\$target:::' -c '.libs/db_load -V'"
+	fi
 elif test "$db_cv_perfmon_statistics" = "yes" ; then
 	as_fn_error $? "Enabling perfmon statistics requires --enable-dtrace" "$LINENO" 5
 fi

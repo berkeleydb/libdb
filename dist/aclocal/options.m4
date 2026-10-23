@@ -371,7 +371,7 @@ AC_MSG_RESULT($db_cv_dtrace)
 AC_MSG_CHECKING(if --enable-systemtap option specified)
 AC_ARG_ENABLE(systemtap,
 	[AS_HELP_STRING([--enable-systemtap],
-			[Configure to use systemtap to emulate dtrace static probes])],
+			[Synonym for --enable-dtrace (Linux SDT probes)])],
 	[db_cv_systemtap="$enable_systemtap"], [db_cv_systemtap="no"])
 AC_MSG_RESULT($db_cv_systemtap)
 
