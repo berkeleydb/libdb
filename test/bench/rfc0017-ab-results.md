@@ -1,3 +1,38 @@
+## CORRECTED: goodput A/B (committed ops only), 2026-10-23
+
+The first A/B below counted every attempt as throughput, including
+deadlock-aborted transactions. That inflated base, which deadlocks under
+split-heavy inserts while the branch does not. `hash_conc_bench` now counts
+only committed ops (goodput) and reports aborts separately. The corrected
+re-run is in `rfc0017-ab-goodput.tsv`. **It is partial.** The EC2 account
+expired mid-run: hash cells have 9/9 reps, the btree control 2-3 reps, and the
+lookup cells were not re-run (they had no deadlocks).
+
+| cell (goodput ops/s) | base | CV% | branch | CV% | branch/base | base aborts/s | base→branch p99 µs |
+|---|---:|---:|---:|---:|---:|---:|---|
+| hash insert txn t=1  | 11989 | 5.6 | 12556 | 4.1 | 1.05 | 0    | 252→251 |
+| hash insert txn t=2  | 18445 | 1.5 | 17867 | 1.2 | 0.97 | 0    | 328→325 |
+| hash insert txn t=4  | 23905 | 4.8 | 24439 | 2.2 | 1.02 | 182  | 451→447 |
+| hash insert txn t=8  | 35306 | 4.0 | 34933 | 5.9 | 0.99 | 459  | 633→679 |
+| hash insert txn t=16 | 38012 | 4.1 | 33885 | 1.0 | **0.89** | 971  | 879→**1511** |
+| hash insert txn t=32 | 39948 | 1.7 | 33869 | 1.7 | **0.85** | 1941 | 1497→**3396** |
+| hash insert notxn t=16 | 37348 | 6.5 | 33923 | 0.8 | **0.91** | 951 | 885→1523 |
+| hash insert notxn t=32 | 39885 | 2.1 | 33520 | 0.9 | **0.84** | 1985 | 1491→3391 |
+| btree insert txn t=1..32 | — | ≤3.0 | — | ≤2.5 | 0.97–1.02 | 0 | unchanged |
+
+**Verdict: change 1 is a measured negative for split-heavy inserts.** Counting
+goodput, the branch is 11–16% slower at 16–32 threads and its p99 is 1.7–2.3×
+worse. The earlier "branch p99 is 2× better" came from counting fast-failing
+aborted attempts and is withdrawn. At ≤8 threads hash inserts are within noise.
+The B-tree control is unchanged. Likely cause, not yet proven: with the metapage
+no longer fencing, inserters pile onto a splitting bucket and its page latches
+instead of being refused early by a deadlock abort. Change 1 alone does not meet
+the RFC's "gain without regression" bar.
+
+---
+
+## SUPERSEDED: first A/B (attempts, including aborted txns)
+
 ## RFC 0017 change 1 -- hash_conc_bench A/B (base=origin/master, branch)
 
 Median of per-rep throughput; CV = stdev/mean within a cell. Cells with CV > 10% in either arm are marked low-confidence.
