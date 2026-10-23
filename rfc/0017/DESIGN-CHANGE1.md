@@ -230,24 +230,28 @@ metapage moved still triggers `__db_reopen`. We also invalidate the handle cache
 same way) OR when the env does not log. CDB and non-logging keep master's exact
 locked path, including the `!STD_LOCKING` `nelem++` under `__ham_dirty_meta`.
 
-**H7 — Validation read must not block the splitter (lead review #4).** A plain
-`__memp_fget` read pin waits on the buffer latch `MUTEX_READLOCK(bhp->mtx_buf)`
-while a splitter has the metapage dirtied/exclusive. A **latch** wait while
-holding a bucket lock is not a lock-manager edge, so it cannot deadlock the
-detector — *provided the splitter never waits for a bucket lock-manager lock
-while holding the metapage buffer latch exclusively.* It does not: the splitter
-takes its bucket WRITE **lock-manager** locks via `__db_lget`/`__ham_lock_bucket`
-*before* it dirties and modifies the metapage buffer, and mpool releases the
-buffer latch between `__memp_fget`/`__memp_fput` calls (the latch is held only
-for the duration of a single mpool call, not across the split). So the latch my
-validate waits on is released promptly by the splitter's own `__memp_fput`; the
-wait is bounded and latch-only. To be belt-and-braces against a future splitter
-that holds the metapage dirty across a bucket-lock wait, `__ham_meta_validate`
-could use `DB_MPOOL_TRY` and, on `DB_LOCK_NOTGRANTED`, treat it as "stale"
-(release bucket, refresh, retry) rather than block. **Decision:** plain
-`__memp_fget` is correct today given the ordering above; a `TODO` notes the
-`DB_MPOOL_TRY` hardening for change 2's non-fencing splitter, which *does*
-touch the metapage differently.
+**H7 — Validation read must not block the splitter (lead review #4;
+CONFIRMED on EC2 and fixed).** A plain blocking `__memp_fget` of the metapage in
+`__ham_meta_validate` waits on the buffer latch `MUTEX_READLOCK(bhp->mtx_buf)`.
+Under 2+ processes each with 2+ threads inserting across forced splits this
+**deadlocked**: the validate holds a bucket lock and waits on the metapage
+latch, while a concurrent splitter holds that latch (the metapage is dirtied in
+`__ham_dirty_meta`/`__memp_dirty`) and then waits for a bucket WRITE
+lock-manager lock (gdb traces, 2026-xx). The bucket-held, wait-on-latch edge
+closes a cycle the lock-manager deadlock detector cannot see, because a buffer
+latch is not a lock object — so `DB_LOCK_YOUNGEST` never fires and the processes
+hang. The old draft's assumption that the splitter never holds the metapage
+latch across a bucket-lock wait was **wrong**.
+
+*Fix (implemented):* `__ham_meta_validate` reads the metapage with
+`DB_MPOOL_TRY`. On `DB_LOCK_NOTGRANTED` (latch contended) it declares the cache
+stale. The caller releases the bucket lock and retries; the refill's metapage
+READ **lock-manager** wait against the splitter's WRITE is a real lock-manager
+edge the detector resolves, so progress is guaranteed. A split in progress is
+also exactly when the mapping may be changing, so treating a contended latch as
+stale is semantically correct, not just a liveness hack. Verified: the hang is
+gone and `run_hash_conc` / `run_hash_abort_split` / `run_hash_notdurable` pass
+under `--enable-diagnostic`.
 
 ## Scope of edits
 
