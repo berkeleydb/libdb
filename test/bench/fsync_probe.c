@@ -18,6 +18,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "db_quickselect.h"
+
 static double
 now(void)
 {
@@ -31,6 +33,28 @@ cmpd(const void *a, const void *b)
 {
 	double x = *(const double *)a, y = *(const double *)b;
 	return (x < y ? -1 : x > y ? 1 : 0);
+}
+
+/*
+ * Place the five reported order statistics (min, p50, p90, p99, max) with
+ * quickselect instead of a full qsort -- identical values, proved by
+ * test/c/quickselect_equiv.c.
+ */
+static void
+probe_pct(const char *tag, double *lat, int n)
+{
+	size_t ks[5];
+
+	ks[0] = 0;
+	ks[1] = (size_t)(n / 2);
+	ks[2] = (size_t)(n * 90 / 100);
+	ks[3] = (size_t)(n * 99 / 100);
+	ks[4] = (size_t)(n - 1);
+	db_quickselect(lat, (size_t)n, sizeof(double), cmpd, ks, 5);
+	printf("%s n=%d p50_us=%.1f p90_us=%.1f p99_us=%.1f "
+	    "min_us=%.1f max_us=%.1f -> max_serial_rate=%.0f/s\n",
+	    tag, n, lat[ks[1]], lat[ks[2]], lat[ks[3]],
+	    lat[ks[0]], lat[ks[4]], 1e6 / lat[ks[1]]);
 }
 
 int
@@ -70,11 +94,7 @@ main(int argc, char **argv)
 		t1 = now();
 		lat[i] = (t1 - t0) * 1e6;
 	}
-	qsort(lat, (size_t)n, sizeof(double), cmpd);
-	printf("fdatasync n=%d p50_us=%.1f p90_us=%.1f p99_us=%.1f "
-	    "min_us=%.1f max_us=%.1f -> max_serial_rate=%.0f/s\n",
-	    n, lat[n / 2], lat[n * 90 / 100], lat[n * 99 / 100],
-	    lat[0], lat[n - 1], 1e6 / lat[n / 2]);
+	probe_pct("fdatasync", lat, n);
 
 	/* Same again with full fsync (what libdb actually calls). */
 	for (i = 0; i < n; i++) {
@@ -90,11 +110,7 @@ main(int argc, char **argv)
 		t1 = now();
 		lat[i] = (t1 - t0) * 1e6;
 	}
-	qsort(lat, (size_t)n, sizeof(double), cmpd);
-	printf("fsync     n=%d p50_us=%.1f p90_us=%.1f p99_us=%.1f "
-	    "min_us=%.1f max_us=%.1f -> max_serial_rate=%.0f/s\n",
-	    n, lat[n / 2], lat[n * 90 / 100], lat[n * 99 / 100],
-	    lat[0], lat[n - 1], 1e6 / lat[n / 2]);
+	probe_pct("fsync    ", lat, n);
 	(void)close(fd);
 	(void)unlink(path);
 	return (0);

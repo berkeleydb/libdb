@@ -1962,6 +1962,16 @@ retry:
 		int stale;
 		if ((ret = __ham_meta_validate(dbc, &stale)) != 0)
 			return (ret);
+#ifdef RFC17_SABOTAGE_NO_VALIDATE
+		/*
+		 * Test teeth only: pretend the cache is never stale, so a
+		 * mapping that moved under a concurrent split is used anyway.
+		 * run_hash_conc.sh's sabotage arm builds with this define and
+		 * REQUIRES the test to FAIL, proving the validation is what
+		 * keeps the answer correct.  Never defined in a shipped build.
+		 */
+		stale = 0;
+#endif
 		if (stale) {
 			/*
 			 * Drop the stale cache view and re-map.  Clear hdr first
