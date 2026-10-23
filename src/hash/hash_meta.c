@@ -146,9 +146,26 @@ __ham_meta_validate(dbc, stalep)
 	hashp = dbp->h_internal;
 	cached = LSN(&hcp->hdr_cache);
 
+	/*
+	 * DB_MPOOL_TRY, not a blocking fget (hazard H7).  A splitter holds the
+	 * metapage buffer latch (the page is dirtied) AND then waits for a
+	 * bucket WRITE lock-manager lock.  We hold a bucket lock here, so a
+	 * blocking read of the metapage latch would be a bucket-lock-held,
+	 * wait-on-metapage-latch edge that closes a cycle the lock-manager
+	 * deadlock detector cannot see (it is a latch, not a lock object).
+	 * TRY turns that wait into DB_LOCK_NOTGRANTED, which we treat as
+	 * "stale": the caller releases the bucket lock and retries, breaking
+	 * the cycle.  A split in progress is exactly a case where the mapping
+	 * may be changing, so declaring it stale is also semantically right.
+	 */
 	if ((ret = __memp_fget(mpf, &hashp->meta_pgno,
-	    dbc->thread_info, dbc->txn, 0, &real)) != 0)
+	    dbc->thread_info, dbc->txn, DB_MPOOL_TRY, &real)) != 0) {
+		if (ret == DB_LOCK_NOTGRANTED) {
+			*stalep = 1;
+			return (0);
+		}
 		return (ret);
+	}
 	if (LOG_COMPARE(&LSN(real), &cached) != 0)
 		*stalep = 1;
 	if ((t_ret = __memp_fput(mpf,
