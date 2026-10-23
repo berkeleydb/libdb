@@ -197,6 +197,32 @@ split blocks only the old and new buckets.
 Deletes and reverse splits keep today's semantics. Bucket contraction
 (`__ham_contract_table`) and `__ham_reclaim` must learn the same markers.
 
+### Findings from the change-1 prototype that bear on change 2
+
+Implementing and measuring change 1 (see `0017/DESIGN-CHANGE1.md` and
+`0017/README.md`) produced three results that constrain change 2:
+
+- **The metapage buffer latch, not just the lock-manager lock, is a hazard.**
+  A splitter holds the metapage buffer latch (the page is dirtied) *and then*
+  waits for a bucket WRITE lock-manager lock. Any reader that holds a bucket
+  lock and then touches the metapage buffer — even without a lock-manager lock —
+  can close a cycle the deadlock detector cannot see, because a latch is not a
+  lock object. Change 1 had to read the metapage with `DB_MPOOL_TRY` and treat
+  a contended latch as "refresh and retry". **Change 2's non-fencing splitter
+  must publish the new mapping without ever holding the metapage buffer latch
+  across a bucket-lock acquisition**, or readers will have the same problem
+  against the new per-bucket markers.
+- **Validate-and-retry has a real cost under heavy splitting.** Change 1 is a
+  5–20% insert-throughput *regression* at high concurrency precisely because
+  the retry storm under constant splits costs more than it saves. Change 2 must
+  avoid a busy-retry: a reader that meets a being-split bucket should *wait on
+  that bucket* (as the RFC says) rather than release-and-remap, so it makes
+  progress without re-reading the mapping repeatedly.
+- **The win change 1 did deliver — ~4 orders of magnitude fewer deadlocks and
+  ~2× better tail latency — is the win change 2 should keep and extend.** The
+  metapage WRITE fence is the root cause of both the deadlocks and the tail; a
+  non-fencing split removes it at the source instead of working around it.
+
 ### Seams touched
 
 - `src/hash/hash_meta.c`: `__ham_get_meta` / `__ham_release_meta` become

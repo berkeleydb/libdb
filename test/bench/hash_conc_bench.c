@@ -33,6 +33,7 @@
  * harness (run_hash_conc.sh) can collect it directly.
  */
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdint.h>
