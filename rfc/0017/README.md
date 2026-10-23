@@ -70,6 +70,31 @@ notxn: branch/base = 1.04 (t=1), 1.08 (t=2), 1.00 (t=8), 0.99 (t=16), 1.01
 
 branch/base-equivalent ratios 0.95–1.01; differences under ~5% are noise.
 
+## Correction (2026-10-23): the first A/B counted aborted attempts
+
+The tables above count every attempt as an op, including transactions aborted
+by `DB_LOCK_DEADLOCK`. That inflates base, which deadlocks heavily under
+split-heavy inserts. The benchmark now counts **goodput** (committed ops only);
+see `test/bench/rfc0017-ab-results.md` and `rfc0017-ab-goodput.tsv`. The
+re-run is partial because the AWS account expired: hash cells have 9 reps, the
+B-tree control 2–3.
+
+| hash insert, goodput | branch/base | base aborts/s | base→branch p99 µs |
+|---|---:|---:|---|
+| txn t≤8 | 0.97–1.05 (noise) | 0–459 | unchanged |
+| txn t=16 | **0.89** | 971 | 879→**1511** |
+| txn t=32 | **0.85** | 1941 | 1497→**3396** |
+| notxn t=16 / t=32 | **0.91 / 0.84** | 951 / 1985 | ~885→1523 / 1491→3391 |
+| btree control | 0.97–1.02 | 0 | unchanged |
+
+Counting committed work, **the branch is slower and its tail latency is worse**
+at 16–32 threads. The "tail latency roughly halves" and "deadlock churn
+explains base's lead" points in the conclusion below are **withdrawn**. Base's
+aborts are real, but even after discounting them base commits more work with a
+better p99. The conclusion therefore stands as a plain negative: change 1 alone
+must not ship. Prioritise change 2, and before re-measuring, profile where
+branch inserts wait (bucket latches versus `DB_MPOOL_TRY` retries).
+
 ## Conclusion — a measured negative on the headline metric
 
 **Change 1 does not deliver a throughput gain on the insert-heavy, split-inducing
