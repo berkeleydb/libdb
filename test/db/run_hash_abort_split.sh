@@ -58,7 +58,7 @@ else TO=""; fi
 run() { if [ -n "$TO" ]; then "$TO" "$@"; else shift; "$@"; fi; }
 
 echo "Running hash_conc abort (nreader=$NREADER nkeys=$NKEYS, timeout ${TIMEOUT}s)"
-if run "$TIMEOUT" "$BUILD/hash_conc" "$HOME_DIR" abort "$NREADER" "$NKEYS"; then
+if run "$TIMEOUT" "$BUILD/hash_conc" "$HOME_DIR" abort "$NREADER" 0 "$NKEYS"; then
 	echo "run_hash_abort_split.sh: PASS"
 	exit 0
 else
