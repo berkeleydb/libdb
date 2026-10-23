@@ -169,7 +169,7 @@ __ham_meta_validate(dbc, stalep)
 	if (LOG_COMPARE(&LSN(real), &cached) != 0)
 		*stalep = 1;
 	if ((t_ret = __memp_fput(mpf,
-	    dbc->thread_info, real, dbc->priority)) != 0)
+	    dbc->thread_info, real, dbc->priority)) != 0 && ret == 0)
 		ret = t_ret;
 	return (ret);
 }
