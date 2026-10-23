@@ -488,6 +488,23 @@ __hamc_get(dbc, key, data, flags, pgnop)
 	else
 		lock_type = DB_LOCK_READ;
 
+	/*
+	 * RFC 0017 change 1: only keyed point access may use the metapage
+	 * cache; a cursor scan must keep the metapage held so a concurrent
+	 * split cannot make it return a relocated record twice.
+	 */
+	switch (flags) {
+	case DB_SET:
+	case DB_SET_RANGE:
+	case DB_GET_BOTH:
+	case DB_GET_BOTH_RANGE:
+		hcp->cache_ok = 1;
+		break;
+	default:
+		hcp->cache_ok = 0;
+		break;
+	}
+
 	if ((ret = __ham_get_meta(dbc)) != 0)
 		return (ret);
 	hcp->seek_size = 0;
@@ -1072,6 +1089,25 @@ __hamc_put(dbc, key, data, flags, pgnop)
 	if (F_ISSET(hcp, H_DELETED) && flags != DB_KEYFIRST &&
 	    flags != DB_KEYLAST && flags != DB_OVERWRITE_DUP)
 		return (DB_NOTFOUND);
+
+	/*
+	 * RFC 0017 change 1: keyed inserts go through __ham_lookup (which maps
+	 * from the cache and validates by LSN), so they may use the cache.
+	 * Positional puts (DB_BEFORE/DB_AFTER/DB_CURRENT) act on the current
+	 * cursor position via __ham_item and keep the locked metapath.
+	 */
+	switch (flags) {
+	case DB_KEYLAST:
+	case DB_KEYFIRST:
+	case DB_NODUPDATA:
+	case DB_NOOVERWRITE:
+	case DB_OVERWRITE_DUP:
+		hcp->cache_ok = 1;
+		break;
+	default:
+		hcp->cache_ok = 0;
+		break;
+	}
 
 	if ((ret = __ham_get_meta(dbc)) != 0)
 		goto err1;
@@ -1897,6 +1933,7 @@ __ham_lookup(dbc, key, sought, mode, pgnop)
 	dbp = dbc->dbp;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
+retry:
 	/*
 	 * Set up cursor so that we're looking for space to add an item
 	 * as we cycle through the pages looking for the key.
@@ -1910,6 +1947,39 @@ __ham_lookup(dbc, key, sought, mode, pgnop)
 	/* look though all pages in the bucket for the key */
 	if ((ret = __ham_get_cpage(dbc, mode)) != 0)
 		return (ret);
+
+	/*
+	 * RFC 0017 change 1: on the cached fast path we mapped the key with a
+	 * per-cursor copy of the metapage fields and took no metapage lock.
+	 * Now that the bucket is locked, confirm the mapping is still current
+	 * by comparing the real metapage LSN (read unlocked) with the cached
+	 * one.  If a split/contract moved the mapping under us, refresh the
+	 * cache and re-map from the key.  Retries are bounded: each refresh
+	 * observes a strictly different metapage, and a bucket splits at most
+	 * about log2(table size) times.
+	 */
+	if (HCP_META_CACHED(hcp)) {
+		int stale;
+		if ((ret = __ham_meta_validate(dbc, &stale)) != 0)
+			return (ret);
+		if (stale) {
+			/*
+			 * Drop the stale cache view and re-map.  Clear hdr first
+			 * so __ham_item_reset (which zeroes hcp->flags and
+			 * releases the bucket lock) and the refill cannot mistake
+			 * the cache copy for a pinned page.  The bucket lock
+			 * dropped here never waited on the meta lock-manager lock
+			 * -- validate read it unlocked -- so no bucket-then-meta
+			 * wait exists (hazard H1).
+			 */
+			hcp->hdr = NULL;
+			if ((ret = __ham_item_reset(dbc)) != 0)
+				return (ret);
+			if ((ret = __ham_get_meta(dbc)) != 0)
+				return (ret);
+			goto retry;
+		}
+	}
 
 	*pgnop = PGNO_INVALID;
 	if (hcp->indx == NDX_INVALID) {

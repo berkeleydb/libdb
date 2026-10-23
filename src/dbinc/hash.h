@@ -70,6 +70,20 @@ typedef struct cursor_t {
 	DB_LOCK hlock;			/* Metadata page lock. */
 	HMETA *hdr;			/* Pointer to meta-data page. */
 	PAGE *split_buf;		/* Temporary buffer for splits. */
+	int cache_ok;			/* RFC 0017: keyed op may use the cache. */
+
+	/*
+	 * RFC 0017 change 1: a per-cursor copy of the hash metadata page
+	 * mapping fields, taken under a transient metapage READ lock that is
+	 * released immediately.  When hdr points at hdr_cache (not a pinned,
+	 * lock-held metapage buffer), the common lookup/insert maps keys
+	 * without holding the metapage lock to transaction end.  The cached
+	 * DBMETA lsn is the staleness stamp: a logged split advances the real
+	 * metapage LSN, so an unlocked read of that 8-byte aligned LSN after
+	 * the bucket is locked detects a mapping that moved under us and forces
+	 * a refresh+retry.
+	 */
+	HMETA hdr_cache;		/* Cached metapage mapping fields. */
 
 	/* Hash cursor information */
 	db_pgno_t	bucket;		/* Bucket we are traversing. */
@@ -93,6 +107,15 @@ typedef struct cursor_t {
 #define	H_OK		0x0100		/* Request succeeded. */
 	u_int32_t	flags;
 } HASH_CURSOR;
+
+/*
+ * RFC 0017 change 1: the cursor is on the cache-and-validate fast path exactly
+ * when hdr points at its own hdr_cache copy rather than a pinned, lock-held
+ * metapage buffer.  Pointer identity is the source of truth because
+ * __ham_item_init zeroes hcp->flags mid-operation, so a flag bit could not
+ * survive between __ham_get_meta and __ham_release_meta.
+ */
+#define	HCP_META_CACHED(hcp)	((hcp)->hdr == &(hcp)->hdr_cache)
 
 /* Test string. */
 #define	CHARKEY			"%$sniglet^&"
