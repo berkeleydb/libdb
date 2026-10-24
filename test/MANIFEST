@@ -499,6 +499,16 @@ db	run_typed_util
 db	run_truncate_subdb
 db	run_bamc_prev_alias
 db	run_mf_discard_order
+# RFC 0017 change 1: HASH metapage lock scope.  Concurrent insert/lookup
+# across forced splits (T threads x P processes), abort-mid-split with
+# concurrent readers, and the DB_TXN_NOT_DURABLE fallback.  See
+# rfc/0017/DESIGN-CHANGE1.md.
+db	run_hash_conc
+db	run_hash_abort_split
+db	run_hash_notdurable
+# RFC 0017 quickselect: db_quickselect() == qsort at every percentile
+# position (header-only, no libdb dep).  Self-contained C unit test.
+db	run_quickselect_equiv
 # SKIPs (passes) on a build without --enable-dtrace; see the script header.
 db	run_dtrace_probes
 

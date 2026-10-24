@@ -70,6 +70,16 @@ typedef struct cursor_t {
 	DB_LOCK hlock;			/* Metadata page lock. */
 	HMETA *hdr;			/* Pointer to meta-data page. */
 	PAGE *split_buf;		/* Temporary buffer for splits. */
+	int cache_ok;			/* RFC 0017: this keyed op may skip the meta lock. */
+	int hint_valid;			/* RFC 0017: hdr_cache holds a mapping. */
+
+	/*
+	 * RFC 0017: a hint of the metapage mapping fields, kept across
+	 * operations.  It is never trusted on its own: __ham_get_meta_fast locks
+	 * the bucket it names, then re-maps the key from the live metapage.
+	 * While hdr == &hdr_cache the cursor holds no metapage pin or lock.
+	 */
+	HMETA hdr_cache;		/* Cached metapage mapping fields. */
 
 	/* Hash cursor information */
 	db_pgno_t	bucket;		/* Bucket we are traversing. */
@@ -91,8 +101,12 @@ typedef struct cursor_t {
 #define	H_NEXT_NODUP	0x0040		/* Get next non-dup entry. */
 #define	H_NOMORE	0x0080		/* No more entries in bucket. */
 #define	H_OK		0x0100		/* Request succeeded. */
+#define	H_FASTLOCKED	0x0200		/* RFC 0017: bucket locked by the fast path. */
 	u_int32_t	flags;
 } HASH_CURSOR;
+
+/* RFC 0017: the cursor is on the fast path (holds no metapage). */
+#define	HCP_META_CACHED(hcp)	((hcp)->hdr == &(hcp)->hdr_cache)
 
 /* Test string. */
 #define	CHARKEY			"%$sniglet^&"
