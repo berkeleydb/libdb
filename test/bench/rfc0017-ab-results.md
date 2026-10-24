@@ -1,4 +1,126 @@
-## CORRECTED: goodput A/B (committed ops only), 2026-10-23
+# RFC 0017 change 1: A/B results
+
+## v2: lock the bucket, then re-map (current; supersedes everything below)
+
+**Host:** c6id.8xlarge (32 vCPU, Intel Xeon 8375C), Debian 12, kernel 6.1. The
+database and environment are on XFS on the local NVMe instance store
+(`/dev/nvme1n1`, mounted noatime).
+
+**Arms:** `master` = `origin/master` `411e58f13`; `v2` = this branch
+`95b5ed4fe`. Both use the same configure (`--disable-shared CFLAGS=-O2`) and
+the same `hash_conc_bench` source. The cache is 4 GB, so the whole database is
+resident.
+
+**Method:**
+- Alternating runs: the first arm rotates every rep.
+- 5 reps per cell, 5 s each, keyspace 400k, ffactor 4. `hash/lookup/txn` was
+  re-run with 9 reps.
+- Goodput counts committed ops only. Aborts are reported separately.
+- Raw data: `rfc0017-v2-ab.tsv`, `rfc0017-v2-ab-lookup-txn-9rep.tsv` and
+  `rfc0017-v2-noise-floor.tsv`.
+
+**Correctness, same commit:**
+- `test/db` tier on an `--enable-diagnostic` build: 43/43 pass (the lock-order
+  checker is on), manifest gate OK.
+- The sabotage arm (validation off) loses 13697 of 13715 committed keys, and
+  `db_verify` fails.
+- Region signature: `0x841f4ea8` on both arms.
+
+### All cells, 5 reps
+
+```
+cell                     n   master   cv%       v2   cv%  v2/m  abrt/s m->v2   p99us m->v2
+btree/insert/txn/1       5    24573   0.1    24555   1.7  1.00      0->0         218->218   
+btree/insert/txn/2       5    23363   1.0    23122   1.3  0.99      0->0         263->264   
+btree/insert/txn/4       5    45712   0.6    45507   1.7  1.00      0->0         263->263   
+btree/insert/txn/8       5    70600   1.4    70403   2.6  1.00      0->0         282->281   
+btree/insert/txn/16      5    91771   3.1    92280   4.4  1.01      0->0         339->339   
+btree/insert/txn/32      5    85529   2.8    87039   2.6  1.02      0->0         653->646   
+btree/lookup/txn/1       5   555557   0.5   559309   1.1  1.01      0->0           2->2     
+btree/lookup/txn/2       5   599979   2.9   623139   2.9  1.04      0->0           4->4     
+btree/lookup/txn/4       5   883318   2.0   906306   1.8  1.03      0->0           7->6     
+btree/lookup/txn/8       5   705110   7.9   711780   5.8  1.01      0->0          25->25    
+btree/lookup/txn/16      5   353879   4.4   360583   4.8  1.02      0->0         134->132   
+btree/lookup/txn/32      5   316534   3.0   323870   7.7  1.02      0->0         363->366   
+hash/insert/notxn/1      5    13494   4.8    13474   2.2  1.00      0->0         246->247   
+hash/insert/notxn/2      5    20039   3.9    21181   1.4  1.06      0->0         325->287   
+hash/insert/notxn/4      5    26023   4.2    29633   3.8  1.14    209->0         430->394   
+hash/insert/notxn/8      5    35795   3.7    43528   5.6  1.22    628->0         545->624   
+hash/insert/notxn/16     5    40205   4.9    53081   4.4  1.32   1026->33        799->1377  
+hash/insert/notxn/32     5    41236   1.9    60120   5.1  1.46   2457->98       1391->3324  
+hash/insert/txn/1        5    13463   3.4    13497   3.2  1.00      0->0         247->247   
+hash/insert/txn/2        5    19855   3.0    21231   3.2  1.07      0->0         325->288   
+hash/insert/txn/4        5    26020   3.3    29633   0.4  1.14    200->0         429->394   
+hash/insert/txn/8        5    35367   6.1    43719   6.1  1.24    627->0         548->619   
+hash/insert/txn/16       5    40070   4.2    52990   5.5  1.32    996->31        801->1376  
+hash/insert/txn/32       5    41152   1.3    60045   3.5  1.46   2451->94       1397->3319  
+hash/lookup/notxn/1      5   688250   3.0   768156   4.2  1.12      0->0           3->3     
+hash/lookup/notxn/2      5   836621   2.5  1209589   1.2  1.45      0->0           3->2     
+hash/lookup/notxn/4      5  1085067   4.1  1819860   3.4  1.68      0->0           6->4     
+hash/lookup/notxn/8      5   674321  11.2  2495028   5.2  3.70      0->0          30->6      CV>10
+hash/lookup/notxn/16     5   371758  10.9  2703501   3.4  7.27      0->0         132->13     CV>10
+hash/lookup/notxn/32     5   322449  10.2  3753484   4.6 11.64      0->0         389->17     CV>10
+hash/lookup/txn/1        5   503743   0.6   545746   0.7  1.08      0->0           6->5     
+hash/lookup/txn/2        5   524549   3.9   620519   2.3  1.18      0->0           5->4     
+hash/lookup/txn/4        5   784764   3.0   908375   2.2  1.16      0->0           7->6     
+hash/lookup/txn/8        5   761727   1.4   657850   7.8  0.86      0->0          22->28    
+hash/lookup/txn/16       5   361511   3.4   333669   7.2  0.92      0->0         130->143   
+hash/lookup/txn/32       5   296805   6.5   302584   6.6  1.02      0->0         348->394   
+```
+
+### hash/lookup/txn, 9 reps
+
+```
+cell                     n   master   cv%       v2   cv%  v2/m  abrt/s m->v2   p99us m->v2
+hash/lookup/txn/1        9   523822   3.6   575185   4.3  1.10      0->0           4->3     
+hash/lookup/txn/2        9   520898   3.8   644812   2.2  1.24      0->0           5->4     
+hash/lookup/txn/4        9   763068   2.1   909529   3.1  1.19      0->0           7->6     
+hash/lookup/txn/8        9   762005   5.6   711398   5.5  0.93      0->0          21->25    
+hash/lookup/txn/16       9   349855   5.0   364541   5.3  1.04      0->0         135->130   
+hash/lookup/txn/32       9   313667   7.8   345529   6.5  1.10      0->0         341->336   
+```
+
+### Noise floor: master against master, hash/lookup/txn, 9 reps
+
+| threads | B/A | CV% A / B |
+|---:|---:|---|
+| 1 | 1.00 | 2.7 / 2.9 |
+| 2 | 0.99 | 3.7 / 4.2 |
+| 4 | 1.01 | 2.3 / 2.5 |
+| 8 | 0.96 | 7.0 / 12.6 |
+| 16 | 0.96 | 5.9 / 5.6 |
+| 32 | 0.92 | 4.2 / 9.1 |
+
+Two identical builds differ by up to 8% at 8–32 threads on this host. Ratios
+inside that band are noise.
+
+### Reading
+
+- **Hash inserts (split-heavy):** 1.14–1.46× at 4–32 threads, for both txn and
+  non-txn. Master aborts 200–2450 txns/s on metapage deadlocks; v2 aborts about
+  0–100. p99 is higher at 16–32 threads (1.4 ms against 0.8 ms at t=16), with
+  32–46% more committed work going through. Fewer ops queue on the metapage,
+  and more of them queue on bucket and page latches.
+- **Hash lookups, non-transactional:** 1.12–1.68× at 1–4 threads, and
+  3.7–11.6× at 8–32. Master's lookups serialise on the metapage lock object;
+  v2 takes no metapage lock. Master's CV is 10–11% there; v2's is ≤5.2%.
+- **Hash lookups, transactional:** 1.10–1.24× at 1–4 threads. At 8–32 threads
+  the result is 0.93–1.10×, inside the noise floor. A profile at 8 threads
+  shows both arms spending about 60% in `__txn_begin`/`__txn_end` on the
+  transaction region mutex. The hash code is no longer the bottleneck there,
+  so removing the metapage lock cannot help further.
+- **B-tree control:** 0.99–1.04× in every cell, so no regression.
+
+---
+
+## SUPERSEDED AND INVALID: v1 runs (kept for the record)
+
+All numbers below were measured with a 512 MB cache, but the ffactor-4 hash
+database is about 1 GB. Those runs spent up to 93% of their time evicting
+buffers (`__memp_alloc`), not in hash locking. They also measured v1, which
+refilled its cache under a metapage lock on every operation. Do not use them.
+
+### v1, corrected goodput A/B (2026-10-23)
 
 The first A/B below counted every attempt as throughput, including
 deadlock-aborted transactions. That inflated base, which deadlocks under
@@ -31,7 +153,7 @@ the RFC's "gain without regression" bar.
 
 ---
 
-## SUPERSEDED: first A/B (attempts, including aborted txns)
+### v1, first A/B (attempts, including aborted txns)
 
 ## RFC 0017 change 1 -- hash_conc_bench A/B (base=origin/master, branch)
 

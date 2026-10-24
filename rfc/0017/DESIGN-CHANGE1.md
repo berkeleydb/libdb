@@ -1,287 +1,166 @@
-# RFC 0017 change 1 — implementation design
+# RFC 0017 change 1: implementation design (v2)
 
-*Written before coding, per the checkpoint protocol. Facts are from
-`/scratch/libdb/rfc17-STATE.md` and a focused source read; see that file for
-line numbers already verified.*
+The code is in `src/hash/hash_meta.c` (`__ham_get_meta_fast`, `__ham_fast_lock`)
+and `src/hash/hash.c` (`__hamc_get`, `__hamc_put` and `__ham_lookup`). Results
+are in `test/bench/rfc0017-ab-results.md`.
 
-## The problem, restated precisely
+## The cost being removed
 
-Every HASH cursor operation calls `__ham_get_meta` (`src/hash/hash_meta.c`):
+Every keyed hash get or put used to start in `__ham_get_meta`:
 
-1. `__db_lget(dbc, 0, meta_pgno, DB_LOCK_READ, …, &hcp->hlock)` — a
-   lock-manager READ lock on the metapage;
-2. `__memp_fget(meta_pgno, …, &hcp->hdr)` — pin the metapage buffer.
+1. `__db_lget(meta_pgno, DB_LOCK_READ)` through the lock manager;
+2. `__memp_fget(meta_pgno)` to read `max_bucket`, the masks and `spares[]`;
+3. map key → bucket → page, lock the bucket, do the work;
+4. `__ham_release_meta`. Under a degree-3 transaction `__db_lput` keeps the
+   READ lock until commit, and `__txn_end` releases it there through
+   `__lock_vec`.
 
-`hcp->hdr` (an `HMETA *`) is then read by `__ham_call_hash` (the
-`high_mask`/`low_mask`/`max_bucket` key→bucket map, `src/hash/hash.c:1421`) and
-by `BUCKET_TO_PAGE` (the `spares[]` bucket→page map, `src/dbinc/hash.h:108`).
-`__ham_release_meta` puts the buffer and `__TLPUT`s the lock; under a txn at
-degree 3 the READ lock is **kept to transaction end** (`__db_lput` action=0).
+Every operation on the database acquires and releases the same lock object.
+A profile at 32 threads (perf, DWARF unwind, m5d.8xlarge) showed master
+spending about 42% of lookup time in step 1 and about 42% in the matching
+release at commit.
 
-A split (`__ham_expand_table`, `hash.c:1200`) calls `__ham_dirty_meta`, which
-upgrades `hlock` to `DB_LOCK_WRITE` with `LCK_COUPLE`, held through
-`__ham_split_page`. That WRITE lock conflicts with every reader's metapage READ
-lock, so a split under a transaction fences the whole hash DB until commit.
+A split also upgrades the cursor's metapage lock to WRITE
+(`__ham_dirty_meta`), which conflicts with every reader's READ lock. Inserts
+that meet a split therefore deadlock or wait. Master aborts 200–2450
+transactions per second this way in the insert benchmark.
 
-## The change: cache the mapping, validate by metapage LSN, no lock in the common path
+## The fast path
 
-### What is cached (in-memory only, no format change)
+A cursor keeps a **hint**: a copy of the metapage (`hcp->hdr_cache`, valid when
+`hcp->hint_valid`), kept across operations and across cursor reuse. The hint is
+never trusted on its own.
 
-Add to `HASH` (`dbp->h_internal`, `src/dbinc/hash.h`) a per-handle cache:
+`__ham_get_meta_fast(dbc, key, mode)`:
 
-```
-struct { u_int32_t valid; DB_LSN lsn;
-         u_int32_t max_bucket, high_mask, low_mask;
-         u_int32_t spares[NCACHED]; } cache;  /* NCACHED == 32 */
-```
+1. If there is no hint, pin the metapage with `DB_MPOOL_TRY` and copy it.
+2. Map key → bucket → page from the hint, and lock that bucket page through
+   the lock manager. Nothing is read under this lock yet, so it is a probe.
+3. Pin the live metapage with `DB_MPOOL_TRY`. This takes a buffer latch for a
+   few instructions, never a lock-manager lock. Map the key again from the
+   live fields.
+4. Same bucket and page: the hint is current for this key. Proceed with the
+   bucket locked and `hcp->hdr = &hcp->hdr_cache`. No metapage pin or lock is
+   held for the rest of the operation.
+5. Different page: copy the live fields into the hint, `__LPUT` the probe and
+   retry, at most 4 times.
+6. `DB_MPOOL_TRY` fails because the metapage is latched (a split is updating
+   it): `__LPUT` the probe and return `DB_MPOOL_RETRY`. The caller then runs
+   master's locked path for this one call.
 
-`max_bucket`, `high_mask`, `low_mask`, `spares[]` are exactly the fields
-`__ham_call_hash` and `BUCKET_TO_PAGE` read. `lsn` is the metapage LSN at the
-moment the cache was filled.
+`__ham_fast_lock` resets the cursor, calls the function above, and on success
+sets `H_FASTLOCKED`. `__ham_lookup` then keeps the bucket lock instead of
+re-mapping. `__ham_get_cpage` finds `lbucket == bucket` with the right mode
+(its case 2) and only fetches the page.
 
-### The staleness stamp: the metapage LSN (no region change, no on-disk change)
+## Why it is correct
 
-Every logged split dirties and logs the metapage, so `LSN(metapage)` advances on
-every split. The metapage buffer is reachable with `__memp_fget` alone — **no
-lock-manager lock**. So the staleness check is: read the metapage buffer
-(unlocked fget), compare its LSN to `cache.lsn`.
+**C1: the mapping is current for this key while the bucket lock is held.**
+A key's page changes only when the key's bucket is split (records move to a new
+bucket), contracted (merged into a lower bucket) or compacted (the page is
+exchanged). Each of these write-locks the pages it changes:
 
-- Equal → the mapping has not changed since the cache was filled → the cached
-  fields are exact → map and lock the bucket with **no metapage lock-manager
-  lock at all**.
-- Different → refresh: take the short READ lock (as today), copy the four
-  fields and the LSN into the cache, release the READ lock immediately
-  (`__LPUT`, not `__TLPUT`), and re-map.
+- **Split.** `__ham_split_page` write-locks the old bucket. **This change also
+  makes it write-lock the new bucket page.** Before, the metapage WRITE lock
+  was the only fence on the new bucket. Fast-path operations no longer hold the
+  metapage, so the new bucket needs its own lock until the split's transaction
+  ends.
+- **Contraction.** `__ham_merge_pages` write-locks both buckets.
+- **Compaction.** `__ham_compact_hash` write-locks each page before
+  `__db_exchange_page`, and holds the metapage WRITE lock while it changes
+  `spares[]`.
 
-This is why the LSN beats RFC option (a)'s MPOOLFILE counter: it needs **no
-region-format change** (`__env_struct_sig` unchanged) and **no on-disk change**.
-It is strictly better than (a) and is the implementation target.
+The live re-map in step 3 happens after the bucket lock is granted. If it
+agrees with the hint, no split or contraction of this bucket can be pending or
+committed-but-unseen: one would have had to hold this bucket's WRITE lock, and
+we now hold a conflicting lock on it. If one committed before our lock was
+granted, the live fields already show it, so the re-map differs and we retry.
 
-#### Non-logging / non-transactional environments
+**C2: no wait on a latch while holding a bucket lock.** A splitter holds the
+metapage buffer latch (the page is dirty) and may then wait for a bucket
+WRITE lock. A blocking metapage read while holding a bucket lock would close a
+cycle the deadlock detector cannot see, because latches are not lock objects.
+The first implementation hung exactly this way on 2 processes × 2 threads.
+Both metapage reads use `DB_MPOOL_TRY`, and a failed TRY releases the probe
+before doing anything else.
 
-If the environment does not log (no `DB_INIT_LOG`, or `DB_TXN_NOT_DURABLE`, or a
-non-transactional `DB`), metapage LSNs may not advance on a split. Two sub-cases:
+**C3: dropping the probe inside a transaction is safe.** At degree 3,
+`__TLPUT` keeps read locks until commit. The probe is released with `__LPUT`,
+which really releases it. That is safe because nothing was read under it. If an
+earlier operation in the same transaction already held that lock, the lock
+manager incremented the hold's reference count (`__lock_get_internal`,
+`lp->refcount++`). `__LPUT` then only decrements it
+(`__lock_put_internal`), so the earlier hold survives.
 
-- **`!STD_LOCKING(dbc)`** (no locking subsystem, e.g. `DB_PRIVATE` without
-  locking, or `DB_INIT_CDB` degrades differently — see CDB below). There is no
-  concurrency the cache must defend against beyond a single writer; but to be
-  safe we **do not use the cache fast-path when the env does not log**: we fall
-  back to the existing locked `__ham_get_meta`/`__ham_release_meta`. This keeps
-  the non-logging `nelem++` path (`hash_page.c:2669`, `hash_dup.c:653`) exactly
-  as it is.
+**C4: an aborted split.** Readers that meet the split's WRITE locks wait for
+commit or abort. On abort, the metagroup undo restores `max_bucket`, the masks
+and `spares[]`, so the live re-map shows the pre-split mapping again. A reader
+holding a post-split hint then finds a different page and retries.
 
-- **Logging but non-transactional cursor** (autocommit off, `txn == NULL`, but
-  the env logs): splits still log and still bump the metapage LSN, so the LSN
-  stamp is valid. The fast path applies.
+**C5: what still uses the locked metapage.** These keep master's behaviour:
+- scans (`DB_FIRST`/`DB_NEXT`/`DB_PREV`/`DB_LAST`), because a split during a
+  scan could return a moved record twice;
+- positional ops (`DB_CURRENT`, `DB_BEFORE`/`DB_AFTER`);
+- bulk get, delete and count;
+- anything excluded by `__ham_use_cache`: CDB or no locking, `DB_READ_UNCOMMITTED`,
+  MVCC on the file (`MULTIVERSION`), recovery (`DBC_RECOVER`, `DB_AM_RECOVER`,
+  `IS_RECOVERING`);
+- a subdatabase whose revision changed (`__db_reopen`).
 
-Decision rule, computed once per operation:
-`use_cache = STD_LOCKING(dbc) && DBC_LOGGING(dbc)`.
-When false, behave exactly as master. This confines the change to the locked,
-logged configuration — the one the benchmark targets and the only one where the
-metapage lock is a contention point.
+**C6: metapage writers on a fast-path cursor.** `__ham_dirty_meta` (split or
+contract) and `__ham_return_meta` (`__db_new`/`__db_free`) detect
+`HCP_META_CACHED` and take the real metapage with a WRITE lock first. The
+cursor already holds its bucket lock, so this is bucket-then-metapage. That is
+the order master's insert path has always used when it expands, because
+`__hamc_put` holds the bucket when it calls `__ham_expand_table`.
 
-**Why `DBC_LOGGING(dbc)` and not `LOGGING_ON(env)` (lead review #1).** `env`
-may have a log, but a specific cursor may still not log: a `DB` opened
-`DB_TXN_NOT_DURABLE`, or a cursor where `__dbc_logging` is false (recovery
-cursors, `DBC_RECOVER`). On a non-logging cursor `__ham_expand_table`
-(`hash.c:~1338`) and `__ham_contract_table` (`hash.c:~1229`) take the
-`LSN_NOT_LOGGED(LSN(hdr))` branch, which writes the **same** not-logged LSN on
-every split, so the stamp would not advance and a stale cache would go
-undetected. `DBC_LOGGING(dbc)` is exactly the per-cursor predicate the split
-paths use to decide whether to log, so gating on it guarantees: a split that can
-change the mapping is one that advances the metapage LSN. It also excludes
-recovery (`DBC_RECOVER`), so the 7 recovery-time `__ham_get_meta` calls in
-`hash_rec.c` keep master's locked behaviour. Tested: a `DB_TXN_NOT_DURABLE`
-HASH under forced splits (`run_hash_notdurable.sh`).
+**C7: fields read from the hint after step 4.** `__ham_add_el` reads `ffactor`
+and `__ham_overwrite`/`__ham_dup_return` read `dbmeta.pagesize`. Both are fixed
+at create time. `nelem` is written only when `!STD_LOCKING`, which never takes
+the fast path.
 
-### Where validation happens
+## Evidence
 
-The map-then-validate sequence lives at the two map sites, driven by a new
-helper `__ham_get_meta_cache(dbc)` that fills `hcp` with a *cache view* instead
-of a locked `hdr`:
+- `test/db/run_hash_conc.sh`: 2 processes × 4 threads of inserts and lookups
+  with forced splits (ffactor 4). Every committed key is found exactly once,
+  no aborted key is visible, and `db_verify` passes.
+  - **Sabotage arm:** `HASH_CONC_SABOTAGE=1` builds `hash_meta.c` with
+    `RFC17_SABOTAGE_NO_VALIDATE`, which trusts a stale hint. 13697 of 13715
+    committed keys go missing and `db_verify` fails.
+- `test/db/run_hash_abort_split.sh`: readers run against a split that aborts.
+- `test/db/run_hash_notdurable.sh`: `DB_TXN_NOT_DURABLE`, where the metapage
+  LSN does not advance. v1's LSN stamp depended on it, and v2 does not.
+- The full `test/db` tier on an `--enable-diagnostic` build (lock-order checker
+  on): 43/43.
+- Region signature unchanged: `HASH_CURSOR` is process-private and not in
+  `env_sig.c`.
 
-1. Operation entry computes `use_cache`. If false → `__ham_get_meta` as today.
-2. If true → `__ham_get_meta_cache` ensures the handle cache is filled
-   (refreshing under a transient READ lock if empty), and leaves **no** metapage
-   lock held and **no** `hcp->hdr` pin. `__ham_call_hash`/`BUCKET_TO_PAGE` are
-   taught to read the cache when `hcp->hdr == NULL` (see "Reads of hcp->hdr").
-3. Map key → bucket → page from the cache; `__ham_get_cpage` locks the bucket
-   page (`__ham_lock_bucket`) exactly as today.
-4. **Validate**: re-read the metapage buffer unlocked; if its LSN differs from
-   `cache.lsn`, the mapping changed under us — release the bucket lock, refresh
-   the cache under the short READ lock, and retry from step 3. Retries are
-   bounded: a given bucket splits at most ⌈log₂(final buckets)⌉ times, and each
-   refresh observes a strictly newer LSN, so the loop terminates.
+## v1, kept as a negative result
 
-### Why validation after the bucket lock is sufficient (the linear-hashing property)
+The first implementation filled a per-cursor copy under a metapage READ lock
+on every operation, released at once, and validated it by comparing metapage
+LSNs. It was slower than master for split-heavy inserts at 16–32 threads, for
+two reasons:
 
-Linear hashing (this code): a bucket's primary page number is fixed by
-`spares[__db_log2(bucket+1)]` once that page exists. A split only ever (a) adds
-a new higher bucket, (b) bumps `max_bucket`/masks, (c) moves some records from
-an existing bucket to the new one. It never renumbers or frees the page of a
-bucket that a stale cache could name. So a stale `max_bucket`/mask can only send
-an operation to a bucket that has **since split** — i.e. the page still exists
-and still holds the subset of records whose key did not move. The LSN mismatch
-catches exactly that case and forces a refresh+retry, after which the key maps
-to the correct (possibly new) bucket. A stale cache can never name a freed or
-unrelated page.
+- **The refill still took the metapage lock** through the lock manager on
+  every operation. The cost stayed; only the hold time shrank.
+- **The LSN changes on every split of any bucket**, so nearly every insert
+  failed validation and retried.
 
-## Hazard-by-hazard safety argument
+Its benchmark also used a 512 MB cache for a database of about 1 GB, so it
+mostly measured buffer eviction. Those numbers are kept, marked invalid, in
+the results file.
 
-**H1 — Lock order / deadlock (lead review #3, corrected).** Today: meta READ
-then bucket. A splitter holds meta WRITE then takes bucket WRITE. The danger is
-a reader holding a bucket lock then waiting on the meta.
+## Change 2 (design only, not implemented)
 
-*The degree-3 trap, stated honestly.* At degree 3, `__TLPUT` on a bucket READ
-lock inside a txn takes `__db_lput` action=0 and **keeps** the lock. So I
-cannot "release the bucket, then take the meta READ" on the retry — the bucket
-would stay held and the retry's meta READ could still queue behind a splitter's
-meta WRITE whose own bucket WRITE waits behind my retained bucket READ. That is
-the deadlock the old draft hand-waved.
+A non-fencing split needs:
+- per-bucket "being split" / "being populated" markers in the page header;
+- new `hash.src` log records;
+- a new hash format version;
+- `db_verify` support;
+- recovery that finishes or discards a partial split by reading the markers.
 
-*Resolution chosen: validate without any lock-manager lock at all, so the
-retry never needs the meta lock-manager lock while holding a bucket lock.*
-Validation (`__ham_meta_validate`) reads the metapage with `__memp_fget` only —
-no `__db_lget`. A buffer pin is not a lock-manager object, so it cannot be a
-lock-graph edge and cannot deadlock the detector. When validate reports stale,
-the refill (`__ham_meta_cache_fill`) takes the meta READ lock, but it does so
-**after** `__ham_get_cpage`'s own `__TLPUT`/`__ENV_LPUT` of the bucket lock has
-run as part of re-mapping: the retry re-enters `__ham_lookup`, which calls
-`__ham_item_reset` and then `__ham_get_cpage`; on a non-degree-3 cursor the
-bucket lock is released there, and on a **degree-3** cursor the bucket READ is
-retained but the refill's meta READ is compatible (READ/READ share) with every
-other reader and only conflicts with a WRITE held by an *uncommitted* split —
-which is exactly the serialisation H2 relies on, and which the splitter resolves
-by committing/aborting; it does not wait on my bucket READ because the splitter
-took its bucket WRITE **before** it needs my (different) bucket, and if it is
-the *same* bucket the splitter already owns the WRITE and I am simply queued,
-not deadlocked. The validate read cannot block the splitter either (#4 below).
-Net: no bucket-then-meta-lock-manager wait exists. The benchmark records
-`st_ndeadlocks` on both arms to prove the deadlock rate does not rise.
-
-**H2 — Aborted splits and LSN ABA (lead review #2).** This is the subtle one.
-Abort *restores* the metapage: `__ham_metagroup_recover` UNDO
-(`hash_rec.c:~988-997`) sets `max_bucket = argp->bucket` **and**
-`dbmeta.lsn = argp->metalsn` — the pre-split LSN. So the metapage LSN is **not**
-monotonic across an aborted split; it returns to an old value `L_old`. A naive
-LSN compare is therefore open to ABA: could a cache ever hold
-`(lsn == L_old, fields == post-split)`? If so, a later validate against a
-reverted `L_old` would wrongly pass.
-
-*It cannot, and the reason is the lock, not the LSN.* A cache fill
-(`__ham_meta_cache_fill`) copies the LSN **and** the mapping fields together
-**under a metapage `DB_LOCK_READ`**. A split holds the metapage at
-`DB_LOCK_WRITE` for the entire interval in which `max_bucket`/masks/`spares` are
-bumped but the split is not yet committed or aborted — `__ham_dirty_meta`
-upgrades to WRITE and, under a transaction, `__db_lput` keeps that WRITE lock to
-transaction end. A READ fill conflicts with that WRITE lock, so a fill **blocks**
-until the split's transaction commits or aborts. Therefore a fill can only
-observe one of two self-consistent states:
-  - committed: `(lsn == L_new, fields == post-split)`; or
-  - aborted:   `(lsn == L_old, fields == pre-split)`.
-The torn pair `(L_old, post-split)` is unreachable, because the only writer of
-post-split fields holds the WRITE lock that excludes the READ fill. Validation
-then only has to answer "did the mapping change since the fill?", and any change
-— forward split, or the abort that reverts a split we cached post-commit —
-produces a *different* LSN value than the one we stored (commit advances it;
-abort of a later split moves it too, and in all cases the fields we would then
-read differ), so the compare mismatches and we refresh. Still ABA-tight because
-we never cache a non-committed mapping. Tested: `run_hash_abort_split.sh` aborts
-a splitting txn with concurrent readers and asserts no reader ever sees an
-aborted key and every committed key is found exactly once.
-
-**H3 — The 7 `__ham_get_meta` reader sites** (`hash.c` lines 111, 203, 384,
-491, 801, 1006, 1076). Each becomes: compute `use_cache`; fast path or fall
-back. The sites and their ops:
-- lookup/get (`__hamc_get`), insert (`__hamc_put`), delete, `__ham_c_count`,
-  `__ham_bulk`'s meta use, cursor adjustment — all read-map then bucket-lock, so
-  all follow the map-then-validate shape.
-- `DB_READ_UNCOMMITTED`: still bucket-locks (dirty-read downgrade is on the
-  bucket lock, not the meta), LSN validate unaffected.
-- `DB_RMW`: takes WRITE on the bucket; the meta was only ever READ, so dropping
-  the meta lock does not change RMW's write intent on data.
-- `DB_TXN_SNAPSHOT`/MVCC: MVCC versions live on the bucket/data buffers via
-  mpool; the metapage is not MVCC-versioned and the mapping fields are
-  monotonic, so a snapshot reader mapping through the cache still reaches a page
-  whose MVCC chain it then reads normally.
-- secondaries: a secondary HASH is just another HASH `DB`; same path.
-
-**H4 — `__ham_contract_table` / reverse split / `__ham_reclaim`.** Contraction
-lowers `max_bucket` and frees the top bucket's page under meta WRITE + that
-bucket's WRITE lock, and logs the metapage (LSN advances). A stale cache that
-still names the freed top bucket: step 3 blocks on that bucket's WRITE lock
-held by the contractor; when released the page may be freed. **This is the one
-case where a stale map could name a freed page**, so for HASH with contraction
-the validate must happen *before* dereferencing bucket contents — which it does:
-`__ham_get_cpage` fetches the page after the lock, and we validate the LSN right
-after the lock and before using the page. On mismatch we refresh and the lowered
-`max_bucket` maps the key to a live bucket. Contraction is already rare and
-already serialises on meta WRITE; we add no new window.
-
-**H5 — Subdatabases / `revision` / `__db_reopen`.** `__ham_get_meta`'s subdb
-revision check and `__db_reopen` path is preserved verbatim inside the refresh
-(the only place that takes the meta READ lock and reads the HMETA). The cache
-view does not bypass it: a refresh goes through the same code, so a subdb whose
-metapage moved still triggers `__db_reopen`. We also invalidate the handle cache
-(`cache.valid = 0`) on `__db_reopen` and whenever `revision` changes.
-
-**H6 — CDB / `DB_INIT_CDB` and non-locking envs.** `use_cache` is false when
-`!STD_LOCKING` (CDB uses its own lock model, not fine-grained page locks the
-same way) OR when the env does not log. CDB and non-logging keep master's exact
-locked path, including the `!STD_LOCKING` `nelem++` under `__ham_dirty_meta`.
-
-**H7 — Validation read must not block the splitter (lead review #4;
-CONFIRMED on EC2 and fixed).** A plain blocking `__memp_fget` of the metapage in
-`__ham_meta_validate` waits on the buffer latch `MUTEX_READLOCK(bhp->mtx_buf)`.
-Under 2+ processes each with 2+ threads inserting across forced splits this
-**deadlocked**: the validate holds a bucket lock and waits on the metapage
-latch, while a concurrent splitter holds that latch (the metapage is dirtied in
-`__ham_dirty_meta`/`__memp_dirty`) and then waits for a bucket WRITE
-lock-manager lock (gdb traces, 2026-xx). The bucket-held, wait-on-latch edge
-closes a cycle the lock-manager deadlock detector cannot see, because a buffer
-latch is not a lock object — so `DB_LOCK_YOUNGEST` never fires and the processes
-hang. The old draft's assumption that the splitter never holds the metapage
-latch across a bucket-lock wait was **wrong**.
-
-*Fix (implemented):* `__ham_meta_validate` reads the metapage with
-`DB_MPOOL_TRY`. On `DB_LOCK_NOTGRANTED` (latch contended) it declares the cache
-stale. The caller releases the bucket lock and retries; the refill's metapage
-READ **lock-manager** wait against the splitter's WRITE is a real lock-manager
-edge the detector resolves, so progress is guaranteed. A split in progress is
-also exactly when the mapping may be changing, so treating a contended latch as
-stale is semantically correct, not just a liveness hack. Verified: the hang is
-gone and `run_hash_conc` / `run_hash_abort_split` / `run_hash_notdurable` pass
-under `--enable-diagnostic`.
-
-## Scope of edits
-
-- `src/dbinc/hash.h`: add the `cache` struct to `HASH`; teach `BUCKET_TO_PAGE`
-  to read the cache when `hdr == NULL`.
-- `src/hash/hash_meta.c`: add `__ham_get_meta_cache`, `__ham_validate_meta`
-  (LSN check), `__ham_cache_invalidate`; `__ham_get_meta`/`release` unchanged.
-- `src/hash/hash.c`: `__ham_call_hash` reads the cache when `hdr == NULL`; the 7
-  sites compute `use_cache` and branch; `__hamc_put` split path refreshes/
-  invalidates the cache after `__ham_expand_table`.
-- `src/hash/hash_page.c`: `__ham_lock_bucket` already fetches meta if absent;
-  add the post-lock LSN validate in `__ham_get_cpage`'s bucket path, guarded by
-  `use_cache`.
-- No change to `src/dbinc/db_page.h` (on-disk), `src/dbinc/mp.h` (region), log
-  records, or `dist/s_*` generated files.
-
-## Fallback decision (checkpoint protocol)
-
-If, during implementation, the LSN stamp proves unsafe (e.g. a split path that
-does not advance the metapage LSN, or an abort that does not re-log the
-metapage), STOP, record the counter-evidence here, and fall back to RFC option
-(a) (MPOOLFILE split-generation counter, `REGION-SIG-CHANGE-INTENDED` + upgrade
-note) only with numbers justifying it. First choice remains the LSN: zero
-format and zero region impact.
-
-## Change 2 (design only — not implemented here)
-
-Non-fencing split needs new per-bucket page-header markers ("being split",
-"being populated", per-record "moved"), new `hash.src` log records, a new hash
-format version, `db_verify` support, and recovery that completes or ignores a
-partial split by reading the markers. It is a new on-disk format and a large
-recovery surface; it stays Prospective and is **not** built here. Findings from
-change-1 work that inform change 2 are appended to the RFC's change-2 section.
+v2 already removes the metapage from the reader's path. What change 2 would add
+is shorter bucket hold times during a split: today the old and new buckets stay
+WRITE-locked until the splitting transaction commits. The measurements so far
+do not show that cost to be large.

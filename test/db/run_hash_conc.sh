@@ -10,8 +10,8 @@
 #	and DB->verify (db_verify) passes.
 #
 #	Teeth: set HASH_CONC_SABOTAGE=1 to rebuild the library with
-#	-DRFC17_SABOTAGE_NO_VALIDATE (which makes __ham_lookup treat the cache
-#	as never stale) and REQUIRE the test to FAIL.  Without the sabotage the
+#	-DRFC17_SABOTAGE_NO_VALIDATE (which makes __ham_get_meta_fast trust a stale
+#	hint) and REQUIRE the test to FAIL.  Without the sabotage the
 #	test must PASS.  Because the sabotage needs a library rebuild it is
 #	opt-in; the normal arm runs everywhere.
 #
@@ -51,7 +51,7 @@ for l in $(pkg-config --libs liburing 2>/dev/null); do EXTRALIBS="$EXTRALIBS $l"
 
 # Optional teeth: rebuild the library so the LSN validation is defeated, then
 # the concurrency verification must FAIL.  Done against a COPY of the build
-# tree's objects is heavy; instead we recompile hash.c with the sabotage define
+# tree's objects is heavy; instead we recompile hash_meta.c with the sabotage define
 # into a thin archive layered ahead of the real library at link time.  The
 # sabotaged hash.o provides __ham_lookup, so the linker takes ours.
 if [ "${HASH_CONC_SABOTAGE:-0}" = "1" ]; then
@@ -59,8 +59,8 @@ if [ "${HASH_CONC_SABOTAGE:-0}" = "1" ]; then
 	SABO="$BUILD/hash_sabotage.o"
 	if ! "${CC:-cc}" -c -g -O1 ${CFLAGS:-} -DRFC17_SABOTAGE_NO_VALIDATE \
 	    -I"$BUILD" -I"$_HERE/../../src" -I"$_HERE/../../src/dbinc" \
-	    "$_HERE/../../src/hash/hash.c" -o "$SABO" 2> "$BUILD/sabotage-cc.log"; then
-		echo "run_hash_conc.sh: SKIP (sabotage recompile of hash.c failed;"
+	    "$_HERE/../../src/hash/hash_meta.c" -o "$SABO" 2> "$BUILD/sabotage-cc.log"; then
+		echo "run_hash_conc.sh: SKIP (sabotage recompile of hash_meta.c failed;"
 		echo "    this needs the full generated build tree)"
 		sed -n '1,20p' "$BUILD/sabotage-cc.log"
 		exit 0

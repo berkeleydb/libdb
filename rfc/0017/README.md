@@ -1,139 +1,51 @@
 # RFC 0017 working directory
 
-Measurement plan, results and notes for RFC 0017 (HASH concurrency and online
-resize). Every number recorded here must come from a run on libdb, with the
-host, commit, build flags and command line beside it.
+Plan, design and results for RFC 0017 (HASH concurrency and online resize).
 
-Before RFC 0017 can leave Draft, this directory must contain the following.
+- [`DESIGN-CHANGE1.md`](DESIGN-CHANGE1.md): how change 1 works and why it is
+  correct, plus the failed first implementation.
+- [`../../test/bench/rfc0017-ab-results.md`](../../test/bench/rfc0017-ab-results.md):
+  the A/B numbers, method and raw data.
 
-1. **Concurrency benchmark results.** `test/bench/hash_conc_bench.c` runs T
-   threads doing point inserts and lookups against one HASH database at a fixed
-   fill factor. It covers transactional and non-transactional runs, reports
-   throughput against thread count and a latency histogram, and includes a
-   B-tree control. The A/B against the base is run on one host, with arms
-   alternated over repeated runs.
-2. **Split-stall measurement.** How long concurrent cursors wait on the hash
-   metapage while a split is in progress (`__ham_expand_table` through
-   `__ham_split_page`, until the splitting transaction ends), before and after
-   the change.
-3. **Correctness evidence.** The `test/db` tier, the TCL hash tests, DST with
-   `BUGGIFY_HASH_EXPAND_EARLY`, and a multi-process hash test, all green, with
-   the region signature for change 1 compared against master.
+## Change 1 status (v2, 2026-10-24)
 
----
+Keyed hash gets and puts no longer take the metapage lock. Each cursor keeps
+a hint of the mapping and locks the bucket that hint names. Then it maps the
+key again from the live metapage, read under a buffer latch only, and retries
+if the two disagree. A split now also write-locks the new bucket page.
 
-## Results (2026-xx, change 1)
+Measured on a c6id.8xlarge with Debian and XFS on local NVMe, A/B against
+`origin/master`. Runs alternated arms, 5 reps (9 for transactional lookups),
+counting committed ops only.
 
-- **Host.** EC2 `c6id.8xlarge` (32 vCPU), Debian 12, kernel 6.1. Every database
-  and environment on an **XFS filesystem on the local NVMe instance store**
-  (`/dev/nvme1n1`, 1.7 TB), mounted at `/nvme` (`findmnt /nvme` shows `xfs`).
-  THP off. CPU frequency is fixed on this instance class.
-- **Build.** `../dist/configure` (no `--enable-diagnostic`) for the benchmark
-  library on both arms; identical flags. Correctness ran a separate
-  `--enable-diagnostic` build so the lock-order checker was active.
-- **Commits.** base = `origin/master` `411e58f13`; branch =
-  `feat/rfc17-hash-concurrency` (this PR).
-- **Method.** `test/bench/ab_hash_conc.sh` alternates branch and base per rep
-  (ABAB), one `hash_conc_bench` invocation per cell sweeping T ∈ {1,2,4,8,16,32}.
-  The headline insert cells were re-run at **9 reps, 6 s each** to tighten the
-  CV; the full matrix used 5 reps, 4–5 s. `test/bench/ab_summary.py` takes the
-  per-rep median and the within-cell CV; cells with CV > 10% in either arm are
-  marked low-confidence. Raw data: `test/bench/rfc0017-ab-raw.tsv` and
-  `test/bench/rfc0017-ab-insert-tight.tsv`; full table:
-  `test/bench/rfc0017-ab-results.md`.
+| workload | 1 thread | 4 threads | 8 threads | 32 threads |
+|---|---:|---:|---:|---:|
+| hash insert, txn (split-heavy) | 1.00× | 1.14× | 1.24× | **1.46×** |
+| hash lookup, non-txn | 1.12× | 1.68× | 3.70× | **11.6×** |
+| hash lookup, txn | 1.10× | 1.19× | 0.93× (noise) | 1.10× |
+| B-tree insert / lookup (control) | 1.00× / 1.01× | 1.00× / 1.03× | 1.00× / 1.01× | 1.02× / 1.02× |
 
-### Headline: hash insert-heavy (split-inducing), tight CV (≤6%)
+- **Master vs master noise floor** on this host: up to 8% at 8–32 threads.
+- **Transactional lookups at 8+ threads** are bound by the transaction region
+  mutex in `__txn_begin`/`__txn_end` in both arms (about 60% of the profile),
+  not by hash.
+- **Hash insert p99 rises at 16–32 threads** (1.4 ms against 0.8 ms at 16
+  threads) while goodput rises 32–46%. Master's lower p99 there comes with
+  1000–2450 deadlock aborts per second; v2 has 30–100.
 
-| thr | base ops/s | branch ops/s | branch/base | branch p99 µs | base p99 µs | branch deadlocks | base deadlocks |
-|----:|-----------:|-------------:|------------:|--------------:|------------:|-----------------:|---------------:|
-| 1 (txn)    | 12,476 | 12,583 | 1.009 | 251 | 251 | 0 | 0 |
-| 8 (txn)    | 25,153 | 20,724 | **0.824** | 1,100 | 704 | 1 | 21,864 |
-| 16 (txn)   | 31,713 | 29,999 | 0.946 | 1,770 | 960 | 1 | 22,536 |
-| 32 (txn)   | 39,319 | 31,476 | **0.801** | 3,468 | 1,503 | 2 | 28,582 |
-| 1 (notxn)  | 12,032 | 12,559 | 1.044 | 251 | 252 | 0 | 0 |
-| 8 (notxn)  | 25,181 | 20,629 | **0.819** | 1,095 | 701 | 2 | 21,546 |
-| 16 (notxn) | 32,912 | 29,824 | 0.906 | 1,796 | 949 | 1 | 22,900 |
-| 32 (notxn) | 39,699 | 31,418 | **0.791** | 3,497 | 1,497 | 2 | 26,090 |
+Correctness:
+- The `test/db` tier passes 43/43 on an `--enable-diagnostic` build.
+- TCL `test001`–`test060` under `-hash` pass 60/60 on an `--enable-diagnostic`
+  build, one tclsh per test.
+- The sabotage arm loses 13697 of 13715 committed keys.
+- The region signature is unchanged.
 
-### B-tree control (must not move) — unchanged within noise
+## Not done
 
-insert/notxn branch/base ∈ [0.95, 0.98], lookup/notxn ∈ [0.96, 1.04], all with
-CV ≤ 5%. No regression to the default access method.
-
-### Hash lookup-heavy (change 1's target), CV ≤ 10% cells
-
-notxn: branch/base = 1.04 (t=1), 1.08 (t=2), 1.00 (t=8), 0.99 (t=16), 1.01
-(t=32). Neutral to slightly positive. The txn lookup cells were too noisy
-(branch CV ~38%) to quote.
-
-### Noise floor (base vs base, hash insert txn)
-
-branch/base-equivalent ratios 0.95–1.01; differences under ~5% are noise.
-
-## Correction (2026-10-23): the first A/B counted aborted attempts
-
-The tables above count every attempt as an op, including transactions aborted
-by `DB_LOCK_DEADLOCK`. That inflates base, which deadlocks heavily under
-split-heavy inserts. The benchmark now counts **goodput** (committed ops only);
-see `test/bench/rfc0017-ab-results.md` and `rfc0017-ab-goodput.tsv`. The
-re-run is partial because the AWS account expired: hash cells have 9 reps, the
-B-tree control 2–3.
-
-| hash insert, goodput | branch/base | base aborts/s | base→branch p99 µs |
-|---|---:|---:|---|
-| txn t≤8 | 0.97–1.05 (noise) | 0–459 | unchanged |
-| txn t=16 | **0.89** | 971 | 879→**1511** |
-| txn t=32 | **0.85** | 1941 | 1497→**3396** |
-| notxn t=16 / t=32 | **0.91 / 0.84** | 951 / 1985 | ~885→1523 / 1491→3391 |
-| btree control | 0.97–1.02 | 0 | unchanged |
-
-Counting committed work, **the branch is slower and its tail latency is worse**
-at 16–32 threads. The "tail latency roughly halves" and "deadlock churn
-explains base's lead" points in the conclusion below are **withdrawn**. Base's
-aborts are real, but even after discounting them base commits more work with a
-better p99. The conclusion therefore stands as a plain negative: change 1 alone
-must not ship. Prioritise change 2, and before re-measuring, profile where
-branch inserts wait (bucket latches versus `DB_MPOOL_TRY` retries).
-
-## Conclusion — a measured negative on the headline metric
-
-**Change 1 does not deliver a throughput gain on the insert-heavy, split-inducing
-workload; at high concurrency it is a 5–20% throughput regression** (0.80× at
-t=32, both transactional and not), measured confidently (CV ≤ 6%). What it does
-instead:
-
-- **Deadlocks drop ~4 orders of magnitude** (≈1–2 vs ≈22,000–29,000 per run).
-  On master every insert that meets a split contends on the metapage WRITE
-  lock, and the `DB_LOCK_YOUNGEST` detector resolves the resulting cycles by
-  aborting and retrying — so master's higher op count is substantially
-  deadlock-retry churn.
-- **Tail latency roughly halves** (p99 960 µs vs 1,770 µs at t=16; 1,503 µs vs
-  3,468 µs at t=32), because an operation no longer queues behind a
-  whole-table metapage WRITE held through a split.
-
-So the honest summary is a **trade, not a win**: fewer deadlocks and lower tail
-latency at the cost of raw insert throughput under heavy splitting. The
-point-lookup case the RFC singled out as "cheap" is neutral-to-slightly-positive
-and never regresses. The B-tree default and single-threaded hash are unchanged
-within noise.
-
-### Why the insert path lost throughput
-
-The branch's per-operation cost moved: instead of one metapage READ lock held
-cheaply to transaction end (which, under `DB_LOCK_YOUNGEST`, master turns into a
-fast deadlock-abort-retry loop that happens to push a high op count), the branch
-takes an unlocked metapage buffer pin for validation on every keyed op and, when
-a split is in flight, a `DB_MPOOL_TRY` that returns `NOTGRANTED` and triggers a
-bucket-release-and-retry. Under a storm of splits (ffactor 4-equivalent,
-4 M-key space) those TRY-miss retries cost more than master's deadlock-retries
-earn, so throughput falls even as contention collapses.
-
-### Recommendation
-
-Change 1 as implemented is **not worth shipping for throughput alone**. It is
-worth shipping if the project values the deadlock-rate and tail-latency
-reduction for latency-sensitive hash workloads; otherwise the real win needs
-**change 2** (non-fencing split), which removes the whole-table WRITE fence at
-its source rather than working around it with validate-and-retry. The data here
-is the evidence the RFC asked for before it leaves Draft, and it argues for
-prioritising change 2.
+- **macOS:** the multi-process hash test exposed a pre-existing macOS bug, a
+  pshared-condvar EINVAL PANIC that also happens on master. It is fixed
+  separately in PR #226. This PR's macOS CI jobs hang until #226 is in their
+  base. With #226 merged in (probe run 40055366615), the full CI workflow
+  passes 50/50, including all four macOS default jobs.
+- **aarch64, FreeBSD:** not measured.
+- **Change 2:** design only (see the design note).
