@@ -974,7 +974,8 @@
 #define	__ham_func4 __ham_func4@DB_VERSION_UNIQUE_NAME@
 #define	__ham_func5 __ham_func5@DB_VERSION_UNIQUE_NAME@
 #define	__ham_test __ham_test@DB_VERSION_UNIQUE_NAME@
-#define	__ham_meta_validate __ham_meta_validate@DB_VERSION_UNIQUE_NAME@
+#define	__ham_get_meta_fast __ham_get_meta_fast@DB_VERSION_UNIQUE_NAME@
+#define	__ham_fast_lock __ham_fast_lock@DB_VERSION_UNIQUE_NAME@
 #define	__ham_get_meta __ham_get_meta@DB_VERSION_UNIQUE_NAME@
 #define	__ham_release_meta __ham_release_meta@DB_VERSION_UNIQUE_NAME@
 #define	__ham_dirty_meta __ham_dirty_meta@DB_VERSION_UNIQUE_NAME@

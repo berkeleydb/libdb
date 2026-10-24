@@ -489,9 +489,8 @@ __hamc_get(dbc, key, data, flags, pgnop)
 		lock_type = DB_LOCK_READ;
 
 	/*
-	 * RFC 0017 change 1: only keyed point access may use the metapage
-	 * cache; a cursor scan must keep the metapage held so a concurrent
-	 * split cannot make it return a relocated record twice.
+	 * RFC 0017: only keyed point access may skip the metapage lock; a scan
+	 * keeps it, or a concurrent split could return a moved record twice.
 	 */
 	switch (flags) {
 	case DB_SET:
@@ -505,7 +504,11 @@ __hamc_get(dbc, key, data, flags, pgnop)
 		break;
 	}
 
-	if ((ret = __ham_get_meta(dbc)) != 0)
+	/* RFC 0017: keyed lookups lock their bucket without the metapage. */
+	ret = hcp->cache_ok ? __ham_fast_lock(dbc, key, lock_type) : 0;
+	if (ret != 0 && ret != DB_MPOOL_RETRY)
+		return (ret);
+	if (!F_ISSET(hcp, H_FASTLOCKED) && (ret = __ham_get_meta(dbc)) != 0)
 		return (ret);
 	hcp->seek_size = 0;
 
@@ -1091,10 +1094,9 @@ __hamc_put(dbc, key, data, flags, pgnop)
 		return (DB_NOTFOUND);
 
 	/*
-	 * RFC 0017 change 1: keyed inserts go through __ham_lookup (which maps
-	 * from the cache and validates by LSN), so they may use the cache.
-	 * Positional puts (DB_BEFORE/DB_AFTER/DB_CURRENT) act on the current
-	 * cursor position via __ham_item and keep the locked metapath.
+	 * RFC 0017: keyed inserts lock their bucket without the metapage (see
+	 * __ham_get_meta_fast).  Positional puts (DB_BEFORE/DB_AFTER/
+	 * DB_CURRENT) act on the cursor position and keep the locked metapage.
 	 */
 	switch (flags) {
 	case DB_KEYLAST:
@@ -1109,7 +1111,10 @@ __hamc_put(dbc, key, data, flags, pgnop)
 		break;
 	}
 
-	if ((ret = __ham_get_meta(dbc)) != 0)
+	ret = hcp->cache_ok ? __ham_fast_lock(dbc, key, DB_LOCK_WRITE) : 0;
+	if (ret != 0 && ret != DB_MPOOL_RETRY)
+		goto err1;
+	if (!F_ISSET(hcp, H_FASTLOCKED) && (ret = __ham_get_meta(dbc)) != 0)
 		goto err1;
 
 	switch (flags) {
@@ -1933,62 +1938,31 @@ __ham_lookup(dbc, key, sought, mode, pgnop)
 	dbp = dbc->dbp;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
-retry:
-	/*
-	 * Set up cursor so that we're looking for space to add an item
-	 * as we cycle through the pages looking for the key.
-	 */
-	if ((ret = __ham_item_reset(dbc)) != 0)
-		return (ret);
-	hcp->seek_size = sought;
-
-	hcp->bucket = __ham_call_hash(dbc, (u_int8_t *)key->data, key->size);
-	hcp->pgno = BUCKET_TO_PAGE(hcp, hcp->bucket);
-	/* look though all pages in the bucket for the key */
-	if ((ret = __ham_get_cpage(dbc, mode)) != 0)
-		return (ret);
-
-	/*
-	 * RFC 0017 change 1: on the cached fast path we mapped the key with a
-	 * per-cursor copy of the metapage fields and took no metapage lock.
-	 * Now that the bucket is locked, confirm the mapping is still current
-	 * by comparing the real metapage LSN (read unlocked) with the cached
-	 * one.  If a split/contract moved the mapping under us, refresh the
-	 * cache and re-map from the key.  Retries are bounded: each refresh
-	 * observes a strictly different metapage, and a bucket splits at most
-	 * about log2(table size) times.
-	 */
-	if (HCP_META_CACHED(hcp)) {
-		int stale;
-		if ((ret = __ham_meta_validate(dbc, &stale)) != 0)
-			return (ret);
-#ifdef RFC17_SABOTAGE_NO_VALIDATE
+	if (F_ISSET(hcp, H_FASTLOCKED)) {
 		/*
-		 * Test teeth only: pretend the cache is never stale, so a
-		 * mapping that moved under a concurrent split is used anyway.
-		 * run_hash_conc.sh's sabotage arm builds with this define and
-		 * REQUIRES the test to FAIL, proving the validation is what
-		 * keeps the answer correct.  Never defined in a shipped build.
+		 * RFC 0017: __ham_fast_lock already mapped the key, locked
+		 * its bucket and re-validated the mapping.  Keep that lock:
+		 * reset everything else and fetch the page.
 		 */
-		stale = 0;
-#endif
-		if (stale) {
-			/*
-			 * Drop the stale cache view and re-map.  Clear hdr first
-			 * so __ham_item_reset (which zeroes hcp->flags and
-			 * releases the bucket lock) and the refill cannot mistake
-			 * the cache copy for a pinned page.  The bucket lock
-			 * dropped here never waited on the meta lock-manager lock
-			 * -- validate read it unlocked -- so no bucket-then-meta
-			 * wait exists (hazard H1).
-			 */
-			hcp->hdr = NULL;
-			if ((ret = __ham_item_reset(dbc)) != 0)
-				return (ret);
-			if ((ret = __ham_get_meta(dbc)) != 0)
-				return (ret);
-			goto retry;
-		}
+		F_CLR(hcp, H_FASTLOCKED);
+		hcp->seek_size = sought;
+		if ((ret = __ham_get_cpage(dbc, mode)) != 0)
+			return (ret);
+	} else {
+		/*
+		 * Set up cursor so that we're looking for space to add an item
+		 * as we cycle through the pages looking for the key.
+		 */
+		if ((ret = __ham_item_reset(dbc)) != 0)
+			return (ret);
+		hcp->seek_size = sought;
+
+		hcp->bucket = __ham_call_hash(dbc,
+		    (u_int8_t *)key->data, key->size);
+		hcp->pgno = BUCKET_TO_PAGE(hcp, hcp->bucket);
+		/* look though all pages in the bucket for the key */
+		if ((ret = __ham_get_cpage(dbc, mode)) != 0)
+			return (ret);
 	}
 
 	*pgnop = PGNO_INVALID;

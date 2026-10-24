@@ -252,7 +252,7 @@ int
 main(int argc, char **argv)
 {
 	DBT key, data;
-	uint32_t kb, i;
+	uint32_t kb, i, cache_mb;
 	char vbuf[32];
 	DBTYPE dbtype;
 	int ret, ai, maxthreads;
@@ -292,7 +292,14 @@ main(int argc, char **argv)
 		return (1);
 	}
 	env->set_errfile(env, stderr);
-	env->set_cachesize(env, 0, 512 * 1024 * 1024, 1);
+	/*
+	 * The cache must hold the whole database, or the run measures buffer
+	 * eviction (__memp_alloc) instead of hash locking: with ffactor 4 a
+	 * 400k-key table is ~1 GB on disk. HC_CACHE_MB overrides the size.
+	 */
+	cache_mb = getenv("HC_CACHE_MB") != NULL ?
+	    (uint32_t)atoi(getenv("HC_CACHE_MB")) : 4096;
+	env->set_cachesize(env, cache_mb / 1024, (cache_mb % 1024) * 1024 * 1024, 1);
 	/* Deadlock detection resolves H1-style waits so threads make progress. */
 	(void)env->set_lk_detect(env, DB_LOCK_DEFAULT);
 	if ((ret = env->open(env, "./HCDB", DB_CREATE | DB_INIT_MPOOL |

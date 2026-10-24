@@ -70,18 +70,14 @@ typedef struct cursor_t {
 	DB_LOCK hlock;			/* Metadata page lock. */
 	HMETA *hdr;			/* Pointer to meta-data page. */
 	PAGE *split_buf;		/* Temporary buffer for splits. */
-	int cache_ok;			/* RFC 0017: keyed op may use the cache. */
+	int cache_ok;			/* RFC 0017: this keyed op may skip the meta lock. */
+	int hint_valid;			/* RFC 0017: hdr_cache holds a mapping. */
 
 	/*
-	 * RFC 0017 change 1: a per-cursor copy of the hash metadata page
-	 * mapping fields, taken under a transient metapage READ lock that is
-	 * released immediately.  When hdr points at hdr_cache (not a pinned,
-	 * lock-held metapage buffer), the common lookup/insert maps keys
-	 * without holding the metapage lock to transaction end.  The cached
-	 * DBMETA lsn is the staleness stamp: a logged split advances the real
-	 * metapage LSN, so an unlocked read of that 8-byte aligned LSN after
-	 * the bucket is locked detects a mapping that moved under us and forces
-	 * a refresh+retry.
+	 * RFC 0017: a hint of the metapage mapping fields, kept across
+	 * operations.  It is never trusted on its own: __ham_get_meta_fast locks
+	 * the bucket it names, then re-maps the key from the live metapage.
+	 * While hdr == &hdr_cache the cursor holds no metapage pin or lock.
 	 */
 	HMETA hdr_cache;		/* Cached metapage mapping fields. */
 
@@ -105,16 +101,11 @@ typedef struct cursor_t {
 #define	H_NEXT_NODUP	0x0040		/* Get next non-dup entry. */
 #define	H_NOMORE	0x0080		/* No more entries in bucket. */
 #define	H_OK		0x0100		/* Request succeeded. */
+#define	H_FASTLOCKED	0x0200		/* RFC 0017: bucket locked by the fast path. */
 	u_int32_t	flags;
 } HASH_CURSOR;
 
-/*
- * RFC 0017 change 1: the cursor is on the cache-and-validate fast path exactly
- * when hdr points at its own hdr_cache copy rather than a pinned, lock-held
- * metapage buffer.  Pointer identity is the source of truth because
- * __ham_item_init zeroes hcp->flags mid-operation, so a flag bit could not
- * survive between __ham_get_meta and __ham_release_meta.
- */
+/* RFC 0017: the cursor is on the fast path (holds no metapage). */
 #define	HCP_META_CACHED(hcp)	((hcp)->hdr == &(hcp)->hdr_cache)
 
 /* Test string. */
