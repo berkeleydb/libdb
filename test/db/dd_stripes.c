@@ -411,16 +411,19 @@ main(int argc, char *argv[])
 	if (false_victims != 0) {
 		printf("VERDICT dd_stripes FAIL: %lu bystander transaction(s) "
 		    "chosen as deadlock victims\n", false_victims);
+		fflush(stdout);
 		_exit(1);
 	}
 	if (up_rounds < 10 || up_deadlocks < up_rounds) {
 		printf("VERDICT dd_stripes FAIL: %lu upgrade rounds, %lu "
 		    "deadlocks (every round needs one)\n", up_rounds, up_deadlocks);
+		fflush(stdout);
 		_exit(1);
 	}
 	if (cycles_done < 10 || cycle_deadlocks < cycles_done) {
 		printf("VERDICT dd_stripes FAIL: %lu cycles, %lu deadlocks "
 		    "(every cycle needs one)\n", cycles_done, cycle_deadlocks);
+		fflush(stdout);
 		_exit(1);
 	}
 	printf("VERDICT dd_stripes PASS %lu cycles and %lu upgrade deadlocks "
