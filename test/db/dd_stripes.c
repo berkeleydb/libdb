@@ -29,8 +29,9 @@
  *            write it: a deadlock on ONE object (two READ holders each
  *            waiting to upgrade).  The detector's "all waiters on one
  *            object" short cut must not hide it.
- *   bystanders take one private key and commit.  They are never in a cycle,
- *            so the detector must never abort one ("false victim").
+ *   bystanders write one key in a file of their own and commit.  They are
+ *            never in a cycle, so the detector must never abort one ("false
+ *            victim").
  *
  * Phase 1 runs one upgrade pair alone, so its deadlock is the only wait and
  * only the full graph can find it.  Phase 2 runs everything.  The detector
@@ -59,7 +60,8 @@
 #define	NUPGRADE	2
 
 static DB_ENV *env;
-static DB *db;			/* churners and bystanders */
+static DB *db;			/* churners */
+static DB *dbb[NBYSTAND];	/* one file per bystander */
 static DB *dbx[NPAIRS], *dby[NPAIRS];	/* one file per cycle key */
 static volatile int stop;
 static volatile unsigned long cycles_done, cycle_deadlocks, false_victims;
@@ -228,7 +230,7 @@ bystander(void *a)
 	while (!stop) {
 		if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0)
 			exit(2);
-		if ((ret = put_key(txn, k)) != 0) {
+		if ((ret = put_key_db(dbb[(uintptr_t)a], txn, k)) != 0) {
 			(void)txn->abort(txn);
 			if (ret == DB_LOCK_DEADLOCK) {
 				__sync_fetch_and_add(&false_victims, 1);
@@ -281,9 +283,11 @@ main(int argc, char *argv[])
 		return (2);
 	}
 	/*
-	 * Churners and bystanders share one database with keys far apart.  Each
-	 * cycle key has a database of its own (below), so a cycle is exactly two
-	 * page locks in two files and nobody else ever waits on them.
+	 * The churners share one database.  Each cycle key has a database of
+	 * its own (below), so a cycle is exactly two page locks in two files and
+	 * nobody else ever waits on them.  Each bystander has a file of its own
+	 * too: in a shared Btree, a page split can deadlock against another
+	 * writer's descent, so a bystander there can be a correct victim.
 	 */
 	if ((ret = db_create(&db, env, 0)) != 0 ||
 	    (ret = db->set_pagesize(db, 512)) != 0 ||
@@ -305,6 +309,19 @@ main(int argc, char *argv[])
 		    (ret = dby[i]->open(dby[i], NULL, ny, NULL, DB_BTREE,
 		    DB_CREATE | DB_AUTO_COMMIT | DB_THREAD, 0644)) != 0) {
 			fprintf(stderr, "pair db open: %s\n", db_strerror(ret));
+			return (2);
+		}
+	}
+
+	for (i = 0; i < NBYSTAND; i++) {
+		char nb[32];
+
+		snprintf(nb, sizeof(nb), "b%d.db", i);
+		if ((ret = db_create(&dbb[i], env, 0)) != 0 ||
+		    (ret = dbb[i]->open(dbb[i], NULL, nb, NULL, DB_BTREE,
+		    DB_CREATE | DB_AUTO_COMMIT | DB_THREAD, 0644)) != 0) {
+			fprintf(stderr, "bystander db open: %s\n",
+			    db_strerror(ret));
 			return (2);
 		}
 	}
