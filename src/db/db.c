@@ -1417,6 +1417,34 @@ __db_log_page(dbp, txn, lsn, pgno, page)
 		for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++) {
 			struct __cq_part *cqp = &ldbp->cq_parts[cq_i];
 
+			/*
+			 * Skip a partition with no active cursor without
+			 * locking it.  Sharding the queues into DB_CURSOR_NPART
+			 * partitions made every insert and delete lock all of
+			 * them here, where Berkeley DB 5.3 locked one mutex,
+			 * even when the writer's own cursor is the only one
+			 * open: 15% of single-threaded insert time.
+			 *
+			 * Reading the head unlocked is safe because a cursor
+			 * that could need adjusting is already visible.  Such
+			 * a cursor is positioned on (or holds a lock covering)
+			 * the item being changed.  It was put on its partition
+			 * queue at allocation, under the partition mutex,
+			 * before it positioned itself.  Positioning took the
+			 * page latch, or a lock, that the writer now holds
+			 * exclusively.  So the queue insertion happens-before
+			 * the writer's latch or lock acquisition, and this read
+			 * sees a non-empty queue.  A cursor that joins the
+			 * queue after the read has not positioned yet; it will
+			 * see the page after the change and needs no
+			 * adjustment.  The walk has never held all partitions
+			 * at once, so this is no weaker than locking each in
+			 * turn.
+			 */
+			if (*(struct __dbc * volatile *)
+			    &cqp->active_queue.tqh_first == NULL)
+				continue;
+
 loop:			CQ_LOCK(env, cqp);
 			TAILQ_FOREACH(dbc, &cqp->active_queue, links)
 				if ((ret = (func)(dbc, my_dbc,
