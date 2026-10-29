@@ -499,6 +499,10 @@ db	run_typed_util
 db	run_truncate_subdb
 db	run_bamc_prev_alias
 db	run_mf_discard_order
+# The deadlock detector walks the locker stripes one at a time (not all 64 held):
+# every real cycle is still resolved and no bystander is chosen as a victim,
+# with lockers created and freed on every stripe during each walk.
+db	run_dd_stripes
 # SKIPs (passes) on a build without --enable-dtrace; see the script header.
 db	run_dtrace_probes
 
