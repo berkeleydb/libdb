@@ -46,6 +46,8 @@ typedef struct {
 } locker_info;
 
 static int __dd_abort __P((ENV *, locker_info *, int *));
+static int __dd_holds __P((DB_LOCKTAB *, DB_LOCKOBJ *, roff_t));
+static int __dd_no_cycle_possible __P((ENV *, DB_LOCKREGION *));
 static int __dd_build __P((ENV *, u_int32_t, u_int32_t **,
 	    u_int32_t *, u_int32_t *, locker_info **, int*, int*));
 static int __dd_find __P((ENV *,
@@ -58,6 +60,122 @@ static int __dd_verify __P((locker_info *, u_int32_t *, u_int32_t *,
 static void __dd_debug
 	    __P((ENV *, locker_info *, u_int32_t *, u_int32_t, u_int32_t));
 #endif
+
+/*
+ * __dd_holds --
+ *	Return 1 if the waiting locker holds a granted lock on op itself, or a
+ *	member of its transaction family does (the same test __dd_build makes
+ *	via dd_id: a family's waiter and holder share their master's id).
+ *	Called with op's partition mutex held.
+ *
+ *	The family check is written out here rather than calling the lock
+ *	manager's __lock_same_family, which is static in lock.c so that it can
+ *	be inlined into the lock-get path.  Exporting it cost 16-thread reads
+ *	measurably on FreeBSD.
+ */
+static int
+__dd_holds(lt, op, holder)
+	DB_LOCKTAB *lt;
+	DB_LOCKOBJ *op;
+	roff_t holder;
+{
+	struct __db_lock *hp;
+	DB_LOCKER *w, *h;
+	roff_t wmaster, hmaster;
+
+	w = R_ADDR(&lt->reginfo, holder);
+	wmaster = w->master_locker == INVALID_ROFF ? holder : w->master_locker;
+	SH_TAILQ_FOREACH(hp, &op->holders, links, __db_lock) {
+		if (hp->holder == holder)
+			return (1);
+		h = R_ADDR(&lt->reginfo, hp->holder);
+		hmaster = h->master_locker == INVALID_ROFF ?
+		    hp->holder : h->master_locker;
+		if (hmaster == wmaster)
+			return (1);
+	}
+	return (0);
+}
+
+/*
+ * __dd_no_cycle_possible --
+ *	Return 1 if no deadlock can exist.  Two shapes are possible:
+ *
+ *	  - across objects: a waiter on one object whose holder waits on
+ *	    another.  That needs waiters on at least two objects.
+ *	  - on one object: an upgrade cycle.  Two lockers that both hold the
+ *	    object (say READ) and both wait to upgrade it (to WRITE) wait for each
+ *	    other.  __dd_build sees it as a waiter that also holds the object,
+ *	    queued anywhere but first ("an automatic deadlock").
+ *
+ *	So return 1 only when every waiter is on ONE object and no waiter after
+ *	the first in that queue also holds the object -- the normal convoy
+ *	behind one hot page, which can never deadlock among itself.
+ *
+ *	It walks the objects-with-waiters list exactly as __dd_build does:
+ *	read the next object under LOCK_DD, drop LOCK_DD, take the object's
+ *	partition mutex, and restart if the object changed generation.  The
+ *	waiter queue is read under the partition mutex, so the answer is exact
+ *	for every object visited, and an object is on dd_objs before its first
+ *	waiter is enqueued (both under the partition mutex).
+ *
+ *	Why that is enough: a cycle of A and B is found by whichever of the two
+ *	enqueues second, in its own pre-sleep detector call, after its own
+ *	enqueue; the other waiter's enqueue happened earlier under its object's
+ *	partition mutex, which this walk takes, so both objects are seen.
+ */
+static int
+__dd_no_cycle_possible(env, region)
+	ENV *env;
+	DB_LOCKREGION *region;
+{
+	DB_LOCKOBJ *op, *np;
+	DB_LOCKTAB *lt;
+	struct __db_lock *lp;
+	u_int32_t gen, indx;
+	int first, has_waiter, objs;
+
+	lt = env->lk_handle;
+again:	objs = 0;
+	LOCK_DD(env, region);
+	for (op = SH_TAILQ_FIRST(&region->dd_objs, __db_lockobj);
+	    op != NULL; op = np) {
+		indx = op->indx;
+		gen = op->generation;
+		UNLOCK_DD(env, region);
+		OBJECT_LOCK_NDX(lt, region, indx);
+		if (gen != op->generation) {
+			OBJECT_UNLOCK(lt, region, indx);
+			goto again;
+		}
+		/*
+		 * Count this object if anything on it is waiting, and treat a
+		 * waiter that also holds the object as a possible cycle unless
+		 * it is the first entry on the queue (__dd_build's is_first).
+		 */
+		has_waiter = 0;
+		first = 1;
+		SH_TAILQ_FOREACH(lp, &op->waiters, links, __db_lock) {
+			if (lp->status == DB_LSTAT_WAITING) {
+				has_waiter = 1;
+				if (!first && __dd_holds(lt, op, lp->holder)) {
+					objs = 2;
+					break;
+				}
+			}
+			first = 0;
+		}
+		if (has_waiter && objs < 2)
+			objs++;
+		LOCK_DD(env, region);
+		np = SH_TAILQ_NEXT(op, dd_links, __db_lockobj);
+		OBJECT_UNLOCK(lt, region, indx);
+		if (objs >= 2)
+			break;
+	}
+	UNLOCK_DD(env, region);
+	return (objs < 2);
+}
 
 /*
  * __lock_detect_pp --
@@ -157,6 +275,37 @@ __lock_detect(env, atype, rejectp)
 
 	/* Reset need_dd, so we know we've run the detector. */
 	region->need_dd = 0;
+
+	/*
+	 * Most conflicts cannot deadlock.  With detection on every conflict,
+	 * this function runs on the blocking thread before it sleeps, and
+	 * nearly every conflict is a convoy: several waiters queued behind one
+	 * hot page whose holder is about to commit.  Building the waits-for
+	 * graph for those -- all 64 locker stripes and every object with
+	 * waiters -- delayed the sleeper and held the stripe and partition
+	 * mutexes the holder needed to finish.  Measured on 4-thread
+	 * transactional btree inserts: 50k ops/s, against 122k with a
+	 * periodic detector and 117k with this function stubbed out.
+	 *
+	 * So check first (__dd_no_cycle_possible walks only the objects that
+	 * have waiters) and skip the graph when every waiter is on one object
+	 * and none of them is an upgrade behind another holder.  If a lock
+	 * timeout is pending, still run the expire-only pass so
+	 * timeouts fire on time.
+	 */
+	if (atype != DB_LOCK_EXPIRE) {
+		int none;
+
+		/* One partition: LOCK_SYSTEM_LOCK is the object lock. */
+		LOCK_SYSTEM_LOCK(lt, region);
+		none = __dd_no_cycle_possible(env, region);
+		LOCK_SYSTEM_UNLOCK(lt, region);
+		if (none) {
+			if (!timespecisset(&region->next_timeout))
+				return (0);
+			atype = DB_LOCK_EXPIRE;
+		}
+	}
 
 	/* Build the waits-for bitmap. */
 	ret = __dd_build(env,
@@ -881,9 +1030,16 @@ __dd_abort(env, info, statusp)
 	region = lt->reginfo.primary;
 	ret = 0;
 
-	/* We must lock so this locker cannot go away while we abort it. */
+	/*
+	 * Lock the victim's stripe so it cannot go away while we abort it.
+	 * That is the one stripe it lives on: its bucket, free list and
+	 * in-use list all belong to it (P12), and the waiter state we change
+	 * below is guarded by the object's partition mutex, as in every other
+	 * __lock_promote caller.  This used to take LOCK_LOCKERS -- all 64
+	 * stripes -- once per victim.
+	 */
 	LOCK_SYSTEM_LOCK(lt, region);
-	LOCK_LOCKERS(env, region);
+	LOCK_LOCKER_WRITE(env, region, info->last_locker_id);
 
 	/*
 	 * Get the locker.  If it's gone or was aborted while we were
@@ -939,7 +1095,7 @@ __dd_abort(env, info, statusp)
 	MUTEX_UNLOCK(env, lockp->mtx_lock);
 
 done:	OBJECT_UNLOCK(lt, region, info->last_ndx);
-err:	UNLOCK_LOCKERS(env, region);
+err:	UNLOCK_LOCKER_WRITE(env, region, info->last_locker_id);
 	LOCK_SYSTEM_UNLOCK(lt, region);
 	return (ret);
 }
