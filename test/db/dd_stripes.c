@@ -86,9 +86,44 @@ put_key_db(DB *d, DB_TXN *txn, unsigned k)
 
 #define	put_key(txn, k)	put_key_db(db, txn, k)
 
+/*
+ * A reusable two-party barrier from a mutex and a condition variable:
+ * macOS has no POSIX barriers.
+ */
+typedef struct {
+	pthread_mutex_t mtx;
+	pthread_cond_t cv;
+	unsigned waiting, gen;
+} barrier2_t;
+
+static void
+barrier2_init(barrier2_t *b)
+{
+	pthread_mutex_init(&b->mtx, NULL);
+	pthread_cond_init(&b->cv, NULL);
+	b->waiting = b->gen = 0;
+}
+
+static void
+barrier2_wait(barrier2_t *b)
+{
+	unsigned gen;
+
+	pthread_mutex_lock(&b->mtx);
+	gen = b->gen;
+	if (++b->waiting == 2) {
+		b->waiting = 0;
+		b->gen++;
+		pthread_cond_broadcast(&b->cv);
+	} else
+		while (gen == b->gen)
+			pthread_cond_wait(&b->cv, &b->mtx);
+	pthread_mutex_unlock(&b->mtx);
+}
+
 /* A pair shares a barrier so both hold their first lock before either asks for its second. */
 typedef struct {
-	pthread_barrier_t bar;
+	barrier2_t bar;
 	int id;
 } pair_t;
 typedef struct {
@@ -117,7 +152,7 @@ cycler(void *a)
 		 * other's, so step 2 is a guaranteed cycle.  Wait here even if
 		 * step 1 failed, so the partner is never left at the barrier.
 		 */
-		(void)pthread_barrier_wait(&c->p->bar);
+		barrier2_wait(&c->p->bar);
 		if (ret == 0)
 			ret = put_key_db(c->side == 0 ?
 			    dby[c->p->id] : dbx[c->p->id],
@@ -134,7 +169,7 @@ cycler(void *a)
 			}
 		}
 		/* Both sides finished this round (commit or abort). */
-		(void)pthread_barrier_wait(&c->p->bar);
+		barrier2_wait(&c->p->bar);
 		if (c->side == 0) {
 			__sync_fetch_and_add(&cycles_done, 1);
 			__sync_fetch_and_add(&progress, 1);
@@ -170,7 +205,7 @@ upgrader(void *a)
 		ret = dbu[c->p->id]->get(dbu[c->p->id], txn, &key, &data, 0);
 		if (ret == DB_NOTFOUND)
 			ret = 0;
-		(void)pthread_barrier_wait(&c->p->bar);
+		barrier2_wait(&c->p->bar);
 		/* Step 2: both try to write it: each waits for the other's READ. */
 		if (ret == 0)
 			ret = put_key_db(dbu[c->p->id], txn, k);
@@ -185,7 +220,7 @@ upgrader(void *a)
 				exit(2);
 			}
 		}
-		(void)pthread_barrier_wait(&c->p->bar);
+		barrier2_wait(&c->p->bar);
 		if (c->side == 0) {
 			__sync_fetch_and_add(&up_rounds, 1);
 			__sync_fetch_and_add(&up_progress, 1);
@@ -341,7 +376,7 @@ main(int argc, char *argv[])
 	n = 0;
 	for (i = 0; i < NUPGRADE; i++) {
 		upairs[i].id = i;
-		pthread_barrier_init(&upairs[i].bar, NULL, 2);
+		barrier2_init(&upairs[i].bar);
 		ua[i * 2].p = ua[i * 2 + 1].p = &upairs[i];
 		ua[i * 2].side = 0;
 		ua[i * 2 + 1].side = 1;
@@ -375,7 +410,7 @@ main(int argc, char *argv[])
 	}
 	for (i = 0; i < NPAIRS; i++) {
 		pairs[i].id = i;
-		pthread_barrier_init(&pairs[i].bar, NULL, 2);
+		barrier2_init(&pairs[i].bar);
 		ca[i * 2].p = ca[i * 2 + 1].p = &pairs[i];
 		ca[i * 2].side = 0;
 		ca[i * 2 + 1].side = 1;
