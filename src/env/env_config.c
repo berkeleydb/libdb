@@ -478,6 +478,54 @@ format:		__db_errx(env, DB_STR_A("1584",
 	}
 
 	/*
+	 * repmgr_tls cert <path> key <path> [ca <path>] [flags <list>]
+	 *
+	 * <list> is a comma-separated set of: require, verify, no-verify.
+	 * Configures TLS for repmgr connections (RFC 0018); needs an
+	 * --enable-tls build or __repmgr_set_tls returns DB_OPNOTSUP.
+	 */
+	if (strcasecmp(argv[0], "repmgr_tls") == 0) {
+		char *cert, *key, *ca, *flagstr, *tok;
+		u_int32_t tflags;
+		int a;
+
+		cert = key = ca = flagstr = NULL;
+		if (nf < 3 || (nf % 2) == 0)
+			goto format;
+		for (a = 1; a + 1 < nf; a += 2) {
+			if (strcasecmp(argv[a], "cert") == 0)
+				cert = argv[a + 1];
+			else if (strcasecmp(argv[a], "key") == 0)
+				key = argv[a + 1];
+			else if (strcasecmp(argv[a], "ca") == 0)
+				ca = argv[a + 1];
+			else if (strcasecmp(argv[a], "flags") == 0)
+				flagstr = argv[a + 1];
+			else
+				goto format;
+		}
+		if (cert == NULL || key == NULL)
+			goto format;
+		tflags = DB_REPMGR_TLS_VERIFY_PEER;
+		if (flagstr != NULL) {
+			tflags = 0;
+			while ((tok = strsep(&flagstr, ",")) != NULL) {
+				if (*tok == '\0')
+					continue;
+				if (strcasecmp(tok, "require") == 0)
+					tflags |= DB_REPMGR_TLS_REQUIRE;
+				else if (strcasecmp(tok, "verify") == 0)
+					tflags |= DB_REPMGR_TLS_VERIFY_PEER;
+				else if (strcasecmp(tok, "no-verify") == 0)
+					tflags |= DB_REPMGR_TLS_NO_VERIFY;
+				else
+					goto format;
+			}
+		}
+		return (__repmgr_set_tls(dbenv, cert, key, ca, tflags));
+	}
+
+	/*
 	 * Configure name/value pairs of config information for a site (local or
 	 * remote).
 	 *
