@@ -265,6 +265,15 @@ __crypto_env_close(env)
 		dbenv->passwd = NULL;
 	}
 
+	/* Free an env-owned built-in provider (keyfile/TPM). */
+	if (dbenv->crypto_provider != NULL &&
+	    (dbenv->crypto_provider->flags & 0x80000000) != 0) {
+		if (dbenv->crypto_provider->ctx != NULL)
+			__os_free(env, dbenv->crypto_provider->ctx);
+		__os_free(env, dbenv->crypto_provider);
+		dbenv->crypto_provider = NULL;
+	}
+
 	if (!CRYPTO_ON(env))
 		return (0);
 

@@ -320,6 +320,8 @@ __db_env_init(dbenv)
 	dbenv->set_data_len = __env_set_data_len;
 	dbenv->set_encrypt = __env_set_encrypt;
 	dbenv->set_encrypt_provider = __env_set_encrypt_provider;
+	dbenv->set_encrypt_keyfile = __env_set_encrypt_keyfile;
+	dbenv->set_encrypt_tpm = __env_set_encrypt_tpm;
 	dbenv->set_errcall = __env_set_errcall;
 	dbenv->set_errfile = __env_set_errfile;
 	dbenv->set_errpfx = __env_set_errpfx;
@@ -904,6 +906,111 @@ err:
 
 	__db_errx(dbenv->env, DB_STR("1557",
 	    "library build did not include support for cryptography"));
+	return (DB_OPNOTSUP);
+#endif
+}
+
+#ifdef HAVE_CRYPTO
+/*
+ * __env_encrypt_builtin --
+ *	Shared installer for the built-in key-file and TPM providers: allocate
+ *	an env-owned provider, dup the path (so it outlives this call), wire the
+ *	vtable, then install it via the common provider path.
+ */
+static int
+__env_encrypt_builtin(dbenv, id, path, flags)
+	DB_ENV *dbenv;
+	u_int32_t id;
+	const char *path;
+	u_int32_t flags;
+{
+	ENV *env;
+	DB_CRYPTO_PROVIDER *prov;
+	char *dup;
+	int ret;
+
+	env = dbenv->env;
+	if (path == NULL || strlen(path) == 0)
+		return (EINVAL);
+	if ((ret = __os_calloc(env, 1, sizeof(*prov), &prov)) != 0)
+		return (ret);
+	if ((ret = __os_strdup(env, path, &dup)) != 0) {
+		__os_free(env, prov);
+		return (ret);
+	}
+	if (id == DB_CRYPTO_PROV_KEYFILE)
+		(void)__crypto_keyfile_provider(prov, dup);
+#ifdef HAVE_TPM
+	else if (id == DB_CRYPTO_PROV_TPM)
+		(void)__crypto_tpm_provider(prov, dup);
+#endif
+	else {
+		__os_free(env, dup);
+		__os_free(env, prov);
+		__db_errx(env, DB_STR("5463",
+		    "Key provider not available in this build"));
+		return (DB_OPNOTSUP);
+	}
+	/* Mark env-owned so __crypto_env_close frees it. */
+	prov->flags |= 0x80000000;
+	if ((ret = __env_set_encrypt_provider(dbenv, prov,
+	    flags == 0 ? DB_ENCRYPT_AES : flags)) != 0) {
+		__os_free(env, dup);
+		__os_free(env, prov);
+		return (ret);
+	}
+	return (0);
+}
+#endif
+
+/*
+ * __env_set_encrypt_keyfile --
+ *	Install the built-in key-file provider (RFC 0019).  The file must hold a
+ *	raw 256-bit key and be owner-only (not group/world accessible).
+ *
+ * PUBLIC: int __env_set_encrypt_keyfile
+ * PUBLIC:     __P((DB_ENV *, const char *, u_int32_t));
+ */
+int
+__env_set_encrypt_keyfile(dbenv, path, flags)
+	DB_ENV *dbenv;
+	const char *path;
+	u_int32_t flags;
+{
+#ifdef HAVE_CRYPTO
+	return (__env_encrypt_builtin(dbenv,
+	    DB_CRYPTO_PROV_KEYFILE, path, flags));
+#else
+	COMPQUIET(path, NULL);
+	COMPQUIET(flags, 0);
+	__db_errx(dbenv->env, DB_STR("1557",
+	    "library build did not include support for cryptography"));
+	return (DB_OPNOTSUP);
+#endif
+}
+
+/*
+ * __env_set_encrypt_tpm --
+ *	Install the built-in TPM 2.0 provider (RFC 0019).  blobpath names the
+ *	sealed-KEK blob produced by db_keytool -T.  Needs --enable-tpm.
+ *
+ * PUBLIC: int __env_set_encrypt_tpm
+ * PUBLIC:     __P((DB_ENV *, const char *, u_int32_t));
+ */
+int
+__env_set_encrypt_tpm(dbenv, blobpath, flags)
+	DB_ENV *dbenv;
+	const char *blobpath;
+	u_int32_t flags;
+{
+#if defined(HAVE_CRYPTO) && defined(HAVE_TPM)
+	return (__env_encrypt_builtin(dbenv,
+	    DB_CRYPTO_PROV_TPM, blobpath, flags));
+#else
+	COMPQUIET(blobpath, NULL);
+	COMPQUIET(flags, 0);
+	__db_errx(dbenv->env, DB_STR("5464",
+	    "library build did not include TPM support (--enable-tpm)"));
 	return (DB_OPNOTSUP);
 #endif
 }

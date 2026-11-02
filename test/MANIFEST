@@ -478,6 +478,7 @@ db	run_u8_backup_config
 db	run_handle_sizes
 db	run_crypto_secret_leak
 db	run_crypto_compat
+db	run_crypto_keyfile
 db	run_s5_failchk_spin
 db	run_mutex_stress
 db	run_opt_null_sample
