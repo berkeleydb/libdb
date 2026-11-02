@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const prefix = b.option([]const u8, "libdb-prefix", "libdb install prefix") orelse
-        "/usr/local/BerkeleyDB.2026.0";
+        "/usr/local/BerkeleyDB.2026.1";
     const inc = b.pathJoin(&.{ prefix, "include" });
     const libdir = b.pathJoin(&.{ prefix, "lib" });
 
@@ -39,7 +39,7 @@ pub fn build(b: *std.Build) void {
     mod.addIncludePath(b.path(".")); // for shim.h
     mod.addCSourceFile(.{ .file = b.path("shim.c"), .flags = &.{"-O2"} });
     mod.addLibraryPath(.{ .cwd_relative = libdir });
-    mod.linkSystemLibrary("db-2026.0", .{});
+    mod.linkSystemLibrary("db-2026.1", .{});
 
     // ---- tests ----
     const test_mod = b.createModule(.{

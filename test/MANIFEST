@@ -476,6 +476,10 @@ db	run_qam_inorder_consume
 db	run_u9_serializable
 db	run_u8_backup_config
 db	run_handle_sizes
+# rfc/0020: a new compatibility level refuses the previous level's region and
+# reads its databases and logs.  SKIPs unless OLD_BUILD points at a build of
+# the previous level.
+db	run_soname_compat
 db	run_s5_failchk_spin
 db	run_mutex_stress
 db	run_opt_null_sample

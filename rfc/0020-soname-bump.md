@@ -1,6 +1,6 @@
 # RFC 0020: Bump the soname to libdb-2026.1 for the handle-layout change (A1)
 
-- **Status:** Draft
+- **Status:** Implemented (branch build/soname-bump)
 - **Type:** Normative
 - **Author:** libdb maintainers
 - **Date:** 2026-11-02
@@ -83,7 +83,11 @@ made once, at the source, the two build systems cannot disagree. The parity test
 - `test/bench/*.sh` scripts that hard-code `-ldb-2026.0`: change them to discover the library, as the test
   runners already do.
 - `VERSIONING.md`: rewrite the "frozen triplet" section into the rule in the next subsection.
-- `test/db/handle_sizes.c`: keep it, re-titled. It now proves that a size change came with a soname bump.
+- `test/db/handle_sizes.c`: keep it. It now records the level the sizes belong to, and FAILs on a
+  size change at an unchanged level.
+- `meson.build`: the meson build named its library plain `libdb.so`, with no soname. It now builds
+  `libdb-<MAJOR>.<MINOR>.so` from `dist/RELEASE`, like autoconf. That needs `fs.read`, so the minimum
+  meson moves from 0.56 to 0.57.
 
 ### The rule after this RFC (VERSIONING.md)
 
@@ -102,11 +106,12 @@ So 2026.1 is the next soname; the next ABI break after it on master moves it to 
 
 ### Gates
 
-- `test/db/run_handle_sizes.sh` records the sizes together with the triplet they belong to. A size
-  change without a triplet change FAILs.
-- The abidiff job (`.github/workflows/cocci.yml`) already requires `ABI-BREAK-INTENDED` when the exported
-  symbol set changes. This RFC adds a second comparison against the **soname's first release** (the
-  first tag that shipped `2026.1`), not only the previous tag. That closes the gap that let A1 through.
+- `test/db/run_handle_sizes.sh` records the sizes together with the level they belong to
+  (`RECORDED_MAJOR`/`RECORDED_MINOR`). A size change without a level change FAILs. That closes the gap
+  that let A1 through: the handle sizes are now pinned to the soname, rather than being compared only
+  with the previous release tag.
+- The abidiff job (`.github/workflows/cocci.yml`) requires `ABI-BREAK-INTENDED` when the exported
+  symbol set changes; it is unchanged.
 
 ## Alternatives
 
@@ -133,7 +138,7 @@ So 2026.1 is the next soname; the next ABI break after it on master moves it to 
 - `db_version()` returns 2026.1.0.
 - `libdb-2026.1.so` exists, and its `SONAME` (readelf -d) is `libdb-2026.1.so`.
 - A 2026.0 region is refused with `DB_VERSION_MISMATCH`, and a 2026.0 database and log open and recover
-  under 2026.1 (a new `test/db/run_soname_compat.sh` that builds the previous tag).
+  under 2026.1: `test/db/run_soname_compat.sh` (OLD_BUILD = a build of the previous level).
 - The Rust and Zig bindings build and link against the new name.
 - Full `test/db` tier on Linux and FreeBSD.
 
