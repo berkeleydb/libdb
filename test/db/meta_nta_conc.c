@@ -22,12 +22,18 @@
  *
  *	  - Without the NTA, __db_new holds the meta lock to commit, so the N
  *	    workers serialise: total wall time ~= N * HOLD_MS.
- *	  - With the NTA, the meta lock is released when the allocation
+ *	  - With a correct NTA, the meta lock is released when the allocation
  *	    finishes, before the hold, so the holds overlap: ~= HOLD_MS.
  *
- *	The test asserts elapsed < half the serial bound: fails on an unpatched
- *	library, passes on a patched one.  It also checks every worker's keys
- *	are present -- correctness under the relaxed lock scope.
+ *	RFC 0022 phase-1 status: the no-log-format NTA route was found unsafe
+ *	(child-txn commit inherits locks up to the parent; explicit early
+ *	release aliases __bam_split's pre-held meta lock and deadlocks) and was
+ *	reverted.  So on the current library this driver is a CHARACTERISATION /
+ *	REPRODUCER: it reports elapsed vs the serial bound and prints a
+ *	concurrent/serialised verdict, but it does NOT fail on serialisation
+ *	(the known, measured state on master).  It fails only on a correctness
+ *	error or a crash/hang.  When a correct NTA lands, turn the verdict into
+ *	a hard assertion.
  *
  *	A SIGALRM guard bounds the run.
  *
@@ -222,18 +228,24 @@ main(void)
 	    "(serial bound=%ldms)\n", NWORKERS, HOLD_MS, el, serial_bound);
 
 	/*
-	 * The decisive assertion: with the meta lock released before the hold,
-	 * the holds overlap and elapsed is far below the serial bound.  Use a
-	 * generous threshold (half the serial bound) so scheduling noise does
-	 * not flap the test, while still failing a library that serialises
-	 * (which would take ~NWORKERS*HOLD_MS).
+	 * RFC 0022 phase-1 status: the no-log-format NTA route was found unsafe
+	 * (see the RFC's Implementation findings) and reverted, so the current
+	 * library still serialises page allocators on the meta lock.  This
+	 * driver is therefore a CHARACTERISATION/REPRODUCER: it reports the
+	 * elapsed time against the serial bound and classifies the run, but it
+	 * does not FAIL on serialisation (that is the known, measured state on
+	 * master).  It fails only on a correctness error or a crash/hang.
+	 *
+	 * When a correct meta-alloc NTA lands, elapsed drops to ~HOLD_MS; flip
+	 * the classification below into a hard assertion then.
 	 */
-	if (el >= serial_bound / 2) {
-		fprintf(stderr, "FAIL: allocators serialised: elapsed %ldms "
-		    ">= %ldms (half the serial bound). The meta lock was held "
-		    "across the commit window.\n", el, serial_bound / 2);
-		fails++;
-	}
+	if (el < serial_bound / 2)
+		printf("meta_nta_conc: VERDICT concurrent "
+		    "(allocators overlap -- meta lock released early)\n");
+	else
+		printf("meta_nta_conc: VERDICT serialised "
+		    "(meta lock held across the commit window -- the measured "
+		    "convoy; expected on master until RFC 0022 phase 2)\n");
 
 	/* Correctness: a representative key from each worker band is present. */
 	for (i = 0; i < NWORKERS; i++) {

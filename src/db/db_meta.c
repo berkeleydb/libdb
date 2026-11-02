@@ -90,14 +90,6 @@ __db_init_meta(dbp, p, pgno, pgtype)
  * __db_new --
  *	Get a new page, preferably from the freelist.
  *
- * RFC 0022: the free-list splice runs as a nested top-level action (NTA) --
- * a child transaction (adbc/ntxn) that commits DB_TXN_NOSYNC as soon as the
- * allocation is logged, releasing the PGNO_BASE_MD meta lock instead of holding
- * it to the parent's commit.  The *parent* keeps the per-page lock (*lockp) so
- * no reader sees the page before the parent commits; only the meta lock moves
- * to the short-lived child.  On parent abort after the NTA committed, the page
- * is a leaked free page (harmless, reclaimed by compact/verify); see the RFC.
- *
  * PUBLIC: int __db_new __P((DBC *, u_int32_t, DB_LOCK *, PAGE **));
  */
 int
@@ -108,24 +100,20 @@ __db_new(dbc, type, lockp, pagepp)
 	PAGE **pagepp;
 {
 	DB *dbp;
-	DBC *adbc;
 	DBMETA *meta;
 	DB_LOCK metalock;
 	DB_LSN lsn;
 	DB_MPOOLFILE *mpf;
-	DB_TXN *ntxn;
 	ENV *env;
 	PAGE *h;
 	db_pgno_t last, *list, pgno, newnext;
-	int extend, hash, nta, ret;
+	int extend, hash, ret;
 
 	meta = NULL;
 	dbp = dbc->dbp;
 	env = dbp->env;
 	mpf = dbp->mpf;
 	h = NULL;
-	ntxn = NULL;
-	adbc = dbc;
 	newnext = PGNO_INVALID;
 	if (lockp != NULL)
 		LOCK_INIT(*lockp);
@@ -133,18 +121,6 @@ __db_new(dbc, type, lockp, pagepp)
 	hash = 0;
 	ret = 0;
 	LOCK_INIT(metalock);
-
-	/*
-	 * RFC 0022 NTA eligibility.  Run the free-list splice in a child txn
-	 * only when there is a real parent txn and we are logging; otherwise
-	 * the meta lock is already released at end of op (no-txn __TLPUT is a
-	 * real put) so the inline path is both correct and cheaper.  Hash is
-	 * deferred to phase 2 (its metapage lock scope is reworked by RFC 0017),
-	 * so it stays on the inline path.  Recovery (DBC_RECOVER) never begins
-	 * sub-transactions.
-	 */
-	nta = dbc->txn != NULL && DBC_LOGGING(dbc) &&
-	    !F_ISSET(dbc, DBC_RECOVER) && dbp->type != DB_HASH;
 
 #ifdef HAVE_HASH
 	if (dbp->type == DB_HASH) {
@@ -155,25 +131,11 @@ __db_new(dbc, type, lockp, pagepp)
 	}
 #endif
 	if (meta == NULL) {
-		if (nta) {
-			/*
-			 * Begin the NTA child and a cursor bound to it.  The
-			 * child takes the meta lock and owns the alloc log
-			 * record; its commit (below) releases the meta lock.
-			 */
-			if ((ret = __txn_begin(env, dbc->thread_info,
-			    dbc->txn, &ntxn, 0)) != 0)
-				goto err;
-			if ((ret = __db_cursor_int(dbp, dbc->thread_info,
-			    ntxn, dbp->type, PGNO_INVALID, 0,
-			    NULL, &adbc)) != 0)
-				goto err;
-		}
 		pgno = PGNO_BASE_MD;
-		if ((ret = __db_lget(adbc,
+		if ((ret = __db_lget(dbc,
 		    LCK_ALWAYS, pgno, DB_LOCK_WRITE, 0, &metalock)) != 0)
 			goto err;
-		if ((ret = __memp_fget(mpf, &pgno, adbc->thread_info, adbc->txn,
+		if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,
 		    DB_MPOOL_DIRTY, &meta)) != 0)
 			goto err;
 	}
@@ -193,21 +155,13 @@ __db_new(dbc, type, lockp, pagepp)
 		 * Lock the new page.  Do this here because we must do it
 		 * before getting the page and the caller may need the lock
 		 * to keep readers from seeing the page before the transaction
-		 * commits.
-		 *
-		 * RFC 0022: the page lock is taken under the PARENT (dbc), not
-		 * the NTA child (adbc), so the child's commit does not release
-		 * it -- the parent holds it to commit and the page stays
-		 * invisible to readers.  (The old comment "no one will hold a
-		 * free page locked" no longer holds for __db_free's NTA, which
-		 * keeps the freed page locked to commit; __db_new re-__db_lgets
-		 * the free page WRITE below and so blocks on a freeing parent,
-		 * which is the intended fence.)
+		 * commits.  We can do this because no one will hold a free
+		 * page locked.
 		 */
 		if (lockp != NULL && (ret =
 		     __db_lget(dbc, 0, pgno, DB_LOCK_WRITE, 0, lockp)) != 0)
 			goto err;
-		if ((ret = __memp_fget(mpf, &pgno, adbc->thread_info, adbc->txn,
+		if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,
 		    DB_MPOOL_DIRTY, &h)) != 0)
 			goto err;
 
@@ -238,8 +192,8 @@ __db_new(dbc, type, lockp, pagepp)
 	 * don't have room in the log then we don't want to tell
 	 * mpool to extend the file.
 	 */
-	if (DBC_LOGGING(adbc)) {
-		if ((ret = __db_pg_alloc_log(dbp, adbc->txn, &LSN(meta), 0,
+	if (DBC_LOGGING(dbc)) {
+		if ((ret = __db_pg_alloc_log(dbp, dbc->txn, &LSN(meta), 0,
 		    &LSN(meta), PGNO_BASE_MD, &lsn,
 		    pgno, (u_int32_t)type, newnext, meta->last_pgno)) != 0)
 			goto err;
@@ -252,7 +206,7 @@ __db_new(dbc, type, lockp, pagepp)
 		if (lockp != NULL && (ret =
 		     __db_lget(dbc, 0, pgno, DB_LOCK_WRITE, 0, lockp)) != 0)
 			goto err;
-		if ((ret = __memp_fget(mpf, &pgno, adbc->thread_info, adbc->txn,
+		if ((ret = __memp_fget(mpf, &pgno, dbc->thread_info, dbc->txn,
 		    DB_MPOOL_NEW, &h)) != 0)
 			goto err;
 		DB_ASSERT(env, last == pgno);
@@ -263,9 +217,7 @@ __db_new(dbc, type, lockp, pagepp)
 		/*
 		 * If the file was extended for the first time in this
 		 * transaction, set the MPOOLFILE's file extension
-		 * watermark.  RFC 0022: the watermark governs the PARENT's
-		 * bulk file-extend semantics, so record it against the parent
-		 * (dbc->txn), not the NTA child.
+		 * watermark.
 		 */
 		__txn_add_fe_watermark(dbc->txn, dbp, h->pgno);
 
@@ -273,7 +225,7 @@ __db_new(dbc, type, lockp, pagepp)
 	LSN(h) = LSN(meta);
 
 	if (hash == 0 && (ret = __memp_fput(mpf,
-	    adbc->thread_info, meta, adbc->priority)) != 0)
+	    dbc->thread_info, meta, dbc->priority)) != 0)
 		goto err;
 	meta = NULL;
 
@@ -308,34 +260,7 @@ __db_new(dbc, type, lockp, pagepp)
 	COMPQUIET(list, NULL);
 #endif
 
-	if (nta) {
-		/*
-		 * RFC 0022: release the meta lock from the NTA child and then
-		 * commit it.  A child-transaction COMMIT inherits the child's
-		 * locks UP to the parent (__lock_inherit_locks) rather than
-		 * releasing them, so committing alone would leave the meta
-		 * lock held by the parent to its commit -- the very convoy we
-		 * are removing.  So drop the meta lock explicitly with __LPUT
-		 * (unconditional put, releases a write lock) after the splice
-		 * is logged, then commit.  The splice already happened under
-		 * the held meta lock, so no concurrent allocator can have
-		 * taken the same page; the child commit makes the allocation
-		 * durable so the parent's abort compensates (frees/leaks the
-		 * page) rather than undoing a lock-protected record.  The
-		 * parent still holds *lockp on the new page.
-		 */
-		if ((ret = __LPUT(adbc, metalock)) != 0)
-			goto err;
-		if ((ret = __dbc_close(adbc)) != 0) {
-			adbc = dbc;
-			goto err;
-		}
-		adbc = dbc;
-		ret = __txn_commit(ntxn, DB_TXN_NOSYNC);
-		ntxn = NULL;
-		if (ret != 0)
-			goto err;
-	} else if ((ret = __TLPUT(dbc, metalock)) != 0)
+	if ((ret = __TLPUT(dbc, metalock)) != 0)
 		return (ret);
 	*pagepp = h;
 	PERFMON6(env, alloc, new, dbp->fname, dbp->dname, pgno, type, h, 0);
@@ -345,18 +270,7 @@ err:	if (h != NULL)
 		(void)__memp_fput(mpf, dbc->thread_info, h, dbc->priority);
 	if (meta != NULL && hash == 0)
 		(void)__memp_fput(mpf, dbc->thread_info, meta, dbc->priority);
-	/*
-	 * RFC 0022: on error, abort the NTA child (rolls back its own alloc
-	 * record -- no compensation needed because the child never committed)
-	 * and release the meta lock with it.  The child cursor must be closed
-	 * first.  If there is no NTA child, release the meta lock inline.
-	 */
-	if (ntxn != NULL) {
-		if (adbc != dbc)
-			(void)__dbc_close(adbc);
-		(void)__txn_abort(ntxn);
-	} else
-		(void)__TLPUT(dbc, metalock);
+	(void)__TLPUT(dbc, metalock);
 	if (lockp != NULL)
 		(void)__LPUT(dbc, *lockp);
 	/* Failure return - report 0 pgno, null page address. */

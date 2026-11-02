@@ -1,11 +1,14 @@
 # RFC 0022: page allocation as a nested top-level action (release `PGNO_BASE_MD` before commit)
 
-- **Status:** Draft
+- **Status:** Draft — **phase-1 implementation found unsafe; see Implementation findings**
 - **Type:** Normative
 - **Author:** P3 workstream (libdb contributors)
 - **Date:** 2026-11-03
 - **Tracking:** review item M2 / O-B2, perf rank 3; BTREE-LOCK-SCOPE-2026-09.md Deliverable 2
-- **Prototype:** `rfc/0022/` (design spike + safety argument; code lands on `perf/meta-nta`)
+- **Prototype:** `rfc/0022/` (design spike + safety argument); `perf/meta-nta` branch
+  (RFC, recovery test, convoy reproducer). The engine change was implemented,
+  measured, found unsafe, and reverted — the branch keeps the tests and this
+  record.
 
 ---
 
@@ -28,6 +31,71 @@ commit. The user transaction keeps the *per-page* lock on the page it allocated
 the *meta-page* lock. If the parent aborts after the NTA committed, the page is
 reclaimed by a compensating free, exactly as ARIES prescribes for an NTA whose
 parent rolls back.
+
+## Implementation findings (2026-11-03) — the sub-transaction route is unsafe
+
+The no-log-format route (a child transaction, §Design below) was implemented in
+`__db_new`, measured on a 32-vCPU box, and **found unsafe**. The findings are the
+substance of this RFC's decision and they redirect the correct design. Both
+convoy findings are confirmed, not inferred.
+
+**Finding 1 — a child-transaction commit inherits locks UP to the parent; it
+does not release them.** `__txn_commit` of a child calls `__lock_inherit_locks`
+(`src/lock/lock.c:523`), handing the child's locks to the parent rather than
+releasing them. So committing the NTA child still left `PGNO_BASE_MD` held by the
+parent to its commit — the exact convoy. The concurrency reproducer
+(`test/db/meta_nta_conc.c`) measured full serialisation (elapsed ≈ N×HOLD_MS) on
+both the "fixed" and the baseline builds: **zero win**.
+
+**Finding 2 — explicitly releasing the child's meta lock with `__LPUT` before
+commit deadlocks via lock aliasing.** `__bam_split` **pre-acquires** the meta
+write lock under the *parent* locker (`src/btree/bt_split.c:84`, comment: "we
+will have to allocate pages and cannot get a lock while we have the search tree
+pinned") and holds it across its `__db_new` calls, releasing it at
+`bt_split.c:191`. Because a child locker is **compatible** with its parent
+(`src/lock/lock.c:2379-2407`), the lock manager satisfies the child NTA's
+`__db_lget(meta, WRITE)` by **refcount-bumping the parent's existing lock**, not
+by a new grant. `__LPUT` of "the child's" meta lock therefore released the
+**parent's** lock that `__bam_split` still needs — corrupting the split's lock
+state. Under 8 concurrent allocators every worker then hung in `__bam_split` at
+`bt_split.c:84` waiting for the meta lock (gdb-confirmed, all 8 stacks identical).
+
+**Finding 3 — the abort-undo safety argument rules out the bare early release
+(alternative A4), independently.** Recovery/undo routines take no lock-manager
+locks (`src/db/db_rec.c` `__db_pg_alloc_recover` acquires none); they rely on the
+aborting transaction already holding them (2PL). So if `__db_new` released the
+meta lock early with `__LPUT` and the txn later aborted, the undo
+(`meta->free = argp->pgno`) would run against a free-list head another allocator
+had advanced in the meantime → **free-list corruption**. This is why the
+allocation must be *committed independently and compensated*, not merely
+released, and why a correct NTA needs an **independent locker** whose meta lock
+is genuinely released.
+
+**What is actually required (the corrected design).** `__bam_split` already
+demonstrates the meta lock need not be held to commit: it releases its own meta
+lock at `bt_split.c:191`, before commit. The lock that persists to commit is
+`__db_new`'s *additional* reference, left by its `__TLPUT`. The correct ARIES
+shape is therefore to make the **structure-modification operation (the split)
+the NTA**, not each `__db_new`: `__bam_split` (and the other allocation sites)
+begin an independent NTA, acquire the meta lock under the NTA's own locker, run
+their `__db_new`/`__db_free` calls under it, and commit the NTA — releasing the
+meta lock — before returning to the user transaction, which keeps only the
+per-page locks. One locker owning the meta lock for the whole SMO removes the
+aliasing and gives a genuinely independent, compensation-on-abort unit. It is a
+coordinated change across `__bam_split`, `__bam_root`, `__db_new`, `__db_free`
+and every other `__db_new` caller, with recovery coverage for each — larger and
+higher-risk than the sub-transaction spike, and **out of scope for the phase-1
+attempt**. It is the recommended path for a phase-2 RFC revision.
+
+**Decision implication:** the lazy no-format route does not work. A correct fix
+is either (a) the SMO-as-NTA restructure above (no log-format change, but a
+substantial recovery-sensitive change), or (b) a dedicated NTA log record
+(master-only, §Alternatives A1). Both exceed this workstream's phase-1 budget; the
+phase-1 engine change has been reverted. The recovery test
+(`meta_nta_recover.c`, which passes and exercises the abort/recover paths the Tcl
+suite does not reach) and the convoy reproducer (`meta_nta_conc.c`, which
+demonstrates the measured serialisation on master) are kept as the foundation for
+phase 2.
 
 The chosen implementation needs **no log-format change**: it reuses the existing
 `__db_pg_alloc` / `__db_pg_free` / `__db_pg_freedata` records and their recovery
@@ -504,3 +572,22 @@ cached-mini-transaction variant), which the brief names as a valid outcome.**
 - **Decision:** Accepted | Rejected — YYYY-MM-DD
 - **Rationale:**
 - **Conditions / follow-ups:**
+
+### Phase-1 outcome (P3, 2026-11-03)
+
+- **Phase-1 (sub-transaction, no log-format change): implemented, measured,
+  reverted.** See *Implementation findings* above. The child-txn route gives no
+  win (lock inheritance on child commit) and the explicit-release variant
+  deadlocks (lock aliasing with `__bam_split`'s pre-held meta lock). The bare
+  early-release (A4) corrupts the free list on abort. All three are confirmed on
+  a 32-vCPU box.
+- **Kept on the branch:** this RFC with the findings; `test/db/meta_nta_recover.c`
+  (passes — abort + catastrophic-recovery consistency, a path the Tcl recd suite
+  does not cover); `test/db/meta_nta_conc.c` (the convoy reproducer — measures the
+  serialisation on master; it is wired as expected-serialised until a correct fix
+  lands).
+- **Recommended next step:** a phase-2 revision making the **split/SMO the NTA**
+  (an independent locker owns the meta lock for the whole structure modification),
+  or a dedicated NTA log record. Both are larger, recovery-sensitive changes
+  beyond this workstream's phase-1 budget. The measured convoy (BTREE-LOCK-SCOPE:
+  400/400 page-0 waiters) remains real and worth the phase-2 investment.
