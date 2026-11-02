@@ -193,6 +193,7 @@ main(void)
 	for (i = 0; i < NWORKERS; i++) {
 		memset(&key, 0, sizeof(key));
 		memset(&data, 0, sizeof(data));
+		data.flags = DB_DBT_MALLOC;	/* DB_THREAD env requires it */
 		(void)snprintf(kbuf, sizeof(kbuf), "%010u",
 		    (u_int32_t)(i * 1000000 + KEYS_PER_TXN - 1));
 		key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
@@ -200,7 +201,8 @@ main(void)
 			fprintf(stderr, "FAIL: worker %ld key missing: %s\n",
 			    i, db_strerror(ret));
 			fails++;
-		}
+		} else
+			free(data.data);
 	}
 
 	(void)db->close(db, 0);
