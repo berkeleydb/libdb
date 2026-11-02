@@ -1236,10 +1236,14 @@ if test "$db_cv_tpm" = "yes"; then
 	    AC_MSG_ERROR([--enable-tpm requires the libtss2 ESAPI headers (tss2/tss2_esys.h)]))
 	AC_CHECK_LIB(tss2-esys, Esys_Initialize, [],
 	    AC_MSG_ERROR([--enable-tpm requires libtss2-esys]), [-ltss2-mu])
-	AC_CHECK_LIB(tss2-mu, Tss2_MU_TPM2B_PUBLIC_Marshal, [LIBS="-ltss2-mu $LIBS"], [])
+	AC_CHECK_LIB(tss2-mu, Tss2_MU_TPM2B_PUBLIC_Marshal, [], [])
 	AC_DEFINE(HAVE_TPM)
 	AH_TEMPLATE(HAVE_TPM,
 	    [Define to 1 if building the TPM 2.0 key provider.])
+	# Append to the shared-library link line (LIBSO_LIBS), not only the
+	# autoconf LIBS, mirroring the liburing pattern above.
+	LIBSO_LIBS="$LIBSO_LIBS -ltss2-esys -ltss2-mu"
+	LIBS="$LIBS -ltss2-esys -ltss2-mu"
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS provider_tpm${o}"
 fi
 
