@@ -173,10 +173,14 @@ main(void)
 	fill(db, txn, NRECS, NRECS + NRECS / 2);
 	CHK0(txn->abort(txn));
 
-	/* The aborted keys must be absent; the committed ones present. */
+	/*
+	 * The aborted keys must be absent.  Probe a key that is in the aborted
+	 * range [NRECS, NRECS+NRECS/2) but NOT in the smaller re-insert range
+	 * below, so the probe stays a true "aborted and never re-added" key.
+	 */
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
-	(void)snprintf(kbuf, sizeof(kbuf), "%010u", (u_int32_t)(NRECS + 10));
+	(void)snprintf(kbuf, sizeof(kbuf), "%010u", (u_int32_t)(NRECS + 500));
 	key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
 	ret = db->get(db, NULL, &key, &data, 0);
 	if (ret != DB_NOTFOUND) {
@@ -227,7 +231,7 @@ main(void)
 	(void)snprintf(kbuf, sizeof(kbuf), "%010u", (u_int32_t)(NRECS - 1));
 	key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
 	CHK0(db->get(db, NULL, &key, &data, 0));
-	(void)snprintf(kbuf, sizeof(kbuf), "%010u", (u_int32_t)(NRECS + 10));
+	(void)snprintf(kbuf, sizeof(kbuf), "%010u", (u_int32_t)(NRECS + 500));
 	key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
 	ret = db->get(db, NULL, &key, &data, 0);
 	if (ret != DB_NOTFOUND) {
