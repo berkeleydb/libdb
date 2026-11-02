@@ -114,12 +114,30 @@ echo "Compiling sabotaged db_cam.o (-DDBC_CACHE_SABOTAGE)"
   cp db_cam_sab.o db_cam.o && ar r libdb_sab.a db_cam.o && ranlib libdb_sab.a )
 
 echo "Compiling cursorcache_adjust against the sabotaged library"
-"${CC:-cc}" -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$SABDIR/libdb_sab.a" \
+# Link the sabotage executable with AddressSanitizer so the use-after-free the
+# disabled epoch guard permits (a reopened handle reusing a freed cached
+# cursor) is caught deterministically rather than depending on whether freed
+# memory happens to still look valid.  ASan intercepts malloc/free
+# process-wide, so it covers libdb's allocations too even though libdb.a itself
+# is not instrumented.  If the toolchain has no ASan, fall back to
+# MALLOC_PERTURB_, which fills freed memory and usually turns the fault into a
+# crash.
+ASAN=""
+if "${CC:-cc}" -fsanitize=address -xc /dev/null -o "$SABDIR/.asan_probe" \
+    -lpthread >/dev/null 2>&1; then
+	ASAN="-fsanitize=address"
+	rm -f "$SABDIR/.asan_probe"
+fi
+"${CC:-cc}" -g -O1 $ASAN ${CFLAGS:-} -I"$BUILD" "$SRC" "$SABDIR/libdb_sab.a" \
     -lpthread $EXTRALIBS -o "$SABDIR/cursorcache_adjust_sab"
 
 clean_home
 echo "Running cursorcache_adjust (sabotage, timeout ${TIMEOUT}s) -- MUST FAIL"
-if run_with_timeout "$TIMEOUT" "$SABDIR/cursorcache_adjust_sab" "$HOME_DIR"; then
+# MALLOC_PERTURB_ fills freed memory even when ASan is unavailable, so a
+# use-after-free on the freed cached cursor misbehaves rather than silently
+# reading stale-but-plausible bytes.
+if MALLOC_PERTURB_=165 \
+    run_with_timeout "$TIMEOUT" "$SABDIR/cursorcache_adjust_sab" "$HOME_DIR"; then
 	echo "run_cursorcache_adjust.sh: FAIL"\
 	     "(sabotage build PASSED -- the test does not catch the broken invariant)"
 	exit 1
