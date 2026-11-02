@@ -449,6 +449,22 @@ __txn_restore_txn(env, lsnp, argp)
 	td->mvcc_mtx = MUTEX_INVALID;
 	td->status = TXN_PREPARED;
 	td->flags = TXN_DTL_RESTORED;
+	/*
+	 * A restored prepared transaction is an in-doubt XA branch: the
+	 * transaction manager will call xa_recover and then xa_commit or
+	 * xa_rollback on it.  These XA fields are process-local state the live
+	 * prepare path sets (src/xa/xa.c) and are NOT in the prepare log
+	 * record, so recovery must initialise them.  Without xa_br_status the
+	 * resolve is rejected with XAER_PROTO; without xa_ref == 0 (it is
+	 * incremented to 1 when the TM joins the branch to resolve it) the
+	 * DB_ASSERT in __txn_commit fires -- both block XA crash recovery.
+	 */
+	td->xa_br_status = TXN_XA_PREPARED;
+	td->xa_ref = 0;
+	td->format = 0;
+	td->gtrid = 0;
+	td->bqual = 0;
+	td->priority = 0;
 	memcpy(td->gid, argp->gid.data, argp->gid.size);
 	td->nlog_dbs = 0;
 	td->nlog_slots = TXN_NSLOTS;
