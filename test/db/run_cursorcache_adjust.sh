@@ -74,20 +74,21 @@ else
 fi
 
 # ---- Arm 2: the sabotage build.  Must FAIL. ----
-# Build a sabotaged copy of just db_cam.o and splice it into a private archive,
-# so we do not disturb $BUILD's library.  If the needed source/objects are not
-# available (e.g. an installed-only tree), skip the sabotage arm with a notice
-# rather than failing: the correct arm already ran.
+# Build a sabotaged copy of just db_am.o (which carries the reuse-reset the
+# sabotage disables) and splice it into a private archive, so we do not disturb
+# $BUILD's library.  If the source/object is not available (e.g. an
+# installed-only tree), skip the sabotage arm with a notice rather than failing:
+# the correct arm already ran.
 SRCROOT=""
 for cand in "$_HERE/../.." "$BUILD/.." "$BUILD/../src"; do
-	if [ -f "$cand/src/db/db_cam.c" ]; then
+	if [ -f "$cand/src/db/db_am.c" ]; then
 		SRCROOT=$(cd "$cand" && pwd); break
 	fi
 done
 
-if [ -z "$SRCROOT" ] || [ ! -f "$BUILD/db_cam.o" ]; then
+if [ -z "$SRCROOT" ] || [ ! -f "$BUILD/db_am.o" ]; then
 	echo "run_cursorcache_adjust.sh: NOTE sabotage arm skipped"\
-	     "(no db_cam source/object to rebuild under $BUILD)"
+	     "(no db_am source/object to rebuild under $BUILD)"
 	echo "run_cursorcache_adjust.sh: PASS"
 	exit 0
 fi
@@ -97,22 +98,20 @@ rm -rf "$SABDIR"
 mkdir -p "$SABDIR"
 cp "$LIB" "$SABDIR/libdb_sab.a"
 
-echo "Compiling sabotaged db_cam.o (-DDBC_CACHE_SABOTAGE)"
-# Reuse the compile flags make used for db_cam.o by discovering the include
-# path from $BUILD (db_config.h and db.h live there) and the source tree.
+echo "Compiling sabotaged db_am.o (-DDBC_CACHE_SABOTAGE)"
 "${CC:-cc}" -c -g -O1 -DDBC_CACHE_SABOTAGE \
     -I"$BUILD" -I"$SRCROOT/src" -I"$SRCROOT/src/dbinc" \
     -D_GNU_SOURCE -DHAVE_CONFIG_H \
-    "$SRCROOT/src/db/db_cam.c" -o "$SABDIR/db_cam_sab.o" 2>"$SABDIR/cc.log" || {
+    "$SRCROOT/src/db/db_am.c" -o "$SABDIR/db_am_sab.o" 2>"$SABDIR/cc.log" || {
 	echo "run_cursorcache_adjust.sh: NOTE sabotage arm skipped"\
-	     "(sabotaged db_cam.c did not compile standalone; see $SABDIR/cc.log)"
+	     "(sabotaged db_am.c did not compile standalone; see $SABDIR/cc.log)"
 	echo "run_cursorcache_adjust.sh: PASS"
 	exit 0
 }
 
-# Replace db_cam.o inside the private archive with the sabotaged object.
-( cd "$SABDIR" && ar d libdb_sab.a db_cam.o 2>/dev/null; \
-  cp db_cam_sab.o db_cam.o && ar r libdb_sab.a db_cam.o && ranlib libdb_sab.a )
+# Replace db_am.o inside the private archive with the sabotaged object.
+( cd "$SABDIR" && ar d libdb_sab.a db_am.o 2>/dev/null; \
+  cp db_am_sab.o db_am.o && ar r libdb_sab.a db_am.o && ranlib libdb_sab.a )
 
 echo "Compiling cursorcache_adjust against the sabotaged library"
 "${CC:-cc}" -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$SABDIR/libdb_sab.a" \

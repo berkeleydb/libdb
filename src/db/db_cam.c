@@ -205,29 +205,6 @@ __db_cursor_cache_get(dbp, dbtype, flags, dbcp)
 			*dbcp = e->dbc;
 			e->dbp = NULL;
 			e->dbc = NULL;
-#ifdef DBC_CACHE_SABOTAGE
-			/*
-			 * SABOTAGE ARM (test/db/run_cursorcache_adjust.sh).
-			 * Break the load-bearing invariant of RFC 0021 Design
-			 * S5 on purpose: take the reused cursor OFF the active
-			 * queue before handing it back.  It is then positioned
-			 * for its operation while invisible to __db_walk_cursors,
-			 * so a concurrent insert/delete on the same page fails to
-			 * adjust it and it silently addresses the wrong record --
-			 * which the test must catch.  __dbc_close re-inserts it
-			 * (also under this #ifdef) so the run stays consistent.
-			 * Never compiled into a shipped build.
-			 */
-			{
-				struct __cq_part *scqp =
-				    DB_CURSOR_PART(*dbcp);
-
-				CQ_LOCK(dbp->env, scqp);
-				F_CLR(*dbcp, DBC_ACTIVE);
-				TAILQ_REMOVE(&scqp->active_queue, *dbcp, links);
-				CQ_UNLOCK(dbp->env, scqp);
-			}
-#endif
 			return (0);
 		}
 	}
@@ -544,23 +521,6 @@ __dbc_close(dbc)
 	 * (cache off, or the shape became ineligible after teardown), fall
 	 * back to the normal free-queue move.
 	 */
-#ifdef DBC_CACHE_SABOTAGE
-	/*
-	 * SABOTAGE ARM: the acquire path took this cursor off the active queue;
-	 * put it back now so the cache's state invariant (a cached cursor is on
-	 * the active queue, DBC_ACTIVE set) holds for eviction below.  The only
-	 * damage the sabotage does is the invisibility window DURING the
-	 * operation, which is exactly the bug under test.
-	 */
-	if (cache_it && !F_ISSET(dbc, DBC_ACTIVE)) {
-		struct __cq_part *scqp = DB_CURSOR_PART(dbc);
-
-		CQ_LOCK(env, scqp);
-		TAILQ_INSERT_TAIL(&scqp->active_queue, dbc, links);
-		F_SET(dbc, DBC_ACTIVE);
-		CQ_UNLOCK(env, scqp);
-	}
-#endif
 	if (!cache_it || !__dbc_cache_put(dbc)) {
 		struct __cq_part *dbc_cqp = DB_CURSOR_PART(dbc);
 

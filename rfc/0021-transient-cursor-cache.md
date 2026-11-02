@@ -309,14 +309,17 @@ otherwise (non-threaded handles are never cached).
 
 ### 8. Tests
 
-- **New `test/db/run_cursorcache_adjust.sh`** (+ its C driver): many threads do
-  concurrent `DB->put`/`DB->del` and `DB->get` on **shared pages** of one shared
-  `DB_THREAD` handle, with the cache on, then verify the final key/value set and
-  every surviving cursor's reported position against a serial oracle. The
-  **sabotage arm** compiles with `-DDBC_CACHE_SABOTAGE`, which removes the cached
-  cursor from the active queue while idle (breaking the §5 invariant); the test
-  **must FAIL** in that arm (a missed adjustment corrupts a concurrent cursor's
-  position or the data) and **PASS** with the invariant intact.
+- **New `test/db/run_cursorcache_adjust.sh`** (+ its C driver): Part A is a
+  deterministic single-threaded reset probe (interleaved gets across the
+  keyspace that return a neighbour's record if a reused cursor keeps its prior
+  position); Part B is a concurrent storm where many threads do transient
+  `DB->put`/`DB->get` on crowded shared leaves of one `DB_THREAD` handle while
+  readers sweep and verify every value names its own key. The **sabotage arm**
+  rebuilds `db_am.o` with `-DDBC_CACHE_SABOTAGE`, which skips the reuse reset of
+  a cached cursor (breaking the RESET invariant). The test **must FAIL** in that
+  arm (Part A returns a wrong value) and **PASS** with the reset intact. The
+  visibility invariant (Design S5) is argued above and guarded by Part B's
+  crash/corruption checks under `--enable-diagnostic`.
 - **Diagnostic tier:** `BUILD=<dir> bash ../test/db/run_all.sh` with
   `--enable-diagnostic`.
 - **TCL:** `run_method -btree test001..010` and `-hash` (cursor-reuse,
