@@ -5,6 +5,7 @@
 - **Author:** libdb maintainers
 - **Date:** 2026-09-14
 - **Tracking:** revisit if/when HASH performance is re-opened (no implementation planned yet)
+- **Related:** RFC 0017 (HASH concurrency/online resize) is the orthogonal axis — it changes locking and split *scope*, not page/overflow *structure*; the two can ship independently or compose.
 
 ---
 

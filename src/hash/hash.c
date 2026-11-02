@@ -488,7 +488,27 @@ __hamc_get(dbc, key, data, flags, pgnop)
 	else
 		lock_type = DB_LOCK_READ;
 
-	if ((ret = __ham_get_meta(dbc)) != 0)
+	/*
+	 * RFC 0017: only keyed point access may skip the metapage lock; a scan
+	 * keeps it, or a concurrent split could return a moved record twice.
+	 */
+	switch (flags) {
+	case DB_SET:
+	case DB_SET_RANGE:
+	case DB_GET_BOTH:
+	case DB_GET_BOTH_RANGE:
+		hcp->cache_ok = 1;
+		break;
+	default:
+		hcp->cache_ok = 0;
+		break;
+	}
+
+	/* RFC 0017: keyed lookups lock their bucket without the metapage. */
+	ret = hcp->cache_ok ? __ham_fast_lock(dbc, key, lock_type) : 0;
+	if (ret != 0 && ret != DB_MPOOL_RETRY)
+		return (ret);
+	if (!F_ISSET(hcp, H_FASTLOCKED) && (ret = __ham_get_meta(dbc)) != 0)
 		return (ret);
 	hcp->seek_size = 0;
 
@@ -1073,7 +1093,28 @@ __hamc_put(dbc, key, data, flags, pgnop)
 	    flags != DB_KEYLAST && flags != DB_OVERWRITE_DUP)
 		return (DB_NOTFOUND);
 
-	if ((ret = __ham_get_meta(dbc)) != 0)
+	/*
+	 * RFC 0017: keyed inserts lock their bucket without the metapage (see
+	 * __ham_get_meta_fast).  Positional puts (DB_BEFORE/DB_AFTER/
+	 * DB_CURRENT) act on the cursor position and keep the locked metapage.
+	 */
+	switch (flags) {
+	case DB_KEYLAST:
+	case DB_KEYFIRST:
+	case DB_NODUPDATA:
+	case DB_NOOVERWRITE:
+	case DB_OVERWRITE_DUP:
+		hcp->cache_ok = 1;
+		break;
+	default:
+		hcp->cache_ok = 0;
+		break;
+	}
+
+	ret = hcp->cache_ok ? __ham_fast_lock(dbc, key, DB_LOCK_WRITE) : 0;
+	if (ret != 0 && ret != DB_MPOOL_RETRY)
+		goto err1;
+	if (!F_ISSET(hcp, H_FASTLOCKED) && (ret = __ham_get_meta(dbc)) != 0)
 		goto err1;
 
 	switch (flags) {
@@ -1897,19 +1938,32 @@ __ham_lookup(dbc, key, sought, mode, pgnop)
 	dbp = dbc->dbp;
 	hcp = (HASH_CURSOR *)dbc->internal;
 
-	/*
-	 * Set up cursor so that we're looking for space to add an item
-	 * as we cycle through the pages looking for the key.
-	 */
-	if ((ret = __ham_item_reset(dbc)) != 0)
-		return (ret);
-	hcp->seek_size = sought;
+	if (F_ISSET(hcp, H_FASTLOCKED)) {
+		/*
+		 * RFC 0017: __ham_fast_lock already mapped the key, locked
+		 * its bucket and re-validated the mapping.  Keep that lock:
+		 * reset everything else and fetch the page.
+		 */
+		F_CLR(hcp, H_FASTLOCKED);
+		hcp->seek_size = sought;
+		if ((ret = __ham_get_cpage(dbc, mode)) != 0)
+			return (ret);
+	} else {
+		/*
+		 * Set up cursor so that we're looking for space to add an item
+		 * as we cycle through the pages looking for the key.
+		 */
+		if ((ret = __ham_item_reset(dbc)) != 0)
+			return (ret);
+		hcp->seek_size = sought;
 
-	hcp->bucket = __ham_call_hash(dbc, (u_int8_t *)key->data, key->size);
-	hcp->pgno = BUCKET_TO_PAGE(hcp, hcp->bucket);
-	/* look though all pages in the bucket for the key */
-	if ((ret = __ham_get_cpage(dbc, mode)) != 0)
-		return (ret);
+		hcp->bucket = __ham_call_hash(dbc,
+		    (u_int8_t *)key->data, key->size);
+		hcp->pgno = BUCKET_TO_PAGE(hcp, hcp->bucket);
+		/* look though all pages in the bucket for the key */
+		if ((ret = __ham_get_cpage(dbc, mode)) != 0)
+			return (ret);
+	}
 
 	*pgnop = PGNO_INVALID;
 	if (hcp->indx == NDX_INVALID) {

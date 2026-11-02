@@ -16,11 +16,12 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0009](0009-wal-backpressure.md) | WAL backpressure at the API boundary: bound the append-vs-durable lag and report saturation (RFC 0008 design D3) | Draft | Prospective |
 | [0010](0010-global-invariants.md) | Global invariants across subsystems: the A-series partial orders the lock-order checker encodes, and the G-series gap register | Accepted | Normative |
 | [0011](0011-test-coverage-gaps.md) | Test-coverage gaps that let shipped defects through (G12-G15): scaling shape, configure-option sweep, runtime-flag behaviour | Accepted | Normative |
-| [0012](0012-locker-alloc-scaling.md) | `mtx_locker_stripe[0]`: the locker-allocation latch | Draft |
-| [0013](0013-cross-engine-campaign.md) | Cross-engine benchmark campaign: plan for review | Draft |
-| [0014](0014-typed-data-and-constraints.md) | Typed data and constraints: a codec socket ("modem") and a constraint layer, configure-time optional | Implemented (Phases 0–1), opt-in `--enable-typed`; see [inclusion evaluation](0014/INCLUSION-EVALUATION.md) |
-| [0015](0015-multicore-scalability.md) | Multi-core scalability audit: every serialisation point, and the order to remove them | Draft |
-| [0016](0016-rust-zig-bindings.md) | Rust and Zig language bindings: idiomatic, zero-copy-capable API shims over the C library, with native-format docs and tests | Draft |
+| [0012](0012-locker-alloc-scaling.md) | `mtx_locker_stripe[0]`: the locker-allocation latch | Draft | Prospective |
+| [0013](0013-cross-engine-campaign.md) | Cross-engine benchmark campaign: plan for review | Draft | Plan |
+| [0014](0014-typed-data-and-constraints.md) | Typed data and constraints: a codec socket ("modem") and a constraint layer, configure-time optional | Implemented (Phases 0–1), opt-in `--enable-typed`; see [inclusion evaluation](0014/INCLUSION-EVALUATION.md) | Prospective |
+| [0015](0015-multicore-scalability.md) | Multi-core scalability audit: every serialisation point, and the order to remove them | Draft | Prospective |
+| [0016](0016-rust-zig-bindings.md) | Rust and Zig language bindings: idiomatic, zero-copy-capable API shims over the C library, with native-format docs and tests | Draft | Prospective |
+| [0017](0017-hash-concurrency-online-resize.md) | HASH concurrency and online resize: take the metapage lock only when the cached bucket mapping may be stale (format-compatible), and make bucket splits non-fencing (opt-in, new format); complements RFC 0004 (page structure) | Draft | Prospective |
 
 <!-- Add a row per RFC. Keep the number 4-digit zero-padded and monotonic. -->
 

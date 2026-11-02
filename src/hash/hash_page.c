@@ -2171,7 +2171,7 @@ __ham_split_page(dbc, obucket, nbucket)
 	DB *dbp;
 	DBC **carray, *tmp_dbc;
 	DBT key, page_dbt;
-	DB_LOCK block;
+	DB_LOCK block, nblock;
 	DB_LSN new_lsn;
 	DB_MPOOLFILE *mpf;
 	ENV *env;
@@ -2191,6 +2191,7 @@ __ham_split_page(dbc, obucket, nbucket)
 	temp_pagep = old_pagep = new_pagep = NULL;
 	npgno = PGNO_INVALID;
 	LOCK_INIT(block);
+	LOCK_INIT(nblock);
 
 	bucket_pgno = BUCKET_TO_PAGE(hcp, obucket);
 	if ((ret = __db_lget(dbc,
@@ -2205,8 +2206,16 @@ __ham_split_page(dbc, obucket, nbucket)
 		if ((ret = __ham_sort_page_cursor(dbc, old_pagep)) != 0)
 			return (ret);
 
-	/* Properly initialize the new bucket page. */
+	/*
+	 * Properly initialize the new bucket page.  RFC 0017: write-lock it
+	 * too.  The metapage WRITE lock used to be the only fence on the new
+	 * bucket; keyed operations no longer take that lock, so the bucket
+	 * lock is what keeps them out until this split commits or aborts.
+	 */
 	npgno = BUCKET_TO_PAGE(hcp, nbucket);
+	if (STD_LOCKING(dbc) && (ret = __db_lget(dbc,
+	    0, npgno, DB_LOCK_WRITE, 0, &nblock)) != 0)
+		goto err;
 	if ((ret = __memp_fget(mpf, &npgno, dbc->thread_info, dbc->txn,
 	    DB_MPOOL_CREATE | DB_MPOOL_DIRTY, &new_pagep)) != 0)
 		goto err;
@@ -2448,6 +2457,8 @@ err:		if (old_pagep != NULL)
 			    dbc->thread_info, temp_pagep, dbc->priority);
 	}
 	if ((t_ret = __TLPUT(dbc, block)) != 0 && ret == 0)
+		ret = t_ret;
+	if ((t_ret = __TLPUT(dbc, nblock)) != 0 && ret == 0)
 		ret = t_ret;
 	if (carray != NULL)		/* We never knew its size. */
 		__os_free(env, carray);

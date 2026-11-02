@@ -5,7 +5,10 @@
 # each shares bdb_bench.h for the safety-feature toggle framework.
 BDB ?= ../../build_unix
 CFLAGS ?= -O2 -pthread
-INCLUDES = -I$(BDB)
+# -I$(BDB) for the installed db.h; the second for the header-only
+# db_quickselect.h shared with the engine's percentile reporter.
+INCLUDES = -I$(BDB) -I$(srcdir)/../../src/dbinc
+srcdir ?= .
 # Link the build tree's shared object BY PATH, discovered from the tree itself.
 #
 # This used to read "-L$(BDB)/.libs -ldb-5.3".  That spelled the library's
@@ -34,7 +37,7 @@ $(error $(words $(BDB_SO)) candidate libraries in $(BDB)/.libs ($(BDB_SO)) -- \
 endif
 
 BENCHES = scale_bench scale_iso tproc_c tproc_b tproc_h lock_bench ssi_abort_bench \
-	  commit_bench fsync_probe
+	  commit_bench fsync_probe hash_conc_bench
 
 all: $(BENCHES)
 
@@ -61,7 +64,11 @@ commit_bench: commit_bench.c
 	$(CC) $(CFLAGS) $(INCLUDES) commit_bench.c $(LIBS) -o $@
 
 fsync_probe: fsync_probe.c
-	$(CC) $(CFLAGS) fsync_probe.c -o $@
+	$(CC) $(CFLAGS) -I$(srcdir)/../../src/dbinc fsync_probe.c -o $@
+
+# hash_conc_bench: RFC 0017 change-1 concurrency benchmark.
+hash_conc_bench: hash_conc_bench.c
+	$(CC) $(CFLAGS) $(INCLUDES) hash_conc_bench.c $(LIBS) -o $@
 
 # -lm: the Zipfian generator uses pow().  glibc's libm is not linked by default
 # on GCC/Linux, and the undefined `pow` broke the harness-smoke job.

@@ -11,6 +11,7 @@
 #include "db_int.h"
 #include "dbinc/log.h"
 #include "dbinc/log_handoff_trace.h"
+#include "dbinc/db_quickselect.h"
 
 #ifdef HAVE_HANDOFF_TRACE
 
@@ -139,6 +140,7 @@ hoff_pct(tag, v, n, out)
 	u_int32_t *c;
 	double mean;
 	u_int32_t i;
+	size_t ks[5];
 
 	if (n == 0) {
 		fprintf(out, "%s n=0\n", tag);
@@ -147,14 +149,26 @@ hoff_pct(tag, v, n, out)
 	if ((c = malloc(n * sizeof(*c))) == NULL)
 		return;
 	memcpy(c, v, n * sizeof(*c));
-	qsort(c, n, sizeof(*c), hoff_cmp);
+	/* The mean is order-independent; sum before we disturb the array. */
 	for (mean = 0, i = 0; i < n; i++)
 		mean += c[i];
+	/*
+	 * Only five order statistics are reported, so place exactly those
+	 * with quickselect instead of a full qsort.  db_quickselect leaves
+	 * each c[ks[j]] holding the same element qsort would, so the output
+	 * is identical (proved by test/c/quickselect_equiv.c).  ks ascending.
+	 */
+	ks[0] = n * 50 / 100;
+	ks[1] = n * 90 / 100;
+	ks[2] = n * 99 / 100;
+	ks[3] = (size_t)((u_long)n * 999 / 1000);
+	ks[4] = n - 1;
+	db_quickselect(c, n, sizeof(*c), hoff_cmp, ks, 5);
 	fprintf(out,
     "%s n=%lu mean=%.2f p50=%lu p90=%lu p99=%lu p999=%lu max=%lu\n",
-	    tag, (u_long)n, mean / n, (u_long)c[n * 50 / 100],
-	    (u_long)c[n * 90 / 100], (u_long)c[n * 99 / 100],
-	    (u_long)c[(u_long)n * 999 / 1000], (u_long)c[n - 1]);
+	    tag, (u_long)n, mean / n, (u_long)c[ks[0]],
+	    (u_long)c[ks[1]], (u_long)c[ks[2]],
+	    (u_long)c[ks[3]], (u_long)c[ks[4]]);
 	free(c);
 }
 

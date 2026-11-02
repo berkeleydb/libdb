@@ -47,6 +47,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "db.h"
+#include "db_quickselect.h"
 
 /*
  * Weak: defined only by a library built --enable-handoff-trace.  Declaring it
@@ -248,6 +249,7 @@ static void
 phase(const char *tag, size_t off, unsigned long nall)
 {
 	unsigned long *v, i, j;
+	size_t ks[5];
 
 	if (nall == 0 || (v = malloc(nall * sizeof(*v))) == NULL)
 		return;
@@ -256,10 +258,19 @@ phase(const char *tag, size_t off, unsigned long nall)
 		    ts[i].nlat * sizeof(*v));
 		j += ts[i].nlat;
 	}
-	qsort(v, nall, sizeof(*v), cmpul);
+	/*
+	 * Only five order statistics are printed, so place exactly those with
+	 * quickselect instead of a full qsort -- byte-identical output, proved
+	 * by test/c/quickselect_equiv.c.  ks must be ascending.
+	 */
+	ks[0] = nall * 50 / 100;
+	ks[1] = nall * 90 / 100;
+	ks[2] = nall * 99 / 100;
+	ks[3] = nall * 999 / 1000;
+	ks[4] = nall - 1;
+	db_quickselect(v, nall, sizeof(*v), cmpul, ks, 5);
 	printf("%s_us p50=%lu p90=%lu p99=%lu p999=%lu max=%lu\n", tag,
-	    v[nall * 50 / 100], v[nall * 90 / 100], v[nall * 99 / 100],
-	    v[nall * 999 / 1000], v[nall - 1]);
+	    v[ks[0]], v[ks[1]], v[ks[2]], v[ks[3]], v[ks[4]]);
 	free(v);
 }
 
@@ -386,7 +397,14 @@ main(int argc, char **argv)
 		    ts[i].nlat * sizeof(unsigned long));
 		j += ts[i].nlat;
 	}
-	qsort(all, nall, sizeof(unsigned long), cmpul);
+	/* Only p50/p99/p999 are printed: place exactly those (ascending). */
+	if (nall > 0) {
+		size_t qk[3];
+		qk[0] = nall * 50 / 100;
+		qk[1] = nall * 99 / 100;
+		qk[2] = (nall * 999) / 1000;
+		db_quickselect(all, nall, sizeof(unsigned long), cmpul, qk, 3);
+	}
 
 	printf("mode=%s threads=%d secs=%.2f commits=%lu ops_sec=%.0f "
 	    "flushes=%ju flush_per_commit=%.4f maxcpf=%lu mincpf=%lu "

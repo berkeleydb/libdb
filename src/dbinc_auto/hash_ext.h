@@ -50,6 +50,8 @@ u_int32_t __ham_func3 __P((DB *, const void *, u_int32_t));
 u_int32_t __ham_func4 __P((DB *, const void *, u_int32_t));
 u_int32_t __ham_func5 __P((DB *, const void *, u_int32_t));
 u_int32_t __ham_test __P((DB *, const void *, u_int32_t));
+int __ham_get_meta_fast __P((DBC *, const DBT *, db_lockmode_t));
+int __ham_fast_lock __P((DBC *, const DBT *, db_lockmode_t));
 int __ham_get_meta __P((DBC *));
 int __ham_release_meta __P((DBC *));
 int __ham_dirty_meta __P((DBC *, u_int32_t));
