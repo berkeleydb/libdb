@@ -28,7 +28,8 @@ sim_inc = include_directories('.')
 
 # The three pilot scenarios.  They link the shared libdb (built with the DST
 # core when -Ddst is set) and the DST include dir.
-foreach t : ['test_sim_rng', 'test_sim_crash_recover', 'test_sim_torn']
+foreach t : ['test_sim_rng', 'test_sim_crash_recover', 'test_sim_torn',
+             'test_sim_gc_ordering', 'test_sim_gc_mixed', 'test_sim_gc_fault']
   exe = executable(t, t + '.c',
     include_directories : [sim_inc, libdb_inc],
     link_with : libdb_shared,

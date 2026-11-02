@@ -1,0 +1,2 @@
+fdatasync n=500 p50_us=2797.5 p90_us=2832.9 p99_us=2907.1 min_us=2682.1 max_us=2932.9 -> max_serial_rate=357/s
+fsync     n=500 p50_us=2800.0 p90_us=2841.2 p99_us=2908.3 min_us=2683.1 max_us=2958.0 -> max_serial_rate=357/s

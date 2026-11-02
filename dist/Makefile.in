@@ -1770,6 +1770,27 @@ test_sim_group_commit: test_sim_group_commit@o@ $(DEF_LIB)
 	    $(LDFLAGS) test_sim_group_commit@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
 	$(POSTLINK) $@
 
+test_sim_gc_ordering@o@: $(testdir)/sim/test_sim_gc_ordering.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $(testdir)/sim/test_sim_gc_ordering.c
+test_sim_gc_ordering: test_sim_gc_ordering@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_gc_ordering@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_gc_mixed@o@: $(testdir)/sim/test_sim_gc_mixed.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $(testdir)/sim/test_sim_gc_mixed.c
+test_sim_gc_mixed: test_sim_gc_mixed@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_gc_mixed@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
+test_sim_gc_fault@o@: $(testdir)/sim/test_sim_gc_fault.c
+	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $(testdir)/sim/test_sim_gc_fault.c
+test_sim_gc_fault: test_sim_gc_fault@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ \
+	    $(LDFLAGS) test_sim_gc_fault@o@ $(DEF_LIB) $(TEST_LIBS) $(LIBS)
+	$(POSTLINK) $@
+
 test_sim_torn_log@o@: $(testdir)/sim/test_sim_torn_log.c
 	$(CC) $(DST_CFLAGS) $(DEPFLAGS) $(testdir)/sim/test_sim_torn_log.c
 test_sim_torn_log: test_sim_torn_log@o@ $(DEF_LIB)
@@ -2055,7 +2076,8 @@ dst_tests: test_sim_rng test_sim_crash_recover test_sim_torn \
 	test_sim_recovery_redo_crash test_sim_recovery_ckp_crash \
 	test_sim_buggify \
 	test_sim_clockskew_timeout test_sim_clockskew_ckp \
-	test_sim_clockskew_backward test_sim_group_commit
+	test_sim_clockskew_backward test_sim_group_commit \
+	test_sim_gc_ordering test_sim_gc_mixed test_sim_gc_fault
 
 ##################################################
 # Malloc-failure injection (SQLite-style) -- test/faultinject/.

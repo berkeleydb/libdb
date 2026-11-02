@@ -1,0 +1,6 @@
+    96.96%  cb_master  libdb-2026.0.so    [.] __db_tas_mutex_lock_int
+            |          
+             --96.92%--__db_tas_mutex_lock_int
+                       |          
+                       |--32.44%--__log_put
+                       |          __log_put_record_int
