@@ -812,7 +812,7 @@ TEST_MICRO_OBJS=\
 UTIL_PROGS=\
 	@ADDITIONAL_PROGS@ \
 	db_archive db_checkpoint db_deadlock db_dump \
-	db_hotbackup db_load db_log_verify db_printlog db_recover \
+	db_hotbackup db_keytool db_load db_log_verify db_printlog db_recover \
 	db_replicate db_stat db_tuner db_upgrade db_verify
 
 ##################################################
@@ -1074,6 +1074,11 @@ db_dump185: db_dump185@o@ @REPLACEMENT_OBJS@
 db_hotbackup: db_hotbackup@o@ util_sig@o@ $(DEF_LIB)
 	$(CCLINK) -o $@ $(LDFLAGS) \
 	    db_hotbackup@o@ util_sig@o@ $(DEF_LIB) $(LIBS)
+	$(POSTLINK) $@
+
+db_keytool: db_keytool@o@ util_sig@o@ $(DEF_LIB)
+	$(CCLINK) -o $@ $(LDFLAGS) \
+	    db_keytool@o@ util_sig@o@ $(DEF_LIB) $(LIBS)
 	$(POSTLINK) $@
 
 db_load: db_load@o@ util_cache@o@ util_sig@o@ $(DEF_LIB)
@@ -2967,6 +2972,8 @@ partition@o@: $(srcdir)/db/partition.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/db/partition.c
 provider@o@: $(srcdir)/crypto/provider.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/crypto/provider.c
+provider_tpm@o@: $(srcdir)/crypto/provider_tpm.c
+	 $(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/crypto/provider_tpm.c
 qam@o@: $(srcdir)/qam/qam.c
 	 $(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/qam/qam.c
 qam_auto@o@: $(srcdir)/qam/qam_auto.c
@@ -3203,6 +3210,8 @@ db_dump185@o@: $(utildir)/db_dump185.c
 	$(CC) $(DB185INC) $?
 db_hotbackup@o@: $(utildir)/db_hotbackup.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $(utildir)/db_hotbackup.c
+db_keytool@o@: $(utildir)/db_keytool.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(utildir)/db_keytool.c
 db_load@o@: $(utildir)/db_load.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $(utildir)/db_load.c
 db_printlog@o@: $(utildir)/db_printlog.c

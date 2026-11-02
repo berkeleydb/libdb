@@ -175,6 +175,16 @@ if get_option('dtrace').enabled()
         'use dist/configure --enable-dtrace')
 endif
 
+# RFC 0019 TPM 2.0 key provider.  src/crypto/provider_tpm.c is in the source
+# list and whole-file guarded on HAVE_TPM (the os_aio_uring.c pattern).
+tpm_deps = []
+if get_option('tpm').enabled()
+  tss2_esys = dependency('tss2-esys', required: true)
+  tss2_mu = dependency('tss2-mu', required: true)
+  cdata.set('HAVE_TPM', 1)
+  tpm_deps = [tss2_esys, tss2_mu]
+endif
+
 # POSIX aio: aio_read may be in libc, librt or libaio.
 aio_dep = dependency('', required: false)
 if cc.has_header('aio.h')
@@ -435,6 +445,7 @@ libdb_srcnames = [
   'src/crypto/rijndael/rijndael-api-fst.c',
   'src/crypto/mersenne/mt19937db.c',
   'src/crypto/provider.c',
+  'src/crypto/provider_tpm.c',
   'src/db/crdel_auto.c',
   'src/db/crdel_autop.c',
   'src/db/crdel_rec.c',
@@ -706,7 +717,7 @@ endforeach
 
 libdb = library('db', libdb_sources, clib_sources, db_h, db_int_h, db_int_def_h, clib_port_h,
   include_directories: inc,
-  dependencies: [thread_dep, uring_dep, aio_dep],
+  dependencies: [thread_dep, uring_dep, aio_dep] + tpm_deps,
   gnu_symbol_visibility: 'default',
   install: true)
 
