@@ -105,7 +105,8 @@ static int	cyc_secs = 2;
 static int	cyc_keys = 64;
 static int	cyc_rset = 4;
 static int	cyc_wset = 2;
-static int	cyc_pagesize = 0;
+static int	cyc_pagesize = 4096;
+static int	cyc_valpad = 1000;
 static int	cyc_procs = 0;
 static long	cyc_maxtxn = 400000;
 static int	cyc_verbose = 0;
@@ -137,6 +138,7 @@ typedef struct {
 
 typedef struct {
 	uint64_t commit_seq;		/* this txn's version stamp */
+	uint64_t begin_seq;		/* snapshot order: counter at txn_begin */
 	int	nread, nwrite;
 	cyc_op	reads[CYC_MAXOPS];
 	cyc_op	writes[CYC_MAXOPS];
@@ -149,6 +151,7 @@ typedef struct {
  */
 typedef struct {
 	atomic_ullong	commit_seq;	/* next stamp; 0 reserved for load */
+	atomic_ullong	begin_seq;	/* snapshot-order counter */
 	atomic_long	ntxn;		/* committed txns recorded */
 	long		cap;		/* capacity of txns[] */
 	pthread_mutex_t	lock;		/* guards the append */
@@ -171,6 +174,7 @@ cyc_log_init(cyc_log *l, long cap, int shared)
 	pthread_mutexattr_t a;
 
 	atomic_store(&l->commit_seq, 1);	/* 0 = initial load */
+	atomic_store(&l->begin_seq, 1);
 	atomic_store(&l->ntxn, 0);
 	l->cap = cap;
 	(void)pthread_mutexattr_init(&a);
@@ -186,7 +190,7 @@ cyc_read(DB_TXN *txn, int key, uint64_t *stamp)
 {
 	DBT k, d;
 	char kb[16];
-	uint64_t v;
+	static __thread char rbuf[8192];
 	int rc;
 
 	(void)snprintf(kb, sizeof(kb), "k%08d", key);
@@ -194,12 +198,14 @@ cyc_read(DB_TXN *txn, int key, uint64_t *stamp)
 	memset(&d, 0, sizeof(d));
 	k.data = kb;
 	k.size = (u_int32_t)strlen(kb);
-	d.data = &v;
-	d.ulen = sizeof(v);
+	d.data = rbuf;
+	d.ulen = sizeof(rbuf);
 	d.flags = DB_DBT_USERMEM;
 	if ((rc = db->get(db, txn, &k, &d, 0)) != 0)
 		return (rc);
-	*stamp = v;
+	if (d.size < sizeof(uint64_t))
+		return (EINVAL);
+	memcpy(stamp, rbuf, sizeof(uint64_t));	/* leading 8 bytes = stamp */
 	return (0);
 }
 
@@ -208,14 +214,35 @@ cyc_write(DB_TXN *txn, int key, uint64_t stamp)
 {
 	DBT k, d;
 	char kb[16];
+	/*
+	 * The value is the 8-byte stamp followed by padding.  The padding
+	 * exists only to control records-per-leaf: SSI tracks rw-conflicts at
+	 * PAGE granularity, so for the workload to generate a write skew that
+	 * COMMITS under plain SI (the anti-vacuity requirement), the read key
+	 * and the write key of two conflicting txns must sit on DIFFERENT leaf
+	 * pages -- otherwise they collide on the page write lock and the
+	 * deadlock detector serialises them (ordinary 2PL, not an SI anomaly).
+	 * A ~1 KB value at a 4 KB page gives ~3 records/leaf, so numerically
+	 * spread keys land on different leaves.  Smaller values => more
+	 * records/leaf => more false page sharing (see SSI-FALSE-ABORT).
+	 *
+	 * THREAD-LOCAL: the buffer backs the DBT passed to db->put, so a shared
+	 * static would be raced by concurrent writers and corrupt the stored
+	 * stamp (a reader would then see a value no txn wrote -- an orphan tag).
+	 */
+	static __thread char buf[8192];
+	int vlen;
 
+	vlen = cyc_valpad + (int)sizeof(stamp);
+	if (vlen > (int)sizeof(buf)) vlen = (int)sizeof(buf);
+	memcpy(buf, &stamp, sizeof(stamp));
 	(void)snprintf(kb, sizeof(kb), "k%08d", key);
 	memset(&k, 0, sizeof(k));
 	memset(&d, 0, sizeof(d));
 	k.data = kb;
 	k.size = (u_int32_t)strlen(kb);
-	d.data = &stamp;
-	d.size = sizeof(stamp);
+	d.data = buf;
+	d.size = (u_int32_t)vlen;
 	return (db->put(db, txn, &k, &d, 0));
 }
 
@@ -240,11 +267,14 @@ struct worker_arg {
 	volatile atomic_int *stop;
 };
 
-/* A globally-unique per-write tag: identifies the producing txn precisely. */
+/* A globally-unique per-write tag: identifies the producing txn precisely.
+ * worker+1 (never 0) in the high bits keeps every tag >= 1<<40, so a tag never
+ * collides with the initial-load sentinel (0) or with the small commit_seq
+ * space -- a stored stamp is unambiguously "load" or "this exact writer". */
 static uint64_t
 cyc_make_tag(int worker, uint64_t local)
 {
-	return (((uint64_t)worker << 40) | (local & 0xffffffffffULL));
+	return (((uint64_t)(worker + 1) << 40) | (local & 0xffffffffffULL));
 }
 
 static void *
@@ -259,6 +289,8 @@ cyc_worker(void *vp)
 	long slot;
 
 	while (!atomic_load(wa->stop)) {
+		int wkeys[CYC_MAXOPS], rkeys[CYC_MAXOPS], j, dup;
+
 		memset(&rec, 0, sizeof(rec));
 		nr = 1 + (int)(rand_r(&seed) % (unsigned)cyc_rset);
 		nw = 1 + (int)(rand_r(&seed) % (unsigned)cyc_wset);
@@ -266,15 +298,52 @@ cyc_worker(void *vp)
 		if (nw > CYC_MAXOPS) nw = CYC_MAXOPS;
 		tag = cyc_make_tag(wa->id, ++local);
 
+		/*
+		 * Pick the write keys first, then read keys DISJOINT from them.
+		 * Write skew -- the canonical SI anomaly SSI must prevent -- is
+		 * exactly "T writes only what other txns merely READ": if a txn's
+		 * read set and write set overlapped, a reader-then-writer of the
+		 * same key would collide on the page WRITE lock and the deadlock
+		 * detector would serialise it (an ordinary 2PL outcome, not an SI
+		 * anomaly), and no rw-rw cycle would form.  Keeping R and W
+		 * disjoint is what lets plain SI admit the cycle the anti-vacuity
+		 * run needs -- and what makes the SSI run a real test.
+		 */
+		for (i = 0; i < nw; i++) {
+			do {
+				wkeys[i] = (int)(rand_r(&seed) %
+				    (unsigned)cyc_keys);
+				for (dup = 0, j = 0; j < i; j++)
+					if (wkeys[j] == wkeys[i]) dup = 1;
+			} while (dup);
+		}
+		for (i = 0; i < nr; i++) {
+			int tries = 0;
+			do {
+				rkeys[i] = (int)(rand_r(&seed) %
+				    (unsigned)cyc_keys);
+				for (dup = 0, j = 0; j < nw; j++)
+					if (wkeys[j] == rkeys[i]) dup = 1;
+				for (j = 0; j < i; j++)
+					if (rkeys[j] == rkeys[i]) dup = 1;
+			} while (dup && ++tries < 50);
+			if (dup) { nr = i; break; } /* key space too small */
+		}
+
 		if ((rc = env->txn_begin(env, NULL, &txn, iso_level)) != 0) {
 			/* Region pressure etc.: back off, retry. */
 			if (rc == ENOMEM || rc == EAGAIN) { sched_yield(); continue; }
 			iso_die("txn_begin", rc);
 		}
+		/* Snapshot order: a monotonic counter read right after begin.
+		 * Lets the checker confirm two txns in a reported cycle actually
+		 * overlapped ([begin,commit] intervals intersect) -- a real
+		 * concurrent anomaly, not sequential txns mislabelled. */
+		rec.begin_seq = atomic_fetch_add(&g_log->begin_seq, 1);
 		op_rc = 0;
 		/* Reads first (SSI's rw edges come from read-before-write). */
 		for (i = 0; i < nr && op_rc == 0; i++) {
-			k = (int)(rand_r(&seed) % (unsigned)cyc_keys);
+			k = rkeys[i];
 			rc = cyc_read(txn, k, &rec.reads[rec.nread].stamp);
 			if (rc == 0) {
 				rec.reads[rec.nread].key = k;
@@ -288,7 +357,7 @@ cyc_worker(void *vp)
 				iso_die("read", rc);
 		}
 		for (i = 0; i < nw && op_rc == 0; i++) {
-			k = (int)(rand_r(&seed) % (unsigned)cyc_keys);
+			k = wkeys[i];
 			rc = cyc_write(txn, k, tag);
 			if (rc == 0) {
 				rec.writes[rec.nwrite].key = k;
@@ -306,18 +375,38 @@ cyc_worker(void *vp)
 			(void)txn->abort(txn);
 			continue;
 		}
+		/*
+		 * Commit UNDER the log lock and assign the commit-seq in the same
+		 * critical section.  This is essential for the oracle's
+		 * correctness: the per-key version order the checker uses is
+		 * commit_seq order, so commit_seq MUST be a faithful witness of
+		 * the order in which writes became durable/visible.  If the seq
+		 * were assigned after commit() returned (outside the lock), two
+		 * threads could commit in one order yet grab seqs in the other,
+		 * inverting a key's version order and manufacturing a FALSE cycle.
+		 * Holding the lock across commit()+fetch_add makes the two orders
+		 * identical.  It serialises only the brief commit-record write;
+		 * begins, reads, writes and SSI conflict detection all still run
+		 * concurrently, so the schedule under test stays genuinely
+		 * concurrent.
+		 */
+		pthread_mutex_lock(&g_log->lock);
 		rc = txn->commit(txn, 0);
+		if (rc == 0) {
+			rec.commit_seq =
+			    atomic_fetch_add(&g_log->commit_seq, 1);
+			slot = atomic_fetch_add(&g_log->ntxn, 1);
+		} else
+			slot = -1;
+		pthread_mutex_unlock(&g_log->lock);
 		if (rc != 0) {
 			if (rc != DB_SNAPSHOT_CONFLICT &&
 			    rc != DB_SNAPSHOT_UNSAFE &&
 			    rc != DB_LOCK_DEADLOCK &&
 			    rc != DB_LOCK_NOTGRANTED)
 				iso_die("commit", rc);
-			continue;		/* aborted at commit: not recorded */
+			continue;	/* aborted at commit: not recorded */
 		}
-		/* Committed: reserve a global commit-seq and record. */
-		rec.commit_seq = atomic_fetch_add(&g_log->commit_seq, 1);
-		slot = atomic_fetch_add(&g_log->ntxn, 1);
 		if (slot >= g_log->cap) {
 			atomic_store(wa->stop, 1);	/* log full: stop */
 			break;
@@ -337,13 +426,6 @@ cyc_worker(void *vp)
  * A reader of version with tag T on key K is rw-antidependent on every writer
  * of K whose commit_seq > (producer of T)'s commit_seq.
  */
-struct edgeset {
-	int	*succ;			/* adjacency, flat */
-	int	*off;			/* per-node offset into succ */
-	int	*deg;
-	int	 n;
-};
-
 /* tag -> txn index, linear (ntxn is bounded, tags unique). Build a hash. */
 struct tagmap {
 	uint64_t *tags;
@@ -389,7 +471,10 @@ tm_get(const struct tagmap *tm, uint64_t t)
  * reconstruct it from the gray path held in `path`.  Returns 1 and fills
  * `cyc' (length *cyclen) if a cycle exists.
  */
-struct edge { int s, d; };
+struct edge { int s, d; int kind; int key; };
+#define	EK_WW	0
+#define	EK_WR	1
+#define	EK_RW	2
 
 static int edge_cmp(const void *a, const void *b)
 {
@@ -458,7 +543,8 @@ cyc_check(long n, const char *label)
 {
 	struct tagmap tm;
 	struct edge *E = NULL;
-	int *start = NULL, *stack = NULL, *color = NULL, *cyc = NULL;
+	int *start = NULL, *stack = NULL, *cyc = NULL;
+	char *color = NULL;
 	long i;
 	int cap, cyclen, j, serializable = 1, m = 0, mmax;
 
@@ -520,13 +606,15 @@ cyc_check(long n, const char *label)
 		mmax = (int)(n * (CYC_MAXOPS * 4 + 4)) + 16;
 		E = malloc((size_t)mmax * sizeof(struct edge));
 
-#define	ADD_EDGE(S,D) do { if ((S) != (D) && m < mmax) { \
-	E[m].s = (S); E[m].d = (D); m++; } } while (0)
+#define	ADD_EDGE(S,D,K,KEY) do { if ((S) != (D) && m < mmax) { \
+	E[m].s = (S); E[m].d = (D); E[m].kind = (K); E[m].key = (KEY); m++; } \
+	} while (0)
 
 		/* ww edges: consecutive writers of a key. */
 		for (j = 0; j < cyc_keys; j++)
 			for (i = 1; i < wn[j]; i++)
-				ADD_EDGE(wl[j][i-1].txn, wl[j][i].txn);
+				ADD_EDGE(wl[j][i-1].txn, wl[j][i].txn,
+				    EK_WW, j);
 
 		/* wr and rw edges, from each txn's reads. */
 		for (i = 0; i < n; i++) {
@@ -541,7 +629,7 @@ cyc_check(long n, const char *label)
 				/* wr edge producer -> reader. */
 				if (producer >= 0) {
 					pseq = g_log->txns[producer].commit_seq;
-					ADD_EDGE(producer, (int)i);
+					ADD_EDGE(producer, (int)i, EK_WR, key);
 				}
 				/*
 				 * rw edge: reader -> every writer of this key
@@ -555,7 +643,8 @@ cyc_check(long n, const char *label)
 						continue;
 					if (producer < 0 ||
 					    wl[key][w].seq > pseq)
-						ADD_EDGE((int)i, wl[key][w].txn);
+						ADD_EDGE((int)i, wl[key][w].txn,
+						    EK_RW, key);
 				}
 			}
 		}
@@ -587,10 +676,72 @@ cyc_check(long n, const char *label)
 			    label, cyclen);
 			for (j = 0; j < cyclen; j++) {
 				cyc_txn *t = &g_log->txns[cyc[j]];
-				printf("      txn#%d seq=%llu r=%d w=%d\n",
+				int nx = cyc[(j + 1) % cyclen];
+				int e, ek = -1, ekey = -1;
+				const char *ks;
+				/* Find an edge cyc[j] -> next and name it. */
+				for (e = start[cyc[j]];
+				    e < m && E[e].s == cyc[j]; e++)
+					if (E[e].d == nx) {
+						ek = E[e].kind;
+						ekey = E[e].key;
+						break;
+					}
+				ks = ek == EK_WW ? "ww" : ek == EK_WR ? "wr" :
+				    ek == EK_RW ? "rw" : "?";
+				printf("      txn#%d begin=%llu commit=%llu "
+				    "r=%d w=%d "
+				    "--%s(key %d)--> txn#%d\n",
 				    cyc[j],
+				    (unsigned long long)t->begin_seq,
 				    (unsigned long long)t->commit_seq,
-				    t->nread, t->nwrite);
+				    t->nread, t->nwrite, ks, ekey, nx);
+				{
+					int q;
+					for (q = 0; q < t->nread; q++) {
+						int pr = tm_get(&tm,
+						    t->reads[q].stamp);
+						printf("          read key %d "
+						    "<- tag %llu (producer "
+						    "txn#%d seq=%llu)\n",
+						    t->reads[q].key,
+						    (unsigned long long)
+						    t->reads[q].stamp, pr,
+						    pr >= 0 ?
+						    (unsigned long long)
+						    g_log->txns[pr].commit_seq
+						    : 0ULL);
+						/* Orphan diagnostic: a real
+						 * tag that tm_get missed. */
+						if (pr < 0 &&
+						    t->reads[q].stamp != 0) {
+							long z; int found = -1;
+							for (z = 0; z < n; z++) {
+							    int w2;
+							    cyc_txn *tz =
+								&g_log->txns[z];
+							    for (w2 = 0; w2 <
+								tz->nwrite; w2++)
+								if (tz->writes[w2].stamp
+								    == t->reads[q].stamp)
+								    found = (int)z;
+							}
+							printf("          "
+							    "** ORPHAN TAG %llu:"
+							    " linear scan found"
+							    " producer txn#%d\n",
+							    (unsigned long long)
+							    t->reads[q].stamp,
+							    found);
+						}
+					}
+					for (q = 0; q < t->nwrite; q++)
+						printf("          write key %d "
+						    "= tag %llu\n",
+						    t->writes[q].key,
+						    (unsigned long long)
+						    t->writes[q].stamp);
+				}
 			}
 		}
 		free(it); free(pos);
@@ -684,6 +835,7 @@ run_seed(unsigned seed, int *found_cycle_out)
 
 	atomic_store(&g_log->ntxn, 0);
 	atomic_store(&g_log->commit_seq, 1);
+	atomic_store(&g_log->begin_seq, 1);
 
 	cyc_env_open(DB_CREATE);
 	cyc_load();
@@ -758,6 +910,117 @@ geti(const char *name, int dflt)
 	return (s != NULL && *s != '\0') ? atoi(s) : dflt;
 }
 
+/*
+ * cyc_selfcheck --
+ *	Prove the oracle has TEETH, independent of concurrency.  Run the
+ *	deterministic two-transaction write skew single-threaded, exactly as
+ *	test_iso_anomaly does (disjoint one-page databases are not needed here --
+ *	two keys, read-the-other-write-your-own):
+ *	  T1: read B, write A      T2: read A, write B
+ *	Both take their snapshot before either writes.  Under plain SI both
+ *	commit -- a write skew -- and the DSG MUST contain the rw-rw cycle
+ *	T1 ->(rw on B) T2 ->(rw on A) T1, so the checker reports NON-serializable.
+ *	Under SSI one of the two is aborted with DB_SNAPSHOT_CONFLICT, so only one
+ *	commits and the graph is trivially acyclic.
+ *
+ *	Returns 0 if the oracle behaved as required at the chosen level, 1 if not.
+ *	This is the anti-vacuity floor: if the random workload never manages to
+ *	make two txns overlap, at least this proves the checker can SEE a skew.
+ */
+static int
+cyc_selfcheck(void)
+{
+	DB_TXN *t1, *t2;
+	uint64_t tag1, tag2, sa, sb;
+	int rc, rc1 = 0, rc2 = 0, serializable, ka, kb, i;
+
+	/*
+	 * Two keys far enough apart to be on different leaf pages (SSI tracks
+	 * at page granularity; same-page keys would collide on the write lock
+	 * and deadlock instead of committing a skew).  Load the whole key space
+	 * so there are intervening leaves.
+	 */
+	ka = 0;
+	kb = cyc_keys > 2 ? cyc_keys / 2 : 1;
+
+	atomic_store(&g_log->ntxn, 0);
+	atomic_store(&g_log->commit_seq, 1);
+	cyc_rmtree(cyc_home);
+	cyc_env_open(DB_CREATE);
+	for (i = 0; i < cyc_keys; i++)
+		if ((rc = cyc_write(NULL, i, 0)) != 0)
+			iso_die("selfcheck load", rc);
+
+	tag1 = cyc_make_tag(1, 1);
+	tag2 = cyc_make_tag(2, 1);
+	if ((rc = env->txn_begin(env, NULL, &t1, iso_level)) != 0 ||
+	    (rc = env->txn_begin(env, NULL, &t2, iso_level)) != 0)
+		iso_die("selfcheck begin", rc);
+
+	/* Both reads first (the other's write target). */
+	if ((rc = cyc_read(t1, kb, &sb)) != 0)	iso_die("t1 read B", rc);
+	if ((rc = cyc_read(t2, ka, &sa)) != 0)	iso_die("t2 read A", rc);
+
+	/*
+	 * BOTH write before EITHER commits (disjoint keys/pages, so no
+	 * ww-conflict), then both commit.  This is the true write-skew
+	 * interleaving: committing T1 fully before T2 even writes would leave
+	 * T2 with a snapshot now older than a committed version and BDB's MVCC
+	 * write path can refuse it -- not the anomaly we are demonstrating.
+	 */
+	rc1 = cyc_write(t1, ka, tag1);
+	rc2 = (rc1 == 0) ? cyc_write(t2, kb, tag2) : DB_LOCK_DEADLOCK;
+	if (rc1 == 0) rc1 = t1->commit(t1, 0); else (void)t1->abort(t1);
+	if (rc1 == 0) {
+		cyc_txn r; memset(&r, 0, sizeof(r));
+		r.reads[0].key = kb; r.reads[0].stamp = sb; r.nread = 1;
+		r.writes[0].key = ka; r.writes[0].stamp = tag1; r.nwrite = 1;
+		r.commit_seq = atomic_fetch_add(&g_log->commit_seq, 1);
+		g_log->txns[atomic_fetch_add(&g_log->ntxn, 1)] = r;
+	}
+	if (rc2 == 0) rc2 = t2->commit(t2, 0); else (void)t2->abort(t2);
+	if (rc2 == 0) {
+		cyc_txn r; memset(&r, 0, sizeof(r));
+		r.reads[0].key = ka; r.reads[0].stamp = sa; r.nread = 1;
+		r.writes[0].key = kb; r.writes[0].stamp = tag2; r.nwrite = 1;
+		r.commit_seq = atomic_fetch_add(&g_log->commit_seq, 1);
+		g_log->txns[atomic_fetch_add(&g_log->ntxn, 1)] = r;
+	}
+	cyc_env_close();
+	cyc_rmtree(cyc_home);
+
+	serializable = cyc_check(atomic_load(&g_log->ntxn),
+	    iso_level == DB_TXN_SERIALIZABLE ? "SSI-selfcheck" : "SI-selfcheck");
+
+	if (iso_level == DB_TXN_SNAPSHOT) {
+		/* Both must commit AND the checker must flag the cycle. */
+		if (rc1 == 0 && rc2 == 0 && !serializable) {
+			printf("PASS selfcheck(SI): both committed a write skew "
+			    "and the Adya checker flagged the rw-rw cycle -- "
+			    "the oracle has teeth.\n");
+			return (0);
+		}
+		printf("FAIL selfcheck(SI): rc1=%s rc2=%s checker=%s -- "
+		    "expected both-commit AND a detected cycle.\n",
+		    db_strerror(rc1), db_strerror(rc2),
+		    serializable ? "acyclic" : "cycle");
+		return (1);
+	} else {
+		/* Exactly one commits; graph acyclic. */
+		if (((rc1 == 0) ^ (rc2 == 0)) && serializable) {
+			printf("PASS selfcheck(SSI): SSI aborted one "
+			    "(rc1=%s rc2=%s) and the history is serializable.\n",
+			    db_strerror(rc1), db_strerror(rc2));
+			return (0);
+		}
+		printf("FAIL selfcheck(SSI): rc1=%s rc2=%s checker=%s -- "
+		    "expected exactly one commit AND acyclic.\n",
+		    db_strerror(rc1), db_strerror(rc2),
+		    serializable ? "acyclic" : "cycle");
+		return (1);
+	}
+}
+
 int
 main(void)
 {
@@ -779,6 +1042,7 @@ main(void)
 	cyc_rset = geti("CYC_RSET", cyc_rset);
 	cyc_wset = geti("CYC_WSET", cyc_wset);
 	cyc_pagesize = geti("CYC_PAGESIZE", cyc_pagesize);
+	cyc_valpad = geti("CYC_VALPAD", cyc_valpad);
 	cyc_procs = geti("CYC_PROCS", cyc_procs);
 	cyc_maxtxn = geti("CYC_MAXTXN", (int)cyc_maxtxn);
 	cyc_verbose = geti("CYC_VERBOSE", 0);
@@ -804,6 +1068,17 @@ main(void)
 	cyc_log_init(g_log, cap, cyc_procs > 0);
 
 	printf("%s\n", db_version(NULL, NULL, NULL));
+
+	/*
+	 * Self-check mode: prove the oracle has teeth on a deterministic planted
+	 * skew before (or instead of) trusting the random workload's anti-vacuity.
+	 */
+	if (geti("CYC_SELFCHECK", 0)) {
+		int rc = cyc_selfcheck();
+		(void)munmap(g_log, cyc_log_bytes(cap));
+		return (rc);
+	}
+
 	printf("test_ssi_cycle: level=%s am=%s seeds=%d %s=%d secs=%d keys=%d "
 	    "rset=%d wset=%d pagesize=%d maxtxn=%ld\n",
 	    iso_level == DB_TXN_SERIALIZABLE ? "SERIALIZABLE" : "SNAPSHOT",
