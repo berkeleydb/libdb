@@ -2212,6 +2212,9 @@ split:	ret = stack = 0;
 		if (key != NULL &&
 		    (ret = __bam_dup_alldeleted(dbc, key, &gone)) != 0)
 			goto err;
+#ifdef R2_REVIVE_SABOTAGE
+		gone = 0;	/* test teeth: disable the R2 redirect. */
+#endif
 		if (key != NULL && gone) {
 			iiop = DB_KEYFIRST;
 			break;
