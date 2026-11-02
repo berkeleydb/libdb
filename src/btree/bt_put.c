@@ -592,10 +592,11 @@ __bam_iitem(dbc, key, data, op, flags)
  * its stored key (the documented replace semantics), and so does a key item
  * shared by a set of on-page duplicates, which may be a live item's key.
  *
- * ponytail: a sorted on-page duplicate set whose members are ALL deleted and
- * pinned, revived through one member, keeps the old key bytes; replacing a
- * shared key means splitting it off the set (__bam_adjindx surgery).  Typed
- * databases refuse duplicates (RFC 0014 C12), so nothing relies on it yet.
+ * A duplicate set whose members are ALL deleted is handled earlier, in
+ * __bamc_put (R2): it redirects to a fresh insert before the DB_CURRENT put,
+ * so this routine never sees a dead shared-key set.  It still bails on a
+ * shared key here, because a set that reaches this point has a live member
+ * and that member's key must not move.
  */
 static int
 __bam_revive_chk(dbc, h, indx, key, revivep)
