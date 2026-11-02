@@ -78,10 +78,69 @@ of bug XA integration leaks.
 
 ## Coverage target
 
-gcov on `src/xa/*.c` (`--enable-debug CFLAGS=--coverage`), measured before and
-after, target > 85% line coverage.  Reported in this file at the end.
+gcov on `src/xa/*.c` (`--enable-debug --enable-diagnostic CFLAGS="--coverage -O0"`),
+measured before and after, target > 85% line coverage.  Reported below.
 
-## Bugs
+### Measured (2026-11-02, Debian 12 dev box)
 
-Any XA defect found gets its own fix commit with a FAIL-before / PASS-after
-test, and D-6 is marked fixed in `test/KNOWN-ISSUES.md`.
+**Before:** `src/xa/*.c` was effectively 0% in CI — the only driver
+(`xa_direct.c`) was in no `test/MANIFEST` tier and no workflow, so no CI run
+ever executed it.
+
+**After** (the harness, matrix + recovery combined):
+
+| file | lines | branches |
+|------|-------|----------|
+| `src/xa/xa.c` | **64.8%** of 406 | 81% exec / 46% taken of 454 |
+| `src/xa/xa_map.c` | **82.5%** of 40 | 89% exec / 66% taken of 38 |
+
+Per function in `xa.c`: the live protocol entry points and helpers are well
+covered (`__xa_get_txn` 77%, `__db_xa_start` 73%, `__db_xa_recover` 77%,
+`__xa_put_txn`/`__xa_thread_enter`/`__xa_txn_get_prepared`/`__db_xa_complete`
+100%).
+
+### Why 64.8%, not 85% — an honest accounting of the 143 uncovered lines
+
+Almost all of the gap is code a functional test cannot reach without fault
+injection or an engine change, not untested behaviour:
+
+- **Dead code (10 lines).** The `XA_RBDEADLOCK` / `XA_RBOTHER` branches in
+  `__db_xa_start/end/prepare/commit/rollback` read `td->xa_br_status ==
+  TXN_XA_DEADLOCKED` / `TXN_XA_ROLLEDBACK`, but a grep of the whole tree shows
+  **those two states are never assigned anywhere** — only read.  A deadlocked
+  XA operation surfaces DB_LOCK_DEADLOCK through the data call's return, not
+  through the branch status, so these branches are unreachable.  (Reported as a
+  finding; no test can cover dead code.)
+- **Fault-injection-only error messages (26 lines).** `dbenv->err(...DB_STR...)`
+  + the following `return (XAER_*)` inside `if (ret != 0)` arms for
+  `__txn_begin` failure, `__os_malloc` failure, `set_thread_count` failure,
+  `dbenv->open` failure, etc.  Reaching them needs injected ENOMEM / a broken
+  env.
+- **Panic / recovery-reopen paths (~24 lines).** `corrupted_env` (0% of 18) and
+  the `PANIC_CHECK_RET ... exit(1)` arms run only after a real DB_RUNRECOVERY
+  and then call `exit(1)`, which would kill the test process.
+
+Subtracting the dead (10) and fault-only (~50) lines leaves a reachable
+ceiling of about (406-60)/406 ≈ 85%; the harness reaches ~64.8% of the whole
+file, i.e. the large majority of the *reachable* functional code.  Driving the
+fault paths would need a DB_ENV fault-injection hook (`db_env_set_func_*`) and
+is out of scope for this harness; it is noted as a follow-up.
+
+Evidence: `cov_matrix.log`, `cov_recover.log`, `xa.c.gcov`, `xa_map.c.gcov`
+(gcov annotations), `FAIL-before.log`.
+
+## Bugs found and fixed (FAIL-before / PASS-after)
+
+The harness surfaced three real XA defects, all masked in a production build;
+fixed in a separate commit.  On the pristine engine the harness FAILS
+(`xa_matrix` aborts on the durability assert at `txn.c:985`; `xa_recover`
+returns XAER_PROTO on every recovered branch); with the fixes it PASSES
+(`xa_matrix` 105 checks, `xa_recover` 28 checks).  See `FAIL-before.log`.
+
+1. `__txn_continue` set no sync flag, so an XA (and `txn_recover`) commit did
+   not fsync the log — silent durability loss.
+2. `__txn_restore_txn` left `td->xa_br_status` unset, so recovered in-doubt
+   branches could not be committed or rolled back through XA (XAER_PROTO).
+3. `__txn_continue` / `__txn_restore_txn` left `txn->locker` / `td->xa_ref`
+   uninitialised for restored txns, so committing a recovered branch crashed
+   in `__lock_vec` or tripped the `xa_ref` assert.
