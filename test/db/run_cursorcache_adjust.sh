@@ -123,7 +123,8 @@ echo "Compiling cursorcache_adjust against the sabotaged library"
 # MALLOC_PERTURB_, which fills freed memory and usually turns the fault into a
 # crash.
 ASAN=""
-if "${CC:-cc}" -fsanitize=address -xc /dev/null -o "$SABDIR/.asan_probe" \
+if printf 'int main(void){return 0;}\n' | \
+    "${CC:-cc}" -fsanitize=address -xc - -o "$SABDIR/.asan_probe" \
     -lpthread >/dev/null 2>&1; then
 	ASAN="-fsanitize=address"
 	rm -f "$SABDIR/.asan_probe"
