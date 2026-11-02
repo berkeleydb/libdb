@@ -21,7 +21,7 @@ project('libdb', 'c',
   # historical archive.  This was the only licence metadata in the shipped
   # tree, so the wrong value here was what a packager would have read.
   license: 'Sleepycat',
-  meson_version: '>=0.56.0',
+  meson_version: '>=0.57.0',  # fs.read (dist/meson.build, rfc/0020)
   default_options: ['c_std=c99', 'warning_level=1'])
 
 cc = meson.get_compiler('c')

@@ -10,7 +10,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libsqlite
 
 # BDB_TOP will change with release numbers
-BDB_TOP := db-2026.0.9
+BDB_TOP := db-2026.1.0
 BDB_PATH := $(LOCAL_PATH)/$(BDB_TOP)/src
 
 # This directive results in arm (vs thumb) code.  It's necessary to

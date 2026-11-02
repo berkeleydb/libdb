@@ -2,7 +2,7 @@
 //! Idiomatic Zig bindings for libdb (the community Berkeley DB fork).
 //!
 //! Three layers, per RFC 0016:
-//!   * Layer 0 -- the C library (`db.h` + `libdb-2026.0.so`).
+//!   * Layer 0 -- the C library (`db.h` + `libdb-2026.1.so`).
 //!   * Layer 1 -- `shim.h`/`shim.c` flat method entry points + `consts.zig`
 //!                frozen constants + the mirrored `DBT`.
 //!   * Layer 2 -- this file: owning `Env`/`Db`/`Txn`/`Cursor`/`Sequence`,
