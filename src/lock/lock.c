@@ -1255,38 +1255,35 @@ again:	if (obj == NULL) {
 			if (lock_mode == DB_LOCK_WRITE &&
 			    sh_off == sireadlp->holder) {
 				/*
-				 * Upgrading our own SIREAD to WRITE: drop the
-				 * SIREAD marker to avoid self-conflicts.
+				 * Our own SIREAD marker on this object.  A
+				 * transaction never forms an rw-antidependency
+				 * with itself, so skip it for conflict purposes --
+				 * but DO NOT remove it.  Conflict detection is at
+				 * PAGE granularity: write-locking this page does
+				 * NOT mean we are writing the same record we read.
+				 * T may have READ key k1 on this page (leaving the
+				 * marker) and now be WRITE-locking the page only to
+				 * update a DIFFERENT key k2 that happens to share
+				 * the leaf -- or merely because the B-tree write
+				 * descent couples a write lock across this leaf.
+				 * Dropping the marker here erased "T read this
+				 * page", so a later writer of the page by ANOTHER
+				 * transaction found no marker and the rw-edge
+				 * T --rw--> W was never recorded -- a write skew
+				 * across two leaves of a multi-level B-tree then
+				 * committed silently (the SSI cross-page miss).
 				 *
-				 * Account for the detail reference the marker
-				 * held, exactly as the other two removal sites
-				 * (__lock_sicommit, __lock_siclean_obj) do and
-				 * with the same td_off guard the grant used.
-				 * Without it si_ref stays permanently above the
-				 * true marker count, so the owning detail (and
-				 * the locker deferring on it) can never be
-				 * reclaimed: a snapshot txn that reads then
-				 * writes the same key leaks a detail, a locker
-				 * and their mutex slots on every iteration until
-				 * txn_begin returns ENOMEM.
-				 *
-				 * This is the reader's OWN marker (sh_off ==
-				 * holder), so the detail is its live, running
-				 * transaction: si_ref cannot reach zero here and
-				 * no reclaim can trigger underneath us.
+				 * Keeping the marker is correct and does not leak:
+				 * it persists on the object exactly like any other
+				 * committed reader's marker and is reclaimed by the
+				 * normal GC (__lock_sicommit detaches it at commit;
+				 * __lock_siclean_obj frees it once its snapshot is
+				 * no longer visible to any active reader), which is
+				 * also what balances si_ref -- so the #137 accounting
+				 * the old eager drop maintained is preserved by the
+				 * ordinary path, not lost.
 				 */
-				SH_TAILQ_REMOVE(&sh_obj->sireaders,
-				    sireadlp, links, __db_lock);
-				if (atomic_read_relaxed(&region->nsireaders) > 0)
-					(void)atomic_dec(env,
-					    &region->nsireaders);
-				if (sh_locker->td_off != INVALID_ROFF)
-					(void)atomic_dec(env,
-					    &LOCKER_TD(env, sh_locker)->si_ref);
-				if ((ret = __lock_freelock(lt, sireadlp,
-				    LOCK_HOLDER(env, sireadlp),
-				    DB_LOCK_UNLINK | DB_LOCK_FREE)) != 0)
-					goto err;
+				continue;
 			} else if (lock_mode == DB_LOCK_WRITE &&
 			    sh_off != sireadlp->holder &&
 			    (LOCK_OWNER(env, sireadlp)->status == TXN_RUNNING ||
