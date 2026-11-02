@@ -82,6 +82,12 @@ make_env(home, dbenvp)
 	}
 	dbenv->set_errpfx(dbenv, home);
 	dbenv->set_errfile(dbenv, stderr);
+	if (getenv("REP_VERBOSE") != NULL) {
+		(void)dbenv->set_verbose(dbenv, DB_VERB_REPLICATION, 1);
+		(void)dbenv->set_verbose(dbenv, DB_VERB_REPMGR_MISC, 1);
+		(void)dbenv->set_verbose(dbenv, DB_VERB_REPMGR_CONNFAIL, 1);
+		dbenv->set_msgfile(dbenv, stderr);
+	}
 	(void)dbenv->rep_set_priority(dbenv, 100);
 	*dbenvp = dbenv;
 	return (0);
@@ -131,9 +137,23 @@ start_site(home, self_port, peer_port, is_master, creator)
 
 	if ((ret = dbenv->repmgr_start(dbenv, 3,
 	    is_master ? DB_REP_MASTER : DB_REP_CLIENT)) != 0) {
-		fprintf(stderr, "%s: repmgr_start: %s\n",
-		    home, db_strerror(ret));
-		goto err;
+		/*
+		 * A client may start before the master's listener is up; retry
+		 * a few times on DB_REP_UNAVAIL rather than failing the test.
+		 */
+		if (!is_master && ret == DB_REP_UNAVAIL) {
+			int tries;
+			for (tries = 0; tries < 10 && ret != 0; tries++) {
+				sleep(1);
+				ret = dbenv->repmgr_start(dbenv, 3,
+				    DB_REP_CLIENT);
+			}
+		}
+		if (ret != 0) {
+			fprintf(stderr, "%s: repmgr_start: %s\n",
+			    home, db_strerror(ret));
+			goto err;
+		}
 	}
 
 	if (is_master) {
@@ -142,7 +162,7 @@ start_site(home, self_port, peer_port, is_master, creator)
 		int i;
 
 		/* Wait for the client to connect, then write the marker. */
-		sleep(3);
+		sleep(6);
 		if ((ret = db_create(&db, dbenv, 0)) != 0)
 			goto err;
 		if ((ret = db->open(db, NULL, DBNAME, NULL, DB_BTREE,
@@ -177,11 +197,16 @@ start_site(home, self_port, peer_port, is_master, creator)
 
 		found = 0;
 		for (i = 0; i < POLL_SECS; i++) {
+			int oret, gret;
 			sleep(1);
 			if (db_create(&db, dbenv, 0) != 0)
 				continue;
-			if (db->open(db, NULL, DBNAME, NULL, DB_BTREE,
-			    DB_RDONLY | DB_THREAD, 0) != 0) {
+			if ((oret = db->open(db, NULL, DBNAME, NULL, DB_BTREE,
+			    DB_RDONLY | DB_THREAD, 0)) != 0) {
+				if (getenv("REP_VERBOSE") != NULL)
+					fprintf(stderr,
+					    "CLIENT poll %d: open=%d %s\n",
+					    i, oret, db_strerror(oret));
 				(void)db->close(db, 0);
 				continue;
 			}
@@ -189,10 +214,17 @@ start_site(home, self_port, peer_port, is_master, creator)
 			memset(&data, 0, sizeof(data));
 			key.data = (void *)MARKER_KEY;
 			key.size = (u_int32_t)strlen(MARKER_KEY);
-			if (db->get(db, NULL, &key, &data, 0) == 0 &&
+			data.flags = DB_DBT_MALLOC;
+			gret = db->get(db, NULL, &key, &data, 0);
+			if (getenv("REP_VERBOSE") != NULL)
+				fprintf(stderr, "CLIENT poll %d: get=%d\n",
+				    i, gret);
+			if (gret == 0 &&
 			    data.size == (u_int32_t)strlen(MARKER_VAL) &&
 			    memcmp(data.data, MARKER_VAL, data.size) == 0)
 				found = 1;
+			if (data.data != NULL)
+				free(data.data);
 			(void)db->close(db, 0);
 			if (found)
 				break;
@@ -235,7 +267,12 @@ main(argc, argv)
 		return (2);
 	}
 	if (client == 0) {
-		/* Child: the client.  Not the group creator. */
+		/*
+		 * Child: the client.  Not the group creator.  Wait briefly so
+		 * the master's listener is up before we try to join, avoiding a
+		 * "too few remote sites" at startup.
+		 */
+		sleep(2);
 		_exit(start_site(argv[2], cport, mport, 0, 0));
 	}
 

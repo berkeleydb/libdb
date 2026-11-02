@@ -80,13 +80,13 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 2 \
     -subj "/CN=rogue" >/dev/null 2>&1
 
 run_group() {
-	# $1 = capture file.  Remaining env is already set by the caller.
+	# $1 = capture file, $2 = master port, $3 = client port.
 	rm -f "$1"
 	: > "$1"
 	find "$WORK/m" -mindepth 1 -delete 2>/dev/null || true
 	find "$WORK/c" -mindepth 1 -delete 2>/dev/null || true
 	LD_PRELOAD="$BUILD/libwirecap.so" WIRECAP_FILE="$1" \
-	    "$BUILD/repmgr_tls_test" "$WORK/m" "$WORK/c" "$MPORT" "$CPORT"
+	    "$BUILD/repmgr_tls_test" "$WORK/m" "$WORK/c" "$2" "$3"
 }
 
 MARKER="REPMGR_TLS_MARKER_abcdef0123456789_VALUE"
@@ -95,7 +95,7 @@ rc=0
 # ---- Arm 1: PLAINTEXT -- the marker MUST be on the wire. ----
 echo "=== Arm 1: plaintext (expect marker IN capture) ==="
 unset REP_TLS_CERT REP_TLS_KEY REP_TLS_CA REP_TLS_REQUIRE REP_TLS_NO_VERIFY
-if run_group "$WORK/cap_plain.bin"; then
+if run_group "$WORK/cap_plain.bin" "$MPORT" "$CPORT"; then
 	cstat=0
 else
 	cstat=$?
@@ -121,7 +121,7 @@ export REP_TLS_CA="$CERTS/ca.crt"
 # ---- Arm 2: TLS -- the marker MUST NOT be on the wire, and must replicate. ----
 echo "=== Arm 2: TLS (expect marker ABSENT from capture, replication OK) ==="
 unset REP_TLS_REQUIRE REP_TLS_NO_VERIFY
-if run_group "$WORK/cap_tls.bin"; then
+if run_group "$WORK/cap_tls.bin" $((MPORT+2)) $((CPORT+2)); then
 	cstat=0
 else
 	cstat=$?
@@ -142,7 +142,7 @@ fi
 # ---- Arm 3: wrong CA -- handshake must fail, no replication. ----
 echo "=== Arm 3: wrong CA (expect handshake failure, no replication) ==="
 REP_TLS_CA="$CERTS/rogue.crt"
-if run_group "$WORK/cap_badca.bin"; then
+if run_group "$WORK/cap_badca.bin" $((MPORT+4)) $((CPORT+4)); then
 	echo "  FAIL: replication converged with a wrong CA"
 	rc=1
 else
