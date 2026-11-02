@@ -310,17 +310,26 @@ __db_new(dbc, type, lockp, pagepp)
 
 	if (nta) {
 		/*
-		 * RFC 0022: commit the NTA child, which releases the meta
-		 * lock.  The meta lock was acquired under the child locker
-		 * (adbc->txn == ntxn, whose locker is ntxn->locker), so the
-		 * child commit's DB_LOCK_PUT_ALL releases it; the parent still
-		 * holds *lockp on the new page.  Close the child cursor first
-		 * (the meta lock is on the locker, not the cursor, so close
-		 * does not release it).  DB_TXN_NOSYNC: durability of the
-		 * allocation rides on the parent's commit record ordering.
+		 * RFC 0022: release the meta lock from the NTA child and then
+		 * commit it.  A child-transaction COMMIT inherits the child's
+		 * locks UP to the parent (__lock_inherit_locks) rather than
+		 * releasing them, so committing alone would leave the meta
+		 * lock held by the parent to its commit -- the very convoy we
+		 * are removing.  So drop the meta lock explicitly with __LPUT
+		 * (unconditional put, releases a write lock) after the splice
+		 * is logged, then commit.  The splice already happened under
+		 * the held meta lock, so no concurrent allocator can have
+		 * taken the same page; the child commit makes the allocation
+		 * durable so the parent's abort compensates (frees/leaks the
+		 * page) rather than undoing a lock-protected record.  The
+		 * parent still holds *lockp on the new page.
 		 */
-		if ((ret = __dbc_close(adbc)) != 0)
+		if ((ret = __LPUT(adbc, metalock)) != 0)
 			goto err;
+		if ((ret = __dbc_close(adbc)) != 0) {
+			adbc = dbc;
+			goto err;
+		}
 		adbc = dbc;
 		ret = __txn_commit(ntxn, DB_TXN_NOSYNC);
 		ntxn = NULL;
