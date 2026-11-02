@@ -42,6 +42,8 @@ fi
 
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
+# A static libdb built with --enable-tls pulls in libssl/libcrypto.
+if nm "$LIB" 2>/dev/null | grep -q "U SSL_CTX_new"; then EXTRALIBS="$EXTRALIBS -lssl -lcrypto"; fi
 
 BIN=$BUILD/$NAME
 rm -f "$BIN"

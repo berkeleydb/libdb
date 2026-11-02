@@ -41,6 +41,8 @@ fi
 
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
+# A static libdb built with --enable-tls pulls in libssl/libcrypto.
+if nm "$LIB" 2>/dev/null | grep -q "U SSL_CTX_new"; then EXTRALIBS="$EXTRALIBS -lssl -lcrypto"; fi
 
 # ASan+UBSan on the CONSUMER: the comparator hands (p, len) slices to the
 # test's own field codec, so an unbounded len makes the test read past an

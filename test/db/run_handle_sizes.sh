@@ -44,6 +44,8 @@ fi
 
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
+# A static libdb built with --enable-tls pulls in libssl/libcrypto.
+if nm "$LIB" 2>/dev/null | grep -q "U SSL_CTX_new"; then EXTRALIBS="$EXTRALIBS -lssl -lcrypto"; fi
 
 # Measure the struct the way the LIBRARY was compiled: struct __db is
 # library-allocated and opaque (A1), so the size that matters is the one the
