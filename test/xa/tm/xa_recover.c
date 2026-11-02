@@ -300,10 +300,39 @@ recover_scan(XID *list, int max)
 
 	memset(list, 0, (size_t)max * sizeof(XID));
 	/* One call with both start+end flags returns the whole set (up to
-	 * max); this is the common small-count TM pattern.  XA §6 xa_recover. */
+	 * max); this is the common small-count TM pattern.  XA sec.6 xa_recover. */
 	found = xa->xa_recover_entry(list, max, RMID,
 	    TMSTARTRSCAN | TMENDRSCAN);
 	return (found);
+}
+
+/*
+ * recover_scan_paged --
+ *	Enumerate in-doubt XIDs ONE AT A TIME, exercising all three
+ *	xa_recover flag positions: TMSTARTRSCAN (-> DB_FIRST) opens the scan,
+ *	TMNOFLAGS (-> DB_NEXT) continues it, TMENDRSCAN (-> DB_LAST) closes it.
+ *	A real TM with a bounded buffer scans this way.  Returns the count
+ *	collected into list[0..max).
+ */
+static int
+recover_scan_paged(XID *list, int max)
+{
+	XID one;
+	int n, r;
+
+	n = 0;
+	/* Open the scan and take the first. */
+	memset(&one, 0, sizeof(one));
+	r = xa->xa_recover_entry(&one, 1, RMID, TMSTARTRSCAN);
+	while (r == 1 && n < max) {
+		list[n++] = one;
+		memset(&one, 0, sizeof(one));
+		/* Continue the scan (DB_NEXT) until it is exhausted. */
+		r = xa->xa_recover_entry(&one, 1, RMID, TMNOFLAGS);
+	}
+	/* Close the scan (DB_LAST); its return is not accumulated. */
+	(void)xa->xa_recover_entry(&one, 1, RMID, TMENDRSCAN);
+	return (n);
 }
 
 static int
@@ -348,8 +377,8 @@ driver(void)
 	 */
 	XCHK(h, xa->xa_open_entry((char *)home, RMID, TMNOFLAGS), XA_OK);
 
-	found = recover_scan(list, 64);
-	fprintf(stderr, "arm A: xa_recover found %d in-doubt branch(es)\n",
+	found = recover_scan_paged(list, 64);
+	fprintf(stderr, "arm A: xa_recover (paged) found %d in-doubt branch(es)\n",
 	    found);
 	XCHK_TRUE(h, found == ncommit + nrollback);
 

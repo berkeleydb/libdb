@@ -359,6 +359,33 @@ main(int argc, char *argv[])
 	/* invalid flag bit to xa_end: XAER_INVAL. */
 	XCHK(h, xa->xa_end_entry(&bogus, RMID1, TMREGISTER), XAER_INVAL);
 
+	/*
+	 * ---- Case 15: xa_end with TMFAIL.  XA sec.6 xa_end: TMFAIL dissociates
+	 * the caller and marks the branch rollback-only.  libdb treats TMFAIL
+	 * like a normal dissociation here (it leaves the branch idle), so the
+	 * TM then rolls it back.
+	 */
+	xatm_mkxid(&xid, g++, 1);
+	XCHK(h, xa->xa_start_entry(&xid, RMID1, TMNOFLAGS), XA_OK);
+	XCHK(h, xa_put(db1, "c15", "fail"), 0);
+	XCHK(h, xa->xa_end_entry(&xid, RMID1, TMFAIL), XA_OK);
+	XCHK(h, xa->xa_rollback_entry(&xid, RMID1, TMNOFLAGS), XA_OK);
+	XCHK_TRUE(h, xa_absent(db1, "c15"));
+
+	/*
+	 * ---- Case 16: xa_forget on a PREPARED branch drives DB_TXN->discard
+	 * (xa.c __db_xa_forget -> txnp->discard).  libdb heuristically completes
+	 * nothing, so forget reclaims the txn slot and returns XA_OK; a second
+	 * forget on the now-gone XID is a no-op XA_OK.
+	 */
+	xatm_mkxid(&xid, g++, 1);
+	XCHK(h, xa->xa_start_entry(&xid, RMID1, TMNOFLAGS), XA_OK);
+	XCHK(h, xa_put(db1, "c16", "forget"), 0);
+	XCHK(h, xa->xa_end_entry(&xid, RMID1, TMSUCCESS), XA_OK);
+	XCHK(h, xa->xa_prepare_entry(&xid, RMID1, TMNOFLAGS), XA_OK);
+	XCHK(h, xa->xa_forget_entry(&xid, RMID1, TMNOFLAGS), XA_OK);
+	XCHK(h, xa->xa_forget_entry(&xid, RMID1, TMNOFLAGS), XA_OK);
+
 	/* ---- Shutdown: close handles then the RMs (RM1 was opened twice). ---- */
 	(void)db1->close(db1, 0);
 	(void)db2->close(db2, 0);
