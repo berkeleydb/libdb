@@ -28,7 +28,14 @@ BUILD=${BUILD:-.}
 _HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=${SRC:-$_HERE/qam_extent_vrfy.c}
 HOME_DIR=${HOME_DIR:-QAM_EXTENT_VRFY_TESTDIR}
-TIMEOUT=${TIMEOUT:-180}
+# 600 s, not the usual 180 s: building the many-extent queue fdatasyncs each of
+# its ~775 extent files (eviction-discard during the fill and the per-file sync at
+# close), so the run time is the host's fsync latency times 775.  That was
+# 162 s on GitHub's ubuntu-24.04 runners and 181 s on ubuntu-26.04, which timed
+# out at 180 s.  The I/O pattern is what the test exercises; do not shorten it by
+# skipping syncs (DB_NOSYNC + DB_NOFLUSH changed case 2's verdict from
+# DB_VERIFY_BAD to EINVAL).
+TIMEOUT=${TIMEOUT:-600}
 
 # Prefer the STATIC library: on macOS the .dylib carries a baked-in install name
 # (/usr/local/BerkeleyDB.5.3/lib/...) which takes precedence over -rpath, so a
