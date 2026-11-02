@@ -463,6 +463,8 @@ shape	gate	optional
 # ---------------------------------------------------------------------------
 db	run_hash_unsorted_cmp
 db	run_recd_compact
+db	run_meta_nta_recover
+db	run_meta_nta_conc
 db	run_recd_handlers
 db	run_upgrade
 db	run_lock_priority_nullderef
