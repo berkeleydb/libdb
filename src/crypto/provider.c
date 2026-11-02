@@ -98,6 +98,8 @@ __crypto_keyfile_check(path)
 		return (EINVAL);		/* group/world accessible */
 	if (sb.st_uid != geteuid())
 		return (EINVAL);		/* not owned by us */
+	if (sb.st_size != DB_CRYPTO_KEK_LEN)
+		return (EINVAL);		/* must be exactly a 256-bit key */
 	return (0);
 #endif
 }

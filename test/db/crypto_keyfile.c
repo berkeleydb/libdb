@@ -60,6 +60,7 @@ env_with_keyfile(const char *keyfile, int do_put)
 	if ((ret = db_env_create(&dbenv, 0)) != 0)
 		return (ret);
 	dbenv->set_errpfx(dbenv, "crypto_keyfile");
+	dbenv->set_errfile(dbenv, stderr);
 	if ((ret = dbenv->set_encrypt_keyfile(dbenv, keyfile,
 	    DB_ENCRYPT_AES)) != 0) {
 		(void)dbenv->close(dbenv, 0);
@@ -99,7 +100,7 @@ main(int argc, char **argv)
 	int ret, fail = 0;
 
 	(void)argc; (void)argv;
-	(void)system("rm -rf " HOME "; mkdir " HOME);
+	(void)system("find " HOME " -mindepth 1 -delete 2>/dev/null; mkdir -p " HOME);
 
 	/* 1. 0600 key file: create + write, then a second open reads it back. */
 	if (make_key(KEYFILE, 0600, KEKLEN) != 0) {
@@ -114,7 +115,8 @@ main(int argc, char **argv)
 	} else
 		printf("  ok: 0600 key file create + reopen round-trips\n");
 
-	/* 2. World-readable key file refused. */
+	/* 2. World-readable key file refused -- on a FRESH env home. */
+	(void)system("find " HOME " -mindepth 1 -delete 2>/dev/null; mkdir -p " HOME);
 	if (make_key(BADKEY, 0644, KEKLEN) != 0) {
 		printf("VERDICT crypto_keyfile FAIL make badkey\n"); return (1);
 	}
@@ -127,8 +129,8 @@ main(int argc, char **argv)
 		fail = 1;
 	}
 
-	/* 3. Wrong-length key file refused. */
-	(void)system("rm -rf " HOME "; mkdir " HOME);
+	/* 3. Wrong-length key file refused -- on a FRESH env home. */
+	(void)system("find " HOME " -mindepth 1 -delete 2>/dev/null; mkdir -p " HOME);
 	if (make_key(KEYFILE, 0600, 16) != 0) {	/* 128-bit, too short */
 		printf("VERDICT crypto_keyfile FAIL make shortkey\n"); return (1);
 	}
@@ -140,7 +142,7 @@ main(int argc, char **argv)
 		fail = 1;
 	}
 
-	(void)system("rm -rf " HOME);
+	(void)system("find " HOME " -mindepth 1 -delete 2>/dev/null");
 	printf("VERDICT crypto_keyfile %s\n", fail ? "FAIL" : "PASS");
 	return (fail ? 1 : 0);
 }

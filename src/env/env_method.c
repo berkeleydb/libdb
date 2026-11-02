@@ -938,8 +938,22 @@ __env_encrypt_builtin(dbenv, id, path, flags)
 		__os_free(env, prov);
 		return (ret);
 	}
-	if (id == DB_CRYPTO_PROV_KEYFILE)
+	if (id == DB_CRYPTO_PROV_KEYFILE) {
+		/*
+		 * Validate the key file now (clean EINVAL at config time) as
+		 * well as at env open: a bad key file is a user error, not
+		 * region corruption, so it must not reach the create-time
+		 * region panic path.
+		 */
+		if ((ret = __crypto_keyfile_check(dup)) != 0) {
+			__os_free(env, dup);
+			__os_free(env, prov);
+			__db_errx(env, DB_STR("5465",
+		    "Key file must be a 256-bit, owner-only readable file"));
+			return (ret);
+		}
 		(void)__crypto_keyfile_provider(prov, dup);
+	}
 #ifdef HAVE_TPM
 	else if (id == DB_CRYPTO_PROV_TPM)
 		(void)__crypto_tpm_provider(prov, dup);
