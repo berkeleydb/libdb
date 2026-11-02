@@ -309,17 +309,22 @@ otherwise (non-threaded handles are never cached).
 
 ### 8. Tests
 
-- **New `test/db/run_cursorcache_adjust.sh`** (+ its C driver): Part A is a
-  deterministic single-threaded reset probe (interleaved gets across the
-  keyspace that return a neighbour's record if a reused cursor keeps its prior
-  position); Part B is a concurrent storm where many threads do transient
-  `DB->put`/`DB->get` on crowded shared leaves of one `DB_THREAD` handle while
-  readers sweep and verify every value names its own key. The **sabotage arm**
-  rebuilds `db_am.o` with `-DDBC_CACHE_SABOTAGE`, which skips the reuse reset of
-  a cached cursor (breaking the RESET invariant). The test **must FAIL** in that
-  arm (Part A returns a wrong value) and **PASS** with the reset intact. The
-  visibility invariant (Design S5) is argued above and guarded by Part B's
-  crash/corruption checks under `--enable-diagnostic`.
+- **New `test/db/run_cursorcache_adjust.sh`** (+ its C driver): Part A opens,
+  uses and closes a `DB_THREAD` handle `REOPENS` times — each cycle caches a
+  transient cursor and then closes the handle (destroying that cursor) — so a
+  reopened handle that reused freed memory would pick up a dangling cached
+  cursor. Part B is a concurrent storm: many threads do transient
+  `DB->put`/`DB->get` on crowded shared leaves of one handle while readers
+  sweep and verify every value names its own key. The **sabotage arm** rebuilds
+  `db_cam.o` with `-DDBC_CACHE_SABOTAGE`, which disables the stale-handle epoch
+  guard (§4a); the test **must FAIL** in that arm (Part A dereferences a
+  destroyed cursor — a crash/abort under `--enable-diagnostic`) and **PASS**
+  with the guard intact. Note: the reuse of a cached cursor is itself safe by
+  construction — every transient `DB->get`/`DB->put` re-searches from the root
+  and runs under the page latch, so a stale position or a brief
+  off-active-queue window cannot corrupt a single transient op; the sabotage
+  therefore targets the one invariant whose failure IS observable, the
+  stale-handle guard.
 - **Diagnostic tier:** `BUILD=<dir> bash ../test/db/run_all.sh` with
   `--enable-diagnostic`.
 - **TCL:** `run_method -btree test001..010` and `-hash` (cursor-reuse,

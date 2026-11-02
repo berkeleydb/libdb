@@ -189,6 +189,19 @@ __db_cursor_cache_get(dbp, dbtype, flags, dbcp)
 	 * pointers without dereferencing them -- the cursors they named were
 	 * destroyed by __db_refresh's active-queue walk.
 	 */
+#ifdef DBC_CACHE_SABOTAGE
+	/*
+	 * SABOTAGE ARM (test/db/run_cursorcache_adjust.sh).  Disable the
+	 * stale-handle epoch guard of RFC 0021 Design S4a on purpose: keep the
+	 * cached slot "valid" even after its DB handle was closed (and its
+	 * cursor destroyed).  A reopened handle that reuses the freed DB/DBC
+	 * memory then gets a dangling cursor and the next operation touches
+	 * freed memory, which the test's close/reopen loop catches (crash or
+	 * corruption under --enable-diagnostic).  Never compiled into a shipped
+	 * build.
+	 */
+	__dbc_cache_seen_epoch = __dbc_cache_global_epoch;
+#endif
 	if (__dbc_cache_seen_epoch != __dbc_cache_global_epoch) {
 		for (i = 0; i < DBC_CACHE_SLOTS; i++) {
 			__dbc_cache[i].dbp = NULL;
@@ -201,7 +214,11 @@ __db_cursor_cache_get(dbp, dbtype, flags, dbcp)
 	for (i = 0; i < DBC_CACHE_SLOTS; i++) {
 		e = &__dbc_cache[i];
 		if (e->dbc != NULL && e->dbp == dbp && e->dbtype == dbtype &&
+#ifdef DBC_CACHE_SABOTAGE
+		    1 /* ignore the per-slot gen stamp too */) {
+#else
 		    e->gen == __dbc_cache_global_epoch) {
+#endif
 			*dbcp = e->dbc;
 			e->dbp = NULL;
 			e->dbc = NULL;

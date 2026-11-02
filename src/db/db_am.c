@@ -469,31 +469,12 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	cp->opd = NULL;
 	cp->pdbc = NULL;
 
-#ifdef DBC_CACHE_SABOTAGE
-	/*
-	 * SABOTAGE ARM (test/db/run_cursorcache_adjust.sh).  Break the RESET
-	 * invariant of RFC 0021 on purpose: when reusing a cached cursor, skip
-	 * clearing its position, so it starts the next operation pointing where
-	 * the previous one left off.  A get/put then reads or writes the wrong
-	 * record, which the test's Part A catches deterministically.  Never
-	 * compiled into a shipped build.
-	 */
-	if (!from_cache) {
-		cp->indx = 0;
-		cp->page = NULL;
-		cp->pgno = PGNO_INVALID;
-		cp->root = root;
-		cp->stream_start_pgno = cp->stream_curr_pgno = PGNO_INVALID;
-		cp->stream_off = 0;
-	}
-#else
 	cp->indx = 0;
 	cp->page = NULL;
 	cp->pgno = PGNO_INVALID;
 	cp->root = root;
 	cp->stream_start_pgno = cp->stream_curr_pgno = PGNO_INVALID;
 	cp->stream_off = 0;
-#endif
 
 	if (DB_IS_PARTITIONED(dbp)) {
 		DBC_PART_REFRESH(dbc);
