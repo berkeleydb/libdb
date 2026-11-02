@@ -1,5 +1,13 @@
 # RFC 0022 evidence: `__db_new` / `__db_free` caller audit
 
+> **Note (2026-11-03):** the phase-1 sub-transaction implementation was found
+> unsafe and reverted (see the RFC's *Implementation findings*). This caller
+> audit stays valid: it establishes *which* callers need the per-page lock held
+> to commit, which is unchanged and is a prerequisite for any correct NTA
+> design (including the recommended phase-2 split/SMO-as-NTA). The unsafety was
+> in the lock-manager mechanics (child-locker inheritance / aliasing), not in
+> this caller analysis.
+
 This is the §4.3 safety-argument backing for RFC 0022. For the NTA to preserve
 isolation, the newly-allocated page's **page lock** (`*lockp`) must stay with the
 parent transaction and be held to commit, while only the **meta-page lock** moves
