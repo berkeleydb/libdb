@@ -36,6 +36,328 @@ static inline int __dbc_put_resolve_key __P((DBC *,
 static inline int __dbc_put_secondaries __P((DBC *,
 		DBT *, DBT *, DBT *, int, DBT *, u_int32_t *));
 
+/*
+ * Per-thread transient-cursor cache (RFC 0021).
+ *
+ * DB->get/put/del allocate a transient cursor per call and free it per call;
+ * both ends take a DB->cq_parts[] partition mutex, which is 85% of the t=96
+ * read profile (test/bench/BATCHED-READS-RESULTS.md).  The cache keeps a small
+ * number of idle transient cursors in PROCESS-LOCAL thread-local storage, keyed
+ * by DB handle, so the common path reuses one without touching a queue mutex.
+ *
+ * A cached cursor stays linked on the handle's active cursor queue for its
+ * whole cached lifetime.  While idle its cp->pgno is PGNO_INVALID and it holds
+ * no page and no lock, so __db_walk_cursors's adjustment callbacks never match
+ * it (they require cp->pgno == the changed page).  When reused it is already on
+ * the active queue before it positions itself, so the empty-partition-skip
+ * invariant in __db_walk_cursors (db.c) is preserved -- the queue insertion
+ * still happens-before any positioning.  See rfc/0021-transient-cursor-cache.md
+ * Design S5.
+ *
+ * The cache is thread-local because DB_THREAD_INFO is a shared-region struct
+ * holding roff_t offsets walked cross-process by failchk; a process-local DBC *
+ * cannot live there.  The TLS guard mirrors src/mutex/mut_order.c; with no
+ * thread-local storage the cache compiles to a no-op and the engine behaves
+ * exactly like master.
+ */
+#if defined(HAVE_MUTEX_PTHREADS) || defined(HAVE_MUTEX_HYBRID) ||	\
+    defined(HAVE_MUTEX_TAS) || defined(HAVE_MUTEX_UI_THREADS) ||		\
+    defined(HAVE_MUTEX_SOLARIS_LWP)
+#if defined(__GNUC__) || defined(__clang__) || defined(__SUNPRO_C)
+#define	DBC_CACHE_TLS	__thread
+#elif defined(_MSC_VER)
+#define	DBC_CACHE_TLS	__declspec(thread)
+#endif
+#endif
+
+#ifdef DBC_CACHE_TLS
+static int __dbc_cache_on __P((void));
+static int __dbc_cache_eligible __P((DBC *));
+static int __dbc_cache_put __P((DBC *));
+
+/*
+ * Flags that make a transient cursor ineligible for the cache: anything that
+ * gives the cursor a shape or association that must not survive a reuse.
+ */
+#define	DBC_CACHE_INELIGIBLE						\
+	(DBC_BULK | DBC_OPD | DBC_DUPLICATE | DBC_PARTITIONED |		\
+	 DBC_FAMILY | DBC_RECOVER | DBC_WRITECURSOR | DBC_WRITER |	\
+	 DBC_READ_COMMITTED | DBC_READ_UNCOMMITTED | DBC_WAS_READ_COMMITTED)
+
+#define	DBC_CACHE_SLOTS	4	/* Fixed per-thread; LRU-evict on miss. */
+
+struct __dbc_cache_entry {
+	DB		*dbp;		/* Owning handle (identity key). */
+	DBC		*dbc;		/* Idle cached cursor, on dbp's active queue. */
+	DBTYPE		 dbtype;
+	u_int32_t	 gen;		/* Handle open-epoch when cached. */
+	u_int32_t	 lru;		/* Recency stamp for eviction. */
+};
+static DBC_CACHE_TLS struct __dbc_cache_entry __dbc_cache[DBC_CACHE_SLOTS];
+static DBC_CACHE_TLS u_int32_t __dbc_cache_clock;
+static DBC_CACHE_TLS u_int32_t __dbc_cache_seen_epoch;
+
+/*
+ * Re-entrancy guard: while this thread is tearing a handle down in
+ * __db_refresh, the __dbc_close calls it makes on already-cached cursors must
+ * NOT put them back in the cache -- they are being destroyed.
+ */
+static DBC_CACHE_TLS int __dbc_cache_no_put;
+
+/*
+ * A process-global epoch bumped on every DB handle close.  A cache slot stores
+ * the epoch at the time it was filled; a lookup is a hit only if the epoch has
+ * not moved since.  This makes a stale slot (whose DB handle was closed by any
+ * thread, possibly a different one) a guaranteed miss WITHOUT dereferencing the
+ * dangling DB pointer: a closed handle's cached cursor was already destroyed by
+ * __db_refresh's active-queue walk, so we only need to never reuse the pointer.
+ */
+static u_int32_t __dbc_cache_global_epoch = 1;
+
+static int
+__dbc_cache_on()
+{
+	static int cached = -1;
+
+	if (cached == -1)
+		cached = getenv("DB_NO_CURSOR_CACHE") != NULL ? 0 : 1;
+	return (cached);
+}
+
+/*
+ * __dbc_cache_eligible --
+ *	True if this transient cursor may be returned to the per-thread cache.
+ */
+static int
+__dbc_cache_eligible(dbc)
+	DBC *dbc;
+{
+	DB *dbp;
+
+	dbp = dbc->dbp;
+
+	/* Only genuine single-op transient cursors on threaded handles. */
+	if (!F_ISSET(dbc, DBC_TRANSIENT) ||
+	    F_ISSET(dbc, DBC_CACHE_INELIGIBLE))
+		return (0);
+	if (!DB_IS_THREADED(dbp) || DB_IS_PARTITIONED(dbp))
+		return (0);
+	/* Must own its default locker, not be tied to a txn or CDB locker. */
+	if (dbc->txn != NULL || CDB_LOCKING(dbp->env))
+		return (0);
+	if (dbc->locker != NULL && dbc->locker != dbc->lref)
+		return (0);
+	/* Secondary/foreign cursors have extra state; leave them alone. */
+	if (F_ISSET(dbp, DB_AM_SECONDARY) || dbp->s_primary != NULL)
+		return (0);
+	return (1);
+}
+
+/*
+ * __db_cursor_cache_get --
+ *	Try to satisfy a transient-cursor request from the per-thread cache.
+ *	On a hit, detach the cursor from its slot and return it ready to be
+ *	refreshed by the caller; the cursor is already DBC_ACTIVE and on the
+ *	handle's active queue, so no partition mutex is taken.
+ *
+ * PUBLIC: int __db_cursor_cache_get __P((DB *, DBTYPE, int, DBC **));
+ */
+int
+__db_cursor_cache_get(dbp, dbtype, flags, dbcp)
+	DB *dbp;
+	DBTYPE dbtype;
+	int flags;
+	DBC **dbcp;
+{
+	struct __dbc_cache_entry *e;
+	int i;
+
+	*dbcp = NULL;
+
+	/* Only the exact transient shape the cache stores is served here. */
+	if (!LF_ISSET(DB_CURSOR_TRANSIENT) ||
+	    LF_ISSET(DB_CURSOR_BULK | DB_RECOVER | DBC_OPD | DBC_DUPLICATE))
+		return (0);
+	if (!DB_IS_THREADED(dbp) || DB_IS_PARTITIONED(dbp))
+		return (0);
+	if (!__dbc_cache_on())
+		return (0);
+
+	/*
+	 * If the global epoch has advanced since we last looked (any handle in
+	 * this process was closed), every slot is potentially stale.  Drop all
+	 * pointers without dereferencing them -- the cursors they named were
+	 * destroyed by __db_refresh's active-queue walk.
+	 */
+	if (__dbc_cache_seen_epoch != __dbc_cache_global_epoch) {
+		for (i = 0; i < DBC_CACHE_SLOTS; i++) {
+			__dbc_cache[i].dbp = NULL;
+			__dbc_cache[i].dbc = NULL;
+		}
+		__dbc_cache_seen_epoch = __dbc_cache_global_epoch;
+		return (0);
+	}
+
+	for (i = 0; i < DBC_CACHE_SLOTS; i++) {
+		e = &__dbc_cache[i];
+		if (e->dbc != NULL && e->dbp == dbp && e->dbtype == dbtype &&
+		    e->gen == __dbc_cache_global_epoch) {
+			*dbcp = e->dbc;
+			e->dbp = NULL;
+			e->dbc = NULL;
+			return (0);
+		}
+	}
+	return (0);
+}
+
+/*
+ * __dbc_cache_put --
+ *	Try to return an eligible, fully-closed transient cursor to the cache,
+ *	leaving it on the handle's active queue.  Returns 1 if cached (caller
+ *	must NOT move it to the free queue), 0 if the caller must close it the
+ *	normal way.  May evict (genuinely free-queue) a victim slot.
+ */
+static int
+__dbc_cache_put(dbc)
+	DBC *dbc;
+{
+	struct __dbc_cache_entry *e, *victim;
+	struct __cq_part *cqp;
+	DB *dbp;
+	DBC *v;
+	ENV *venv;
+	int i;
+
+	dbp = dbc->dbp;
+
+	if (__dbc_cache_no_put || !__dbc_cache_on() || !__dbc_cache_eligible(dbc))
+		return (0);
+
+	/* Keep our epoch view current so a hit later is valid. */
+	if (__dbc_cache_seen_epoch != __dbc_cache_global_epoch) {
+		for (i = 0; i < DBC_CACHE_SLOTS; i++) {
+			__dbc_cache[i].dbp = NULL;
+			__dbc_cache[i].dbc = NULL;
+		}
+		__dbc_cache_seen_epoch = __dbc_cache_global_epoch;
+	}
+
+	/* Find a free slot, or the LRU victim. */
+	victim = &__dbc_cache[0];
+	for (i = 0; i < DBC_CACHE_SLOTS; i++) {
+		e = &__dbc_cache[i];
+		if (e->dbc == NULL) {
+			victim = e;
+			break;
+		}
+		if (e->lru < victim->lru)
+			victim = e;
+	}
+
+	/*
+	 * Evicting a live slot: that cursor must be genuinely closed (moved to
+	 * its partition free queue under CQ_LOCK) before we overwrite the slot.
+	 * Doing it here keeps the hot path (free slot / same-handle reuse) off
+	 * the queue mutex while bounding the cache to DBC_CACHE_SLOTS.
+	 */
+	if (victim->dbc != NULL) {
+		v = victim->dbc;
+		cqp = DB_CURSOR_PART(v);
+		venv = v->dbp->env;
+
+		victim->dbp = NULL;
+		victim->dbc = NULL;
+		DB_ASSERT(venv, F_ISSET(v, DBC_ACTIVE));
+		CQ_LOCK(venv, cqp);
+		F_CLR(v, DBC_ACTIVE);
+		TAILQ_REMOVE(&cqp->active_queue, v, links);
+		TAILQ_INSERT_TAIL(&cqp->free_queue, v, links);
+		CQ_UNLOCK(venv, cqp);
+	}
+
+	victim->dbp = dbp;
+	victim->dbc = dbc;
+	victim->dbtype = dbc->dbtype;
+	victim->gen = __dbc_cache_global_epoch;
+	victim->lru = ++__dbc_cache_clock;
+	return (1);
+}
+
+/*
+ * __db_cursor_cache_discard --
+ *	Bump the process-global epoch so every thread's cache treats its slots
+ *	as stale.  Called when a DB handle is closed (its active-queue walk has
+ *	already destroyed any cached cursor), so no cached pointer is reused.
+ *
+ * PUBLIC: void __db_cursor_cache_discard __P((void));
+ */
+void
+__db_cursor_cache_discard()
+{
+	/*
+	 * A plain increment is adequate: the epoch only has to CHANGE on a
+	 * close so stale slots become misses.  It is written during handle
+	 * close (serialized per handle) and read on the transient path; a torn
+	 * or racy read at worst causes a spurious miss (correct, just slower).
+	 */
+	__dbc_cache_global_epoch++;
+	if (__dbc_cache_global_epoch == 0)	/* Never match the "empty" 0. */
+		__dbc_cache_global_epoch = 1;
+}
+
+/*
+ * __db_cursor_cache_refresh_enter --
+ *	Called by __db_refresh before it closes a handle's active-queue
+ *	cursors, so that re-entrant __dbc_close calls do not re-cache them.
+ *
+ * PUBLIC: void __db_cursor_cache_refresh_enter __P((void));
+ */
+void
+__db_cursor_cache_refresh_enter()
+{
+	__dbc_cache_no_put++;
+}
+
+/*
+ * __db_cursor_cache_refresh_leave --
+ *
+ * PUBLIC: void __db_cursor_cache_refresh_leave __P((void));
+ */
+void
+__db_cursor_cache_refresh_leave()
+{
+	if (__dbc_cache_no_put > 0)
+		__dbc_cache_no_put--;
+}
+#else
+int
+__db_cursor_cache_get(dbp, dbtype, flags, dbcp)
+	DB *dbp;
+	DBTYPE dbtype;
+	int flags;
+	DBC **dbcp;
+{
+	COMPQUIET(dbp, NULL);
+	COMPQUIET(dbtype, 0);
+	COMPQUIET(flags, 0);
+	*dbcp = NULL;
+	return (0);
+}
+void
+__db_cursor_cache_discard()
+{
+}
+void
+__db_cursor_cache_refresh_enter()
+{
+}
+void
+__db_cursor_cache_refresh_leave()
+{
+}
+#endif /* DBC_CACHE_TLS */
+
 #define	CDB_LOCKING_INIT(env, dbc)					\
 	/*								\
 	 * If we are running CDB, this had better be either a write	\
@@ -85,13 +407,31 @@ __dbc_close(dbc)
 	DBC_INTERNAL *cp;
 	DB_TXN *txn;
 	ENV *env;
-	int ret, t_ret;
+	int cache_it, ret, t_ret;
 
 	dbp = dbc->dbp;
 	env = dbp->env;
 	cp = dbc->internal;
 	opd = cp->opd;
 	ret = 0;
+
+	/*
+	 * RFC 0021 per-thread transient-cursor cache.
+	 *
+	 * An eligible transient get/put cursor (DBC_TRANSIENT, no off-page-dup
+	 * cursor, own default locker, threaded handle -- see
+	 * __dbc_cache_eligible) can be reset and reused by this thread without
+	 * going through the partition free queue.  Such a cursor never has a
+	 * pending delete (DB->del does not set DB_CURSOR_TRANSIENT) and no opd,
+	 * so am_close does no cursor adjustment and never searches the active
+	 * queue; we may therefore leave the cursor ON the active queue across
+	 * am_close instead of removing it here.  Keeping it on the active queue
+	 * is what makes reuse mutex-free AND keeps __db_walk_cursors correct:
+	 * an idle cached cursor has cp->pgno == PGNO_INVALID and holds no lock,
+	 * so no adjustment callback matches it, and a reused cursor is already
+	 * on the queue before it positions itself (rfc/0021 Design S5).
+	 */
+	cache_it = opd == NULL && __dbc_cache_eligible(dbc);
 
 	/*
 	 * Remove the cursor(s) from the active queue.  We may be closing two
@@ -118,7 +458,7 @@ __dbc_close(dbc)
 		TAILQ_REMOVE(&opd_cqp->active_queue, opd, links);
 		CQ_UNLOCK(env, opd_cqp);
 	}
-	{
+	if (!cache_it) {
 		struct __cq_part *dbc_cqp = DB_CURSOR_PART(dbc);
 
 		DB_ASSERT(env, F_ISSET(dbc, DBC_ACTIVE));
@@ -174,9 +514,23 @@ __dbc_close(dbc)
 		TAILQ_INSERT_TAIL(&opd_cqp->free_queue, opd, links);
 		CQ_UNLOCK(env, opd_cqp);
 	}
-	{
+	/*
+	 * Stash an eligible cursor in the per-thread cache, leaving it on the
+	 * active queue (still DBC_ACTIVE).  On a full cache this evicts an LRU
+	 * victim to its free queue under CQ_LOCK.  If it does not get cached
+	 * (cache off, or the shape became ineligible after teardown), fall
+	 * back to the normal free-queue move.
+	 */
+	if (!cache_it || !__dbc_cache_put(dbc)) {
 		struct __cq_part *dbc_cqp = DB_CURSOR_PART(dbc);
 
+		if (cache_it) {
+			DB_ASSERT(env, F_ISSET(dbc, DBC_ACTIVE));
+			CQ_LOCK(env, dbc_cqp);
+			F_CLR(dbc, DBC_ACTIVE);
+			TAILQ_REMOVE(&dbc_cqp->active_queue, dbc, links);
+			CQ_UNLOCK(env, dbc_cqp);
+		}
 		CQ_LOCK(env, dbc_cqp);
 		TAILQ_INSERT_TAIL(&dbc_cqp->free_queue, dbc, links);
 		CQ_UNLOCK(env, dbc_cqp);

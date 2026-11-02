@@ -205,9 +205,13 @@ the normal path would) at:
   §4a (the handle-close/active-queue path still owns the cursor memory).
 - **Thread exit:** the TLS storage is reclaimed by the platform on thread exit;
   the cursors it referenced are still on the handle's active queue and are
-  destroyed at handle close. To avoid leaking those cursors for the life of the
-  handle after a thread exits, a thread that is about to leave the env
-  (`THREAD_OUT`) flushes its own cache (genuine close of each cached cursor).
+  destroyed at handle close. A thread that exits without closing the handle
+  therefore leaves at most `DBC_CACHE_SLOTS` idle cursors parked on the active
+  queue until the handle closes — bounded, correct, and no worse than an
+  application that opened and leaked that many cursors. (A proactive
+  `THREAD_OUT` flush that returns an exiting thread's cached cursors to the free
+  queue is a possible refinement; it is not implemented because it adds
+  env→db-layer plumbing for a bounded, reclaimed-at-close effect.)
 
 #### 4a. Making stale-pointer lookup safe
 
@@ -294,11 +298,14 @@ and the new `run_cursorcache_adjust.sh` with a sabotage arm).
 
 ### 7. Config / kill switch
 
-A single env flag `DB_ENV->set_flags(DB_NO_CURSOR_CACHE)` (and the matching
-`DB_CONFIG` token) disables the cache entirely, falling back to the master
-alloc/free path. This is the A/B and bisection lever and the safety valve if a
-workload hits the eligibility edge. Default: cache **on** for `DB_THREAD` handles
-in a threaded env; **off** otherwise (non-threaded handles are never cached).
+A one-time cached `getenv("DB_NO_CURSOR_CACHE")` disables the cache entirely,
+falling back to the master alloc/free path. This matches the fork's established
+feature-switch pattern (`DB_NO_OPTREAD` in `bt_search.c`, `DB_NO_FNAME_CACHE` in
+`db_am.c`, `DB_NO_GROUP_COMMIT` in `log_put.c`, `DB_NO_LOCKER_SHARD`) and adds no
+public flag, no `db.h` regeneration and no ABI surface. It is the A/B and
+bisection lever and the safety valve if a workload hits the eligibility edge.
+Default: cache **on** for `DB_THREAD` handles in a threaded env; **off**
+otherwise (non-threaded handles are never cached).
 
 ### 8. Tests
 

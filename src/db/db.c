@@ -916,6 +916,15 @@ __db_refresh(dbp, txn, flags, deferred_closep, reuse)
 			resync = 1;
 			break;
 		}
+	/*
+	 * RFC 0021: discard any per-thread transient-cursor cache references to
+	 * this handle.  The epoch bump makes OTHER threads' stale slots miss
+	 * (their cached cursors are destroyed below by the active-queue walk).
+	 * The refresh-enter/leave bracket stops THIS thread's re-entrant
+	 * __dbc_close from re-caching the cursors it is destroying.
+	 */
+	__db_cursor_cache_discard();
+	__db_cursor_cache_refresh_enter();
 	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
 		while ((dbc =
 		    TAILQ_FIRST(&dbp->cq_parts[cq_i].active_queue)) != NULL) {
@@ -929,6 +938,7 @@ __db_refresh(dbp, txn, flags, deferred_closep, reuse)
 				break;
 			}
 		}
+	__db_cursor_cache_refresh_leave();
 
 	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
 		while ((dbc =
