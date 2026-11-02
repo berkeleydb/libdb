@@ -843,12 +843,12 @@ __repmgr_set_tls(dbenv, cert_file, key_file, ca_file, flags)
 {
 #ifdef HAVE_REPMGR_SSL
 	DB_REP *db_rep;
+	DB_THREAD_INFO *ip;
 	ENV *env;
 	int ret;
 
 	env = dbenv->env;
 	db_rep = env->rep_handle;
-
 	ENV_NOT_CONFIGURED(
 	    env, db_rep->region, "DB_ENV->repmgr_set_tls", DB_INIT_REP);
 	if (APP_IS_BASEAPI(env))

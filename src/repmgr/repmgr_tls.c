@@ -68,7 +68,7 @@ __repmgr_ssl_handshake_block(env, conn)
 		default:
 			return (ret);
 		}
-		want_write = F_ISSET(conn, REPMGR_SSL_WANT_WRITE_TO_READ);
+		want_write = FLD_ISSET(conn->ssl_flags, REPMGR_SSL_WANT_WRITE_TO_READ);
 		FD_ZERO(&fds);
 		FD_SET((u_int)conn->fd, &fds);
 		/* 30s cap so a dead peer cannot hang the connect thread. */
@@ -220,7 +220,7 @@ __repmgr_ssl_conn_init(env, conn, is_client)
 		SSL_set_accept_state(ssl);
 
 	conn->ssl = ssl;
-	F_SET(conn, REPMGR_SSL_HANDSHAKING);
+	FLD_SET(conn->ssl_flags, REPMGR_SSL_HANDSHAKING);
 	conn->reading_phase = HANDSHAKE_PHASE;
 	return (0);
 }
@@ -272,7 +272,7 @@ ssl_get_error(env, conn, rc, writing)
 		 * plain read that can proceed when the socket is readable.
 		 */
 		if (writing)
-			F_SET(conn, REPMGR_SSL_WANT_READ_TO_WRITE);
+			FLD_SET(conn->ssl_flags, REPMGR_SSL_WANT_READ_TO_WRITE);
 		return (WOULDBLOCK);
 	case SSL_ERROR_WANT_WRITE:
 		/*
@@ -280,7 +280,7 @@ ssl_get_error(env, conn, rc, writing)
 		 * read, this is a read-blocked-on-write -> select for write.
 		 */
 		if (!writing)
-			F_SET(conn, REPMGR_SSL_WANT_WRITE_TO_READ);
+			FLD_SET(conn->ssl_flags, REPMGR_SSL_WANT_WRITE_TO_READ);
 		return (WOULDBLOCK);
 	case SSL_ERROR_ZERO_RETURN:
 		return (DB_REP_UNAVAIL);	/* clean TLS close */
@@ -310,7 +310,7 @@ __repmgr_ssl_handshake(env, conn)
 {
 	int rc, ret;
 
-	F_CLR(conn,
+	FLD_CLR(conn->ssl_flags,
 	    REPMGR_SSL_WANT_READ_TO_WRITE | REPMGR_SSL_WANT_WRITE_TO_READ);
 
 	ssl_verify_env = env;
@@ -320,7 +320,7 @@ __repmgr_ssl_handshake(env, conn)
 	ssl_verify_conn = NULL;
 
 	if (rc == 1) {
-		F_CLR(conn, REPMGR_SSL_HANDSHAKING);
+		FLD_CLR(conn->ssl_flags, REPMGR_SSL_HANDSHAKING);
 		conn->reading_phase = SIZES_PHASE;
 		RPRINT(env, (env, DB_VERB_REPMGR_MISC,
 		    "repmgr TLS handshake complete (%s)",
@@ -336,7 +336,7 @@ __repmgr_ssl_handshake(env, conn)
 	ret = ssl_get_error(env, conn, rc, 0 /* treat like reading */);
 	if (ret == WOULDBLOCK &&
 	    SSL_want((SSL *)conn->ssl) == SSL_WRITING)
-		F_SET(conn, REPMGR_SSL_WANT_WRITE_TO_READ);
+		FLD_SET(conn->ssl_flags, REPMGR_SSL_WANT_WRITE_TO_READ);
 	return (ret);
 }
 
@@ -359,7 +359,7 @@ __repmgr_ssl_read(env, conn, buf, len, nrp)
 {
 	int rc;
 
-	F_CLR(conn,
+	FLD_CLR(conn->ssl_flags,
 	    REPMGR_SSL_WANT_READ_TO_WRITE | REPMGR_SSL_WANT_WRITE_TO_READ);
 	*nrp = 0;
 	rc = SSL_read((SSL *)conn->ssl, buf, (int)len);
@@ -392,7 +392,7 @@ __repmgr_ssl_write(env, conn, buf, len, nwp)
 {
 	int rc;
 
-	F_CLR(conn,
+	FLD_CLR(conn->ssl_flags,
 	    REPMGR_SSL_WANT_READ_TO_WRITE | REPMGR_SSL_WANT_WRITE_TO_READ);
 	*nwp = 0;
 	rc = SSL_write((SSL *)conn->ssl, buf, (int)len);

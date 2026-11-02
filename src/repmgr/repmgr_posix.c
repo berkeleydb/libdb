@@ -755,13 +755,13 @@ prepare_io(env, conn, info_)
 		return (__repmgr_cleanup_defunct(env, conn));
 
 #ifdef HAVE_REPMGR_SSL
-	if (conn->ssl != NULL && F_ISSET(conn, REPMGR_SSL_HANDSHAKING)) {
+	if (conn->ssl != NULL && FLD_ISSET(conn->ssl_flags, REPMGR_SSL_HANDSHAKING)) {
 		/*
 		 * While handshaking, select for whichever direction OpenSSL
 		 * last asked for (default: read, for a server awaiting the
 		 * ClientHello).
 		 */
-		if (F_ISSET(conn, REPMGR_SSL_WANT_WRITE_TO_READ))
+		if (FLD_ISSET(conn->ssl_flags, REPMGR_SSL_WANT_WRITE_TO_READ))
 			FD_SET((u_int)conn->fd, info->writes);
 		else
 			FD_SET((u_int)conn->fd, info->reads);
@@ -782,7 +782,7 @@ prepare_io(env, conn, info_)
 	 * returned WANT_READ, needs the opposite direction selected.
 	 */
 	if (conn->ssl != NULL) {
-		if (F_ISSET(conn, REPMGR_SSL_WANT_WRITE_TO_READ)) {
+		if (FLD_ISSET(conn->ssl_flags, REPMGR_SSL_WANT_WRITE_TO_READ)) {
 			FD_SET((u_int)conn->fd, info->writes);
 			if (conn->fd > info->maxfd)
 				info->maxfd = conn->fd;
@@ -823,7 +823,7 @@ __repmgr_conn_work(env, conn, info_)
 		return (0);
 
 #ifdef HAVE_REPMGR_SSL
-	if (conn->ssl != NULL && F_ISSET(conn, REPMGR_SSL_HANDSHAKING)) {
+	if (conn->ssl != NULL && FLD_ISSET(conn->ssl_flags, REPMGR_SSL_HANDSHAKING)) {
 		if (FD_ISSET(fd, info->reads) || FD_ISSET(fd, info->writes)) {
 			ret = __repmgr_ssl_handshake(env, conn);
 			if (ret == WOULDBLOCK)
