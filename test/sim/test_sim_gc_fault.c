@@ -103,6 +103,12 @@ struct ackset {
 	unsigned int crash_after;	/* eio mode: crash after this many acks */
 	volatile int leader_in_fsync;	/* stall mode: a leader is blocked in fsync */
 	volatile int stall_ack_during;	/* stall mode: an ack happened while blocked */
+	/* fsync-fault coordination, shared so the PARENT can verify it fired. */
+	int	     mode_eio;		/* 1 = EIO, 0 = stall */
+	unsigned     fault_after;	/* fire on this post-arm log fsync */
+	volatile int armed;		/* 1 once the workload has opened the env */
+	volatile unsigned fsync_n;	/* post-arm log fsyncs counted */
+	volatile int fault_fired;	/* the fault actually fired */
 	int	     key[MAXACK];
 };
 
@@ -110,18 +116,14 @@ static struct ackset *acks;
 static DB_ENV *env;
 static DB *db;
 static volatile int stop;
-
-/* Mode + fsync-fault configuration (process-global; the hook reads them). */
-static int	   mode_eio;		/* 1 = EIO mode, 0 = stall mode */
-static unsigned    fault_after;		/* fire the fault on this log-fsync number */
-static _Atomic unsigned g_fsync_n;	/* count of log fsyncs seen */
-static int	   g_log_fd = -1;	/* the fd of the log file (first synced) */
+static int	   g_log_fd = -1;	/* fd of the log file (first synced post-arm) */
 
 /*
  * The fsync hook.  db_env_set_func_fsync installs this as DB_GLOBAL(j_fsync);
  * os_fsync.c calls it with the raw fd and treats a non-zero return as the
- * sync error.  We only perturb the LOG file's fsync (the first file whose fd
- * we see synced in a txn-commit flush); every other fsync is a real fsync.
+ * sync error.  We perturb only the LOG file's fsync, and only AFTER the
+ * workload has armed the fault (so recovery/creation fsyncs during env open
+ * are never faulted).  Every other fsync is a real fsync.
  */
 static int
 fsync_hook(fd)
@@ -129,38 +131,46 @@ fsync_hook(fd)
 {
 	unsigned n;
 
+	/* Not armed yet (env open / recovery): pass every fsync through. */
+	if (acks == NULL || !acks->armed)
+		return (fsync(fd) == 0 ? 0 : errno);
+
 	/*
-	 * Learn the log fd lazily: the first fd fsync'd by a committing thread
-	 * is the log.  (Checkpoints also fsync data files, but this workload
-	 * takes no checkpoint during the measured window.)
+	 * Learn the log fd lazily: the first fd fsync'd AFTER arming is a
+	 * committing thread's log flush.  (This workload takes no checkpoint
+	 * during the measured window, so no data-file fsync intervenes.)
 	 */
 	if (g_log_fd == -1)
 		g_log_fd = fd;
 
 	if (fd == g_log_fd) {
-		n = atomic_fetch_add(&g_fsync_n, 1) + 1;
-		if (n == fault_after) {
-			if (mode_eio) {
-				/*
-				 * Fail this flush.  Do NOT fsync: the durable
-				 * frontier must not advance, so wb_crash drops
-				 * the records this flush would have covered.
-				 */
-				errno = EIO;
-				return (EIO);
-			} else {
-				/*
-				 * Stall: hold the leader in fsync for a bounded
-				 * interval with the flag raised, so any follower
-				 * that returns 0 during the window is a defect.
-				 */
-				acks->leader_in_fsync = 1;
-				__sync_synchronize();
-				usleep(300000);		/* 300 ms */
-				__sync_synchronize();
-				acks->leader_in_fsync = 0;
-				/* fall through to a real fsync below */
-			}
+		n = __sync_add_and_fetch(&acks->fsync_n, 1);
+		/*
+		 * EIO mode: once we reach the fault point, this and EVERY
+		 * later log fsync fails -- the disk has died.  No durable
+		 * frontier can advance past the fault, so wb_crash drops every
+		 * record that was acked on the strength of a flush that never
+		 * actually synced.  A committer that still returns success
+		 * after this point is the defect this test hunts.
+		 */
+		if (acks->mode_eio && n >= acks->fault_after) {
+			acks->fault_fired = 1;
+			errno = EIO;
+			return (EIO);
+		}
+		if (!acks->mode_eio && n == acks->fault_after) {
+			/*
+			 * Stall: hold the leader in fsync for a bounded
+			 * interval with the flag raised, so any follower that
+			 * returns 0 during the window is a defect.
+			 */
+			acks->fault_fired = 1;
+			acks->leader_in_fsync = 1;
+			__sync_synchronize();
+			usleep(300000);		/* 300 ms */
+			__sync_synchronize();
+			acks->leader_in_fsync = 0;
+			/* fall through to a real fsync below */
 		}
 	}
 	/* Perform the real fsync. */
@@ -188,7 +198,7 @@ ack(id)
 	 * now, this committer returned success while the flush it depends on
 	 * has not completed.  Record it as a violation.
 	 */
-	if (!mode_eio && acks->leader_in_fsync)
+	if (!acks->mode_eio && acks->leader_in_fsync)
 		acks->stall_ack_during = 1;
 
 	slot = __sync_fetch_and_add(&acks->n, 1);
@@ -230,25 +240,36 @@ committer(arg)
 		}
 		ret = txn->commit(txn, 0);
 		if (ret != 0) {
-			/*
-			 * A failed commit (expected for the leader whose fsync
-			 * got EIO, and any follower that could not get its own
-			 * record durable) is NOT acked.  That is the point:
-			 * the error reached the caller.  Keep going so other
-			 * threads make progress.
-			 */
 			if (ret == DB_LOCK_DEADLOCK)
 				continue;
 			/*
-			 * After an EIO the env may be in a state where further
-			 * commits also fail; stop this thread cleanly.
+			 * A failed commit is the CORRECT outcome once the disk
+			 * has died: the error reached the caller and the record
+			 * is NOT acked.  Crash now (EIO mode) so wb_crash drops
+			 * the un-synced tail and the parent checks that every
+			 * ALREADY-acked commit still survives -- i.e. no earlier
+			 * follower returned success for a flush that never synced.
 			 */
+			if (acks->mode_eio && acks->fault_fired) {
+				__db_sim_wb_crash();
+				fflush(NULL);
+				_exit(42);
+			}
 			break;
 		}
 
 		nacked = ack(id);
 
-		if (mode_eio && nacked >= acks->crash_after) {
+		/*
+		 * EIO mode: as soon as the persistent fsync failure has begun,
+		 * crash.  Any record acked at or after this point that was
+		 * covered only by the failing flush is dropped by wb_crash and
+		 * must be absent after recovery -- if it is present-and-acked
+		 * the group-commit error path let a follower lie.  We crash
+		 * right after an ack so the acked set is published first.
+		 */
+		if (acks->mode_eio &&
+		    (acks->fault_fired || nacked >= acks->crash_after)) {
 			__db_sim_wb_crash();
 			fflush(NULL);
 			_exit(42);
@@ -257,7 +278,7 @@ committer(arg)
 		 * Stall mode: run a bounded number of commits, enough that the
 		 * fault_after fsync happens with followers parked, then stop.
 		 */
-		if (!mode_eio && nacked >= 400)
+		if (!acks->mode_eio && nacked >= 400)
 			stop = 1;
 	}
 	return (NULL);
@@ -295,6 +316,13 @@ run_child(seed)
 		return (ret);
 	}
 
+	/*
+	 * Arm the fault only now: the env is open and the next log fsync will
+	 * be a committer's flush, never a creation/recovery fsync.
+	 */
+	acks->armed = 1;
+	__sync_synchronize();
+
 	for (i = 0; i < NTHREAD; i++) {
 		t[i].id = i;
 		if ((ret = pthread_create(&t[i].th, NULL, committer, &t[i]))
@@ -323,9 +351,19 @@ verify_after_recovery(nchecked, missing_out)
 
 	*nchecked = 0; *missing_out = 0;
 
-	if ((ret = open_env(DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
-	    DB_INIT_MPOOL | DB_INIT_TXN | DB_RECOVER)) != 0) {
+	if ((ret = db_env_create(&env, 0)) != 0)
+		return (ret);
+	if ((ret = env->open(env, HOME, DB_CREATE | DB_INIT_LOCK |
+	    DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_RECOVER, 0664))
+	    != 0) {
 		fprintf(stderr, "recover open: %s\n", db_strerror(ret));
+		return (ret);
+	}
+	if ((ret = db_create(&db, env, 0)) != 0)
+		return (ret);
+	if ((ret = db->open(db, NULL, DBFILE, NULL, DB_BTREE,
+	    DB_AUTO_COMMIT, 0664)) != 0) {
+		fprintf(stderr, "reopen: %s\n", db_strerror(ret));
 		return (ret);
 	}
 
@@ -389,19 +427,12 @@ main(argc, argv)
 	unsigned int crash_after = argc > 3 ? (unsigned)atoi(argv[3]) : 48;
 	unsigned int nchecked;
 	pid_t pid;
-	int status, ret, missing;
+	int status, ret, missing, mode_eio;
 	char cmd[256];
 
 	mode_eio = strcmp(modearg, "eio") == 0;
 	if (crash_after < 1) crash_after = 1;
 	if (crash_after > MAXACK) crash_after = MAXACK;
-
-	/*
-	 * The fault fires on a middle fsync so a batch of followers is parked
-	 * behind it.  Derive it from the seed within a small range so repeated
-	 * seeds land the fault at different points in the flush stream.
-	 */
-	fault_after = (unsigned)(2 + (seed % 8));
 
 	(void)snprintf(cmd, sizeof(cmd),
 	    "mkdir -p %s && find %s -mindepth 1 -delete", HOME, HOME);
@@ -410,6 +441,13 @@ main(argc, argv)
 	if (map_ackset() != 0)
 		return (EXIT_FAILURE);
 	acks->crash_after = crash_after;
+	acks->mode_eio = mode_eio;
+	/*
+	 * The fault fires on a middle post-arm fsync so a batch of followers is
+	 * parked behind it.  Derive it from the seed within a small range so
+	 * repeated seeds land the fault at different points in the flush stream.
+	 */
+	acks->fault_after = (unsigned)(16 + (seed % 16));
 
 	/* Install the fsync hook BEFORE any env is created. */
 	if ((ret = db_env_set_func_fsync(fsync_hook)) != 0) {
@@ -437,10 +475,11 @@ main(argc, argv)
 			 * fault and seen at least one failed commit.
 			 */
 		}
-		if (atomic_load(&g_fsync_n) < fault_after) {
+		if (!acks->fault_fired || acks->fsync_n < acks->fault_after) {
 			fprintf(stderr, "eio: the EIO fsync never fired "
-			    "(saw %u fsyncs, needed %u) -- test proves "
-			    "nothing\n", atomic_load(&g_fsync_n), fault_after);
+			    "(saw %u fsyncs, needed %u, fired=%d) -- test proves "
+			    "nothing\n", acks->fsync_n, acks->fault_after,
+			    acks->fault_fired);
 			return (EXIT_FAILURE);
 		}
 		if (acks->n == 0) {
@@ -448,6 +487,8 @@ main(argc, argv)
 			return (EXIT_FAILURE);
 		}
 
+		/* Disarm so recovery's own fsyncs are not faulted. */
+		acks->armed = 0;
 		ret = verify_after_recovery(&nchecked, &missing);
 #if DB_DST_BUG(1)
 		if (ret == 0 && missing == 0) {
@@ -465,7 +506,7 @@ main(argc, argv)
 			    "fsync #%u, %u acked commits ALL survived crash "
 			    "recovery; no follower returned success for the "
 			    "failed flush (seed 0x%llx)\n",
-			    fault_after, nchecked,
+			    acks->fault_after, nchecked,
 			    (unsigned long long)seed);
 			return (EXIT_SUCCESS);
 		}
@@ -482,10 +523,11 @@ main(argc, argv)
 			    status);
 			return (EXIT_FAILURE);
 		}
-		if (atomic_load(&g_fsync_n) < fault_after) {
+		if (!acks->fault_fired || acks->fsync_n < acks->fault_after) {
 			fprintf(stderr, "stall: the stalled fsync never fired "
-			    "(saw %u, needed %u) -- raise the workload\n",
-			    atomic_load(&g_fsync_n), fault_after);
+			    "(saw %u, needed %u, fired=%d) -- raise the "
+			    "workload\n", acks->fsync_n, acks->fault_after,
+			    acks->fault_fired);
 			return (EXIT_FAILURE);
 		}
 		if (acks->stall_ack_during) {
@@ -498,7 +540,7 @@ main(argc, argv)
 		printf("test_sim_gc_fault[stall]: PASS -- leader stalled 300ms "
 		    "in fsync on #%u, %u followers all waited for the fsync to "
 		    "complete before returning success, none hung (seed "
-		    "0x%llx)\n", fault_after, acks->n,
+		    "0x%llx)\n", acks->fault_after, acks->n,
 		    (unsigned long long)seed);
 		return (EXIT_SUCCESS);
 	}

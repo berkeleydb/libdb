@@ -113,6 +113,13 @@ done
 echo "PHASE1: pass=$pass fail=$fail of $((pass+fail))"
 
 # ---------------------------------------------------------------------------
+# Phase 2 runs NODURABLE against the two CRASH gates whose teeth depend on the
+# log fsync actually happening (ordering, mixed).  The EIO sub-test is
+# deliberately EXCLUDED: NODURABLE compiles the log fsync OUT entirely, so the
+# db_env_set_func_fsync hook the EIO test drives is never called and the fault
+# cannot fire -- the two mechanisms are mutually exclusive.  The EIO test's
+# teeth come from the injected EIO plus wb_crash (a follower that lies would
+# lose an acked commit), proven by the phase-1 run above, not from NODURABLE.
 build "$BUGGY" CPPFLAGS="-DDB_DST_INJECT_BUG=1" || exit 1
 echo "=== PHASE 2: NODURABLE in the library -- the crash gates MUST catch it ==="
 caught=0; missed=0
@@ -125,11 +132,6 @@ for seed in $SEEDS2; do
 	if run "$BUGGY/test_sim_gc_mixed" "$seed" 128 >"$PREFIX/p2.out" 2>&1
 	then caught=$((caught+1)); tail -1 "$PREFIX/p2.out"
 	else missed=$((missed+1)); echo "  MISSED mixed seed=$seed"; \
-	     tail -3 "$PREFIX/p2.out"; fi
-
-	if run "$BUGGY/test_sim_gc_fault" eio "$seed" 48 >"$PREFIX/p2.out" 2>&1
-	then caught=$((caught+1)); tail -1 "$PREFIX/p2.out"
-	else missed=$((missed+1)); echo "  MISSED eio seed=$seed"; \
 	     tail -3 "$PREFIX/p2.out"; fi
 done
 echo "PHASE2: caught=$caught missed=$missed of $((caught+missed))"

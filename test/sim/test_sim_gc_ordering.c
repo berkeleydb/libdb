@@ -147,6 +147,7 @@ worker(arg)
 	char kbuf[32];
 	int v, nv, k, ret;
 	unsigned int nacked;
+	char rbuf[64];
 	uint64_t r = t->seed ^ (0x9E3779B97F4A7C15ull * (uint64_t)(t->id + 1));
 
 	while (!stop) {
@@ -160,6 +161,9 @@ worker(arg)
 		memset(&key, 0, sizeof(key));
 		memset(&data, 0, sizeof(data));
 		key.data = kbuf; key.size = (u_int32_t)strlen(kbuf) + 1;
+		/* DB_THREAD handle: supply our own read buffer. */
+		data.data = rbuf; data.ulen = sizeof(rbuf);
+		data.flags = DB_DBT_USERMEM;
 
 		/* READ current value (0 if absent). */
 		if ((ret = db->get(db, txn, &key, &data, 0)) == 0)
@@ -219,6 +223,13 @@ run_child(seed, crash_after)
 
 	if ((ret = db_env_create(&env, 0)) != 0)
 		return (ret);
+	/*
+	 * RMW on contended counters WILL deadlock; configure the detector to
+	 * reject the youngest so a convoy resolves instead of hanging forever.
+	 * (The harness trap from the XREL work: with no detector the test just
+	 * times out.)
+	 */
+	(void)env->set_lk_detect(env, DB_LOCK_YOUNGEST);
 	if ((ret = env->open(env, HOME, DB_CREATE | DB_INIT_LOCK |
 	    DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_THREAD, 0664)) != 0)
 		return (ret);
@@ -308,6 +319,20 @@ verify_after_recovery(viol_out)
 			fprintf(stderr, "ORDERING VIOLATION key %s: recovered "
 			    "%d was never acknowledged committed -- phantom "
 			    "write\n", kbuf, rv);
+			viol++;
+		}
+		/*
+		 * Invariant 3 (durability, and the NODURABLE catch): the
+		 * LATEST acked value for a counter must survive.  Each RMW
+		 * value is produced by one SYNC commit, and a SYNC commit that
+		 * returned 0 is durable, so the highest acked value for K must
+		 * be present after recovery.  NODURABLE drops acked writes, so
+		 * the surviving value falls below max_acked -- caught here.
+		 */
+		else if (rv < acks->max_acked[k]) {
+			fprintf(stderr, "DURABILITY VIOLATION key %s: recovered "
+			    "%d < highest acked %d -- an acknowledged SYNC "
+			    "commit was lost\n", kbuf, rv, acks->max_acked[k]);
 			viol++;
 		}
 	}

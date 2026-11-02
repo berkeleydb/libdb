@@ -505,6 +505,10 @@ db	run_mf_discard_order
 db	run_dd_stripes
 # SKIPs (passes) on a build without --enable-dtrace; see the script header.
 db	run_dtrace_probes
+# Multi-process group commit: N processes share one env, commit DB_TXN_SYNC,
+# the whole group is SIGKILLed mid-commit, and every acked commit must survive
+# recovery (real kill + real fsync, the cross-process lp->commits path).
+db	run_gc_multiproc
 
 # ---------------------------------------------------------------------------
 # RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an
