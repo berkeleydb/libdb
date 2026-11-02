@@ -926,6 +926,10 @@ AC_CHECK_FUNCS(\
 # Neither is required: os_csprng.c falls back to reading /dev/urandom.
 AC_CHECK_FUNCS(getrandom arc4random_buf)
 
+# RFC 0019 key hygiene: zero secrets so the compiler cannot elide it, and lock
+# key pages out of swap.  All optional; sha256.c and os_mlock.c fall back.
+AC_CHECK_FUNCS(explicit_bzero memset_s mlock)
+
 AC_TIMERS
 
 # Ftruncate.

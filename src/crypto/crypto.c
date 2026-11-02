@@ -14,10 +14,71 @@
 #include "db_int.h"
 #include "dbinc/db_page.h"
 #include "dbinc/crypto.h"
+#include "dbinc/hmac.h"
+
+/*
+ * __crypto_provider_kek --
+ *	Obtain the key-encryption key (KEK) and the verifier secret from the
+ *	installed provider.  For the built-in password provider the KEK is a
+ *	fast SHA-256 of the password and the verifier secret is the password
+ *	itself; a custom provider supplies the KEK and we verify the KEK.
+ *
+ *	vsecret/vslen point at the bytes fed to the slow PBKDF2 verifier.
+ */
+static int
+__crypto_provider_kek(env, kek, vsecret, vslen)
+	ENV *env;
+	u_int8_t *kek;
+	const u_int8_t **vsecret;
+	size_t *vslen;
+{
+	DB_ENV *dbenv;
+	DB_CRYPTO_PROVIDER *prov;
+	int ret;
+
+	dbenv = env->dbenv;
+	prov = dbenv->crypto_provider;
+
+	if (prov != NULL && prov->provider_id != DB_CRYPTO_PROV_PASSWD) {
+		/*
+		 * A key-file / TPM / custom provider supplies the KEK
+		 * directly.  The verifier is computed over the KEK so a
+		 * joiner with the wrong key is rejected without the region
+		 * holding the secret.
+		 */
+		if (prov->get_key == NULL)
+			return (EINVAL);
+		if ((ret = prov->get_key(prov, NULL, kek,
+		    DB_CRYPTO_KEK_LEN)) != 0)
+			return (ret);
+		*vsecret = kek;
+		*vslen = DB_CRYPTO_KEK_LEN;
+		return (0);
+	}
+
+	/* Password provider: KEK = SHA-256(passwd), verifier over passwd. */
+	if (dbenv->passwd == NULL)
+		return (EINVAL);
+	{
+		SHA256_CTX ctx;
+		__db_SHA256Init(&ctx);
+		__db_SHA256Update(&ctx,
+		    (u_int8_t *)dbenv->passwd, dbenv->passwd_len);
+		__db_SHA256Update(&ctx,
+		    (u_int8_t *)DB_ENC_MAGIC, strlen(DB_ENC_MAGIC));
+		__db_SHA256Final(kek, &ctx);
+	}
+	*vsecret = (const u_int8_t *)dbenv->passwd;
+	*vslen = dbenv->passwd_len;
+	return (0);
+}
 
 /*
  * __crypto_region_init --
- *	Initialize crypto.
+ *	Initialize crypto.  RFC 0019: the region holds a salted PBKDF2 verifier
+ *	and (in wrapping mode) a KEK-wrapped data key -- never a cleartext
+ *	secret.  A joiner recomputes the verifier and compares it in constant
+ *	time.
  */
 int
 __crypto_region_init(env)
@@ -28,7 +89,11 @@ __crypto_region_init(env)
 	DB_ENV *dbenv;
 	REGENV *renv;
 	REGINFO *infop;
-	char *sh_passwd;
+	const u_int8_t *vsecret;
+	u_int8_t kek[DB_CRYPTO_KEK_LEN], verifier[DB_CRYPTO_VRFY_LEN];
+	u_int8_t dek[DB_CRYPTO_DEK_LEN];
+	size_t vslen;
+	u_int32_t iters, wrap;
 	int ret;
 
 	dbenv = env->dbenv;
@@ -36,6 +101,13 @@ __crypto_region_init(env)
 	renv = infop->primary;
 	db_cipher = env->crypto_handle;
 	ret = 0;
+	vsecret = NULL;
+	vslen = 0;
+
+	/* Wrapping mode: required whenever the provider is not a password. */
+	wrap = (dbenv->crypto_provider != NULL &&
+	    dbenv->crypto_provider->provider_id != DB_CRYPTO_PROV_PASSWD) ?
+	    1 : 0;
 
 	if (renv->cipher_off == INVALID_ROFF) {
 		if (!CRYPTO_ON(env))
@@ -51,28 +123,52 @@ __crypto_region_init(env)
 			return (EINVAL);
 		}
 		/*
-		 * Must create the shared information.  We need: Shared cipher
-		 * information that contains the passwd.  After we copy the
-		 * passwd, we smash and free the one in the env.
+		 * Creator.  Build a salted verifier (no secret at rest).  In
+		 * wrapping mode, also generate a random DEK and store it
+		 * wrapped under the provider KEK.
 		 */
+		if ((ret = __crypto_provider_kek(env,
+		    kek, &vsecret, &vslen)) != 0)
+			return (ret);
+		iters = DB_CRYPTO_KDF_ITERS;
 		MUTEX_LOCK(env, renv->mtx_regenv);
 		if ((ret = __env_alloc(infop, sizeof(CIPHER), &cipher)) != 0) {
 			MUTEX_UNLOCK(env, renv->mtx_regenv);
-			return (ret);
-		}
-		memset(cipher, 0, sizeof(*cipher));
-		if ((ret =
-		    __env_alloc(infop, dbenv->passwd_len, &sh_passwd)) != 0) {
-			__env_alloc_free(infop, cipher);
-			MUTEX_UNLOCK(env, renv->mtx_regenv);
-			return (ret);
+			goto done;
 		}
 		MUTEX_UNLOCK(env, renv->mtx_regenv);
-		memset(sh_passwd, 0, dbenv->passwd_len);
-		cipher->passwd = R_OFFSET(infop, sh_passwd);
-		cipher->passwd_len = dbenv->passwd_len;
+		memset(cipher, 0, sizeof(*cipher));
 		cipher->flags = db_cipher->alg;
-		memcpy(sh_passwd, dbenv->passwd, cipher->passwd_len);
+		cipher->fmt_version = DB_CRYPTO_FMT_VERIFIER;
+		cipher->kdf_iters = iters;
+		cipher->provider = (dbenv->crypto_provider != NULL) ?
+		    dbenv->crypto_provider->provider_id :
+		    DB_CRYPTO_PROV_PASSWD;
+		if ((ret = __os_csprng(env,
+		    cipher->salt, DB_CRYPTO_SALT_LEN)) != 0)
+			goto done;
+		if ((ret = __db_crypto_make_verifier(env, vsecret, vslen,
+		    cipher->salt, iters, cipher->verifier)) != 0)
+			goto done;
+#ifdef CRYPTO_REGION_SECRET_SABOTAGE
+		/*
+		 * Sabotage arm (test teeth): put the secret back into the
+		 * region.  The leak test must FAIL under this build flag.
+		 */
+		memcpy(cipher->verifier, vsecret,
+		    vslen < DB_CRYPTO_VRFY_LEN ? vslen : DB_CRYPTO_VRFY_LEN);
+#endif
+		if (wrap) {
+			if ((ret = __os_csprng(env, dek, DB_CRYPTO_DEK_LEN))
+			    != 0)
+				goto done;
+			if ((ret = __db_aes_keywrap(env, kek, dek,
+			    DB_CRYPTO_DEK_LEN, cipher->wrapped_dek)) != 0)
+				goto done;
+			cipher->dek_wrapped = 1;
+			memcpy(db_cipher->dek, dek, DB_CRYPTO_DEK_LEN);
+			db_cipher->dek_len = DB_CRYPTO_DEK_LEN;
+		}
 		renv->cipher_off = R_OFFSET(infop, cipher);
 	} else {
 		if (!CRYPTO_ON(env)) {
@@ -81,17 +177,28 @@ __crypto_region_init(env)
 			return (EINVAL);
 		}
 		cipher = R_ADDR(infop, renv->cipher_off);
-		sh_passwd = R_ADDR(infop, cipher->passwd);
-		if ((cipher->passwd_len != dbenv->passwd_len) ||
-		    memcmp(dbenv->passwd, sh_passwd, cipher->passwd_len) != 0) {
+		/*
+		 * Joiner.  Recompute the verifier from our secret and compare
+		 * in constant time against the region copy.
+		 */
+		if ((ret = __crypto_provider_kek(env,
+		    kek, &vsecret, &vslen)) != 0)
+			return (ret);
+		if ((ret = __db_crypto_make_verifier(env, vsecret, vslen,
+		    cipher->salt, cipher->kdf_iters, verifier)) != 0)
+			goto done;
+		if (!__db_ct_memeq(verifier, cipher->verifier,
+		    DB_CRYPTO_VRFY_LEN)) {
 			__db_errx(env, DB_STR("0175", "Invalid password"));
-			return (EPERM);
+			ret = EPERM;
+			goto done;
 		}
 		if (!F_ISSET(db_cipher, CIPHER_ANY) &&
 		    db_cipher->alg != cipher->flags) {
 			__db_errx(env, DB_STR("0176",
     "Environment encrypted using a different algorithm"));
-			return (EINVAL);
+			ret = EINVAL;
+			goto done;
 		}
 		if (F_ISSET(db_cipher, CIPHER_ANY))
 			/*
@@ -101,19 +208,35 @@ __crypto_region_init(env)
 			 */
 			if ((ret = __crypto_algsetup(env, db_cipher,
 			    cipher->flags, 0)) != 0)
-				return (ret);
+				goto done;
+		if (cipher->dek_wrapped) {
+			if ((ret = __db_aes_keyunwrap(env, kek,
+			    cipher->wrapped_dek, DB_CRYPTO_WRAP_LEN, dek)) != 0) {
+				if (ret == EPERM)
+					__db_errx(env, DB_STR("5460",
+					    "Key unwrap failed: wrong key"));
+				goto done;
+			}
+			memcpy(db_cipher->dek, dek, DB_CRYPTO_DEK_LEN);
+			db_cipher->dek_len = DB_CRYPTO_DEK_LEN;
+		}
 	}
 	ret = db_cipher->init(env, db_cipher);
 
+done:
 	/*
-	 * On success, no matter if we allocated it or are using the already
-	 * existing one, we are done with the passwd in the env.  We smash
-	 * N-1 bytes so that we don't overwrite the nul.
+	 * Scrub all transient secrets from the stack, and smash/free the
+	 * env password now that the region (verifier) is set up.
 	 */
-	memset(dbenv->passwd, 0xff, dbenv->passwd_len-1);
-	__os_free(env, dbenv->passwd);
-	dbenv->passwd = NULL;
-	dbenv->passwd_len = 0;
+	__db_explicit_bzero(kek, sizeof(kek));
+	__db_explicit_bzero(dek, sizeof(dek));
+	__db_explicit_bzero(verifier, sizeof(verifier));
+	if (dbenv->passwd != NULL) {
+		__db_explicit_bzero(dbenv->passwd, dbenv->passwd_len);
+		__os_free(env, dbenv->passwd);
+		dbenv->passwd = NULL;
+		dbenv->passwd_len = 0;
+	}
 
 	return (ret);
 }
@@ -147,6 +270,9 @@ __crypto_env_close(env)
 	db_cipher = env->crypto_handle;
 	if (!F_ISSET(db_cipher, CIPHER_ANY))
 		ret = db_cipher->close(env, db_cipher->data);
+	/* Scrub process-local key material before freeing the handle. */
+	__db_explicit_bzero(db_cipher->dek, sizeof(db_cipher->dek));
+	__db_explicit_bzero(db_cipher->mac_key, sizeof(db_cipher->mac_key));
 	__os_free(env, db_cipher);
 
 	env->crypto_handle = NULL;
@@ -178,7 +304,6 @@ __crypto_env_refresh(env)
 		if (renv->cipher_off != INVALID_ROFF) {
 			cipher = R_ADDR(infop, renv->cipher_off);
 			MUTEX_LOCK(env, renv->mtx_regenv);
-			__env_alloc_free(infop, R_ADDR(infop, cipher->passwd));
 			__env_alloc_free(infop, cipher);
 			MUTEX_UNLOCK(env, renv->mtx_regenv);
 		}
@@ -386,8 +511,12 @@ alg_retry:
 
 /*
  * __crypto_set_passwd --
- *	Get the password from the shared region; and set it in a new
- * environment handle.  Use this to duplicate environment handles.
+ *	Formerly reconstructed the env password from the shared region to
+ *	duplicate an environment handle.  RFC 0019 no longer stores the secret
+ *	in the region (only a salted verifier), so a handle cannot be
+ *	duplicated this way; the application must call set_encrypt /
+ *	set_encrypt_provider on the new handle itself.  No caller remains in
+ *	the tree; kept for ABI and to fail loudly if resurrected.
  *
  * PUBLIC: int __crypto_set_passwd __P((ENV *, ENV *));
  */
@@ -395,17 +524,9 @@ int
 __crypto_set_passwd(env_src, env_dest)
 	ENV *env_src, *env_dest;
 {
-	CIPHER *cipher;
-	REGENV *renv;
-	REGINFO *infop;
-	char *sh_passwd;
-
-	infop = env_src->reginfo;
-	renv = infop->primary;
-
+	COMPQUIET(env_dest, NULL);
 	DB_ASSERT(env_src, CRYPTO_ON(env_src));
-
-	cipher = R_ADDR(infop, renv->cipher_off);
-	sh_passwd = R_ADDR(infop, cipher->passwd);
-	return (__env_set_encrypt(env_dest->dbenv, sh_passwd, DB_ENCRYPT_AES));
+	__db_errx(env_src, DB_STR("5461",
+	    "Cannot copy an encryption key from the region: supply the key to the new handle"));
+	return (EINVAL);
 }

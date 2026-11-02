@@ -58,7 +58,9 @@ src/common/util_sig.c
 src/common/zerofill.c	android
 src/crypto/aes_method.c
 src/crypto/crypto.c
+src/crypto/kdf.c
 src/crypto/mersenne/mt19937db.c
+src/crypto/provider.c
 src/crypto/rijndael/rijndael-alg-fst.c
 src/crypto/rijndael/rijndael-api-fst.c
 lang/cxx/cxx_channel.cpp
@@ -170,6 +172,7 @@ src/heap/heap_stub.c	android
 src/heap/heap_verify.c
 src/hmac/hmac.c	android
 src/hmac/sha1.c	android
+src/hmac/sha256.c	android
 src/lock/lock.c	android
 src/lock/lock_deadlock.c	android
 src/lock/lock_failchk.c	android
