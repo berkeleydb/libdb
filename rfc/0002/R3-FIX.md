@@ -147,3 +147,21 @@ preferred.
   three arms (base master, fix, 5.3.28). The fix must recover the all-HOT case
   toward 5.3.28 and not regress the in-cache (64 MB) case. Plus `xrel_kv`
   btree/hash at t=16/32 with a fitting cache (read-scaling must not regress).
+
+## 7. Measured outcome (window = 16)
+
+Full A/B in [`test/bench/R3-FIX-2026-11.md`](../../test/bench/R3-FIX-2026-11.md)
+(c6id.metal, 5 reps interleaved, CV ≤ 1.5%). With `MPOOL_COOL_SWEEP_LIMIT` = 16:
+
+- buckets/alloc (btree 4 MB) **459 → 15.6**; (queue 4 MB) **520 → 13.8**; 5.3.28 is 1.6–1.8.
+- throughput (queue 4 MB) **35×** master, now 0.82× of 5.3.28 (was 0.05×);
+  btree under pressure 1.05–1.18×; 64 MB (data fits) **1.00×** — no change when
+  eviction never runs.
+- dirty evictions (queue 4 MB) **849,148 → 4,676**, identical to 5.3.28.
+- profile: `__memp_alloc` falls from **78.7%** self-time to out of the top; the
+  cost moves to ordinary insert work.
+- in-cache reads (`xrel_kv` C, 16 GB cache): `db_stat -m` shows 0 pages forced,
+  so the eviction path never runs and the change is neutral by construction.
+
+The `run_evict_bound` test asserts buckets/alloc < 40, which the window clears
+(15.6, max 42) and the unbounded master sweep (459) fails.
