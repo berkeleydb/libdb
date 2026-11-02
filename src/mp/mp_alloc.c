@@ -17,12 +17,23 @@
 #endif
 
 /*
- * This configuration parameter limits the number of hash buckets which
- * __memp_alloc() searches through while excluding buffers with a 'high'
- * priority.
+ * Bound on the COOL-first (non-aggressive) phase of the sweep (regression R3,
+ * RFC 0002 rfc/0002/R3-FIX.md).  The COOL-first scan (RFC 0002 §11) only cools
+ * the HOT band once a full sweep finds no COOL victim; proving "all-HOT" over
+ * the whole table on every allocation is O(htab_buckets) and was measured at
+ * 80-520 buckets examined per allocation under bulk insert, vs 1-2 in 5.3.28.
+ *
+ * We cap the pre-aggressive window at MPOOL_COOL_SWEEP_LIMIT buckets, then
+ * escalate.  This is scan-safe: the victim is always the lowest-warmth buffer
+ * the sweep compares (COOL beats HOT), and aggressive mode only *considers* the
+ * HOT band, it does not age it (the warmth-- is gated on !aggressive), so the
+ * hot working set is not decayed by escalating early.  COOL pages still get
+ * their second chance within the window.  A larger value restores more
+ * second-chance recency at the cost of re-introducing the regression; a smaller
+ * value is cheaper but coarser.
  */
-#if !defined(MPOOL_ALLOC_SEARCH_LIMIT)
-#define	MPOOL_ALLOC_SEARCH_LIMIT	500
+#if !defined(MPOOL_COOL_SWEEP_LIMIT)
+#define	MPOOL_COOL_SWEEP_LIMIT	16
 #endif
 
 /*
@@ -286,8 +297,15 @@ search:
 		if (SH_TAILQ_FIRST(&hp->hash_bucket, __bh) == NULL)
 			continue;
 
-		/* Set aggressive if we have already searched for too long. */
-		if (aggressive == 0 && buckets >= MPOOL_ALLOC_SEARCH_LIMIT) {
+		/*
+		 * Set aggressive if the bounded COOL-first window found no COOL
+		 * victim (regression R3, rfc/0002/R3-FIX.md).  Escalating here
+		 * does not cool the hot set -- aggressive only widens which
+		 * buffers are *considered*; selection is still lowest-warmth
+		 * first, so a COOL victim (if one exists anywhere the sweep
+		 * reaches) is still evicted before any HOT buffer.
+		 */
+		if (aggressive == 0 && buckets >= MPOOL_COOL_SWEEP_LIMIT) {
 			aggressive = 1;
 			/* Once aggressive, we consider all buffers. */
 			high_priority = MPOOL_CLOCK_MAX + 1;
