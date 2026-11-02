@@ -2758,6 +2758,8 @@ struct __db_env {
 	int  (*set_encrypt) __P((DB_ENV *, const char *, u_int32_t));
 	int  (*set_encrypt_provider)
 		__P((DB_ENV *, DB_CRYPTO_PROVIDER *, u_int32_t));
+	int  (*set_encrypt_keyfile) __P((DB_ENV *, const char *, u_int32_t));
+	int  (*set_encrypt_tpm) __P((DB_ENV *, const char *, u_int32_t));
 	void (*set_errcall) __P((DB_ENV *,
 		void (*)(const DB_ENV *, const char *, const char *)));
 	void (*set_errfile) __P((DB_ENV *, FILE *));

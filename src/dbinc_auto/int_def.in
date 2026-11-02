@@ -684,6 +684,15 @@
 #define	__db_generate_iv __db_generate_iv@DB_VERSION_UNIQUE_NAME@
 #define	__crypto_keyfile_check __crypto_keyfile_check@DB_VERSION_UNIQUE_NAME@
 #define	__crypto_keyfile_provider __crypto_keyfile_provider@DB_VERSION_UNIQUE_NAME@
+#ifdef HAVE_TPM
+#define	__crypto_tpm_provider __crypto_tpm_provider@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TPM
+#define	__crypto_tpm_inspect __crypto_tpm_inspect@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TPM
+#define	__crypto_tpm_seal __crypto_tpm_seal@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_rijndaelKeySetupEnc __db_rijndaelKeySetupEnc@DB_VERSION_UNIQUE_NAME@
 #define	__db_rijndaelKeySetupDec __db_rijndaelKeySetupDec@DB_VERSION_UNIQUE_NAME@
 #define	__db_rijndaelEncrypt __db_rijndaelEncrypt@DB_VERSION_UNIQUE_NAME@
@@ -768,6 +777,8 @@
 #define	__env_get_encrypt_flags __env_get_encrypt_flags@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_encrypt __env_set_encrypt@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_encrypt_provider __env_set_encrypt_provider@DB_VERSION_UNIQUE_NAME@
+#define	__env_set_encrypt_keyfile __env_set_encrypt_keyfile@DB_VERSION_UNIQUE_NAME@
+#define	__env_set_encrypt_tpm __env_set_encrypt_tpm@DB_VERSION_UNIQUE_NAME@
 #define	__env_map_flags __env_map_flags@DB_VERSION_UNIQUE_NAME@
 #define	__env_fetch_flags __env_fetch_flags@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_flags __env_set_flags@DB_VERSION_UNIQUE_NAME@

@@ -23,6 +23,15 @@ int __db_crypto_make_verifier __P((ENV *, const u_int8_t *, size_t, const u_int8
 int __db_generate_iv __P((ENV *, u_int32_t *));
 int __crypto_keyfile_check __P((const char *));
 int __crypto_keyfile_provider __P((DB_CRYPTO_PROVIDER *, const char *));
+#ifdef HAVE_TPM
+int __crypto_tpm_provider __P((DB_CRYPTO_PROVIDER *, const char *));
+#endif
+#ifdef HAVE_TPM
+int __crypto_tpm_inspect __P((const char *));
+#endif
+#ifdef HAVE_TPM
+int __crypto_tpm_seal __P((ENV *, const char *, const u_int8_t *, size_t, u_int32_t));
+#endif
 int __db_rijndaelKeySetupEnc __P((u32 *, const u8 *, int));
 int __db_rijndaelKeySetupDec __P((u32 *, const u8 *, int));
 void __db_rijndaelEncrypt __P((u32 *, int, const u8 *, u8 *));

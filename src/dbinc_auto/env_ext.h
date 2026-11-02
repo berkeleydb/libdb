@@ -42,6 +42,8 @@ int  __env_set_memory_max __P((DB_ENV *, u_int32_t, u_int32_t));
 int __env_get_encrypt_flags __P((DB_ENV *, u_int32_t *));
 int __env_set_encrypt __P((DB_ENV *, const char *, u_int32_t));
 int __env_set_encrypt_provider __P((DB_ENV *, DB_CRYPTO_PROVIDER *, u_int32_t));
+int __env_set_encrypt_keyfile __P((DB_ENV *, const char *, u_int32_t));
+int __env_set_encrypt_tpm __P((DB_ENV *, const char *, u_int32_t));
 void __env_map_flags __P((const FLAG_MAP *, u_int, u_int32_t *, u_int32_t *));
 void __env_fetch_flags __P((const FLAG_MAP *, u_int, u_int32_t *, u_int32_t *));
 int  __env_set_flags __P((DB_ENV *, u_int32_t, int));
