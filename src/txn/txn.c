@@ -784,23 +784,44 @@ __txn_continue(env, txn, td, ip, add_to_list)
 	txn->set_timeout = __txn_set_timeout;
 	txn->set_txn_lsnp = __txn_set_txn_lsnp;
 
-	/* XXX Do we need to explicitly set a SYNC flag here? */
+	/*
+	 * Set the commit-sync flag.  __txn_continue re-materialises a DB_TXN
+	 * for a TXN_DETAIL that another thread or process began (the XA path:
+	 * xa_prepare / xa_commit / xa_rollback re-fetch the txn with TMJOIN),
+	 * so the sync flag __txn_begin set on the ORIGINAL DB_TXN is not here.
+	 * Without one of the TXN_SYNC_FLAGS, LOG_FLAGS() drops DB_FLUSH and an
+	 * XA commit does not fsync the log -- a silent durability loss in a
+	 * production build (the DB_ASSERT in __txn_commit catches it only under
+	 * DIAGNOSTIC).  Default to SYNC, honouring the env-level NOSYNC bits,
+	 * exactly as __txn_begin does.
+	 */
 	txn->flags = TXN_MALLOC |
 	    (F_ISSET(td, TXN_DTL_NOWAIT) ? TXN_NOWAIT : 0);
+	if (F_ISSET(env->dbenv, DB_ENV_TXN_NOSYNC))
+		F_SET(txn, TXN_NOSYNC);
+	else if (F_ISSET(env->dbenv, DB_ENV_TXN_WRITE_NOSYNC))
+		F_SET(txn, TXN_WRITE_NOSYNC);
+	else
+		F_SET(txn, TXN_SYNC);
 	txn->xa_thr_status = TXN_XA_THREAD_NOTA;
 
 	/*
 	 * If this is a restored transaction, we need to propagate that fact
-	 * to the process-local structure.  However, if it's not a restored
-	 * transaction, we need to make sure that we have a locker associated
-	 * with this transaction.
+	 * to the process-local structure.  Either way we must associate the
+	 * transaction's locker: a restored prepared transaction holds its
+	 * locks under a locker keyed by its txnid (recovery re-acquired them),
+	 * and commit/abort releases them through txn->locker.  Leaving it unset
+	 * is why the XA resolve-after-crash path dereferenced an uninitialised
+	 * locker (the XA JOIN allocates the DB_TXN with __os_malloc, not
+	 * zeroed) and crashed in __lock_vec.
 	 */
 	if (F_ISSET(td, TXN_DTL_RESTORED))
 		F_SET(txn, TXN_RESTORED);
-	else
-		if ((ret = __lock_getlocker(env->lk_handle,
-		    txn->txnid, 0, &txn->locker)) == 0)
-			ret = __txn_set_priority(txn, td->priority);
+	if ((ret = __lock_getlocker(env->lk_handle,
+	    txn->txnid, 0, &txn->locker)) == 0)
+		ret = __txn_set_priority(txn, td->priority);
+	if (ret != 0)
+		return (ret);
 
 	if (LOCKING_ON(env)) {
 		region = env->lk_handle->reginfo.primary;
