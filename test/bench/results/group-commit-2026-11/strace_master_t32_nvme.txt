@@ -1,0 +1,37 @@
+strace: Process 43090 attached
+strace: Process 43091 attached
+strace: Process 43092 attached
+strace: Process 43093 attached
+strace: Process 43094 attached
+strace: Process 43095 attached
+strace: Process 43096 attached
+strace: Process 43097 attached
+strace: Process 43098 attached
+strace: Process 43099 attached
+strace: Process 43100 attached
+strace: Process 43101 attached
+strace: Process 43102 attached
+strace: Process 43103 attached
+strace: Process 43104 attached
+strace: Process 43105 attached
+strace: Process 43106 attached
+strace: Process 43107 attached
+strace: Process 43108 attached
+strace: Process 43109 attached
+strace: Process 43110 attached
+strace: Process 43112 attached
+strace: Process 43111 attached
+strace: Process 43113 attached
+strace: Process 43114 attached
+strace: Process 43115 attached
+strace: Process 43116 attached
+strace: Process 43117 attached
+strace: Process 43118 attached
+strace: Process 43119 attached
+strace: Process 43120 attached
+strace: Process 43121 attached
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.459088         124      3674           fdatasync
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.459088         124      3674           total
