@@ -503,6 +503,12 @@ db	run_mf_discard_order
 # every real cycle is still resolved and no bystander is chosen as a victim,
 # with lockers created and freed on every stripe during each walk.
 db	run_dd_stripes
+# Tuxedo-free XA harness: a minimal test TM drives db_xa_switch (src/xa/*.c)
+# through the full state machine (2PC/rollback/one-phase, two RMs in one global
+# txn, suspend/resume+JOIN, every protocol/arg error code) and multi-process
+# crash recovery (kill -9 after prepare, and mid-commit; recover with
+# xa_recover and resolve in-doubt branches).  Replaces the orphaned xa_direct.
+db	run_xa
 # SKIPs (passes) on a build without --enable-dtrace; see the script header.
 db	run_dtrace_probes
 
