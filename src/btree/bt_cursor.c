@@ -31,6 +31,7 @@ static int  __bam_getboth_finddatum __P((DBC *, DBT *, u_int32_t));
 static int  __bam_getbothc __P((DBC *, DBT *));
 static int  __bam_get_prev __P((DBC *));
 static int  __bam_isopd __P((DBC *, db_pgno_t *));
+static int  __bam_dup_alldeleted __P((DBC *, DBT *, int *));
 #ifdef HAVE_COMPRESSION
 static int  __bam_getlte __P((DBC *, DBT *, DBT *));
 #endif
@@ -2086,7 +2087,7 @@ __bamc_put(dbc, key, data, flags, pgnop)
 	DBT dbt;
 	DB_MPOOLFILE *mpf;
 	db_pgno_t root_pgno;
-	int cmp, exact, own, ret, stack;
+	int cmp, exact, gone, own, ret, stack;
 	u_int32_t iiop;
 	void *arg;
 
@@ -2190,6 +2191,29 @@ split:	ret = stack = 0;
 		 */
 		if (!F_ISSET(dbp, DB_AM_DUP)) {
 			iiop = DB_CURRENT;
+			break;
+		}
+
+		/*
+		 * R2 (finishes R1): a put of a key the comparator calls equal to
+		 * an existing set whose members are ALL deleted -- the set is kept
+		 * only because a cursor pins it -- must store the caller's key
+		 * bytes, not the dead set's, exactly as it does when no cursor
+		 * pins the set (the set is then reaped before the search, so the
+		 * put inserts fresh).  While any member is live the set's key
+		 * stays (the documented shared-key semantics).  R1 handles the
+		 * non-dup slot in __bam_iitem; the dup paths (DB_AFTER append of a
+		 * shared key, DB_CURRENT overwrite of a deleted member, and the
+		 * off-page tree) are handled here by redirecting to a fresh insert
+		 * at this slot, which case 1 of __bam_iitem completes with the
+		 * caller's key -- reusing its overflow, split/retry and cursor
+		 * adjustment, and leaving the dead set pinned until it is reaped.
+		 */
+		if (key != NULL &&
+		    (ret = __bam_dup_alldeleted(dbc, key, &gone)) != 0)
+			goto err;
+		if (key != NULL && gone) {
+			iiop = DB_KEYFIRST;
 			break;
 		}
 
@@ -3057,6 +3081,151 @@ __bam_isopd(dbc, pgnop)
 		*pgnop = bo->pgno;
 		return (1);
 	}
+	return (0);
+}
+
+/*
+ * __bam_opd_alldel --
+ *	Walk an off-page duplicate tree from its root; set *allp if every data
+ *	item in it is deleted (so the set is logically gone but kept because a
+ *	cursor pins it).  An empty tree counts as all-deleted.  Short-circuits
+ *	at the first live item, so a set with live members costs one page.
+ */
+static int
+__bam_opd_alldel(dbc, root, allp)
+	DBC *dbc;
+	db_pgno_t root;
+	int *allp;
+{
+	DB *dbp;
+	DB_MPOOLFILE *mpf;
+	PAGE *h;
+	db_indx_t i;
+	db_pgno_t pgno;
+	int ret, t_ret;
+
+	dbp = dbc->dbp;
+	mpf = dbp->mpf;
+	*allp = 1;
+
+	/* Descend to the leftmost leaf, then follow the leaf chain. */
+	for (pgno = root;;) {
+		if ((ret = __memp_fget(mpf, &pgno,
+		    dbc->thread_info, dbc->txn, 0, &h)) != 0)
+			return (ret);
+		if (TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO) {
+			pgno = GET_BINTERNAL(dbp, h, 0)->pgno;
+			if ((ret = __memp_fput(mpf,
+			    dbc->thread_info, h, dbc->priority)) != 0)
+				return (ret);
+			continue;
+		}
+		break;
+	}
+	for (;;) {
+		for (i = 0; i < NUM_ENT(h); i += O_INDX)
+			if (!B_DISSET(GET_BKEYDATA(dbp, h, i)->type)) {
+				*allp = 0;
+				break;
+			}
+		pgno = *allp ? NEXT_PGNO(h) : PGNO_INVALID;
+		if ((t_ret = __memp_fput(mpf,
+		    dbc->thread_info, h, dbc->priority)) != 0)
+			return (t_ret);
+		if (pgno == PGNO_INVALID)
+			return (0);
+		if ((ret = __memp_fget(mpf, &pgno,
+		    dbc->thread_info, dbc->txn, 0, &h)) != 0)
+			return (ret);
+	}
+}
+
+/*
+ * __bam_dup_alldeleted --
+ *	Set *gonep if the cursor's matched key is the key of a duplicate set
+ *	whose members are ALL deleted AND whose stored key bytes differ from
+ *	key (R2, finishing R1).  Such a set is kept only because a cursor pins
+ *	it; an equal-key put must then store the caller's bytes, as it does
+ *	when no cursor pins the set.  While any member is live, or the stored
+ *	key already equals key byte for byte, *gonep stays 0 and the normal
+ *	shared-key duplicate paths run.
+ *
+ *	Handles both an on-page set (slots sharing inp[indx]) and an off-page
+ *	duplicate tree (a B_DUPLICATE item whose tree is walked).
+ */
+static int
+__bam_dup_alldeleted(dbc, key, gonep)
+	DBC *dbc;
+	DBT *key;
+	int *gonep;
+{
+	BKEYDATA *bk;
+	BOVERFLOW *bo;
+	BTREE_CURSOR *cp;
+	DB *dbp;
+	PAGE *h;
+	db_indx_t indx, *inp;
+	int all, cmp, ret;
+
+	dbp = dbc->dbp;
+	cp = (BTREE_CURSOR *)dbc->internal;
+	h = cp->page;
+	indx = cp->indx;
+	*gonep = 0;
+
+	if (TYPE(h) != P_LBTREE)
+		return (0);
+
+	/*
+	 * The stored key: byte-compare it against the caller's key.  If the
+	 * bytes are identical this is the ordinary equal-key case, nothing to
+	 * do.  memcmp a keydata item, __db_moff (NULL func = byte compare) an
+	 * overflow one.  A zero-length key may carry NULL data, so guard it.
+	 */
+	bk = GET_BKEYDATA(dbp, h, indx);
+	if (B_TYPE(bk->type) == B_KEYDATA) {
+		if (bk->len == key->size && (key->size == 0 ||
+		    memcmp(bk->data, key->data, key->size) == 0))
+			return (0);
+	} else {
+		bo = (BOVERFLOW *)bk;
+		if (bo->tlen == key->size) {
+			if ((ret = __db_moff(dbc,
+			    key, bo->pgno, bo->tlen, NULL, &cmp)) != 0)
+				return (ret);
+			if (cmp == 0)
+				return (0);
+		}
+	}
+
+	/*
+	 * Off-page duplicates: the data slot is a B_DUPLICATE pointing at the
+	 * tree root.  The tree holds data only; the key is this parent slot.
+	 */
+	bo = GET_BOVERFLOW(dbp, h, indx + O_INDX);
+	if (B_TYPE(bo->type) == B_DUPLICATE) {
+		if ((ret = __bam_opd_alldel(dbc, bo->pgno, &all)) != 0)
+			return (ret);
+		*gonep = all;
+		return (0);
+	}
+
+	/*
+	 * On-page set: the members all share this key item (equal inp[]).
+	 * Walk the run of slots sharing inp[indx] in both directions; the set
+	 * is gone only if every member's data item is deleted.
+	 */
+	inp = P_INP(dbp, h);
+	for (; indx > 0 && inp[indx - P_INDX] == inp[cp->indx];
+	    indx -= P_INDX)
+		;
+	for (all = 1; indx < NUM_ENT(h) && inp[indx] == inp[cp->indx];
+	    indx += P_INDX)
+		if (!B_DISSET(GET_BKEYDATA(dbp, h, indx + O_INDX)->type)) {
+			all = 0;
+			break;
+		}
+	*gonep = all;
 	return (0);
 }
 
