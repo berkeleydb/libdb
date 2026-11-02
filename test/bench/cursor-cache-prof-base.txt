@@ -1,0 +1,23 @@
+    66.99%    66.99%  swapper        
+            |          
+             --66.90%--secondary_startup_64_no_verify
+    12.76%  swapper          [kernel.kallsyms]     [k] acpi_processor_ffh_cstate_enter
+     7.29%  kworker/u258:0-  [kernel.kallsyms]     [k] folio_unlock
+     7.10%  swapper          [kernel.kallsyms]     [k] mod_node_page_state
+     4.27%  swapper          [kernel.kallsyms]     [k] mem_serial_in
+     4.17%  kworker/u258:0-  [kernel.kallsyms]     [k] iomap_do_writepage
+     4.08%  swapper          [kernel.kallsyms]     [k] vsnprintf
+     4.07%  swapper          [kernel.kallsyms]     [k] do_idle
+     3.81%  swapper          [kernel.kallsyms]     [k] iomap_finish_ioend
+     3.72%  swapper          [kernel.kallsyms]     [k] nvme_poll_cq
+     3.60%  kworker/u258:0-  [kernel.kallsyms]     [k] __mod_lruvec_state
+     3.56%  kworker/u258:0-  [kernel.kallsyms]     [k] folio_clear_dirty_for_io
+     3.48%  swapper          [kernel.kallsyms]     [k] native_irq_return_iret
+     3.01%  swapper          [kernel.kallsyms]     [k] menu_select
+     3.00%  swapper          [kernel.kallsyms]     [k] enqueue_entity
+     2.60%  swapper          [kernel.kallsyms]     [k] its_return_thunk
+     2.50%  kworker/102:1H-  [kernel.kallsyms]     [k] __domain_mapping
+     2.50%  sleep            ld-linux-x86-64.so.2  [.] 0x000000000000ddcc
+     2.33%  swapper          [kernel.kallsyms]     [k] _raw_spin_unlock_irqrestore
+     2.22%  kworker/38:1H-k  [kernel.kallsyms]     [k] __update_idle_core
+     2.01%  kworker/39:1H-k  [kernel.kallsyms]     [k] update_sd_lb_stats.constprop.0

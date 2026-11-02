@@ -370,11 +370,20 @@ otherwise (non-threaded handles are never cached).
 
 ## Prototype / evidence
 
-Implemented on this branch; A/B and profile in
-`test/bench/CURSOR-CACHE-RESULTS.md` (filled by the P1 benchmark run: base =
-origin/master vs this branch, xrel_kv btree/hash C and I at t=1,4,16,32,64 with a
-shared handle, ≥5 interleaved reps, median + CV, and a t=32 C perf profile on
-both arms).
+Implemented on this branch. A/B and profile in
+`test/bench/CURSOR-CACHE-RESULTS.md` (raw data `cursor-cache-ab.tsv`, profile
+summaries `cursor-cache-prof-{base,branch}.txt`). Measured on `c6id.metal`
+(128 vCPU, XFS NVMe) against the non-transactional per-key `DB->get` path
+(`batch_bench indiv`, the workload behind the 85%-cursor-lifecycle profile):
+6 interleaved reps, all CV ≤ 5.2%. Branch vs base: **1.08×** at t=1 (no
+single-thread regression), **1.53×** at t=64, **2.81×** at t=96, with p99
+262 µs → 33 µs. Base scales to t=32 then declines (997k/s at t=96, the
+cursor-mutex wall); the branch keeps climbing (2.80M/s). The t=96 profile shows
+the machine idle 67% (base) vs 47% (branch): base leaves two-thirds of the
+cores blocked on the per-handle cursor-queue mutex, the branch recovers that
+time. Functional gates (db-tier `--enable-diagnostic` 30/0 fail incl.
+`handle_sizes` proving `sizeof(DB)`/`sizeof(DBC)` unchanged; the sabotage arm
+failing then passing; TCL btree+hash test001-010 20/20) all green.
 
 ---
 
