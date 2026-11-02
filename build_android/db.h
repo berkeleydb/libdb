@@ -154,6 +154,8 @@ struct __db;		typedef struct __db DB;
 struct __db_bt_stat;	typedef struct __db_bt_stat DB_BTREE_STAT;
 struct __db_channel;	typedef struct __db_channel DB_CHANNEL;
 struct __db_cipher;	typedef struct __db_cipher DB_CIPHER;
+struct __db_crypto_provider;
+			typedef struct __db_crypto_provider DB_CRYPTO_PROVIDER;
 struct __db_codec;	typedef struct __db_codec DB_CODEC;
 struct __db_compact;	typedef struct __db_compact DB_COMPACT;
 struct __db_constraint;	typedef struct __db_constraint DB_CONSTRAINT;
@@ -2394,6 +2396,26 @@ typedef enum {
 	DB_BACKUP_WRITE_DIRECT = 4
 } DB_BACKUP_CONFIG;
 
+/*
+ * Encryption key-provider interface (RFC 0019).  A provider supplies the
+ * key-encryption key (KEK); libdb owns the data key and the wrapping.  Set
+ * one with DB_ENV->set_encrypt_provider; DB_ENV->set_encrypt installs the
+ * built-in password provider.  Applications may populate this to supply a
+ * custom key source (an HSM, a KMS client, etc.).
+ */
+struct __db_crypto_provider {
+	u_int32_t provider_id;		/* DB_CRYPTO_PROV_* or app-defined. */
+	u_int32_t flags;
+	void	 *ctx;			/* Provider-private state. */
+	/* Fill buf (len bytes) with the KEK for key_id.  Return 0 or errno. */
+	int	(*get_key) __P((DB_CRYPTO_PROVIDER *,
+		    const char *, u_int8_t *, size_t));
+	/* Release transient provider state (never the data key). */
+	void	(*release) __P((DB_CRYPTO_PROVIDER *));
+	/* Optional: rotate the KEK.  NULL if unsupported. */
+	int	(*rotate) __P((DB_CRYPTO_PROVIDER *, const char *));
+};
+
 struct __db_env {
 	ENV *env;			/* Linked ENV structure */
 
@@ -2440,6 +2462,7 @@ struct __db_env {
 
 	char	*passwd;		/* Cryptography support */
 	size_t	 passwd_len;
+	DB_CRYPTO_PROVIDER *crypto_provider;	/* RFC 0019 key provider. */
 
 	/* Private handle references */
 	void	*app_private;		/* Application-private handle */
@@ -2733,6 +2756,8 @@ struct __db_env {
 		int (*)(DB_ENV *, const char *, void *)));
 	int  (*set_backup_config) __P((DB_ENV *, DB_BACKUP_CONFIG, u_int32_t));
 	int  (*set_encrypt) __P((DB_ENV *, const char *, u_int32_t));
+	int  (*set_encrypt_provider)
+		__P((DB_ENV *, DB_CRYPTO_PROVIDER *, u_int32_t));
 	void (*set_errcall) __P((DB_ENV *,
 		void (*)(const DB_ENV *, const char *, const char *)));
 	void (*set_errfile) __P((DB_ENV *, FILE *));

@@ -153,10 +153,12 @@ __crypto_region_init(env)
 #ifdef CRYPTO_REGION_SECRET_SABOTAGE
 		/*
 		 * Sabotage arm (test teeth): put the secret back into the
-		 * region.  The leak test must FAIL under this build flag.
+		 * region (as the pre-RFC code did) WITHOUT breaking auth -- the
+		 * verifier above is still correct.  The leak scan must then find
+		 * the password in the region file, so the leak test FAILS.
 		 */
-		memcpy(cipher->verifier, vsecret,
-		    vslen < DB_CRYPTO_VRFY_LEN ? vslen : DB_CRYPTO_VRFY_LEN);
+		memcpy(cipher->wrapped_dek, vsecret,
+		    vslen < DB_CRYPTO_WRAP_LEN ? vslen : DB_CRYPTO_WRAP_LEN);
 #endif
 		if (wrap) {
 			if ((ret = __os_csprng(env, dek, DB_CRYPTO_DEK_LEN))
