@@ -1,0 +1,32 @@
+fatal: invalid reference: origin/master
+new2 OK mutex=checking for pthread.h... (cached) yes ver=libdb 2026.10.7 (October 15, 2026)
+mst	btree	I	4	99621
+new2	btree	I	4	146237
+mst	btree	I	16	85114
+new2	btree	I	16	83975
+mst	recno	F	4	31316
+new2	recno	F	4	63221
+mst	hash	I	16	36668
+new2	hash	I	16	48309
+mst	heap	I	16	88828
+new2	heap	I	16	95076
+mst	btree	I	4	98615
+new2	btree	I	4	146259
+mst	btree	I	16	85572
+new2	btree	I	16	84028
+mst	recno	F	4	31026
+new2	recno	F	4	63994
+mst	hash	I	16	36923
+new2	hash	I	16	50621
+mst	heap	I	16	88780
+new2	heap	I	16	96946
+mst	btree	I	4	100430
+new2	btree	I	4	145253
+mst	btree	I	16	85409
+new2	btree	I	16	84885
+mst	recno	F	4	32690
+new2	recno	F	4	62877
+mst	hash	I	16	38880
+new2	hash	I	16	50819
+mst	heap	I	16	87172
+new2	heap	I	16	94879

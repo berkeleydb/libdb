@@ -77,6 +77,8 @@ put_u32(DB *db, DB_TXN *txn, uint32_t key, void *rec, size_t sz)
 	return db->put(db, txn, &k, &d, 0);
 }
 
+static int g_rmw;		/* TPROC_B_RMW: DB_RMW reads */
+
 static int
 adjust(DB *db, DB_TXN *txn, uint32_t key, int32_t delta)
 {
@@ -87,7 +89,8 @@ adjust(DB *db, DB_TXN *txn, uint32_t key, int32_t delta)
 	memset(&k, 0, sizeof(k)); k.data = &key; k.size = sizeof(key);
 	memset(&d, 0, sizeof(d));
 	d.data = &b; d.ulen = sizeof(b); d.flags = DB_DBT_USERMEM;
-	if ((ret = db->get(db, txn, &k, &d, 0)) != 0)
+	/* TPROC_B_RMW=1: read for update (DB_RMW), as a TPC-B implementation would. */
+	if ((ret = db->get(db, txn, &k, &d, g_rmw ? DB_RMW : 0)) != 0)
 		return ret;
 	b.balance += delta;
 	memset(&d, 0, sizeof(d)); d.data = &b; d.size = sizeof(b);
@@ -204,6 +207,7 @@ main(int argc, char **argv)
 	int t, ret;
 
 	bb_config_defaults(&g_cfg);
+	g_rmw = getenv("TPROC_B_RMW") != NULL;
 	if (bb_getopt(argc, argv, &g_cfg) != 0) { usage(argv[0]); return 1; }
 	if (g_cfg.scale < 1) g_cfg.scale = 1;
 	g_naccts = g_cfg.scale * ACCOUNTS_PER;

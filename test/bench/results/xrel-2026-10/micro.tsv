@@ -1,0 +1,1099 @@
+arm	rep	test	desc	ops_per_s
+lts	1	1	1000000 cursor allocations	25769210.95
+lts	1	2	100 Btree DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3032140.69
+lts	1	3	100 Hash DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2164033.76
+lts	1	4	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4162.86
+lts	1	5	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4129.60
+lts	1	6	100 Btree DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3059975.52
+lts	1	7	100 Hash DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2194907.81
+lts	1	8	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5759.85
+lts	1	9	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5647.71
+lts	1	10	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5649.35
+lts	1	11	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5534.75
+lts	1	12	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4111.20
+lts	1	13	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4074.43
+lts	1	14	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	614066.92
+lts	1	15	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	447215.99
+lts	1	16	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	614479.72
+lts	1	17	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	447373.25
+lts	1	18	100 Btree DB_PREV cursor of 100000 10/20 byte key/data items	6889410.49
+lts	1	19	100 Hash DB_PREV cursor of 100000 10/20 byte key/data items	5069487.46
+lts	1	20	100 Heap DB_PREV cursor of 100000 10/20 byte key/data items	7933888.49
+lts	1	21	100 Queue DB_PREV cursor of 100000 10/20 byte key/data items	5817680.86
+lts	1	22	100 Recno DB_PREV cursor of 100000 10/20 byte key/data items	3575374.25
+lts	1	23	100 Btree DB_NEXT cursor of 100000 10/20 byte key/data items	6752080.48
+lts	1	24	100 Hash DB_NEXT cursor of 100000 10/20 byte key/data items	5051653.15
+lts	1	25	100 Heap DB_NEXT cursor of 100000 10/20 byte key/data items	8164404.99
+lts	1	26	100 Queue DB_NEXT cursor of 100000 10/20 byte key/data items	5776657.11
+lts	1	27	100 Recno DB_NEXT cursor of 100000 10/20 byte key/data items	3530554.83
+lts	1	28	100000 Btree database in-order delete of 10/20 byte key/data pairs using the key	1017376.80
+lts	1	29	100000 Hash database in-order delete of 10/20 byte key/data pairs using the key	335128.51
+lts	1	30	100000 Queue database in-order delete of 10/20 byte key/data pairs using the key	3569516.33
+lts	1	31	100000 Recno database in-order delete of 10/20 byte key/data pairs using the key	1006664.12
+lts	1	32	100000 Btree database in-order delete of 10/20 byte key/data pairs using a cursor	1548131.41
+lts	1	33	100000 Hash database in-order delete of 10/20 byte key/data pairs using a cursor	1933749.73
+lts	1	34	100000 Heap database in-order delete of 10/20 byte key/data pairs using a cursor	2706140.23
+lts	1	35	100000 Queue database in-order delete of 10/20 byte key/data pairs using a cursor	2306592.24
+lts	1	36	100000 Recno database in-order delete of 10/20 byte key/data pairs using a cursor	1002164.68
+lts	1	37	1000000 Btree database get of cached key/data item	4861425.08
+lts	1	38	1000000 Hash database get of cached key/data item	4763288.38
+lts	1	39	1000000 Heap database get of cached key/data item	7605488.12
+lts	1	40	1000000 Queue database get of cached key/data item	4877358.81
+lts	1	41	1000000 Recno database get of cached key/data item	5858471.06
+lts	1	42	2236232704 bulk in-memory Btree database reads of 8/32 byte key/data pairs	32818225.02
+lts	1	43	100000 transactional logging Btree database writes of 8/32 byte key/data pairs	200124.88
+lts	1	44	1000000 in-memory Btree database reads of 8/32 byte key/data pairs	4860787.06
+lts	1	45	1000000 transactional nosync logging Btree database writes of 8/32 byte key/data pairs	1233180.95
+lts	1	46	1000000 transactional in-memory Btree database reads of 8/32 byte key/data pairs	1826740.93
+lts	1	47	1000000 transactional in-memory logging Btree database writes of 8/32 byte key/data pairs	1237790.74
+lts	1	48	1000000 transactional OS-write/nosync logging Btree database writes of 8/32 byte key/data pairs	657754.53
+lts	1	49	1000000 in-memory Btree database writes of 8/32 byte key/data pairs	3134766.76
+lts	1	50	1000000 Btree database in-order put of 10/20 byte key/data items	2453331.50
+lts	1	51	100000 Hash database in-order put of 10/20 byte key/data items	400668.31
+lts	1	52	1000000 Heap database in-order put of 10/20 byte key/data items	4446479.94
+lts	1	53	1000000 Queue database in-order put of 10/20 byte key/data items	293065.89
+lts	1	54	1000000 Recno database in-order put of 10/20 byte key/data items	1501706.69
+lts	1	55	1000000 Btree database in-order put of 10/20 byte key/data duplicate items	1245041.62
+lts	1	56	1000000 Hash database in-order put of 10/20 byte key/data duplicate items	1055137.25
+lts	1	57	10000 Btree named in-memory database open/close pairs	961353.59
+lts	1	58	10000 Hash named in-memory database open/close pairs	1543924.66
+lts	1	59	10000 Heap named in-memory database open/close pairs	1699524.13
+lts	1	60	10000 Queue named in-memory database open/close pairs	1713796.06
+lts	1	61	10000 Recno named in-memory database open/close pairs	1573069.06
+lts	1	62	10000 Btree database open/close pairs	179230.74
+lts	1	63	10000 Hash database open/close pairs	177544.21
+lts	1	64	10000 Heap database open/close pairs	181735.57
+lts	1	65	10000 Queue database open/close pairs	181950.51
+lts	1	66	10000 Recno database open/close pairs	179288.58
+lts	1	67	10000 Btree sub-database open/close pairs	107543.07
+lts	1	68	10000 Hash sub-database open/close pairs	107849.27
+lts	1	69	10000 Recno sub-database open/close pairs	108334.15
+lts	1	70	10000 Btree in-memory database open/close pairs	840689.37
+lts	1	71	10000 Hash in-memory database open/close pairs	786101.72
+lts	1	72	10000 Heap in-memory database open/close pairs	65390.25
+lts	1	73	10000 Queue in-memory database open/close pairs	908925.65
+lts	1	74	10000 Recno in-memory database open/close pairs	850051.00
+lts	1	75	100000 Btree database put of 10 byte key, 204800 byte data	57682.90
+lts	1	76	100000 Hash database put of 10 byte key, 204800 byte data	76208.59
+lts	1	77	100000 Heap database put of key, 204800 byte data	4418.97
+lts	1	78	100000 Recno database put of key, 204800 byte data	57618.46
+lts	1	79	1000000 Btree database put of 10 byte key, 20 byte data with 10 secondaries	89225.92
+lts	1	80	1000000 Hash database put of 10 byte key, 20 byte data with 10 secondaries	89211.53
+lts	1	81	1000000 Heap database put of key, 20 byte data with 10 secondaries	100681.27
+lts	1	82	1000000 Queue database put of key, 20 byte data with 10 secondaries	89611.52
+lts	1	83	1000000 Recno database put of key, 20 byte data with 10 secondaries	88737.48
+lts	1	84	1000000 Btree database put of 10 byte key, 20 byte data	3556959.37
+lts	1	85	1000000 Hash database put of 10 byte key, 20 byte data	3483774.32
+lts	1	86	1000000 Heap database put of key, 20 byte data	3597847.05
+lts	1	87	1000000 Queue database put of key, 20 byte data	4104989.20
+lts	1	88	1000000 Recno database put of key, 20 byte data	3025370.76
+lts	1	89	recovery after 1000000 transactions	1231718.22
+lts	1	90	1000000 empty transaction start/abort pairs	7978999.27
+lts	1	91	1000000 empty transaction start/commit pairs	7602712.65
+lts	1	92	100000 transactions write nosync commit pairs	1189131.34
+lts	1	93	100000 replicated transactions write nosync commit pairs	938896.61
+lts	1	94	10000 transactions write synchronous commit pairs	210810.36
+lts	1	95	10000 replicated transactions write synchronous commit pairs	188533.40
+lts	1	96	100000 replicated transactions write write-nosync commit pairs	559772.51
+lts	1	97	100000 transactions write write-nosync commit pairs	641473.85
+lts	1	98	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	70464.22
+lts	1	99	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	97472.06
+lts	1	100	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	94400.54
+lts	1	101	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	82553.14
+lts	1	102	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	122199.19
+lts	1	103	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	128994.64
+lts	1	104	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	129347.20
+lts	1	105	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	124794.25
+lts	1	106	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	21886.29
+lts	1	107	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	42499.62
+lts	1	108	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2447441.20
+lts	1	109	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2462023.29
+lts	1	110	workload test: Btree: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	145415.84
+lts	1	111	workload test: Hash: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	145316.52
+lts	1	112	workload test: Btree: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	87581.32
+lts	1	113	workload test: Hash: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144185.92
+lts	1	114	workload test: Btree: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	96750.72
+lts	1	115	workload test: Hash: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	149342.67
+lts	1	116	workload test: Hash: MIXED (get: 90, put: 7, del: 3)<br>10000000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	357271.72
+lts	1	117	100000000 mutex lock-unlock pairs of 0 threads	34192020.33
+lts	1	118	100000000 mutex lock-unlock pairs of 1 thread	34167592.04
+lts	1	119	100000000 mutex lock-unlock pairs of 2 threads	1969478.67
+lts	1	120	100000000 mutex lock-unlock pairs of 4 threads	549699.71
+lts	1	121	100000000 mutex lock-unlock pairs of 8 threads	162921.58
+lts	1	122	100000000 mutex lock-unlock pairs of 64 threads	2215.55
+master	1	1	1000000 cursor allocations	25685151.41
+master	1	2	100 Btree DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3030303.03
+master	1	3	100 Hash DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2169668.04
+master	1	4	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4145.64
+master	1	5	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4097.97
+master	1	6	100 Btree DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3065603.92
+master	1	7	100 Hash DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2163565.56
+master	1	8	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5722.61
+master	1	9	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5565.88
+master	1	10	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5615.09
+master	1	11	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5469.89
+master	1	12	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4088.78
+master	1	13	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4030.80
+master	1	14	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	617128.53
+master	1	15	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	438860.19
+master	1	16	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	617093.49
+master	1	17	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	438709.44
+master	1	18	100 Btree DB_PREV cursor of 100000 10/20 byte key/data items	6871392.95
+master	1	19	100 Hash DB_PREV cursor of 100000 10/20 byte key/data items	5008223.50
+master	1	20	100 Heap DB_PREV cursor of 100000 10/20 byte key/data items	7753296.31
+master	1	21	100 Queue DB_PREV cursor of 100000 10/20 byte key/data items	5518367.89
+master	1	22	100 Recno DB_PREV cursor of 100000 10/20 byte key/data items	3522492.35
+master	1	23	100 Btree DB_NEXT cursor of 100000 10/20 byte key/data items	6781159.77
+master	1	24	100 Hash DB_NEXT cursor of 100000 10/20 byte key/data items	4958344.94
+master	1	25	100 Heap DB_NEXT cursor of 100000 10/20 byte key/data items	7992768.14
+master	1	26	100 Queue DB_NEXT cursor of 100000 10/20 byte key/data items	5506826.26
+master	1	27	100 Recno DB_NEXT cursor of 100000 10/20 byte key/data items	3488320.58
+master	1	28	100000 Btree database in-order delete of 10/20 byte key/data pairs using the key	1017469.96
+master	1	29	100000 Hash database in-order delete of 10/20 byte key/data pairs using the key	333176.74
+master	1	30	100000 Queue database in-order delete of 10/20 byte key/data pairs using the key	3583587.17
+master	1	31	100000 Recno database in-order delete of 10/20 byte key/data pairs using the key	1002476.12
+master	1	32	100000 Btree database in-order delete of 10/20 byte key/data pairs using a cursor	1539717.00
+master	1	33	100000 Hash database in-order delete of 10/20 byte key/data pairs using a cursor	1943672.37
+master	1	34	100000 Heap database in-order delete of 10/20 byte key/data pairs using a cursor	2790879.41
+master	1	35	100000 Queue database in-order delete of 10/20 byte key/data pairs using a cursor	2332687.96
+master	1	36	100000 Recno database in-order delete of 10/20 byte key/data pairs using a cursor	1003713.74
+master	1	37	1000000 Btree database get of cached key/data item	4903907.92
+master	1	38	1000000 Hash database get of cached key/data item	4683818.81
+master	1	39	1000000 Heap database get of cached key/data item	7397379.85
+master	1	40	1000000 Queue database get of cached key/data item	4827023.61
+master	1	41	1000000 Recno database get of cached key/data item	5824383.20
+master	1	42	2236232704 bulk in-memory Btree database reads of 8/32 byte key/data pairs	32822538.58
+master	1	43	100000 transactional logging Btree database writes of 8/32 byte key/data pairs	164861.98
+master	1	44	1000000 in-memory Btree database reads of 8/32 byte key/data pairs	4906578.74
+master	1	45	1000000 transactional nosync logging Btree database writes of 8/32 byte key/data pairs	1236405.72
+master	1	46	1000000 transactional in-memory Btree database reads of 8/32 byte key/data pairs	1830589.89
+master	1	47	1000000 transactional in-memory logging Btree database writes of 8/32 byte key/data pairs	1247206.26
+master	1	48	1000000 transactional OS-write/nosync logging Btree database writes of 8/32 byte key/data pairs	654015.82
+master	1	49	1000000 in-memory Btree database writes of 8/32 byte key/data pairs	3080676.76
+master	1	50	1000000 Btree database in-order put of 10/20 byte key/data items	2444264.66
+master	1	51	100000 Hash database in-order put of 10/20 byte key/data items	399993.60
+master	1	52	1000000 Heap database in-order put of 10/20 byte key/data items	4480407.18
+master	1	53	1000000 Queue database in-order put of 10/20 byte key/data items	293097.32
+master	1	54	1000000 Recno database in-order put of 10/20 byte key/data items	1521687.86
+master	1	55	1000000 Btree database in-order put of 10/20 byte key/data duplicate items	1246990.08
+master	1	56	1000000 Hash database in-order put of 10/20 byte key/data duplicate items	1045457.54
+master	1	57	10000 Btree named in-memory database open/close pairs	958221.54
+master	1	58	10000 Hash named in-memory database open/close pairs	1536334.31
+master	1	59	10000 Heap named in-memory database open/close pairs	1710278.78
+master	1	60	10000 Queue named in-memory database open/close pairs	1723840.72
+master	1	61	10000 Recno named in-memory database open/close pairs	1571091.91
+master	1	62	10000 Btree database open/close pairs	178447.15
+master	1	63	10000 Hash database open/close pairs	176167.99
+master	1	64	10000 Heap database open/close pairs	180137.99
+master	1	65	10000 Queue database open/close pairs	181967.06
+master	1	66	10000 Recno database open/close pairs	178037.32
+master	1	67	10000 Btree sub-database open/close pairs	106964.46
+master	1	68	10000 Hash sub-database open/close pairs	103181.07
+master	1	69	10000 Recno sub-database open/close pairs	105946.79
+master	1	70	10000 Btree in-memory database open/close pairs	787153.65
+master	1	71	10000 Hash in-memory database open/close pairs	778998.21
+master	1	72	10000 Heap in-memory database open/close pairs	66053.69
+master	1	73	10000 Queue in-memory database open/close pairs	837520.94
+master	1	74	10000 Recno in-memory database open/close pairs	850195.54
+master	1	75	100000 Btree database put of 10 byte key, 204800 byte data	57212.43
+master	1	76	100000 Hash database put of 10 byte key, 204800 byte data	76584.63
+master	1	77	100000 Heap database put of key, 204800 byte data	4417.79
+master	1	78	100000 Recno database put of key, 204800 byte data	57447.33
+master	1	79	1000000 Btree database put of 10 byte key, 20 byte data with 10 secondaries	90680.35
+master	1	80	1000000 Hash database put of 10 byte key, 20 byte data with 10 secondaries	88910.16
+master	1	81	1000000 Heap database put of key, 20 byte data with 10 secondaries	101888.74
+master	1	82	1000000 Queue database put of key, 20 byte data with 10 secondaries	90251.93
+master	1	83	1000000 Recno database put of key, 20 byte data with 10 secondaries	89880.55
+master	1	84	1000000 Btree database put of 10 byte key, 20 byte data	3575783.36
+master	1	85	1000000 Hash database put of 10 byte key, 20 byte data	3416852.60
+master	1	86	1000000 Heap database put of key, 20 byte data	3621469.52
+master	1	87	1000000 Queue database put of key, 20 byte data	4136025.61
+master	1	88	1000000 Recno database put of key, 20 byte data	3009872.38
+master	1	89	recovery after 1000000 transactions	1230723.79
+master	1	90	1000000 empty transaction start/abort pairs	8071220.45
+master	1	91	1000000 empty transaction start/commit pairs	7675186.12
+master	1	92	100000 transactions write nosync commit pairs	1178480.94
+master	1	93	100000 replicated transactions write nosync commit pairs	926973.06
+master	1	94	10000 transactions write synchronous commit pairs	214109.84
+master	1	95	10000 replicated transactions write synchronous commit pairs	192230.06
+master	1	96	100000 replicated transactions write write-nosync commit pairs	565777.26
+master	1	97	100000 transactions write write-nosync commit pairs	649878.15
+master	1	98	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	69982.09
+master	1	99	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	96918.29
+master	1	100	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	93189.70
+master	1	101	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	81652.52
+master	1	102	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	121527.50
+master	1	103	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	128484.17
+master	1	104	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	128716.86
+master	1	105	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	123590.91
+master	1	106	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	21974.16
+master	1	107	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	42326.38
+master	1	108	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2465726.40
+master	1	109	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2355657.11
+master	1	110	workload test: Btree: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144911.15
+master	1	111	workload test: Hash: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144952.96
+master	1	112	workload test: Btree: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	87262.01
+master	1	113	workload test: Hash: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144397.03
+master	1	114	workload test: Btree: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	96163.37
+master	1	115	workload test: Hash: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	147695.00
+master	1	116	workload test: Hash: MIXED (get: 90, put: 7, del: 3)<br>10000000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	358430.06
+master	1	117	100000000 mutex lock-unlock pairs of 0 threads	34200896.06
+master	1	118	100000000 mutex lock-unlock pairs of 1 thread	34168981.33
+master	1	119	100000000 mutex lock-unlock pairs of 2 threads	1890194.77
+master	1	120	100000000 mutex lock-unlock pairs of 4 threads	522151.85
+master	1	121	100000000 mutex lock-unlock pairs of 8 threads	149838.47
+master	1	122	100000000 mutex lock-unlock pairs of 64 threads	1862.38
+bdb	1	1	1000000 cursor allocations	29080757.26
+bdb	1	2	100 Btree DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3419972.64
+bdb	1	3	100 Hash DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2402691.01
+bdb	1	4	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4582.81
+bdb	1	5	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4524.95
+bdb	1	6	100 Btree DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3475842.89
+bdb	1	7	100 Hash DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2412545.24
+bdb	1	8	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	6352.04
+bdb	1	9	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	6214.24
+bdb	1	10	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	6267.92
+bdb	1	11	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	6109.37
+bdb	1	12	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4507.58
+bdb	1	13	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4485.33
+bdb	1	14	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	702905.67
+bdb	1	15	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	485997.91
+bdb	1	16	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	702915.55
+bdb	1	17	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	486119.35
+bdb	1	18	100 Btree DB_PREV cursor of 100000 10/20 byte key/data items	7706351.04
+bdb	1	19	100 Hash DB_PREV cursor of 100000 10/20 byte key/data items	5540780.14
+bdb	1	20	100 Heap DB_PREV cursor of 100000 10/20 byte key/data items	8568172.67
+bdb	1	21	100 Queue DB_PREV cursor of 100000 10/20 byte key/data items	6263321.30
+bdb	1	22	100 Recno DB_PREV cursor of 100000 10/20 byte key/data items	3839738.53
+bdb	1	23	100 Btree DB_NEXT cursor of 100000 10/20 byte key/data items	7731542.30
+bdb	1	24	100 Hash DB_NEXT cursor of 100000 10/20 byte key/data items	5536893.15
+bdb	1	25	100 Heap DB_NEXT cursor of 100000 10/20 byte key/data items	8743788.63
+bdb	1	26	100 Queue DB_NEXT cursor of 100000 10/20 byte key/data items	6208719.77
+bdb	1	27	100 Recno DB_NEXT cursor of 100000 10/20 byte key/data items	3804756.63
+bdb	1	28	100000 Btree database in-order delete of 10/20 byte key/data pairs using the key	1156604.21
+bdb	1	29	100000 Hash database in-order delete of 10/20 byte key/data pairs using the key	641679.66
+bdb	1	30	100000 Queue database in-order delete of 10/20 byte key/data pairs using the key	4408587.93
+bdb	1	31	100000 Recno database in-order delete of 10/20 byte key/data pairs using the key	1067065.04
+bdb	1	32	100000 Btree database in-order delete of 10/20 byte key/data pairs using a cursor	1936370.85
+bdb	1	33	100000 Hash database in-order delete of 10/20 byte key/data pairs using a cursor	2296738.63
+bdb	1	34	100000 Heap database in-order delete of 10/20 byte key/data pairs using a cursor	2942907.59
+bdb	1	35	100000 Queue database in-order delete of 10/20 byte key/data pairs using a cursor	2658301.88
+bdb	1	36	100000 Recno database in-order delete of 10/20 byte key/data pairs using a cursor	1068364.65
+bdb	1	37	1000000 Btree database get of cached key/data item	5557130.08
+bdb	1	38	1000000 Hash database get of cached key/data item	5265513.52
+bdb	1	39	1000000 Heap database get of cached key/data item	8115894.98
+bdb	1	40	1000000 Queue database get of cached key/data item	5147607.65
+bdb	1	41	1000000 Recno database get of cached key/data item	6428181.15
+bdb	1	42	2236232704 bulk in-memory Btree database reads of 8/32 byte key/data pairs	32812420.48
+bdb	1	43	100000 transactional logging Btree database writes of 8/32 byte key/data pairs	212387.73
+bdb	1	44	1000000 in-memory Btree database reads of 8/32 byte key/data pairs	5551453.65
+bdb	1	45	1000000 transactional nosync logging Btree database writes of 8/32 byte key/data pairs	1353524.31
+bdb	1	46	1000000 transactional in-memory Btree database reads of 8/32 byte key/data pairs	2273295.60
+bdb	1	47	1000000 transactional in-memory logging Btree database writes of 8/32 byte key/data pairs	1350353.18
+bdb	1	48	1000000 transactional OS-write/nosync logging Btree database writes of 8/32 byte key/data pairs	683177.71
+bdb	1	49	1000000 in-memory Btree database writes of 8/32 byte key/data pairs	3619542.63
+bdb	1	50	1000000 Btree database in-order put of 10/20 byte key/data items	3036302.03
+bdb	1	51	100000 Hash database in-order put of 10/20 byte key/data items	632427.07
+bdb	1	52	1000000 Heap database in-order put of 10/20 byte key/data items	5531799.55
+bdb	1	53	1000000 Queue database in-order put of 10/20 byte key/data items	5368579.85
+bdb	1	54	1000000 Recno database in-order put of 10/20 byte key/data items	1732732.88
+bdb	1	55	1000000 Btree database in-order put of 10/20 byte key/data duplicate items	1391066.29
+bdb	1	56	1000000 Hash database in-order put of 10/20 byte key/data duplicate items	1165578.60
+bdb	1	57	10000 Btree named in-memory database open/close pairs	1643115.35
+bdb	1	58	10000 Hash named in-memory database open/close pairs	1640150.89
+bdb	1	59	10000 Heap named in-memory database open/close pairs	1825483.75
+bdb	1	60	10000 Queue named in-memory database open/close pairs	1724435.25
+bdb	1	61	10000 Recno named in-memory database open/close pairs	1670285.62
+bdb	1	62	10000 Btree database open/close pairs	173704.60
+bdb	1	63	10000 Hash database open/close pairs	175420.13
+bdb	1	64	10000 Heap database open/close pairs	179356.11
+bdb	1	65	10000 Queue database open/close pairs	179028.59
+bdb	1	66	10000 Recno database open/close pairs	173991.72
+bdb	1	67	10000 Btree sub-database open/close pairs	106109.80
+bdb	1	68	10000 Hash sub-database open/close pairs	106601.85
+bdb	1	69	10000 Recno sub-database open/close pairs	106017.56
+bdb	1	70	10000 Btree in-memory database open/close pairs	856751.20
+bdb	1	71	10000 Hash in-memory database open/close pairs	797575.37
+bdb	1	72	10000 Heap in-memory database open/close pairs	797257.43
+bdb	1	73	10000 Queue in-memory database open/close pairs	791014.08
+bdb	1	74	10000 Recno in-memory database open/close pairs	795798.19
+bdb	1	75	100000 Btree database put of 10 byte key, 204800 byte data	78709.29
+bdb	1	76	100000 Hash database put of 10 byte key, 204800 byte data	94030.03
+bdb	1	77	100000 Heap database put of key, 204800 byte data	7774.19
+bdb	1	78	100000 Recno database put of key, 204800 byte data	73368.38
+bdb	1	79	1000000 Btree database put of 10 byte key, 20 byte data with 10 secondaries	111091.87
+bdb	1	80	1000000 Hash database put of 10 byte key, 20 byte data with 10 secondaries	110434.31
+bdb	1	81	1000000 Heap database put of key, 20 byte data with 10 secondaries	127848.53
+bdb	1	82	1000000 Queue database put of key, 20 byte data with 10 secondaries	112464.81
+bdb	1	83	1000000 Recno database put of key, 20 byte data with 10 secondaries	113033.32
+bdb	1	84	1000000 Btree database put of 10 byte key, 20 byte data	3964855.52
+bdb	1	85	1000000 Hash database put of 10 byte key, 20 byte data	3618324.64
+bdb	1	86	1000000 Heap database put of key, 20 byte data	4030567.83
+bdb	1	87	1000000 Queue database put of key, 20 byte data	4025813.52
+bdb	1	88	1000000 Recno database put of key, 20 byte data	3345802.02
+bdb	1	89	recovery after 1000000 transactions	1251281.00
+bdb	1	90	1000000 empty transaction start/abort pairs	9817781.97
+bdb	1	91	1000000 empty transaction start/commit pairs	9162795.39
+bdb	1	92	100000 transactions write nosync commit pairs	1262100.39
+bdb	1	93	100000 replicated transactions write nosync commit pairs	999530.22
+bdb	1	94	10000 transactions write synchronous commit pairs	147955.26
+bdb	1	95	10000 replicated transactions write synchronous commit pairs	160084.52
+bdb	1	96	100000 replicated transactions write write-nosync commit pairs	572439.34
+bdb	1	97	100000 transactions write write-nosync commit pairs	662791.55
+bdb	1	98	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	130772.12
+bdb	1	99	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	141859.26
+bdb	1	100	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	101072.07
+bdb	1	101	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	90093.82
+bdb	1	102	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	161025.41
+bdb	1	103	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	155054.39
+bdb	1	104	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	152474.35
+bdb	1	105	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	141558.65
+bdb	1	106	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	47456.63
+bdb	1	107	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	74010.37
+bdb	1	108	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2884587.65
+bdb	1	109	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2657242.31
+bdb	1	110	workload test: Btree: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	220477.02
+bdb	1	111	workload test: Hash: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	198450.50
+bdb	1	112	workload test: Btree: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	176028.14
+bdb	1	113	workload test: Hash: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	219660.01
+bdb	1	114	workload test: Btree: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	196619.33
+bdb	1	115	workload test: Hash: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	222372.45
+bdb	1	116	workload test: Hash: MIXED (get: 90, put: 7, del: 3)<br>10000000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	703263.86
+bdb	1	117	100000000 mutex lock-unlock pairs of 0 threads	35505387.23
+bdb	1	118	100000000 mutex lock-unlock pairs of 1 thread	35456780.84
+bdb	1	119	100000000 mutex lock-unlock pairs of 2 threads	1960477.60
+bdb	1	120	100000000 mutex lock-unlock pairs of 4 threads	535699.34
+bdb	1	121	100000000 mutex lock-unlock pairs of 8 threads	159120.44
+bdb	1	122	100000000 mutex lock-unlock pairs of 64 threads	3952.87
+master	2	1	1000000 cursor allocations	25480303.73
+master	2	2	100 Btree DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3036744.61
+master	2	3	100 Hash DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2179598.95
+master	2	4	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4156.91
+master	2	5	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4104.09
+master	2	6	100 Btree DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3085467.45
+master	2	7	100 Hash DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2172024.33
+master	2	8	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5718.70
+master	2	9	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5564.45
+master	2	10	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5612.39
+master	2	11	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5485.32
+master	2	12	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4089.35
+master	2	13	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4037.19
+master	2	14	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	617164.33
+master	2	15	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	438743.51
+master	2	16	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	617267.95
+master	2	17	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	439048.44
+master	2	18	100 Btree DB_PREV cursor of 100000 10/20 byte key/data items	6879684.64
+master	2	19	100 Hash DB_PREV cursor of 100000 10/20 byte key/data items	5018855.84
+master	2	20	100 Heap DB_PREV cursor of 100000 10/20 byte key/data items	7763342.27
+master	2	21	100 Queue DB_PREV cursor of 100000 10/20 byte key/data items	5519948.82
+master	2	22	100 Recno DB_PREV cursor of 100000 10/20 byte key/data items	3525387.02
+master	2	23	100 Btree DB_NEXT cursor of 100000 10/20 byte key/data items	6783110.06
+master	2	24	100 Hash DB_NEXT cursor of 100000 10/20 byte key/data items	4961626.78
+master	2	25	100 Heap DB_NEXT cursor of 100000 10/20 byte key/data items	8003861.06
+master	2	26	100 Queue DB_NEXT cursor of 100000 10/20 byte key/data items	5513442.05
+master	2	27	100 Recno DB_NEXT cursor of 100000 10/20 byte key/data items	3491939.56
+master	2	28	100000 Btree database in-order delete of 10/20 byte key/data pairs using the key	1019835.81
+master	2	29	100000 Hash database in-order delete of 10/20 byte key/data pairs using the key	331623.26
+master	2	30	100000 Queue database in-order delete of 10/20 byte key/data pairs using the key	3552397.87
+master	2	31	100000 Recno database in-order delete of 10/20 byte key/data pairs using the key	1005631.54
+master	2	32	100000 Btree database in-order delete of 10/20 byte key/data pairs using a cursor	1545260.69
+master	2	33	100000 Hash database in-order delete of 10/20 byte key/data pairs using a cursor	1952934.28
+master	2	34	100000 Heap database in-order delete of 10/20 byte key/data pairs using a cursor	2787145.68
+master	2	35	100000 Queue database in-order delete of 10/20 byte key/data pairs using a cursor	2340714.39
+master	2	36	100000 Recno database in-order delete of 10/20 byte key/data pairs using a cursor	1002687.20
+master	2	37	1000000 Btree database get of cached key/data item	4898191.10
+master	2	38	1000000 Hash database get of cached key/data item	4695298.60
+master	2	39	1000000 Heap database get of cached key/data item	7422031.56
+master	2	40	1000000 Queue database get of cached key/data item	4832575.42
+master	2	41	1000000 Recno database get of cached key/data item	5808786.37
+master	2	42	2236232704 bulk in-memory Btree database reads of 8/32 byte key/data pairs	32546401.29
+master	2	43	100000 transactional logging Btree database writes of 8/32 byte key/data pairs	173129.89
+master	2	44	1000000 in-memory Btree database reads of 8/32 byte key/data pairs	4903667.45
+master	2	45	1000000 transactional nosync logging Btree database writes of 8/32 byte key/data pairs	1232115.84
+master	2	46	1000000 transactional in-memory Btree database reads of 8/32 byte key/data pairs	1836847.53
+master	2	47	1000000 transactional in-memory logging Btree database writes of 8/32 byte key/data pairs	1239576.71
+master	2	48	1000000 transactional OS-write/nosync logging Btree database writes of 8/32 byte key/data pairs	656191.23
+master	2	49	1000000 in-memory Btree database writes of 8/32 byte key/data pairs	3082994.20
+master	2	50	1000000 Btree database in-order put of 10/20 byte key/data items	2450085.63
+master	2	51	100000 Hash database in-order put of 10/20 byte key/data items	395458.55
+master	2	52	1000000 Heap database in-order put of 10/20 byte key/data items	4502821.02
+master	2	53	1000000 Queue database in-order put of 10/20 byte key/data items	291809.18
+master	2	54	1000000 Recno database in-order put of 10/20 byte key/data items	1520877.85
+master	2	55	1000000 Btree database in-order put of 10/20 byte key/data duplicate items	1246136.98
+master	2	56	1000000 Hash database in-order put of 10/20 byte key/data duplicate items	1049945.93
+master	2	57	10000 Btree named in-memory database open/close pairs	956571.65
+master	2	58	10000 Hash named in-memory database open/close pairs	1537988.31
+master	2	59	10000 Heap named in-memory database open/close pairs	1704158.15
+master	2	60	10000 Queue named in-memory database open/close pairs	1711449.60
+master	2	61	10000 Recno named in-memory database open/close pairs	1570105.20
+master	2	62	10000 Btree database open/close pairs	178804.51
+master	2	63	10000 Hash database open/close pairs	177939.11
+master	2	64	10000 Heap database open/close pairs	184233.31
+master	2	65	10000 Queue database open/close pairs	183962.18
+master	2	66	10000 Recno database open/close pairs	179500.99
+master	2	67	10000 Btree sub-database open/close pairs	108022.86
+master	2	68	10000 Hash sub-database open/close pairs	106700.81
+master	2	69	10000 Recno sub-database open/close pairs	108370.54
+master	2	70	10000 Btree in-memory database open/close pairs	850340.14
+master	2	71	10000 Hash in-memory database open/close pairs	781066.94
+master	2	72	10000 Heap in-memory database open/close pairs	65223.49
+master	2	73	10000 Queue in-memory database open/close pairs	907605.74
+master	2	74	10000 Recno in-memory database open/close pairs	786534.53
+master	2	75	100000 Btree database put of 10 byte key, 204800 byte data	55174.61
+master	2	76	100000 Hash database put of 10 byte key, 204800 byte data	73809.13
+master	2	77	100000 Heap database put of key, 204800 byte data	4421.44
+master	2	78	100000 Recno database put of key, 204800 byte data	56108.98
+master	2	79	1000000 Btree database put of 10 byte key, 20 byte data with 10 secondaries	90487.50
+master	2	80	1000000 Hash database put of 10 byte key, 20 byte data with 10 secondaries	89609.54
+master	2	81	1000000 Heap database put of key, 20 byte data with 10 secondaries	102143.95
+master	2	82	1000000 Queue database put of key, 20 byte data with 10 secondaries	90211.28
+master	2	83	1000000 Recno database put of key, 20 byte data with 10 secondaries	89771.07
+master	2	84	1000000 Btree database put of 10 byte key, 20 byte data	3581674.72
+master	2	85	1000000 Hash database put of 10 byte key, 20 byte data	3416268.96
+master	2	86	1000000 Heap database put of key, 20 byte data	3643889.93
+master	2	87	1000000 Queue database put of key, 20 byte data	4134674.62
+master	2	88	1000000 Recno database put of key, 20 byte data	3001236.51
+master	2	89	recovery after 1000000 transactions	1222345.95
+master	2	90	1000000 empty transaction start/abort pairs	7962607.59
+master	2	91	1000000 empty transaction start/commit pairs	7592322.64
+master	2	92	100000 transactions write nosync commit pairs	1177343.21
+master	2	93	100000 replicated transactions write nosync commit pairs	937875.15
+master	2	94	10000 transactions write synchronous commit pairs	187494.14
+master	2	95	10000 replicated transactions write synchronous commit pairs	191684.72
+master	2	96	100000 replicated transactions write write-nosync commit pairs	556492.32
+master	2	97	100000 transactions write write-nosync commit pairs	634537.90
+master	2	98	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	69696.12
+master	2	99	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	96190.84
+master	2	100	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	92681.24
+master	2	101	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	81293.21
+master	2	102	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	120194.19
+master	2	103	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	127359.17
+master	2	104	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	128241.46
+master	2	105	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	122764.61
+master	2	106	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	21779.46
+master	2	107	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	41821.86
+master	2	108	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2472432.38
+master	2	109	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2358490.57
+master	2	110	workload test: Btree: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144352.43
+master	2	111	workload test: Hash: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144598.10
+master	2	112	workload test: Btree: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	85802.44
+master	2	113	workload test: Hash: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	143127.04
+master	2	114	workload test: Btree: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	95802.33
+master	2	115	workload test: Hash: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	147280.83
+master	2	116	workload test: Hash: MIXED (get: 90, put: 7, del: 3)<br>10000000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	358416.86
+master	2	117	100000000 mutex lock-unlock pairs of 0 threads	33867445.53
+master	2	118	100000000 mutex lock-unlock pairs of 1 thread	34165035.57
+master	2	119	100000000 mutex lock-unlock pairs of 2 threads	1972744.48
+master	2	120	100000000 mutex lock-unlock pairs of 4 threads	536173.86
+master	2	121	100000000 mutex lock-unlock pairs of 8 threads	161651.17
+master	2	122	100000000 mutex lock-unlock pairs of 64 threads	2228.54
+bdb	2	1	1000000 cursor allocations	29278290.15
+bdb	2	2	100 Btree DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3443526.17
+bdb	2	3	100 Hash DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2382654.28
+bdb	2	4	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4575.53
+bdb	2	5	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4527.37
+bdb	2	6	100 Btree DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3505082.37
+bdb	2	7	100 Hash DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2392344.50
+bdb	2	8	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	6356.50
+bdb	2	9	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	6195.45
+bdb	2	10	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	6279.81
+bdb	2	11	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	6102.75
+bdb	2	12	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4520.84
+bdb	2	13	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4478.09
+bdb	2	14	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	702271.85
+bdb	2	15	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	484362.60
+bdb	2	16	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	702246.20
+bdb	2	17	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	484444.49
+bdb	2	18	100 Btree DB_PREV cursor of 100000 10/20 byte key/data items	7694420.70
+bdb	2	19	100 Hash DB_PREV cursor of 100000 10/20 byte key/data items	5529676.67
+bdb	2	20	100 Heap DB_PREV cursor of 100000 10/20 byte key/data items	8554371.16
+bdb	2	21	100 Queue DB_PREV cursor of 100000 10/20 byte key/data items	6247512.71
+bdb	2	22	100 Recno DB_PREV cursor of 100000 10/20 byte key/data items	3833559.13
+bdb	2	23	100 Btree DB_NEXT cursor of 100000 10/20 byte key/data items	7723838.78
+bdb	2	24	100 Hash DB_NEXT cursor of 100000 10/20 byte key/data items	5507845.37
+bdb	2	25	100 Heap DB_NEXT cursor of 100000 10/20 byte key/data items	8695032.18
+bdb	2	26	100 Queue DB_NEXT cursor of 100000 10/20 byte key/data items	6209448.42
+bdb	2	27	100 Recno DB_NEXT cursor of 100000 10/20 byte key/data items	3797738.52
+bdb	2	28	100000 Btree database in-order delete of 10/20 byte key/data pairs using the key	1155815.49
+bdb	2	29	100000 Hash database in-order delete of 10/20 byte key/data pairs using the key	637113.11
+bdb	2	30	100000 Queue database in-order delete of 10/20 byte key/data pairs using the key	4400633.69
+bdb	2	31	100000 Recno database in-order delete of 10/20 byte key/data pairs using the key	1066666.67
+bdb	2	32	100000 Btree database in-order delete of 10/20 byte key/data pairs using a cursor	1940918.44
+bdb	2	33	100000 Hash database in-order delete of 10/20 byte key/data pairs using a cursor	2291580.73
+bdb	2	34	100000 Heap database in-order delete of 10/20 byte key/data pairs using a cursor	2943080.82
+bdb	2	35	100000 Queue database in-order delete of 10/20 byte key/data pairs using a cursor	2628466.29
+bdb	2	36	100000 Recno database in-order delete of 10/20 byte key/data pairs using a cursor	1070148.22
+bdb	2	37	1000000 Btree database get of cached key/data item	5564087.16
+bdb	2	38	1000000 Hash database get of cached key/data item	5260859.73
+bdb	2	39	1000000 Heap database get of cached key/data item	8112800.38
+bdb	2	40	1000000 Queue database get of cached key/data item	5145991.79
+bdb	2	41	1000000 Recno database get of cached key/data item	6421535.26
+bdb	2	42	2236232704 bulk in-memory Btree database reads of 8/32 byte key/data pairs	32441714.78
+bdb	2	43	100000 transactional logging Btree database writes of 8/32 byte key/data pairs	210438.60
+bdb	2	44	1000000 in-memory Btree database reads of 8/32 byte key/data pairs	5548866.09
+bdb	2	45	1000000 transactional nosync logging Btree database writes of 8/32 byte key/data pairs	1349287.31
+bdb	2	46	1000000 transactional in-memory Btree database reads of 8/32 byte key/data pairs	2272463.87
+bdb	2	47	1000000 transactional in-memory logging Btree database writes of 8/32 byte key/data pairs	1349722.56
+bdb	2	48	1000000 transactional OS-write/nosync logging Btree database writes of 8/32 byte key/data pairs	679120.38
+bdb	2	49	1000000 in-memory Btree database writes of 8/32 byte key/data pairs	3623345.94
+bdb	2	50	1000000 Btree database in-order put of 10/20 byte key/data items	3038867.11
+bdb	2	51	100000 Hash database in-order put of 10/20 byte key/data items	634026.96
+bdb	2	52	1000000 Heap database in-order put of 10/20 byte key/data items	5515567.69
+bdb	2	53	1000000 Queue database in-order put of 10/20 byte key/data items	5373455.13
+bdb	2	54	1000000 Recno database in-order put of 10/20 byte key/data items	1728046.89
+bdb	2	55	1000000 Btree database in-order put of 10/20 byte key/data duplicate items	1389355.87
+bdb	2	56	1000000 Hash database in-order put of 10/20 byte key/data duplicate items	1184162.07
+bdb	2	57	10000 Btree named in-memory database open/close pairs	1642305.80
+bdb	2	58	10000 Hash named in-memory database open/close pairs	1634521.09
+bdb	2	59	10000 Heap named in-memory database open/close pairs	1831837.33
+bdb	2	60	10000 Queue named in-memory database open/close pairs	1830831.20
+bdb	2	61	10000 Recno named in-memory database open/close pairs	1492091.91
+bdb	2	62	10000 Btree database open/close pairs	172223.75
+bdb	2	63	10000 Hash database open/close pairs	175608.04
+bdb	2	64	10000 Heap database open/close pairs	179433.35
+bdb	2	65	10000 Queue database open/close pairs	179407.60
+bdb	2	66	10000 Recno database open/close pairs	166777.85
+bdb	2	67	10000 Btree sub-database open/close pairs	105778.69
+bdb	2	68	10000 Hash sub-database open/close pairs	106195.44
+bdb	2	69	10000 Recno sub-database open/close pairs	105290.87
+bdb	2	70	10000 Btree in-memory database open/close pairs	854773.91
+bdb	2	71	10000 Hash in-memory database open/close pairs	797193.88
+bdb	2	72	10000 Heap in-memory database open/close pairs	796241.74
+bdb	2	73	10000 Queue in-memory database open/close pairs	821287.78
+bdb	2	74	10000 Recno in-memory database open/close pairs	803148.34
+bdb	2	75	100000 Btree database put of 10 byte key, 204800 byte data	78547.13
+bdb	2	76	100000 Hash database put of 10 byte key, 204800 byte data	94366.78
+bdb	2	77	100000 Heap database put of key, 204800 byte data	7797.78
+bdb	2	78	100000 Recno database put of key, 204800 byte data	77126.16
+bdb	2	79	1000000 Btree database put of 10 byte key, 20 byte data with 10 secondaries	110435.89
+bdb	2	80	1000000 Hash database put of 10 byte key, 20 byte data with 10 secondaries	109658.66
+bdb	2	81	1000000 Heap database put of key, 20 byte data with 10 secondaries	128785.80
+bdb	2	82	1000000 Queue database put of key, 20 byte data with 10 secondaries	111881.51
+bdb	2	83	1000000 Recno database put of key, 20 byte data with 10 secondaries	112020.91
+bdb	2	84	1000000 Btree database put of 10 byte key, 20 byte data	3966648.42
+bdb	2	85	1000000 Hash database put of 10 byte key, 20 byte data	3617670.15
+bdb	2	86	1000000 Heap database put of key, 20 byte data	4029512.15
+bdb	2	87	1000000 Queue database put of key, 20 byte data	4324960.21
+bdb	2	88	1000000 Recno database put of key, 20 byte data	3344392.12
+bdb	2	89	recovery after 1000000 transactions	1245145.49
+bdb	2	90	1000000 empty transaction start/abort pairs	9767818.94
+bdb	2	91	1000000 empty transaction start/commit pairs	9118845.92
+bdb	2	92	100000 transactions write nosync commit pairs	1224619.76
+bdb	2	93	100000 replicated transactions write nosync commit pairs	932096.75
+bdb	2	94	10000 transactions write synchronous commit pairs	214514.02
+bdb	2	95	10000 replicated transactions write synchronous commit pairs	179817.31
+bdb	2	96	100000 replicated transactions write write-nosync commit pairs	570379.07
+bdb	2	97	100000 transactions write write-nosync commit pairs	667418.62
+bdb	2	98	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	131261.67
+bdb	2	99	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	142551.88
+bdb	2	100	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	100953.81
+bdb	2	101	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	90024.64
+bdb	2	102	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	162229.68
+bdb	2	103	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	155540.11
+bdb	2	104	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	152584.63
+bdb	2	105	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	142006.73
+bdb	2	106	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	47513.97
+bdb	2	107	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	74024.89
+bdb	2	108	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2918685.42
+bdb	2	109	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2660423.54
+bdb	2	110	workload test: Btree: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	222656.15
+bdb	2	111	workload test: Hash: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	199737.94
+bdb	2	112	workload test: Btree: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	176780.27
+bdb	2	113	workload test: Hash: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	220666.28
+bdb	2	114	workload test: Btree: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	196661.09
+bdb	2	115	workload test: Hash: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	222629.39
+bdb	2	116	workload test: Hash: MIXED (get: 90, put: 7, del: 3)<br>10000000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	703281.17
+bdb	2	117	100000000 mutex lock-unlock pairs of 0 threads	35532334.78
+bdb	2	118	100000000 mutex lock-unlock pairs of 1 thread	35468740.69
+bdb	2	119	100000000 mutex lock-unlock pairs of 2 threads	1995735.91
+bdb	2	120	100000000 mutex lock-unlock pairs of 4 threads	543516.19
+bdb	2	121	100000000 mutex lock-unlock pairs of 8 threads	161981.31
+bdb	2	122	100000000 mutex lock-unlock pairs of 64 threads	2580.95
+lts	2	1	1000000 cursor allocations	25393600.81
+lts	2	2	100 Btree DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3032140.69
+lts	2	3	100 Hash DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2174858.63
+lts	2	4	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4172.77
+lts	2	5	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4132.28
+lts	2	6	100 Btree DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3052503.05
+lts	2	7	100 Hash DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2192501.64
+lts	2	8	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5778.87
+lts	2	9	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5647.98
+lts	2	10	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5659.03
+lts	2	11	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5536.66
+lts	2	12	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4122.55
+lts	2	13	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4078.64
+lts	2	14	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	614267.22
+lts	2	15	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	448457.64
+lts	2	16	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	614571.49
+lts	2	17	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	448426.67
+lts	2	18	100 Btree DB_PREV cursor of 100000 10/20 byte key/data items	6875370.84
+lts	2	19	100 Hash DB_PREV cursor of 100000 10/20 byte key/data items	5074887.58
+lts	2	20	100 Heap DB_PREV cursor of 100000 10/20 byte key/data items	7943814.99
+lts	2	21	100 Queue DB_PREV cursor of 100000 10/20 byte key/data items	5819278.81
+lts	2	22	100 Recno DB_PREV cursor of 100000 10/20 byte key/data items	3579464.47
+lts	2	23	100 Btree DB_NEXT cursor of 100000 10/20 byte key/data items	6753813.37
+lts	2	24	100 Hash DB_NEXT cursor of 100000 10/20 byte key/data items	5057698.22
+lts	2	25	100 Heap DB_NEXT cursor of 100000 10/20 byte key/data items	8170034.76
+lts	2	26	100 Queue DB_NEXT cursor of 100000 10/20 byte key/data items	5780617.47
+lts	2	27	100 Recno DB_NEXT cursor of 100000 10/20 byte key/data items	3533617.60
+lts	2	28	100000 Btree database in-order delete of 10/20 byte key/data pairs using the key	1014836.92
+lts	2	29	100000 Hash database in-order delete of 10/20 byte key/data pairs using the key	331998.70
+lts	2	30	100000 Queue database in-order delete of 10/20 byte key/data pairs using the key	3556693.70
+lts	2	31	100000 Recno database in-order delete of 10/20 byte key/data pairs using the key	1008603.39
+lts	2	32	100000 Btree database in-order delete of 10/20 byte key/data pairs using a cursor	1545881.77
+lts	2	33	100000 Hash database in-order delete of 10/20 byte key/data pairs using a cursor	1929607.90
+lts	2	34	100000 Heap database in-order delete of 10/20 byte key/data pairs using a cursor	2695635.77
+lts	2	35	100000 Queue database in-order delete of 10/20 byte key/data pairs using a cursor	2319970.30
+lts	2	36	100000 Recno database in-order delete of 10/20 byte key/data pairs using a cursor	1002034.13
+lts	2	37	1000000 Btree database get of cached key/data item	4871134.15
+lts	2	38	1000000 Hash database get of cached key/data item	4771675.34
+lts	2	39	1000000 Heap database get of cached key/data item	7611103.08
+lts	2	40	1000000 Queue database get of cached key/data item	4885460.38
+lts	2	41	1000000 Recno database get of cached key/data item	5865928.34
+lts	2	42	2236232704 bulk in-memory Btree database reads of 8/32 byte key/data pairs	32507576.18
+lts	2	43	100000 transactional logging Btree database writes of 8/32 byte key/data pairs	212549.34
+lts	2	44	1000000 in-memory Btree database reads of 8/32 byte key/data pairs	4861306.91
+lts	2	45	1000000 transactional nosync logging Btree database writes of 8/32 byte key/data pairs	1228394.08
+lts	2	46	1000000 transactional in-memory Btree database reads of 8/32 byte key/data pairs	1833409.11
+lts	2	47	1000000 transactional in-memory logging Btree database writes of 8/32 byte key/data pairs	1233544.52
+lts	2	48	1000000 transactional OS-write/nosync logging Btree database writes of 8/32 byte key/data pairs	660914.07
+lts	2	49	1000000 in-memory Btree database writes of 8/32 byte key/data pairs	3133195.26
+lts	2	50	1000000 Btree database in-order put of 10/20 byte key/data items	2466486.61
+lts	2	51	100000 Hash database in-order put of 10/20 byte key/data items	409525.56
+lts	2	52	1000000 Heap database in-order put of 10/20 byte key/data items	4480708.31
+lts	2	53	1000000 Queue database in-order put of 10/20 byte key/data items	292836.49
+lts	2	54	1000000 Recno database in-order put of 10/20 byte key/data items	1512580.13
+lts	2	55	1000000 Btree database in-order put of 10/20 byte key/data duplicate items	1250423.58
+lts	2	56	1000000 Hash database in-order put of 10/20 byte key/data duplicate items	1051833.29
+lts	2	57	10000 Btree named in-memory database open/close pairs	1040041.60
+lts	2	58	10000 Hash named in-memory database open/close pairs	1423284.94
+lts	2	59	10000 Heap named in-memory database open/close pairs	1701258.93
+lts	2	60	10000 Queue named in-memory database open/close pairs	1714089.82
+lts	2	61	10000 Recno named in-memory database open/close pairs	1584283.90
+lts	2	62	10000 Btree database open/close pairs	172025.25
+lts	2	63	10000 Hash database open/close pairs	178820.50
+lts	2	64	10000 Heap database open/close pairs	182358.63
+lts	2	65	10000 Queue database open/close pairs	176037.74
+lts	2	66	10000 Recno database open/close pairs	180394.70
+lts	2	67	10000 Btree sub-database open/close pairs	108964.51
+lts	2	68	10000 Hash sub-database open/close pairs	107573.15
+lts	2	69	10000 Recno sub-database open/close pairs	108158.39
+lts	2	70	10000 Btree in-memory database open/close pairs	857265.32
+lts	2	71	10000 Hash in-memory database open/close pairs	793650.79
+lts	2	72	10000 Heap in-memory database open/close pairs	64490.33
+lts	2	73	10000 Queue in-memory database open/close pairs	912159.08
+lts	2	74	10000 Recno in-memory database open/close pairs	855358.82
+lts	2	75	100000 Btree database put of 10 byte key, 204800 byte data	57494.10
+lts	2	76	100000 Hash database put of 10 byte key, 204800 byte data	76991.72
+lts	2	77	100000 Heap database put of key, 204800 byte data	4384.81
+lts	2	78	100000 Recno database put of key, 204800 byte data	57658.52
+lts	2	79	1000000 Btree database put of 10 byte key, 20 byte data with 10 secondaries	89554.62
+lts	2	80	1000000 Hash database put of 10 byte key, 20 byte data with 10 secondaries	89244.95
+lts	2	81	1000000 Heap database put of key, 20 byte data with 10 secondaries	101392.75
+lts	2	82	1000000 Queue database put of key, 20 byte data with 10 secondaries	89660.12
+lts	2	83	1000000 Recno database put of key, 20 byte data with 10 secondaries	89608.67
+lts	2	84	1000000 Btree database put of 10 byte key, 20 byte data	3566092.17
+lts	2	85	1000000 Hash database put of 10 byte key, 20 byte data	3484951.98
+lts	2	86	1000000 Heap database put of key, 20 byte data	3609912.82
+lts	2	87	1000000 Queue database put of key, 20 byte data	4119108.13
+lts	2	88	1000000 Recno database put of key, 20 byte data	3025224.32
+lts	2	89	recovery after 1000000 transactions	1235559.40
+lts	2	90	1000000 empty transaction start/abort pairs	7972637.91
+lts	2	91	1000000 empty transaction start/commit pairs	7605661.65
+lts	2	92	100000 transactions write nosync commit pairs	1190476.19
+lts	2	93	100000 replicated transactions write nosync commit pairs	946127.50
+lts	2	94	10000 transactions write synchronous commit pairs	144542.09
+lts	2	95	10000 replicated transactions write synchronous commit pairs	182818.70
+lts	2	96	100000 replicated transactions write write-nosync commit pairs	570958.75
+lts	2	97	100000 transactions write write-nosync commit pairs	656150.76
+lts	2	98	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	70309.00
+lts	2	99	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	97390.14
+lts	2	100	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	93495.08
+lts	2	101	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	82003.11
+lts	2	102	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	121659.68
+lts	2	103	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	129511.53
+lts	2	104	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	129561.03
+lts	2	105	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	124556.42
+lts	2	106	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	22075.34
+lts	2	107	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	42255.68
+lts	2	108	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2442658.59
+lts	2	109	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2461053.82
+lts	2	110	workload test: Btree: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	145130.93
+lts	2	111	workload test: Hash: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	145505.34
+lts	2	112	workload test: Btree: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	86942.91
+lts	2	113	workload test: Hash: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144499.90
+lts	2	114	workload test: Btree: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	96269.74
+lts	2	115	workload test: Hash: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	149015.97
+lts	2	116	workload test: Hash: MIXED (get: 90, put: 7, del: 3)<br>10000000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	355560.60
+lts	2	117	100000000 mutex lock-unlock pairs of 0 threads	34191003.25
+lts	2	118	100000000 mutex lock-unlock pairs of 1 thread	34173955.69
+lts	2	119	100000000 mutex lock-unlock pairs of 2 threads	2147294.48
+lts	2	120	100000000 mutex lock-unlock pairs of 4 threads	519290.90
+lts	2	121	100000000 mutex lock-unlock pairs of 8 threads	143817.25
+lts	2	122	100000000 mutex lock-unlock pairs of 64 threads	2648.70
+bdb	3	1	1000000 cursor allocations	29016626.53
+bdb	3	2	100 Btree DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3442340.79
+bdb	3	3	100 Hash DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2391200.38
+bdb	3	4	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4587.78
+bdb	3	5	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4535.67
+bdb	3	6	100 Btree DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3491620.11
+bdb	3	7	100 Hash DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2411381.72
+bdb	3	8	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	6359.62
+bdb	3	9	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	6207.42
+bdb	3	10	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	6287.93
+bdb	3	11	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	6108.27
+bdb	3	12	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4528.63
+bdb	3	13	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4485.62
+bdb	3	14	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	702426.25
+bdb	3	15	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	486044.69
+bdb	3	16	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	702756.49
+bdb	3	17	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	485300.73
+bdb	3	18	100 Btree DB_PREV cursor of 100000 10/20 byte key/data items	7696096.54
+bdb	3	19	100 Hash DB_PREV cursor of 100000 10/20 byte key/data items	5531698.57
+bdb	3	20	100 Heap DB_PREV cursor of 100000 10/20 byte key/data items	8561042.80
+bdb	3	21	100 Queue DB_PREV cursor of 100000 10/20 byte key/data items	6261368.30
+bdb	3	22	100 Recno DB_PREV cursor of 100000 10/20 byte key/data items	3829520.47
+bdb	3	23	100 Btree DB_NEXT cursor of 100000 10/20 byte key/data items	7725951.24
+bdb	3	24	100 Hash DB_NEXT cursor of 100000 10/20 byte key/data items	5528542.48
+bdb	3	25	100 Heap DB_NEXT cursor of 100000 10/20 byte key/data items	8743100.60
+bdb	3	26	100 Queue DB_NEXT cursor of 100000 10/20 byte key/data items	6221706.79
+bdb	3	27	100 Recno DB_NEXT cursor of 100000 10/20 byte key/data items	3796982.92
+bdb	3	28	100000 Btree database in-order delete of 10/20 byte key/data pairs using the key	1146539.17
+bdb	3	29	100000 Hash database in-order delete of 10/20 byte key/data pairs using the key	643492.36
+bdb	3	30	100000 Queue database in-order delete of 10/20 byte key/data pairs using the key	4411505.21
+bdb	3	31	100000 Recno database in-order delete of 10/20 byte key/data pairs using the key	1069198.53
+bdb	3	32	100000 Btree database in-order delete of 10/20 byte key/data pairs using a cursor	1945184.70
+bdb	3	33	100000 Hash database in-order delete of 10/20 byte key/data pairs using a cursor	2300701.71
+bdb	3	34	100000 Heap database in-order delete of 10/20 byte key/data pairs using a cursor	2952029.52
+bdb	3	35	100000 Queue database in-order delete of 10/20 byte key/data pairs using a cursor	2661202.33
+bdb	3	36	100000 Recno database in-order delete of 10/20 byte key/data pairs using a cursor	1070629.42
+bdb	3	37	1000000 Btree database get of cached key/data item	5569107.05
+bdb	3	38	1000000 Hash database get of cached key/data item	5265596.70
+bdb	3	39	1000000 Heap database get of cached key/data item	8130081.30
+bdb	3	40	1000000 Queue database get of cached key/data item	5148270.18
+bdb	3	41	1000000 Recno database get of cached key/data item	6422813.83
+bdb	3	42	2236232704 bulk in-memory Btree database reads of 8/32 byte key/data pairs	32285877.34
+bdb	3	43	100000 transactional logging Btree database writes of 8/32 byte key/data pairs	207437.46
+bdb	3	44	1000000 in-memory Btree database reads of 8/32 byte key/data pairs	5540503.85
+bdb	3	45	1000000 transactional nosync logging Btree database writes of 8/32 byte key/data pairs	1297880.43
+bdb	3	46	1000000 transactional in-memory Btree database reads of 8/32 byte key/data pairs	2271963.07
+bdb	3	47	1000000 transactional in-memory logging Btree database writes of 8/32 byte key/data pairs	1302875.58
+bdb	3	48	1000000 transactional OS-write/nosync logging Btree database writes of 8/32 byte key/data pairs	663447.62
+bdb	3	49	1000000 in-memory Btree database writes of 8/32 byte key/data pairs	3623057.14
+bdb	3	50	1000000 Btree database in-order put of 10/20 byte key/data items	3036892.17
+bdb	3	51	100000 Hash database in-order put of 10/20 byte key/data items	619026.40
+bdb	3	52	1000000 Heap database in-order put of 10/20 byte key/data items	5499067.91
+bdb	3	53	1000000 Queue database in-order put of 10/20 byte key/data items	5359803.62
+bdb	3	54	1000000 Recno database in-order put of 10/20 byte key/data items	1729397.69
+bdb	3	55	1000000 Btree database in-order put of 10/20 byte key/data duplicate items	1388794.37
+bdb	3	56	1000000 Hash database in-order put of 10/20 byte key/data duplicate items	1188287.76
+bdb	3	57	10000 Btree named in-memory database open/close pairs	1626280.70
+bdb	3	58	10000 Hash named in-memory database open/close pairs	1633186.35
+bdb	3	59	10000 Heap named in-memory database open/close pairs	1818181.82
+bdb	3	60	10000 Queue named in-memory database open/close pairs	1846722.07
+bdb	3	61	10000 Recno named in-memory database open/close pairs	1668056.71
+bdb	3	62	10000 Btree database open/close pairs	172372.19
+bdb	3	63	10000 Hash database open/close pairs	173952.37
+bdb	3	64	10000 Heap database open/close pairs	178910.08
+bdb	3	65	10000 Queue database open/close pairs	179179.36
+bdb	3	66	10000 Recno database open/close pairs	172170.38
+bdb	3	67	10000 Btree sub-database open/close pairs	105377.41
+bdb	3	68	10000 Hash sub-database open/close pairs	104409.20
+bdb	3	69	10000 Recno sub-database open/close pairs	105303.06
+bdb	3	70	10000 Btree in-memory database open/close pairs	851643.67
+bdb	3	71	10000 Hash in-memory database open/close pairs	795355.13
+bdb	3	72	10000 Heap in-memory database open/close pairs	796558.87
+bdb	3	73	10000 Queue in-memory database open/close pairs	820411.85
+bdb	3	74	10000 Recno in-memory database open/close pairs	800576.42
+bdb	3	75	100000 Btree database put of 10 byte key, 204800 byte data	78613.20
+bdb	3	76	100000 Hash database put of 10 byte key, 204800 byte data	94668.37
+bdb	3	77	100000 Heap database put of key, 204800 byte data	7742.69
+bdb	3	78	100000 Recno database put of key, 204800 byte data	73250.79
+bdb	3	79	1000000 Btree database put of 10 byte key, 20 byte data with 10 secondaries	111187.14
+bdb	3	80	1000000 Hash database put of 10 byte key, 20 byte data with 10 secondaries	110370.05
+bdb	3	81	1000000 Heap database put of key, 20 byte data with 10 secondaries	126841.44
+bdb	3	82	1000000 Queue database put of key, 20 byte data with 10 secondaries	112506.53
+bdb	3	83	1000000 Recno database put of key, 20 byte data with 10 secondaries	112967.25
+bdb	3	84	1000000 Btree database put of 10 byte key, 20 byte data	3961557.05
+bdb	3	85	1000000 Hash database put of 10 byte key, 20 byte data	3618167.54
+bdb	3	86	1000000 Heap database put of key, 20 byte data	4026024.22
+bdb	3	87	1000000 Queue database put of key, 20 byte data	4328217.38
+bdb	3	88	1000000 Recno database put of key, 20 byte data	3346664.21
+bdb	3	89	recovery after 1000000 transactions	1251728.95
+bdb	3	90	1000000 empty transaction start/abort pairs	9816914.54
+bdb	3	91	1000000 empty transaction start/commit pairs	9168003.67
+bdb	3	92	100000 transactions write nosync commit pairs	1229437.66
+bdb	3	93	100000 replicated transactions write nosync commit pairs	941477.74
+bdb	3	94	10000 transactions write synchronous commit pairs	209978.16
+bdb	3	95	10000 replicated transactions write synchronous commit pairs	188679.25
+bdb	3	96	100000 replicated transactions write write-nosync commit pairs	572888.62
+bdb	3	97	100000 transactions write write-nosync commit pairs	658822.29
+bdb	3	98	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	129506.00
+bdb	3	99	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	141579.09
+bdb	3	100	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	100244.80
+bdb	3	101	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	89672.75
+bdb	3	102	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	159545.36
+bdb	3	103	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	154558.55
+bdb	3	104	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	150610.58
+bdb	3	105	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	140986.65
+bdb	3	106	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	47238.17
+bdb	3	107	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	74816.42
+bdb	3	108	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2920219.60
+bdb	3	109	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2655548.77
+bdb	3	110	workload test: Btree: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	218942.46
+bdb	3	111	workload test: Hash: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	197820.02
+bdb	3	112	workload test: Btree: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	174300.45
+bdb	3	113	workload test: Hash: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	218536.72
+bdb	3	114	workload test: Btree: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	195399.51
+bdb	3	115	workload test: Hash: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	222772.72
+bdb	3	116	workload test: Hash: MIXED (get: 90, put: 7, del: 3)<br>10000000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	698287.99
+bdb	3	117	100000000 mutex lock-unlock pairs of 0 threads	35558412.87
+bdb	3	118	100000000 mutex lock-unlock pairs of 1 thread	35491916.18
+bdb	3	119	100000000 mutex lock-unlock pairs of 2 threads	1770334.10
+bdb	3	120	100000000 mutex lock-unlock pairs of 4 threads	479712.20
+bdb	3	121	100000000 mutex lock-unlock pairs of 8 threads	149481.46
+bdb	3	122	100000000 mutex lock-unlock pairs of 64 threads	4578.59
+lts	3	1	1000000 cursor allocations	25168629.82
+lts	3	2	100 Btree DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3021148.04
+lts	3	3	100 Hash DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2154708.04
+lts	3	4	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4166.48
+lts	3	5	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4118.40
+lts	3	6	100 Btree DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3040437.82
+lts	3	7	100 Hash DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2189141.86
+lts	3	8	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5756.20
+lts	3	9	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5640.20
+lts	3	10	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5645.66
+lts	3	11	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5534.72
+lts	3	12	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4108.64
+lts	3	13	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4073.05
+lts	3	14	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	612374.00
+lts	3	15	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	446743.49
+lts	3	16	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	612359.00
+lts	3	17	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	446740.09
+lts	3	18	100 Btree DB_PREV cursor of 100000 10/20 byte key/data items	6870193.87
+lts	3	19	100 Hash DB_PREV cursor of 100000 10/20 byte key/data items	5048613.10
+lts	3	20	100 Heap DB_PREV cursor of 100000 10/20 byte key/data items	7929239.47
+lts	3	21	100 Queue DB_PREV cursor of 100000 10/20 byte key/data items	5822063.76
+lts	3	22	100 Recno DB_PREV cursor of 100000 10/20 byte key/data items	3572473.52
+lts	3	23	100 Btree DB_NEXT cursor of 100000 10/20 byte key/data items	6732886.85
+lts	3	24	100 Hash DB_NEXT cursor of 100000 10/20 byte key/data items	5031628.82
+lts	3	25	100 Heap DB_NEXT cursor of 100000 10/20 byte key/data items	8150112.02
+lts	3	26	100 Queue DB_NEXT cursor of 100000 10/20 byte key/data items	5778159.14
+lts	3	27	100 Recno DB_NEXT cursor of 100000 10/20 byte key/data items	3526728.55
+lts	3	28	100000 Btree database in-order delete of 10/20 byte key/data pairs using the key	1011869.23
+lts	3	29	100000 Hash database in-order delete of 10/20 byte key/data pairs using the key	335063.38
+lts	3	30	100000 Queue database in-order delete of 10/20 byte key/data pairs using the key	3469090.40
+lts	3	31	100000 Recno database in-order delete of 10/20 byte key/data pairs using the key	1010448.03
+lts	3	32	100000 Btree database in-order delete of 10/20 byte key/data pairs using a cursor	1539290.39
+lts	3	33	100000 Hash database in-order delete of 10/20 byte key/data pairs using a cursor	1929570.67
+lts	3	34	100000 Heap database in-order delete of 10/20 byte key/data pairs using a cursor	2694618.85
+lts	3	35	100000 Queue database in-order delete of 10/20 byte key/data pairs using a cursor	2303722.82
+lts	3	36	100000 Recno database in-order delete of 10/20 byte key/data pairs using a cursor	1000230.05
+lts	3	37	1000000 Btree database get of cached key/data item	4873531.85
+lts	3	38	1000000 Hash database get of cached key/data item	4769900.02
+lts	3	39	1000000 Heap database get of cached key/data item	7588404.92
+lts	3	40	1000000 Queue database get of cached key/data item	4881310.92
+lts	3	41	1000000 Recno database get of cached key/data item	5860840.21
+lts	3	42	2236232704 bulk in-memory Btree database reads of 8/32 byte key/data pairs	33131014.24
+lts	3	43	100000 transactional logging Btree database writes of 8/32 byte key/data pairs	211104.52
+lts	3	44	1000000 in-memory Btree database reads of 8/32 byte key/data pairs	4859251.77
+lts	3	45	1000000 transactional nosync logging Btree database writes of 8/32 byte key/data pairs	1221280.07
+lts	3	46	1000000 transactional in-memory Btree database reads of 8/32 byte key/data pairs	1824394.71
+lts	3	47	1000000 transactional in-memory logging Btree database writes of 8/32 byte key/data pairs	1177737.00
+lts	3	48	1000000 transactional OS-write/nosync logging Btree database writes of 8/32 byte key/data pairs	646678.69
+lts	3	49	1000000 in-memory Btree database writes of 8/32 byte key/data pairs	3135975.92
+lts	3	50	1000000 Btree database in-order put of 10/20 byte key/data items	2444778.56
+lts	3	51	100000 Hash database in-order put of 10/20 byte key/data items	398016.29
+lts	3	52	1000000 Heap database in-order put of 10/20 byte key/data items	4471811.93
+lts	3	53	1000000 Queue database in-order put of 10/20 byte key/data items	292772.70
+lts	3	54	1000000 Recno database in-order put of 10/20 byte key/data items	1512916.52
+lts	3	55	1000000 Btree database in-order put of 10/20 byte key/data duplicate items	1249234.84
+lts	3	56	1000000 Hash database in-order put of 10/20 byte key/data duplicate items	1051353.35
+lts	3	57	10000 Btree named in-memory database open/close pairs	996115.15
+lts	3	58	10000 Hash named in-memory database open/close pairs	1304801.67
+lts	3	59	10000 Heap named in-memory database open/close pairs	1716738.20
+lts	3	60	10000 Queue named in-memory database open/close pairs	1711742.55
+lts	3	61	10000 Recno named in-memory database open/close pairs	1593371.57
+lts	3	62	10000 Btree database open/close pairs	180342.65
+lts	3	63	10000 Hash database open/close pairs	179156.89
+lts	3	64	10000 Heap database open/close pairs	176506.93
+lts	3	65	10000 Queue database open/close pairs	183036.20
+lts	3	66	10000 Recno database open/close pairs	179134.42
+lts	3	67	10000 Btree sub-database open/close pairs	109505.04
+lts	3	68	10000 Hash sub-database open/close pairs	107558.11
+lts	3	69	10000 Recno sub-database open/close pairs	109141.71
+lts	3	70	10000 Btree in-memory database open/close pairs	868055.56
+lts	3	71	10000 Hash in-memory database open/close pairs	779241.02
+lts	3	72	10000 Heap in-memory database open/close pairs	65433.04
+lts	3	73	10000 Queue in-memory database open/close pairs	906207.52
+lts	3	74	10000 Recno in-memory database open/close pairs	862217.62
+lts	3	75	100000 Btree database put of 10 byte key, 204800 byte data	57726.36
+lts	3	76	100000 Hash database put of 10 byte key, 204800 byte data	76547.11
+lts	3	77	100000 Heap database put of key, 204800 byte data	4393.26
+lts	3	78	100000 Recno database put of key, 204800 byte data	56918.73
+lts	3	79	1000000 Btree database put of 10 byte key, 20 byte data with 10 secondaries	89298.57
+lts	3	80	1000000 Hash database put of 10 byte key, 20 byte data with 10 secondaries	88216.47
+lts	3	81	1000000 Heap database put of key, 20 byte data with 10 secondaries	101357.15
+lts	3	82	1000000 Queue database put of key, 20 byte data with 10 secondaries	89189.76
+lts	3	83	1000000 Recno database put of key, 20 byte data with 10 secondaries	88990.32
+lts	3	84	1000000 Btree database put of 10 byte key, 20 byte data	3557870.54
+lts	3	85	1000000 Hash database put of 10 byte key, 20 byte data	3471703.88
+lts	3	86	1000000 Heap database put of key, 20 byte data	3605019.63
+lts	3	87	1000000 Queue database put of key, 20 byte data	4104921.80
+lts	3	88	1000000 Recno database put of key, 20 byte data	3026194.74
+lts	3	89	recovery after 1000000 transactions	1229564.64
+lts	3	90	1000000 empty transaction start/abort pairs	7993030.08
+lts	3	91	1000000 empty transaction start/commit pairs	7650758.19
+lts	3	92	100000 transactions write nosync commit pairs	1087949.87
+lts	3	93	100000 replicated transactions write nosync commit pairs	861920.36
+lts	3	94	10000 transactions write synchronous commit pairs	154652.73
+lts	3	95	10000 replicated transactions write synchronous commit pairs	148330.54
+lts	3	96	100000 replicated transactions write write-nosync commit pairs	557115.48
+lts	3	97	100000 transactions write write-nosync commit pairs	636184.93
+lts	3	98	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	69960.21
+lts	3	99	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	96944.03
+lts	3	100	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	93138.40
+lts	3	101	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	81836.14
+lts	3	102	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	121560.15
+lts	3	103	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	128868.64
+lts	3	104	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	129339.00
+lts	3	105	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	124175.32
+lts	3	106	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	22005.30
+lts	3	107	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	42251.27
+lts	3	108	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2439738.46
+lts	3	109	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2460872.13
+lts	3	110	workload test: Btree: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144780.03
+lts	3	111	workload test: Hash: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	145388.57
+lts	3	112	workload test: Btree: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	86502.42
+lts	3	113	workload test: Hash: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144561.11
+lts	3	114	workload test: Btree: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	96545.60
+lts	3	115	workload test: Hash: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	149074.62
+lts	3	116	workload test: Hash: MIXED (get: 90, put: 7, del: 3)<br>10000000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	357248.37
+lts	3	117	100000000 mutex lock-unlock pairs of 0 threads	33871288.43
+lts	3	118	100000000 mutex lock-unlock pairs of 1 thread	34166144.49
+lts	3	119	100000000 mutex lock-unlock pairs of 2 threads	1926783.76
+lts	3	120	100000000 mutex lock-unlock pairs of 4 threads	527906.86
+lts	3	121	100000000 mutex lock-unlock pairs of 8 threads	153083.47
+lts	3	122	100000000 mutex lock-unlock pairs of 64 threads	2774.88
+master	3	1	1000000 cursor allocations	24829298.57
+master	3	2	100 Btree DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3048780.49
+master	3	3	100 Hash DB_NEXT_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2178174.69
+master	3	4	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4157.18
+master	3	5	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	4102.77
+master	3	6	100 Btree DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	3082614.06
+master	3	7	100 Hash DB_PREV_NODUP cursor of 100 10/20 byte key/data items with 1000 dups	2174385.74
+master	3	8	100 Btree DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5726.11
+master	3	9	100 Hash DB_PREV cursor of 100 10/20 byte key/data items with 1000 dups	5573.16
+master	3	10	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5621.33
+master	3	11	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	5488.25
+master	3	12	100 Btree DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4092.46
+master	3	13	100 Hash DB_NEXT cursor of 100 10/20 byte key/data items with 1000 dups	4037.17
+master	3	14	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	617096.16
+master	3	15	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	438968.07
+master	3	16	100 Btree DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	617194.80
+master	3	17	100 Hash DB_NEXT cursor of 10000 10/20 byte key/data items with 10 dups	438941.10
+master	3	18	100 Btree DB_PREV cursor of 100000 10/20 byte key/data items	6876354.21
+master	3	19	100 Hash DB_PREV cursor of 100000 10/20 byte key/data items	5016718.21
+master	3	20	100 Heap DB_PREV cursor of 100000 10/20 byte key/data items	7756309.18
+master	3	21	100 Queue DB_PREV cursor of 100000 10/20 byte key/data items	5511375.76
+master	3	22	100 Recno DB_PREV cursor of 100000 10/20 byte key/data items	3524651.41
+master	3	23	100 Btree DB_NEXT cursor of 100000 10/20 byte key/data items	6781555.25
+master	3	24	100 Hash DB_NEXT cursor of 100000 10/20 byte key/data items	4960383.89
+master	3	25	100 Heap DB_NEXT cursor of 100000 10/20 byte key/data items	7990079.52
+master	3	26	100 Queue DB_NEXT cursor of 100000 10/20 byte key/data items	5503646.99
+master	3	27	100 Recno DB_NEXT cursor of 100000 10/20 byte key/data items	3490759.61
+master	3	28	100000 Btree database in-order delete of 10/20 byte key/data pairs using the key	1021471.33
+master	3	29	100000 Hash database in-order delete of 10/20 byte key/data pairs using the key	328610.11
+master	3	30	100000 Queue database in-order delete of 10/20 byte key/data pairs using the key	3578073.57
+master	3	31	100000 Recno database in-order delete of 10/20 byte key/data pairs using the key	1003562.65
+master	3	32	100000 Btree database in-order delete of 10/20 byte key/data pairs using a cursor	1541829.84
+master	3	33	100000 Hash database in-order delete of 10/20 byte key/data pairs using a cursor	1938472.87
+master	3	34	100000 Heap database in-order delete of 10/20 byte key/data pairs using a cursor	2781641.17
+master	3	35	100000 Queue database in-order delete of 10/20 byte key/data pairs using a cursor	2341646.18
+master	3	36	100000 Recno database in-order delete of 10/20 byte key/data pairs using a cursor	1003341.13
+master	3	37	1000000 Btree database get of cached key/data item	4893349.45
+master	3	38	1000000 Hash database get of cached key/data item	4691267.67
+master	3	39	1000000 Heap database get of cached key/data item	7421535.81
+master	3	40	1000000 Queue database get of cached key/data item	4827116.81
+master	3	41	1000000 Recno database get of cached key/data item	5793239.29
+master	3	42	2236232704 bulk in-memory Btree database reads of 8/32 byte key/data pairs	31210212.57
+master	3	43	100000 transactional logging Btree database writes of 8/32 byte key/data pairs	207077.49
+master	3	44	1000000 in-memory Btree database reads of 8/32 byte key/data pairs	4908071.81
+master	3	45	1000000 transactional nosync logging Btree database writes of 8/32 byte key/data pairs	1220369.43
+master	3	46	1000000 transactional in-memory Btree database reads of 8/32 byte key/data pairs	1839987.34
+master	3	47	1000000 transactional in-memory logging Btree database writes of 8/32 byte key/data pairs	1244513.25
+master	3	48	1000000 transactional OS-write/nosync logging Btree database writes of 8/32 byte key/data pairs	641473.85
+master	3	49	1000000 in-memory Btree database writes of 8/32 byte key/data pairs	3073490.22
+master	3	50	1000000 Btree database in-order put of 10/20 byte key/data items	2442652.62
+master	3	51	100000 Hash database in-order put of 10/20 byte key/data items	396679.00
+master	3	52	1000000 Heap database in-order put of 10/20 byte key/data items	4468395.04
+master	3	53	1000000 Queue database in-order put of 10/20 byte key/data items	292928.70
+master	3	54	1000000 Recno database in-order put of 10/20 byte key/data items	1515493.65
+master	3	55	1000000 Btree database in-order put of 10/20 byte key/data duplicate items	1249757.86
+master	3	56	1000000 Hash database in-order put of 10/20 byte key/data duplicate items	1048454.32
+master	3	57	10000 Btree named in-memory database open/close pairs	880902.04
+master	3	58	10000 Hash named in-memory database open/close pairs	1522070.02
+master	3	59	10000 Heap named in-memory database open/close pairs	1707650.27
+master	3	60	10000 Queue named in-memory database open/close pairs	1720578.11
+master	3	61	10000 Recno named in-memory database open/close pairs	1579030.48
+master	3	62	10000 Btree database open/close pairs	178475.82
+master	3	63	10000 Hash database open/close pairs	178695.88
+master	3	64	10000 Heap database open/close pairs	183307.98
+master	3	65	10000 Queue database open/close pairs	182728.50
+master	3	66	10000 Recno database open/close pairs	178472.63
+master	3	67	10000 Btree sub-database open/close pairs	107413.69
+master	3	68	10000 Hash sub-database open/close pairs	107058.36
+master	3	69	10000 Recno sub-database open/close pairs	107961.05
+master	3	70	10000 Btree in-memory database open/close pairs	839066.96
+master	3	71	10000 Hash in-memory database open/close pairs	775855.38
+master	3	72	10000 Heap in-memory database open/close pairs	64711.10
+master	3	73	10000 Queue in-memory database open/close pairs	904568.07
+master	3	74	10000 Recno in-memory database open/close pairs	847242.23
+master	3	75	100000 Btree database put of 10 byte key, 204800 byte data	57319.60
+master	3	76	100000 Hash database put of 10 byte key, 204800 byte data	76328.19
+master	3	77	100000 Heap database put of key, 204800 byte data	4381.95
+master	3	78	100000 Recno database put of key, 204800 byte data	56913.38
+master	3	79	1000000 Btree database put of 10 byte key, 20 byte data with 10 secondaries	90082.53
+master	3	80	1000000 Hash database put of 10 byte key, 20 byte data with 10 secondaries	89242.85
+master	3	81	1000000 Heap database put of key, 20 byte data with 10 secondaries	101346.44
+master	3	82	1000000 Queue database put of key, 20 byte data with 10 secondaries	89789.29
+master	3	83	1000000 Recno database put of key, 20 byte data with 10 secondaries	89986.27
+master	3	84	1000000 Btree database put of 10 byte key, 20 byte data	3573164.11
+master	3	85	1000000 Hash database put of 10 byte key, 20 byte data	3418920.30
+master	3	86	1000000 Heap database put of key, 20 byte data	3633377.66
+master	3	87	1000000 Queue database put of key, 20 byte data	4127268.45
+master	3	88	1000000 Recno database put of key, 20 byte data	3008432.64
+master	3	89	recovery after 1000000 transactions	1230440.61
+master	3	90	1000000 empty transaction start/abort pairs	8071415.89
+master	3	91	1000000 empty transaction start/commit pairs	7689468.50
+master	3	92	100000 transactions write nosync commit pairs	1183866.27
+master	3	93	100000 replicated transactions write nosync commit pairs	923062.72
+master	3	94	10000 transactions write synchronous commit pairs	194844.42
+master	3	95	10000 replicated transactions write synchronous commit pairs	193982.66
+master	3	96	100000 replicated transactions write write-nosync commit pairs	555210.09
+master	3	97	100000 transactions write write-nosync commit pairs	635719.83
+master	3	98	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	69319.09
+master	3	99	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	96606.13
+master	3	100	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	92311.81
+master	3	101	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 32768, cache size: default, unordered keys, num dups: 0	80718.39
+master	3	102	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	119982.63
+master	3	103	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 4096, cache size: default, unordered keys, num dups: 0	126949.63
+master	3	104	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	127395.35
+master	3	105	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: 8192, cache size: default, unordered keys, num dups: 0	122193.37
+master	3	106	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	21929.79
+master	3	107	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 256, page size: 1024, cache size: default, unordered keys, num dups: 0	41984.95
+master	3	108	workload test: Btree: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2463843.10
+master	3	109	workload test: Hash: PUT/GET/DELETE<br>100000 ops, data size: 20, page size: default, cache size: default, ordered keys, num dups: 0	2364737.04
+master	3	110	workload test: Btree: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	143759.54
+master	3	111	workload test: Hash: PUT/GET<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	144446.26
+master	3	112	workload test: Btree: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	86640.85
+master	3	113	workload test: Hash: PUT/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	142817.77
+master	3	114	workload test: Btree: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	95692.96
+master	3	115	workload test: Hash: GET/DELETE<br>100000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	146447.41
+master	3	116	workload test: Hash: MIXED (get: 90, put: 7, del: 3)<br>10000000 ops, data size: 20, page size: 1024, cache size: default, unordered keys, num dups: 0	355184.95
+master	3	117	100000000 mutex lock-unlock pairs of 0 threads	33869888.82
+master	3	118	100000000 mutex lock-unlock pairs of 1 thread	34163716.63
+master	3	119	100000000 mutex lock-unlock pairs of 2 threads	1706029.20
+master	3	120	100000000 mutex lock-unlock pairs of 4 threads	472542.41
+master	3	121	100000000 mutex lock-unlock pairs of 8 threads	142594.22
+master	3	122	100000000 mutex lock-unlock pairs of 64 threads	2033.68

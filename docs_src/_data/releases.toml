@@ -14,6 +14,7 @@
 historical = ["v5.3.28", "v4.6.21-SSI"]
 
 [notes]
+"v2026.10.8" = "Regular release: <strong>faster transactional writes</strong> &mdash; the deadlock detector skips its graph when no deadlock is possible, and inserts stop locking idle cursor queues (btree inserts 1.43&times; at 4 threads, recno read-modify-write 1.88&times;); typed data and constraints (<code>--enable-typed</code>), Rust and Zig bindings. Formats, soname and ABI unchanged"
 "v2026.10.7.1" = "<strong>LTS patch release</strong> of the 2026.10.7 line, fixes only, formats unchanged: a reverse cursor walk (<code>DB_PREV</code>) could <strong>silently skip live records</strong> next to deleted ones (a strict-aliasing miscompile, seen with clang on aarch64), <code>DB_TRUNCATE</code> with a subdatabase name <strong>destroyed the whole file</strong> (now refused with <code>EINVAL</code>), and a lock-order inversion when discarding a written file from the cache, which a debug build reported as a panic"
 "v2026.10.7" = "<strong>First LTS release</strong>: the 2026.10.x line freezes the region, database and log formats, the soname and the ABI. On macOS arm64 the hybrid mutex is selected again (region format changes there only; see the 2026.10.7 upgrade note); every other platform is byte-identical to 2026.10.6"
 "v2026.10.6" = "<strong>BREAKING: the environment region format changes</strong> (recover, remove the regions, restart). RFC 0015 scalability work and the AArch64 hybrid mutex, which fixes the FreeBSD/Linux arm64 multi-process limitation (B3)"
