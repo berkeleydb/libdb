@@ -63,8 +63,18 @@ on_alarm(int sig)
 	_exit(3);
 }
 
+/*
+ * xa_db_open --
+ *	Open a DB_XA_CREATE handle on sub-database `sub` of the XA table.  Each
+ *	concurrently-prepared branch writes to its OWN sub-database so their
+ *	page locks do not collide: XA transactions begin with DB_TXN_NOWAIT
+ *	(src/xa/xa.c __xa_get_txn), so two in-doubt branches inserting into one
+ *	btree leaf would return DB_LOCK_DEADLOCK rather than block.  Distinct
+ *	sub-databases is how a real multi-branch workload avoids that while
+ *	still leaving several branches prepared at once for recovery to find.
+ */
 static DB *
-xa_db_open(void)
+xa_db_open(const char *sub)
 {
 	DB *dbp;
 	int ret;
@@ -74,9 +84,10 @@ xa_db_open(void)
 		return (NULL);
 	}
 	dbp->set_errfile(dbp, stderr);
-	if ((ret = dbp->open(dbp, NULL, TABLE, NULL, DB_BTREE,
+	if ((ret = dbp->open(dbp, NULL, TABLE, sub, DB_BTREE,
 	    DB_AUTO_COMMIT | DB_CREATE | DB_THREAD, 0664)) != 0) {
-		fprintf(stderr, "DB->open: %s\n", db_strerror(ret));
+		fprintf(stderr, "DB->open(%s): %s\n",
+		    sub == NULL ? "(main)" : sub, db_strerror(ret));
 		(void)dbp->close(dbp, 0);
 		return (NULL);
 	}
@@ -101,27 +112,37 @@ static int
 xa_has(DB *dbp, const char *k, const char *v)
 {
 	DBT key, data;
+	int ok;
 
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 	key.data = (void *)k;
 	key.size = (u_int32_t)strlen(k) + 1;
+	/* The handle is DB_THREAD, so a returned DBT needs an allocation flag. */
+	data.flags = DB_DBT_MALLOC;
 	if (dbp->get(dbp, NULL, &key, &data, 0) != 0)
 		return (0);
-	return (data.size == (u_int32_t)strlen(v) + 1 &&
+	ok = (data.size == (u_int32_t)strlen(v) + 1 &&
 	    memcmp(data.data, v, data.size) == 0);
+	free(data.data);
+	return (ok);
 }
 
 static int
 xa_absent(DB *dbp, const char *k)
 {
 	DBT key, data;
+	int ret;
 
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 	key.data = (void *)k;
 	key.size = (u_int32_t)strlen(k) + 1;
-	return (dbp->get(dbp, NULL, &key, &data, 0) == DB_NOTFOUND);
+	data.flags = DB_DBT_MALLOC;
+	ret = dbp->get(dbp, NULL, &key, &data, 0);
+	if (ret == 0)
+		free(data.data);
+	return (ret == DB_NOTFOUND);
 }
 
 /*
@@ -135,35 +156,66 @@ xa_absent(DB *dbp, const char *k)
 static int
 child_prepare(const char *home, int ncommit, int nrollback)
 {
-	DB *dbp;
+	DB *dbp[16];
 	XID xid;
-	char kbuf[32], vbuf[32];
-	int i, n;
+	char sub[16], kbuf[32], vbuf[32];
+	int i, n, r, rc;
 
-	if (xa->xa_open_entry((char *)home, RMID, TMNOFLAGS) != XA_OK)
-		return (2);
-	if ((dbp = xa_db_open()) == NULL)
-		return (2);
-
+	rc = 2;
 	n = ncommit + nrollback;
+	if (n > 16)
+		n = 16;
+	for (i = 0; i < n; i++)
+		dbp[i] = NULL;
+
+	if ((r = xa->xa_open_entry((char *)home, RMID, TMNOFLAGS)) != XA_OK) {
+		fprintf(stderr, "child: xa_open=%s\n", xatm_xaerr(r));
+		return (2);
+	}
+	/*
+	 * Open one sub-database per branch, ALL before any xa_start: a
+	 * DB_XA_CREATE handle may not be opened while a global transaction is
+	 * active (src/db/db_method.c XA_NO_TXN).  Separate sub-databases keep
+	 * the branches' page locks disjoint so all n can be prepared at once.
+	 */
+	for (i = 1; i <= n; i++) {
+		(void)snprintf(sub, sizeof(sub), "br%d", i);
+		if ((dbp[i - 1] = xa_db_open(sub)) == NULL)
+			goto out;
+	}
+
 	for (i = 1; i <= n; i++) {
 		xatm_mkxid(&xid, i, 1);
-		if (xa->xa_start_entry(&xid, RMID, TMNOFLAGS) != XA_OK)
-			return (2);
+		if ((r = xa->xa_start_entry(&xid, RMID, TMNOFLAGS)) != XA_OK) {
+			fprintf(stderr, "child: branch %d start=%s\n", i,
+			    xatm_xaerr(r));
+			goto out;
+		}
 		(void)snprintf(kbuf, sizeof(kbuf), "rec%d", i);
 		(void)snprintf(vbuf, sizeof(vbuf), "g%d", i);
-		if (xa_put(dbp, kbuf, vbuf) != 0)
-			return (2);
-		if (xa->xa_end_entry(&xid, RMID, TMSUCCESS) != XA_OK)
-			return (2);
-		if (xa->xa_prepare_entry(&xid, RMID, TMNOFLAGS) != XA_OK)
-			return (2);
+		if ((r = xa_put(dbp[i - 1], kbuf, vbuf)) != 0) {
+			fprintf(stderr, "child: branch %d put=%d\n", i, r);
+			goto out;
+		}
+		if ((r = xa->xa_end_entry(&xid, RMID, TMSUCCESS)) != XA_OK) {
+			fprintf(stderr, "child: branch %d end=%s\n", i,
+			    xatm_xaerr(r));
+			goto out;
+		}
+		if ((r = xa->xa_prepare_entry(&xid, RMID, TMNOFLAGS)) != XA_OK) {
+			fprintf(stderr, "child: branch %d prepare=%s\n", i,
+			    xatm_xaerr(r));
+			goto out;
+		}
 	}
 	/* Flush stderr; do NOT close -- crash with the branches prepared. */
 	(void)fflush(NULL);
 	fprintf(stderr, "child: prepared %d branches, crashing\n", n);
 	(void)kill(getpid(), SIGKILL);
 	return (99);			/* unreachable */
+
+out:	(void)fflush(NULL);
+	return (rc);
 }
 
 /*
@@ -177,25 +229,28 @@ child_prepare(const char *home, int ncommit, int nrollback)
 static int
 child_midcommit(const char *home)
 {
-	DB *dbp;
+	DB *d1, *d2;
 	XID x1, x2;
 
 	if (xa->xa_open_entry((char *)home, RMID, TMNOFLAGS) != XA_OK)
 		return (2);
-	if ((dbp = xa_db_open()) == NULL)
+	/* Open both sub-databases before any xa_start (see child_prepare). */
+	if ((d1 = xa_db_open("mid1")) == NULL)
+		return (2);
+	if ((d2 = xa_db_open("mid2")) == NULL)
 		return (2);
 
 	xatm_mkxid(&x1, 100, 1);
 	xatm_mkxid(&x2, 100, 2);
 	if (xa->xa_start_entry(&x1, RMID, TMNOFLAGS) != XA_OK)
 		return (2);
-	if (xa_put(dbp, "mid-b1", "committed") != 0)
+	if (xa_put(d1, "mid-b1", "committed") != 0)
 		return (2);
 	if (xa->xa_end_entry(&x1, RMID, TMSUCCESS) != XA_OK)
 		return (2);
 	if (xa->xa_start_entry(&x2, RMID, TMNOFLAGS) != XA_OK)
 		return (2);
-	if (xa_put(dbp, "mid-b2", "indoubt") != 0)
+	if (xa_put(d2, "mid-b2", "indoubt") != 0)
 		return (2);
 	if (xa->xa_end_entry(&x2, RMID, TMSUCCESS) != XA_OK)
 		return (2);
@@ -257,7 +312,7 @@ driver(void)
 	xatm_h H, *h = &H;
 	XID list[64], xid;
 	DB *dbp;
-	char kbuf[32], vbuf[32], *av[6];
+	char kbuf[32], vbuf[32], sub[16], *av[6];
 	const char *home = getenv("XA_HOME");
 	const char *self = getenv("XA_SELF");
 	int found, i, j, g, ncommit, nrollback;
@@ -292,8 +347,6 @@ driver(void)
 	 * recovery even though we are a different process.)
 	 */
 	XCHK(h, xa->xa_open_entry((char *)home, RMID, TMNOFLAGS), XA_OK);
-	if ((dbp = xa_db_open()) == NULL)
-		return (xatm_end(h) | 1);
 
 	found = recover_scan(list, 64);
 	fprintf(stderr, "arm A: xa_recover found %d in-doubt branch(es)\n",
@@ -317,20 +370,29 @@ driver(void)
 			XCHK(h, xa->xa_rollback_entry(&list[i], RMID,
 			    TMNOFLAGS), XA_OK);
 	}
-	/* The committed branches' records are present; rolled-back absent. */
+	/*
+	 * The committed branches' records are present; rolled-back absent.
+	 * Each branch wrote to its own sub-database "brN".  (Open the handle
+	 * AFTER resolving the in-doubt branches: a DB_XA_CREATE open must be
+	 * outside a global txn, and the prepared branches held locks until
+	 * resolved above.)
+	 */
 	for (j = 1; j <= ncommit + nrollback; j++) {
+		(void)snprintf(sub, sizeof(sub), "br%d", j);
+		if ((dbp = xa_db_open(sub)) == NULL)
+			return (xatm_end(h) | 1);
 		(void)snprintf(kbuf, sizeof(kbuf), "rec%d", j);
 		(void)snprintf(vbuf, sizeof(vbuf), "g%d", j);
 		if (j <= ncommit)
 			XCHK_TRUE(h, xa_has(dbp, kbuf, vbuf));
 		else
 			XCHK_TRUE(h, xa_absent(dbp, kbuf));
+		(void)dbp->close(dbp, 0);
 	}
 	/* Nothing in-doubt remains. */
 	found = recover_scan(list, 64);
 	XCHK_TRUE(h, found == 0);
 
-	(void)dbp->close(dbp, 0);
 	XCHK(h, xa->xa_close_entry((char *)home, RMID, TMNOFLAGS), XA_OK);
 
 	/* -------- ARM B: crash during commit of a two-branch txn. -------- */
@@ -341,25 +403,33 @@ driver(void)
 		return (xatm_end(h) | 1);
 
 	XCHK(h, xa->xa_open_entry((char *)home, RMID, TMNOFLAGS), XA_OK);
-	if ((dbp = xa_db_open()) == NULL)
-		return (xatm_end(h) | 1);
 
 	/* Branch 1 was committed before the crash: its record must survive. */
+	if ((dbp = xa_db_open("mid1")) == NULL)
+		return (xatm_end(h) | 1);
 	XCHK_TRUE(h, xa_has(dbp, "mid-b1", "committed"));
-	/* Branch 2 was only prepared: it must be in-doubt, not yet applied. */
-	XCHK_TRUE(h, xa_absent(dbp, "mid-b2"));
+	(void)dbp->close(dbp, 0);
 
 	found = recover_scan(list, 64);
 	fprintf(stderr, "arm B: xa_recover found %d in-doubt branch(es)\n",
 	    found);
 	XCHK_TRUE(h, found == 1);
-	if (found == 1) {
+	if (found == 1)
 		/* The TM decides to commit the surviving in-doubt branch. */
 		XCHK(h, xa->xa_commit_entry(&list[0], RMID, TMNOFLAGS), XA_OK);
-		XCHK_TRUE(h, xa_has(dbp, "mid-b2", "indoubt"));
-	}
-	/* And an alternative-decision check: a fresh in-doubt branch rolled
-	 * back leaves no data.  (Confirms both outcomes of the TM decision.) */
+	/* After the commit the in-doubt branch's data (subdb mid2) is applied. */
+	if ((dbp = xa_db_open("mid2")) == NULL)
+		return (xatm_end(h) | 1);
+	XCHK_TRUE(h, found == 1 && xa_has(dbp, "mid-b2", "indoubt"));
+	(void)dbp->close(dbp, 0);
+
+	/*
+	 * Alternative-decision check: a fresh in-doubt branch ROLLED BACK
+	 * leaves no data (confirms both outcomes of the TM's phase-2 decision).
+	 * Its own sub-database keeps its locks off the branches above.
+	 */
+	if ((dbp = xa_db_open("rbk")) == NULL)
+		return (xatm_end(h) | 1);
 	xatm_mkxid(&xid, 200, 1);
 	XCHK(h, xa->xa_start_entry(&xid, RMID, TMNOFLAGS), XA_OK);
 	XCHK(h, xa_put(dbp, "arm-b-rollback", "no"), 0);
@@ -367,8 +437,8 @@ driver(void)
 	XCHK(h, xa->xa_prepare_entry(&xid, RMID, TMNOFLAGS), XA_OK);
 	XCHK(h, xa->xa_rollback_entry(&xid, RMID, TMNOFLAGS), XA_OK);
 	XCHK_TRUE(h, xa_absent(dbp, "arm-b-rollback"));
-
 	(void)dbp->close(dbp, 0);
+
 	XCHK(h, xa->xa_close_entry((char *)home, RMID, TMNOFLAGS), XA_OK);
 
 	(void)alarm(0);

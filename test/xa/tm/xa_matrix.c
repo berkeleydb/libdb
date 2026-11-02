@@ -104,17 +104,21 @@ static int
 xa_has(DB *dbp, const char *k, const char *v)
 {
 	DBT key, data;
-	int ret;
+	int ok, ret;
 
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 	key.data = (void *)k;
 	key.size = (u_int32_t)strlen(k) + 1;
+	/* The handle is DB_THREAD, so a returned DBT needs an allocation flag. */
+	data.flags = DB_DBT_MALLOC;
 	ret = dbp->get(dbp, NULL, &key, &data, 0);
 	if (ret != 0)
 		return (0);
-	return (data.size == (u_int32_t)strlen(v) + 1 &&
+	ok = (data.size == (u_int32_t)strlen(v) + 1 &&
 	    memcmp(data.data, v, data.size) == 0);
+	free(data.data);
+	return (ok);
 }
 
 /* 1 if key k is absent. */
@@ -122,12 +126,17 @@ static int
 xa_absent(DB *dbp, const char *k)
 {
 	DBT key, data;
+	int ret;
 
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 	key.data = (void *)k;
 	key.size = (u_int32_t)strlen(k) + 1;
-	return (dbp->get(dbp, NULL, &key, &data, 0) == DB_NOTFOUND);
+	data.flags = DB_DBT_MALLOC;
+	ret = dbp->get(dbp, NULL, &key, &data, 0);
+	if (ret == 0)
+		free(data.data);
+	return (ret == DB_NOTFOUND);
 }
 
 int
@@ -318,10 +327,22 @@ main(int argc, char *argv[])
 
 	/* ---- Case 13: XID reused while still active -> XAER_DUPID. ---- */
 	xatm_mkxid(&xid, g++, 1);
+	/* ---- Case 13: XID reused while mapped (idle) -> XAER_DUPID. ---- */
+	/*
+	 * libdb requires the calling thread to be UNASSOCIATED at xa_start
+	 * (xa.c __xa_get_txn asserts it), so a second xa_start from the same
+	 * thread while still associated is a TM protocol violation, not a
+	 * DUPID.  DUPID is raised when the XID is already known (still mapped
+	 * in the active table) and xa_start is called again WITHOUT TMJOIN or
+	 * TMRESUME.  Reproduce that: start, end (dissociate -> idle, still
+	 * mapped), then start the same XID again with TMNOFLAGS.
+	 */
+	xatm_mkxid(&xid, g++, 1);
 	XCHK(h, xa->xa_start_entry(&xid, RMID1, TMNOFLAGS), XA_OK);
-	/* a second xa_start on the SAME active XID, no JOIN/RESUME: DUPID. */
-	XCHK(h, xa->xa_start_entry(&xid, RMID1, TMNOFLAGS), XAER_DUPID);
 	XCHK(h, xa->xa_end_entry(&xid, RMID1, TMSUCCESS), XA_OK);
+	/* same XID, still mapped, no JOIN/RESUME: XAER_DUPID (§6 xa_start). */
+	XCHK(h, xa->xa_start_entry(&xid, RMID1, TMNOFLAGS), XAER_DUPID);
+	/* resolve the idle branch with one-phase commit. */
 	XCHK(h, xa->xa_commit_entry(&xid, RMID1, TMONEPHASE), XA_OK);
 
 	/* ---- Case 14: argument / protocol errors on the switch. ---- */
