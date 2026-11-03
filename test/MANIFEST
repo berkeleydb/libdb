@@ -95,6 +95,19 @@ isolation	ssi_gc_pressure@serializable-default
 isolation	ssi_gc_pressure@serializable-1
 isolation	ssi_crash_pivot-default	optional
 isolation	ssi_crash_pivot-1	optional
+# SSI write-skew fixes (#258): the Adya cycle checker at the multi-leaf
+# default (CYC_VALPAD=200) gates btree at the default partition count;
+# parts=1 and hash are advisory (a pre-existing checker-harness crash at
+# parts=1, a pre-existing hash concurrent-MVCC hang).  ssi_multiread_skew is
+# the cross-leaf regression gate.  ssi_livelock: SSI must commit >= 50% of
+# plain SI on a pure-SSI workload.
+isolation	ssi_cycle_btree-default
+isolation	ssi_cycle_btree-1	optional
+isolation	ssi_cycle_hash-default	optional
+isolation	ssi_multiread_skew-default
+isolation	ssi_multiread_skew-1
+isolation	ssi_livelock-default
+isolation	ssi_livelock-1
 # The two SSI mechanism gates.  ssi_gc_pressure runs at both levels (the
 # snapshot pass is the anti-vacuity control).  ssi_crash_pivot needs a
 # DIAGNOSTIC build for its in-commit crash hook, so it is optional -- but the
