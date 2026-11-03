@@ -92,7 +92,8 @@ ISO_SSI_GATES=${ISO_SSI_GATES:-1}
 ISO_PARTS=${ISO_PARTS:-"default 1"}
 
 mkdir -p "$OUT"
-for t in test_iso_anomaly test_ssi_gc_pressure test_ssi_crash_pivot; do
+for t in test_iso_anomaly test_ssi_gc_pressure test_ssi_crash_pivot \
+    ssi_multiread_skew; do
 	# shellcheck disable=SC2086
 	$CC $CFLAGS "$HERE/$t.c" "$LIBDBA" $LDLIBS -o "$OUT/$t"
 	echo "built $OUT/$t"
@@ -151,6 +152,24 @@ run_ssi_gates() {
 			# Record the SKIP as a verdict.  "Not built for it" and
 			# "nobody invoked it" must not look the same to the gate.
 			hi_emit ssi_crash_pivot skip
+		fi
+
+		# Regression gate for the cross-leaf write-skew fix (SSI keeps its
+		# own SIREAD marker instead of dropping it on a same-page write
+		# lock).  ssi_multiread_skew FAILed on every pre-fix build and must
+		# now PASS at every tree depth and timing.
+		echo "--- SSI gate: multi-level cross-leaf write skew prevented"\
+		    "(parts=$PARTS_LABEL)"
+		mkdir -p "mrskew-$PARTS_LABEL"
+		if ( cd "mrskew-$PARTS_LABEL" && SMR_ATTEMPTS=40 SMR_EXTRA=0 \
+		    SMR_FILLER=400 SMR_SEQUENTIAL=1 \
+		    timeout "$ISO_TIMEOUT" ../ssi_multiread_skew ); then
+			hi_emit "ssi_multiread_skew-$PARTS_LABEL" pass
+		else
+			echo "    FAIL: SSI admitted the multi-level write skew --"\
+			    "the cross-leaf detection fix has regressed."
+			hi_emit "ssi_multiread_skew-$PARTS_LABEL" fail
+			_rc=1
 		fi
 	fi
 	return $_rc
