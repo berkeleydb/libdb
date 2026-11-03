@@ -274,12 +274,12 @@ A matching set of DB_CONFIG directives (parsed in `env_config.c`, the complex
 path like `repmgr_site`), so no code change is needed to turn it on:
 
 ```
-repmgr_tls_cert   <path>
-repmgr_tls_key    <path>
-repmgr_tls_ca     <path>
-repmgr_tls_pin    <sha256-hex>      # repeatable; optional pinning
-repmgr_tls_flags  require,verify    # or no-verify
+repmgr_tls      cert <path> key <path> [ca <path>] [flags require,verify|no-verify]
+repmgr_tls_pin  <sha256-hex>        # repeatable; optional pinning
 ```
+
+(As built, `cert`/`key`/`ca`/`flags` are one `repmgr_tls` line; the pin list is
+a separate repeatable directive, reachable only from DB_CONFIG.)
 
 Private-key passphrase: if the key is encrypted, the passphrase is taken from
 the same source as `DB_ENV->set_encrypt`'s password callback (no new secret

@@ -33,7 +33,7 @@
 #define	POLL_SECS	30
 
 static int tls_configured(void);
-static int setup_tls(DB_ENV *);
+static int setup_tls(DB_ENV *, int);
 static int make_env(const char *, DB_ENV **);
 static int
 start_site(const char *home, u_int16_t self_port, u_int16_t peer_port,
@@ -47,9 +47,11 @@ tls_configured()
 }
 
 static int
-setup_tls(dbenv)
+setup_tls(dbenv, is_master)
 	DB_ENV *dbenv;
+	int is_master;
 {
+	const char *cert, *key;
 	u_int32_t flags;
 	int ret;
 
@@ -60,8 +62,15 @@ setup_tls(dbenv)
 		flags |= DB_REPMGR_TLS_REQUIRE;
 	if (getenv("REP_TLS_NO_VERIFY") != NULL)
 		flags = DB_REPMGR_TLS_NO_VERIFY;
-	if ((ret = dbenv->repmgr_set_tls(dbenv, getenv("REP_TLS_CERT"),
-	    getenv("REP_TLS_KEY"), getenv("REP_TLS_CA"), flags)) != 0) {
+	/* REP_TLS_{CERT,KEY}_CLIENT give the client a different leaf. */
+	cert = getenv("REP_TLS_CERT");
+	key = getenv("REP_TLS_KEY");
+	if (!is_master && getenv("REP_TLS_CERT_CLIENT") != NULL) {
+		cert = getenv("REP_TLS_CERT_CLIENT");
+		key = getenv("REP_TLS_KEY_CLIENT");
+	}
+	if ((ret = dbenv->repmgr_set_tls(dbenv, cert, key,
+	    getenv("REP_TLS_CA"), flags)) != 0) {
 		dbenv->err(dbenv, ret, "repmgr_set_tls");
 		return (ret);
 	}
@@ -105,7 +114,7 @@ start_site(home, self_port, peer_port, is_master, creator)
 
 	if ((ret = make_env(home, &dbenv)) != 0)
 		return (ret);
-	if ((ret = setup_tls(dbenv)) != 0)
+	if ((ret = setup_tls(dbenv, is_master)) != 0)
 		goto err;
 	if ((ret = dbenv->repmgr_set_ack_policy(dbenv,
 	    DB_REPMGR_ACKS_ALL)) != 0)

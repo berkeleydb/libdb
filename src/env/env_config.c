@@ -478,6 +478,18 @@ format:		__db_errx(env, DB_STR_A("1584",
 	}
 
 	/*
+	 * repmgr_tls_pin <sha256-hex>   (repeatable)
+	 *
+	 * Pin a peer leaf certificate by SHA-256 fingerprint.  With any pin
+	 * set, a peer must chain to the CA AND present a pinned leaf.
+	 */
+	if (strcasecmp(argv[0], "repmgr_tls_pin") == 0) {
+		if (nf != 2)
+			goto format;
+		return (__repmgr_add_tls_pin(dbenv, argv[1]));
+	}
+
+	/*
 	 * repmgr_tls cert <path> key <path> [ca <path>] [flags <list>]
 	 *
 	 * <list> is a comma-separated set of: require, verify, no-verify.

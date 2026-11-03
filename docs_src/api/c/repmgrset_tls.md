@@ -36,9 +36,18 @@ this configuration, not negotiated on the wire; the repmgr wire-protocol
 version is unchanged.
 
 The database environment's Replication Manager may also be configured using the
-environment's DB_CONFIG file with the directives `repmgr_tls_cert`,
-`repmgr_tls_key`, `repmgr_tls_ca`, `repmgr_tls_pin` (repeatable), and
-`repmgr_tls_flags`.
+environment's DB_CONFIG file:
+
+```
+repmgr_tls cert <path> key <path> [ca <path>] [flags require,verify|no-verify]
+repmgr_tls_pin <sha256-hex>
+```
+
+`repmgr_tls_pin` may be repeated. Each value is the SHA-256 fingerprint of a
+peer's leaf certificate (64 hex digits; `:` separators are allowed, as printed
+by `openssl x509 -noout -fingerprint -sha256`). When any pin is set, a peer is
+accepted only if its certificate chains to the CA **and** its leaf is pinned.
+Pinning is available only through DB_CONFIG.
 
 The `DB_ENV->repmgr_set_tls()` method must be called before
 `DB_ENV->repmgr_start()`. It returns a non-zero error value on failure and 0 on

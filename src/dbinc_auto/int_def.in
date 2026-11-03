@@ -842,6 +842,9 @@
 #define	__repmgr_set_ack_policy __repmgr_set_ack_policy@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_add_tls_pin __repmgr_add_tls_pin@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifndef HAVE_REPLICATION_THREADS
 #define	__repmgr_set_tls __repmgr_set_tls@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
@@ -2179,6 +2182,7 @@
 #define	__repmgr_close __repmgr_close@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_stop __repmgr_stop@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_set_ack_policy __repmgr_set_ack_policy@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_add_tls_pin __repmgr_add_tls_pin@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_set_tls __repmgr_set_tls@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_get_ack_policy __repmgr_get_ack_policy@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_env_create __repmgr_env_create@DB_VERSION_UNIQUE_NAME@
@@ -2289,6 +2293,9 @@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
 #define	__repmgr_set_ack_policy __repmgr_set_ack_policy@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_add_tls_pin __repmgr_add_tls_pin@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
 #define	__repmgr_set_tls __repmgr_set_tls@DB_VERSION_UNIQUE_NAME@

@@ -79,12 +79,25 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 2 \
     -keyout "$CERTS/rogue.key" -out "$CERTS/rogue.crt" \
     -subj "/CN=rogue" >/dev/null 2>&1
 
+# A second leaf from the SAME CA: valid by chain, but not pinned (pinning arms).
+openssl req -newkey rsa:2048 -nodes \
+    -keyout "$CERTS/other.key" -out "$CERTS/other.csr" \
+    -subj "/CN=127.0.0.1" >/dev/null 2>&1
+openssl x509 -req -in "$CERTS/other.csr" -CA "$CERTS/ca.crt" \
+    -CAkey "$CERTS/ca.key" -CAcreateserial -days 2 \
+    -out "$CERTS/other.crt" >/dev/null 2>&1
+SITE_PIN=$(openssl x509 -in "$CERTS/site.crt" -noout -fingerprint -sha256 |
+    sed 's/.*=//')
+
 run_group() {
 	# $1 = capture file, $2 = master port, $3 = client port.
+	# $PIN_M / $PIN_C, if set, become a repmgr_tls_pin line in that home.
 	rm -f "$1"
 	: > "$1"
 	find "$WORK/m" -mindepth 1 -delete 2>/dev/null || true
 	find "$WORK/c" -mindepth 1 -delete 2>/dev/null || true
+	[ -n "$PIN_M" ] && echo "repmgr_tls_pin $PIN_M" > "$WORK/m/DB_CONFIG"
+	[ -n "$PIN_C" ] && echo "repmgr_tls_pin $PIN_C" > "$WORK/c/DB_CONFIG"
 	LD_PRELOAD="$BUILD/libwirecap.so" WIRECAP_FILE="$1" \
 	    "$BUILD/repmgr_tls_test" "$WORK/m" "$WORK/c" "$2" "$3"
 }
@@ -149,6 +162,34 @@ else
 	echo "  PASS: replication refused with a wrong CA"
 fi
 REP_TLS_CA="$CERTS/ca.crt"
+
+# ---- Arm 4: pinning, right pin -- both sites pin site.crt, must replicate. ----
+echo "=== Arm 4: pinned leaf (expect replication OK) ==="
+PIN_M=$SITE_PIN PIN_C=$SITE_PIN
+if run_group "$WORK/cap_pin.bin" $((MPORT+6)) $((CPORT+6)); then
+	echo "  PASS: replication converged with the peer's leaf pinned"
+else
+	echo "  FAIL: replication refused although the peer's leaf is pinned"
+	rc=1
+fi
+
+# ---- Arm 5: pinning, unpinned leaf -- the client presents other.crt (valid
+# under the CA, not pinned by the master).  Must be refused EVERY time: the
+# verify callback once read a process-global set per handshake, and concurrent
+# handshakes made it see NULL and skip the pin check.  Repeat to catch a race.
+echo "=== Arm 5: CA-valid but unpinned leaf (expect refusal, x${PIN_REPS:-5}) ==="
+i=0
+while [ $i -lt "${PIN_REPS:-5}" ]; do
+	PIN_M=$SITE_PIN PIN_C=
+	export REP_TLS_CERT_CLIENT="$CERTS/other.crt" REP_TLS_KEY_CLIENT="$CERTS/other.key"
+	if run_group "$WORK/cap_unpin.bin" $((MPORT+8+2*i)) $((CPORT+8+2*i)); then
+		echo "  FAIL: run $i: an unpinned leaf was accepted"
+		rc=1
+	fi
+	i=$((i+1))
+done
+unset REP_TLS_CERT_CLIENT REP_TLS_KEY_CLIENT PIN_M PIN_C
+[ "$rc" = 0 ] && echo "  PASS: unpinned leaf refused in all runs"
 
 echo
 if [ "$rc" = 0 ]; then

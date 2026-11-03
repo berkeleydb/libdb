@@ -826,6 +826,61 @@ __repmgr_set_ack_policy(dbenv, policy)
 }
 
 /*
+ * __repmgr_add_tls_pin --
+ *	Add one SHA-256 leaf-certificate fingerprint (64 hex digits, ':'
+ *	separators allowed) to the pin list read by __repmgr_ssl_verify_cb.
+ *	Reached only from the DB_CONFIG "repmgr_tls ... pin <hex>" directive.
+ *
+ * PUBLIC: int __repmgr_add_tls_pin __P((DB_ENV *, const char *));
+ */
+int
+__repmgr_add_tls_pin(dbenv, pin)
+	DB_ENV *dbenv;
+	const char *pin;
+{
+#ifdef HAVE_REPMGR_SSL
+	DB_REP *db_rep;
+	ENV *env;
+	size_t len, n;
+	const char *q;
+	char hex[65], *p;
+	int ret;
+
+	env = dbenv->env;
+	db_rep = env->rep_handle;
+	for (n = 0, q = pin; *q != '\0'; q++) {
+		if (*q == ':')
+			continue;
+		if (n == 64 || !isxdigit((unsigned char)*q))
+			goto bad;
+		hex[n++] = *q;
+	}
+	if (n != 64)
+		goto bad;
+	hex[64] = '\0';
+
+	/* NUL-separated, double-NUL-terminated: append "hex\0", keep "\0". */
+	len = 0;
+	if ((p = db_rep->tls_pins) != NULL)
+		for (; p[len] != '\0'; len += strlen(&p[len]) + 1)
+			;
+	if ((ret = __os_realloc(env, len + 65 + 1, &db_rep->tls_pins)) != 0)
+		return (ret);
+	memcpy(&db_rep->tls_pins[len], hex, 65);
+	db_rep->tls_pins[len + 65] = '\0';
+	return (0);
+bad:	__db_errx(env, DB_STR_A("5459",
+	    "repmgr_tls pin: %s is not a SHA-256 hex fingerprint", "%s"), pin);
+	return (EINVAL);
+#else
+	/* Unreachable via DB_CONFIG: __repmgr_set_tls has already failed. */
+	COMPQUIET(dbenv, NULL);
+	COMPQUIET(pin, NULL);
+	return (DB_OPNOTSUP);
+#endif
+}
+
+/*
  * __repmgr_set_tls --
  *	Configure TLS for repmgr connections.  Stores the cert/key/CA paths and
  *	flags in the process-local DB_REP; the SSL_CTX is built at repmgr start.

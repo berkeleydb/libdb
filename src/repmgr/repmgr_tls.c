@@ -4,7 +4,7 @@
  *
  * TLS (OpenSSL) transport for the Replication Manager (RFC 0018).
  *
- * This file is the ONLY repmgr file that includes <openssl/*>.  Everything
+ * This file is the ONLY repmgr file that includes the OpenSSL headers.  Everything
  * here is process-local: an SSL or SSL_CTX object never lives in the shared
  * region.  The rest of repmgr calls these functions through the prototypes in
  * repmgr.h and routes their WANT-read/WANT-write results into the single
@@ -28,17 +28,29 @@
 #include <openssl/err.h>
 #include <openssl/x509.h>
 #include <openssl/evp.h>
+#include <pthread.h>
 
 static int __repmgr_ssl_error __P((ENV *, REPMGR_CONNECTION *, int));
 static int __repmgr_ssl_verify_cb __P((int, X509_STORE_CTX *));
 
 /*
- * The current connection being verified, so the (parameterless) OpenSSL verify
- * callback can reach the pin list.  Set only while SSL_do_handshake runs under
- * db_rep->mutex in the single select() thread, so no lock is needed.
+ * The verify callback reaches the ENV (for the pin list) through the SSL
+ * object's ex_data slot, set once in __repmgr_ssl_conn_init.  Handshakes run
+ * concurrently -- outbound ones in each site's connector thread and in the
+ * channel API, without db_rep->mutex; inbound ones in the select() thread --
+ * so a process-global "current connection" would race: a handshake clearing it
+ * while another verifies made the callback see NULL and skip pinning.
+ * ssl_env_idx is allocated once per process (SSL_get_ex_new_index is
+ * thread-safe in OpenSSL 1.1+); -1 means not yet allocated.
  */
-static ENV *ssl_verify_env;
-static REPMGR_CONNECTION *ssl_verify_conn;
+static int ssl_env_idx = -1;
+static pthread_once_t ssl_env_idx_once = PTHREAD_ONCE_INIT;
+
+static void
+__repmgr_ssl_env_idx_init()
+{
+	ssl_env_idx = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+}
 
 /*
  * __repmgr_ssl_handshake_block --
@@ -117,6 +129,9 @@ __repmgr_ssl_init(env)
 	if (db_rep->tls_cert_file == NULL)	/* TLS not configured */
 		return (0);
 
+	(void)pthread_once(&ssl_env_idx_once, __repmgr_ssl_env_idx_init);
+	if (ssl_env_idx < 0)
+		return (__repmgr_ssl_error(env, NULL, 0));
 	if ((ctx = SSL_CTX_new(TLS_method())) == NULL)
 		return (__repmgr_ssl_error(env, NULL, 0));
 
@@ -210,6 +225,10 @@ __repmgr_ssl_conn_init(env, conn, is_client)
 
 	if ((ssl = SSL_new((SSL_CTX *)db_rep->tls_ctx)) == NULL)
 		return (__repmgr_ssl_error(env, conn, 0));
+	if (ssl_env_idx < 0 || SSL_set_ex_data(ssl, ssl_env_idx, env) != 1) {
+		SSL_free(ssl);
+		return (__repmgr_ssl_error(env, conn, 0));
+	}
 	if (SSL_set_fd(ssl, (int)conn->fd) != 1) {
 		SSL_free(ssl);
 		return (__repmgr_ssl_error(env, conn, 0));
@@ -313,11 +332,7 @@ __repmgr_ssl_handshake(env, conn)
 	FLD_CLR(conn->ssl_flags,
 	    REPMGR_SSL_WANT_READ_TO_WRITE | REPMGR_SSL_WANT_WRITE_TO_READ);
 
-	ssl_verify_env = env;
-	ssl_verify_conn = conn;
 	rc = SSL_do_handshake((SSL *)conn->ssl);
-	ssl_verify_env = NULL;
-	ssl_verify_conn = NULL;
 
 	if (rc == 1) {
 		FLD_CLR(conn->ssl_flags, REPMGR_SSL_HANDSHAKING);
@@ -415,6 +430,7 @@ __repmgr_ssl_verify_cb(preverify_ok, store_ctx)
 {
 	ENV *env;
 	DB_REP *db_rep;
+	SSL *ssl;
 	X509 *cert;
 	unsigned char md[EVP_MAX_MD_SIZE];
 	char hex[2 * EVP_MAX_MD_SIZE + 1];
@@ -424,9 +440,14 @@ __repmgr_ssl_verify_cb(preverify_ok, store_ctx)
 	if (!preverify_ok)
 		return (0);			/* CA/expiry/path failed */
 
-	env = ssl_verify_env;
-	if (env == NULL)
-		return (preverify_ok);
+	/*
+	 * Fail closed: a handshake whose SSL object carries no ENV cannot
+	 * check the pin list, so it must not pass on the CA check alone.
+	 */
+	if ((ssl = X509_STORE_CTX_get_ex_data(store_ctx,
+	    SSL_get_ex_data_X509_STORE_CTX_idx())) == NULL ||
+	    (env = SSL_get_ex_data(ssl, ssl_env_idx)) == NULL)
+		return (0);
 	db_rep = env->rep_handle;
 	if (db_rep->tls_pins == NULL)		/* no pinning configured */
 		return (1);
