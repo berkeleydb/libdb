@@ -89,3 +89,34 @@ cannot run an unmodified libdb end-to-end.  The S1 scenario therefore:
   - still runs its kill+recovery durability check WITHOUT directio, so the
     sabotage arm (`--nosync` loses acked writes) is still exercised;
   - will flip to a full directio run the moment F1-001 is fixed on master.
+
+---
+
+## F1-002 (tool note, not a libdb bug): libumem `UMEM_DEBUG=default` aborts on the dev box
+
+**Status:** tool limitation, documented; the harness works around it.
+
+On the dev box (Debian 12, x86_64, libumem built from the pinned commit),
+`UMEM_DEBUG=default` (which includes the `audit` per-buffer stack-capture
+component) aborts **any** program at startup -- including a 1-line
+`malloc(16);free(p)` program -- with no detection report (SIGABRT, rc=134).
+So it is not a libdb heap bug; it is the `audit` component failing on this
+host.  Confirmed by isolating the flags:
+
+| UMEM_DEBUG | clean 1-malloc prog | 64-into-16 overflow |
+|---|---|---|
+| `default` / `audit` / `audit,guards` | ABORT (rc 134/1) | ABORT |
+| `guards` | rc 0 | rc 0 (NOT detected at free) |
+| `contents` / `firewall` | rc 0 | rc 0 (NOT detected) |
+| **`guards,contents`** | **rc 0** | **ABORT (detected)** |
+
+The S3 `s3-umem` arm therefore probes `default` on a trivial program first and,
+when it aborts spuriously, falls back to `UMEM_DEBUG=guards,contents` -- the
+detection half of `default` (redzone + fill-pattern).  That mode runs the libdb
+workload clean AND catches both the planted overflow and a use-after-free (the
+`s3-umem-sabotage` arm proves the teeth).  The only thing lost versus `default`
+is the audit backtraces, which are diagnostic, not detection.
+
+**libdb result under redzone+contents checking:** CLEAN over an 800-op
+transactional workload -- no redzone corruption, no use-after-free, no
+fill-pattern violation.  rtcheck verifies the data afterwards.
