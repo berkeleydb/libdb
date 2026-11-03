@@ -64,6 +64,7 @@ struct cfg {
 	const char *home, *ackpath, *node, *dbname;
 	long seed, ops, keys, valsz, txn_ops, kill_at, del_pct, cachesz_mb;
 	int nosync;
+	int direct;		/* native DB_DIRECT_DB + DB_LOG_DIRECT */
 };
 
 static void
@@ -111,6 +112,7 @@ main(int argc, char *argv[])
 		else if (ARG("--kill-at")) c.kill_at = atol(VAL());
 		else if (ARG("--cachesz-mb")) c.cachesz_mb = atol(VAL());
 		else if (ARG("--nosync")) c.nosync = 1;
+		else if (ARG("--direct")) c.direct = 1;
 		else usage();
 	}
 	if (c.home == NULL || c.ackpath == NULL || c.node == NULL || c.ops <= 0)
@@ -133,6 +135,22 @@ main(int argc, char *argv[])
 	}
 	(void)env->set_cachesize(env, 0,
 	    (u_int32_t)c.cachesz_mb * 1024 * 1024, 1);
+	/* --direct: the SUPPORTED native direct-I/O path (needs a libdb built
+	 * with --enable-o_direct).  DB_DIRECT_DB opens data page files O_DIRECT;
+	 * DB_LOG_DIRECT does the same for the log.  Region and temp files stay
+	 * buffered by design (see finding F1-001).  A set_flags/log_set_config
+	 * failure here means the build lacks O_DIRECT support -- report it. */
+	if (c.direct) {
+		int r1 = env->set_flags(env, DB_DIRECT_DB, 1);
+		int r2 = env->log_set_config(env, DB_LOG_DIRECT, 1);
+		if (r1 != 0 || r2 != 0) {
+			fprintf(stderr, "%s: --direct not supported by this "
+			    "build (set_flags=%d log_set_config=%d); "
+			    "rebuild with --enable-o_direct\n",
+			    progname, r1, r2);
+			return (2);
+		}
+	}
 	env_flags = DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
 	    DB_INIT_TXN | DB_THREAD;
 	if ((ret = env->open(env, c.home, env_flags, 0644)) != 0) {

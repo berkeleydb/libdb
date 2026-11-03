@@ -43,7 +43,14 @@ KEYS=${KEYS:-250}
 VALSZ=${VALSZ:-200}
 
 echo "# reproduce: BUILD=$BUILD DSTRT_DIR=$DSTRT_DIR sh $0 $SEED"
-hi_init "dst-rt" "$DSTRT_DIR/.."
+# When driven by run.sh (DSTRT_KEEP_RESULTS=1) do NOT truncate the shared
+# results file -- run.sh did the single hi_init so every scenario appends.
+if [ "${DSTRT_KEEP_RESULTS:-0}" = 1 ]; then
+	hi_tier="dst-rt"
+	hi_file="${LIBDB_RESULTS_DIR:-$DSTRT_DIR/../.results}/dst-rt.results"
+else
+	hi_init "dst-rt" "$DSTRT_DIR/.."
+fi
 
 fi_have libdb || { echo "SKIP: no libdb under $BUILD"; exit 77; }
 [ -x "$BUILD/rtload" ] || fi_build_node rtload || { echo "SKIP: rtload build"; exit 77; }
@@ -64,6 +71,15 @@ run_plan() {
 	_ack="$RUN/$_name/ack.log"; : > "$_ack"
 
 	echo "== $_name =="
+	# Pre-create the env with a few CLEAN committed ops, so the fault lands
+	# on the workload rather than failing env-open -- and so the oracle has
+	# acked ops to check (non-vacuity: a run where the fault blocked every
+	# commit would be VACUOUS and the arm would fail, which is correct, but
+	# the interesting invariant is that durability holds WHILE faults fire).
+	"$BUILD/rtload" --home "$_home" --ack "$_ack" --node "$_name" \
+	    --seed "$SEED" --ops 20 --keys "$KEYS" --valsz "$VALSZ" \
+	    >/dev/null 2>&1
+
 	_cmd=$(fi_fiu_cmd "$_plan" "$SEED" "$_prob")
 	# shellcheck disable=SC2086
 	eval "$_cmd" "$BUILD/rtload" --home "$_home" --ack "$_ack" \
@@ -76,9 +92,13 @@ run_plan() {
 	echo "    loader rc=$_lrc"
 
 	_out=$("$BUILD/rtcheck" --home "$_home" --ack "$_ack" 2>&1)
-	echo "$_out" | sed 's/^/    /'
+	echo "$_out" | sed 's/^/    /'		# prints the acked/failed/unknown counts
 	if echo "$_out" | grep -q '^PASS'; then
 		hi_emit "$_name" pass
+	elif echo "$_out" | grep -q '^VACUOUS'; then
+		# 0 acked ops checked: the arm proved nothing.  Non-vacuity rule.
+		echo "    VACUOUS: no acked op reached the oracle; arm failed"
+		hi_emit "$_name" fail; rc=1
 	else
 		# A violation here is a genuine finding: an injected I/O fault
 		# led to a lost acked commit, a phantom, corruption, or an

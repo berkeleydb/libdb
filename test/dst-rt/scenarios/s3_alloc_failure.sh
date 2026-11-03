@@ -32,7 +32,14 @@ DSTRT_DIR=${DSTRT_DIR:-$(CDPATH= cd -- "$HERE/.." && pwd)}
 
 SEED=${1:-1}
 echo "# reproduce: BUILD=$BUILD DSTRT_DIR=$DSTRT_DIR sh $0 $SEED"
-hi_init "dst-rt" "$DSTRT_DIR/.."
+# When driven by run.sh (DSTRT_KEEP_RESULTS=1) do NOT truncate the shared
+# results file -- run.sh did the single hi_init so every scenario appends.
+if [ "${DSTRT_KEEP_RESULTS:-0}" = 1 ]; then
+	hi_tier="dst-rt"
+	hi_file="${LIBDB_RESULTS_DIR:-$DSTRT_DIR/../.results}/dst-rt.results"
+else
+	hi_init "dst-rt" "$DSTRT_DIR/.."
+fi
 
 fi_have libdb || { echo "SKIP: no libdb under $BUILD"; exit 77; }
 [ -x "$BUILD/rtload" ] || fi_build_node rtload || { echo "SKIP: rtload build"; exit 77; }
@@ -83,9 +90,12 @@ if fi_have fiu; then
 	    >/dev/null 2>&1
 	echo "    loader rc=$? (non-zero ok: a malloc fault surfaced as an error)"
 	out=$("$BUILD/rtcheck" --home "$_home" --ack "$RUN/fiu.ack" 2>&1)
-	echo "$out" | sed 's/^/    /'
+	echo "$out" | sed 's/^/    /'		# prints acked/failed/unknown counts
 	if echo "$out" | grep -q '^PASS'; then
 		hi_emit s3-fiu-malloc pass
+	elif echo "$out" | grep -q '^VACUOUS'; then
+		echo "    VACUOUS: no acked op reached the oracle; arm failed"
+		hi_emit s3-fiu-malloc fail; rc=1
 	else
 		echo "    FINDING: a malloc failure corrupted/lost acked data or wedged the env"
 		hi_emit s3-fiu-malloc fail; rc=1
@@ -124,11 +134,12 @@ if fi_have umem; then
 	if [ "$urc" = 0 ]; then
 		out2=$(LD_PRELOAD="$UMEM_SO" UMEM_DEBUG="$UMODE" "$BUILD/rtcheck" \
 		    --home "$_home" --ack "$RUN/umem.ack" 2>&1)
+		echo "$out2" | sed 's/^/    /'		# prints acked/failed/unknown counts
 		if echo "$out2" | grep -q '^PASS'; then
 			echo "    clean (UMEM_DEBUG=$UMODE): no heap error, data verified"
 			hi_emit s3-umem pass
 		else
-			echo "$out2" | sed 's/^/    /'
+			# includes VACUOUS: a umem run that checked 0 acked ops
 			hi_emit s3-umem fail; rc=1
 		fi
 	else

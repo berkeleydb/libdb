@@ -33,7 +33,14 @@ SEED=${1:-1}
 SOAK_SECS=${SOAK_SECS:-600}
 
 echo "# reproduce: SOAK_SECS=$SOAK_SECS BUILD=$BUILD DSTRT_DIR=$DSTRT_DIR sh $0 $SEED"
-hi_init "dst-rt" "$DSTRT_DIR/.."
+# When driven by run.sh (DSTRT_KEEP_RESULTS=1) do NOT truncate the shared
+# results file -- run.sh did the single hi_init so every scenario appends.
+if [ "${DSTRT_KEEP_RESULTS:-0}" = 1 ]; then
+	hi_tier="dst-rt"
+	hi_file="${LIBDB_RESULTS_DIR:-$DSTRT_DIR/../.results}/dst-rt.results"
+else
+	hi_init "dst-rt" "$DSTRT_DIR/.."
+fi
 
 fi_have libdb || { echo "SKIP: no libdb under $BUILD"; exit 77; }
 [ -x "$BUILD/rtload" ] || fi_build_node rtload || { echo "SKIP: rtload build"; exit 77; }

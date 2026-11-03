@@ -42,7 +42,14 @@ VALSZ=${VALSZ:-200}
 echo "# reproduce: BUILD=$BUILD DSTRT_DIR=$DSTRT_DIR sh $0 $SEED"
 echo "# seed=$SEED ops=$OPS kill-at=$KILL_AT keys=$KEYS valsz=$VALSZ"
 
-hi_init "dst-rt" "$DSTRT_DIR/.."
+# When driven by run.sh (DSTRT_KEEP_RESULTS=1) do NOT truncate the shared
+# results file -- run.sh did the single hi_init so every scenario appends.
+if [ "${DSTRT_KEEP_RESULTS:-0}" = 1 ]; then
+	hi_tier="dst-rt"
+	hi_file="${LIBDB_RESULTS_DIR:-$DSTRT_DIR/../.results}/dst-rt.results"
+else
+	hi_init "dst-rt" "$DSTRT_DIR/.."
+fi
 
 fi_have libdb || { echo "SKIP: no libdb library under $BUILD"; exit 77; }
 [ -x "$BUILD/rtload" ] || fi_build_node rtload || { echo "SKIP: rtload build"; exit 77; }
@@ -51,37 +58,45 @@ fi_have libdb || { echo "SKIP: no libdb library under $BUILD"; exit 77; }
 RUN=$(fi_mkrun s1)
 trap 'rm -rf "$RUN" 2>/dev/null' 0
 
-# directio availability drives whether we exercise the uncached path.  Finding
-# F1-001: an unmodified engine cannot open an env under libdirectio, so we run
-# the kill+recovery WITHOUT directio and record the directio gap, rather than
-# emit a false PASS.
-USE_DIRECTIO=0
-PRELOAD=""
+# directio: two arms (lead direction on F1-001).
+#   native  -- the SUPPORTED path: a build with --enable-o_direct, DB_DIRECT_DB
+#              + DB_LOG_DIRECT (rtload --direct).  Verified alignment-clean.
+#   preload -- libdirectio, a blanket O_DIRECT on every regular file, which
+#              trips F1-001 on the buffered-by-design region files at env open.
+# We detect native direct support by probing rtload --direct, and detect the
+# preload gap by probing libdirectio.
+HAVE_NATIVE_DIRECT=0
+probe="$RUN/probe.nd"; mkdir -p "$probe"
+if "$BUILD/rtload" --home "$probe" --ack "$RUN/probe.nd.ack" --node p \
+    --seed 1 --ops 2 --keys 2 --direct >/dev/null 2>&1; then
+	HAVE_NATIVE_DIRECT=1
+else
+	echo "# native direct I/O unavailable (build without --enable-o_direct)"
+fi
+
+PRELOAD_DIRECTIO_OK=0
 if fi_have directio; then
-	# Probe: can THIS libdb open an env under directio?  If not, F1-001.
-	probe="$RUN/probe"; mkdir -p "$probe"
+	probe="$RUN/probe.pd"; mkdir -p "$probe"
 	if LD_PRELOAD="$DIRECTIO_SO" "$BUILD/rtload" --home "$probe" \
-	    --ack "$RUN/probe.ack" --node p --seed 1 --ops 2 --keys 2 \
+	    --ack "$RUN/probe.pd.ack" --node p --seed 1 --ops 2 --keys 2 \
 	    >/dev/null 2>&1; then
-		USE_DIRECTIO=1; PRELOAD="LD_PRELOAD=$DIRECTIO_SO"
-	else
-		echo "# directio present but libdb cannot open under it: finding F1-001"
-		echo "#   -> running kill+recovery WITHOUT directio (buffered)"
+		PRELOAD_DIRECTIO_OK=1
 	fi
 fi
 
-# ---- arm: run a loader that kills itself at KILL_AT, then recover+check -----
-# mode: "" honest, "--nosync" sabotage.  echo PASS/FAIL to stdout.
+# run_arm NAME MODE [PRELOAD] [DIRECT] -- kill a loader at KILL_AT, recover,
+# check.  MODE: "" honest, "--nosync" sabotage.  PRELOAD: env prefix (e.g.
+# "LD_PRELOAD=...").  DIRECT: "--direct" for the native path.  Echoes rtcheck.
 run_arm() {
-	_name=$1 _mode=$2
+	_name=$1 _mode=$2 _pre=${3:-} _direct=${4:-}
 	_home="$RUN/$_name/home"; mkdir -p "$_home"
 	_ack="$RUN/$_name/ack.log"; : > "$_ack"
 
 	# First loader: killed at KILL_AT (writes some ACKs, dies mid-stream).
 	# shellcheck disable=SC2086
-	eval $PRELOAD "$BUILD/rtload" --home "$_home" --ack "$_ack" \
+	eval $_pre "$BUILD/rtload" --home "$_home" --ack "$_ack" \
 	    --node "$_name" --seed "$SEED" --ops "$OPS" --keys "$KEYS" \
-	    --valsz "$VALSZ" --kill-at "$KILL_AT" $_mode >/dev/null 2>&1
+	    --valsz "$VALSZ" --kill-at "$KILL_AT" $_direct $_mode >/dev/null 2>&1
 	# rc 137 (SIGKILL) is expected; any other non-zero is a crash, which is
 	# itself a rule-7 violation unless it is the kill we asked for.
 
@@ -94,35 +109,76 @@ rc=0
 # NORMAL arm: honest sync loader.  The oracle must PASS (durability holds).
 echo "== s1-normal =="
 out=$(run_arm normal "")
-echo "$out" | sed 's/^/    /'
+echo "$out" | sed 's/^/    /'		# prints acked/failed/unknown counts
 if echo "$out" | grep -q '^PASS'; then
 	hi_emit s1-normal pass
 else
+	# includes VACUOUS (0 acked checked) -- a non-vacuity failure.
 	hi_emit s1-normal fail; rc=1
-	echo "    UNEXPECTED: honest sync loader lost an acked commit"
+	echo "    UNEXPECTED: honest sync loader lost an acked commit (or vacuous)"
+fi
+
+# NATIVE DIRECTIO arm: the SUPPORTED direct-I/O path (lead direction on
+# F1-001).  A --enable-o_direct build with DB_DIRECT_DB + DB_LOG_DIRECT, killed
+# and recovered -- data and log go straight to disk, so recovery is tested with
+# the page cache out of the picture.  Verified alignment-clean (FINDINGS F1-001).
+echo "== s1-native-directio =="
+if [ "$HAVE_NATIVE_DIRECT" = 1 ]; then
+	out=$(run_arm native "" "" "--direct")
+	echo "$out" | sed 's/^/    /'
+	if echo "$out" | grep -q '^PASS'; then
+		echo "    native O_DIRECT durable across kill+recovery"
+		hi_emit s1-native-directio pass
+	else
+		hi_emit s1-native-directio fail; rc=1
+	fi
+else
+	echo "    SKIP: libdb not built with --enable-o_direct"
+	hi_emit s1-native-directio skip
 fi
 
 # SABOTAGE arm: --nosync but still ACKed.  A clean SIGKILL of the loader loses
 # libdb's IN-PROCESS log buffer (DB_TXN_NOSYNC never flushed the commit records
 # to the fd), so acked-but-unsynced commits are gone after recovery -- WITHOUT
 # needing directio.  (Measured: honest sync arm PASSes the same kill; --nosync
-# arm loses ~dozens of acked writes.)  directio only widens the loss window to
-# the OS page cache too; when present we run the sabotage under directio as a
-# stronger arm, otherwise the in-process-buffer loss alone gives the oracle
-# teeth.  The scenario PASSES iff the oracle FAILED (caught the lie).
+# arm loses ~dozens of acked writes.)  Run it under the native direct path when
+# available (widens the loss window), else buffered.  PASSES iff the oracle
+# FAILED (caught the lie) -- a VACUOUS result here means no acked op existed to
+# lose, which is NOT a caught lie, so it is a fail.
 echo "== s1-sabotage =="
-if [ "$USE_DIRECTIO" = 1 ]; then
-	out=$(run_arm sabotage "--nosync")
+if [ "$HAVE_NATIVE_DIRECT" = 1 ]; then
+	out=$(run_arm sabotage "--nosync" "" "--direct")
 else
-	PRELOAD="" out=$(run_arm sabotage "--nosync")
+	out=$(run_arm sabotage "--nosync")
 fi
 echo "$out" | sed 's/^/    /'
 if echo "$out" | grep -q '^FAIL'; then
 	echo "    oracle caught the NOSYNC durability lie (teeth)"
 	hi_emit s1-sabotage pass
 else
-	echo "    SABOTAGE NOT CAUGHT: NOSYNC+kill kept every acked commit"
+	echo "    SABOTAGE NOT CAUGHT: NOSYNC+kill kept every acked commit (or vacuous)"
 	hi_emit s1-sabotage fail; rc=1
+fi
+
+# PRELOAD DIRECTIO arm: libdirectio (blanket O_DIRECT).  Finding F1-001: this
+# trips libdb's buffered-by-design region writes at env open, so it SKIPs with
+# the reference until the optional engine fix lands.  SKIP-with-reason, never a
+# silent pass.
+echo "== s1-preload-directio =="
+if [ "${PRELOAD_DIRECTIO_OK:-0}" = 1 ]; then
+	out=$(run_arm preload "" "LD_PRELOAD=$DIRECTIO_SO")
+	echo "$out" | sed 's/^/    /'
+	if echo "$out" | grep -q '^PASS'; then
+		echo "    libdirectio durable across kill+recovery (F1-001 fixed?)"
+		hi_emit s1-preload-directio pass
+	else
+		hi_emit s1-preload-directio fail; rc=1
+	fi
+else
+	echo "    SKIP: finding F1-001 -- libdb cannot open an env under libdirectio"
+	echo "          (blanket O_DIRECT trips buffered-by-design region writes);"
+	echo "          the NATIVE direct arm above is the supported path and is clean."
+	hi_emit s1-preload-directio skip
 fi
 
 exit $rc

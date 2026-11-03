@@ -570,3 +570,27 @@ sim	test_sim_enospc
 # library (BH.gen never bumped) and requires the probe to FAIL, so this verdict
 # means the generation bump is load-bearing, not merely present.
 bench	optimistic_teeth
+
+# ---------------------------------------------------------------------------
+# RFC 0024 runtime fault-injection, single-node tier (F1).  test/dst-rt/run.sh
+# Each scenario emits one verdict per arm.  The tool-dependent arms are
+# `optional`: libfiu/libumem/FAINT each SKIP on a runner without them (the
+# verdict is `skip`, which the gate accepts), but when the tool IS present the
+# arm must run -- so a lost run is still a MISSING, not silence.  The two S1
+# arms need no external tool and are MANDATORY.  The HA arms (s4-*/s5-*) are
+# owned by F2 and listed in their own block.
+# ---------------------------------------------------------------------------
+dst-rt	s1-normal
+dst-rt	s1-native-directio	optional
+dst-rt	s1-sabotage
+dst-rt	s1-preload-directio	optional
+dst-rt	s2-eio-write		optional
+dst-rt	s2-fsync-fail		optional
+dst-rt	s2-enospc		optional
+dst-rt	s2-short		optional
+dst-rt	s2-delete-behind	optional
+dst-rt	s3-faint		optional
+dst-rt	s3-fiu-malloc		optional
+dst-rt	s3-umem			optional
+dst-rt	s3-umem-sabotage	optional
+dst-rt	s9-soak			optional

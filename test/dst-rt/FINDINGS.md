@@ -6,18 +6,29 @@ fails first.  They are **not** fixed on `test/dst-rt`.
 
 ---
 
-## F1-001: libdb's region and log file-extend writes fail under O_DIRECT (EINVAL)
+## F1-001: libdb's region file-management writes fail under a BLANKET O_DIRECT (libdirectio), but the NATIVE direct-I/O path is clean
 
-**Severity:** medium (blocks the S1 directio durability scenario from running
-against an unmodified engine; not a data-loss bug by itself).
+**Severity:** low (preload-only; the supported `DB_DIRECT_DB`/`DB_LOG_DIRECT`
+path is alignment-correct).  Not a data-loss bug.
 
-**Status:** OPEN, needs an engine fix on its own branch.
+**Status:** CHARACTERISED.  The native path is correct; the preload gap is a
+small robustness improvement, optional.
 
-**Summary.** Under `libdirectio` (which sets `O_DIRECT` on every regular file
-opened via `open`/`openat`), libdb cannot even open a transactional
-environment.  Three distinct writes return `EINVAL` because they violate
-`O_DIRECT`'s alignment contract (length a multiple of the device block size,
-buffer aligned to the block size):
+**Verdict (lead-directed diagnostic, 2026-11).**  Two configurations were
+compared on ext4 (/data), a real block-backed fs:
+
+| Configuration | env open | data file | log file | region files | unaligned writes |
+|---|---|---|---|---|---|
+| **native** `--enable-o_direct`, `DB_DIRECT_DB` + `log_set_config(DB_LOG_DIRECT)` | **works, 50/50 commits** | O_DIRECT (fincore 0) | O_DIRECT (fincore 0) | buffered (by design) | **none** |
+| **preload** libdirectio (blanket O_DIRECT on every regular file) | **FAILS, EINVAL** | O_DIRECT | O_DIRECT | O_DIRECT (forced) | 3 (see below) |
+
+So libdb's **supported** direct-I/O path is alignment-correct: it opens the
+data and log *page* files O_DIRECT with aligned, block-sized I/O (the log
+header is padded on that path -- 50/50 commits with `DB_LOG_DIRECT` and
+`fincore` shows the log 0-cached), and it deliberately keeps the region files
+(`__db.00N`), temp files and the backup/verify utilities on **buffered**
+handles.  The bug surfaces only when libdirectio forces O_DIRECT onto those
+buffered-by-design files, whose management writes are not block-aligned:
 
 | Call site | Write | Why O_DIRECT rejects it |
 |---|---|---|
@@ -37,15 +48,10 @@ if ((ret = __os_seek(env, fhp, pages, MEGABYTE, relative)) == 0)
 ```
 
 **This is the alignment class the RFC's §1 storage row and the F1 brief
-predicted.**  libdb's *page* I/O (the `DB_DIRECT_DB` path, `__os_io`) is
-page-aligned and page-sized and so is designed to be O_DIRECT-clean; these
-file-*management* writes (region sizing, log header) are not.  Note: in the
-`--enable-diagnostic` build tested here, `DB_ENV->set_flags(DB_DIRECT_DB)`
-reported "direct I/O either not configured or not supported" and ran buffered,
-so libdb's own direct-I/O mode was not even reachable without a configure flag
-(`--enable-o_direct` / O_DIRECT detection) -- a separate observation.  The
-point stands regardless: a blanket `O_DIRECT` via libdirectio hits the
-management writes, which are unaligned by construction, before any page I/O.
+predicted**, but scoped: it is the region/temp/utility files that libdb keeps
+buffered, NOT the page I/O path.  The native `DB_DIRECT_DB`/`DB_LOG_DIRECT`
+configuration -- the supported way to get direct I/O -- is alignment-clean, so
+F1-001 is a **preload artifact**, not a supported-config bug.
 
 **Reproducer (dev box, Debian 12, ext4 on /data):**
 
@@ -72,23 +78,24 @@ tmpfs ignores `O_DIRECT`, so the bug only shows on a real block-backed fs
 (ext4/xfs); `fincore` on `__db.001` confirms 0 cached pages, i.e. the open did
 reach the O_DIRECT path before failing.
 
-**Suggested fix (engine branch, NOT here).**  Make the region/log
-file-management writes O_DIRECT-tolerant when the fd happens to be direct:
-either (a) size the file with `ftruncate`/`posix_fallocate` instead of a 1-byte
-write (`__db_file_extend` already prefers `ftruncate` in `__os_truncate`; the
-region path should too), or (b) bounce these small management writes through a
-block-aligned bounce buffer, or (c) detect `EINVAL` on a management write and
-retry on a buffered dup of the fd.  Option (a) is the smallest: on a host with
-`HAVE_FTRUNCATE`, extend the region file with `ftruncate` and drop the 1-byte
-write entirely.
+**Suggested fix (engine branch `fix/direct-io-alignment`, NOT here).**  Optional
+robustness: make the region/temp management writes O_DIRECT-tolerant so a
+blanket preload (or a user who sets O_DIRECT on the whole fs) does not trip
+them.  Smallest change: size the region file with `ftruncate` /
+`posix_fallocate` instead of the 1-byte `write` in `__db_file_extend`
+(`__os_truncate` already prefers `ftruncate`), and make the `__db_file_write`
+MEGABYTE-tail block-aligned.  The log header already pads correctly on the
+native direct path, so no log-format change is needed.  Must NOT touch log or
+region format.  Correctness fix for robustness -> normal LTS backport rules if
+it lands.  Given the native path is clean, this is low priority.
 
-**Impact on the harness.**  Until the engine is fixed, the S1 `direct` arm
-cannot run an unmodified libdb end-to-end.  The S1 scenario therefore:
-  - detects the EINVAL-on-open and records it as the known finding F1-001
-    (SKIP with a reason that names this finding), rather than a false PASS;
-  - still runs its kill+recovery durability check WITHOUT directio, so the
-    sabotage arm (`--nosync` loses acked writes) is still exercised;
-  - will flip to a full directio run the moment F1-001 is fixed on master.
+**Impact on the harness.**  S1 gets TWO directio arms:
+  - **native:** `--enable-o_direct` build + `DB_DIRECT_DB`/`DB_LOG_DIRECT`, run
+    under kill + recovery -- the supported path, verified clean here;
+  - **preload:** libdirectio, which still trips F1-001 at env-open, so that arm
+    SKIPs-with-reason (naming F1-001) until the optional fix lands.
+The S1 kill+recovery durability check (incl. the `--nosync` sabotage) runs on
+the native arm now.
 
 ---
 
