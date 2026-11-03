@@ -34,7 +34,7 @@ set -u
 # One run == one prefix.  RT_RUN may be set by the caller (the scenario's seed
 # plus scenario id); otherwise derive a unique one from pid + time + a random
 # byte so parallel runs and crashed-run leftovers never collide.
-: "${RT_RUN:=$$-$(date +%s)-${RANDOM}}"
+: "${RT_RUN:=$$-$(date +%s)-$(awk 'BEGIN{srand();print int(rand()*100000)}')}"
 FN_PREFIX="dstrt-${RT_RUN}"
 # A per-run /24 that is unlikely to clash with the host or another run.  16 bits
 # of the run hash pick the 2nd and 3rd octets inside 10.0.0.0/8.

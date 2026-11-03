@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (c) 2026 libdb contributors.  All rights reserved.
 # SPDX-License-Identifier: Sleepycat
 #
@@ -19,7 +19,7 @@
 #
 # Usage: s7_tls_netfaults.sh [SEED] [--pin]
 set -u
-SEED=${1:-$RANDOM}
+SEED=${1:-$(awk 'BEGIN{srand();print int(rand()*100000)}')}
 ARM=tls
 [ "${2:-}" = "--pin" ] && ARM=pin
 export RT_RUN="s7-$ARM-$SEED-$$"
@@ -51,7 +51,7 @@ fi
 ha_group_up 3 quorum "--keys 2000 --valsz 200" || {
 	# in the pin arm, the group may still form with a+b (c excluded); only
 	# a hard failure to get ANY master is fatal.
-	[ "$ARM" = pin ] || { echo "FAIL: group up"; ha_group_down; exit 1; }
+	[ "$ARM" = pin ] || { echo "ERROR: group did not form (harness/setup, not an oracle violation)"; ha_group_down; exit 2; }
 }
 
 if [ "$ARM" = pin ]; then

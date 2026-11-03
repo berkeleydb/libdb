@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (c) 2026 libdb contributors.  All rights reserved.
 # SPDX-License-Identifier: Sleepycat
 #
@@ -18,7 +18,7 @@
 #
 # Usage: s6_repl_storage_fault.sh [SEED]
 set -u
-SEED=${1:-$RANDOM}
+SEED=${1:-$(awk 'BEGIN{srand();print int(rand()*100000)}')}
 export RT_RUN="s6-$SEED-$$"
 SDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$SDIR/../lib/ha_common.sh"
@@ -38,7 +38,7 @@ HA_FIU_PLAN=io-eio-write
 HA_FIU_SEED=$SEED
 HA_FIU_PROB=$PROB
 
-ha_group_up 3 quorum "--keys 2000 --valsz 200" || { echo "FAIL: group up"; ha_group_down; exit 1; }
+ha_group_up 3 quorum "--keys 2000 --valsz 200" || { echo "ERROR: group did not form (harness/setup, not an oracle violation)"; ha_group_down; exit 2; }
 echo "--- c is under io-eio-write p=$PROB ---"
 
 echo "--- steady load on the master while c's disk fails ---"

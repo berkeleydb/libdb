@@ -20,7 +20,21 @@
 
 set -u
 
-HA_DIR=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" && pwd)
+# POSIX sh: no BASH_SOURCE/arrays/[[ (the CI sources this under dash).  Derive
+# our directory from how fi_env.sh does it -- $0 when run directly, else the
+# caller-exported DSTRT_DIR -- so sourcing works under dash and bash alike.
+if [ -n "${DSTRT_DIR:-}" ] && [ -d "$DSTRT_DIR/lib" ]; then
+	HA_DIR="$DSTRT_DIR/lib"
+else
+	HA_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+	# a scenario sources us as ../lib/ha_common.sh, so $0 is the scenario in
+	# scenarios/; our real dir is the sibling lib/.
+	case "$HA_DIR" in
+	*/lib) : ;;
+	*/scenarios) HA_DIR=$(CDPATH= cd -- "$HA_DIR/../lib" && pwd) ;;
+	*) [ -d "$HA_DIR/lib" ] && HA_DIR="$HA_DIR/lib" ;;
+	esac
+fi
 . "$HA_DIR/fi_env.sh"
 . "$HA_DIR/fi_net.sh"
 [ -f "$HA_DIR/fi_fiu.sh" ] && . "$HA_DIR/fi_fiu.sh"

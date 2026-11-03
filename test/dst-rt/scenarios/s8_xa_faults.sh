@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (c) 2026 libdb contributors.  All rights reserved.
 # SPDX-License-Identifier: Sleepycat
 #
@@ -32,7 +32,7 @@
 #
 # Usage: s8_xa_faults.sh [SEED]
 set -u
-SEED=${1:-$RANDOM}
+SEED=${1:-$(awk 'BEGIN{srand();print int(rand()*100000)}')}
 export RT_RUN="s8-$SEED-$$"
 SDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$SDIR/../lib/ha_common.sh"

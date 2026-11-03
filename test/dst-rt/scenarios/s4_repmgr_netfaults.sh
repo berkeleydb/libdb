@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (c) 2026 libdb contributors.  All rights reserved.
 # SPDX-License-Identifier: Sleepycat
 #
@@ -15,7 +15,7 @@
 #
 # Usage: s4_repmgr_netfaults.sh [SEED]
 set -u
-SEED=${1:-$RANDOM}
+SEED=${1:-$(awk 'BEGIN{srand();print int(rand()*100000)}')}
 export RT_RUN="s4-$SEED-$$"
 SDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$SDIR/../lib/ha_common.sh"
@@ -24,7 +24,7 @@ ha_need_netns
 ha_build
 
 echo "=== S4 seed=$SEED run=$RT_RUN ==="
-ha_group_up 3 quorum "--keys 2000 --valsz 200" || { echo "FAIL: group up"; ha_group_down; exit 1; }
+ha_group_up 3 quorum "--keys 2000 --valsz 200" || { echo "ERROR: group did not form (harness/setup, not an oracle violation)"; ha_group_down; exit 2; }
 
 # seeded choice of parameters from the seed
 jit=$(( SEED % 40 + 5 ))      # 5-44 ms

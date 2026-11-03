@@ -84,6 +84,29 @@ RESULTS="${LIBDB_RESULTS_DIR:-$DSTRT_DIR/../.results}/dst-rt.results"
 # initialised.
 export DSTRT_KEEP_RESULTS=1
 
+# Preflight: every dst-rt shell file must parse under POSIX sh.  CI runs us
+# under dash (Ubuntu's /bin/sh), where a bashism like ${BASH_SOURCE} or a
+# substring expansion breaks sourcing and the whole tier collapses -- and it is
+# invisible on a box whose /bin/sh is bash.  checkbashisms if present, else
+# `dash -n` (or `sh -n`) each file; a parse failure is a harness ERROR (exit 2),
+# never a finding.
+if [ "${DSTRT_SKIP_SHCHECK:-0}" != 1 ]; then
+	_shchecker=""
+	if command -v checkbashisms >/dev/null 2>&1; then _shchecker=checkbashisms
+	elif command -v dash >/dev/null 2>&1; then _shchecker="dash -n"
+	else _shchecker="sh -n"; fi
+	_shbad=0
+	for _f in "$DSTRT_DIR"/lib/*.sh "$DSTRT_DIR"/scenarios/*.sh "$DSTRT_DIR"/run.sh; do
+		[ -f "$_f" ] || continue
+		if ! $_shchecker "$_f" >/tmp/dstrt-shchk.$$ 2>&1; then
+			echo "ERROR: $_f does not pass $_shchecker:"; sed 's/^/  /' /tmp/dstrt-shchk.$$
+			_shbad=1
+		fi
+	done
+	rm -f /tmp/dstrt-shchk.$$
+	[ "$_shbad" = 0 ] || { echo "dst-rt: POSIX-sh preflight FAILED (harness error)"; exit 2; }
+fi
+
 echo "dst-rt swarm: tier=$TIER seeds=[$SEEDS] retry=$RETRY"
 echo "tools: fiu=$HAVE_FIU tc=$HAVE_TC netns=$HAVE_NETNS directio=$HAVE_DIRECTIO umem=$HAVE_UMEM faint=$HAVE_FAINT"
 
@@ -196,14 +219,24 @@ run_ha_scenario() {
 	sed 's/^/    /' "$_log"; rm -f "$_log"
 	[ "$_rc" -eq 77 ] && { echo "  $(basename "$_scen") seed=$_seed: SKIP"; return 0; }
 	[ "$_rc" -eq 0 ] && return 0
-	# k/10 retry (§2.5)
-	echo "  $(basename "$_scen") seed=$_seed: FAILED, retrying up to $RETRY (k/N)"
+	# Exit 2 == ERROR: a harness/setup failure (the group never formed, a tool
+	# missing, a parse/source error) -- NOT an oracle violation.  Never retried,
+	# never reported as a finding; it fails the job (so CI is red) but is
+	# labelled so it is not mistaken for a libdb bug.
+	if [ "$_rc" -eq 2 ]; then
+		echo "  $(basename "$_scen") seed=$_seed: ERROR (harness/setup, not a finding)"
+		return 2
+	fi
+	# Exit 1 == an oracle violation: apply the §2.5 k/N retry.
+	echo "  $(basename "$_scen") seed=$_seed: FAILED (oracle), retrying up to $RETRY (k/N)"
 	_k=0 _i=0
 	while [ "$_i" -lt "$RETRY" ]; do
 		_i=$(( _i + 1 ))
 		sh "$_script" "$_seed" "$@" >/dev/null 2>&1
 		_rr=$?
-		[ "$_rr" -ne 0 ] && [ "$_rr" -ne 77 ] && _k=$(( _k + 1 ))
+		# only an oracle FAIL (exit 1) counts toward k; an ERROR (2) or SKIP
+		# (77) during a retry does not.
+		[ "$_rr" -eq 1 ] && _k=$(( _k + 1 ))
 	done
 	echo "  $(basename "$_scen") seed=$_seed: reproduced k=$_k/$RETRY"
 	[ "$_k" -ge 1 ] && { echo "  CONFIRMED FAILURE (k>=1) -- see FINDINGS.md"; return 1; }

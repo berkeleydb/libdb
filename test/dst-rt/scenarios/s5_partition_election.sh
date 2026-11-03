@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (c) 2026 libdb contributors.  All rights reserved.
 # SPDX-License-Identifier: Sleepycat
 #
@@ -21,7 +21,7 @@
 #
 # Usage: s5_partition_election.sh [SEED] [--sabotage]
 set -u
-SEED=${1:-$RANDOM}
+SEED=${1:-$(awk 'BEGIN{srand();print int(rand()*100000)}')}
 ARM=normal
 [ "${2:-}" = "--sabotage" ] && ARM=sabotage
 export RT_RUN="s5-$ARM-$SEED-$$"
@@ -38,7 +38,7 @@ if [ "$ARM" = sabotage ]; then
 else
 	POL=quorum
 fi
-ha_group_up 3 "$POL" "--keys 2000 --valsz 200" || { echo "FAIL: group up"; ha_group_down; exit 1; }
+ha_group_up 3 "$POL" "--keys 2000 --valsz 200" || { echo "ERROR: group did not form (harness/setup, not an oracle violation)"; ha_group_down; exit 2; }
 
 OLD=$(ha_master)
 echo "--- initial master=$OLD, baseline load ---"
