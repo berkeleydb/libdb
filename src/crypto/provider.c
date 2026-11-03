@@ -21,9 +21,16 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#ifndef O_NOFOLLOW
+#define	O_NOFOLLOW	0	/* pre-POSIX.1-2008: fstat checks still apply */
+#endif
 #endif
 
 #ifdef HAVE_CRYPTO
+
+#ifndef DB_WIN32
+static int __crypto_keyfile_open __P((const char *, int *));
+#endif
 
 /*
  * __crypto_keyfile_get_key --
@@ -46,11 +53,10 @@ __crypto_keyfile_get_key(prov, key_id, buf, len)
 	if (path == NULL || len != DB_CRYPTO_KEK_LEN)
 		return (EINVAL);
 
-	if ((ret = __crypto_keyfile_check(path)) != 0)
-		return (ret);
-
 #ifdef DB_WIN32
 	/* shortcut: Windows key-file read not implemented; upgrade on demand. */
+	COMPQUIET(buf, NULL);
+	COMPQUIET(ret, 0);
 	return (EINVAL);
 #else
 	{
@@ -58,9 +64,9 @@ __crypto_keyfile_get_key(prov, key_id, buf, len)
 		ssize_t n;
 		u_int8_t extra;
 
-		if ((fd = open(path, O_RDONLY, 0)) < 0)
-			return (__os_get_errno());
-		ret = 0;
+		/* Check and read the SAME open file: no path re-resolution. */
+		if ((ret = __crypto_keyfile_open(path, &fd)) != 0)
+			return (ret);
 		n = read(fd, buf, DB_CRYPTO_KEK_LEN);
 		if (n < 0)
 			ret = __os_get_errno();
@@ -72,9 +78,52 @@ __crypto_keyfile_get_key(prov, key_id, buf, len)
 #endif
 }
 
+#ifndef DB_WIN32
+/*
+ * __crypto_keyfile_open --
+ *	Open a key file and verify, on the open descriptor, that it is a
+ *	regular file owned by us, not group/world accessible, and exactly a
+ *	256-bit key.  O_NOFOLLOW refuses a symlink as the final component, and
+ *	fstat checks the file actually opened, so a rename or symlink swap
+ *	between the check and the read cannot substitute another file.
+ *	Returns the open fd in *fdp on success.
+ */
+static int
+__crypto_keyfile_open(path, fdp)
+	const char *path;
+	int *fdp;
+{
+	struct stat sb;
+	int fd, ret;
+
+	*fdp = -1;
+	if ((fd = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK, 0)) < 0)
+		return (errno == ELOOP ? EINVAL : __os_get_errno());
+	ret = 0;
+	if (fstat(fd, &sb) != 0)
+		ret = __os_get_errno();
+	else if (!S_ISREG(sb.st_mode))
+		ret = EINVAL;			/* FIFO, device, directory... */
+	else if ((sb.st_mode & (S_IRWXG | S_IRWXO)) != 0)
+		ret = EINVAL;			/* group/world accessible */
+	else if (sb.st_uid != geteuid())
+		ret = EINVAL;			/* not owned by us */
+	else if (sb.st_size != DB_CRYPTO_KEK_LEN)
+		ret = EINVAL;			/* must be exactly a 256-bit key */
+	if (ret != 0) {
+		(void)close(fd);
+		return (ret);
+	}
+	*fdp = fd;
+	return (0);
+}
+#endif
+
 /*
  * __crypto_keyfile_check --
- *	Verify a key file is not group/world accessible and is owned by us.
+ *	Verify a key file is a regular, owner-only file of exactly 256 bits.
+ *	The read path re-checks on its own descriptor; this is the early,
+ *	config-time error.
  *
  * PUBLIC: int __crypto_keyfile_check __P((const char *));
  */
@@ -90,16 +139,11 @@ __crypto_keyfile_check(path)
 	 */
 	return (0);
 #else
-	struct stat sb;
+	int fd, ret;
 
-	if (stat(path, &sb) != 0)
-		return (__os_get_errno());
-	if ((sb.st_mode & (S_IRWXG | S_IRWXO)) != 0)
-		return (EINVAL);		/* group/world accessible */
-	if (sb.st_uid != geteuid())
-		return (EINVAL);		/* not owned by us */
-	if (sb.st_size != DB_CRYPTO_KEK_LEN)
-		return (EINVAL);		/* must be exactly a 256-bit key */
+	if ((ret = __crypto_keyfile_open(path, &fd)) != 0)
+		return (ret);
+	(void)close(fd);
 	return (0);
 #endif
 }

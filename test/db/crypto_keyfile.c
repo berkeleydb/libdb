@@ -142,6 +142,39 @@ main(int argc, char **argv)
 		fail = 1;
 	}
 
+	/*
+	 * 4. A symlink to a valid 0600 key is refused.  The provider once
+	 * stat()ed and open()ed the path separately and followed symlinks,
+	 * so a symlink (or a rename between the check and the read) in a
+	 * writable directory could make it read a different file as the KEK.
+	 */
+	(void)system("find " HOME " -mindepth 1 -delete 2>/dev/null; mkdir -p " HOME);
+	if (make_key(KEYFILE, 0600, KEKLEN) != 0 ||
+	    symlink("key.raw", HOME "/link.key") != 0) {
+		printf("VERDICT crypto_keyfile FAIL make symlink\n"); return (1);
+	}
+	ret = env_with_keyfile(HOME "/link.key", 1);
+	if (ret == EINVAL)
+		printf("  ok: symlinked key file refused (EINVAL)\n");
+	else {
+		printf("  FAIL: symlinked key file gave ret=%d "
+		    "(want EINVAL=%d)\n", ret, EINVAL);
+		fail = 1;
+	}
+
+	/* 5. A FIFO is refused at once, not blocked on (O_NONBLOCK, S_ISREG). */
+	(void)system("find " HOME " -mindepth 1 -delete 2>/dev/null; mkdir -p " HOME);
+	if (mkfifo(HOME "/fifo.key", 0600) != 0) {
+		printf("VERDICT crypto_keyfile FAIL mkfifo\n"); return (1);
+	}
+	ret = env_with_keyfile(HOME "/fifo.key", 1);
+	if (ret == EINVAL)
+		printf("  ok: FIFO key file refused (EINVAL)\n");
+	else {
+		printf("  FAIL: FIFO key file gave ret=%d\n", ret);
+		fail = 1;
+	}
+
 	(void)system("find " HOME " -mindepth 1 -delete 2>/dev/null");
 	printf("VERDICT crypto_keyfile %s\n", fail ? "FAIL" : "PASS");
 	return (fail ? 1 : 0);
