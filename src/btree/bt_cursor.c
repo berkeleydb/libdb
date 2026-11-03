@@ -33,7 +33,7 @@ static int  __bam_get_prev __P((DBC *));
 static int  __bam_isopd __P((DBC *, db_pgno_t *));
 static int  __bam_dup_alldeleted __P((DBC *, DBT *, int *));
 static int  __bam_dup_rekey __P((DBC *, DBT *));
-static int  __bam_rekey_slot __P((DBC *, DBT *, int));
+static int  __bam_rekey_slot __P((DBC *, DBT *));
 #ifdef HAVE_COMPRESSION
 static int  __bam_getlte __P((DBC *, DBT *, DBT *));
 #endif
@@ -3308,7 +3308,7 @@ __bam_dup_rekey(dbc, key)
 	/* Off-page: the B_DUPLICATE data slot flags a lone (unshared) key. */
 	bop = GET_BOVERFLOW(dbp, h, indx + O_INDX);
 	if (B_TYPE(bop->type) == B_DUPLICATE)
-		return (__bam_rekey_slot(dbc, key, 1));
+		return (__bam_rekey_slot(dbc, key));
 
 	/* On-page set: the members share the key item at inp[indx]. */
 	bk = GET_BKEYDATA(dbp, h, indx);
@@ -3353,10 +3353,9 @@ __bam_dup_rekey(dbc, key)
  *	untouched; only the key half of the pair is replaced.
  */
 static int
-__bam_rekey_slot(dbc, key, is_offpage)
+__bam_rekey_slot(dbc, key)
 	DBC *dbc;
 	DBT *key;
-	int is_offpage;
 {
 	BKEYDATA *bk;
 	BOVERFLOW bo;
@@ -3368,7 +3367,6 @@ __bam_rekey_slot(dbc, key, is_offpage)
 	u_int32_t have, need;
 	int bigkey, ret;
 
-	COMPQUIET(is_offpage, 0);
 	dbp = dbc->dbp;
 	cp = (BTREE_CURSOR *)dbc->internal;
 	h = cp->page;
