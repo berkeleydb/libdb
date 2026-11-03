@@ -509,6 +509,7 @@ db	run_r2_fuzz
 db	run_bamc_prev_alias
 db	run_truncate_subdb
 db	run_mf_discard_order
+db	run_r1_revive
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

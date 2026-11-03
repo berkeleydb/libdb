@@ -62,6 +62,7 @@ static int __bam_ovput
 	       __P((DBC *, u_int32_t, db_pgno_t, PAGE *, u_int32_t, DBT *));
 static u_int32_t
 	   __bam_partsize __P((DB *, u_int32_t, DBT *, PAGE *, u_int32_t));
+static int __bam_revive_chk __P((DBC *, PAGE *, u_int32_t, DBT *, int *));
 
 /*
  * __bam_iitem --
@@ -76,6 +77,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	u_int32_t op, flags;
 {
 	BKEYDATA *bk, bk_tmp;
+	BOVERFLOW bo;
 	BTREE *t;
 	BTREE_CURSOR *cp;
 	DB *dbp;
@@ -87,7 +89,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	u_int32_t data_size, have_bytes, need_bytes, needed, pages, pagespace;
 	char tmp_ch;
 	int cmp, bigkey, bigdata, del, dupadjust;
-	int padrec, replace, ret, t_ret, was_deleted;
+	int padrec, replace, ret, revive, t_ret, was_deleted;
 
 	COMPQUIET(cnt, 0);
 
@@ -98,7 +100,7 @@ __bam_iitem(dbc, key, data, op, flags)
 	t = dbp->bt_internal;
 	h = cp->page;
 	indx = cp->indx;
-	del = dupadjust = replace = was_deleted = 0;
+	del = dupadjust = replace = revive = was_deleted = 0;
 
 	/*
 	 * Fixed-length records with partial puts: it's an error to specify
@@ -272,6 +274,27 @@ __bam_iitem(dbc, key, data, op, flags)
 
 		if (have_bytes < need_bytes)
 			needed += need_bytes - have_bytes;
+
+		/*
+		 * Reviving a deleted pair under a key that compares equal but
+		 * has different bytes also replaces the key item (R1).  The
+		 * key is deleted and re-added before the data step runs, so
+		 * account for it on its own: a key that grows cannot borrow
+		 * space from data that shrinks.
+		 */
+		if (op == DB_CURRENT && (ret =
+		    __bam_revive_chk(dbc, h, indx, key, &revive)) != 0)
+			return (ret);
+		if (revive) {
+			bigkey = key->size > cp->ovflsize;
+			bk = GET_BKEYDATA(dbp, h, indx);
+			have_bytes = B_TYPE(bk->type) == B_KEYDATA ?
+			    BKEYDATA_PSIZE(bk->len) : BOVERFLOW_PSIZE;
+			need_bytes = bigkey ?
+			    BOVERFLOW_PSIZE : BKEYDATA_PSIZE(key->size);
+			if (have_bytes < need_bytes)
+				needed += need_bytes - have_bytes;
+		}
 		break;
 	default:
 		return (__db_unknown_flag(env, "DB->put", op));
@@ -411,6 +434,35 @@ __bam_iitem(dbc, key, data, op, flags)
 		if ((ret = __bam_ca_delete(dbp, PGNO(h), indx, 0, NULL)) != 0)
 			return (ret);
 
+		/*
+		 * Replace the key of a revived pair (R1): delete and re-add
+		 * it in the same slot, as case 4 does for data, so no cursor
+		 * adjustment is needed.  Both steps are logged.  An overflow
+		 * key's chain is written first: it is the step that can fail
+		 * for want of a page, and failing before the old key is gone
+		 * leaves the page whole.
+		 */
+		if (revive) {
+			memset(&bk_hdr, 0, sizeof(bk_hdr));
+			if (bigkey) {
+				memset(&bo, 0, sizeof(bo));
+				B_TSET(bo.type, B_OVERFLOW);
+				if ((ret = __db_poff(dbc, key, &bo.pgno)) != 0)
+					return (ret);
+				bo.tlen = key->size;
+				bk_hdr.data = &bo;
+				bk_hdr.size = BOVERFLOW_SIZE;
+			}
+			if ((ret = __bam_ditem(dbc, h, indx)) != 0)
+				return (ret);
+			if ((ret = bigkey ?
+			    __db_pitem(dbc, h, indx,
+			    BOVERFLOW_SIZE, &bk_hdr, NULL) :
+			    __db_pitem(dbc, h, indx,
+			    BKEYDATA_SIZE(key->size), NULL, key)) != 0)
+				return (ret);
+		}
+
 		if (TYPE(h) == P_LBTREE)
 			++indx;
 		bk = GET_BKEYDATA(dbp, h, indx);
@@ -527,6 +579,64 @@ __bam_iitem(dbc, key, data, op, flags)
 		t->re_modified = 1;
 
 	return (ret);
+}
+
+/*
+ * __bam_revive_chk --
+ *	Set *revivep if a DB_CURRENT put at indx revives a deleted key/data
+ *	pair whose stored key bytes differ from key's (R1).
+ *
+ * A slot is kept after its delete while a cursor references it, and a put
+ * of a key the comparator calls equal lands back on it.  Without this the
+ * pair comes back to life under the DELETED key's bytes.  A live pair keeps
+ * its stored key (the documented replace semantics), and so does a key item
+ * shared by a set of on-page duplicates, which may be a live item's key.
+ *
+ * ponytail: a sorted on-page duplicate set whose members are ALL deleted and
+ * pinned, revived through one member, keeps the old key bytes; replacing a
+ * shared key means splitting it off the set (__bam_adjindx surgery).  Typed
+ * databases refuse duplicates (RFC 0014 C12), so nothing relies on it yet.
+ */
+static int
+__bam_revive_chk(dbc, h, indx, key, revivep)
+	DBC *dbc;
+	PAGE *h;
+	u_int32_t indx;
+	DBT *key;
+	int *revivep;
+{
+	BKEYDATA *bk;
+	BOVERFLOW *bo;
+	DB *dbp;
+	db_indx_t *inp;
+	int cmp, ret;
+
+	dbp = dbc->dbp;
+	*revivep = 0;
+	if (TYPE(h) != P_LBTREE || key == NULL ||
+	    !B_DISSET(GET_BKEYDATA(dbp, h, indx + O_INDX)->type))
+		return (0);
+	inp = P_INP(dbp, h);
+	if ((indx > 0 && inp[indx] == inp[indx - P_INDX]) ||
+	    (indx + P_INDX < NUM_ENT(h) && inp[indx] == inp[indx + P_INDX]))
+		return (0);
+
+	bk = GET_BKEYDATA(dbp, h, indx);
+	if (B_TYPE(bk->type) == B_KEYDATA) {
+		/* A zero-length DBT may have NULL data: no memcmp then. */
+		*revivep = bk->len != key->size || (key->size != 0 &&
+		    memcmp(bk->data, key->data, key->size) != 0);
+		return (0);
+	}
+	bo = (BOVERFLOW *)bk;
+	if (bo->tlen != key->size) {
+		*revivep = 1;
+		return (0);
+	}
+	if ((ret = __db_moff(dbc, key, bo->pgno, bo->tlen, NULL, &cmp)) != 0)
+		return (ret);
+	*revivep = cmp != 0;
+	return (0);
 }
 
 /*
