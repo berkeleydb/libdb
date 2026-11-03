@@ -116,7 +116,7 @@ worker(void *a)
 	DB_ENV *e2;
 	DB *d2;
 
-	COMPQUIET(a, NULL);
+	(void)a;
 	get1(gdb);		/* caches a cursor on H (env E) */
 	set_stage(1);
 	wait_stage(2);		/* main has closed H and E */
