@@ -1547,6 +1547,16 @@ struct __db {
 
 	u_int32_t adj_fileid;		/* File's unique ID for curs. adj. */
 
+	/*
+	 * Process-local, never-reused serial assigned at open from a global
+	 * counter (RFC 0021).  The per-thread transient-cursor cache stores it
+	 * in each slot; a slot is validated by finding this handle live in
+	 * env->dblist AND matching this serial, which defeats ABA when a closed
+	 * handle's heap address is reused by a later open.  Not a region or
+	 * on-disk field (handle is process-local); ABI-only.
+	 */
+	u_int32_t cursor_cache_gen;
+
 #define	DB_LOGFILEID_INVALID	-1
 	FNAME *log_filename;		/* File's naming info for logging. */
 
