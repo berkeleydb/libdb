@@ -41,7 +41,7 @@ fi
 TSS2LIBS="-ltss2-esys -ltss2-mu"
 BIN=$BUILD/crypto_tpm
 rm -f "$BIN"
-"${CC:-cc}" -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$LIB" \
+"${CC:-cc}" -g -O1 ${CFLAGS:-} -DHAVE_TPM -I"$BUILD" "$SRC" "$LIB" \
     -lpthread $LIBRPATH $TSS2LIBS -o "$BIN" 2>/dev/null || {
 	echo "run_crypto_tpm.sh: SKIP could not link against libtss2" ; exit 0 ; }
 

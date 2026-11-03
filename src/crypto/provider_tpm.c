@@ -103,6 +103,13 @@ __crypto_tpm_unseal(path, buf, len)
 	}
 	(void)fclose(fp); fp = NULL;
 
+	/*
+	 * Tss2_MU_TPM2B_*_Unmarshal rejects ("Size not zero") an output whose
+	 * size field is non-zero on entry, so the stack structs must start
+	 * zeroed; otherwise the unseal fails on whatever the stack held.
+	 */
+	memset(&in_public, 0, sizeof(in_public));
+	memset(&in_private, 0, sizeof(in_private));
 	off = 0;
 	if (Tss2_MU_TPM2B_PUBLIC_Unmarshal(pubbuf, hdr.pub_len, &off,
 	    &in_public) != TSS2_RC_SUCCESS) { ret = EINVAL; goto out; }

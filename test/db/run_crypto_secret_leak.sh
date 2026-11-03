@@ -38,6 +38,9 @@ if [ -z "$LIB" ] ; then
 fi
 [ -n "$LIB" ] || { echo "run_crypto_secret_leak.sh: FAIL no libdb under $BUILD" ; exit 1 ; }
 
+# An --enable-tpm libdb.a needs libtss2 at link time: take it from the build.
+TPMLIBS=""
+grep -q '^#define HAVE_TPM 1' "$BUILD/db_config.h" 2>/dev/null && TPMLIBS="-ltss2-esys -ltss2-mu"
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
 CC=${CC:-cc}
@@ -46,7 +49,7 @@ CC=${CC:-cc}
 BIN=$BUILD/crypto_secret_leak
 rm -f "$BIN"
 "$CC" -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$LIB" \
-    -lpthread $LIBRPATH $EXTRALIBS -o "$BIN" 2>&1 || {
+    -lpthread $LIBRPATH $EXTRALIBS $TPMLIBS -o "$BIN" 2>&1 || {
 	echo "run_crypto_secret_leak.sh: FAIL compile correct arm" ; exit 1 ; }
 out=$("$BIN" 2>&1)
 echo "$out" | sed 's/^/  [correct] /'
@@ -71,7 +74,7 @@ rm -f "$SAB_O" "$SAB_BIN"
 	echo "run_crypto_secret_leak.sh: SKIP sabotage-build" ; rm -f sab_cc.log ; exit 0 ; }
 rm -f sab_cc.log
 "$CC" -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$SAB_O" "$LIB" \
-    -lpthread $LIBRPATH $EXTRALIBS -o "$SAB_BIN" 2>&1 || {
+    -lpthread $LIBRPATH $EXTRALIBS $TPMLIBS -o "$SAB_BIN" 2>&1 || {
 	echo "run_crypto_secret_leak.sh: SKIP sabotage-link" ; exit 0 ; }
 sout=$("$SAB_BIN" 2>&1)
 echo "$sout" | sed 's/^/  [sabotage] /'

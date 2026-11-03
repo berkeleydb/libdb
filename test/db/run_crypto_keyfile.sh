@@ -28,13 +28,16 @@ if [ -z "$LIB" ] ; then
 fi
 [ -n "$LIB" ] || { echo "run_crypto_keyfile.sh: FAIL no libdb under $BUILD" ; exit 1 ; }
 
+# An --enable-tpm libdb.a needs libtss2 at link time: take it from the build.
+TPMLIBS=""
+grep -q '^#define HAVE_TPM 1' "$BUILD/db_config.h" 2>/dev/null && TPMLIBS="-ltss2-esys -ltss2-mu"
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
 
 BIN=$BUILD/crypto_keyfile
 rm -f "$BIN"
 "${CC:-cc}" -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$LIB" \
-    -lpthread $LIBRPATH $EXTRALIBS -o "$BIN" 2>&1 || {
+    -lpthread $LIBRPATH $EXTRALIBS $TPMLIBS -o "$BIN" 2>&1 || {
 	echo "run_crypto_keyfile.sh: FAIL compile" ; exit 1 ; }
 
 out=$("$BIN" 2>&1)

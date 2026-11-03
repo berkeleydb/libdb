@@ -1019,11 +1019,11 @@ __env_attach_regions(dbenv, flags, orig_flags, retry_ok)
 	ENV *env;
 	REGINFO *infop;
 	u_int32_t init_flags;
-	int create_ok, rep_check, ret;
+	int create_ok, key_err, rep_check, ret;
 
 	ip = NULL;
 	env = dbenv->env;
-	rep_check = 0;
+	key_err = rep_check = 0;
 
 	/* Convert the DB_ENV->open flags to internal flags. */
 	create_ok = LF_ISSET(DB_CREATE) ? 1 : 0;
@@ -1208,8 +1208,10 @@ __env_attach_regions(dbenv, flags, orig_flags, retry_ok)
 	 * because log_open may attempt to run log_recover during its open.
 	 */
 	if (LF_ISSET(DB_INIT_MPOOL | DB_INIT_LOG | DB_INIT_TXN) &&
-	    (ret = __crypto_region_init(env)) != 0)
+	    (ret = __crypto_region_init(env)) != 0) {
+		key_err = 1;	/* Wrong or unavailable key: not corruption. */
 		goto err;
+	}
 	if ((ret = __mutex_alloc(
 	    env, MTX_TWISTER, DB_MUTEX_PROCESS_ONLY, &env->mtx_mt)) != 0)
 		goto err;
@@ -1297,9 +1299,12 @@ err:	if (ret == 0)
 			 * builds): just remove the half-created regions and return
 			 * the error so the caller can free descriptors and retry.
 			 * This mirrors __log_name, which returns EMFILE/ENFILE to
-			 * the caller rather than panicking the environment.
+			 * the caller rather than panicking the environment.  The
+			 * same holds for a key the provider refused or could not
+			 * produce (a TPM unseal under the wrong PCR state, an
+			 * unreadable key file): the caller's input was wrong.
 			 */
-			if (ret != EMFILE && ret != ENFILE)
+			if (ret != EMFILE && ret != ENFILE && !key_err)
 				ret = __env_panic(env, ret);
 
 			/* Refresh the DB_ENV so can use it to call remove. */

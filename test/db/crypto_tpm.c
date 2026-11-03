@@ -26,6 +26,10 @@
 
 #define	HOME	"TESTDIR_crypto_tpm"
 
+/*
+ * HAVE_TPM comes from the runner (-DHAVE_TPM, set only when the build's
+ * db_config.h has it); the public db.h never defines it.
+ */
 #ifndef HAVE_TPM
 int main(void){ printf("VERDICT crypto_tpm SKIP no-tpm-build\n"); return (0); }
 #else
