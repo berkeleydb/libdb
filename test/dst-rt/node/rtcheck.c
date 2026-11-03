@@ -45,17 +45,25 @@ struct keyexp {
 	char op;		/* 'p' put, 'd' del */
 	uint64_t vhash;		/* for put */
 	char dbname[64];
-	long seq;		/* last op's seq, for "latest wins" */
+	long seq;		/* global append order of the last op (latest wins) */
+	uint64_t txnkey;	/* TXNKEY of the last op; resolved to outcome later */
 	int outcome;		/* 0 ACK, 1 FAIL, 2 UNKNOWN */
 	struct keyexp *next;
 };
 
-/* txnid -> outcome, built from the `txn` lines. */
-struct txnout { u_int32_t txnid; int outcome; struct txnout *next; };
+/* txnid -> outcome, built from the `txn` lines.  The key is scoped by the
+ * ack-log file index (txnid resets to 0 in each rtload invocation, and a soak
+ * passes one ack file per cycle), so cross-file txnids never collide. */
+struct txnout { uint64_t key; int outcome; struct txnout *next; };
 
 static struct keyexp *keys = NULL;
 static struct txnout *txns = NULL;
 static int violations = 0;
+static long g_lineno = 0;	/* global append order across all ack files */
+static int g_fileidx = 0;	/* which ack file we are parsing */
+
+/* combine the current file index and a txnid into a collision-free key. */
+#define TXNKEY(id) (((uint64_t)g_fileidx << 32) | (uint32_t)(id))
 
 static int
 outcode(const char *s)
@@ -66,21 +74,21 @@ outcode(const char *s)
 }
 
 static struct txnout *
-txn_find(u_int32_t id)
+txn_find(uint64_t id)
 {
 	struct txnout *t;
 	for (t = txns; t != NULL; t = t->next)
-		if (t->txnid == id) return (t);
+		if (t->key == id) return (t);
 	return (NULL);
 }
 
 static void
-txn_set(u_int32_t id, int oc)
+txn_set(uint64_t id, int oc)
 {
 	struct txnout *t = txn_find(id);
 	if (t == NULL) {
 		t = calloc(1, sizeof(*t));
-		t->txnid = id; t->next = txns; txns = t;
+		t->key = id; t->next = txns; txns = t;
 	}
 	t->outcome = oc;
 }
@@ -95,9 +103,9 @@ key_find(const char *dbname, const char *k)
 	return (NULL);
 }
 
-/* record the latest op on a key (seq order). */
+/* record an op on a key; the latest in GLOBAL append order wins. */
 static void
-key_record(long seq, u_int32_t txnid, char op, const char *dbname,
+key_record(long order, uint64_t txnkey, char op, const char *dbname,
     const char *k, uint64_t vh)
 {
 	struct keyexp *e = key_find(dbname, k);
@@ -108,14 +116,11 @@ key_record(long seq, u_int32_t txnid, char op, const char *dbname,
 		e->seq = -1;
 		e->next = keys; keys = e;
 	}
-	if (seq >= e->seq) {
-		e->seq = seq;
+	if (order >= e->seq) {
+		e->seq = order;
 		e->op = op;
 		e->vhash = vh;
-		/* outcome is resolved after all txn lines are read; stash the
-		 * txnid in vhash's unused high nibble?  No -- keep a parallel
-		 * field. */
-		e->outcome = (int)txnid;	/* temporary: holds txnid */
+		e->txnkey = txnkey;	/* resolved to an outcome after parsing */
 	}
 }
 
@@ -136,17 +141,19 @@ parse_acklog(const char *path)
 		int n = sscanf(line, "%ld %u %15s %63s %63s %31s %15s",
 		    &seq, &txnid, op, dbname, k, vhx, out);
 		if (n < 6) continue;
+		g_lineno++;	/* global append order, immune to per-run seq resets */
 		if (strcmp(op, "txn") == 0) {
 			/* vhx field here is "-", out holds the outcome */
-			txn_set(txnid, outcode(n >= 7 ? out : vhx));
+			txn_set(TXNKEY(txnid), outcode(n >= 7 ? out : vhx));
 		} else if (strcmp(op, "put") == 0) {
 			uint64_t vh = strtoull(vhx, NULL, 16);
-			key_record(seq, txnid, 'p', dbname, k, vh);
+			key_record(g_lineno, TXNKEY(txnid), 'p', dbname, k, vh);
 		} else if (strcmp(op, "del") == 0) {
-			key_record(seq, txnid, 'd', dbname, k, 0);
+			key_record(g_lineno, TXNKEY(txnid), 'd', dbname, k, 0);
 		}
 	}
 	fclose(fp);
+	g_fileidx++;	/* next ack file: a fresh txnid namespace */
 	return (0);
 }
 
@@ -227,10 +234,10 @@ main(int argc, char *argv[])
 		if (parse_acklog(acks[i]) != 0)
 			return (2);
 
-	/* Resolve each key's outcome from its txnid now that all txn lines are
-	 * read.  (key_record stashed the txnid in ->outcome.) */
+	/* Resolve each key's outcome from its txn line now that all are read.
+	 * (key_record stashed the op's TXNKEY in ->txnkey.) */
 	for (e = keys; e != NULL; e = e->next) {
-		struct txnout *t = txn_find((u_int32_t)e->outcome);
+		struct txnout *t = txn_find(e->txnkey);
 		e->outcome = (t != NULL) ? t->outcome : 2 /* UNKNOWN */;
 	}
 
