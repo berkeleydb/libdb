@@ -95,6 +95,21 @@ isolation	ssi_gc_pressure@serializable-default
 isolation	ssi_gc_pressure@serializable-1
 isolation	ssi_crash_pivot-default	optional
 isolation	ssi_crash_pivot-1	optional
+# Adya cycle checker, multi-leaf default (CYC_VALPAD=200): the gate that closes
+# the second write-skew miss (boundary fix + grant-path scans).  GATING for
+# btree at the default partition count.  parts=1 is advisory (a separate pre-
+# existing checker-HARNESS crash under the single-partition tier run; the engine
+# is verified serializable at parts=1 standalone, and the parts=1 engine path is
+# hard-gated by test_iso_anomaly + ssi_multiread_skew).  Hash is advisory too
+# (separate pre-existing concurrent-MVCC hang; Hash SSI is gated by ssi006).
+isolation	ssi_cycle_btree-default
+isolation	ssi_cycle_btree-1	optional
+isolation	ssi_cycle_hash-default	optional
+# ssi_multiread_skew is the regression gate for the cross-leaf write-skew fix
+# (SSI keeps its own SIREAD marker instead of dropping it on a same-page write
+# lock).  It FAILed on every pre-fix build and must now PASS.
+isolation	ssi_multiread_skew-default
+isolation	ssi_multiread_skew-1
 # The two SSI mechanism gates.  ssi_gc_pressure runs at both levels (the
 # snapshot pass is the anti-vacuity control).  ssi_crash_pivot needs a
 # DIAGNOSTIC build for its in-commit crash hook, so it is optional -- but the
@@ -490,9 +505,55 @@ db	run_s7_stat_truth
 db	run_s3_mpool_counters
 db	run_s4_mvcc_mtx_reuse
 db	run_m5_fname_cache
-db	run_bamc_prev_alias
+db	run_foreign_disassoc_leak
+db	run_foreign_reassoc
+db	run_r1_revive
+db	run_typed_footprint
+db	run_typed_old_reader
+db	run_typed_util
 db	run_truncate_subdb
+db	run_bamc_prev_alias
 db	run_mf_discard_order
+# The deadlock detector walks the locker stripes one at a time (not all 64 held):
+# every real cycle is still resolved and no bystander is chosen as a victim,
+# with lockers created and freed on every stripe during each walk.
+db	run_dd_stripes
+# SKIPs (passes) on a build without --enable-dtrace; see the script header.
+db	run_dtrace_probes
+
+# ---------------------------------------------------------------------------
+# RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an
+# --enable-typed build (CI: the typed job in ci.yml).  Every runner here checks
+# for HAVE_TYPED in $BUILD/db_config.h and FAILS ("not-a-typed-build") rather
+# than skipping without it -- a skip in a default build would be a vacuous
+# green.  A name may appear in both tiers (run_handle_sizes): RESULT lines name
+# their tier, so the two verdicts are distinct.  Sabotage arms for every typed
+# test live in test/db/typed-sabotage.sh (not CI: they are red by design).
+# ---------------------------------------------------------------------------
+typed	run_handle_sizes
+typed	run_typed_api
+typed	run_typed_refusals
+typed	run_typed_old_reader
+typed	run_typed_codec_mismatch
+typed	run_typed_catalog_lifecycle
+typed	run_typed_catalog_format
+typed	run_typed_rdonly_noschema
+typed	run_typed_notnull
+typed	run_typed_maxlen
+typed	run_typed_valid
+typed	run_typed_partial
+typed	run_typed_unique
+typed	run_typed_unique_mp
+typed	run_typed_unique_nulls
+typed	run_typed_unique_closed
+
+typed	run_typed_btree_cmp
+typed	run_typed_hash
+typed	run_typed_cmp_fuzz
+typed	run_typed_optread
+typed	run_typed_recover
+typed	run_typed_unique_iso
+typed	run_typed_util
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is

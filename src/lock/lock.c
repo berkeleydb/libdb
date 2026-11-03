@@ -261,6 +261,16 @@ __lock_siclean_obj(env, obj, old_lsnp)
 		 * visible_lsn (it stays MAX_LSN), so fall back to its read_lsn
 		 * (READLSN).  In both cases the marker is obsolete once the
 		 * oldest active read LSN has advanced past that point.
+		 *
+		 * The gate stays strict ("> 0"), NOT the ">= 0" of the edge test
+		 * in __lock_si_wconflict.  A writer that still needs this marker
+		 * finds it on its OWN grant scan, which runs before this GC pass
+		 * can (GC runs lock-free at commit, after the writer has already
+		 * locked the page and scanned).  Retaining markers one extra LSN
+		 * tick instead makes the writer-side scan re-evaluate them on
+		 * every page re-lock; on a dense leaf that manufactures a flood
+		 * of page-granularity edges (measured: SSI false-abort went to
+		 * ~100%).  So reclaim at equality -- the marker has done its job.
 		 */
 		if (IS_MAX_LSN(LOCK_COMMITLSN(env, lp))) {
 			/*
@@ -269,8 +279,7 @@ __lock_siclean_obj(env, obj, old_lsnp)
 			 * strictly newer than the oldest active snapshot; once the
 			 * oldest active reader has caught up to (or passed) this
 			 * committed reader's snapshot, no new concurrent writer can
-			 * form a dangerous edge through it -- any still-active
-			 * reader sharing the snapshot carries its own marker.
+			 * form a dangerous edge through it.
 			 */
 			if (LOG_COMPARE(&LOCK_READLSN(env, lp), old_lsnp) > 0)
 				continue;
@@ -957,6 +966,122 @@ __lock_alloclock(lt, part_id)
 }
 
 /*
+ * __lock_si_wconflict --
+ *	SSI mechanism (a): a snapshot-safe WRITE on sh_obj is being granted.
+ *	Walk the object's SIREAD markers and record every rw-antidependency
+ *	R --rw--> W (R = a snapshot reader of this page, W = this writer).
+ *	Returns DB_SNAPSHOT_UNSAFE if W becomes the pivot of a dangerous
+ *	structure and must abort; otherwise sets *rwconfp when at least one
+ *	edge was recorded.  The caller holds the object partition mutex; this
+ *	takes the txn-region mutex (si_txn_lock) exactly as the inline scan
+ *	did.  Factored out so it can ALSO run on the two WRITE grant paths that
+ *	used to skip it: a re-granted WRITE we already held (a second write to
+ *	the same page -- another key on the leaf, or the B-tree write descent
+ *	re-locking it) and a WRITE granted after WAITING on a conflicting
+ *	writer (__lock_promote, the PENDING->HELD wakeup).  Both reach a page
+ *	whose SIREAD markers were never scanned, so without this the
+ *	R --rw--> W edge is silently lost and a write skew commits -- the SSI
+ *	second miss under write-write contention, which is why it surfaced
+ *	only at high thread counts.
+ */
+static int
+__lock_si_wconflict(env, lt, sh_locker, sh_obj, sh_off, si_txn_lock, rwconfp)
+	ENV *env;
+	DB_LOCKTAB *lt;
+	DB_LOCKER *sh_locker;
+	DB_LOCKOBJ *sh_obj;
+	roff_t sh_off;
+	int si_txn_lock;
+	int *rwconfp;
+{
+	struct __db_lock *sireadlp, *next_lock;
+	int ret;
+
+	COMPQUIET(lt, NULL);
+	ret = 0;
+	for (sireadlp = SH_TAILQ_FIRST(&sh_obj->sireaders, __db_lock);
+	    sireadlp != NULL; sireadlp = next_lock) {
+		next_lock = SH_TAILQ_NEXT(sireadlp, links, __db_lock);
+		if (sh_off == sireadlp->holder)
+			/*
+			 * Our own SIREAD marker.  A txn never forms an
+			 * rw-antidependency with itself, so skip it -- but DO NOT
+			 * remove it: conflict detection is at PAGE granularity, so
+			 * write-locking this page does not mean we wrote the record
+			 * we read.  Dropping it erased "T read this page" and let a
+			 * later writer miss the edge (the cross-page miss).  The
+			 * marker is reclaimed by the normal GC (__lock_sicommit /
+			 * __lock_siclean_obj), which balances si_ref (#137).
+			 */
+			continue;
+		if (LOCK_OWNER(env, sireadlp)->status == TXN_RUNNING ||
+		    LOG_COMPARE(&LOCK_COMMITLSN(env, sireadlp),
+		    &LOCKER_TD(env, sh_locker)->read_lsn) >= 0) {
+			/*
+			 * Record R --rw--> W under the txn-region mutex so the
+			 * two-flag reads and writes are atomic against a concurrent
+			 * recorder and the commit-time check.
+			 *
+			 * The committed-reader test is ">= 0" (not "> 0") on
+			 * purpose: a snapshot-safe txn's read_lsn is assigned
+			 * LAZILY, at its first page access (__memp_fget ->
+			 * __log_current_lsn_int), not at txn_begin.  Two txns that
+			 * each read before either writes to the log get the SAME
+			 * read_lsn; when the first commits, its commit-record LSN
+			 * (visible_lsn / COMMITLSN) equals that shared read_lsn
+			 * exactly.  Those two are genuinely CONCURRENT (each saw the
+			 * pre-commit version of the other's key), so the rw-edge is
+			 * real.  "> 0" dropped exactly that edge and let a 2-txn
+			 * write skew commit (the SSI second miss at low thread
+			 * counts).  The equal case can also be a genuine serial
+			 * W-after-R; the LSN alone cannot tell them apart, so take
+			 * the safe conservative edge -- SSI may over-abort, never
+			 * under-detect.  Mirrors __memp_si_rwconflict's "< 0".
+			 *
+			 * Both fate tests below ask "can R still resolve this edge
+			 * itself?", which is FALSE once R has committed AND while R
+			 * is inside DB_TXN->commit past its pivot check --
+			 * TXN_SI_PAST_CHECK covers both (TXN_DTL_SICHECKED is
+			 * published under this same mutex).  Testing R's status
+			 * alone deferred to a check that had already happened and
+			 * both committed a write skew (#136).
+			 */
+			if (si_txn_lock)
+				TXN_SYSTEM_LOCK(env);
+			if (F_ISSET(LOCK_OWNER(env, sireadlp), TXN_DTL_WCONF) &&
+			    TXN_SI_PAST_CHECK(LOCK_OWNER(env, sireadlp)))
+				ret = DB_SNAPSHOT_UNSAFE;
+			else {
+				*rwconfp = 1;
+				/*
+				 * Set our incoming-conflict flag unless the reader
+				 * will itself abort -- which it only will if it has a
+				 * pivot check left.
+				 */
+				if (TXN_SI_PAST_CHECK(LOCK_OWNER(env, sireadlp)) ||
+				    !F_ISSET(LOCK_OWNER(env, sireadlp),
+				    TXN_DTL_WCONF)) {
+					if (F_ISSET(LOCKER_TD(env, sh_locker),
+					    TXN_DTL_RCONF))
+						ret = DB_SNAPSHOT_UNSAFE;
+					else
+						F_SET(LOCKER_TD(env, sh_locker),
+						    TXN_DTL_WCONF);
+				}
+				if (ret == 0)
+					F_SET(LOCK_OWNER(env, sireadlp),
+					    TXN_DTL_RCONF);
+			}
+			if (si_txn_lock)
+				TXN_SYSTEM_UNLOCK(env);
+			if (ret != 0)
+				break;
+		}
+	}
+	return (ret);
+}
+
+/*
  * __lock_get_internal --
  *	All the work for lock_get (and for the GET option of lock_vec) is done
  *	inside of lock_get_internal.
@@ -981,7 +1106,7 @@ __lock_get_internal(lt, sh_locker, flags, obj, lock_mode, timeout, lock)
 	DB_THREAD_INFO *ip;
 	u_int32_t ndx, part_id;
 	int did_abort, ihold, grant_dirty, no_dd, ret, rwconf, safe_si, t_ret;
-	int si_txn_lock, txn_split;
+	int si_txn_lock, txn_split, sapromote;
 	roff_t holder, sh_off;
 
 	/*
@@ -1153,6 +1278,7 @@ again:	if (obj == NULL) {
 	ihold = 0;
 	grant_dirty = 0;
 	rwconf = 0;
+	sapromote = 0;
 	holder = 0;
 
 	/*
@@ -1183,6 +1309,22 @@ again:	if (obj == NULL) {
 					goto done;
 #endif
 
+				/*
+				 * SSI: a WRITE lock we ALREADY hold is being
+				 * re-granted for a second write to this page (another
+				 * key on the same leaf, or the B-tree write descent
+				 * re-locking it).  The rw-conflict scan runs only on a
+				 * fresh grant (lp == NULL below), so without this a
+				 * SIREAD marker another reader placed on this page
+				 * AFTER our first write-lock is never seen and the edge
+				 * R --rw--> us is lost (an SSI write-skew miss under
+				 * write-write contention).  Scan BEFORE bumping the
+				 * refcount so an abort leaves no dangling reference.
+				 */
+				if (safe_si && lp->mode == DB_LOCK_WRITE &&
+				    (ret = __lock_si_wconflict(env, lt, sh_locker,
+				    sh_obj, sh_off, si_txn_lock, &rwconf)) != 0)
+					goto err;
 				/*
 				 * Lock is held, so we can increment the
 				 * reference count and return this lock
@@ -1235,13 +1377,12 @@ again:	if (obj == NULL) {
 		 * pivot check and __txn_end's status transition.  Under multiple
 		 * lock partitions the partition mutex held here does not exclude
 		 * a flag write from a writer in a different partition, nor the
-		 * lock-free commit-time read.  We therefore serialize *only the
-		 * flag read-modify-write* on the txn-region mutex (see the
-		 * rw-conflict branch below); it is taken and released tightly
-		 * around the flag ops, never across __lock_freelock or a list
-		 * change (which the partition mutex already protects) and never
-		 * across a goto, so it cannot nest with per-lock or region
-		 * mutexes.  Ordering partition -> txn-region is non-circular.
+		 * lock-free commit-time read.  __lock_si_wconflict serializes
+		 * *only the flag read-modify-write* on the txn-region mutex; it is
+		 * taken and released tightly around the flag ops, never across a
+		 * list change (the partition mutex already protects that), so it
+		 * cannot nest with per-lock or region mutexes.  Ordering
+		 * partition -> txn-region is non-circular.
 		 *
 		 * With a SINGLE partition there is no partition mutex; the caller
 		 * already holds the lock-region mutex, which IS the txn-region
@@ -1249,104 +1390,25 @@ again:	if (obj == NULL) {
 		 * serializes the flag ops and si_txn_lock is 0 -- see the long
 		 * comment where si_txn_lock is computed.
 		 */
-		for (sireadlp = SH_TAILQ_FIRST(&sh_obj->sireaders, __db_lock);
-		    sireadlp != NULL; sireadlp = next_lock) {
-			next_lock = SH_TAILQ_NEXT(sireadlp, links, __db_lock);
-			if (lock_mode == DB_LOCK_WRITE &&
-			    sh_off == sireadlp->holder) {
-				/*
-				 * Our own SIREAD marker on this object.  A
-				 * transaction never forms an rw-antidependency
-				 * with itself, so skip it for conflict purposes --
-				 * but DO NOT remove it.  Conflict detection is at
-				 * PAGE granularity: write-locking this page does
-				 * NOT mean we are writing the same record we read.
-				 * T may have READ key k1 on this page (leaving the
-				 * marker) and now be WRITE-locking the page only to
-				 * update a DIFFERENT key k2 that happens to share
-				 * the leaf -- or merely because the B-tree write
-				 * descent couples a write lock across this leaf.
-				 * Dropping the marker here erased "T read this
-				 * page", so a later writer of the page by ANOTHER
-				 * transaction found no marker and the rw-edge
-				 * T --rw--> W was never recorded -- a write skew
-				 * across two leaves of a multi-level B-tree then
-				 * committed silently (the SSI cross-page miss).
-				 *
-				 * Keeping the marker is correct and does not leak:
-				 * it persists on the object exactly like any other
-				 * committed reader's marker and is reclaimed by the
-				 * normal GC (__lock_sicommit detaches it at commit;
-				 * __lock_siclean_obj frees it once its snapshot is
-				 * no longer visible to any active reader), which is
-				 * also what balances si_ref -- so the #137 accounting
-				 * the old eager drop maintained is preserved by the
-				 * ordinary path, not lost.
-				 */
-				continue;
-			} else if (lock_mode == DB_LOCK_WRITE &&
-			    sh_off != sireadlp->holder &&
-			    (LOCK_OWNER(env, sireadlp)->status == TXN_RUNNING ||
-			    LOG_COMPARE(&LOCK_COMMITLSN(env, sireadlp),
-			    &LOCKER_TD(env, sh_locker)->read_lsn) > 0)) {
-				/*
-				 * Record R --rw--> W under the txn-region mutex so
-				 * the two-flag reads and writes are atomic against
-				 * a concurrent recorder and the commit-time check.
-				 *
-				 * Both fate tests below ask "can R still resolve
-				 * this edge itself?", which is FALSE not only once R
-				 * has committed but also while R is inside
-				 * DB_TXN->commit past its pivot check --
-				 * TXN_SI_PAST_CHECK covers both, because
-				 * __txn_commit publishes TXN_DTL_SICHECKED under
-				 * this same mutex.  Testing R's status alone read
-				 * TXN_RUNNING for the whole span between R's check
-				 * and __txn_end, so we deferred to a check that had
-				 * already happened and both transactions committed a
-				 * write skew (#136).
-				 */
-				if (si_txn_lock)
-					TXN_SYSTEM_LOCK(env);
-				if (F_ISSET(LOCK_OWNER(env, sireadlp),
-				    TXN_DTL_WCONF) &&
-				    TXN_SI_PAST_CHECK(LOCK_OWNER(env, sireadlp)))
-					ret = DB_SNAPSHOT_UNSAFE;
-				else {
-					rwconf = 1;
-					/*
-					 * Set our incoming-conflict flag unless
-					 * the reader will itself abort -- which it
-					 * only will if it has a pivot check left.
-					 */
-					if (TXN_SI_PAST_CHECK(LOCK_OWNER(env,
-					    sireadlp)) ||
-					    !F_ISSET(LOCK_OWNER(env, sireadlp),
-					    TXN_DTL_WCONF)) {
-						if (F_ISSET(LOCKER_TD(env,
-						    sh_locker), TXN_DTL_RCONF))
-							ret = DB_SNAPSHOT_UNSAFE;
-						else
-							F_SET(LOCKER_TD(env,
-							    sh_locker),
-							    TXN_DTL_WCONF);
-					}
-					if (ret == 0)
-						F_SET(LOCK_OWNER(env, sireadlp),
-						    TXN_DTL_RCONF);
+		if (lock_mode == DB_LOCK_WRITE) {
+			if ((ret = __lock_si_wconflict(env, lt, sh_locker,
+			    sh_obj, sh_off, si_txn_lock, &rwconf)) != 0)
+				goto err;
+		} else {
+			/* SIREAD: if we already hold a marker here, reuse it. */
+			for (sireadlp =
+			    SH_TAILQ_FIRST(&sh_obj->sireaders, __db_lock);
+			    sireadlp != NULL; sireadlp = next_lock) {
+				next_lock =
+				    SH_TAILQ_NEXT(sireadlp, links, __db_lock);
+				if (sh_off == sireadlp->holder) {
+					sireadlp->refcount++;
+					lock->off =
+					    R_OFFSET(&lt->reginfo, sireadlp);
+					lock->gen = sireadlp->gen;
+					lock->mode = sireadlp->mode;
+					goto done;
 				}
-				if (si_txn_lock)
-					TXN_SYSTEM_UNLOCK(env);
-				if (ret != 0)
-					goto err;
-			} else if (lock_mode == DB_LOCK_SIREAD &&
-			    sh_off == sireadlp->holder) {
-				/* Already hold a SIREAD marker here. */
-				sireadlp->refcount++;
-				lock->off = R_OFFSET(&lt->reginfo, sireadlp);
-				lock->gen = sireadlp->gen;
-				lock->mode = sireadlp->mode;
-				goto done;
 			}
 		}
 		/*
@@ -1515,8 +1577,19 @@ upgrade:	lp = R_ADDR(&lt->reginfo, lock->off);
 			sh_locker->nwrites++;
 		lp->mode = lock_mode;
 		/* If we are upgrading to a WAIT we must wait. */
-		if (lock_mode != DB_LOCK_WAIT)
+		if (lock_mode != DB_LOCK_WAIT) {
+			/*
+			 * SSI: an in-place upgrade to WRITE (e.g. READ/WWRITE ->
+			 * WRITE) does not run the fresh-grant rw-conflict scan, so
+			 * a SIREAD marker on this page would be missed and the
+			 * edge R --rw--> us lost.  Scan on the upgrade too.
+			 */
+			if (safe_si && lock_mode == DB_LOCK_WRITE &&
+			    (ret = __lock_si_wconflict(env, lt, sh_locker,
+			    sh_obj, sh_off, si_txn_lock, &rwconf)) != 0)
+				goto err;
 			goto done;
+		}
 		if (lp->status != DB_LSTAT_WAITING) {
 			/* We have already been granted. */
 			MUTEX_LOCK(env, lp->mtx_lock);
@@ -1753,8 +1826,27 @@ expired:		ret = __lock_put_internal(lt, newl,
 				if (newl->mode == DB_LOCK_WAIT)
 					goto done;
 				goto upgrade;
-			} else
+			} else {
 				newl->status = DB_LSTAT_HELD;
+				/*
+				 * SSI: this WRITE was granted AFTER WAITING on a
+				 * conflicting writer (promotion via __lock_promote).
+				 * The fresh-grant rw-conflict scan (lp == NULL, far
+				 * above) never ran for it, so any SIREAD marker placed
+				 * on this page while we waited -- or that we would have
+				 * seen had we not blocked -- was never checked, and the
+				 * edge R --rw--> us is silently lost.  Write-write waits
+				 * on one page are common at high thread counts, which is
+				 * why this miss surfaced only then.  Defer the scan to
+				 * after out: has fully accounted this lock; if it finds
+				 * us a pivot we return DB_SNAPSHOT_UNSAFE with the lock
+				 * HELD -- the caller aborts the txn, which releases it
+				 * through the normal path (no manual release here, which
+				 * is what mis-accounted nlocks before).
+				 */
+				if (safe_si && newl->mode == DB_LOCK_WRITE)
+					sapromote = 1;
+			}
 			break;
 		case DB_LSTAT_FREE:
 		case DB_LSTAT_HELD:
@@ -1776,6 +1868,22 @@ out:	lock->off = R_OFFSET(&lt->reginfo, newl);
 		sh_locker->nwrites++;
 		if (newl->mode == DB_LOCK_WWRITE)
 			F_SET(sh_locker, DB_LOCKER_DIRTY);
+	}
+
+	/*
+	 * SSI: run the deferred rw-conflict scan for a WRITE granted after
+	 * WAITING (promotion).  The lock is now fully accounted and HELD; if the
+	 * scan makes us the pivot we return DB_SNAPSHOT_UNSAFE with the lock held
+	 * and let the caller abort the txn (which releases it the normal way).
+	 * The partition mutex is still held here.
+	 */
+	if (sapromote) {
+		int saret = __lock_si_wconflict(env, lt, sh_locker,
+		    sh_obj, sh_off, si_txn_lock, &rwconf);
+		if (saret != 0) {
+			OBJECT_UNLOCK(lt, region, ndx);
+			return (saret);
+		}
 	}
 
 	OBJECT_UNLOCK(lt, region, ndx);
