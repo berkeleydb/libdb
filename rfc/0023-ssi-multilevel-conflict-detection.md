@@ -1,13 +1,32 @@
 # RFC 0023: SSI conflict detection must survive multi-level B-tree descent
 
-- **Status:** Draft
-- **Type:** Normative
+- **Status:** Withdrawn — the defect was a plain bug, fixed directly (no design
+  or format change). This file is kept as the postmortem.
+- **Type:** Normative (superseded)
 - **Author:** libdb maintainers (workstream S1)
 - **Date:** 2026-11-02
 - **Tracking:** SSI production-readiness (decision Q4); report
   [`test/audit/SSI-PRODUCTION-2026-11.md`](../test/audit/SSI-PRODUCTION-2026-11.md)
-- **Prototype:** reproducer `test/isolation/ssi_multiread_skew.c` (FAILs on
-  master); Adya cycle checker `test/isolation/test_ssi_cycle.c`
+- **Prototype:** reproducer `test/isolation/ssi_multiread_skew.c`
+
+---
+
+> **Resolution (why this RFC is Withdrawn).** The cross-leaf write-skew miss was
+> not a design limitation requiring new machinery — it was a one-line logic bug
+> in the existing SSI SIREAD scan. `__lock_get_internal` had a branch that, when
+> a transaction write-locked an object on which it held its *own* SIREAD marker,
+> **removed** that marker ("upgrading my read to a write"). At page granularity a
+> write lock on a page does not mean the transaction wrote the record it had
+> read there: a point update of key X write-locks X's leaf, and the B-tree write
+> descent also write-locks a different leaf carrying an earlier read's SIREAD.
+> Dropping the marker erased "T read Y", so a later writer of Y's page recorded
+> no rw-edge and the skew committed. The fix keeps the marker and merely skips
+> it for self-conflict (a transaction is never its own pivot); the marker is
+> reclaimed by the normal GC, so the issue-#137 si_ref accounting is preserved.
+> No RFC, no format change. Fixed on `master` and backported to
+> `lts/2026.10.7`; the regression gate is `test/isolation/ssi_multiread_skew`
+> (FAIL before, PASS after) plus the Adya checker `test/isolation/test_ssi_cycle`.
+> See `rfc/0023/ROOT-CAUSE.md` for the trace that localized it.
 
 ---
 

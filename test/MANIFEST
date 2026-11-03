@@ -95,6 +95,12 @@ isolation	ssi_gc_pressure@serializable-default
 isolation	ssi_gc_pressure@serializable-1
 isolation	ssi_crash_pivot-default	optional
 isolation	ssi_crash_pivot-1	optional
+isolation	ssi_cycle_btree-default
+# ssi_multiread_skew is the regression gate for the cross-leaf write-skew fix
+# (SSI keeps its own SIREAD marker instead of dropping it on a same-page write
+# lock).  It FAILed on every pre-fix build and must now PASS.
+isolation	ssi_multiread_skew-default
+isolation	ssi_multiread_skew-1
 # The two SSI mechanism gates.  ssi_gc_pressure runs at both levels (the
 # snapshot pass is the anti-vacuity control).  ssi_crash_pivot needs a
 # DIAGNOSTIC build for its in-commit crash hook, so it is optional -- but the

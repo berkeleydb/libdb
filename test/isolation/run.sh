@@ -92,7 +92,8 @@ ISO_SSI_GATES=${ISO_SSI_GATES:-1}
 ISO_PARTS=${ISO_PARTS:-"default 1"}
 
 mkdir -p "$OUT"
-for t in test_iso_anomaly test_ssi_gc_pressure test_ssi_crash_pivot; do
+for t in test_iso_anomaly test_ssi_gc_pressure test_ssi_crash_pivot \
+    test_ssi_cycle ssi_multiread_skew; do
 	# shellcheck disable=SC2086
 	$CC $CFLAGS "$HERE/$t.c" "$LIBDBA" $LDLIBS -o "$OUT/$t"
 	echo "built $OUT/$t"
@@ -151,6 +152,54 @@ run_ssi_gates() {
 			# Record the SKIP as a verdict.  "Not built for it" and
 			# "nobody invoked it" must not look the same to the gate.
 			hi_emit ssi_crash_pivot skip
+		fi
+
+		# Adya dependency-cycle checker: no committed history under SSI
+		# may contain a cycle.  Scales past test_iso_anomaly's permutation
+		# oracle (random workloads, many threads/seeds).  Moderate size
+		# here (CI-friendly); the soak-scale run is in the SSI report.
+		# B-tree only: the Hash workload exposes a SEPARATE, pre-existing
+		# hang under concurrent MVCC writers that also reproduces under
+		# plain DB_TXN_SNAPSHOT (so it is not SSI and not this fix); Hash
+		# SSI correctness is covered by ssi006 (Tcl).  Tracked separately.
+		# Default partition count only: this fuzzer drives its own high
+		# thread count, and the single-partition region-latch aliasing is
+		# already the dedicated gate of test_iso_anomaly / the SSI mechanism
+		# gates below.
+		if [ "$PARTS_LABEL" = "default" ]; then
+		echo "--- SSI gate: Adya cycle checker, btree (parts=$PARTS_LABEL)"
+		mkdir -p "cyc-$PARTS_LABEL"
+		for _am in btree; do
+			if ( cd "cyc-$PARTS_LABEL" && ISO_LEVEL=serializable \
+			    CYC_AM=$_am CYC_SEEDS=3 CYC_THREADS=16 CYC_SECS=2 \
+			    CYC_KEYS=128 CYC_RSET=4 CYC_WSET=1 \
+			    timeout "$ISO_TIMEOUT" ../test_ssi_cycle ); then
+				hi_emit "ssi_cycle_$_am-$PARTS_LABEL" pass
+			else
+				_rc=$?
+				hi_emit "ssi_cycle_$_am-$PARTS_LABEL" fail
+			fi
+		done
+		fi
+
+		# KNOWN GAP (RFC 0023): SSI misses a write skew across distant
+		# leaves of a multi-level B-tree.  ssi_multiread_skew is the
+		# Regression gate for the cross-leaf write-skew fix (lock.c: SSI
+		# keeps its own SIREAD marker instead of dropping it on a same-page
+		# write-lock).  ssi_multiread_skew FAILed on every pre-fix build and
+		# must now PASS at every tree depth and timing.
+		echo "--- SSI gate: multi-level cross-leaf write skew prevented"\
+		    "(parts=$PARTS_LABEL)"
+		mkdir -p "mrskew-$PARTS_LABEL"
+		if ( cd "mrskew-$PARTS_LABEL" && SMR_ATTEMPTS=40 SMR_EXTRA=0 \
+		    SMR_FILLER=400 SMR_SEQUENTIAL=1 \
+		    timeout "$ISO_TIMEOUT" ../ssi_multiread_skew ); then
+			hi_emit "ssi_multiread_skew-$PARTS_LABEL" pass
+		else
+			echo "    FAIL: SSI admitted the multi-level write skew --"\
+			    "the cross-leaf detection fix has regressed."
+			hi_emit "ssi_multiread_skew-$PARTS_LABEL" fail
+			_rc=1
 		fi
 	fi
 	return $_rc

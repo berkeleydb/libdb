@@ -287,12 +287,19 @@ main(void)
 	iso_watchdog("ssi_multiread_skew", 240);
 
 	/*
-	 * Keys: filler [0..smr_filler), then X and Y at opposite ends so they
-	 * land on different leaf pages (small page + filler splits the tree).
+	 * Keys: filler [0..smr_filler), then X and Y.  By default Y is at the far
+	 * end (different leaf).  SMR_KYOFF overrides Y's key so a caller can place
+	 * X and Y on the SAME leaf (small offset) to probe same-page behaviour:
+	 * under page-level MVCC a read of X and a write of a *different* key Y on
+	 * the same page is still a cross write-skew on {X,Y} if each txn reads one
+	 * and writes the other, and SSI must still prevent it.
 	 */
 	kx = 0;
-	ky = smr_filler + 1;
-	nkeys = ky + 1;
+	{
+		const char *o = getenv("SMR_KYOFF");
+		ky = (o != NULL && *o != '\0') ? atoi(o) : smr_filler + 1;
+	}
+	nkeys = (ky > smr_filler ? ky : smr_filler) + 1;
 
 	(void)snprintf(home, sizeof(home), "SMRDIR");
 	(void)mkdir(home, 0755);
