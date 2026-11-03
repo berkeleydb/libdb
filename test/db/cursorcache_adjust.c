@@ -275,7 +275,7 @@ main(int argc, char *argv[])
 	if ((ret = db_env_create(&env, 0)) != 0)
 		return (fail("db_env_create", ret));
 	if ((ret = env->open(env, dir,
-	    DB_CREATE | DB_INIT_MPOOL | DB_THREAD, 0644)) != 0)
+	    DB_CREATE | DB_INIT_LOCK | DB_INIT_MPOOL | DB_THREAD, 0644)) != 0)
 		return (fail("env->open", ret));
 
 	if (part_a() != 0) {
