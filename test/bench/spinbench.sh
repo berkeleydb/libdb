@@ -10,32 +10,23 @@
 # ONE binary per architecture; every arm is a RUNTIME switch -- an env var or
 # a DB_CONFIG line -- so the comparison is the algorithm, never build skew:
 #
-#   base      the branch as built, defaults (DB_MUTEX_BACKOFF is off by
-#             default, so base IS the historical spin loop)
-#   bo16      DB_MUTEX_BACKOFF=16            bounded exponential backoff
-#   bo64      DB_MUTEX_BACKOFF=64
+#   base      the branch as built, defaults (the historical spin loop)
 #   align64   DB_CONFIG mutex_set_align 64   one mutex per cache line pair
 #                                           (RFC 0015 E6/S6a; no signature
 #                                           change, attach-safe)
 #   spin200   DB_CONFIG mutex_set_tas_spins 200   (default is 50 x ncpu)
 #   spin800   DB_CONFIG mutex_set_tas_spins 800
 #   s5        DB_TXN_FREELIST=1             TXN_DETAIL region free list (RFC 0015 S5)
-#   m1        DB_TXN_LATCH_SPLIT=1          split the txn role off mtx_regenv (M1)
-#   s5m1      DB_TXN_FREELIST=1 DB_TXN_LATCH_SPLIT=1   S5+M1 together (RFC order)
 # plus any arms named in EXTRA_ARMS as  name=ENV1=v,ENV2=v  (comma-separated
 # env assignments), e.g.:
-#   EXTRA_ARMS="m1spin=DB_TXN_LATCH_SPLIT=1,DB_MUTEX_BACKOFF=16"
+#   EXTRA_ARMS="spin400=DB_CONFIG is not an env var; use ARMS for DB_CONFIG arms"
 #
-# NOTE on reading the M1/s5m1 arms: mtx_regenv is the lock/txn/log latch, so
-# -c/-t/-l "region lock" are ONE counter in every non-split arm.  With m1 or
-# s5m1 the TXN role moves to its own mutex, so t_region DIVERGES from c_region
-# and l_region -- that divergence IS the proof the split engaged.  Per RFC 0015
-# M1, judge M1 by THROUGHPUT and shape, not by c_region (which barely falls:
-# ~80% of its arrivals are log appends that stay on mtx_regenv).  The telling
-# arms are {base, s5, m1, s5m1}; a win needs s5m1 to beat base at the t where
-# the metal shape peaks.
+# NOTE: the DB_MUTEX_BACKOFF (bounded exponential backoff) and
+# DB_TXN_LATCH_SPLIT (M1) arms were removed with those switches -- the backoff
+# never beat base on any measured hardware and M1 was -31% and SIGSEGV'd
+# (test/bench/METAL-AB-2026-10.md).  The telling arms are now {base, s5}.
 #
-# Choose with ARMS="base bo16 align64 ..." (default: all of the above).
+# Choose with ARMS="base align64 ..." (default: all of the above).
 #
 # Traps honoured (each was paid for once):
 #  * Every arm RECREATES its env (P12's switch is read at region create; a
@@ -63,7 +54,7 @@ DATA=${DATA:-/nvme/sbdata}
 SCALE=${SCALE:-96}; PAD=${PAD:-256}; CACHE=${CACHE:-4294967296}
 SECS=${SECS:-20}; WARM=${WARM:-8}; REPS=${REPS:-7}
 THREADS=${THREADS:-"1 2 4 8 16 32 64 128"}
-ARMS=${ARMS:-"base bo16 bo64 align64 spin200 spin800 s5 m1 s5m1"}
+ARMS=${ARMS:-"base align64 spin200 spin800 s5"}
 EXTRA_ARMS=${EXTRA_ARMS:-}
 OUT=${OUT:-/nvme/spinbench.tsv}
 RAW=${RAW:-/nvme/spinbench.raw}
@@ -84,11 +75,7 @@ for a in $EXTRA_ARMS; do ARMS="$ARMS ${a%%=*}"; done
 arm_env() {
 	case $1 in
 	base|align64|spin200|spin800) echo "SB_ARM=$1" ;;
-	bo16)	echo "DB_MUTEX_BACKOFF=16" ;;
-	bo64)	echo "DB_MUTEX_BACKOFF=64" ;;
 	s5)	echo "DB_TXN_FREELIST=1" ;;
-	m1)	echo "DB_TXN_LATCH_SPLIT=1" ;;
-	s5m1)	echo "DB_TXN_FREELIST=1 DB_TXN_LATCH_SPLIT=1" ;;
 	*)	for a in $EXTRA_ARMS; do
 			[ "${a%%=*}" = "$1" ] && { echo "${a#*=}" | tr ',' ' '; return; }
 		done
