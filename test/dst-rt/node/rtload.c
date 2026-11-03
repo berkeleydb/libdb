@@ -63,6 +63,7 @@ prng_below(uint32_t n)
 struct cfg {
 	const char *home, *ackpath, *node, *dbname;
 	long seed, ops, keys, valsz, txn_ops, kill_at, del_pct, cachesz_mb;
+	long txn_base;		/* offset added to txnids (unique across runs) */
 	int nosync;
 	int direct;		/* native DB_DIRECT_DB + DB_LOG_DIRECT */
 };
@@ -113,6 +114,7 @@ main(int argc, char *argv[])
 		else if (ARG("--cachesz-mb")) c.cachesz_mb = atol(VAL());
 		else if (ARG("--nosync")) c.nosync = 1;
 		else if (ARG("--direct")) c.direct = 1;
+		else if (ARG("--txn-base")) c.txn_base = atol(VAL());
 		else usage();
 	}
 	if (c.home == NULL || c.ackpath == NULL || c.node == NULL || c.ops <= 0)
@@ -178,7 +180,7 @@ main(int argc, char *argv[])
 
 	while (seq < c.ops) {
 		int nops = 1 + (int)prng_below((uint32_t)c.txn_ops);
-		u_int32_t this_txn = ++txnid_counter;
+		u_int32_t this_txn = (u_int32_t)c.txn_base + ++txnid_counter;
 		long txn_start_seq = seq;
 
 		if ((ret = env->txn_begin(env, NULL, &txn, 0)) != 0) {

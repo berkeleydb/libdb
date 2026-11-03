@@ -60,10 +60,11 @@ next_pick() { pick=$(( (pick * 1103515245 + 12345) & 0x7fffffff )); echo $pick; 
 
 # one env home reused across cycles -- a leak accumulates here.
 HOME_DIR="$RUN/home"; mkdir -p "$HOME_DIR"
-# Per-cycle ack files, passed to rtcheck in order.  One file per cycle keeps
-# each cycle's txnids in their own namespace (rtcheck scopes txnids by ack-file
-# index), and the global append order across files resolves overwrites.
-ACKS=""
+# ONE accumulating ack file.  Each cycle's txnids are made globally unique with
+# --txn-base (cycle*1000000), so a single ack file (one rtcheck txnid
+# namespace) resolves overwrites by append order -- no per-cycle files, so a
+# long soak does not blow rtcheck's --ack cap.
+ACK="$RUN/ack.log"; : > "$ACK"
 
 start=$(date +%s)
 cycle=0
@@ -83,21 +84,19 @@ while :; do
 	idx=$(( p % nplans + 1 ))
 	plan=$(echo "$plans" | cut -d' ' -f"$idx")
 	cseed=$(( SEED + cycle ))
-	ACK=$(printf '%s/ack.%04d' "$RUN" "$cycle"); : > "$ACK"
+	tbase=$(( cycle * 1000000 ))	# unique txnid range per cycle
 
 	case "$plan" in
 	honest)
 		"$BUILD/rtload" --home "$HOME_DIR" --ack "$ACK" --node s \
 		    --seed "$cseed" --ops 300 --keys 400 --valsz 200 \
-		    >/dev/null 2>&1
-		ACKS="$ACKS --ack $ACK" ;;
+		    --txn-base "$tbase" >/dev/null 2>&1 ;;
 	io-eio-write|io-fsync-fail|mem-fiu-random)
 		cmd=$(fi_have fiu && fi_fiu_cmd "$plan" "$cseed" 0.01 || echo "")
 		# shellcheck disable=SC2086
 		eval ${cmd:-} "$BUILD/rtload" --home "$HOME_DIR" --ack "$ACK" \
 		    --node s --seed "$cseed" --ops 300 --keys 400 --valsz 200 \
-		    >/dev/null 2>&1
-		ACKS="$ACKS --ack $ACK" ;;
+		    --txn-base "$tbase" >/dev/null 2>&1 ;;
 	nosync-kill)
 		# NOSYNC + kill in a SEPARATE throwaway home, so the churn cannot
 		# perturb the shared home's durability baseline.  The soak's point
@@ -113,15 +112,15 @@ while :; do
 		"$BUILD/rtcheck" --home "$_kh" --ack "$RUN/discard.log" \
 		    >/dev/null 2>&1
 		find "$_kh" -mindepth 1 -delete 2>/dev/null
-		rm -f "$ACK"; : > "$RUN/discard.log" ;;
+		: > "$RUN/discard.log" ;;
 	esac
 
-	# Oracle over EVERY accumulated ack file (in order), so an overwrite in a
-	# later cycle is resolved against the true latest value.  Skip on the
-	# nosync-kill cycles (their ops went to the throwaway home).
-	if [ "$plan" != nosync-kill ] && [ -n "$ACKS" ]; then
-		# shellcheck disable=SC2086
-		out=$("$BUILD/rtcheck" --home "$HOME_DIR" $ACKS 2>&1)
+	# Oracle over the one accumulating ack file (append order resolves
+	# overwrites).  The nosync-kill cycles wrote to the throwaway home, not
+	# $ACK, so $ACK only ever holds durable (non-sabotage) ops; check it
+	# every non-kill cycle.
+	if [ "$plan" != nosync-kill ] && [ -s "$ACK" ]; then
+		out=$("$BUILD/rtcheck" --home "$HOME_DIR" --ack "$ACK" 2>&1)
 		if ! echo "$out" | grep -q '^PASS'; then
 			echo "    cycle $cycle ($plan): oracle VIOLATION"
 			echo "$out" | sed 's/^/        /' | head -5
