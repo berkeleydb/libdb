@@ -134,8 +134,17 @@ net_up() {
 	# overlap.  flock on an fd; released when the subshell ends.
 	(
 	flock 9
-	# Bridge namespace with one bridge.
-	sudo ip netns add "$FN_BRNS"
+	# Bridge namespace with one bridge.  The very first `ip netns add` after a
+	# clean slate can fail with "Invalid netns value" while the kernel sets up
+	# the shared /run/netns mount (a cold-start race, seen once in 20 at the
+	# start of a sweep); retry a few times under the lock.
+	_try=0
+	while ! sudo ip netns add "$FN_BRNS" 2>/dev/null; do
+		_try=$((_try + 1))
+		[ "$_try" -ge 5 ] && { sudo ip netns add "$FN_BRNS"; break; }
+		sudo ip netns del "$FN_BRNS" 2>/dev/null || true
+		sleep 1
+	done
 	net_run_br ip link add "$FN_BR" type bridge
 	net_run_br ip link set "$FN_BR" up
 	net_run_br ip addr add "${FN_SUBNET}.1/24" dev "$FN_BR"
