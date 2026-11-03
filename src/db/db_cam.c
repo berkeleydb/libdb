@@ -621,6 +621,26 @@ void
 __db_cursor_cache_refresh_leave()
 {
 }
+/*
+ * No-TLS mutex backends (e.g. HAVE_MUTEX_X86_64_GCC_ASSEMBLY) do not define
+ * DBC_CACHE_TLS, so the cache is compiled out.  __dbc_close still references
+ * these two helpers unconditionally; provide stubs that make every cursor
+ * ineligible and never cache, so the close path behaves exactly like master.
+ */
+static int
+__dbc_cache_eligible(dbc)
+	DBC *dbc;
+{
+	COMPQUIET(dbc, NULL);
+	return (0);
+}
+static int
+__dbc_cache_put(dbc)
+	DBC *dbc;
+{
+	COMPQUIET(dbc, NULL);
+	return (0);
+}
 #endif /* DBC_CACHE_TLS */
 
 #define	CDB_LOCKING_INIT(env, dbc)					\
