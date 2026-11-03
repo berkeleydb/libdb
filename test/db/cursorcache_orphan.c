@@ -47,6 +47,24 @@
 #define	RATIO_MAX	2.0		/* FAIL if inserts >2x slower. */
 #define	RSS_MAX_KB	2048		/* FAIL if RSS grows >2 MB. */
 
+/*
+ * Under AddressSanitizer the process RSS is dominated by the sanitizer's
+ * shadow memory and per-allocation redzones, which grow with the 5000
+ * temp-handle open/close cycles independently of any orphan -- so the RSS
+ * bound is not meaningful there.  The insert-time ratio (the primary orphan
+ * signal) stays valid, so we keep it and only skip the RSS assertion.
+ */
+#if defined(__SANITIZE_ADDRESS__)
+#define	CC_ORPHAN_SANITIZED	1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define	CC_ORPHAN_SANITIZED	1
+#endif
+#endif
+#ifndef CC_ORPHAN_SANITIZED
+#define	CC_ORPHAN_SANITIZED	0
+#endif
+
 static double
 now_s(void)
 {
@@ -194,7 +212,7 @@ main(int argc, char *argv[])
 		    ratio, RATIO_MAX);
 		return (1);
 	}
-	if (grow > RSS_MAX_KB) {
+	if (grow > RSS_MAX_KB && !CC_ORPHAN_SANITIZED) {
 		printf("cursorcache_orphan: FAIL rss grew %ld KB > %d KB "
 		    "(unbounded orphan accumulation)\n", grow, RSS_MAX_KB);
 		return (1);
