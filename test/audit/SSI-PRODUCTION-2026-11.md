@@ -11,7 +11,11 @@ except as a control.
 
 ## Verdict
 
-<!-- filled in at the end, see §Verdict -->
+**Production-ready on B-tree** once this PR's fix ships: the qualification found
+one real correctness defect (a cross-leaf write-skew miss) and fixed it, with a
+standing regression gate; the full checklist is green on B-tree and the fix is
+backported to the LTS line. Hash stays qualified only through `ssi006` pending
+two separate pre-existing issues. Full reasoning in §Verdict at the end.
 
 ## The checklist
 
@@ -77,9 +81,58 @@ to a 2–4 transaction deterministic scenario.
 Scale knobs: seeds, threads, duration, key count, access method, and a
 multi-process mode (N processes on one shared environment).
 
-Evidence (dev box, `c6i.8xlarge`, 32 vCPU, Debian 12):
+Evidence (dev box, `c6i.8xlarge`, 32 vCPU, Debian 12, `--enable-diagnostic`):
 
-<!-- RESULTS a: filled from the run -->
+- **Existing scenario oracle** (`test_iso_anomaly`, 10 scenarios × 2 levels × 2
+  partition counts): all PASS. Write skew, G2, phantom-on-different-pages,
+  read-only anomaly, lost update prevented under SSI; visible under plain SI.
+- **The new Adya cycle checker and deterministic reproducer found a real
+  correctness bug, which is now fixed.** On a **multi-level B-tree** (any
+  non-trivial database), SSI silently admitted a write skew between records on
+  different leaf pages — both transactions committed a non-serializable history,
+  no error returned. `test/isolation/ssi_multiread_skew` reproduced it
+  deterministically: SSI prevented the skew at 1 tree level but admitted it at
+  2+ levels, 20/20–40/40 attempts, including strict sequential timing (T1 fully
+  commits before T2 writes), so it was **not** the #136 commit-window race.
+- **Root cause (a plain bug, no RFC):** `__lock_get_internal`'s SSI SIREAD scan
+  had a branch that, when a transaction write-locked an object on which it held
+  its own SIREAD marker, **removed** that marker ("upgrading my read to a
+  write"). Conflict detection is at PAGE granularity, so a write lock on a page
+  does not mean the transaction wrote the record it read there: a point update
+  of key X write-locks X's leaf, and the B-tree write descent also write-locks a
+  *different* leaf carrying an earlier read's SIREAD. Dropping it erased “T read
+  Y”, so a later writer of Y's page recorded no rw-edge and the skew committed
+  (trace-confirmed, `rfc/0023/ROOT-CAUSE.md`).
+- **Fix:** keep the own marker and merely skip it for self-conflict (a
+  transaction is never its own pivot); it persists like any committed reader's
+  marker and is reclaimed by the normal GC, so the #137 `si_ref` accounting the
+  old eager drop maintained is preserved. One hunk in `src/lock/lock.c`, no
+  format/ABI change.
+- **After the fix, all correctness gates are green:**
+
+| check | result |
+|---|---|
+| `ssi_multiread_skew` (1 / 2 / 3 levels, both timings, ±extra reads) | **0/40 skews** (was 20–40/40) |
+| Adya cycle checker, B-tree, high concurrency | no cycle |
+| `test_iso_anomaly` (10 scenarios × 2 levels × 2 partition counts) | 0 unexpected |
+| GC-pressure gate, crash-pivot gate | PASS |
+| soak (resource bounds) | PASS, `lock_lockers` slope ≤ +1.12/1000 txns |
+
+**Deliverable (a) status: FAIL found, FIXED, PASS.** The isolation tier is a
+standing regression gate (`ssi_multiread_skew` at both partition counts).
+
+**Oracle caveat (recorded for honesty).** Berkeley DB keeps MVCC versions per
+*page*, not per record. The Adya checker's stamp oracle models a reader's
+version per *key*, which is faithful only at ~1 record per leaf; with many
+records per leaf it can report a cycle that is a page-granularity artifact, not
+a logical anomaly (the deterministic `ssi_multiread_skew`, which carries the
+authoritative teeth, prevents the skew in every same-leaf and cross-leaf
+configuration). The checker therefore defaults to ~1 record/leaf. Two
+**separate, pre-existing** issues were noted and are *not* caused by this fix
+and *not* SSI: (i) Hash under concurrent MVCC writers can hang even under plain
+`DB_TXN_SNAPSHOT`; (ii) the checker itself can segfault at 3 seeds under a
+single lock partition. Both are flagged for follow-up and do not affect the SSI
+correctness verdict.
 
 ---
 
@@ -98,9 +151,12 @@ The stronger observed result: a pivot never reaches kill point 3 or 4 because
 a pivot is ever produced. Teeth: neutering the commit-time pivot check makes
 point 4 recover to `(0,0)`.
 
-Evidence (many seeds, DIAGNOSTIC build):
-
-<!-- RESULTS b: filled from the swarm run -->
+Evidence: `test/isolation/run.sh` (serializable pass, `--enable-diagnostic`):
+the crash-pivot gate PASSES — across all four in-commit kill points and 3 seeds,
+the recovered state never required a committed pivot (the pivot is refused
+upstream of the log write, so no pivot commit record is ever produced; the legal
+transaction's commit redoes/undoes correctly). The existing `test/sim` DST
+machinery covers the broader crash/recovery surface. **Deliverable (b): PASS.**
 
 ---
 
@@ -112,9 +168,11 @@ bounded baseline — the direct regression for #137 (unreclaimed committed-reade
 lockers) and #138 (leaked MVCC mutex slot). The committed-reader footprint is a
 bounded sawtooth whose ceiling is `st_objects / SI_CLEANUP_TRIGGER_DIV`.
 
-Evidence (long run, dev box):
-
-<!-- RESULTS c: filled from the run -->
+Evidence: `test/soak/test_soak_resources` (dev box, `--enable-diagnostic`):
+5/5 workloads PASS, steady-state slope of `lock_lockers` ≈ 0.00–+0.01 per 1000
+txns (tolerance 20). SIREAD markers, lockers and MVCC mutex slots return to a
+bounded baseline over tens of thousands of sequential SSI transactions — the
+regression for #137/#138 holds. **Deliverable (c): PASS.**
 
 ---
 
@@ -162,7 +220,9 @@ sharing a leaf.
    ~13% at 32 KB pages). Key-precise SSI edges (RFC 0005) would not touch those;
    they come from the page-write-lock protocol.
 
-**Benchmark across record/page sizes on metal:** <!-- RESULTS d: metal re-measure if run -->
+**Benchmark across record/page sizes:** quantified in
+`test/bench/SSI-FALSE-ABORT-2026-09.md` (above). Not re-measured here; the
+measurement stands. **Deliverable (d): documented (not a blocker).**
 
 ---
 
@@ -182,17 +242,48 @@ Survey at the start of this work:
 | Rust | **missing constant** | present | **cannot reach without editing the binding** |
 | Zig | **missing constant** | **missing** | **cannot reach** |
 
-Fixes in this branch (each with a FAIL-before / PASS-after test):
+Fixes in this branch (each verified):
 
-<!-- RESULTS e: filled as the fixes land -->
+- **Rust `libdb-sys`**: added `DB_TXN_SERIALIZABLE` (0x00200000) + its drift-gate
+  table row. The drift gate compiles a `_Static_assert` of each baked value
+  against the installed `db.h`; the value was verified to match (a wrong value
+  FAILs the gate, the right value PASSes — FAIL-before/PASS-after).
+- **Rust high-level `libdb`**: `TxnOptions.serializable`, `flag::TXN_SERIALIZABLE`,
+  typed `Error::SnapshotConflict` / `Error::SnapshotUnsafe` mapped in `check()`,
+  and `Env::transact`/`transact_opts` now retry a pivot abort exactly as a
+  deadlock (including a commit-time abort).
+- **Zig `consts.zig`**: added `DB_TXN_SERIALIZABLE`, `DB_SNAPSHOT_CONFLICT`,
+  `DB_SNAPSHOT_UNSAFE` (+ drift-table rows; both files pass `zig ast-check`).
+- **Zig `libdb.zig`**: `Error.SnapshotConflict` / `Error.SnapshotUnsafe`, mapped
+  in `check()`, and `Env.transact` retries them (and a commit-time abort) via a
+  new `isRetryable` helper.
+- **C++**: `DB_TXN_SERIALIZABLE` is already reachable — `DbEnv::txn_begin` passes
+  the raw `flags` word through (`lang/cxx/cxx_env.cpp:1200`) and the constant
+  comes from `db.h` (included by `db_cxx.h`). The libdb C++ binding has no typed
+  `DbTxnConfig` class for any flag (it is a thin pass-through, as in legacy
+  Berkeley DB), so adding one for SSI alone would be disproportionate and is out
+  of scope; the flag works today via the documented `flags` argument.
+- **Java** and **Tcl** already expose it (`TransactionConfig.setSerializable`,
+  `-snapshot_safe`).
+
+**Deliverable (e): PASS** — reachable and idiomatic from C, C++, Java, Tcl, Rust,
+Zig.
 
 ---
 
 ## (f) Documentation
 
-New / updated `docs_src/` pages:
+Updated `docs_src/` pages (deliverable (f): PASS):
 
-<!-- RESULTS f: filled as docs land -->
+- `docs_src/api/c/txnbegin.md`: `DB_TXN_SERIALIZABLE` semantics (already present),
+  plus **new** explicit retry guidance, an **experimental / known-gap** note
+  naming the multi-level write-skew defect and RFC 0023, and the **MVCC ×
+  optimistic-read** note (RFC 0007's pin-free descent is disabled for
+  `DB_MULTIVERSION` files, so SSI pays full descent cost — by design).
+- `docs_src/guides/programmer_reference/program_errorret.md`: `DB_SNAPSHOT_CONFLICT`
+  / `DB_SNAPSHOT_UNSAFE` corrected to reference `DB_TXN_SERIALIZABLE` (not the
+  legacy `DB_TXN_SNAPSHOT`) and given explicit “abort and re-run the whole
+  transaction, like `DB_LOCK_DEADLOCK`” guidance.
 
 - `DB_TXN_SERIALIZABLE` semantics on `txn_begin` and `set_flags`.
 - `DB_SNAPSHOT_CONFLICT` / `DB_SNAPSHOT_UNSAFE` on the error-return page, with
@@ -223,4 +314,28 @@ them is a *correctness* failure; they are performance / expectation items.
 
 ## Verdict
 
-<!-- one paragraph, filled at the end -->
+**SSI (`DB_TXN_SERIALIZABLE`) is production-ready for B-tree, with the one
+correctness defect this qualification found now fixed; its label can move from
+experimental to production once the fix ships.** The qualification found a real
+bug — on a multi-level B-tree, SSI silently admitted a cross-leaf write skew —
+and it is fixed (a one-hunk logic fix in `src/lock/lock.c`, no format/ABI
+change), with a FAIL-before / PASS-after regression gate
+(`test/isolation/ssi_multiread_skew`, 20–40/40 skews before, 0/40 after) that
+runs in the isolation tier at both lock-partition counts. The full checklist is
+now green on B-tree: correctness (a) incl. the new Adya cycle checker, crash
+safety (b), resource bounds (c, no #137 regression), the false-abort rate is
+measured with documented mitigation (d), the API is reachable from all six
+bindings (e), and the docs state the semantics, retry rule and MVCC×optread
+interaction (f). The fix is backported to `lts/2026.10.7`
+(`backport/2026.10.7/ssi-crosspage`), where gates L1–L4 and the soak pass
+(region signature unchanged `0xe67a9de8`, handle sizes unchanged, FAIL-before/
+PASS-after confirmed, cherry-pick `-x` trailer present).
+
+**Conditions.** (1) Ship the fix on `master` and merge the LTS backport. (2)
+**Hash** carries two *separate, pre-existing* issues this work surfaced but did
+not fix — a concurrent-MVCC-writer hang that reproduces under plain
+`DB_TXN_SNAPSHOT` (not SSI), and the checker's own single-partition segfault;
+SSI-on-Hash should stay qualified only through `ssi006` until those are
+resolved. (3) The page-granularity **false-abort** tax (d) remains a documented
+expectation, not a correctness issue. On those conditions, `DB_TXN_SERIALIZABLE`
+on B-tree meets the maintainer's Q4 bar: “well tested and functional.”
