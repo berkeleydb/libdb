@@ -506,7 +506,16 @@ __lock_vec(env, sh_locker, flags, list, nlist, elistp)
 
 	run_dd = 0;
 	LOCK_SYSTEM_LOCK(lt, region);
-	for (i = 0, ret = 0; i < nlist && ret == 0; i++)
+	for (i = 0, ret = 0; i < nlist && ret == 0; i++) {
+		/*
+		 * A4 test hook: between vector elements no lock-region mutex is
+		 * held once the region is partitioned (LOCK_SYSTEM_LOCK is a
+		 * no-op), so another locker can interpose here.  This yield (a
+		 * no-op in every build but a CONFIG_TEST build whose caller set
+		 * test_abort = DB_TEST_LOCKVEC_GAP) makes that window observable.
+		 */
+		if (i > 0)
+			DB_TEST_LOCKVEC_ELEM_GAP(env);
 		switch (list[i].op) {
 		case DB_LOCK_GET_TIMEOUT:
 			LF_SET(DB_LOCK_SET_TIMEOUT);
@@ -802,6 +811,7 @@ __lock_vec(env, sh_locker, flags, list, nlist, elistp)
 			ret = EINVAL;
 			break;
 		}
+	}
 
 	if (ret == 0 && region->detect != DB_LOCK_NORUN &&
 	     (region->need_dd || timespecisset(&region->next_timeout)))
