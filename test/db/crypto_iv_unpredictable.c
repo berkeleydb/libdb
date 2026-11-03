@@ -31,12 +31,10 @@
  * usage: crypto_iv_unpredictable <home>
  * Exit 0 = PASS.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "db_config.h"
+
 #include "db_int.h"
+#include "dbinc/crypto.h"		/* __db_generate_iv */
 
 #define	MT_N		624
 #define	MT_M		397
