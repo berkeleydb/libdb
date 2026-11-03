@@ -34,11 +34,15 @@ SKIP_APT=${SKIP_APT:-0}
 
 # Pinned commits.  Bump deliberately; a cache key in CI includes these.
 LIBDIRECTIO_REPO=https://github.com/gburd/libdirectio
-LIBDIRECTIO_PIN=master
+LIBDIRECTIO_PIN=67e57c3064f2d56273376d41bb759320c9e93110
 LIBUMEM_REPO=https://codeberg.org/gregburd/libumem
-LIBUMEM_PIN=master
+LIBUMEM_PIN=fe9ff96114fbcbf63f89fefec6bc9585efb445f0
 FAINT_REPO=https://github.com/misc0110/faint
-FAINT_PIN=master
+FAINT_PIN=b24cf2d573d245a3eb53fe47ffe3296355c09676
+# libfiu: apt where packaged (Debian 12: 1.1); Ubuntu 26.04 dropped it, so
+# build the 1.2 tag from source into $PREFIX when apt cannot provide it.
+LIBFIU_REPO=https://github.com/albertito/libfiu
+LIBFIU_PIN=04af4dbe44e4f8fa74b24913b09789af54440589	# tag 1.2
 
 SRC="$PREFIX/src"
 mkdir -p "$PREFIX/bin" "$PREFIX/lib" "$SRC"
@@ -57,9 +61,12 @@ if [ "$SKIP_APT" != 1 ]; then
 	# fiu-utils gives fiu-run/fiu-ctrl; libfiu-dev gives the headers/lib so
 	# FAINT and anything else can link it.  iproute2 gives tc + ip.
 	$SUDO apt-get install -y -qq \
-		fiu-utils libfiu-dev iproute2 \
-		build-essential git autoconf automake libtool pkg-config \
+		iproute2 build-essential git autoconf automake libtool \
+		pkg-config util-linux \
 		|| log "apt-get install reported errors (continuing; SKIP arms will catch gaps)"
+	# Separate install: a distro without fiu packages must not lose the rest.
+	$SUDO apt-get install -y -qq fiu-utils libfiu-dev 2>/dev/null \
+		|| log "fiu-utils/libfiu-dev not packaged here; building libfiu from source"
 fi
 
 # clone_pin REPO DIR PIN -- shallow clone or update DIR to PIN.
@@ -77,6 +84,18 @@ clone_pin() {
 	# record the resolved commit so the caller/CI cache sees the exact pin
 	( cd "$_dir" && git rev-parse HEAD > .dst-rt-pin 2>/dev/null ) || true
 }
+
+# libfiu from source, only when fiu-run is not already on PATH (apt).
+# Installs fiu-run/fiu-ctrl and the preload libraries under $PREFIX.
+if ! command -v fiu-run >/dev/null 2>&1 && [ ! -x "$PREFIX/bin/fiu-run" ]; then
+	_d="$SRC/libfiu"
+	if clone_pin "$LIBFIU_REPO" "$_d" "$LIBFIU_PIN"; then
+		( cd "$_d" && make -s -j"$JOBS" PREFIX="$PREFIX" \
+		    && make -s PREFIX="$PREFIX" install ) >/dev/null 2>&1 \
+		    && log "built libfiu from source into $PREFIX" \
+		    || log "libfiu source build failed (fiu arms will SKIP)"
+	fi
+fi
 
 # ---------------------------------------------------------------------------
 # libdirectio -- make && make check, install the .so into $PREFIX/lib.

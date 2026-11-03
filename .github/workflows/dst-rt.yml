@@ -66,10 +66,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            liburing-dev libssl-dev \
-            fiu-utils libfiu-dev iproute2 \
+            liburing-dev libssl-dev iproute2 \
             build-essential git autoconf automake libtool pkg-config \
             util-linux   # setarch, for FAINT (ASLR off)
+          # libfiu is packaged on Debian 12 and Ubuntu <= 24.04 but not on
+          # 26.04; install.sh builds it from a pinned source tag when absent.
+          sudo apt-get install -y fiu-utils libfiu-dev || true
 
       # The source-built tools (libdirectio, libumem, FAINT) are expensive to
       # build; cache them keyed on install.sh's content (which pins the

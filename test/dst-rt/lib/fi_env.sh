@@ -54,6 +54,10 @@ fi
 # --- tool discovery --------------------------------------------------------
 fi_have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
+# fiu-run from apt, or from install.sh's source build under $TOOLS_PREFIX.
+[ -x "$TOOLS_PREFIX/bin/fiu-run" ] && PATH="$TOOLS_PREFIX/bin:$PATH" && \
+    LD_LIBRARY_PATH="$TOOLS_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" && \
+    export PATH LD_LIBRARY_PATH
 HAVE_FIU=0; fi_have_cmd fiu-run && HAVE_FIU=1
 
 TC_BIN=""
