@@ -48,21 +48,24 @@
 #define	RSS_MAX_KB	2048		/* FAIL if RSS grows >2 MB. */
 
 /*
- * Under AddressSanitizer the process RSS is dominated by the sanitizer's
- * shadow memory and per-allocation redzones, which grow with the 5000
- * temp-handle open/close cycles independently of any orphan -- so the RSS
- * bound is not meaningful there.  The insert-time ratio (the primary orphan
- * signal) stays valid, so we keep it and only skip the RSS assertion.
+ * The RSS bound is meaningful only on Linux with a non-sanitized build:
+ *  - under AddressSanitizer the shadow memory + redzones balloon RSS with the
+ *    5000 temp-handle cycles regardless of any orphan;
+ *  - on macOS/BSD getrusage(2) reports ru_maxrss in BYTES, not kilobytes as on
+ *    Linux, so the number is not comparable to a KB bound.
+ * In both cases the insert-time ratio is the primary orphan signal (the orphan
+ * made inserts >20x slower), so we keep the ratio check and skip RSS there.
  */
-#if defined(__SANITIZE_ADDRESS__)
-#define	CC_ORPHAN_SANITIZED	1
+#if defined(__SANITIZE_ADDRESS__) || defined(__APPLE__) ||		\
+    defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#define	CC_ORPHAN_NO_RSS	1
 #elif defined(__has_feature)
 #if __has_feature(address_sanitizer)
-#define	CC_ORPHAN_SANITIZED	1
+#define	CC_ORPHAN_NO_RSS	1
 #endif
 #endif
-#ifndef CC_ORPHAN_SANITIZED
-#define	CC_ORPHAN_SANITIZED	0
+#ifndef CC_ORPHAN_NO_RSS
+#define	CC_ORPHAN_NO_RSS	0
 #endif
 
 static double
@@ -212,7 +215,7 @@ main(int argc, char *argv[])
 		    ratio, RATIO_MAX);
 		return (1);
 	}
-	if (grow > RSS_MAX_KB && !CC_ORPHAN_SANITIZED) {
+	if (grow > RSS_MAX_KB && !CC_ORPHAN_NO_RSS) {
 		printf("cursorcache_orphan: FAIL rss grew %ld KB > %d KB "
 		    "(unbounded orphan accumulation)\n", grow, RSS_MAX_KB);
 		return (1);
