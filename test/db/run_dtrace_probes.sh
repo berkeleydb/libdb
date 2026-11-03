@@ -92,10 +92,25 @@ if grep -q 'Systemtap' "$BUILD/db_provider.h" 2>/dev/null ; then
 	else
 		# Attach to the library path, not with -c: bpftrace (0.17) cannot
 		# resolve a probe in a library the -c child has not loaded yet.
+		#
+		# Wait for bpftrace to attach before running the driver, instead of
+		# a fixed head start.  bpftrace 0.25 (ubuntu-26.04) compiles a BTF
+		# vmlinux.h first and took longer than the old 3 s, so all 100
+		# commits ran before the probe was live and it counted 0.  The BEGIN
+		# probe fires once every probe is attached; the interval probe that
+		# ends the trace is armed from then on.
 		BT="$BUILD/dtrace_bt.out"
-		$TO $SUDO bpftrace -q -e "usdt:$SO:bdb:txn__commit { @n = count(); }
-		    interval:s:8 { exit(); }" > "$BT" 2>&1 &
-		sleep 3
+		: > "$BT"
+		$TO $SUDO bpftrace -e "BEGIN { printf(\"ATTACHED\\n\"); }
+		    usdt:$SO:bdb:txn__commit { @n = count(); }
+		    interval:s:10 { exit(); }" > "$BT" 2>&1 &
+		bt_pid=$!
+		w=0
+		while ! grep -q ATTACHED "$BT" 2>/dev/null ; do
+			[ -d /proc/$bt_pid ] || break	# kill -0 fails on a root-owned sudo
+			w=$((w + 1)) ; [ $w -gt 120 ] && break
+			sleep 1
+		done
 		"$DRV" "$H" 2 50 > /dev/null || rc=1
 		wait
 		n=$(sed -n 's/^@n: *//p' "$BT")
