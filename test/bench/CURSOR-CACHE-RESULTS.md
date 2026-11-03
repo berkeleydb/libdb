@@ -87,3 +87,74 @@ master path.
   0 failures.
 - Region signature and `env_sig.c` byte-identical to base (no struct in the
   signature changed).
+
+---
+
+## Re-measurement after the review #238 fixes (P1b, 2026-11-03)
+
+Review #238 found three defects in the first prototype (orphaned cursors on a
+handle close anywhere; parked cursors from exited threads; a racy plain-`u_int32_t`
+epoch). The fix reworks the stale-slot machinery (epoch as a change signal +
+per-handle serial + `env->dblist` liveness reconcile; thread-exit flush; atomic
+epoch). This section re-measures the read-path win **on the fixed branch** to
+confirm the win survives.
+
+- **Host:** `c6id.metal` (128 vCPU, 2 sockets, Debian 12), local NVMe XFS at
+  `/data` `noatime`; governor `performance`, THP `never`, `swappiness=1`,
+  `numa_balancing=0`.
+- **Arms:** `base` = the fork point `e1fe5c2c4`; `branch` = fixed `perf/cursor-cache`
+  (`15045e705`) with the cache **on**; `cache-off` = the **same** fixed binary
+  with `DB_NO_CURSOR_CACHE=1` (the master-equivalent alloc/free path). The
+  `cache-off` arm is the cleanest control: it isolates exactly the cache's
+  effect in one binary.
+- **A/B:** 6 reps, interleaved, arm order rotated each rep; DB loaded fresh per
+  (arm, rep); 10 s measured window per cell; working set (~104 MB) in the 512 MB
+  cache (`notfound=0`). `batch_bench indiv 1000000 1`.
+
+### Result — non-txn `DB->get` per key, keys/s (median of 6), CV, p99
+
+| t | base med (k/s) | CV% | branch med (k/s) | CV% | cache-off med (k/s) | CV% | ratio br/base | ratio br/off | base p99 µs | branch p99 µs |
+|---|---------------|-----|------------------|-----|---------------------|-----|---------------|--------------|-------------|---------------|
+| 1 | 521,420 | 0.4 | 548,624 | 0.5 | 510,240 | 1.5 | 1.05× | 1.08× | 2.0 | 2.0 |
+| 16 | 1,280,632 | 1.8 | 1,470,616 | 1.9 | 1,319,645 | 1.6 | 1.15× | 1.11× | 16.4 | 8.2 |
+| 32 | 1,663,194 | 2.2 | 1,896,430 | 1.9 | 1,654,966 | 4.8 | 1.14× | 1.15× | 16.4 | 16.4 |
+| 64 | 1,603,846 | 4.9 | 2,224,867 | 6.4 | 1,607,494 | 5.5 | 1.39× | 1.38× | 65.5 | 32.8 |
+| 96 | 991,014 | 0.7 | 2,780,778 | 5.7 | 980,008 | 1.5 | **2.81×** | **2.84×** | 262.1 | 32.8 |
+
+All cells CV ≤ 6.4% (≤ 10% gate met).
+
+**The win survives the fix unchanged:** 2.81× at t=96 (identical to the
+prototype's 2.81×), 1.39× at t=64. The `cache-off` arm tracks `base` at every
+point (e.g. 980k vs 991k at t=96), confirming the entire delta is the cache and
+not some other branch difference. The t=64 ratio reads 1.39× here vs the
+prototype's 1.53× purely because this run's `base`/`cache-off` t=64 median ran
+higher (1.60M vs the prototype's 1.48M, a noisier cell); the same-binary
+`branch/cache-off` ratio (1.38×) is the apples-to-apples figure and agrees.
+
+### Profile — t=96, system-wide `perf record --call-graph dwarf` (fixed branch)
+
+Top on-CPU libdb symbols (this metal box's mutex backend spins — TAS/hybrid —
+so the cursor-queue contention shows as on-CPU spin rather than off-CPU futex,
+but the signature is the same):
+
+| arm | top symbol | share | reading |
+|-----|-----------|-------|---------|
+| base   | `__db_tas_mutex_lock_int` (+`unlock`) | **~90%** | CPU burned spinning on the per-handle cursor-queue mutex |
+| branch | `__bam_cmp` / `__bam_search` (key compare + descent); mutex lock 0.43% | **~6% real work** | the cursor-queue mutex is gone from the hot path; time is now the actual B-tree get |
+
+The cache removes the cursor-lifecycle mutex exactly as RFC 0021 predicts and
+moves the bottleneck to legitimate work. Raw data `p1b-ab.tsv`, profiles
+`p1b-base96.prof` / `p1b-branch96.prof` in `results/cursor-cache-p1b/`.
+
+### Functional gates after the fix (dev box, `--enable-diagnostic`)
+
+- `sizeof(DB)` **unchanged at 1744** (`cursor_cache_gen` fits the existing 4-byte
+  padding hole after `adj_fileid`), `sizeof(DBC)` unchanged at 552 — `run_handle_sizes`
+  PASS, **no ABI size change, no escape token needed**.
+- `run_cursorcache_adjust` PASS (correct) / sabotage arm FAIL (ASan use-after-free).
+- `run_cursorcache_orphan` PASS (ratio 1.02, +0 KB) — FAILs 23.98× on the pre-fix head.
+- `run_cursorcache_parkcost` PASS (ratio 1.03 at 256 exited threads) — FAILs 2.14× pre-fix.
+- Diagnostic `test/db` tier `run_all` rc=0, 0 FAIL.
+- A1–A4 + A6 ASan-clean; A7 epoch race under **TSan** PASS with zero races on the
+  epoch/serial globals (the prototype's race is gone).
+- TCL btree+hash test001–010: 20/20 PASS.
