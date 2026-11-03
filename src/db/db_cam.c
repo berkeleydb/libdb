@@ -283,12 +283,26 @@ __dbc_cache_handle_live(dbp, gen)
 	DB *dbp;
 	u_int32_t gen;
 {
+#ifdef DBC_CACHE_SABOTAGE
+	/*
+	 * SABOTAGE ARM: pretend every slot's handle is still live.  Together
+	 * with ignoring the per-slot serial in __db_cursor_cache_get and
+	 * skipping the closing thread's self-clear in __db_cursor_cache_discard,
+	 * this defeats every stale-slot guard, so a reopened handle that reuses
+	 * freed DB/DBC memory is handed a destroyed cursor -- the use-after-free
+	 * the test must catch.  Never compiled into a shipped build.
+	 */
+	COMPQUIET(dbp, NULL);
+	COMPQUIET(gen, 0);
+	return (1);
+#else
 	struct __dbc_reg_node *n;
 
 	for (n = __dbc_reg_head; n != NULL; n = n->next)
 		if (n->dbp == dbp && n->gen == gen)
 			return (1);
 	return (0);
+#endif
 }
 
 /*
