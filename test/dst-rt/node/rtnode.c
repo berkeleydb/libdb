@@ -92,6 +92,7 @@ static pthread_mutex_t ev_mtx = PTHREAD_MUTEX_INITIALIZER;
 static __thread int tl_perm_failed;
 static volatile int load_committer_set;
 static pthread_t load_committer;
+static unsigned long g_writeseq;	/* per-process monotonic write counter */
 static volatile int perm_failed_thread_mismatch;	/* diagnostic fallback */
 
 static void
@@ -339,9 +340,19 @@ do_load(long n, long seed)
 		uint64_t vh;
 		int klen = snprintf(keybuf, sizeof(keybuf), "k%08u", k);
 		const char *outcome;
+		unsigned long wseq = ++g_writeseq;
 
+		/*
+		 * The value embeds node + gen + a per-process monotonic write
+		 * counter + key, so vhash is a true per-write identity: two
+		 * writes to the same key -- even at the same per-batch seq, on
+		 * different nodes or in different batches -- differ, so a genuine
+		 * overwrite is distinguishable and no cross-node/cross-batch
+		 * value collision can cause a false phantom or value match.
+		 */
 		memset(valbuf, 'a' + (int)(k % 26), (size_t)vlen);
-		snprintf(valbuf, sizeof(valbuf), "s%08ld-k%08u", i, k);
+		snprintf(valbuf, sizeof(valbuf), "n%.8s-g%08u-w%010lu-k%08u",
+		    N.name, (unsigned)N.current_gen, wseq, k);
 		if ((int)strlen(valbuf) < vlen)
 			valbuf[strlen(valbuf)] = 'a' + (int)(k % 26);
 		vh = fi_fnv1a(valbuf, (size_t)vlen);
@@ -351,21 +362,28 @@ do_load(long n, long seed)
 		if ((ret = N.env->txn_begin(N.env, NULL, &txn, 0)) != 0) {
 			if (N.have_ack)
 			    (void)fi_acklog_printf(&N.al,
-				"%ld %ld txn rt.db - - FAIL 0/0 gen=0", i, i);
+				"%ld %lu txn rt.db - - FAIL 0/0 gen=0", i, wseq);
 			continue;
 		}
 		/* ask libdb for the commit token so we can read (gen, LSN) */
 		(void)txn->set_commit_token(txn, &token);
 		if (N.have_ack)
 			(void)fi_acklog_printf(&N.al,
-			    "%ld %ld put rt.db %s %016llx PENDING",
-			    i, i, keybuf, (unsigned long long)vh);
+			    "%ld %lu put rt.db %s %016llx PENDING",
+			    i, wseq, keybuf, (unsigned long long)vh);
 		ret = N.db->put(N.db, txn, &key, &data, 0);
 		if (ret != 0) {
+			/*
+			 * A PUT-stage failure aborts the txn, so no record is ever
+			 * committed and a replica can never make it visible: this
+			 * is FAIL ("must not be visible"), including a demotion
+			 * BDB0111 read-only here -- the write never committed.
+			 * Only COMMIT-stage ambiguity (below) is UNKNOWN.
+			 */
 			(void)txn->abort(txn);
 			if (N.have_ack)
 			    (void)fi_acklog_printf(&N.al,
-				"%ld %ld txn rt.db - - FAIL 0/0 gen=0", i, i);
+				"%ld %lu txn rt.db - - FAIL 0/0 gen=0", i, wseq);
 			continue;
 		}
 		/*
@@ -381,16 +399,28 @@ do_load(long n, long seed)
 		ret = txn->commit(txn, N.nosync ? DB_TXN_NOSYNC : 0);
 		if (ret == 0)
 			token_decode(&token, &gen, &lfile, &loff);
-		if (ret != 0)
-			outcome = "FAIL";
-		else if (tl_perm_failed || perm_failed_thread_mismatch)
+		if (ret != 0) {
+			/*
+			 * COMMIT-stage error: the commit log record may already
+			 * be written (and shipped) before the error, so the write
+			 * could be durable on another site -- that is UNKNOWN, not
+			 * FAIL, for a replication error or a demotion during the
+			 * commit.  A plain local error with no such ambiguity is
+			 * FAIL.
+			 */
+			if (N.repmgr && (ret == DB_REP_UNAVAIL ||
+			    ret == EACCES || !N.is_master))
+				outcome = "UNKNOWN";
+			else
+				outcome = "FAIL";
+		} else if (tl_perm_failed || perm_failed_thread_mismatch)
 			outcome = "UNKNOWN";
 		else
 			outcome = "ACK";
 		if (N.have_ack)
 			(void)fi_acklog_printf(&N.al,
-			    "%ld %ld txn rt.db - - %s %u/%u gen=%u",
-			    i, i, outcome, lfile, loff, gen);
+			    "%ld %lu txn rt.db - - %s %u/%u gen=%u",
+			    i, wseq, outcome, lfile, loff, gen);
 		if (ret == 0 && !tl_perm_failed && !perm_failed_thread_mismatch)
 			ev_emit("ACK seq=%ld", i);
 	}
