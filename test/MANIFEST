@@ -110,6 +110,11 @@ isolation	ssi_cycle_hash-default	optional
 # lock).  It FAILed on every pre-fix build and must now PASS.
 isolation	ssi_multiread_skew-default
 isolation	ssi_multiread_skew-1
+# ssi_livelock: SSI must commit >= 50% of plain SI on the same pure-SSI
+# workload (the #257 inclusive edge test committed ~0.5% and passed every
+# correctness gate).
+isolation	ssi_livelock-default
+isolation	ssi_livelock-1
 # The two SSI mechanism gates.  ssi_gc_pressure runs at both levels (the
 # snapshot pass is the anti-vacuity control).  ssi_crash_pivot needs a
 # DIAGNOSTIC build for its in-commit crash hook, so it is optional -- but the

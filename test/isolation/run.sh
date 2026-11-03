@@ -93,7 +93,7 @@ ISO_PARTS=${ISO_PARTS:-"default 1"}
 
 mkdir -p "$OUT"
 for t in test_iso_anomaly test_ssi_gc_pressure test_ssi_crash_pivot \
-    test_ssi_cycle ssi_multiread_skew; do
+    test_ssi_cycle ssi_multiread_skew ssi_livelock; do
 	# shellcheck disable=SC2086
 	$CC $CFLAGS "$HERE/$t.c" "$LIBDBA" $LDLIBS -o "$OUT/$t"
 	echo "built $OUT/$t"
@@ -220,6 +220,22 @@ run_ssi_gates() {
 			    "hash concurrent-MVCC issue; see ssi006). Not a gate."
 		fi
 		hi_emit "ssi_cycle_hash-$PARTS_LABEL" skip
+		fi
+
+		# Livelock gate (#257).  An inclusive rw-edge test made every SSI
+		# retry tie with a committed reader's commit LSN when SSI was the
+		# only log traffic, so SSI committed ~0.5% of what plain SI did
+		# while every correctness gate still passed.  SSI must commit at
+		# least half of SI's count on the same workload.
+		echo "--- SSI gate: no livelock under pure-SSI retry load"\
+		    "(parts=$PARTS_LABEL)"
+		mkdir -p "ll-$PARTS_LABEL"
+		if ( cd "ll-$PARTS_LABEL" && timeout 120 ../ssi_livelock 2 3 ); then
+			hi_emit "ssi_livelock-$PARTS_LABEL" pass
+		else
+			echo "    FAIL: SSI stopped making progress (livelock)."
+			hi_emit "ssi_livelock-$PARTS_LABEL" fail
+			_rc=1
 		fi
 
 		# KNOWN GAP (RFC 0023): SSI misses a write skew across distant
