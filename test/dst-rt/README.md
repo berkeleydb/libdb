@@ -20,6 +20,7 @@ test/dst-rt/
     fi_fiu.sh    named, seeded libfiu fault plans (io-*, mem-*)
     fi_check.sh  invariant oracle wrappers (single-node rtcheck + HA rules 4-6)
     fi_net.sh    netns/veth + tc/netem topology (F2)
+    ha_common.sh HA group lifecycle + the §2.4 rule 4/5 oracle (F2)
   node/
     fi_acklog.h  the client-side ACK-log writer (raw-syscall, wrapper-bypassing)
     rtload.c     seeded single-node workload generator
@@ -107,6 +108,36 @@ catches a real failure.
 | S3 | allocation failure | FAINT sweep, libfiu malloc-random, libumem redzone | a planted 64-into-16 heap overflow; umem must abort |
 | S9-lite | 10-min soak | cycles the S1-S3 plans over one reused env home, watching for unbounded growth | — (survival + the per-cycle oracle) |
 
+### HA and XA scenarios (S4–S8, F2)
+
+These drive **real multi-process repmgr groups** (S4–S7), one `rtnode` per
+network namespace joined by veth to a bridge (`lib/fi_net.sh`), and the XA
+harness (S8).  `lib/ha_common.sh` brings a group up (sequential join: the
+creator forms the group and becomes master before any client calls
+`repmgr_start`, else `DB_REP_UNAVAIL`), sets heartbeat/election timeouts on the
+rtnode command line, drives the ctl FIFOs, and runs the §2.4 rule 4
+(convergence) and rule 5 (single-master-per-generation) oracle; `rtcheck` does
+rules 1–3/7.  Each prints a reproduce line and exits 0 (pass), 1 (fail) or 77
+(skip).
+
+| # | Scenario | Faults | Sabotage / negative arm (teeth) |
+|---|---|---|---|
+| S4 | repmgr 3-site | `net-flaky`, `net-asym`, `net-slow-rep`, `kill` | the oracle's `rtcheck PASS (checked N…)` + the convergence/single-master gates |
+| S5 | partition master into minority + heal | isolate the master, majority elects, old master rejoins as client | `--sabotage`: `ACKS_NONE` + partition + kill of the old master MUST be caught losing acked writes (oracle FAIL ⇒ scenario PASS) |
+| S6 | replication + storage fault | libfiu `io-eio-write` on one client under load | group must stay available while the faulty client falls out, then rejoin on a clean restart |
+| S7 | repmgr TLS (RFC 0018, PR #241) | `net-flaky`, `net-partition` under mutual-auth TLS | `--pin`: one site presents an **unpinned** cert and MUST NEVER join |
+| S8 | XA 2PC (PR #240 harness) | `kill` between prepare/commit + libfiu `io-fsync-fail` on an RM | a control run (no fault) must PASS; under the fault, a panic / XA error / surfaced EIO is the RFC-expected safe path (rule 7), a split (rule 6) or a crash is a FAIL |
+
+**Cross-node ordering.**  After a failover the old and new masters are different
+processes, so "latest write wins" is **replication order `(gen, LSN)`**, not
+append order.  In HA mode the ack line carries the commit `(gen, LSN)` from
+`DB_TXN->set_commit_token` plus a trailing `gen=<n>`, and `rtcheck` orders HA
+entries by `(gen, LSN)`.  `ACK` vs `UNKNOWN` is exact per txn: a thread-local
+flag set in the synchronous `DB_EVENT_REP_PERM_FAILED` callback (one committing
+thread per node) marks a QUORUM write that lost its quorum `UNKNOWN`; a
+put-stage failure (an aborted txn can never be visible on a replica) stays
+`FAIL`; only a commit-stage replication error/demotion is `UNKNOWN`.
+
 ## Determinism and replay (§2.5)
 
 One seed drives the workload op schedule (splitmix64), the fault schedule
@@ -127,7 +158,24 @@ BUILD=$(pwd) DSTRT_DIR=../test/dst-rt sh ../test/dst-rt/run.sh --tier pr
 
 CI: `.github/workflows/dst-rt.yml` runs the PR tier (≤ 20 min) on every PR
 touching the harness or the engine I/O paths, and the nightly tier (20 seeds +
-soak) on a schedule.
+soak) on a schedule.  A separate **`ha` job** runs S4 and S5 (both arms) at 3
+seeds; it probes `sudo ip netns add` and SKIPs cleanly on a runner without
+namespace permission.
+
+### Running the HA/XA scenarios
+
+```sh
+# S4-S6 need a plain build; sudo + iproute2 (tc) + netns; libfiu for S6.
+sudo BUILD=$(pwd) bash ../test/dst-rt/scenarios/s4_repmgr_netfaults.sh 1
+sudo BUILD=$(pwd) bash ../test/dst-rt/scenarios/s5_partition_election.sh 1 [--sabotage]
+sudo BUILD=$(pwd) bash ../test/dst-rt/scenarios/s6_repl_storage_fault.sh 1
+# S7 needs a --enable-tls build (feat/repmgr-tls) + openssl; SKIPs otherwise.
+sudo BUILD=<tls build> bash ../test/dst-rt/scenarios/s7_tls_netfaults.sh 1 [--pin]
+# S8 needs a test/xa-harness build (xa_matrix + xa_recover present); SKIPs otherwise.
+BUILD=<xa build> bash ../test/dst-rt/scenarios/s8_xa_faults.sh 1
+# or the whole HA set through the swarm driver:
+DSTRT_HA=1 BUILD=$(pwd) sh ../test/dst-rt/run.sh --tier nightly --seeds "1 2 3"
+```
 
 ## Findings
 
