@@ -88,7 +88,7 @@ static int __dbc_cache_on __P((void));
 static int __dbc_cache_eligible __P((DBC *));
 static int __dbc_cache_put __P((DBC *));
 static int __dbc_cache_handle_live __P((ENV *, DB *, u_int32_t));
-static void __dbc_cache_free_cursor __P((DBC *));
+static int __dbc_cache_free_cursor __P((DBC *));
 static void __dbc_cache_reconcile __P((int));
 static int __dbc_cache_epoch_now __P((void));
 static void __dbc_cache_check_epoch __P((void));
@@ -241,9 +241,11 @@ __dbc_cache_handle_live(env, dbp, gen)
  *	Genuinely close a still-live cached cursor: take it off the active
  *	queue and put it on its partition free queue under CQ_LOCK.  Used by
  *	eviction and by the thread-exit flush.  The handle must be live (the
- *	caller validated it), so dbc->dbp and its partitions are valid.
+ *	caller validated it), so dbc->dbp and its partitions are valid.  Returns
+ *	a DB error only if the partition mutex lock fails (env already in panic);
+ *	void callers may ignore it, the slot is dropped either way.
  */
-static void
+static int
 __dbc_cache_free_cursor(dbc)
 	DBC *dbc;
 {
@@ -258,6 +260,7 @@ __dbc_cache_free_cursor(dbc)
 	TAILQ_REMOVE(&cqp->active_queue, dbc, links);
 	TAILQ_INSERT_TAIL(&cqp->free_queue, dbc, links);
 	CQ_UNLOCK(env, cqp);
+	return (0);
 }
 
 /*
@@ -286,7 +289,7 @@ __dbc_cache_reconcile(free_queue)
 			continue;
 		if (__dbc_cache_handle_live(e->env, e->dbp, e->gen)) {
 			if (free_queue)
-				__dbc_cache_free_cursor(e->dbc);
+				(void)__dbc_cache_free_cursor(e->dbc);
 			else
 				continue;	/* Keep it cached. */
 		}
@@ -493,7 +496,7 @@ __dbc_cache_put(dbc)
 	 * mutex while bounding the cache to DBC_CACHE_SLOTS.
 	 */
 	if (victim->dbc != NULL) {
-		__dbc_cache_free_cursor(victim->dbc);
+		(void)__dbc_cache_free_cursor(victim->dbc);
 		victim->env = NULL;
 		victim->dbp = NULL;
 		victim->dbc = NULL;
