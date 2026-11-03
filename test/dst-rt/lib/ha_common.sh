@@ -43,7 +43,7 @@ ha_build() {
 	[ -x "$BUILD/rtcheck" ] || fi_build_node rtcheck || fi_skip "cannot build rtcheck"
 }
 
-ha_send() { echo "$2" > "$HA_RUN/ctl.$1"; }
+ha_send() { timeout 5 sh -c "echo '$2' > '$HA_RUN/ctl.$1'" 2>/dev/null || true; }
 
 # Return the node currently reporting master.  A node's current role is the
 # LAST ROLE line in its own ev log; among nodes whose last role is master, the
@@ -193,10 +193,11 @@ ha_load_on() {
 
 # Kill a node hard (SIGKILL), recording it for the oracle.
 ha_kill() {
-	local node="$1" pid
-	pid=$(cat "$HA_RUN/pid.$node" 2>/dev/null)
-	# rtnode has no pid file; kill by name inside the netns.
-	net_run "$node" pkill -9 -f "rtnode .*--node $node" 2>/dev/null || true
+	local node="$1"
+	# SIGKILL by the unique per-run home path (ip netns exec shares the host
+	# PID namespace, so a host-side pkill finds the node's rtnode and this
+	# never blocks on a ctl FIFO).
+	sudo pkill -9 -f "rtnode --home $HA_RUN/$node " 2>/dev/null || true
 	HA_KILLED="$HA_KILLED $node"
 	echo "ha_kill: $node"
 }
@@ -363,10 +364,18 @@ ha_oracle() {
 
 ha_group_down() {
 	local n
-	for n in $HA_NODES; do ha_send "$n" exit 2>/dev/null || true; done
-	sleep 1
+	# Best-effort graceful exit, but never block: a stuck rtnode (inside a
+	# repmgr call) may not be reading its ctl FIFO, and `echo > fifo` would
+	# hang forever.  timeout the write, then kill by pattern on the host
+	# (ip netns exec shares the host PID namespace, so a host-side pkill
+	# sees the rtnode; killing by the unique per-run home path is precise).
 	for n in $HA_NODES; do
-		net_run "$n" pkill -9 -f "rtnode .*--node $n" 2>/dev/null || true
+		timeout 3 sh -c "echo exit > '$HA_RUN/ctl.$n'" 2>/dev/null || true
 	done
+	sleep 1
+	sudo pkill -9 -f "rtnode --home $HA_RUN/" 2>/dev/null || true
+	sleep 1
+	# second sweep for any that caught a SIGTERM-ignore window
+	sudo pkill -9 -f "rtnode --home $HA_RUN/" 2>/dev/null || true
 	net_down
 }
