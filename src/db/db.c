@@ -920,20 +920,27 @@ __db_refresh(dbp, txn, flags, deferred_closep, reuse)
 	 * routine.  Note that any failure on a close is considered "really
 	 * bad" and we just break out of the loop and force forward.
 	 */
+	/*
+	 * RFC 0021: discard any per-thread transient-cursor cache references to
+	 * this handle BEFORE we touch its cursor queues.  Discard removes the
+	 * handle from the live-handle registry (under the registry mutex), so any
+	 * concurrent reconcile on another thread either already finished moving a
+	 * cached cursor to the free queue (the registry mutex serialises it) or
+	 * now sees this handle as closed and leaves its queues alone.  After this
+	 * returns, only this thread touches dbp's cursor queues, so the unlocked
+	 * resync probe and the teardown walk below are race-free.  The epoch bump
+	 * makes OTHER threads' stale slots miss; the refresh-enter/leave bracket
+	 * stops THIS thread's re-entrant __dbc_close from re-caching the cursors
+	 * it is destroying.
+	 */
+	__db_cursor_cache_discard(env, dbp);
+
 	resync = 0;
 	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
 		if (TAILQ_FIRST(&dbp->cq_parts[cq_i].active_queue) != NULL) {
 			resync = 1;
 			break;
 		}
-	/*
-	 * RFC 0021: discard any per-thread transient-cursor cache references to
-	 * this handle.  The epoch bump makes OTHER threads' stale slots miss
-	 * (their cached cursors are destroyed below by the active-queue walk).
-	 * The refresh-enter/leave bracket stops THIS thread's re-entrant
-	 * __dbc_close from re-caching the cursors it is destroying.
-	 */
-	__db_cursor_cache_discard(env, dbp);
 	__db_cursor_cache_refresh_enter();
 	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
 		while ((dbc =
