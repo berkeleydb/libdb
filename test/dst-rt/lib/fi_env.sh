@@ -76,6 +76,15 @@ for so in "$TOOLS_PREFIX"/lib/libdirectio*.so /usr/lib/libdirectio*.so \
 done
 HAVE_DIRECTIO=0; [ -n "$DIRECTIO_SO" ] && HAVE_DIRECTIO=1
 
+# directio_match.so: our path-filtered O_DIRECT shim (finding F1-001).  When
+# present, the S1 preload arm uses it (O_DIRECT only on *.db and log.*) so it
+# runs instead of tripping libdb's buffered region writes.
+DIRECTIO_MATCH_SO=""
+for so in "$TOOLS_PREFIX"/lib/directio_match.so /usr/local/lib/directio_match.so; do
+	[ -f "$so" ] && { DIRECTIO_MATCH_SO="$so"; break; }
+done
+HAVE_DIRECTIO_MATCH=0; [ -n "$DIRECTIO_MATCH_SO" ] && HAVE_DIRECTIO_MATCH=1
+
 UMEM_SO=""
 for so in "$TOOLS_PREFIX"/lib/libumem_malloc.so /usr/lib/libumem_malloc.so \
     /usr/local/lib/libumem_malloc.so; do
@@ -133,4 +142,5 @@ fi_mkrun() {
 export DSTRT_DIR BUILD TOOLS_PREFIX CC
 export LIBDB_LIB LIBDB_RPATH LIBDB_EXTRA
 export HAVE_FIU HAVE_TC HAVE_NETNS HAVE_DIRECTIO HAVE_UMEM HAVE_FAINT
+export HAVE_DIRECTIO_MATCH DIRECTIO_MATCH_SO
 export DIRECTIO_SO UMEM_SO FAINT_BIN TC_BIN

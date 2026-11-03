@@ -165,6 +165,20 @@ install_libdirectio || log "libdirectio NOT installed (its arm will SKIP)"
 install_libumem     || log "libumem NOT installed (its arm will SKIP)"
 install_faint       || log "FAINT NOT installed (its arm will SKIP)"
 
+# directio_match.so: our test-only path-filtered O_DIRECT shim (finding
+# F1-001).  Lives beside install.sh; built here so the S1 preload arm can
+# O_DIRECT only the data/log files and leave libdb's buffered region files
+# alone.  Small and dependency-light, so always build it.
+_HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+if [ -f "$_HERE/directio_match.c" ]; then
+	if ${CC:-cc} -shared -fPIC -D_GNU_SOURCE "$_HERE/directio_match.c" \
+	    -ldl -o "$PREFIX/lib/directio_match.so" 2>/dev/null; then
+		log "built directio_match.so"
+	else
+		log "directio_match.so build FAILED (preload arm will use raw libdirectio or SKIP)"
+	fi
+fi
+
 # ---------------------------------------------------------------------------
 # Report what is available.  fi_env.sh greps this, and so does CI.
 # ---------------------------------------------------------------------------
@@ -172,6 +186,7 @@ avail=""
 command -v fiu-run >/dev/null 2>&1 && avail="$avail fiu"
 if command -v tc >/dev/null 2>&1 || [ -x /usr/sbin/tc ]; then avail="$avail tc"; fi
 ls "$PREFIX"/lib/libdirectio*.so >/dev/null 2>&1 && avail="$avail directio"
+ls "$PREFIX"/lib/directio_match.so >/dev/null 2>&1 && avail="$avail directio-match"
 ls "$PREFIX"/lib/libumem_malloc.so >/dev/null 2>&1 && avail="$avail umem"
 [ -x "$PREFIX/bin/faint" ] && avail="$avail faint"
 

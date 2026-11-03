@@ -75,12 +75,31 @@ else
 fi
 
 PRELOAD_DIRECTIO_OK=0
-if fi_have directio; then
+PRELOAD_DIRECTIO_ENV=""
+# Prefer the path-filtered shim (O_DIRECT on *.db and log.* only -- finding
+# F1-001): it exercises the uncached crash path for the data/log files and the
+# utilities, without tripping libdb's buffered region writes.  Fall back to raw
+# libdirectio (which trips F1-001 and so stays a SKIP).
+if [ "${HAVE_DIRECTIO_MATCH:-0}" = 1 ]; then
+	probe="$RUN/probe.dm"; mkdir -p "$probe"
+	if LD_PRELOAD="$DIRECTIO_MATCH_SO" DIRECTIO_MATCH='*.db' \
+	    "$BUILD/rtload" --home "$probe" --ack "$RUN/probe.dm.ack" \
+	    --node p --seed 1 --ops 2 --keys 2 >/dev/null 2>&1; then
+		PRELOAD_DIRECTIO_OK=1
+		PRELOAD_DIRECTIO_ENV="LD_PRELOAD=$DIRECTIO_MATCH_SO DIRECTIO_MATCH=*.db"
+		# When the build supports native direct I/O, add --direct so the
+		# LOG is also O_DIRECT (aligned by DB_LOG_DIRECT); the shim covers
+		# the data file *.db, native covers the log -> fullest uncached run.
+		[ "$HAVE_NATIVE_DIRECT" = 1 ] && PRELOAD_DIRECT_FLAG="--direct"
+	fi
+fi
+if [ "$PRELOAD_DIRECTIO_OK" = 0 ] && fi_have directio; then
 	probe="$RUN/probe.pd"; mkdir -p "$probe"
 	if LD_PRELOAD="$DIRECTIO_SO" "$BUILD/rtload" --home "$probe" \
 	    --ack "$RUN/probe.pd.ack" --node p --seed 1 --ops 2 --keys 2 \
 	    >/dev/null 2>&1; then
 		PRELOAD_DIRECTIO_OK=1
+		PRELOAD_DIRECTIO_ENV="LD_PRELOAD=$DIRECTIO_SO"
 	fi
 fi
 
@@ -166,18 +185,19 @@ fi
 # silent pass.
 echo "== s1-preload-directio =="
 if [ "${PRELOAD_DIRECTIO_OK:-0}" = 1 ]; then
-	out=$(run_arm preload "" "LD_PRELOAD=$DIRECTIO_SO")
+	out=$(run_arm preload "" "$PRELOAD_DIRECTIO_ENV" "${PRELOAD_DIRECT_FLAG:-}")
 	echo "$out" | sed 's/^/    /'
+	echo "    (preload: $PRELOAD_DIRECTIO_ENV ${PRELOAD_DIRECT_FLAG:-})"
 	if echo "$out" | grep -q '^PASS'; then
-		echo "    libdirectio durable across kill+recovery (F1-001 fixed?)"
+		echo "    preload O_DIRECT durable across kill+recovery"
 		hi_emit s1-preload-directio pass
 	else
 		hi_emit s1-preload-directio fail; rc=1
 	fi
 else
-	echo "    SKIP: finding F1-001 -- libdb cannot open an env under libdirectio"
-	echo "          (blanket O_DIRECT trips buffered-by-design region writes);"
-	echo "          the NATIVE direct arm above is the supported path and is clean."
+	echo "    SKIP: finding F1-001 -- libdb cannot open an env under a BLANKET"
+	echo "          O_DIRECT (libdirectio), and no path-filtered shim is built."
+	echo "          The NATIVE direct arm above is the supported path and is clean."
 	hi_emit s1-preload-directio skip
 fi
 
