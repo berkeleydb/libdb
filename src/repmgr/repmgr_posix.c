@@ -754,11 +754,41 @@ prepare_io(env, conn, info_)
 	if (conn->state == CONN_DEFUNCT)
 		return (__repmgr_cleanup_defunct(env, conn));
 
+#ifdef HAVE_REPMGR_SSL
+	if (conn->ssl != NULL && FLD_ISSET(conn->ssl_flags, REPMGR_SSL_HANDSHAKING)) {
+		/*
+		 * While handshaking, select for whichever direction OpenSSL
+		 * last asked for (default: read, for a server awaiting the
+		 * ClientHello).
+		 */
+		if (FLD_ISSET(conn->ssl_flags, REPMGR_SSL_WANT_WRITE_TO_READ))
+			FD_SET((u_int)conn->fd, info->writes);
+		else
+			FD_SET((u_int)conn->fd, info->reads);
+		if (conn->fd > info->maxfd)
+			info->maxfd = conn->fd;
+		return (0);
+	}
+#endif
+
 	if (!STAILQ_EMPTY(&conn->outbound_queue)) {
 		FD_SET((u_int)conn->fd, info->writes);
 		if (conn->fd > info->maxfd)
 			info->maxfd = conn->fd;
 	}
+#ifdef HAVE_REPMGR_SSL
+	/*
+	 * A data-path SSL_read that returned WANT_WRITE, or an SSL_write that
+	 * returned WANT_READ, needs the opposite direction selected.
+	 */
+	if (conn->ssl != NULL) {
+		if (FLD_ISSET(conn->ssl_flags, REPMGR_SSL_WANT_WRITE_TO_READ)) {
+			FD_SET((u_int)conn->fd, info->writes);
+			if (conn->fd > info->maxfd)
+				info->maxfd = conn->fd;
+		}
+	}
+#endif
 	/*
 	 * For now we always accept incoming data.  If we ever implement some
 	 * kind of flow control, we should override it for fledgling connections
@@ -791,6 +821,25 @@ __repmgr_conn_work(env, conn, info_)
 
 	if (conn->state == CONN_DEFUNCT)
 		return (0);
+
+#ifdef HAVE_REPMGR_SSL
+	if (conn->ssl != NULL && FLD_ISSET(conn->ssl_flags, REPMGR_SSL_HANDSHAKING)) {
+		if (FD_ISSET(fd, info->reads) || FD_ISSET(fd, info->writes)) {
+			ret = __repmgr_ssl_handshake(env, conn);
+			if (ret == WOULDBLOCK)
+				return (0);	/* wait, re-select next pass */
+			if (ret == DB_REP_UNAVAIL)
+				return (__repmgr_bust_connection(env, conn));
+			if (ret != 0)
+				return (ret);
+			/*
+			 * Handshake done.  The inbound (server) side now just
+			 * reads the client's version proposal on a later pass.
+			 */
+		}
+		return (0);
+	}
+#endif
 
 	if (FD_ISSET(fd, info->writes))
 		ret = __repmgr_write_some(env, conn);

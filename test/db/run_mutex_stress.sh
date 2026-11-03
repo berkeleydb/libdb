@@ -59,6 +59,8 @@ run_with_timeout() {
 
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
+# A static libdb built with --enable-tls pulls in libssl/libcrypto.
+for _dbl in "$BUILD"/libdb.a "$BUILD"/.libs/libdb-*.a "$BUILD"/.libs/libdb-*.so; do [ -f "$_dbl" ] && nm "$_dbl" 2>/dev/null | grep -q "U SSL_CTX_new" && { EXTRALIBS="$EXTRALIBS -lssl -lcrypto"; break; }; done
 
 BIN=$BUILD/test_mutex_stress
 rm -f "$BIN"

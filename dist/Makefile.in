@@ -3035,6 +3035,8 @@ repmgr_sel@o@: $(srcdir)/repmgr/repmgr_sel.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/repmgr/repmgr_sel.c
 repmgr_stat@o@: $(srcdir)/repmgr/repmgr_stat.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/repmgr/repmgr_stat.c
+repmgr_tls@o@: $(srcdir)/repmgr/repmgr_tls.c
+	$(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/repmgr/repmgr_tls.c
 repmgr_stub@o@: $(srcdir)/repmgr/repmgr_stub.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) $(srcdir)/repmgr/repmgr_stub.c
 repmgr_util@o@: $(srcdir)/repmgr/repmgr_util.c

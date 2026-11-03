@@ -52,6 +52,8 @@ fi
 # A static libdb needs its transitive deps named explicitly.
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null); do EXTRALIBS="$EXTRALIBS $l"; done
+# A static libdb built with --enable-tls pulls in libssl/libcrypto.
+for _dbl in "$BUILD"/libdb.a "$BUILD"/.libs/libdb-*.a "$BUILD"/.libs/libdb-*.so; do [ -f "$_dbl" ] && nm "$_dbl" 2>/dev/null | grep -q "U SSL_CTX_new" && { EXTRALIBS="$EXTRALIBS -lssl -lcrypto"; break; }; done
 
 echo "Compiling recd_compact against $LIB"
 "${CC:-cc}" -g -O1 ${CFLAGS:-} -I"$BUILD" "$SRC" "$LIB" \

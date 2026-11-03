@@ -303,6 +303,7 @@ __db_env_init(dbenv)
 	dbenv->repmgr_local_site = __repmgr_local_site;
 	dbenv->repmgr_msg_dispatch = __repmgr_set_msg_dispatch;
 	dbenv->repmgr_set_ack_policy = __repmgr_set_ack_policy;
+	dbenv->repmgr_set_tls = __repmgr_set_tls;
 	dbenv->repmgr_site = __repmgr_site;
 	dbenv->repmgr_site_by_eid = __repmgr_site_by_eid;
 	dbenv->repmgr_site_list = __repmgr_site_list;

@@ -50,7 +50,14 @@ main(int argc, char **argv)
 	struct rec r[] = {
 		{ "DB",		sizeof(DB),	1744 },
 		{ "DBC",	sizeof(DBC),	 552 },
-		{ "DB_ENV",	sizeof(DB_ENV),	2088 },
+		/*
+		 * DB_ENV grew 2088 -> 2096 (+8) when RFC 0018 added the
+		 * repmgr_set_tls method pointer to the method table.  This is
+		 * an intended ABI change (ABI-BREAK-INTENDED), coordinated with
+		 * the soname bump (Q6 / RFC 0020).  DB_ENV is library-allocated
+		 * and opaque (A1), so no application embeds it.
+		 */
+		{ "DB_ENV",	sizeof(DB_ENV),	2096 },
 		{ "DB_TXN",	sizeof(DB_TXN),	 336 },
 		{ "DBT",	sizeof(DBT),	  40 },
 		{ "DB_LSN",	sizeof(DB_LSN),	   8 },

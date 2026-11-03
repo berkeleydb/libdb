@@ -448,6 +448,9 @@
 /* Define to 1 if building the Berkeley DB replication framework. */
 #undef HAVE_REPLICATION_THREADS
 
+/* Define to 1 if building TLS (OpenSSL) support for the Replication Manager. */
+#undef HAVE_REPMGR_SSL
+
 /* Define to 1 if you have the 'sched_yield' function. */
 #undef HAVE_SCHED_YIELD
 

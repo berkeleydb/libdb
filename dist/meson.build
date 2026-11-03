@@ -175,6 +175,27 @@ if get_option('dtrace').enabled()
         'use dist/configure --enable-dtrace')
 endif
 
+# TLS (OpenSSL) for the Replication Manager (RFC 0018); mirrors --enable-tls.
+# OFF by default.  When enabled, repmgr_tls.c joins the source list (it is
+# whole-file guarded on HAVE_REPMGR_SSL like os_aio_uring.c) and libssl +
+# libcrypto become hard requirements.
+tls_dep = dependency('', required: false)
+if get_option('tls').enabled()
+  ssl_dep = dependency('libssl', required: false)
+  crypto_dep = dependency('libcrypto', required: false)
+  if not ssl_dep.found()
+    ssl_dep = cc.find_library('ssl', required: true)
+  endif
+  if not crypto_dep.found()
+    crypto_dep = cc.find_library('crypto', required: true)
+  endif
+  if not cc.has_header('openssl/ssl.h')
+    error('-Dtls=enabled requires the OpenSSL development headers (openssl/ssl.h)')
+  endif
+  cdata.set('HAVE_REPMGR_SSL', 1)
+  tls_dep = [ssl_dep, crypto_dep]
+endif
+
 # POSIX aio: aio_read may be in libc, librt or libaio.
 aio_dep = dependency('', required: false)
 if cc.has_header('aio.h')
@@ -645,6 +666,7 @@ libdb_srcnames = [
   'src/repmgr/repmgr_rec.c',
   'src/repmgr/repmgr_sel.c',
   'src/repmgr/repmgr_stat.c',
+  'src/repmgr/repmgr_tls.c',
   'src/repmgr/repmgr_util.c',
   'src/sequence/seq_stat.c',
   'src/sequence/sequence.c',
@@ -703,7 +725,7 @@ endforeach
 
 libdb = library('db', libdb_sources, clib_sources, db_h, db_int_h, db_int_def_h, clib_port_h,
   include_directories: inc,
-  dependencies: [thread_dep, uring_dep, aio_dep],
+  dependencies: [thread_dep, uring_dep, aio_dep, tls_dep],
   gnu_symbol_visibility: 'default',
   install: true)
 

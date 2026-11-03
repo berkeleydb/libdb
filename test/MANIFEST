@@ -503,6 +503,10 @@ db	run_mf_discard_order
 # every real cycle is still resolved and no bystander is chosen as a victim,
 # with lockers created and freed on every stripe during each walk.
 db	run_dd_stripes
+# RFC 0018 repmgr TLS wire-capture: proves the marker is on the wire in
+# cleartext and (on an --enable-tls build) absent under TLS.  Plaintext-only
+# on a default build, so it is CI-safe either way.
+db	run_repmgr_tls_wirecap
 # SKIPs (passes) on a build without --enable-dtrace; see the script header.
 db	run_dtrace_probes
 

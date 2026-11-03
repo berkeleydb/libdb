@@ -21,6 +21,7 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0014](0014-typed-data-and-constraints.md) | Typed data and constraints: a codec socket ("modem") and a constraint layer, configure-time optional | Implemented (Phases 0–1), opt-in `--enable-typed`; see [inclusion evaluation](0014/INCLUSION-EVALUATION.md) |
 | [0015](0015-multicore-scalability.md) | Multi-core scalability audit: every serialisation point, and the order to remove them | Draft |
 | [0016](0016-rust-zig-bindings.md) | Rust and Zig language bindings: idiomatic, zero-copy-capable API shims over the C library, with native-format docs and tests | Draft |
+| [0018](0018-repmgr-tls.md) | TLS 1.3 with mutual authentication on every Replication Manager connection (OpenSSL 3.x, optional `--enable-tls`/`-Dtls=enabled`, off by default) | Draft | Normative
 
 <!-- Add a row per RFC. Keep the number 4-digit zero-padded and monotonic. -->
 
