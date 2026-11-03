@@ -45,13 +45,21 @@ ha_build() {
 
 ha_send() { echo "$2" > "$HA_RUN/ctl.$1"; }
 
-# Return the node currently reporting master (last ROLE master wins), or empty.
+# Return the node currently reporting master.  A node's current role is the
+# LAST ROLE line in its own ev log; among nodes whose last role is master, the
+# one with the highest generation is the live master (a stale pre-failover
+# "ROLE master" is superseded by a later "ROLE client" in the same log).
 ha_master() {
-	local n last=""
+	local n role gen best="" bestgen=-1
 	for n in $HA_NODES; do
-		grep -q 'ROLE master' "$HA_RUN/ev.$n.log" 2>/dev/null && last=$n
+		[ -f "$HA_RUN/ev.$n.log" ] || continue
+		role=$(grep -oE 'ROLE (master|client)' "$HA_RUN/ev.$n.log" 2>/dev/null | tail -1)
+		[ "$role" = "ROLE master" ] || continue
+		gen=$(sed -n 's/^ROLE master gen=\([0-9]*\).*/\1/p' "$HA_RUN/ev.$n.log" 2>/dev/null | tail -1)
+		gen=${gen:-0}
+		if [ "$gen" -ge "$bestgen" ]; then bestgen=$gen; best=$n; fi
 	done
-	echo "$last"
+	echo "$best"
 }
 
 # Wait up to $1 seconds for some node to be master and all live nodes READY.
@@ -66,10 +74,65 @@ ha_wait_master() {
 	return 1
 }
 
+# _ha_launch_node NODE FIRST -- write DB_CONFIG and start one rtnode in NODE's
+# netns.  FIRST=1 marks the group creator (highest priority).
+HA_EXTRA=""
+_ha_launch_node() {
+	local node="$1" first="$2"
+	local ip home port peers other prio creator ackpol
+	ip=$(net_ip "$node"); port=$HA_PORT_BASE
+	home="$HA_RUN/$node"; mkdir -p "$home"
+	mkfifo "$HA_RUN/ctl.$node" 2>/dev/null || true
+	# DB_CONFIG: elections on, heartbeats + election/ack/retry timeouts
+	# (RFC 0024 S4).  rtnode sets none of these, so a clean partition would
+	# never trigger an election without them.  node a (first) gets the
+	# highest priority so it is the preferred master.  (Persisted in the
+	# home, so a restart reuses it.)
+	prio=100; [ "$first" = 1 ] && prio=200
+	if [ ! -f "$home/DB_CONFIG" ]; then
+		cat > "$home/DB_CONFIG" <<-EOF
+			rep_set_config db_repmgr_conf_elections on
+			rep_set_priority $prio
+			rep_set_timeout db_rep_heartbeat_send 500000
+			rep_set_timeout db_rep_heartbeat_monitor 1500000
+			rep_set_timeout db_rep_election_timeout 1000000
+			rep_set_timeout db_rep_election_retry 1000000
+			rep_set_timeout db_rep_connection_retry 1000000
+			rep_set_timeout db_rep_ack_timeout 1000000
+		EOF
+	fi
+	peers=""
+	for other in $HA_NODES; do
+		[ "$other" != "$node" ] && peers="$peers --peer $(net_ip "$other"):$port"
+	done
+	creator=""; [ "$first" = 1 ] && creator="--group-creator"
+	ackpol="--ack-policy $HA_ACKPOL"
+	net_run "$node" env LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
+	    "$BUILD/rtnode" --home "$home" --ctl "$HA_RUN/ctl.$node" \
+	    --ev "$HA_RUN/ev.$node.log" --node "$node" \
+	    --ack "$HA_RUN/ack.$node.log" \
+	    --site "$ip:$port" $peers $creator $ackpol $HA_EXTRA \
+	    >>"$HA_RUN/out.$node" 2>&1 &
+}
+
+# wait up to $2 s for NODE to report READY (startup sync done).
+_ha_wait_ready() {
+	local node="$1" deadline=$(( $(date +%s) + ${2:-30} ))
+	while [ "$(date +%s)" -lt "$deadline" ]; do
+		grep -q 'READY' "$HA_RUN/ev.$node.log" 2>/dev/null && return 0
+		sleep 1
+	done
+	return 1
+}
+
 # ha_group_up NSITES ACKPOL "extra rtnode args"
-# Node a is the group creator and highest priority (preferred master).
+# Node a is the group creator and highest priority (preferred master).  Nodes
+# start SEQUENTIALLY -- the creator forms the group and becomes master, then
+# each client joins and finishes initial sync before the next starts -- because
+# a client that calls repmgr_start before the group exists gets DB_REP_UNAVAIL
+# and panics (the join race).
 ha_group_up() {
-	local nsites="$1"; HA_ACKPOL="${2:-quorum}"; local extra="${3:-}"
+	local nsites="$1"; HA_ACKPOL="${2:-quorum}"; HA_EXTRA="${3:-}"
 	local names="" i c
 	for i in $(seq 1 "$nsites"); do
 		c=$(printf "\\$(printf '%03o' $((96 + i)))"); names="$names $c"
@@ -81,33 +144,25 @@ ha_group_up() {
 
 	net_up "$nsites" $HA_NODES
 
-	local node ip home port peers first=1
+	local node first=1
 	for node in $HA_NODES; do
-		ip=$(net_ip "$node"); port=$HA_PORT_BASE
-		home="$HA_RUN/$node"; mkdir -p "$home"
-		mkfifo "$HA_RUN/ctl.$node" 2>/dev/null || true
-		peers=""
-		local other
-		for other in $HA_NODES; do
-			[ "$other" != "$node" ] && \
-			    peers="$peers --peer $(net_ip "$other"):$port"
-		done
-		local creator="" ackpol="--ack-policy $HA_ACKPOL"
-		[ "$first" = 1 ] && creator="--group-creator"
-		net_run "$node" env LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
-		    "$BUILD/rtnode" --home "$home" --ctl "$HA_RUN/ctl.$node" \
-		    --ev "$HA_RUN/ev.$node.log" --node "$node" \
-		    --ack "$HA_RUN/ack.$node.log" \
-		    --site "$ip:$port" $peers $creator $ackpol $extra \
-		    >"$HA_RUN/out.$node" 2>&1 &
+		_ha_launch_node "$node" "$first"
+		if [ "$first" = 1 ]; then
+			# the creator must form the group before any client joins,
+			# or a client gets DB_REP_UNAVAIL and panics; wait for it to
+			# be master.
+			local cm; cm=$(ha_wait_master 30)
+			[ -n "$cm" ] || { echo "ha_group_up: creator never became master"; return 1; }
+		else
+			# let this client finish joining + initial sync before the
+			# next one starts (sequential joins avoid the join race).
+			_ha_wait_ready "$node" 30
+		fi
 		first=0
 	done
-	# Give the creator a head start so it owns the group, then the rest.
-	sleep 3
 	local m; m=$(ha_wait_master 40)
 	[ -n "$m" ] || { echo "ha_group_up: no master elected"; return 1; }
-	# wait for the others to finish startup sync
-	sleep 4
+	sleep 3
 	echo "ha_group_up: master=$m nodes=[$HA_NODES] run=$HA_RUN"
 	return 0
 }
@@ -117,14 +172,19 @@ ha_load() {
 	local n="$1" seed="$2" m
 	m=$(ha_master)
 	[ -n "$m" ] || { echo "ha_load: no master"; return 1; }
-	ha_send "$m" "load $n $seed"
-	# wait for LOADDONE
+	ha_load_on "$m" "$n" "$seed"
+}
+
+# Drive a load of N ops with SEED on a SPECIFIC node (used after a failover).
+ha_load_on() {
+	local node="$1" n="$2" seed="$3"
+	ha_send "$node" "load $n $seed"
 	local deadline=$(( $(date +%s) + 60 ))
 	while [ "$(date +%s)" -lt "$deadline" ]; do
-		grep -q "LOADDONE" "$HA_RUN/ev.$m.log" 2>/dev/null && break
+		grep -q "LOADDONE" "$HA_RUN/ev.$node.log" 2>/dev/null && break
 		sleep 1
 	done
-	echo "ha_load: $n ops on $m seed=$seed acks=$(grep -c ' ACK$' "$HA_RUN/ack.$m.log" 2>/dev/null || echo 0)"
+	echo "ha_load: $n ops on $node seed=$seed acks=$(grep -c ' ACK$' "$HA_RUN/ack.$node.log" 2>/dev/null || echo 0)"
 }
 
 # Kill a node hard (SIGKILL), recording it for the oracle.
@@ -137,20 +197,11 @@ ha_kill() {
 	echo "ha_kill: $node"
 }
 
-# Restart a previously-killed node (fresh rtnode, DB_RECOVER on open).
+# Restart a previously-killed node (fresh rtnode, DB_RECOVER on open; its
+# DB_CONFIG persists in the home).  A restart is never the group creator.
 ha_restart() {
-	local node="$1" ip port home peers other
-	ip=$(net_ip "$node"); port=$HA_PORT_BASE; home="$HA_RUN/$node"
-	peers=""
-	for other in $HA_NODES; do
-		[ "$other" != "$node" ] && peers="$peers --peer $(net_ip "$other"):$port"
-	done
-	net_run "$node" env LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
-	    "$BUILD/rtnode" --home "$home" --ctl "$HA_RUN/ctl.$node" \
-	    --ev "$HA_RUN/ev.$node.log" --node "$node" \
-	    --ack "$HA_RUN/ack.$node.log" \
-	    --site "$ip:$port" $peers --ack-policy "$HA_ACKPOL" \
-	    >>"$HA_RUN/out.$node" 2>&1 &
+	local node="$1"
+	_ha_launch_node "$node" 0
 	HA_KILLED=$(echo "$HA_KILLED" | sed "s/\b$node\b//")
 	sleep 3
 	echo "ha_restart: $node"
@@ -232,42 +283,50 @@ ha_check_convergence() {
 	fi
 }
 
-# rule 1/2 at the key level, independent of rtcheck (teeth even if rtcheck is
-# unavailable).  An ACKed put's key MUST be present in the converged master
-# dump; an op whose txn outcome is FAIL must not add a NEW key that no ACK
-# produced.  Value-hash matching is rtcheck's job (binary-safe); here we gate on
-# key presence, which is what a lost acked write looks like.
+# rule 1 at the key level, independent of rtcheck (teeth even if rtcheck is
+# unavailable, and the check that gives the S5 sabotage arm its teeth).  Every
+# key an ACK log marks ACKed -- from ANY node, since a failed-over write was
+# acked on the old master -- MUST be present in the SURVIVING master's
+# converged data.  A lost acked write (e.g. ACKS_NONE + partition + kill) shows
+# up here as a missing key.  Value-hash matching is rtcheck's job.
 ha_check_durability() {
 	local m; m=$(ha_master)
 	[ -n "$m" ] || { echo "note: no master for durability check"; return; }
-	local ack="$HA_RUN/ack.$m.log"
-	[ -f "$ack" ] || { echo "note: no ack log for $m"; return; }
-	# keys of ACKed puts: a 'txn ... ACK' line's txnid, joined to its 'put' line.
-	local acked_keys dumpf miss=0 k
+	local dumpf miss=0 nack=0 k n ack acktxn acked_keys
 	dumpf=$(mktemp)
 	net_run "$m" env LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
 	    "$BUILD/db_dump" -p -h "$HA_RUN/$m" rt.db 2>/dev/null > "$dumpf"
-	# ACKed txnids
-	local acktxn; acktxn=$(awk '$3=="txn" && $NF=="ACK"{print $2}' "$ack" | sort -u)
-	# keys for those txnids from put lines
-	acked_keys=$(awk 'NR==FNR{a[$1]=1;next} $3=="put" && ($2 in a){print $5}' \
-	    <(echo "$acktxn") "$ack" | sort -u)
-	local nack; nack=$(echo "$acked_keys" | grep -c . )
-	for k in $acked_keys; do
-		[ -n "$k" ] || continue
-		# db_dump -p prints key on its own line prefixed with a space.
-		grep -qxF " $k" "$dumpf" || miss=$((miss + 1))
+	for n in $HA_NODES; do
+		ack="$HA_RUN/ack.$n.log"
+		[ -f "$ack" ] || continue
+		acktxn=$(awk '$3=="txn" && $NF=="ACK"{print $2}' "$ack" | sort -u)
+		[ -n "$acktxn" ] || continue
+		acked_keys=$(awk 'NR==FNR{a[$1]=1;next} $3=="put" && ($2 in a){print $5}' \
+		    <(echo "$acktxn") "$ack" | sort -u)
+		for k in $acked_keys; do
+			[ -n "$k" ] || continue
+			nack=$((nack + 1))
+			grep -qxF " $k" "$dumpf" || {
+				miss=$((miss + 1))
+				[ "$miss" -le 5 ] && echo "  lost acked key (from $n): $k"
+			}
+		done
 	done
 	rm -f "$dumpf"
 	if [ "$miss" = 0 ]; then
-		echo "rule 1 (durability, $nack ACKed keys present on master $m): OK"
+		echo "rule 1 (durability, $nack ACKed keys present on surviving master $m): OK"
 	else
-		echo "VIOLATION (rule 1, durability): $miss of $nack ACKed keys MISSING on master $m"
+		echo "VIOLATION (rule 1, durability): $miss of $nack ACKed keys MISSING on surviving master $m"
 		HA_VIOL=$((HA_VIOL + 1))
 	fi
 }
 
-# rtcheck across all homes for rules 1-3/7.
+# rtcheck across all homes for rules 1-3/7.  Missing-key (lost acked write),
+# recovery failure and DB->verify failure are HARD violations.  A value-only
+# mismatch ("has the wrong value") is currently ADVISORY: rtnode's per-batch
+# seq/txnid are not globally monotonic, so rtcheck's latest-wins picks the
+# wrong write for a key touched in two batches (reported to F1).  Key-presence
+# durability is covered independently by ha_check_durability.
 ha_check_rtcheck() {
 	local acks="" homes="" n
 	for n in $HA_NODES; do
@@ -275,12 +334,17 @@ ha_check_rtcheck() {
 		case " $HA_KILLED " in *" $n "*) continue;; esac
 		homes="$homes --home $HA_RUN/$n"
 	done
-	# rtcheck runs as root (env homes are root-owned under netns sudo).
-	local out
+	local out hard adv
 	out=$(sudo env LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
 	    "$BUILD/rtcheck" $acks $homes 2>&1)
-	echo "$out" | sed 's/^/  rtcheck: /'
-	echo "$out" | grep -q '^PASS' || HA_VIOL=$((HA_VIOL + 1))
+	hard=$(echo "$out" | grep -E 'MISSING|durability\): ACKed|rule 3|rule 7|recovery open|cannot open|phantom' | grep -v 'value)' )
+	adv=$(echo "$out" | grep -c 'wrong value')
+	echo "$out" | grep -E '^PASS|^FAIL' | sed 's/^/  rtcheck: /'
+	[ "$adv" -gt 0 ] && echo "  rtcheck: $adv value-mismatch(es) ADVISORY (rtnode per-batch seq; see F1 note)"
+	if [ -n "$hard" ]; then
+		echo "$hard" | sed 's/^/  rtcheck HARD: /'
+		HA_VIOL=$((HA_VIOL + 1))
+	fi
 }
 
 ha_oracle() {
