@@ -593,10 +593,10 @@ __bam_iitem(dbc, key, data, op, flags)
  * shared by a set of on-page duplicates, which may be a live item's key.
  *
  * A duplicate set whose members are ALL deleted is handled earlier, in
- * __bamc_put (R2): it redirects to a fresh insert before the DB_CURRENT put,
- * so this routine never sees a dead shared-key set.  It still bails on a
- * shared key here, because a set that reaches this point has a live member
- * and that member's key must not move.
+ * __bamc_put (R2): it rewrites the set's shared key in place before the
+ * duplicate path runs, so this routine never needs to move a shared key.  It
+ * still bails on a shared key here, because a set that reaches this point has
+ * a live member and that member's key must not move.
  */
 static int
 __bam_revive_chk(dbc, h, indx, key, revivep)
