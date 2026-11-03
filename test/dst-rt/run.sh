@@ -108,11 +108,18 @@ run_scenario() {
 	# A scenario emits its own arm verdicts into the shared results file.
 	# We capture whether this invocation produced any `fail` arm; on a fail
 	# we retry up to RETRY times and report the reproduction count k.
-	_tmp_before=$(grep -c ' fail$' "$RESULTS" 2>/dev/null || echo 0)
+	# (grep -c exits 1 when it finds 0, so capture the count without letting
+	# a `|| echo 0` append a second line -- that produced "0\n0" and an
+	# "Illegal number" error.)
+	_tmp_before=$(grep -c ' fail$' "$RESULTS" 2>/dev/null); _tmp_before=${_tmp_before:-0}
 	echo "  == $_scen seed=$_seed =="
-	sh "$_script" "$_seed" 2>&1 | sed 's/^/    /'
+	# Run WITHOUT a pipe so $? is the scenario's exit, not sed's; indent the
+	# output afterwards.
+	_log=$(mktemp)
+	sh "$_script" "$_seed" > "$_log" 2>&1
 	_rc=$?
-	_tmp_after=$(grep -c ' fail$' "$RESULTS" 2>/dev/null || echo 0)
+	sed 's/^/    /' "$_log"; rm -f "$_log"
+	_tmp_after=$(grep -c ' fail$' "$RESULTS" 2>/dev/null); _tmp_after=${_tmp_after:-0}
 
 	if [ "$_rc" -eq 77 ]; then
 		echo "  $_scen seed=$_seed: SKIP"
@@ -135,8 +142,8 @@ run_scenario() {
 		: > "$_rdir/dst-rt.results"
 		LIBDB_RESULTS_DIR="$_rdir" sh "$_script" "$_seed" >/dev/null 2>&1
 		_rr=$?
-		if grep -q ' fail$' "$_rdir/dst-rt.results" 2>/dev/null || \
-		   { [ "$_rr" -ne 0 ] && [ "$_rr" -ne 77 ]; }; then
+		_fc=$(grep -c ' fail$' "$_rdir/dst-rt.results" 2>/dev/null); _fc=${_fc:-0}
+		if [ "$_fc" -gt 0 ] || { [ "$_rr" -ne 0 ] && [ "$_rr" -ne 77 ]; }; then
 			_k=$(( _k + 1 ))
 		fi
 	done
