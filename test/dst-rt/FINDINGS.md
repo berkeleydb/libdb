@@ -161,6 +161,13 @@ the trivial program **without a timeout**, so the probe itself blocked until the
 job's 45-minute limit cancelled the run, and the remaining arms produced no
 verdict.
 
+The hang is **intermittent**: in CI run 41727745742 the seed-1 probe of
+`default` timed out (so the arm fell back and passed), while the seed-2 probe
+of `default` exited 0, `default` was chosen, and rtload under it then hung for
+the full 180 s.  A probe cannot vouch for `default` here, so the arm no longer
+probes: it uses `UMEM_DEBUG=guards,contents` unconditionally
+(`S3_UMEM_MODE` overrides).
+
 Fix (harness): every libumem invocation in s3 is now under `timeout -k`
 (probe 30 s, workload and rtcheck `S3_UMEM_TIMEOUT`=180 s, sabotage 30 s).  A
 probe timeout falls back to `guards,contents` exactly like an abort, and a hang

@@ -125,16 +125,14 @@ if fi_have umem; then
 	# `guards,contents`, which is the DETECTION half of default (redzone +
 	# fill-pattern): it still catches an overflow and a use-after-free (the
 	# sabotage arm proves this), just without the audit backtraces.
-	UMODE=default
-	_probe=$(mktemp); printf 'int main(void){void*p=__builtin_malloc(16);__builtin_free(p);return 0;}\n' > "$_probe.c"
-	if "${CC:-cc}" -O0 "$_probe.c" -o "$_probe" 2>/dev/null; then
-		if ! timeout -k 5 30 env LD_PRELOAD="$UMEM_SO" UMEM_DEBUG=default "$_probe" >/dev/null 2>&1; then
-			UMODE=guards,contents
-			echo "    note: UMEM_DEBUG=default aborts a trivial program on this"
-			echo "          host (audit limitation); using UMEM_DEBUG=guards,contents"
-		fi
-	fi
-	rm -f "$_probe" "$_probe.c"
+	# UMEM_DEBUG mode: guards,contents, the detection half of `default`
+	# (redzones + fill pattern).  It catches the planted overflow (the
+	# sabotage arm below) and runs the libdb workload clean.  `default` adds
+	# the audit component, which is not usable here: on the dev box it aborts
+	# a one-malloc program (F1-002), and on the GitHub Ubuntu 26.04 runner it
+	# HANGS intermittently (F1-003) -- a probe passed and the workload then
+	# hung, so no probe can vouch for it.  S3_UMEM_MODE overrides.
+	UMODE=${S3_UMEM_MODE:-guards,contents}
 
 	_home="$RUN/umem/home"; mkdir -p "$_home"
 	# Every libumem run is bounded: on the Ubuntu 26.04 runner this arm hung
