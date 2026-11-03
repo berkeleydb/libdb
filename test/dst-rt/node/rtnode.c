@@ -47,6 +47,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include "db.h"
 #include "fi_acklog.h"
@@ -62,6 +63,10 @@ struct node {
 	int npeers;
 	int repmgr, group_creator, nosync, ack_policy;
 	long cachesz_mb, keys, valsz;
+	/* repmgr timeouts, microseconds; 0 == leave the default (RFC 0024 S4
+	 * wants these set explicitly, from the command line, so the reproduce
+	 * line shows them). */
+	u_int32_t hb_send, hb_mon, elect_to, conn_retry, ack_to;
 	DB_ENV *env;
 	DB *db;
 	fi_acklog al;
@@ -72,6 +77,22 @@ struct node {
 
 static struct node N;
 static pthread_mutex_t ev_mtx = PTHREAD_MUTEX_INITIALIZER;
+
+/*
+ * Per-txn ack labelling (RFC 0024 §2.7).  DB_EVENT_REP_PERM_FAILED fires
+ * SYNCHRONOUSLY on the committing thread, inside __repmgr_send on the
+ * DB_REP_PERMANENT path, before txn->commit returns, and carries no txn/LSN
+ * (info == NULL).  So a THREAD-LOCAL flag set in the callback and read right
+ * after commit is exact per txn -- but only if there is exactly one committing
+ * thread (otherwise another thread's failure could land in this thread's
+ * window).  rtload is single-threaded in HA mode (one loader thread per node);
+ * we record that thread's id and, under DIAGNOSTIC, assert the callback runs on
+ * it.  If it ever does not, we conservatively fall back to labelling UNKNOWN.
+ */
+static __thread int tl_perm_failed;
+static volatile int load_committer_set;
+static pthread_t load_committer;
+static volatile int perm_failed_thread_mismatch;	/* diagnostic fallback */
 
 static void
 ev_emit(const char *fmt, ...)
@@ -106,6 +127,23 @@ event_cb(DB_ENV *dbenv, u_int32_t which, void *info)
 		ev_emit("ROLE newmaster gen=%d", N.current_gen);
 		break;
 	case DB_EVENT_REP_PERM_FAILED:
+		/*
+		 * The ack policy was not met for a just-committed txn.  This
+		 * callback is synchronous on the committing thread, so set the
+		 * thread-local flag do_load reads right after commit returns.
+		 * Under DIAGNOSTIC, check the callback really runs on the single
+		 * loader thread; if not, record the mismatch so do_load can fall
+		 * back to a conservative UNKNOWN labelling.
+		 */
+		tl_perm_failed = 1;
+		if (load_committer_set &&
+		    !pthread_equal(pthread_self(), load_committer))
+			perm_failed_thread_mismatch = 1;
+#ifdef DIAGNOSTIC
+		/* the event must run on the single loader thread (see do_load) */
+		assert(!load_committer_set ||
+		    pthread_equal(pthread_self(), load_committer));
+#endif
 		ev_emit("ERR perm_failed");
 		break;
 	case DB_EVENT_REP_STARTUPDONE:
@@ -144,6 +182,29 @@ open_env(void)
 			N.env->err(N.env, ret, "repmgr_set_ack_policy");
 			return (ret);
 		}
+		/*
+		 * repmgr timeouts (RFC 0024 S4): elections on, heartbeats, and
+		 * election/ack/connection-retry windows.  Set from the command
+		 * line so the reproduce line shows them; 0 leaves the default.
+		 * rtnode is the source of truth (the scenarios also drop a
+		 * DB_CONFIG as a fallback, but these win).
+		 */
+		(void)N.env->rep_set_config(N.env, DB_REPMGR_CONF_ELECTIONS, 1);
+		if (N.hb_send)
+			(void)N.env->rep_set_timeout(N.env,
+			    DB_REP_HEARTBEAT_SEND, N.hb_send);
+		if (N.hb_mon)
+			(void)N.env->rep_set_timeout(N.env,
+			    DB_REP_HEARTBEAT_MONITOR, N.hb_mon);
+		if (N.elect_to)
+			(void)N.env->rep_set_timeout(N.env,
+			    DB_REP_ELECTION_TIMEOUT, N.elect_to);
+		if (N.conn_retry)
+			(void)N.env->rep_set_timeout(N.env,
+			    DB_REP_CONNECTION_RETRY, N.conn_retry);
+		if (N.ack_to)
+			(void)N.env->rep_set_timeout(N.env,
+			    DB_REP_ACK_TIMEOUT, N.ack_to);
 		/* local site */
 		if ((ret = N.env->repmgr_site(N.env, N.self_host, N.self_port,
 		    &dbsite, 0)) != 0) {
@@ -219,6 +280,24 @@ static uint64_t sm_next(void) {
 	return (z ^ (z >> 31));
 }
 
+/* Decode a DB_TXN_TOKEN (RFC commit token): 5 big-endian u_int32_t --
+ * version, gen, envid, lsn.file, lsn.offset -- so an HA ack line can carry the
+ * (gen, LSN) that defines replication order across nodes (RFC 0024 §2.7). */
+static void
+token_decode(const DB_TXN_TOKEN *tok, u_int32_t *gen, u_int32_t *lfile,
+    u_int32_t *loff)
+{
+	const u_int8_t *b = tok->buf;
+	/* skip version (b[0..3]) */
+	*gen   = ((u_int32_t)b[4]  << 24) | ((u_int32_t)b[5]  << 16) |
+	         ((u_int32_t)b[6]  << 8)  |  (u_int32_t)b[7];
+	/* skip envid (b[8..11]) */
+	*lfile = ((u_int32_t)b[12] << 24) | ((u_int32_t)b[13] << 16) |
+	         ((u_int32_t)b[14] << 8)  |  (u_int32_t)b[15];
+	*loff  = ((u_int32_t)b[16] << 24) | ((u_int32_t)b[17] << 16) |
+	         ((u_int32_t)b[18] << 8)  |  (u_int32_t)b[19];
+}
+
 /* run n workload ops as master; write the ack log if --ack was given. */
 static void
 do_load(long n, long seed)
@@ -233,15 +312,33 @@ do_load(long n, long seed)
 		ev_emit("ERR load_no_db");
 		return;
 	}
+	/*
+	 * rtload is single-threaded in HA mode: exactly one committing thread
+	 * per node.  The per-txn ACK/UNKNOWN labelling (tl_perm_failed) is only
+	 * sound under that invariant, because DB_EVENT_REP_PERM_FAILED fires
+	 * synchronously on the committing thread.  Record this thread as THE
+	 * committer and refuse to run a second concurrent loader.
+	 */
+	if (load_committer_set &&
+	    !pthread_equal(pthread_self(), load_committer)) {
+		ev_emit("ERR load_not_single_threaded");
+		return;
+	}
+	load_committer = pthread_self();
+	load_committer_set = 1;
+
 	sm_state = (uint64_t)seed;
 	memset(&key, 0, sizeof(key));
 	memset(&data, 0, sizeof(data));
 
 	for (i = 0; i < n; i++) {
 		DB_TXN *txn = NULL;
+		DB_TXN_TOKEN token;
 		u_int32_t k = (u_int32_t)(sm_next() % (uint64_t)N.keys);
+		u_int32_t gen = 0, lfile = 0, loff = 0;
 		uint64_t vh;
 		int klen = snprintf(keybuf, sizeof(keybuf), "k%08u", k);
+		const char *outcome;
 
 		memset(valbuf, 'a' + (int)(k % 26), (size_t)vlen);
 		snprintf(valbuf, sizeof(valbuf), "s%08ld-k%08u", i, k);
@@ -254,9 +351,11 @@ do_load(long n, long seed)
 		if ((ret = N.env->txn_begin(N.env, NULL, &txn, 0)) != 0) {
 			if (N.have_ack)
 			    (void)fi_acklog_printf(&N.al,
-				"%ld %ld txn rt.db - - FAIL", i, i);
+				"%ld %ld txn rt.db - - FAIL 0/0 gen=0", i, i);
 			continue;
 		}
+		/* ask libdb for the commit token so we can read (gen, LSN) */
+		(void)txn->set_commit_token(txn, &token);
 		if (N.have_ack)
 			(void)fi_acklog_printf(&N.al,
 			    "%ld %ld put rt.db %s %016llx PENDING",
@@ -266,20 +365,33 @@ do_load(long n, long seed)
 			(void)txn->abort(txn);
 			if (N.have_ack)
 			    (void)fi_acklog_printf(&N.al,
-				"%ld %ld txn rt.db - - FAIL", i, i);
+				"%ld %ld txn rt.db - - FAIL 0/0 gen=0", i, i);
 			continue;
 		}
+		/*
+		 * Clear the thread-local PERM_FAILED flag, commit (the event,
+		 * if it fires, runs synchronously on THIS thread inside the
+		 * commit), then read the flag.  commit==0 with no PERM_FAILED
+		 * and the ack policy met == ACK (DB_REP_PERMANENT); commit==0
+		 * with PERM_FAILED == UNKNOWN (replicated durability not
+		 * guaranteed -- e.g. a partitioned-away QUORUM master).  If the
+		 * diagnostic thread check ever failed, degrade to UNKNOWN.
+		 */
+		tl_perm_failed = 0;
 		ret = txn->commit(txn, N.nosync ? DB_TXN_NOSYNC : 0);
-		/* In repmgr, commit returning 0 means durable locally; the ack
-		 * policy (DB_REP_PERMANENT) is reported via the event log.  For
-		 * the ack log we mark ACK on commit==0; the oracle treats an op
-		 * whose replicated ack we could not confirm as covered by the
-		 * HA convergence rule (fi_check.sh), not rule 1. */
+		if (ret == 0)
+			token_decode(&token, &gen, &lfile, &loff);
+		if (ret != 0)
+			outcome = "FAIL";
+		else if (tl_perm_failed || perm_failed_thread_mismatch)
+			outcome = "UNKNOWN";
+		else
+			outcome = "ACK";
 		if (N.have_ack)
 			(void)fi_acklog_printf(&N.al,
-			    "%ld %ld txn rt.db - - %s", i, i,
-			    ret == 0 ? "ACK" : "FAIL");
-		if (ret == 0)
+			    "%ld %ld txn rt.db - - %s %u/%u gen=%u",
+			    i, i, outcome, lfile, loff, gen);
+		if (ret == 0 && !tl_perm_failed && !perm_failed_thread_mismatch)
 			ev_emit("ACK seq=%ld", i);
 	}
 	ev_emit("LOADDONE n=%ld", n);
@@ -379,7 +491,8 @@ usage(void)
 "  (local)   local\n"
 "  (repmgr)  --site HOST:PORT [--peer HOST:PORT ...] [--group-creator]\n"
 "            [--ack-policy quorum|all|one|none]\n"
-"  [--ack FILE] [--nosync] [--cachesz-mb N] [--keys N] [--valsz N]\n",
+"  [--ack FILE] [--nosync] [--cachesz-mb N] [--keys N] [--valsz N]\n"
+"  [--hb-send US] [--hb-mon US] [--elect-to US] [--conn-retry US] [--ack-to US]\n",
 	    progname);
 	exit(2);
 }
@@ -420,6 +533,11 @@ main(int argc, char *argv[])
 		else if (strcmp(argv[i], "--cachesz-mb") == 0 && i+1 < argc) N.cachesz_mb = atol(argv[++i]);
 		else if (strcmp(argv[i], "--keys") == 0 && i+1 < argc) N.keys = atol(argv[++i]);
 		else if (strcmp(argv[i], "--valsz") == 0 && i+1 < argc) N.valsz = atol(argv[++i]);
+		else if (strcmp(argv[i], "--hb-send") == 0 && i+1 < argc) N.hb_send = (u_int32_t)atol(argv[++i]);
+		else if (strcmp(argv[i], "--hb-mon") == 0 && i+1 < argc) N.hb_mon = (u_int32_t)atol(argv[++i]);
+		else if (strcmp(argv[i], "--elect-to") == 0 && i+1 < argc) N.elect_to = (u_int32_t)atol(argv[++i]);
+		else if (strcmp(argv[i], "--conn-retry") == 0 && i+1 < argc) N.conn_retry = (u_int32_t)atol(argv[++i]);
+		else if (strcmp(argv[i], "--ack-to") == 0 && i+1 < argc) N.ack_to = (u_int32_t)atol(argv[++i]);
 		else usage();
 	}
 	if (N.home == NULL || N.ctlpath == NULL || N.evpath == NULL ||

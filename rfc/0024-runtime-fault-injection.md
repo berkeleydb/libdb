@@ -136,7 +136,7 @@ A failed run keeps its env homes, the logs and the fault schedule, and prints th
 **Ack log.** Every workload writer (`rtload`, and `rtnode` in HA mode) appends one line per operation to `<run>/ack.<node>.log`, flushed before the op is reported done:
 
 ```
-<seq> <txnid> <op> <db> <key> <vhash> <outcome> [<lsn-file>/<lsn-off>]
+<seq> <txnid> <op> <db> <key> <vhash> <outcome> [<lsn-file>/<lsn-off>] [gen=<n>]
 ```
 
 | Field | Meaning |
@@ -144,6 +144,10 @@ A failed run keeps its env homes, the logs and the fault schedule, and prints th
 | `op` | `put`, `del` or `txn` (multi-op txns log their member ops with the same txnid, then one `txn` line with the outcome) |
 | `vhash` | 64-bit FNV-1a of the value, in hex; `-` for `del` |
 | `outcome` | `ACK` (commit returned 0, and for repmgr the ack policy was met: `DB_REP_PERMANENT`), `FAIL` (an error was returned, so it must not be visible), or `UNKNOWN` (the process died or the ack was lost, so it may be visible) |
+| `<lsn-file>/<lsn-off>` | the commit LSN, from the commit token (HA mode); `0/0` for a FAIL or a non-HA entry |
+| `gen=<n>` | the master replication **generation** at commit (HA mode), from the commit token; absent for single-node entries |
+
+For HA the ordering that defines "latest write wins" is **replication order, `(gen, LSN)`**, not append order: across a failover the old master and the new master are different processes whose per-process sequence numbers are not comparable. A write in generation `g+1` supersedes any write in `g`; within a generation the higher commit LSN wins. A write the old master acked in `g` that the new master never received is exactly what rule 1 flags (or is `UNKNOWN` if `PERM_FAILED` fired at commit, which repmgr delivers synchronously on the committing thread). `rtcheck` orders HA entries by `(gen, LSN)`; single-node entries, which carry no generation, keep append order. The `gen` and `<lsn>` fields come from `DB_TXN->set_commit_token` (the 20-byte token encodes version, gen, envid, LSN file and LSN offset).
 
 The log is written with `O_APPEND` and `write(2)` on a file outside the libdb env homes, which libfiu's I/O plans exclude by path (§2.2). That keeps the oracle's own I/O out of the fault scope.
 

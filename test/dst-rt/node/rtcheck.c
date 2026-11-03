@@ -39,13 +39,19 @@
 #define MAX_HOMES 8
 #define MAX_ACKS  32
 
-/* A resolved per-key expectation: the final op on this key and its outcome. */
+/* A resolved per-key expectation: the final op on this key and its outcome.
+ * "Latest" across nodes is REPLICATION order, not append order: a write in a
+ * higher master generation supersedes any write in a lower one, and within a
+ * generation the higher commit LSN wins.  Single-node entries have gen 0 and a
+ * monotonic LSN, so (gen, lsn) still orders them correctly. */
 struct keyexp {
 	char key[64];
 	char op;		/* 'p' put, 'd' del */
 	uint64_t vhash;		/* for put */
 	char dbname[64];
-	long seq;		/* global append order of the last op (latest wins) */
+	u_int32_t gen;		/* master generation of the winning op */
+	u_int32_t lfile, loff;	/* commit LSN of the winning op */
+	long lineno;		/* global append order, tiebreak for equal (gen,lsn) */
 	uint64_t txnkey;	/* TXNKEY of the last op; resolved to outcome later */
 	int outcome;		/* 0 ACK, 1 FAIL, 2 UNKNOWN */
 	struct keyexp *next;
@@ -56,8 +62,21 @@ struct keyexp {
  * passes one ack file per cycle), so cross-file txnids never collide. */
 struct txnout { uint64_t key; int outcome; struct txnout *next; };
 
+/* A put/del member op buffered until its `txn` line arrives, because the
+ * ordering key (gen, LSN) is on the txn line, which follows the member ops. */
+struct pending {
+	uint64_t txnkey;
+	char op;
+	char dbname[64];
+	char key[64];
+	uint64_t vhash;
+	long lineno;
+	struct pending *next;
+};
+
 static struct keyexp *keys = NULL;
 static struct txnout *txns = NULL;
+static struct pending *pend = NULL;
 static int violations = 0;
 static long g_lineno = 0;	/* global append order across all ack files */
 static int g_fileidx = 0;	/* which ack file we are parsing */
@@ -104,24 +123,63 @@ key_find(const char *dbname, const char *k)
 	return (NULL);
 }
 
-/* record an op on a key; the latest in GLOBAL append order wins. */
+/* (gen, lfile, loff, lineno) strictly greater than a key's current winner? */
+static int
+order_gt(u_int32_t gen, u_int32_t lf, u_int32_t lo, long ln,
+    const struct keyexp *e)
+{
+	if (gen != e->gen) return (gen > e->gen);
+	if (lf != e->lfile) return (lf > e->lfile);
+	if (lo != e->loff) return (lo > e->loff);
+	return (ln >= e->lineno);	/* tiebreak: later append wins */
+}
+
+/* record an op on a key; the latest in (gen, LSN) replication order wins. */
 static void
-key_record(long order, uint64_t txnkey, char op, const char *dbname,
-    const char *k, uint64_t vh)
+key_record(u_int32_t gen, u_int32_t lf, u_int32_t lo, long lineno,
+    uint64_t txnkey, char op, const char *dbname, const char *k, uint64_t vh)
 {
 	struct keyexp *e = key_find(dbname, k);
 	if (e == NULL) {
 		e = calloc(1, sizeof(*e));
 		snprintf(e->key, sizeof(e->key), "%s", k);
 		snprintf(e->dbname, sizeof(e->dbname), "%s", dbname);
-		e->seq = -1;
+		e->gen = 0; e->lfile = 0; e->loff = 0; e->lineno = -1;
 		e->next = keys; keys = e;
 	}
-	if (order >= e->seq) {
-		e->seq = order;
+	if (e->lineno == -1 || order_gt(gen, lf, lo, lineno, e)) {
+		e->gen = gen; e->lfile = lf; e->loff = lo; e->lineno = lineno;
 		e->op = op;
 		e->vhash = vh;
 		e->txnkey = txnkey;	/* resolved to an outcome after parsing */
+	}
+}
+
+/* buffer a member op until its txn line supplies (gen, LSN). */
+static void
+pend_add(uint64_t txnkey, char op, const char *dbname, const char *k,
+    uint64_t vh, long lineno)
+{
+	struct pending *p = calloc(1, sizeof(*p));
+	p->txnkey = txnkey; p->op = op; p->vhash = vh; p->lineno = lineno;
+	snprintf(p->dbname, sizeof(p->dbname), "%s", dbname);
+	snprintf(p->key, sizeof(p->key), "%s", k);
+	p->next = pend; pend = p;
+}
+
+/* on a txn line: finalize every buffered member op of this txn with the txn's
+ * (gen, LSN), then drop them from the pending list. */
+static void
+pend_flush(uint64_t txnkey, u_int32_t gen, u_int32_t lf, u_int32_t lo)
+{
+	struct pending **pp = &pend, *p;
+	while ((p = *pp) != NULL) {
+		if (p->txnkey == txnkey) {
+			key_record(gen, lf, lo, p->lineno, txnkey, p->op,
+			    p->dbname, p->key, p->vhash);
+			*pp = p->next; free(p);
+		} else
+			pp = &p->next;
 	}
 }
 
@@ -138,22 +196,46 @@ parse_acklog(const char *path)
 	}
 	while (fgets(line, sizeof(line), fp) != NULL) {
 		long seq; u_int32_t txnid;
-		char op[16], dbname[64], k[64], vhx[32], out[16];
-		int n = sscanf(line, "%ld %u %15s %63s %63s %31s %15s",
-		    &seq, &txnid, op, dbname, k, vhx, out);
+		char op[16], dbname[64], k[64], vhx[32], out[16], lsn[40], genf[40];
+		int n = sscanf(line, "%ld %u %15s %63s %63s %31s %15s %39s %39s",
+		    &seq, &txnid, op, dbname, k, vhx, out, lsn, genf);
 		if (n < 6) continue;
-		g_lineno++;	/* global append order, immune to per-run seq resets */
+		g_lineno++;	/* append order, tiebreak for equal (gen,LSN) */
 		if (strcmp(op, "txn") == 0) {
-			/* vhx field here is "-", out holds the outcome */
-			txn_set(TXNKEY(txnid), outcode(n >= 7 ? out : vhx));
+			/* vhx is "-", out holds the outcome; lsn is "<file>/<off>"
+			 * and genf is "gen=<n>" (both optional for single-node
+			 * entries, which have no replication order). */
+			u_int32_t gen = 0, lf = 0, lo = 0;
+			const char *outcome = (n >= 7) ? out : vhx;
+			if (n >= 8) sscanf(lsn, "%u/%u", &lf, &lo);
+			if (n >= 9 && strncmp(genf, "gen=", 4) == 0)
+				gen = (u_int32_t)strtoul(genf + 4, NULL, 10);
+			txn_set(TXNKEY(txnid), outcode(outcome));
+			pend_flush(TXNKEY(txnid), gen, lf, lo);
 		} else if (strcmp(op, "put") == 0) {
 			uint64_t vh = strtoull(vhx, NULL, 16);
-			key_record(g_lineno, TXNKEY(txnid), 'p', dbname, k, vh);
+			pend_add(TXNKEY(txnid), 'p', dbname, k, vh, g_lineno);
 		} else if (strcmp(op, "del") == 0) {
-			key_record(g_lineno, TXNKEY(txnid), 'd', dbname, k, 0);
+			pend_add(TXNKEY(txnid), 'd', dbname, k, 0, g_lineno);
 		}
 	}
 	fclose(fp);
+	/*
+	 * Any member op with no matching txn line (the process died between the
+	 * PENDING put and the txn line) is UNKNOWN by definition; finalize it
+	 * with gen/LSN 0 so it is recorded but never gates (rule 1 treats
+	 * UNKNOWN as either-way).  Flushing with a sentinel txnkey would miss
+	 * them, so record them directly here.
+	 */
+	{
+		struct pending *p;
+		while ((p = pend) != NULL) {
+			key_record(0, 0, 0, p->lineno, p->txnkey, p->op,
+			    p->dbname, p->key, p->vhash);
+			/* no txn line -> txn_find returns NULL -> UNKNOWN later */
+			pend = p->next; free(p);
+		}
+	}
 	g_fileidx++;	/* next ack file: a fresh txnid namespace */
 	return (0);
 }

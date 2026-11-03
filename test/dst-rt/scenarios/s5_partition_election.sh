@@ -104,23 +104,26 @@ echo "--- write on the new master $NEWM ---"
 [ -n "$NEWM" ] && ha_load_on "$NEWM" 200 "$((SEED+2))"
 
 # RFC S5: the minority master must stop acking.  repmgr reports this as
-# PERM_FAILED on the isolated old master; assert it fired for the
-# isolated-window writes.
+# PERM_FAILED on the isolated old master; rtnode then labels those commits
+# UNKNOWN (not ACK), so no isolated-window write is counted durable.  Assert
+# BOTH: PERM_FAILED fired, AND none of the isolated-window writes is ACK.
 PF_AFTER=$(grep -c perm_failed "$HA_RUN/ev.$OLD.log" 2>/dev/null); PF_AFTER=${PF_AFTER:-0}
+# count ACK txn lines the old master added AFTER the pre-partition point.
+ACK_AFTER_TOTAL=$(awk '$3=="txn" && $7=="ACK"' "$HA_RUN/ack.$OLD.log" 2>/dev/null | wc -l)
+ACK_BASELINE=$(head -n "$ACK_BEFORE" "$HA_RUN/ack.$OLD.log" 2>/dev/null | awk '$3=="txn" && $7=="ACK"' | wc -l)
+ISO_ACKS=$(( ACK_AFTER_TOTAL - ACK_BASELINE ))
+MINORITY_OK=1
 if [ "$PF_AFTER" -gt "$PF_BEFORE" ]; then
 	echo "minority check: $OLD reported PERM_FAILED $PF_BEFORE->$PF_AFTER (lost quorum): OK"
-	MINORITY_OK=1
 else
 	echo "VIOLATION (S5 minority): $OLD kept acking while isolated (no PERM_FAILED)"
 	MINORITY_OK=0
 fi
-# rtnode logs isolated-window commits as ACK even though QUORUM was not met
-# (see the notify to F1); those writes are legitimately not durable, so trim
-# the old master's ack log back to the pre-partition point before the oracle,
-# keeping only the genuinely-acked baseline.
-if [ "$ACK_BEFORE" -gt 0 ]; then
-	head -n "$ACK_BEFORE" "$HA_RUN/ack.$OLD.log" > "$HA_RUN/ack.$OLD.log.trim" 2>/dev/null \
-	    && mv "$HA_RUN/ack.$OLD.log.trim" "$HA_RUN/ack.$OLD.log"
+if [ "$ISO_ACKS" -le 0 ]; then
+	echo "minority check: $OLD labelled 0 isolated-window writes ACK (all UNKNOWN): OK"
+else
+	echo "VIOLATION (S5 minority): $OLD labelled $ISO_ACKS isolated-window writes ACK despite no quorum"
+	MINORITY_OK=0
 fi
 
 echo "--- heal; old master must step down and rejoin as a client ---"

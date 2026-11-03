@@ -107,11 +107,15 @@ _ha_launch_node() {
 	done
 	creator=""; [ "$first" = 1 ] && creator="--group-creator"
 	ackpol="--ack-policy $HA_ACKPOL"
+	# repmgr timeouts, us (RFC 0024 S4): rtnode is the source of truth and
+	# the reproduce line shows them.  A DB_CONFIG is still written above as a
+	# fallback; the command line wins.
+	local tmo="--hb-send ${HA_HB_SEND:-500000} --hb-mon ${HA_HB_MON:-1500000} --elect-to ${HA_ELECT_TO:-1000000} --conn-retry ${HA_CONN_RETRY:-1000000} --ack-to ${HA_ACK_TO:-1000000}"
 	net_run "$node" env LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
 	    "$BUILD/rtnode" --home "$home" --ctl "$HA_RUN/ctl.$node" \
 	    --ev "$HA_RUN/ev.$node.log" --node "$node" \
 	    --ack "$HA_RUN/ack.$node.log" \
-	    --site "$ip:$port" $peers $creator $ackpol $HA_EXTRA \
+	    --site "$ip:$port" $peers $creator $ackpol $tmo $HA_EXTRA \
 	    >>"$HA_RUN/out.$node" 2>&1 &
 }
 
@@ -299,7 +303,7 @@ ha_check_durability() {
 	for n in $HA_NODES; do
 		ack="$HA_RUN/ack.$n.log"
 		[ -f "$ack" ] || continue
-		acktxn=$(awk '$3=="txn" && $NF=="ACK"{print $2}' "$ack" | sort -u)
+		acktxn=$(awk '$3=="txn" && $7=="ACK"{print $2}' "$ack" | sort -u)
 		[ -n "$acktxn" ] || continue
 		acked_keys=$(awk 'NR==FNR{a[$1]=1;next} $3=="put" && ($2 in a){print $5}' \
 		    <(echo "$acktxn") "$ack" | sort -u)
@@ -313,7 +317,10 @@ ha_check_durability() {
 		done
 	done
 	rm -f "$dumpf"
-	if [ "$miss" = 0 ]; then
+	if [ "$nack" -eq 0 ]; then
+		echo "VIOLATION (vacuous): 0 ACKed keys to check -- the oracle verified nothing"
+		HA_VIOL=$((HA_VIOL + 1))
+	elif [ "$miss" = 0 ]; then
 		echo "rule 1 (durability, $nack ACKed keys present on surviving master $m): OK"
 	else
 		echo "VIOLATION (rule 1, durability): $miss of $nack ACKed keys MISSING on surviving master $m"
@@ -321,12 +328,11 @@ ha_check_durability() {
 	fi
 }
 
-# rtcheck across all homes for rules 1-3/7.  Missing-key (lost acked write),
-# recovery failure and DB->verify failure are HARD violations.  A value-only
-# mismatch ("has the wrong value") is currently ADVISORY: rtnode's per-batch
-# seq/txnid are not globally monotonic, so rtcheck's latest-wins picks the
-# wrong write for a key touched in two batches (reported to F1).  Key-presence
-# durability is covered independently by ha_check_durability.
+# rtcheck across all homes for rules 1-3/7.  Every violation it reports is a
+# HARD failure now that ack lines carry (gen, LSN) and rtcheck orders by it:
+# missing-key (lost acked write), a WRONG VALUE (a lost/overwritten write --
+# the whole point of the HA tests), recovery failure and DB->verify failure.
+# A vacuous pass (0 acked ops checked) is itself a failure.
 ha_check_rtcheck() {
 	local acks="" homes="" n
 	for n in $HA_NODES; do
@@ -334,17 +340,11 @@ ha_check_rtcheck() {
 		case " $HA_KILLED " in *" $n "*) continue;; esac
 		homes="$homes --home $HA_RUN/$n"
 	done
-	local out hard adv
+	local out
 	out=$(sudo env LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
 	    "$BUILD/rtcheck" $acks $homes 2>&1)
-	hard=$(echo "$out" | grep -E 'MISSING|durability\): ACKed|rule 3|rule 7|recovery open|cannot open|phantom' | grep -v 'value)' )
-	adv=$(echo "$out" | grep -c 'wrong value')
-	echo "$out" | grep -E '^PASS|^FAIL' | sed 's/^/  rtcheck: /'
-	[ "$adv" -gt 0 ] && echo "  rtcheck: $adv value-mismatch(es) ADVISORY (rtnode per-batch seq; see F1 note)"
-	if [ -n "$hard" ]; then
-		echo "$hard" | sed 's/^/  rtcheck HARD: /'
-		HA_VIOL=$((HA_VIOL + 1))
-	fi
+	echo "$out" | grep -E '^PASS|^FAIL|VIOLATION' | head -20 | sed 's/^/  rtcheck: /'
+	echo "$out" | grep -q '^PASS' || HA_VIOL=$((HA_VIOL + 1))
 }
 
 ha_oracle() {
