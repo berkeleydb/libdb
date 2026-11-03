@@ -23,12 +23,17 @@ set -u
 HA_DIR=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" && pwd)
 . "$HA_DIR/fi_env.sh"
 . "$HA_DIR/fi_net.sh"
+[ -f "$HA_DIR/fi_fiu.sh" ] && . "$HA_DIR/fi_fiu.sh"
 
 HA_PORT_BASE=${HA_PORT_BASE:-7000}
 HA_NODES=""            # node names, set by ha_group_up
 HA_RUN=""              # run dir (ctl/ev/ack live here)
 HA_ACKPOL="quorum"
 HA_KILLED=""           # names of nodes we killed (for the oracle)
+HA_FIU_NODE=""         # a node name to launch under a libfiu plan (S6)
+HA_FIU_PLAN=""         # the fi_fiu plan for that node
+HA_FIU_SEED=""         # FIU_PRNG_SEED for replay
+HA_FIU_PROB=""         # probability override
 
 # SKIP the whole scenario unless netns is usable.
 ha_need_netns() {
@@ -111,12 +116,28 @@ _ha_launch_node() {
 	# the reproduce line shows them.  A DB_CONFIG is still written above as a
 	# fallback; the command line wins.
 	local tmo="--hb-send ${HA_HB_SEND:-500000} --hb-mon ${HA_HB_MON:-1500000} --elect-to ${HA_ELECT_TO:-1000000} --conn-retry ${HA_CONN_RETRY:-1000000} --ack-to ${HA_ACK_TO:-1000000}"
-	net_run "$node" env LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
-	    "$BUILD/rtnode" --home "$home" --ctl "$HA_RUN/ctl.$node" \
-	    --ev "$HA_RUN/ev.$node.log" --node "$node" \
-	    --ack "$HA_RUN/ack.$node.log" \
-	    --site "$ip:$port" $peers $creator $ackpol $tmo $HA_EXTRA \
-	    >>"$HA_RUN/out.$node" 2>&1 &
+	# S6: one node may run under a libfiu I/O plan (fiu-run -x ... --).  The
+	# ack log is kept out of fault scope by the raw-syscall writer, so its
+	# own writes are never failed.  To keep the (nested) quoting of the
+	# fiu-run -c arguments sane, write the whole invocation to a per-node
+	# launch script and exec that inside the netns.
+	local fiu=""
+	if [ "$node" = "$HA_FIU_NODE" ] && [ -n "$HA_FIU_PLAN" ] && \
+	   command -v fi_fiu_cmd >/dev/null 2>&1; then
+		fiu=$(fi_fiu_cmd "$HA_FIU_PLAN" "${HA_FIU_SEED:-1}" "${HA_FIU_PROB:-}")
+	fi
+	local ls="$HA_RUN/launch.$node.sh"
+	{
+		echo "#!/bin/sh"
+		echo "export LD_LIBRARY_PATH='$LD_LIBRARY_PATH'"
+		# $fiu is either empty or "env ... fiu-run -x -c '...' -c '...'";
+		# append '--' when present so the node binary follows the plan.
+		if [ -n "$fiu" ]; then
+			printf '%s -- ' "$fiu"
+		fi
+		echo "'$BUILD/rtnode' --home '$home' --ctl '$HA_RUN/ctl.$node' --ev '$HA_RUN/ev.$node.log' --node '$node' --ack '$HA_RUN/ack.$node.log' --site '$ip:$port' $peers $creator $ackpol $tmo $HA_EXTRA"
+	} > "$ls"
+	net_run "$node" sh "$ls" >>"$HA_RUN/out.$node" 2>&1 &
 }
 
 # wait up to $2 s for NODE to report READY (startup sync done).
