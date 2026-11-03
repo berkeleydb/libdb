@@ -42,6 +42,7 @@ pub const DB_RENUMBER: u32 = 0x00000080;
 pub const DB_TXN_NOSYNC: u32 = 0x00000001;
 pub const DB_TXN_NOWAIT: u32 = 0x00000002;
 pub const DB_TXN_SNAPSHOT: u32 = 0x00000004;
+pub const DB_TXN_SERIALIZABLE: u32 = 0x00200000;
 pub const DB_TXN_SYNC: u32 = 0x00000008;
 pub const DB_TXN_WRITE_NOSYNC: u32 = 0x00000020;
 pub const DB_READ_UNCOMMITTED: u32 = 0x00000200;
@@ -106,6 +107,8 @@ pub const DB_SEQ_WRAP: u32 = 0x00000008;
 pub const DB_NOTFOUND: c_int = -30988;
 pub const DB_KEYEXIST: c_int = -30994;
 pub const DB_LOCK_DEADLOCK: c_int = -30993;
+pub const DB_SNAPSHOT_CONFLICT: c_int = -30968;
+pub const DB_SNAPSHOT_UNSAFE: c_int = -30967;
 pub const DB_BUFFER_SMALL: c_int = -30999;
 pub const DB_RUNRECOVERY: c_int = -30973;
 pub const DB_SECONDARY_BAD: c_int = -30972;
@@ -141,6 +144,7 @@ pub const all = [_]Entry{
     .{ .name = "DB_TXN_NOSYNC", .value = DB_TXN_NOSYNC },
     .{ .name = "DB_TXN_NOWAIT", .value = DB_TXN_NOWAIT },
     .{ .name = "DB_TXN_SNAPSHOT", .value = DB_TXN_SNAPSHOT },
+    .{ .name = "DB_TXN_SERIALIZABLE", .value = DB_TXN_SERIALIZABLE },
     .{ .name = "DB_TXN_SYNC", .value = DB_TXN_SYNC },
     .{ .name = "DB_TXN_WRITE_NOSYNC", .value = DB_TXN_WRITE_NOSYNC },
     .{ .name = "DB_READ_UNCOMMITTED", .value = DB_READ_UNCOMMITTED },
@@ -185,6 +189,8 @@ pub const all = [_]Entry{
     .{ .name = "DB_NOTFOUND", .value = DB_NOTFOUND },
     .{ .name = "DB_KEYEXIST", .value = DB_KEYEXIST },
     .{ .name = "DB_LOCK_DEADLOCK", .value = DB_LOCK_DEADLOCK },
+    .{ .name = "DB_SNAPSHOT_CONFLICT", .value = DB_SNAPSHOT_CONFLICT },
+    .{ .name = "DB_SNAPSHOT_UNSAFE", .value = DB_SNAPSHOT_UNSAFE },
     .{ .name = "DB_BUFFER_SMALL", .value = DB_BUFFER_SMALL },
     .{ .name = "DB_RUNRECOVERY", .value = DB_RUNRECOVERY },
     .{ .name = "DB_SECONDARY_BAD", .value = DB_SECONDARY_BAD },

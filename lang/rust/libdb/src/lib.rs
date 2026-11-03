@@ -88,6 +88,16 @@ pub enum Error {
     Deadlock,
     /// A lock was unavailable (`DB_NOWAIT` / a timeout).
     LockNotGranted,
+    /// Serializable snapshot isolation (SSI) aborted this transaction as the
+    /// pivot of a dangerous rw-antidependency structure. Like [`Deadlock`]:
+    /// abort and retry the whole transaction. [`Env::transact`] retries it.
+    /// Only occurs under `TxnOptions { serializable: true, .. }`.
+    ///
+    /// [`Deadlock`]: Error::Deadlock
+    SnapshotConflict,
+    /// Snapshot isolation could not be provided (e.g. the version a snapshot
+    /// transaction needs was already reclaimed). Retry the transaction.
+    SnapshotUnsafe,
     /// The environment panicked; it must be recovered.
     RunRecovery,
     /// A secondary index is corrupt.
@@ -107,6 +117,10 @@ impl std::fmt::Display for Error {
         match self {
             Error::Deadlock => write!(f, "deadlock (retry the transaction)"),
             Error::LockNotGranted => write!(f, "lock not granted"),
+            Error::SnapshotConflict =>
+                write!(f, "snapshot conflict: SSI aborted the pivot (retry the transaction)"),
+            Error::SnapshotUnsafe =>
+                write!(f, "snapshot unsafe (retry the transaction)"),
             Error::RunRecovery => write!(f, "panic: run recovery"),
             Error::SecondaryBad => write!(f, "secondary index corrupt"),
             Error::Db(c, m) | Error::Os(c, m) => write!(f, "{m} ({c})"),
@@ -137,6 +151,8 @@ fn check(code: c_int) -> Result<()> {
         0 => Ok(()),
         ffi::DB_LOCK_DEADLOCK => Err(Error::Deadlock),
         ffi::DB_LOCK_NOTGRANTED => Err(Error::LockNotGranted),
+        ffi::DB_SNAPSHOT_CONFLICT => Err(Error::SnapshotConflict),
+        ffi::DB_SNAPSHOT_UNSAFE => Err(Error::SnapshotUnsafe),
         ffi::DB_RUNRECOVERY => Err(Error::RunRecovery),
         ffi::DB_SECONDARY_BAD => Err(Error::SecondaryBad),
         c if c < 0 => Err(Error::Db(c, strerror(c))),
@@ -293,6 +309,16 @@ pub enum GetInto {
 pub struct TxnOptions {
     /// Use snapshot (MVCC) isolation for this transaction.
     pub snapshot: bool,
+    /// Use serializable snapshot isolation (SSI) for this transaction.
+    ///
+    /// This is the MVCC snapshot substrate plus Cahill rw-antidependency
+    /// detection: snapshot anomalies (write skew, the read-only-transaction
+    /// anomaly) are prevented. The pivot of a dangerous structure is aborted
+    /// at commit with [`Error::SnapshotConflict`]; retry the whole
+    /// transaction. Implies `snapshot`. Plain `snapshot` does *not* pay this
+    /// tracking cost and *does* admit SI anomalies, exactly as legacy
+    /// Berkeley DB.
+    pub serializable: bool,
     /// Do not block on a lock; fail instead of waiting.
     pub nowait: bool,
     /// Do not flush the log on commit (faster, less durable).
@@ -304,6 +330,9 @@ impl TxnOptions {
         let mut f = 0;
         if self.snapshot {
             f |= ffi::DB_TXN_SNAPSHOT;
+        }
+        if self.serializable {
+            f |= ffi::DB_TXN_SERIALIZABLE;
         }
         if self.nowait {
             f |= ffi::DB_TXN_NOWAIT;
@@ -446,8 +475,10 @@ impl Env {
 
     /// [`Env::transact`] with explicit transaction options (e.g. `nowait` so a
     /// blocked lock fails fast as a deadlock to retry, instead of waiting for
-    /// the deadlock detector). Both [`Error::Deadlock`] and
-    /// [`Error::LockNotGranted`] are treated as retryable.
+    /// the deadlock detector). [`Error::Deadlock`], [`Error::LockNotGranted`]
+    /// and the SSI aborts [`Error::SnapshotConflict`] / [`Error::SnapshotUnsafe`]
+    /// are all treated as retryable -- so a `serializable` transaction body is
+    /// retried on a pivot abort exactly as a deadlocked one is.
     pub fn transact_opts<F, T>(&self, retries: u32, opts: TxnOptions, mut body: F) -> Result<T>
     where
         F: FnMut(&Txn<'_>) -> Result<T>,
@@ -455,15 +486,24 @@ impl Env {
         let mut attempt = 0u32;
         loop {
             let txn = self.begin_opts(None, opts)?;
-            match body(&txn) {
-                Ok(val) => {
-                    txn.commit()?;
-                    return Ok(val);
-                }
-                Err(Error::Deadlock) | Err(Error::LockNotGranted) => {
+            // The body's result AND the commit can both raise a retryable
+            // abort (the SSI pivot check runs at commit time, so a clean body
+            // can still fail to commit with SnapshotConflict).
+            let outcome = match body(&txn) {
+                Ok(val) => match txn.commit() {
+                    Ok(()) => return Ok(val),
+                    Err(e) => Err(e), // txn already resolved by commit()
+                },
+                Err(e) => {
                     txn.abort()?;
+                    Err(e)
+                }
+            };
+            match outcome {
+                Err(Error::Deadlock) | Err(Error::LockNotGranted)
+                | Err(Error::SnapshotConflict) | Err(Error::SnapshotUnsafe) => {
                     if attempt >= retries {
-                        return Err(Error::Deadlock);
+                        return outcome;
                     }
                     attempt += 1;
                     // Jittered backoff so two symmetric contenders desynchronise
@@ -472,10 +512,8 @@ impl Env {
                     // real workload stays responsive.
                     backoff(attempt);
                 }
-                Err(e) => {
-                    txn.abort()?;
-                    return Err(e);
-                }
+                Err(e) => return Err(e),
+                Ok(_) => unreachable!(),
             }
         }
     }
@@ -686,6 +724,8 @@ pub mod flag {
     pub const TXN_NOSYNC: u32 = ffi::DB_TXN_NOSYNC;
     /// Default new transactions to snapshot (MVCC) isolation.
     pub const TXN_SNAPSHOT: u32 = ffi::DB_TXN_SNAPSHOT;
+    /// Default new transactions to serializable snapshot isolation (SSI).
+    pub const TXN_SERIALIZABLE: u32 = ffi::DB_TXN_SERIALIZABLE;
 }
 
 /// Cursor positioning opcodes, for [`Cursor::pget`].
