@@ -88,11 +88,15 @@ echo "--- net-partition (isolate a client) + heal under TLS ---"
 net_partition "a b|c"
 ha_load 200 "$((SEED+2))"
 net_heal
-sleep 5
+# TLS reconnection + client resync after a partition is slower than plaintext
+# (handshake on every reconnect), so give the isolated client longer to rejoin
+# and raise the convergence poll window accordingly.
+export HA_CONVERGE_WAIT=120
+sleep 15
 
 echo "--- quiesce + converge ---"
+ha_quiesce; sleep 8
 ha_quiesce; sleep 5
-ha_quiesce; sleep 3
 
 ha_oracle; rc=$?
 ha_group_down

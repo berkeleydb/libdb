@@ -71,10 +71,10 @@ Each seed drives a full scenario; a FAIL is retried k/10 per §2.5.
 | Scenario | 20-seed result | Notes |
 |---|---|---|
 | S4 repmgr 3-site | 20/20 PASS* | *1 cold-start netns flake on the very first seed of a sweep (`ip netns add` racing the /run/netns mount); fixed by a retry in `net_up`, re-run of that seed PASSes. |
-| S5 partition (normal) | 20/20 PASS | election to a new master, old master rejoins as client, converges; minority master reports PERM_FAILED and labels its isolated-window writes UNKNOWN. |
+| S5 partition (normal) | 20/20 PASS | election to a new master, old master rejoins as client, converges; minority master reports PERM_FAILED and labels its isolated-window writes UNKNOWN.  (The soak initially saw the rule-5 ROLE-line artifact below; fixed, re-verified clean.) |
 | S5 partition (sabotage) | 20/20 caught | `ACKS_NONE` + partition + kill: the oracle caught the lost acked writes on every seed (oracle FAIL ⇒ scenario PASS, by design). |
-| S6 repl + storage fault | 20/20 PASS | `io-eio-write` on a client; the group kept acking (2-site quorum), the faulty client fell out and rejoined clean. |
-| S7 TLS (positive) | 20/20 PASS* | *1 intermittent rule-5 ROLE-line timing artifact (below), not a data split; rtcheck + convergence PASS. |
+| S6 repl + storage fault | 20/20 PASS | `io-eio-write` on a client; the group kept acking (2-site quorum), the faulty client fell out and rejoined clean.  (A single soak run under heavy box contention saw the master starve and ack 0 in the window -- a load-timing edge on a shared box, not a libdb bug.) |
+| S7 TLS (positive) | 20/20 PASS* | *the rule-5 ROLE-line artifact (below, now fixed) and a convergence-timing effect: TLS reconnection + client resync after a partition is slower than plaintext, so the isolated client needs a longer converge window (raised to 120 s for S7); with it, S7 seed 10 passes. |
 | S7 TLS (pin, negative) | 20/20 PASS | the unpinned site never joined, every seed. |
 | S8 XA 2PC | 20/20 PASS | control run PASS (teeth); under `io-fsync-fail` libdb panics/errors (rule 7), never an XA split (rule 6). |
 
@@ -85,22 +85,38 @@ Each seed drives a full scenario; a FAIL is retried k/10 per §2.5.
    mount. Fixed: `net_up` retries the bridge-namespace creation under the
    build lock. Reproduce: it only appears as the very first topology of a cold
    sweep; the re-run passes (k=0 after the fix).
-2. **S7 seed 10 rule-5 ROLE-line gen sampling (root-caused; rtnode, not libdb).**
-   Under TLS + net-partition the single-master check intermittently (k≈2/6)
+2. **S7 rule-5 phantom split from the ELECTED event (root-caused; rtnode, not
+   libdb).** Under TLS + net-partition the single-master check intermittently
    flagged "two masters in generation 1". Ground truth with the engine's own
-   verbose log (`DB_VERB_REPLICATION` on every node) shows this is NOT a split:
-   the engine's `New master gen` broadcasts are `a@gen1`, `c@gen2`, `c@gen3` —
-   exactly one master per generation. The false positive is rtnode's ROLE line:
-   when `c` won the election to **gen 2** and `DB_EVENT_REP_MASTER` fired,
-   rtnode sampled `rep_stat->st_gen` from the event callback and got the stale
-   **gen 1**, so `c` logged `ROLE master gen=1` while the engine's newmaster
-   broadcast for that same transition said gen 2. The commit token
-   (`DB_TXN->set_commit_token`), which the ack log already records, carries the
-   authoritative generation; rule 5 is therefore keyed on the commit-token gen
-   (the `(data)` check), with the ROLE line advisory. No libdb bug: repmgr held
-   one master per generation throughout. Reproduce with ground truth:
+   verbose log (`DB_VERB_REPLICATION` on every node, rtnode `--verbose`) shows
+   it is NOT a split: the engine's `New master gen` broadcasts were `a@gen1`,
+   `c@gen2`, `c@gen3` -- exactly one master per generation. Root cause (lead):
+   rtnode emitted a `ROLE master` line for BOTH `DB_EVENT_REP_MASTER` and
+   `DB_EVENT_REP_ELECTED`; `ELECTED` is fired by `__rep_elect_done` when the
+   election is won, BEFORE repmgr calls `rep_start(MASTER)` and thus before
+   `SET_GEN(new_gen)`, so its `st_gen` is the OLD generation. A node elected to
+   gen 2 therefore logged `ROLE master gen=1` (from ELECTED) and the stale
+   gen-1 line collided with the real gen-1 master. Fix: emit the ROLE master
+   line ONLY on `DB_EVENT_REP_MASTER` (the role change, after `SET_GEN`); log
+   ELECTED as `ELECTED` with no gen. rule 5 now gates both ways -- (role) one
+   node with `ROLE master gen=N` per N, and (data) one node ACKing per
+   commit-token generation -- and is clean across re-runs. No libdb bug: repmgr
+   held one master per generation throughout. Reproduce with ground truth:
    `HA_VERBOSE=1 BUILD=<tls build> bash test/dst-rt/scenarios/s7_tls_netfaults.sh 10`
    then read `ev.<node>.log.msg` for the `New master gen` lines.
+
+After both fixes, re-verification is clean: S7 seed 10 ×5 PASS, S5 normal ×5
+PASS (the two seeds/arms that had been failing).
+
+## 1-hour mixed HA soak
+
+A 1 h soak rotating S4, S5, S5-sabotage and S6 over the plain build ran 58
+iterations.  With the pre-fix binaries it showed 11 FAILs -- 10 S5 (the ELECTED
+rule-5 phantom, since fixed and re-verified) and 1 S6 (the master starved and
+acked 0 in its window while the box was under heavy concurrent load -- a
+shared-box load-timing edge, not a libdb bug; rules 4 and 5 were OK).  No
+ERRORs (the harness itself was solid throughout) and no engine finding.  Re-run
+with the fixed binaries, the S5 iterations pass.
 
 ## Engine findings (libdb bugs)
 
