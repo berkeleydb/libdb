@@ -107,6 +107,17 @@ it lands.  Given the native path is clean, this is low priority.
 The S1 kill+recovery durability check (incl. the `--nosync` sabotage) runs on
 the native arm now.
 
+**Resolution for the harness (lead decision 2026-11): NO engine fix.**  Changing
+engine code to satisfy a tool that forces O_DIRECT on files libdb keeps
+buffered on purpose is not worth the risk.  F1-001 stays a documented finding.
+Instead the S1 preload arm uses a tiny test-only shim,
+`test/dst-rt/tools/directio_match.c`, an `open`/`openat` LD_PRELOAD that sets
+O_DIRECT only for paths matching `$DIRECTIO_MATCH` (default `*.db`).  Combined
+with the loader's `--direct` (native `DB_LOG_DIRECT`) for the log, the preload
+arm now runs uncached over the data+log files AND the utilities
+(db_verify/db_recover/db_backup, which never take DB_DIRECT_DB), without
+tripping the buffered-region writes.  `s1-preload-directio` PASSES.
+
 ---
 
 ### F1-002 (tool note, not a libdb bug): libumem `UMEM_DEBUG=default` aborts on the dev box
@@ -137,17 +148,6 @@ is the audit backtraces, which are diagnostic, not detection.
 **libdb result under redzone+contents checking:** CLEAN over an 800-op
 transactional workload -- no redzone corruption, no use-after-free, no
 fill-pattern violation.  rtcheck verifies the data afterwards.
-
-**Resolution for the harness (lead decision 2026-11): NO engine fix.**  Changing
-engine code to satisfy a tool that forces O_DIRECT on files libdb keeps
-buffered on purpose is not worth the risk.  F1-001 stays a documented finding.
-Instead the S1 preload arm uses a tiny test-only shim,
-`test/dst-rt/tools/directio_match.c`, an `open`/`openat` LD_PRELOAD that sets
-O_DIRECT only for paths matching `$DIRECTIO_MATCH` (default `*.db`).  Combined
-with the loader's `--direct` (native `DB_LOG_DIRECT`) for the log, the preload
-arm now runs uncached over the data+log files AND the utilities
-(db_verify/db_recover/db_backup, which never take DB_DIRECT_DB), without
-tripping the buffered-region writes.  `s1-preload-directio` PASSES.
 
 ### F1-003 (tool, not a libdb bug): libumem `UMEM_DEBUG=default` HANGS on the GitHub Ubuntu 26.04 runner
 
