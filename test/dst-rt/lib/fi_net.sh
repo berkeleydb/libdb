@@ -44,6 +44,11 @@ FN_NET3=$(( _fn_hash & 0xff ))
 FN_SUBNET="10.${FN_NET2}.${FN_NET3}"
 FN_BRNS="${FN_PREFIX}-br"
 FN_BR="br0"
+# veth names must be < IFNAMSIZ (15) AND unique per run; a truncated prefix
+# (dstrt-s4-1) is not unique across seeds (s4-1 vs s4-10), so use a short hex
+# tag from the run hash: fv<4hex>-h-<node>.
+FN_TAG=$(printf 'fv%04x' $(( _fn_hash & 0xffff )))
+FN_LOCK="${TMPDIR:-/tmp}/dstrt-netns.lock"
 FN_TC="${FN_TC:-tc}"
 command -v "$FN_TC" >/dev/null 2>&1 || FN_TC=/sbin/tc
 FN_NFT="${FN_NFT:-nft}"
@@ -78,14 +83,18 @@ net_run_br() { sudo ip netns exec "$FN_BRNS" "$@"; }
 # made removes every link too.  We also sweep by prefix in case net_up died
 # half-built.  Never fails the caller.
 net_down() {
+	(
+	flock 9
 	local ns
 	for ns in $(ip netns list 2>/dev/null | awk '{print $1}' | grep "^${FN_PREFIX}-" 2>/dev/null); do
 		sudo ip netns del "$ns" 2>/dev/null || true
 	done
-	# veth half-pairs can briefly outlive a ns on error; sweep by prefix.
-	for l in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | sed 's/@.*//' | grep "^${FN_PREFIX:0:12}" 2>/dev/null); do
+	# veth half-pairs can briefly outlive a ns on error; sweep by this run's
+	# unique veth tag (NOT a truncated prefix, which would hit other runs).
+	for l in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | sed 's/@.*//' | grep "^${FN_TAG}-" 2>/dev/null); do
 		sudo ip link del "$l" 2>/dev/null || true
 	done
+	) 9>"$FN_LOCK"
 	return 0
 }
 
@@ -118,6 +127,13 @@ net_up() {
 	FN_NODES=$(echo $names)
 	_fn_install_trap
 
+	# Serialize the namespace+veth build across concurrent runs: `ip netns
+	# add` races on the shared /run/netns mount ("Invalid netns value" / the
+	# bridge ns silently missing) when two sweeps build topologies at once.
+	# The lock is held only for the fast build, so long run phases still
+	# overlap.  flock on an fd; released when the subshell ends.
+	(
+	flock 9
 	# Bridge namespace with one bridge.
 	sudo ip netns add "$FN_BRNS"
 	net_run_br ip link add "$FN_BR" type bridge
@@ -127,8 +143,8 @@ net_up() {
 	local node ns hveth cveth ip
 	for node in $FN_NODES; do
 		ns=$(_fn_nsname "$node")
-		hveth="${FN_PREFIX:0:10}-h-${node}"   # bridge side (keep < IFNAMSIZ 15)
-		cveth="${FN_PREFIX:0:10}-c-${node}"   # node side
+		hveth=$(_fn_hveth "$node")   # bridge side (< IFNAMSIZ 15, unique/run)
+		cveth=$(_fn_cveth "$node")   # node side
 		ip=$(net_ip "$node")
 		sudo ip netns add "$ns"
 		# veth pair: one end stays, one end goes into the node ns.
@@ -147,11 +163,13 @@ net_up() {
 	done
 	# Enable nftables in the bridge ns for asymmetric drops (best effort).
 	net_run_br sysctl -q -w net.bridge.bridge-nf-call-iptables=0 2>/dev/null || true
+	) 9>"$FN_LOCK"
 	return 0
 }
 
 # Name of the bridge-side veth for a node (where egress-to-node netem lives).
-_fn_hveth() { echo "${FN_PREFIX:0:10}-h-$1"; }
+_fn_hveth() { echo "${FN_TAG}-h-$1"; }
+_fn_cveth() { echo "${FN_TAG}-c-$1"; }
 
 # --- netem fault injection ---------------------------------------------------
 # netem is applied on the node side eth0 root qdisc (egress from the node) and
