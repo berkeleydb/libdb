@@ -157,6 +157,9 @@ run_scenario() {
 	return 0
 }
 
+# DSTRT_HA_ONLY=1 runs ONLY the HA section below (the CI `ha` job wants S4/S5,
+# not the single-node set).
+if [ "${DSTRT_HA_ONLY:-0}" != 1 ]; then
 for scen in $SCENARIOS; do
 	_seeds="$SEEDS"
 	case $scen in
@@ -168,6 +171,7 @@ for scen in $SCENARIOS; do
 		run_scenario "$scen" "$seed" || overall=1
 	done
 done
+fi
 
 # --- F2: HA + XA scenarios (S4-S8) ------------------------------------------
 # These drive multi-process repmgr groups in network namespaces (S4-S7) and the
@@ -207,7 +211,7 @@ run_ha_scenario() {
 	return 0
 }
 
-if [ "${DSTRT_HA:-0}" = 1 ]; then
+if [ "${DSTRT_HA:-0}" = 1 ] || [ "${DSTRT_HA_ONLY:-0}" = 1 ]; then
 	echo "== HA/XA scenarios (F2) =="
 	case $TIER in
 	nightly|soak) HA_SET="s4_repmgr_netfaults.sh s5_partition_election.sh s6_repl_storage_fault.sh s7_tls_netfaults.sh s8_xa_faults.sh" ;;
