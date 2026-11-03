@@ -88,6 +88,7 @@
 #define	__db_dbbackup_pp __db_dbbackup_pp@DB_VERSION_UNIQUE_NAME@
 #define	__db_dbbackup __db_dbbackup@DB_VERSION_UNIQUE_NAME@
 #define	__db_backup_pp __db_backup_pp@DB_VERSION_UNIQUE_NAME@
+#define	__db_cursor_cache_serial __db_cursor_cache_serial@DB_VERSION_UNIQUE_NAME@
 #define	__db_cursor_cache_get __db_cursor_cache_get@DB_VERSION_UNIQUE_NAME@
 #define	__db_cursor_cache_discard __db_cursor_cache_discard@DB_VERSION_UNIQUE_NAME@
 #define	__db_cursor_cache_refresh_enter __db_cursor_cache_refresh_enter@DB_VERSION_UNIQUE_NAME@

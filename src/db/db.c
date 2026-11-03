@@ -573,6 +573,13 @@ __env_setup(dbp, txn, fname, dname, id, flags)
 		dbp->adj_fileid = ldbp->adj_fileid;
 		TAILQ_INSERT_AFTER(&env->dblist, ldbp, dbp, dblistlinks);
 	}
+	/*
+	 * RFC 0021: give the handle a process-local, never-reused serial so the
+	 * per-thread transient-cursor cache can tell this live handle from a
+	 * freed one reusing its heap address.  Assigned under mtx_dblist, before
+	 * the handle is reachable to any cache validator walking dblist.
+	 */
+	dbp->cursor_cache_gen = __db_cursor_cache_serial();
 	MUTEX_UNLOCK(env, env->mtx_dblist);
 
 	return (0);
@@ -923,7 +930,7 @@ __db_refresh(dbp, txn, flags, deferred_closep, reuse)
 	 * The refresh-enter/leave bracket stops THIS thread's re-entrant
 	 * __dbc_close from re-caching the cursors it is destroying.
 	 */
-	__db_cursor_cache_discard();
+	__db_cursor_cache_discard(env, dbp);
 	__db_cursor_cache_refresh_enter();
 	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
 		while ((dbc =
