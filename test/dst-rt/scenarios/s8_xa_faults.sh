@@ -68,8 +68,10 @@ classify() {
 	if echo "$out" | grep -qE "(xa_recover|xa_matrix): PASS"; then
 		echo PASS; return
 	fi
-	# a panic / XA error from the injected fault is the RFC-expected safe path.
-	if echo "$out" | grep -qiE "DB_RUNRECOVERY|PANIC|XAER_RMERR|xa_rollback|xa_commit.*RMERR|run database recovery"; then
+	# a panic / XA error / surfaced I/O error from the injected fault is the
+	# RFC-expected safe path: libdb returned the error or panicked rather than
+	# report a durable commit it did not make.
+	if echo "$out" | grep -qiE "DB_RUNRECOVERY|PANIC|XAER_RMERR|xa_rollback|xa_commit.*RMERR|run database recovery|Input/output error|BDB0151|fsync|EIO"; then
 		echo SAFE-ERROR; return
 	fi
 	echo OTHER

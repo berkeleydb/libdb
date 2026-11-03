@@ -357,46 +357,14 @@ ha_check_convergence() {
 	fi
 }
 
-# rule 1 at the key level, independent of rtcheck (teeth even if rtcheck is
-# unavailable, and the check that gives the S5 sabotage arm its teeth).  Every
-# key an ACK log marks ACKed -- from ANY node, since a failed-over write was
-# acked on the old master -- MUST be present in the SURVIVING master's
-# converged data.  A lost acked write (e.g. ACKS_NONE + partition + kill) shows
-# up here as a missing key.  Value-hash matching is rtcheck's job.
-ha_check_durability() {
-	local m; m=$(ha_master)
-	[ -n "$m" ] || { echo "note: no master for durability check"; return; }
-	local dumpf miss=0 nack=0 k n ack acktxn acked_keys
-	dumpf=$(mktemp)
-	net_run "$m" env LD_LIBRARY_PATH="$LD_LIBRARY_PATH" \
-	    "$BUILD/db_dump" -p -h "$HA_RUN/$m" rt.db 2>/dev/null > "$dumpf"
-	for n in $HA_NODES; do
-		ack="$HA_RUN/ack.$n.log"
-		[ -f "$ack" ] || continue
-		acktxn=$(awk '$3=="txn" && $7=="ACK"{print $2}' "$ack" | sort -u)
-		[ -n "$acktxn" ] || continue
-		acked_keys=$(awk 'NR==FNR{a[$1]=1;next} $3=="put" && ($2 in a){print $5}' \
-		    <(echo "$acktxn") "$ack" | sort -u)
-		for k in $acked_keys; do
-			[ -n "$k" ] || continue
-			nack=$((nack + 1))
-			grep -qxF " $k" "$dumpf" || {
-				miss=$((miss + 1))
-				[ "$miss" -le 5 ] && echo "  lost acked key (from $n): $k"
-			}
-		done
-	done
-	rm -f "$dumpf"
-	if [ "$nack" -eq 0 ]; then
-		echo "VIOLATION (vacuous): 0 ACKed keys to check -- the oracle verified nothing"
-		HA_VIOL=$((HA_VIOL + 1))
-	elif [ "$miss" = 0 ]; then
-		echo "rule 1 (durability, $nack ACKed keys present on surviving master $m): OK"
-	else
-		echo "VIOLATION (rule 1, durability): $miss of $nack ACKed keys MISSING on surviving master $m"
-		HA_VIOL=$((HA_VIOL + 1))
-	fi
-}
+# NOTE: an earlier shell-level rule-1 durability check (ha_check_durability)
+# was removed.  It could not do the (gen, LSN) replication ordering rtcheck
+# does, so when a key was written across batches/nodes it misattributed the
+# winner and produced FALSE durability violations (rtcheck PASSed the same
+# runs).  rtcheck is the authority for rules 1-3/7 (it orders HA entries by
+# (gen, LSN), matches the value hash, and FAILs a vacuous 0-acked run); the
+# shell oracle below keeps only rules 4 (convergence) and 5 (single master),
+# which are cross-home comparisons rtcheck does not do.
 
 # rtcheck across all homes for rules 1-3/7.  Every violation it reports is a
 # HARD failure now that ack lines carry (gen, LSN) and rtcheck orders by it:
@@ -421,7 +389,6 @@ ha_oracle() {
 	HA_VIOL=0
 	ha_check_single_master
 	ha_check_convergence
-	ha_check_durability
 	ha_check_rtcheck
 	if [ "$HA_VIOL" = 0 ]; then
 		echo "ORACLE: PASS"
