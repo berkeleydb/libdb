@@ -489,6 +489,7 @@ db	run_curadj_dup_partition
 db	run_cursorcache_adjust
 db	run_cursorcache_orphan
 db	run_cursorcache_parkcost
+db	run_cursorcache_envuaf
 db	run_s7_stat_truth
 db	run_s3_mpool_counters
 db	run_s4_mvcc_mtx_reuse
