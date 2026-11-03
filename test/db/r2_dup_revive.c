@@ -65,6 +65,7 @@
 #define	FILLSZ	200
 #define	NFILL	14
 #define	NOFF	300
+#define	NOFF2	3000
 
 static int nfail;
 
@@ -240,9 +241,11 @@ run(const char *base, int id, u_int32_t dflags, int ndup, int delall,
 
 	/* The duplicate set under "abc": data "000".."NNN". */
 	for (i = 0; i < ndup; i++) {
+		int vn;
+
 		setdbt(&k, okey, keylen);
-		snprintf(vb, sizeof(vb), "%03d", i);
-		setdbt(&v, vb, 3);
+		vn = snprintf(vb, sizeof(vb), "m%06d", i);
+		setdbt(&v, vb, (size_t)vn);
 		chk(d->put(d, t, &k, &v, 0), "put member");
 	}
 
@@ -407,6 +410,17 @@ main(int argc, char **argv)
 				run(base, id++, df, 3, 1, pin, txn, 3, 0);
 				run(base, id++, df, NOFF, 1, pin, txn, 3, 0);
 			}
+		if (df == DB_DUPSORT)
+			break;
+	}
+
+	/*
+	 * A TALL off-page tree (NOFF2 members span several dup pages, so the
+	 * tree gains an internal level): the all-deleted walk must descend it.
+	 * No env keeps it quick; the 300-member cases already cover recovery.
+	 */
+	for (df = DB_DUP; ; df = DB_DUPSORT) {
+		run(base, id++, df, NOFF2, 1, 1, 0, 3, 0);
 		if (df == DB_DUPSORT)
 			break;
 	}

@@ -3116,14 +3116,15 @@ __bam_opd_alldel(dbc, root, allp)
 		if ((ret = __memp_fget(mpf, &pgno,
 		    dbc->thread_info, dbc->txn, 0, &h)) != 0)
 			return (ret);
-		if (TYPE(h) == P_IBTREE || TYPE(h) == P_IRECNO) {
+		if (TYPE(h) == P_IBTREE)
 			pgno = GET_BINTERNAL(dbp, h, 0)->pgno;
-			if ((ret = __memp_fput(mpf,
-			    dbc->thread_info, h, dbc->priority)) != 0)
-				return (ret);
-			continue;
-		}
-		break;
+		else if (TYPE(h) == P_IRECNO)
+			pgno = GET_RINTERNAL(dbp, h, 0)->pgno;
+		else
+			break;
+		if ((ret = __memp_fput(mpf,
+		    dbc->thread_info, h, dbc->priority)) != 0)
+			return (ret);
 	}
 	for (;;) {
 		for (i = 0; i < NUM_ENT(h); i += O_INDX)
