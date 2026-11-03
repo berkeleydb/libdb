@@ -158,3 +158,35 @@ moves the bottleneck to legitimate work. Raw data `p1b-ab.tsv`, profiles
 - A1–A4 + A6 ASan-clean; A7 epoch race under **TSan** PASS with zero races on the
   epoch/serial globals (the prototype's race is gone).
 - TCL btree+hash test001–010: 20/20 PASS.
+
+---
+
+## Re-measurement after the live-handle-registry fix (P1b rework, 2026-11-03)
+
+Review of the first fix found a cross-thread ENV use-after-free (rev238_a10):
+the stale-slot validator dereferenced a slot's ENV, which can be freed when the
+thread that closes a handle is not the one that cached a cursor on it.  The
+rework replaces the `env->dblist` liveness check with a process-global
+live-handle registry (keyed `(dbp, cursor_cache_gen)`, one process mutex, no
+env); reconcile and eviction validate against the registry only, dereferencing
+nothing.  The registry mutex is taken on an **epoch change** (a handle closed),
+on **open** and on **close** -- never per `DB->get`.  This section re-measures
+the read win to confirm the rework did not add a hot-path lock.
+
+Same host/method as above (`c6id.metal`, 6 interleaved reps, `batch_bench
+indiv 1000000 1`, 10 s cells; `base` = fork point `e1fe5c2c4`, `branch` = the
+reworked fix, `cache-off` = same binary with `DB_NO_CURSOR_CACHE=1`).
+
+| t | base (k/s) | CV% | branch (k/s) | CV% | cache-off (k/s) | CV% | br/base | br/off | base p99 µs | branch p99 µs |
+|---|-----------|-----|--------------|-----|-----------------|-----|---------|--------|-------------|---------------|
+| 1 | 517,026 | 1.0 | 546,892 | 0.8 | 514,076 | 0.9 | 1.06× | 1.06× | 2.0 | 2.0 |
+| 16 | 1,307,876 | 2.2 | 1,489,628 | 1.8 | 1,314,154 | 2.4 | 1.14× | 1.13× | 16.4 | 8.2 |
+| 32 | 1,649,375 | 3.4 | 1,924,697 | 4.0 | 1,610,175 | 2.8 | 1.17× | 1.20× | 24.6 | 16.4 |
+| 64 | 1,510,169 | 7.9 | 2,281,464 | 8.6 | 1,599,098 | 4.1 | **1.51×** | 1.43× | 65.5 | 32.8 |
+| 96 | 976,010 | 1.1 | 2,814,246 | 7.8 | 1,005,420 | 2.4 | **2.88×** | 2.80× | 262.1 | 49.1 |
+
+**The win is intact: 2.88× at t=96, 1.51× at t=64** -- statistically identical
+to the pre-registry fix (2.81× / 1.39-1.53×, within the t=64 cell's run-to-run
+noise).  `cache-off` still tracks `base` at every point, so the registry adds no
+per-get cost, confirming the structural fact that the hot path takes no registry
+mutex.  Raw data `results/cursor-cache-p1b/p1b-registry-ab.tsv`.

@@ -125,9 +125,9 @@ fallback that simply disables the cache). The structure:
 ```c
 /* Process-local; one per thread.  NOT in the shared region. */
 struct __dbc_cache_entry {
-	ENV      *env;		/* Owning env (liveness oracle: env->dblist). */
-	DB       *dbp;		/* Owning handle (identity key; never deref'd
-				 * once stale -- validated via dblist). */
+	DB       *dbp;		/* Owning handle (identity key; NEVER deref'd
+				 * once possibly stale -- validated only via
+				 * the live-handle registry). */
 	DBC      *dbc;		/* The idle cached cursor, on dbp's active queue. */
 	DBTYPE    dbtype;
 	u_int32_t gen;		/* dbp->cursor_cache_gen when cached (ABA). */
@@ -187,52 +187,55 @@ reachable for reclamation (it stays on the handle's active queue, which
 `__db_refresh` walks and destroys at handle close) and makes a *stale* slot — one
 whose handle was closed — a safe non-event, never a dangling dereference.
 
-The mechanism is a process-global **epoch** used purely as a **change signal**,
-not a validity stamp (the distinction is the fix for review #238's BLOCKER —
-see the box below), plus a per-handle, never-reused **serial**.
+The mechanism is a process-global **epoch** used purely as a **change signal**
+(not a validity stamp — the distinction is the fix for review #238's BLOCKER,
+see the box below), a per-handle never-reused **serial**, and a process-global
+**live-handle registry** that is the single source of truth for "is this slot's
+handle still open?" — consulted without ever dereferencing a slot's `DB *` or
+`ENV *`.
 
-- **DB handle close** (`__db_close` / `__db_refresh`): `__db_refresh` already
-  walks `cq_parts[].active_queue` and destroys every cursor there under
-  `CQ_LOCK`. A cached-but-idle cursor **is on that active queue**, so this
-  closed handle's cached cursors are destroyed by the existing walk. In
-  addition, `__db_cursor_cache_discard(env, dbp)` (called from `__db_refresh`
-  before the walk) does two things:
-  1. **Clears the *closing* thread's own slots for `dbp`.** The closing thread
-     is in the one place it can safely touch its own TLS, so it drops its slots
-     for this handle eagerly. This guarantees **no slot ever outlives its env**:
-     by the time an env's last handle closes, the closing thread holds no slot
-     for any of that env's handles, so a later reconcile never dereferences a
-     freed `env`.
-  2. **Bumps the global epoch** so every *other* thread learns that *something*
-     closed and reconciles its own slots (below).
+- **DB handle close** (`__db_close` / `__db_refresh`): `__db_refresh` walks
+  `cq_parts[].active_queue` and destroys every cursor there under `CQ_LOCK`; a
+  cached-but-idle cursor **is on that active queue**, so this closed handle's
+  cached cursors are destroyed by the existing walk. Before that walk (and
+  before the unlocked active-queue resync probe), `__db_cursor_cache_discard`:
+  1. **Removes the handle from the registry** (`(dbp, serial)`, under the
+     registry mutex). This happens-before the cursor teardown, so a concurrent
+     reconcile on another thread either already finished moving the cached
+     cursor to the free queue (the registry mutex serialises it) or now sees
+     the handle as closed and leaves its queues alone. After discard returns,
+     only the closing thread touches this handle's queues.
+  2. **Clears the closing thread's own slots for `dbp`** (its own cached
+     cursors are about to be destroyed).
+  3. **Bumps the global epoch** so every *other* thread reconciles its slots.
 - **Other threads' slots** (the cross-thread case): a thread does not clear its
   slots at another handle's close; instead, the next time it touches the cache
-  it notices the epoch moved and **reconciles** (`__dbc_cache_reconcile`): for
-  each occupied slot it asks `__dbc_cache_handle_live(env, dbp, serial)` —
-  walking `env->dblist` under `mtx_dblist` and matching the serial — and
-  - **live** → keeps the slot (the cached cursor is still valid and reusable);
-  - **closed** → drops the slot pointer (the cursor was already destroyed by
-    that handle's `__db_refresh`), never dereferencing the dangling `dbp`.
+  it notices the epoch moved and **reconciles** (`__dbc_cache_reconcile`) under
+  the registry mutex. For each occupied slot it asks
+  `__dbc_cache_handle_live(dbp, serial)` — a pure registry lookup — and
+  - **live** → keeps the slot (the cached cursor is still valid and reusable),
+    or on thread exit returns the cursor to the handle's free queue;
+  - **closed** → drops the slot, dereferencing nothing (the cursor was already
+    destroyed by that handle's `__db_refresh`).
 - **Environment close / `DB_ENV->close`:** handles close first (the contract
-  forbids using a handle during env close), so handle-close clears the closing
-  thread's slots for each of the env's handles (job 1 above). No slot survives
-  into env teardown, so reconcile's `env->mtx_dblist` access is always on a live
-  env.
+  forbids using a handle during env close), and each handle close removed its
+  registry entry. A stale slot naming a handle in a since-freed env is simply
+  **not found** in the registry, so it is dropped without touching the freed
+  `DB`/`ENV` — this is the fix for review #238's cross-thread env
+  use-after-free (rev238_a10), where the earlier `env->dblist` validation
+  dereferenced a slot's freed `ENV`.
 - **failchk** (`__env_failchk`): operates on the **shared region** thread-info
   of *dead* processes/threads; the process-local cache of a dead process dies
   with its address space, so there is nothing for failchk to clean in the cache.
-- **Thread exit (now implemented):** a pthread-key destructor
-  (`__dbc_cache_thread_exit`, armed the first time a thread touches the cache,
-  where pthreads back the mutexes) runs **in the exiting thread** and reconciles
-  all its slots with the free-queue action: a still-live handle's cached cursor
-  is returned to that handle's free queue under `CQ_LOCK`; a closed handle's
-  slot is dropped. This replaces the earlier "leave them parked until handle
-  close" behaviour, which review #238 (concern 2) measured as a real write-path
-  regression — a churning thread pool piled inert cursors on the active queue
-  and every insert walked them (up to 2.3× slower at 256 exited threads). On
-  platforms with TLS but no pthreads (WIN32 mutexes, Solaris LWP) the destructor
-  is absent and the pre-fix parked-until-close behaviour remains — correct, just
-  without the proactive flush.
+- **Thread exit (implemented):** a pthread-key destructor
+  (`__dbc_cache_thread_exit`, armed the first time a thread touches the cache)
+  runs **in the exiting thread** and reconciles all its slots with the
+  free-queue action: a still-live handle's cached cursor is returned to that
+  handle's free queue under `CQ_LOCK`; a closed handle's slot is dropped. This
+  replaces the earlier "leave them parked until handle close" behaviour, which
+  review #238 (concern 2) measured as a real write-path regression — a churning
+  thread pool piled inert cursors on the active queue and every insert walked
+  them (up to 2.3× slower at 256 exited threads).
 
 > **Why a process-wide epoch as a *validity stamp* was the BLOCKER.** The first
 > implementation treated the epoch as "is my slot still valid?": a close of
@@ -242,31 +245,50 @@ see the box below), plus a per-handle, never-reused **serial**.
 > orphan walked by every later insert, unbounded. Measured: one thread doing
 > get-on-H plus open/close-of-T for 20 k cycles made inserts on H 237× slower
 > and added 32.7 MB. The fix is to treat the epoch only as a *change signal* and
-> decide each slot's fate individually by handle liveness, so a live handle's
+> decide each slot's fate individually by registry lookup, so a live handle's
 > slot is kept, never orphaned.
 
 #### 4a. Telling a live slot from a stale one (the stale-slot design)
 
-A stale slot holds a dangling `DB *` (its handle closed and the memory may be
-freed or reused). We must never dereference it. Two facts make the decision
-safe and cheap:
+A stale slot holds a dangling `DB *` whose `ENV *` may also be freed. We must
+never dereference either. The decision rests on three things:
 
-1. **A per-handle, never-reused serial.** `DB` carries `cursor_cache_gen`,
-   assigned at open from a process-global atomic counter
-   (`__db_cursor_cache_serial`) under `mtx_dblist`. A slot stores the serial it
-   saw. Validation walks `env->dblist` for the slot's `dbp` **pointer** and
-   requires the live handle's `cursor_cache_gen` to equal the stored serial.
-   This defeats ABA: if the closed handle's heap address is reused by a later
-   `DB`, the pointer may match but the serial will not, so the slot is dropped.
-   The `dbp` itself is never dereferenced during validation — only handles
-   *found live in `dblist`* are read.
+1. **A process-global live-handle registry.** A small linked list of
+   `(dbp pointer, serial)` for every currently-open handle, under one process
+   mutex (`__dbc_reg_mtx`) that lives in no env (a `pthread_mutex_t`).
+   `DB->open` adds (`__db_cursor_cache_register`); `__db_refresh` removes
+   (`__db_cursor_cache_discard`) **before** the handle's cursors are destroyed.
+   Validation is a registry lookup that dereferences **nothing** in the slot: a
+   "live" result means the handle is open, so for as long as the caller holds
+   the registry mutex both the handle and its env are valid and may be touched
+   (e.g. to return the cursor to the handle's free queue).
 
-2. **The epoch gates when validation runs.** Walking `dblist` takes
-   `mtx_dblist`, so it must stay off the per-op hot path. It runs **only when
-   the epoch moved** since this thread last looked — i.e. once per observed
-   handle close, not once per `DB->get`. On the overwhelmingly common path (no
-   handle closed recently) the epoch is unchanged and the cache take is a plain
-   TLS array scan with no mutex, exactly as fast as the first prototype.
+   > The earlier design validated against `slot->env->dblist`, resting on the
+   > claim "no slot outlives its env". That is false when the thread that
+   > **closes** a handle is not the one that **cached** a cursor on it — the
+   > normal pool-worker case. The registry removes the env dereference entirely.
+
+2. **A per-handle, never-reused serial.** `DB` carries `cursor_cache_gen`,
+   assigned at open from a process-global atomic counter. The registry entry and
+   the slot both carry it. It defeats ABA: if a freed `DB`'s heap address is
+   reused by a later open, the pointer may match an old slot but the serial will
+   not, so the lookup misses and the slot is dropped.
+
+3. **The epoch gates when validation runs.** Taking the registry mutex and
+   walking the registry must stay off the per-op hot path. It runs **only when
+   the epoch moved** since this thread last looked — once per observed handle
+   close, not once per `DB->get`. On the common path (no handle closed recently)
+   the epoch is unchanged and the cache take is a plain TLS array scan with no
+   mutex. The cache-hit path for the handle the caller is *currently* operating
+   on never validates at all: that handle is held open by the caller, so it is
+   live by definition. (Measured: the registry adds no per-get cost — the read
+   win is unchanged, §Prototype.)
+
+**Lock order.** The registry mutex is a leaf: `DB->open` and `__db_refresh`
+take it holding no cursor-queue or dblist mutex; reconcile and the put-path
+eviction take it and then, only for a confirmed-live slot, `CQ_LOCK`
+(registry → `CQ_LOCK`). Nothing takes `CQ_LOCK` then the registry mutex, so
+there is no inversion.
 
 Both the epoch and the serial counter are `db_atomic_t` read/incremented with
 `atomic_read`/`atomic_inc`, so the cross-thread epoch read is ordered against
@@ -333,16 +355,16 @@ and the new `run_cursorcache_adjust.sh` with a sabotage arm).
 
 - **`DB`:** gains one field, `u_int32_t cursor_cache_gen`, the per-handle
   never-reused serial (§4a). It is assigned at open from a process-global
-  atomic counter and read only when validating a cache slot against
-  `env->dblist`. **`sizeof(DB)` is unchanged (1744 on LP64):** the field lands
-  in the 4-byte alignment hole that already existed between `adj_fileid`
-  (offset 128) and the next pointer `log_filename` (offset 136), so it costs no
-  extra bytes. `DB` is **not** in `env_sig.c` (it is a process-local handle, not
-  a region struct), so even had it grown this would be ABI-only, not a region
-  change; as it stands it is neither — `handle_sizes` passes unchanged and no
-  escape token is needed. (The process-global epoch and serial counters are
-  file-static `db_atomic_t` in `src/db/db_cam.c`, not in any struct and not in
-  `env_sig.c`.)
+  atomic counter, recorded in the live-handle registry, and matched when
+  validating a cache slot. **`sizeof(DB)` is unchanged (1744 on LP64):** the
+  field lands in the 4-byte alignment hole that already existed between
+  `adj_fileid` (offset 128) and the next pointer `log_filename` (offset 136),
+  so it costs no extra bytes. `DB` is **not** in `env_sig.c` (it is a
+  process-local handle, not a region struct), so even had it grown this would
+  be ABI-only, not a region change; as it stands it is neither — `handle_sizes`
+  passes unchanged and no escape token is needed. (The process-global epoch,
+  serial counter, registry list and its mutex are all file-static in
+  `src/db/db_cam.c`, not in any struct and not in `env_sig.c`.)
 - **`DBC`:** unchanged. The cache stores a `DBC *`, it does not add fields to the
   cursor.
 - **`DB_THREAD_INFO`:** unchanged (it is a shared-region struct; see North-star).
@@ -358,6 +380,12 @@ public flag, no `db.h` regeneration and no ABI surface. It is the A/B and
 bisection lever and the safety valve if a workload hits the eligibility edge.
 Default: cache **on** for `DB_THREAD` handles in a threaded env; **off**
 otherwise (non-threaded handles are never cached).
+
+The cache is compiled in only on a **pthreads or hybrid** mutex backend, which
+is where `__thread` TLS, a `pthread_key` destructor, and a `pthread_mutex` for
+the registry are all available together. The default autoconf build is hybrid,
+so the mainstream library has the cache; niche backends (pure TAS assembly,
+UI-threads, Solaris LWP, WIN32) compile it out and behave exactly like master.
 
 ### 8. Tests
 
@@ -390,12 +418,19 @@ otherwise (non-threaded handles are never cached).
   time on a shared handle before vs after 256 worker threads fill their cache
   slots and exit. **FAIL if the ratio > 1.5.** Pre-fix: ~2.1 at 256 threads;
   fixed: ~1.0.
+- **New `test/db/run_cursorcache_envuaf.sh`** (+ `cursorcache_envuaf.c`): the
+  review #238 rework reproducer (rev238_a10), built with ASan when available.
+  A worker caches a cursor on H in env E and stays alive; the main thread
+  closes H and E; the worker then either exits (pthread-key destructor
+  reconciles) or opens a new env and gets (check_epoch reconciles).  Pre-fix
+  (the first fix): heap-use-after-free in `__dbc_cache_handle_live` on both
+  arms; the registry fix: clean.
 - **Diagnostic tier:** `BUILD=<dir> bash ../test/db/run_all.sh` with
   `--enable-diagnostic`.
 - **ASan/TSan adversarial (review #238):** A1 (adjustment+del+verify), A2
-  (fork), A3 (lock-accounting+secondary), A4 (thread-exit+reopen), A6 (CDB) all
-  pass ASan-clean branch==master; A7 (epoch race) passes under TSan with **zero**
-  races on the epoch or serial globals.
+  (fork), A3 (lock-accounting+secondary), A4 (thread-exit+reopen), A6 (CDB),
+  a9 (orphan), a10 (env-UAF) all pass ASan-clean; A7 (epoch race) passes under
+  TSan with **zero** races on the epoch, serial or registry state.
 - **TCL:** `run_method -btree test001..010` and `-hash` (cursor-reuse,
   dup/opd, secondary, and delete-adjust coverage).
 
@@ -429,15 +464,23 @@ otherwise (non-threaded handles are never cached).
   and tearing down/rebuilding the txn link at release/acquire (§3).
 - **Handle close across threads (the review #238 BLOCKER).** A close of any
   handle must not strand a live handle's cached cursor. Addressed by the
-  epoch-as-change-signal + per-handle-serial reconcile (§4, §4a): the closing
-  thread clears its own slots; other threads reconcile on the next op, keeping
-  live slots and dropping only closed ones. Tested by `run_cursorcache_orphan`.
+  epoch-as-change-signal + registry reconcile (§4, §4a): the closing thread
+  removes the handle from the registry and clears its own slots; other threads
+  reconcile on the next op, keeping live slots and dropping only closed ones.
+  Tested by `run_cursorcache_orphan`.
+- **Cross-thread env use-after-free (review #238 rework, rev238_a10).** A slot
+  must never dereference its `DB`/`ENV` once the handle may be closed by another
+  thread. Addressed by the process-global live-handle registry (§4a): liveness
+  is a registry lookup that dereferences nothing. Tested by
+  `run_cursorcache_envuaf` (ASan, both the thread-exit and env-reuse reconcile
+  paths).
 - **Thread exit (the review #238 concern 2).** Addressed by the pthread-key
   destructor that returns an exiting thread's live cached cursors to their free
   queues (§4). Tested by `run_cursorcache_parkcost`.
 - **Epoch data race (review #238 concern 1).** Addressed by making the epoch and
-  serial counters `db_atomic_t` (atomic_read/atomic_inc). Verified under TSan
-  (§8): zero races on either global.
+  serial counters `db_atomic_t` (atomic_read/atomic_inc); the registry is under
+  its own process mutex. Verified under TSan (§8): zero races on the epoch,
+  serial or registry state.
 - **Resolved — the `DB->cursor_cache_gen` field (former open question).** The
   field is present and simpler than the earlier field-free scheme; it costs no
   bytes (fits existing padding, §6) and is not a region field, so there is no
