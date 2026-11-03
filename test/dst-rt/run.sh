@@ -169,13 +169,60 @@ for scen in $SCENARIOS; do
 	done
 done
 
-# Optionally fan out F2's HA scenarios (owned by F2; invoked only on request).
+# --- F2: HA + XA scenarios (S4-S8) ------------------------------------------
+# These drive multi-process repmgr groups in network namespaces (S4-S7) and the
+# XA harness (S8).  They emit their own `SX PASS/FAIL` line and exit 0 (pass),
+# 1 (fail) or 77 (skip) -- they do not write the harness.sh results file -- so
+# we gate on the exit code and apply the same §2.5 k/10 retry.  Run only when
+# asked (DSTRT_HA=1), because they need sudo/netns (S4-S7) and a TLS/XA build
+# (S7/S8); each SKIPs cleanly when its prerequisites are absent.
+#
+# Which HA scenarios: the PR tier runs S4 and S5 (short); nightly runs S4-S8.
+# S5 also has a sabotage arm (it must CATCH lost writes), driven here too.
+# S7 needs BUILD to point at a --enable-tls build; S8 at a test/xa-harness
+# build -- they SKIP otherwise, so a single BUILD runs what it can.
+run_ha_scenario() {
+	_scen=$1 _seed=$2; shift 2
+	_script="$DSTRT_DIR/scenarios/$_scen"
+	[ -f "$_script" ] || { echo "  $_scen: NO SCRIPT"; return 0; }
+	echo "  == $(basename "$_scen") seed=$_seed $* =="
+	_log=$(mktemp)
+	sh "$_script" "$_seed" "$@" > "$_log" 2>&1
+	_rc=$?
+	sed 's/^/    /' "$_log"; rm -f "$_log"
+	[ "$_rc" -eq 77 ] && { echo "  $(basename "$_scen") seed=$_seed: SKIP"; return 0; }
+	[ "$_rc" -eq 0 ] && return 0
+	# k/10 retry (§2.5)
+	echo "  $(basename "$_scen") seed=$_seed: FAILED, retrying up to $RETRY (k/N)"
+	_k=0 _i=0
+	while [ "$_i" -lt "$RETRY" ]; do
+		_i=$(( _i + 1 ))
+		sh "$_script" "$_seed" "$@" >/dev/null 2>&1
+		_rr=$?
+		[ "$_rr" -ne 0 ] && [ "$_rr" -ne 77 ] && _k=$(( _k + 1 ))
+	done
+	echo "  $(basename "$_scen") seed=$_seed: reproduced k=$_k/$RETRY"
+	[ "$_k" -ge 1 ] && { echo "  CONFIRMED FAILURE (k>=1) -- see FINDINGS.md"; return 1; }
+	echo "  FLAKE (k=0 on retry), logged for triage"
+	return 0
+}
+
 if [ "${DSTRT_HA:-0}" = 1 ]; then
-	for haj in "$DSTRT_DIR"/scenarios/s4_*.sh "$DSTRT_DIR"/scenarios/s5_*.sh; do
-		[ -f "$haj" ] || continue
+	echo "== HA/XA scenarios (F2) =="
+	case $TIER in
+	nightly|soak) HA_SET="s4_repmgr_netfaults.sh s5_partition_election.sh s6_repl_storage_fault.sh s7_tls_netfaults.sh s8_xa_faults.sh" ;;
+	*)            HA_SET="s4_repmgr_netfaults.sh s5_partition_election.sh" ;;
+	esac
+	for haj in $HA_SET; do
 		for seed in $SEEDS; do
-			echo "  == $(basename "$haj") seed=$seed (HA, F2) =="
-			sh "$haj" "$seed" 2>&1 | sed 's/^/    /' || overall=1
+			run_ha_scenario "$haj" "$seed" || overall=1
+			# S5 and S7 have a second arm that must also hold.
+			case $haj in
+			s5_partition_election.sh)
+				run_ha_scenario "$haj" "$seed" --sabotage || overall=1 ;;
+			s7_tls_netfaults.sh)
+				run_ha_scenario "$haj" "$seed" --pin || overall=1 ;;
+			esac
 		done
 	done
 fi
