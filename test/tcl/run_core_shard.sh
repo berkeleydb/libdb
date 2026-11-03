@@ -39,7 +39,13 @@ set -u
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$HERE/../harness.sh"
 
-TCLSH=${TCLSH:-tclsh}
+TCLSH=${TCLSH:-}
+if [ -z "$TCLSH" ]; then
+	if command -v tclsh >/dev/null 2>&1; then TCLSH=tclsh
+	elif command -v tclsh8.6 >/dev/null 2>&1; then TCLSH=tclsh8.6
+	else echo "run_core_shard.sh: no tclsh found" >&2; exit 2
+	fi
+fi
 TCL_TIMEOUT=${TCL_TIMEOUT:-1200}
 
 # shard_tests SHARD -- print the shard's work, one "runner method test" per line.

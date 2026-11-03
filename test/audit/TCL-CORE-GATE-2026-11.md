@@ -64,6 +64,26 @@ without any gating job noticing.
 
 ## Shard timings
 
-Measured on the dev box (c6i.8xlarge, Debian 12, `--enable-diagnostic`); see the
-PR body for the table. Each shard is well under the 30-minute job timeout and
-the ~20-minute target.
+Measured on the dev box (c6i.8xlarge, Debian 12, 32 vCPU, `--enable-diagnostic`,
+tclsh8.6), each shard run clean (no orphaned processes), gated with
+`check_manifest.sh --tier tcl-core-<shard>` (all OK):
+
+| shard | cells | time | verdict |
+|---|---|---|---|
+| btree | 18 | 75 s | 18 pass |
+| hash | 18 | 76 s | 18 pass |
+| recno | 18 | 18 s | 18 pass |
+| recd-btree | 10 | 894 s (14.9 min) | 10 pass |
+| recd-hash | 10 | 893 s (14.9 min) | 10 pass |
+| sdb | 12 | 45 s | 12 pass |
+
+The `recd` shards are the long poles (recd001 and recd003 on each method run
+many child-process recovery sub-ops: recd001-hash alone is ~370 s, recd003-hash
+~356 s; the rest are under 70 s). They are under the ~20-minute target; the
+ci.yml job timeout is 45 minutes to leave headroom on a slower hosted runner.
+The method and sdb shards are well under two minutes.
+
+Note on measurement: this dev box kills session-backgrounded processes on ssh
+disconnect, which once left an orphaned `run_core_shard.sh` appending to a
+results file and produced a spurious doubled/failed recd-hash set. Run under
+`systemd-run --user --scope`, each shard is clean and passes.
