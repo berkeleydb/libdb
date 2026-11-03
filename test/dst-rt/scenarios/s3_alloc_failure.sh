@@ -55,13 +55,23 @@ if fi_have faint && command -v setarch >/dev/null 2>&1; then
 	_home="$RUN/faint/home"; mkdir -p "$_home"
 	# FAINT disables ASLR (needs setarch -R) and profiles, then injects one
 	# fault per call site.  Bounded workload so the sweep stays short.
-	out=$(setarch -R "$FAINT_BIN" "$BUILD/rtload" --home "$_home" \
+	# Bounded: the sweep takes < 1 s on the dev box.  A hang (seen on the
+	# Ubuntu 26.04 runner, 41 min until the job was cancelled) must be a
+	# visible verdict, not a silently cancelled job.  -k: SIGKILL if the
+	# SIGTERM is ignored by a child FAINT forked.
+	out=$(timeout -k 10 "${S3_FAINT_TIMEOUT:-120}" setarch -R "$FAINT_BIN" \
+	    "$BUILD/rtload" --home "$_home" \
 	    --ack "$RUN/faint.ack" --node f --seed "$SEED" \
 	    --ops 20 --keys 10 --valsz 100 2>&1)
+	_frc=$?
 	echo "$out" | grep -iE "injection position|Crashed at|Unique crashes" | sed 's/^/    /'
 	crashes=$(echo "$out" | sed -n 's/.*Crashed at \([0-9]*\) from.*/\1/p')
 	positions=$(echo "$out" | sed -n 's/.*Found \([0-9]*\) different.*/\1/p')
-	if [ "${positions:-0}" = 0 ]; then
+	if [ "$_frc" = 124 ] || [ "$_frc" = 137 ]; then
+		echo "    FAIL: FAINT did not finish in ${S3_FAINT_TIMEOUT:-120}s (hung)"
+		echo "$out" | tail -8 | sed 's/^/      | /'
+		hi_emit s3-faint fail; rc=1
+	elif [ "${positions:-0}" = 0 ]; then
 		echo "    SKIP: FAINT found no injection positions"
 		hi_emit s3-faint skip
 	elif [ "${crashes:-0}" = 0 ]; then
@@ -118,7 +128,7 @@ if fi_have umem; then
 	UMODE=default
 	_probe=$(mktemp); printf 'int main(void){void*p=__builtin_malloc(16);__builtin_free(p);return 0;}\n' > "$_probe.c"
 	if "${CC:-cc}" -O0 "$_probe.c" -o "$_probe" 2>/dev/null; then
-		if ! LD_PRELOAD="$UMEM_SO" UMEM_DEBUG=default "$_probe" >/dev/null 2>&1; then
+		if ! timeout -k 5 30 env LD_PRELOAD="$UMEM_SO" UMEM_DEBUG=default "$_probe" >/dev/null 2>&1; then
 			UMODE=guards,contents
 			echo "    note: UMEM_DEBUG=default aborts a trivial program on this"
 			echo "          host (audit limitation); using UMEM_DEBUG=guards,contents"
@@ -127,12 +137,20 @@ if fi_have umem; then
 	rm -f "$_probe" "$_probe.c"
 
 	_home="$RUN/umem/home"; mkdir -p "$_home"
-	LD_PRELOAD="$UMEM_SO" UMEM_DEBUG="$UMODE" UMEM_OPTIONS=abort \
+	# Every libumem run is bounded: on the Ubuntu 26.04 runner this arm hung
+	# until the 45-minute job limit cancelled it, leaving no verdict.
+	timeout -k 10 "${S3_UMEM_TIMEOUT:-180}" env LD_PRELOAD="$UMEM_SO" \
+	    UMEM_DEBUG="$UMODE" UMEM_OPTIONS=abort \
 	    "$BUILD/rtload" --home "$_home" --ack "$RUN/umem.ack" --node u \
 	    --seed "$SEED" --ops 800 --keys 100 --valsz 200 >/dev/null 2>&1
 	urc=$?
-	if [ "$urc" = 0 ]; then
-		out2=$(LD_PRELOAD="$UMEM_SO" UMEM_DEBUG="$UMODE" "$BUILD/rtcheck" \
+	if [ "$urc" = 124 ] || [ "$urc" = 137 ]; then
+		echo "    FAIL: rtload under libumem (UMEM_DEBUG=$UMODE) did not finish"
+		echo "          in ${S3_UMEM_TIMEOUT:-180}s (hung)"
+		hi_emit s3-umem fail; rc=1
+	elif [ "$urc" = 0 ]; then
+		out2=$(timeout -k 10 "${S3_UMEM_TIMEOUT:-180}" env \
+		    LD_PRELOAD="$UMEM_SO" UMEM_DEBUG="$UMODE" "$BUILD/rtcheck" \
 		    --home "$_home" --ack "$RUN/umem.ack" 2>&1)
 		echo "$out2" | sed 's/^/    /'		# prints acked/failed/unknown counts
 		if echo "$out2" | grep -q '^PASS'; then
@@ -169,10 +187,13 @@ CEOF
 	# Use the SAME mode the s3-umem arm settled on, so the teeth match the
 	# detection actually in force.
 	UMODE=${UMODE:-guards,contents}
-	sout=$(LD_PRELOAD="$UMEM_SO" UMEM_DEBUG="$UMODE" UMEM_OPTIONS=abort \
-	    "$RUN/sab_oob" 2>&1)
+	sout=$(timeout -k 5 30 env LD_PRELOAD="$UMEM_SO" UMEM_DEBUG="$UMODE" \
+	    UMEM_OPTIONS=abort "$RUN/sab_oob" 2>&1)
 	src2=$?
-	if [ "$src2" != 0 ] || echo "$sout" | grep -qiE "redzone|modified|buffer|corrupt"; then
+	if [ "$src2" = 124 ] || [ "$src2" = 137 ]; then
+		echo "    FAIL: the sabotage program hung under libumem"
+		hi_emit s3-umem-sabotage fail; rc=1
+	elif [ "$src2" != 0 ] || echo "$sout" | grep -qiE "redzone|modified|buffer|corrupt"; then
 		echo "    umem (UMEM_DEBUG=$UMODE) caught the planted heap overflow (teeth)"
 		hi_emit s3-umem-sabotage pass
 	else
