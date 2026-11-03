@@ -11,11 +11,16 @@ except as a control.
 
 ## Verdict
 
-**Production-ready on B-tree** once this PR's fix ships: the qualification found
-one real correctness defect (a cross-leaf write-skew miss) and fixed it, with a
-standing regression gate; the full checklist is green on B-tree and the fix is
-backported to the LTS line. Hash stays qualified only through `ssi006` pending
-two separate pre-existing issues. Full reasoning in §Verdict at the end.
+**NOT production-ready: a second write-skew miss is under investigation.** The
+qualification found and fixed one cross-leaf write-skew miss (the `lock.c`
+self-upgrade fix in this PR — real, keep it), but a **second, distinct miss
+remains**: `test_ssi_cycle` with several records per leaf (`CYC_VALPAD=200`)
+reports committed non-serializable histories under `DB_TXN_SERIALIZABLE`, at 2
+and at 16 threads, on `master` and on this branch. The second miss is
+**pre-existing on `master` and on the LTS line** and is being root-caused and
+fixed separately (workstream S2, branch `fix/ssi-second-miss`). Until that
+lands, `DB_TXN_SERIALIZABLE` must be labelled **experimental**. Full reasoning
+in §Verdict at the end.
 
 ## The checklist
 
@@ -118,21 +123,36 @@ Evidence (dev box, `c6i.8xlarge`, 32 vCPU, Debian 12, `--enable-diagnostic`):
 | GC-pressure gate, crash-pivot gate | PASS |
 | soak (resource bounds) | PASS, `lock_lockers` slope ≤ +1.12/1000 txns |
 
-**Deliverable (a) status: FAIL found, FIXED, PASS.** The isolation tier is a
-standing regression gate (`ssi_multiread_skew` at both partition counts).
+**Deliverable (a) status: a second miss remains — FAIL.** The first miss
+(cross-leaf, `ssi_multiread_skew`) is fixed and is a standing regression gate at
+both partition counts. But the Adya checker (`test_ssi_cycle`) finds a **second,
+distinct** committed anomaly under `DB_TXN_SERIALIZABLE` with several records
+per leaf (`CYC_VALPAD=200`): 2/20 seeds at 2 threads and 5/6 at 16 threads on
+`master`, 2/20 and 3/6 on this branch (Hash also fails, 3/4 at 16 threads). This
+is a correctness FAIL, not an oracle artifact (see below).
 
-**Oracle caveat (recorded for honesty).** Berkeley DB keeps MVCC versions per
-*page*, not per record. The Adya checker's stamp oracle models a reader's
-version per *key*, which is faithful only at ~1 record per leaf; with many
-records per leaf it can report a cycle that is a page-granularity artifact, not
-a logical anomaly (the deterministic `ssi_multiread_skew`, which carries the
-authoritative teeth, prevents the skew in every same-leaf and cross-leaf
-configuration). The checker therefore defaults to ~1 record/leaf. Two
-**separate, pre-existing** issues were noted and are *not* caused by this fix
-and *not* SSI: (i) Hash under concurrent MVCC writers can hang even under plain
-`DB_TXN_SNAPSHOT`; (ii) the checker itself can segfault at 3 seeds under a
-single lock partition. Both are flagged for follow-up and do not affect the SSI
-correctness verdict.
+**The oracle is sound — a reported cycle is a real anomaly.** An earlier draft
+of this report claimed that with many records per leaf the per-key stamp oracle
+"can report a cycle that is a page-granularity artifact". That reasoning is
+**wrong** and is withdrawn:
+
+- read-from is exact — the reader records the producer's unique stored tag, so
+  it names the precise version it saw;
+- per-key version order is exact — it is commit order, taken under the oracle's
+  lock, with page write locks and first-committer-wins serialising the writers
+  of a page;
+- therefore a cycle in the per-key DSG is a genuine non-serializable history
+  (Adya), independent of page granularity;
+- page-granularity MVCC can only make SSI **more** conservative (more aborts);
+  it can never cause the oracle to report a cycle that is not there.
+
+So the checker is a real correctness oracle at any `CYC_VALPAD`, and defaulting
+to ~1 record per leaf merely **hid** the realistic many-records-per-leaf case.
+The VALPAD=200 run is now wired into the isolation tier (advisory /
+expected-fail until the S2 fix lands). Two *separate* issues noted, not caused
+by this PR and not the second miss: (i) Hash under concurrent MVCC writers can
+hang even under plain `DB_TXN_SNAPSHOT`; (ii) the checker itself can segfault at
+3 seeds under a single lock partition. Both are flagged for follow-up.
 
 ---
 
@@ -182,24 +202,27 @@ Already measured in `test/bench/SSI-FALSE-ABORT-2026-09.md`. Summary and
 application guidance here; this report does not re-run the full sweep (the
 measurement stands) but states what an application should expect.
 
-**The number.** On a realistic read-modify-write workload, essentially the
-entire SSI abort rate is a **page-granularity artifact**, and the rate ranges
-from ~0% to **11.4%** of transactions purely by how many records fit on a leaf:
+**The number.** On a realistic read-modify-write workload the SSI abort rate
+rises sharply with how many records fit on a leaf — from ~0% to **11.4%** of
+transactions purely by page size:
 
-| pagesize | records/leaf | SSI abort rate (uniform RMW) | of which false |
-|---:|---:|---:|---:|
-| 512 | 4.0 | 0.000% | n/a |
-| 1 024 | 10.0 | 0.018% | ~100% |
-| 4 096 | 44.9 | 0.294% | ~100% |
-| 8 192 | 90.9 | 1.101% | ~100% |
-| 16 384 | 183.5 | 3.880% | ~100% |
-| 32 768 | 370.4 | 11.352% | ~100% |
+| pagesize | records/leaf | SSI abort rate (uniform RMW) |
+|---:|---:|---:|
+| 512 | 4.0 | 0.000% |
+| 1 024 | 10.0 | 0.018% |
+| 4 096 | 44.9 | 0.294% |
+| 8 192 | 90.9 | 1.101% |
+| 16 384 | 183.5 | 3.880% |
+| 32 768 | 370.4 | 11.352% |
 
-The decisive control (decoy vs split: same empty logical conflict graph,
-differ only in whether read keys and write keys share a leaf) attributes ~100%
-of those aborts to page sharing. The rate is a function of **records-per-leaf**
-and collapses to exactly 0 the moment the read key and the write key stop
-sharing a leaf.
+The decoy-vs-split control shows the rate is driven by read keys and write keys
+sharing a leaf. The 2026-09 report attributed ~100% of those aborts to page
+sharing (i.e. "false"); that interpretation is **no longer safe to assert**
+while a genuine detection miss remains open (S2), because the same page
+granularity that over-aborts in one direction can under-detect in another. The
+abort-rate *magnitude* stands as a measurement; the "~100% false" label is held
+pending the S2 fix. The rate is a function of records-per-leaf and collapses
+toward 0 as the read key and the write key stop sharing a leaf.
 
 **What an application should expect, and how to reduce it.**
 
@@ -314,28 +337,32 @@ them is a *correctness* failure; they are performance / expectation items.
 
 ## Verdict
 
-**SSI (`DB_TXN_SERIALIZABLE`) is production-ready for B-tree, with the one
-correctness defect this qualification found now fixed; its label can move from
-experimental to production once the fix ships.** The qualification found a real
-bug — on a multi-level B-tree, SSI silently admitted a cross-leaf write skew —
-and it is fixed (a one-hunk logic fix in `src/lock/lock.c`, no format/ABI
-change), with a FAIL-before / PASS-after regression gate
-(`test/isolation/ssi_multiread_skew`, 20–40/40 skews before, 0/40 after) that
-runs in the isolation tier at both lock-partition counts. The full checklist is
-now green on B-tree: correctness (a) incl. the new Adya cycle checker, crash
-safety (b), resource bounds (c, no #137 regression), the false-abort rate is
-measured with documented mitigation (d), the API is reachable from all six
-bindings (e), and the docs state the semantics, retry rule and MVCC×optread
-interaction (f). The fix is backported to `lts/2026.10.7`
-(`backport/2026.10.7/ssi-crosspage`), where gates L1–L4 and the soak pass
-(region signature unchanged `0xe67a9de8`, handle sizes unchanged, FAIL-before/
-PASS-after confirmed, cherry-pick `-x` trailer present).
+**SSI (`DB_TXN_SERIALIZABLE`) is NOT production-ready: a second write-skew miss
+remains.** This qualification found and fixed one real correctness defect — a
+cross-leaf write skew on a multi-level B-tree (the one-hunk `src/lock/lock.c`
+self-upgrade fix in this PR, no format/ABI change, with the FAIL-before /
+PASS-after `ssi_multiread_skew` regression gate at both partition counts). That
+fix is real and stays.
 
-**Conditions.** (1) Ship the fix on `master` and merge the LTS backport. (2)
-**Hash** carries two *separate, pre-existing* issues this work surfaced but did
-not fix — a concurrent-MVCC-writer hang that reproduces under plain
-`DB_TXN_SNAPSHOT` (not SSI), and the checker's own single-partition segfault;
-SSI-on-Hash should stay qualified only through `ssi006` until those are
-resolved. (3) The page-granularity **false-abort** tax (d) remains a documented
-expectation, not a correctness issue. On those conditions, `DB_TXN_SERIALIZABLE`
-on B-tree meets the maintainer's Q4 bar: “well tested and functional.”
+But the Adya cycle checker (`test_ssi_cycle`) shows a **second, distinct**
+committed anomaly under `DB_TXN_SERIALIZABLE` with several records per leaf
+(`CYC_VALPAD=200`): 2/20 seeds at 2 threads and 5/6 at 16 threads on `master`,
+2/20 and 3/6 on this branch, plus Hash 3/4 at 16 threads. A textbook two-
+transaction write skew commits at 2 threads. The checker is a sound oracle (its
+read-from and per-key version order are exact; page MVCC can only add aborts,
+never invent a cycle), so this is a genuine miss, not an artifact. It is
+**pre-existing on `master` and on the LTS line**.
+
+**What this PR ships:** the first fix, the Adya checker, the `ssi_multiread_skew`
+gate, the bindings (e) and the docs (f). The VALPAD=200 run is wired into the
+isolation tier as advisory / expected-fail to make the remaining gap visible.
+
+**Follow-up (S2, `fix/ssi-second-miss`):** root-cause and fix the second miss on
+`master`, backport to `lts/2026.10.7`, then re-run this qualification. Until the
+second miss is fixed, the public-facing label for `DB_TXN_SERIALIZABLE` must be
+**experimental**, with the gap documented. The other checklist items — crash
+safety (b), resource bounds (c, no #137 regression), the false-abort measurement
+(d), bindings (e), docs (f) — stand, but the top-level correctness claim (a)
+does not until S2 lands. Hash additionally carries two separate pre-existing
+issues (a concurrent-MVCC-writer hang under plain `DB_TXN_SNAPSHOT`, and the
+checker's single-partition segfault).

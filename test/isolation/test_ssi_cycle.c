@@ -50,21 +50,26 @@
  *	witness, not a wall-clock guess.  Per-key version order is the order of
  *	those commit-seqs among writers of K.
  *
- * PAGE-GRANULARITY MVCC — WHY ONE RECORD PER LEAF (CYC_VALPAD default 1500)
- *	Berkeley DB keeps MVCC versions per *page*, not per record.  This oracle
- *	models a reader's version per *key* (the stamp it read).  The two agree
- *	only when each key sits on its own leaf: then "the version of key K a
- *	reader saw" and "the page version it saw" are the same fact.  If many
- *	keys share a leaf, a write of key K2 bumps the page version of a reader
- *	who only read key K1 on that page, and this per-key oracle cannot see
- *	that — it would mis-attribute K1's version and can report a cycle that
- *	is not a real logical anomaly (verified: the deterministic reproducer
- *	ssi_multiread_skew prevents the skew in every same-leaf/cross-leaf
- *	configuration, while this checker only reports spurious cycles when
- *	records share leaves).  The default CYC_VALPAD keeps ~1 record per leaf
- *	so the oracle is sound; shrink it only to deliberately exercise the
- *	false-abort/page-sharing regime, where a reported cycle is NOT by itself
- *	evidence of an engine bug.
+ * WHY THE ORACLE IS SOUND AT ANY CYC_VALPAD (a reported cycle is real)
+ *	Berkeley DB keeps MVCC versions per *page*, not per record.  An earlier
+ *	version of this file argued that with many records per leaf the per-key
+ *	stamp oracle could report a "page-granularity artifact" cycle, and so
+ *	defaulted CYC_VALPAD to ~1 record per leaf.  That argument was WRONG and
+ *	is withdrawn.  The oracle is sound regardless of how many records share a
+ *	leaf:
+ *	  - read-from is EXACT: the reader records the producer's unique stored
+ *	    tag (stamp), so it names the precise version it saw;
+ *	  - per-key version order is EXACT: it is commit order, taken under the
+ *	    oracle's lock, with page write locks and first-committer-wins
+ *	    serialising the writers of a page;
+ *	  - therefore a cycle in the per-key direct serialization graph is a
+ *	    genuine non-serializable history (Adya), independent of page
+ *	    granularity.
+ *	Page-granularity MVCC can only make SSI MORE conservative (more aborts);
+ *	it can never cause this oracle to report a cycle that is not there.  So a
+ *	cycle at ANY CYC_VALPAD is evidence of an engine bug.  Using several
+ *	records per leaf (CYC_VALPAD=200) exercises the realistic configuration
+ *	that ~1-record-per-leaf hid.
  *
  * ANTI-VACUITY (the teeth)
  *	The identical workload run at ISO_LEVEL=snapshot (plain SI) MUST find a
@@ -85,6 +90,8 @@
  *	CYC_WSET       max writes per txn (default 2)
  *	CYC_AM         btree (default) | hash
  *	CYC_PAGESIZE   db page size, 0 = default (default 0)
+ *	CYC_VALPAD     value padding bytes (default 1500 ≈ 1 record/leaf; set 200
+ *	               for several records/leaf — the realistic, revealing case)
  *	CYC_PROCS      run as N processes instead of threads (default 0 = threads)
  *	CYC_MAXTXN     cap on recorded committed txns per seed (default 400000)
  *	CYC_VERBOSE    1 = print per-seed detail
@@ -122,7 +129,7 @@ static int	cyc_keys = 64;
 static int	cyc_rset = 4;
 static int	cyc_wset = 2;
 static int	cyc_pagesize = 4096;
-static int	cyc_valpad = 1500;	/* >= ~1 record/leaf: see the page-MVCC note */
+static int	cyc_valpad = 1500;	/* default ≈ 1 record/leaf; set 200 for several */
 static int	cyc_procs = 0;
 static long	cyc_maxtxn = 400000;
 static int	cyc_verbose = 0;

@@ -182,6 +182,37 @@ run_ssi_gates() {
 		done
 		fi
 
+		# ADVISORY (expected-fail until S2 lands): the same Adya checker
+		# with SEVERAL records per leaf (CYC_VALPAD=200) exposes a SECOND,
+		# distinct write-skew miss that is pre-existing on master and on the
+		# LTS line (not the cross-leaf miss the lock.c fix closed).  The
+		# oracle is sound at any CYC_VALPAD (read-from and per-key version
+		# order are exact; page MVCC can only ADD aborts), so a cycle here is
+		# a real anomaly, not an artifact -- see test_ssi_cycle.c and
+		# test/audit/SSI-PRODUCTION-2026-11.md.  It is run for visibility but
+		# emitted as SKIP so it does not fail the gate while S2
+		# (fix/ssi-second-miss) is in flight; flip it to a hard gate once the
+		# second miss is fixed.
+		if [ "$PARTS_LABEL" = "default" ]; then
+		echo "--- SSI ADVISORY (expected-fail until S2): Adya checker,"\
+		    "several records/leaf CYC_VALPAD=200 (parts=$PARTS_LABEL)"
+		mkdir -p "cyc200-$PARTS_LABEL"
+		for _am in btree hash; do
+			if ( cd "cyc200-$PARTS_LABEL" && ISO_LEVEL=serializable \
+			    CYC_AM=$_am CYC_VALPAD=200 CYC_SEEDS=6 \
+			    CYC_THREADS=16 CYC_SECS=2 CYC_KEYS=128 \
+			    CYC_RSET=4 CYC_WSET=2 \
+			    timeout "$ISO_TIMEOUT" ../test_ssi_cycle ); then
+				echo "    ADVISORY: ssi_cycle_$_am VALPAD=200 PASSED"\
+				    "-- the second miss may be fixed; promote to a gate."
+			else
+				echo "    ADVISORY: ssi_cycle_$_am VALPAD=200 reported a"\
+				    "cycle (the known second miss, S2). Not a gate yet."
+			fi
+			hi_emit "ssi_cycle_${_am}_valpad200-$PARTS_LABEL" skip
+		done
+		fi
+
 		# KNOWN GAP (RFC 0023): SSI misses a write skew across distant
 		# leaves of a multi-level B-tree.  ssi_multiread_skew is the
 		# Regression gate for the cross-leaf write-skew fix (lock.c: SSI
