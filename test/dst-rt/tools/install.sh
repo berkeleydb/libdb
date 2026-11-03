@@ -88,10 +88,17 @@ install_libdirectio() {
 	( cd "$_d" && make -j"$JOBS" ) || { log "libdirectio build FAILED"; return 1; }
 	# make check is best-effort: it proves the preload works on THIS host's fs.
 	( cd "$_d" && make check ) || log "libdirectio 'make check' reported issues"
-	# the build drops libdirectio.so (name may vary); copy whatever .so appears.
-	for so in "$_d"/libdirectio*.so "$_d"/.libs/libdirectio*.so; do
-		[ -f "$so" ] && cp -f "$so" "$PREFIX/lib/" && log "installed $(basename "$so")"
+	# The build drops a versioned soname (libdirectio.so.MAJOR.MINOR); copy it
+	# and make the unversioned symlink fi_env.sh globs for.
+	_got=""
+	for so in "$_d"/libdirectio.so* "$_d"/.libs/libdirectio.so*; do
+		[ -f "$so" ] || continue
+		cp -f "$so" "$PREFIX/lib/" && log "installed $(basename "$so")"
+		_got=$so
 	done
+	if [ -n "$_got" ] && [ ! -e "$PREFIX/lib/libdirectio.so" ]; then
+		ln -sf "$(basename "$_got")" "$PREFIX/lib/libdirectio.so"
+	fi
 }
 
 # ---------------------------------------------------------------------------
@@ -116,24 +123,42 @@ install_libumem() {
 }
 
 # ---------------------------------------------------------------------------
-# FAINT -- make (64-bit only; the 32-bit multilib target often cannot build).
+# FAINT -- build the 64-bit driver only.  The upstream 'all' target also builds
+# a 32-bit fault_inject32.so (via -m32) and embeds BOTH preload blobs into the
+# driver with -Wl,--format=binary; on a host without the 32-bit multilib the
+# -m32 compile fails.  Build every 64-bit object, a 64-bit fault_inject.so,
+# stub fault_inject32.so (only embedded, never run on a 64-bit target), and
+# link the driver by hand.  map_c.o MUST be compiled with gcc (C): as C++ the
+# symbols _map_init/map that faint.c references get mangled and the link fails.
 # ---------------------------------------------------------------------------
 install_faint() {
 	_d="$SRC/faint"
 	clone_pin "$FAINT_REPO" "$_d" "$FAINT_PIN" || return 1
 	log "build FAINT (64-bit only)"
-	# Build only the 64-bit targets; the default 'make' may also try a 32-bit
-	# multilib that is absent on a minimal runner.  Build the named 64-bit
-	# artefacts and tolerate a failure of the 32-bit ones.
-	( cd "$_d" && make -j"$JOBS" faint faint_preload.so 2>/dev/null ) \
-		|| ( cd "$_d" && make -j"$JOBS" 2>/dev/null ) \
-		|| log "FAINT build reported errors (64-bit artefacts checked below)"
-	for b in "$_d"/faint; do
-		[ -f "$b" ] && cp -f "$b" "$PREFIX/bin/" && log "installed faint"
-	done
-	for so in "$_d"/faint_preload.so "$_d"/*.so; do
-		[ -f "$so" ] && cp -f "$so" "$PREFIX/lib/" && log "installed $(basename "$so")"
-	done
+	_V='-Wall -g -fno-builtin-log -DVERSION="0.3"'
+	(
+		cd "$_d" && mkdir -p obj bin &&
+		gcc -c src/faint.c -O2 $_V -Wunused-result -o obj/faint.o &&
+		gcc $_V -O2 -c src/usage.c -o obj/usage.o &&
+		gcc $_V -O2 src/utils.c -c -o obj/utils.o &&
+		gcc $_V -O2 src/log.c -fno-builtin-log -c -o obj/log.o &&
+		gcc $_V -O2 -c src/modules.c -o obj/modules.o &&
+		g++ $_V -O2 src/map.c -fPIC -DPIC -c -o obj/map.o &&
+		g++ $_V -O2 src/modules.c -fPIC -DPIC -c -o obj/modules_s.o &&
+		g++ $_V -O0 -fPIC -DPIC -c -fno-stack-protector -funwind-tables \
+			-fpermissive src/fault_inject.cpp -o obj/fault_inject.o &&
+		g++ -O0 -shared -o obj/fault_inject.so \
+			obj/map.o obj/modules_s.o obj/fault_inject.o -ldl &&
+		printf '' > obj/fault_inject32.so &&
+		gcc $_V -O2 -c src/map.c -o obj/map_c.o &&
+		( cd obj && gcc -O2 faint.o map_c.o usage.o utils.o log.o \
+			modules.o -Wl,--format=binary -Wl,fault_inject.so \
+			-Wl,--format=binary -Wl,fault_inject32.so \
+			-Wl,--format=default -o faint ) &&
+		mv obj/faint bin/faint
+	) || { log "FAINT 64-bit build FAILED"; return 1; }
+	cp -f "$_d/bin/faint" "$PREFIX/bin/" && log "installed faint"
+	cp -f "$_d/obj/fault_inject.so" "$PREFIX/lib/" 2>/dev/null || true
 }
 
 install_libdirectio || log "libdirectio NOT installed (its arm will SKIP)"
@@ -145,7 +170,7 @@ install_faint       || log "FAINT NOT installed (its arm will SKIP)"
 # ---------------------------------------------------------------------------
 avail=""
 command -v fiu-run >/dev/null 2>&1 && avail="$avail fiu"
-command -v tc >/dev/null 2>&1 || [ -x /usr/sbin/tc ] && avail="$avail tc"
+if command -v tc >/dev/null 2>&1 || [ -x /usr/sbin/tc ]; then avail="$avail tc"; fi
 ls "$PREFIX"/lib/libdirectio*.so >/dev/null 2>&1 && avail="$avail directio"
 ls "$PREFIX"/lib/libumem_malloc.so >/dev/null 2>&1 && avail="$avail umem"
 [ -x "$PREFIX/bin/faint" ] && avail="$avail faint"

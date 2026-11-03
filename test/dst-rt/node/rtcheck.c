@@ -292,6 +292,7 @@ main(int argc, char *argv[])
 
 		memset(&key, 0, sizeof(key));
 		memset(&data, 0, sizeof(data));
+		data.flags = DB_DBT_MALLOC;	/* let libdb allocate the value buf */
 		key.data = e->key; key.size = (u_int32_t)strlen(e->key);
 		ret = cur->get(cur, NULL, &key, &data, 0);
 
@@ -334,6 +335,8 @@ main(int argc, char *argv[])
 				violations++;
 			}
 		}
+		if (ret == 0 && data.data != NULL)
+			free(data.data);	/* DB_DBT_MALLOC buffer */
 	}
 	if (cur != NULL) (void)cur->close(cur, 0);
 	}
