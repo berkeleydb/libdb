@@ -20,10 +20,14 @@
 #
 # libfiu point names (the Debian 1.1 posix preload):
 #   posix/io/rw/write  posix/io/rw/pwrite  posix/io/rw/read  posix/io/rw/pread
+#   posix/io/rw/{p,}{read,write}/reduce  (short count)
 #   posix/io/sync/fsync  posix/io/sync/fdatasync
-#   posix/io/oc/open  posix/io/oc/open64
+#   posix/io/oc/open  posix/io/oc/close
 #   libc/mm/malloc  libc/mm/calloc  libc/mm/realloc
-# failinfo: the errno libfiu returns (fiu-run -c "enable_random ... failinfo=N").
+# SYNTAX: the fiu-run -c argument is ONE comma-separated string:
+#   'enable_random name=NAME,probability=P[,failinfo=N]'
+# (a space between name= and probability= silently disables the random roll;
+# learned the hard way -- it then never fires).
 
 # fi_fiu_cmd PLAN SEED [PROB] -- echo the fiu-run prefix for PLAN.
 # PROB overrides the plan default (0..1 float).  Needs HAVE_FIU.
@@ -39,40 +43,41 @@ fi_fiu_cmd() {
 		# pwrite/write fail EIO (errno 5) at probability p on one node.
 		_p=${_prob:-0.02}
 		echo "$_pre -x \
--c 'enable_random name=posix/io/rw/pwrite probability=$_p failinfo=5' \
--c 'enable_random name=posix/io/rw/write probability=$_p failinfo=5'"
+-c 'enable_random name=posix/io/rw/pwrite,probability=$_p,failinfo=5' \
+-c 'enable_random name=posix/io/rw/write,probability=$_p,failinfo=5'"
 		;;
 	io-fsync-fail)
 		# fdatasync/fsync return EIO.  Expected: libdb panics or returns
 		# the error; it must NEVER report a durable commit it did not.
 		_p=${_prob:-0.05}
 		echo "$_pre -x \
--c 'enable_random name=posix/io/sync/fdatasync probability=$_p failinfo=5' \
--c 'enable_random name=posix/io/sync/fsync probability=$_p failinfo=5'"
+-c 'enable_random name=posix/io/sync/fdatasync,probability=$_p,failinfo=5' \
+-c 'enable_random name=posix/io/sync/fsync,probability=$_p,failinfo=5'"
 		;;
 	io-enospc)
 		# pwrite/write return ENOSPC (errno 28).
 		_p=${_prob:-0.02}
 		echo "$_pre -x \
--c 'enable_random name=posix/io/rw/pwrite probability=$_p failinfo=28' \
--c 'enable_random name=posix/io/rw/write probability=$_p failinfo=28'"
+-c 'enable_random name=posix/io/rw/pwrite,probability=$_p,failinfo=28' \
+-c 'enable_random name=posix/io/rw/write,probability=$_p,failinfo=28'"
 		;;
 	io-short)
 		# Short read/write: libfiu's reduce action returns a partial
-		# count.  failinfo here is the count to reduce TO (0 = return 0).
+		# count.  The posix preload exposes it as the .../reduce point;
+		# failinfo is the number of bytes to subtract from the request.
 		_p=${_prob:-0.05}
 		echo "$_pre -x \
--c 'enable_random name=posix/io/rw/pwrite probability=$_p failinfo=0' \
--c 'enable_random name=posix/io/rw/pread probability=$_p failinfo=0'"
+-c 'enable_random name=posix/io/rw/pwrite/reduce,probability=$_p,failinfo=512' \
+-c 'enable_random name=posix/io/rw/pread/reduce,probability=$_p,failinfo=512'"
 		;;
 	mem-fiu-random)
 		# malloc/calloc/realloc fail (return NULL) at probability p,
 		# anywhere in the process incl. libc/OpenSSL/tss2.
 		_p=${_prob:-0.001}
 		echo "$_pre -x \
--c 'enable_random name=libc/mm/malloc probability=$_p' \
--c 'enable_random name=libc/mm/calloc probability=$_p' \
--c 'enable_random name=libc/mm/realloc probability=$_p'"
+-c 'enable_random name=libc/mm/malloc,probability=$_p' \
+-c 'enable_random name=libc/mm/calloc,probability=$_p' \
+-c 'enable_random name=libc/mm/realloc,probability=$_p'"
 		;;
 	none)
 		echo "$_pre -x"
