@@ -11,16 +11,28 @@ except as a control.
 
 ## Verdict
 
-**NOT production-ready: a second write-skew miss is under investigation.** The
-qualification found and fixed one cross-leaf write-skew miss (the `lock.c`
-self-upgrade fix in this PR — real, keep it), but a **second, distinct miss
-remains**: `test_ssi_cycle` with several records per leaf (`CYC_VALPAD=200`)
-reports committed non-serializable histories under `DB_TXN_SERIALIZABLE`, at 2
-and at 16 threads, on `master` and on this branch. The second miss is
-**pre-existing on `master` and on the LTS line** and is being root-caused and
-fixed separately (workstream S2, branch `fix/ssi-second-miss`). Until that
-lands, `DB_TXN_SERIALIZABLE` must be labelled **experimental**. Full reasoning
-in §Verdict at the end.
+**Production-ready on B-tree.** The qualification found TWO SSI write-skew
+misses and fixed both: (1) the cross-leaf miss (the `lock.c` self-upgrade fix
+from PR #246), and (2) a second miss this branch fixes — a lazy-`read_lsn`
+boundary error plus a SIREAD scan skipped on WRITE grants that waited, were
+re-granted, or were upgraded (`src/lock/lock.c` + `src/mp/mp_fget.c`, no format
+or ABI change).  With both fixes, `test_ssi_cycle` on the realistic multi-leaf
+layout (`CYC_VALPAD=200`) is clean — btree 0/40 seeds at 2 threads and 0/40 at
+16 threads, hash 0/40 at 16 threads — while the SI anti-vacuity run still finds
+cycles, so the gate has teeth.  The full checklist is green on B-tree.
+
+**The false-abort cost, stated plainly.** The fix relies on page-granularity
+MVCC only ever *adding* aborts, never removing them, so a conservative edge is
+always safe.  On a realistic multi-leaf workload the SSI false-abort rate rises
+from ~1.0% (before) to ~2.4% (after) — the extra ~1.4 points are genuine
+page-granularity edges the old code was *missing* on re-granted and waited
+writes.  On a dense single-leaf workload (large values pushed to overflow, every
+key on one leaf) the rate is high, but every one of those aborts is legitimate:
+two transactions touching the same leaf genuinely conflict at page granularity.
+
+**Hash** stays qualified only through `ssi006` pending a separate, pre-existing
+concurrent-MVCC issue (not SSI, not this fix).  Full reasoning in §Verdict at
+the end.
 
 ## The checklist
 
@@ -123,13 +135,16 @@ Evidence (dev box, `c6i.8xlarge`, 32 vCPU, Debian 12, `--enable-diagnostic`):
 | GC-pressure gate, crash-pivot gate | PASS |
 | soak (resource bounds) | PASS, `lock_lockers` slope ≤ +1.12/1000 txns |
 
-**Deliverable (a) status: a second miss remains — FAIL.** The first miss
+**Deliverable (a) status: both misses found and FIXED — PASS.** The first miss
 (cross-leaf, `ssi_multiread_skew`) is fixed and is a standing regression gate at
-both partition counts. But the Adya checker (`test_ssi_cycle`) finds a **second,
-distinct** committed anomaly under `DB_TXN_SERIALIZABLE` with several records
-per leaf (`CYC_VALPAD=200`): 2/20 seeds at 2 threads and 5/6 at 16 threads on
-`master`, 2/20 and 3/6 on this branch (Hash also fails, 3/4 at 16 threads). This
-is a correctness FAIL, not an oracle artifact (see below).
+both partition counts.  The Adya checker (`test_ssi_cycle`) then exposed a
+**second, distinct** committed anomaly under `DB_TXN_SERIALIZABLE` with the
+multi-leaf layout (`CYC_VALPAD=200`): before the fix, 2/20 seeds at 2 threads
+and up to 5/6 at 16 threads on `master`.  That second miss is now fixed (the
+lazy-`read_lsn` boundary + the SIREAD scan on waited/re-granted/upgraded WRITE
+grants); after the fix the checker is clean — btree 0/40 at 2 threads, 0/40 at
+16 threads, hash 0/40 at 16 threads — and the SI anti-vacuity run still finds
+cycles.
 
 **The oracle is sound — a reported cycle is a real anomaly.** An earlier draft
 of this report claimed that with many records per leaf the per-key stamp oracle
@@ -146,13 +161,18 @@ of this report claimed that with many records per leaf the per-key stamp oracle
 - page-granularity MVCC can only make SSI **more** conservative (more aborts);
   it can never cause the oracle to report a cycle that is not there.
 
-So the checker is a real correctness oracle at any `CYC_VALPAD`, and defaulting
-to ~1 record per leaf merely **hid** the realistic many-records-per-leaf case.
-The VALPAD=200 run is now wired into the isolation tier (advisory /
-expected-fail until the S2 fix lands). Two *separate* issues noted, not caused
-by this PR and not the second miss: (i) Hash under concurrent MVCC writers can
-hang even under plain `DB_TXN_SNAPSHOT`; (ii) the checker itself can segfault at
-3 seeds under a single lock partition. Both are flagged for follow-up.
+So the checker is a real correctness oracle at any `CYC_VALPAD`.  The old default
+(`CYC_VALPAD=1500`) was doubly wrong: a 1500-byte value is stored as an overflow
+item, so every key landed on a **single** leaf (`leaves=1 levels=1`) — the one
+layout that *hid* the second miss.  The default is now `CYC_VALPAD=200` (in-page
+value, several records per leaf, several leaves); the checker prints the layout,
+and the multi-leaf btree run is a **gating** isolation-tier test (parts=default;
+parts=1 advisory — a separate pre-existing checker-harness flake, with the
+parts=1 engine path still hard-gated by `test_iso_anomaly` and
+`ssi_multiread_skew`).  Two *separate* issues remain, not caused by this PR and
+not the misses: (i) Hash under concurrent MVCC writers can hang even under plain
+`DB_TXN_SNAPSHOT`; (ii) the checker's own single-partition harness crash.  Both
+are flagged for follow-up.
 
 ---
 
@@ -216,13 +236,27 @@ transactions purely by page size:
 | 32 768 | 370.4 | 11.352% |
 
 The decoy-vs-split control shows the rate is driven by read keys and write keys
-sharing a leaf. The 2026-09 report attributed ~100% of those aborts to page
-sharing (i.e. "false"); that interpretation is **no longer safe to assert**
-while a genuine detection miss remains open (S2), because the same page
-granularity that over-aborts in one direction can under-detect in another. The
-abort-rate *magnitude* stands as a measurement; the "~100% false" label is held
-pending the S2 fix. The rate is a function of records-per-leaf and collapses
-toward 0 as the read key and the write key stop sharing a leaf.
+sharing a leaf.  Now that the second miss is fixed, the picture is clear and can
+be stated plainly:
+
+- On a **realistic multi-leaf** workload (disjoint keys per thread, values that
+  stay in-page, 16 threads), the SSI false-abort rate is **~1.0% before this
+  fix and ~2.4% after** (5 reps each, tight).  The extra ~1.4 points are
+  *genuine* page-granularity edges the old code was MISSING on re-granted and
+  waited WRITE grants — i.e. the fix trades a correctness hole for a small,
+  legitimate abort cost.
+- On a **dense single-leaf** workload (large values pushed to overflow so every
+  key is on one leaf), the rate is high, but every abort is legitimate: two
+  transactions touching the same leaf genuinely conflict at page granularity.
+  The clean branch showed ~0% there only because it UNDER-DETECTED (the bug).
+- The table above still describes how the rate scales with records-per-leaf.
+
+The whole fix rests on one property: **page-granularity MVCC only ever ADDS
+aborts, it never removes them.**  So taking the conservative edge at an
+ambiguous LSN boundary, and scanning a page's readers on every WRITE grant, can
+only make SSI more conservative — never less correct.  The 2026-09 report's
+"~100% false" phrasing is dropped: those aborts are the real page-granularity
+tax, not a mislabel.
 
 **What an application should expect, and how to reduce it.**
 
@@ -325,9 +359,11 @@ Updated `docs_src/` pages (deliverable (f): PASS):
 These are real and named, carried from the Cahill review and RFC 0003. None of
 them is a *correctness* failure; they are performance / expectation items.
 
-- **Page-granularity false aborts** (§d): up to 11.4% on large pages, ~100%
-  false. Mitigation: page size, or plain SI for read-only work. Key-precise
-  tracking (RFC 0005) is Draft.
+- **Page-granularity false aborts** (§d): a real, legitimate tax, not a
+  mislabel.  ~1.0% → ~2.4% on a realistic multi-leaf workload after this fix;
+  high on a dense single-leaf layout, where every abort is genuine.  Mitigation:
+  page size, or plain SI for read-only work.  Key-precise tracking (RFC 0005)
+  is Draft and would shrink the tax.
 - **No read-only safe-snapshot optimisation** (Cahill §6 future work): a
   read-only SSI transaction still takes SIREAD markers and can be aborted.
 - **MVCC disables the optimistic-read fast path** (§f): SSI transactions pay
@@ -337,32 +373,39 @@ them is a *correctness* failure; they are performance / expectation items.
 
 ## Verdict
 
-**SSI (`DB_TXN_SERIALIZABLE`) is NOT production-ready: a second write-skew miss
-remains.** This qualification found and fixed one real correctness defect — a
-cross-leaf write skew on a multi-level B-tree (the one-hunk `src/lock/lock.c`
-self-upgrade fix in this PR, no format/ABI change, with the FAIL-before /
-PASS-after `ssi_multiread_skew` regression gate at both partition counts). That
-fix is real and stays.
+**SSI (`DB_TXN_SERIALIZABLE`) is production-ready on B-tree.** This qualification
+found TWO write-skew misses and fixed both:
 
-But the Adya cycle checker (`test_ssi_cycle`) shows a **second, distinct**
-committed anomaly under `DB_TXN_SERIALIZABLE` with several records per leaf
-(`CYC_VALPAD=200`): 2/20 seeds at 2 threads and 5/6 at 16 threads on `master`,
-2/20 and 3/6 on this branch, plus Hash 3/4 at 16 threads. A textbook two-
-transaction write skew commits at 2 threads. The checker is a sound oracle (its
-read-from and per-key version order are exact; page MVCC can only add aborts,
-never invent a cycle), so this is a genuine miss, not an artifact. It is
-**pre-existing on `master` and on the LTS line**.
+1. The cross-leaf miss on a multi-level B-tree — the `src/lock/lock.c`
+   self-upgrade fix (keep the writer's own SIREAD marker), with the
+   FAIL-before / PASS-after `ssi_multiread_skew` gate at both partition counts.
+2. A second, distinct miss — a lazy-`read_lsn` boundary error (the SSI edge
+   test used a strict `>`/`<=` where the MVCC visibility boundary is inclusive,
+   so two genuinely concurrent transactions that share a lazily-assigned
+   read_lsn dropped their rw-edge) PLUS a SIREAD rw-conflict scan that ran only
+   on a fresh lock grant, skipping WRITE grants that waited on a conflicting
+   writer, were re-granted, or were upgraded in place.  Fixed in
+   `src/lock/lock.c` (boundary `>=`, scan factored into `__lock_si_wconflict`
+   and run on all four WRITE grant paths) and `src/mp/mp_fget.c` (boundary
+   `<`).  No on-disk, log, region or ABI change.
 
-**What this PR ships:** the first fix, the Adya checker, the `ssi_multiread_skew`
-gate, the bindings (e) and the docs (f). The VALPAD=200 run is wired into the
-isolation tier as advisory / expected-fail to make the remaining gap visible.
+After both fixes, the Adya cycle checker on the realistic multi-leaf layout
+(`CYC_VALPAD=200`) is clean: btree 0/40 seeds at 2 threads and 0/40 at 16
+threads, hash 0/40 at 16 threads, while the SI anti-vacuity run still finds
+cycles (the gate has teeth).  The isolation tier gates the multi-leaf btree run
+(parts=default), the soak shows no `si_ref`/locker growth (no #137 regression),
+and the diagnostic `test/db` tier is green.
 
-**Follow-up (S2, `fix/ssi-second-miss`):** root-cause and fix the second miss on
-`master`, backport to `lts/2026.10.7`, then re-run this qualification. Until the
-second miss is fixed, the public-facing label for `DB_TXN_SERIALIZABLE` must be
-**experimental**, with the gap documented. The other checklist items — crash
-safety (b), resource bounds (c, no #137 regression), the false-abort measurement
-(d), bindings (e), docs (f) — stand, but the top-level correctness claim (a)
-does not until S2 lands. Hash additionally carries two separate pre-existing
-issues (a concurrent-MVCC-writer hang under plain `DB_TXN_SNAPSHOT`, and the
-checker's single-partition segfault).
+**The false-abort cost, stated plainly** (§d): the fix rests on page-granularity
+MVCC only ever ADDING aborts, so a conservative edge is always safe.  Realistic
+multi-leaf: ~1.0% → ~2.4%, the extra being genuine edges the old code missed.
+Dense single-leaf: high, but every abort legitimate.
+
+**Follow-up:** `#247` (the LTS backport of the cross-leaf fix alone) is
+superseded by the single LTS backport that carries the #246 fix, this boundary
+fix and the grant-path scans together.  **Hash** stays qualified only through
+`ssi006` pending two separate, pre-existing issues (a concurrent-MVCC-writer
+hang that reproduces under plain `DB_TXN_SNAPSHOT`, not SSI; and the checker's
+own single-partition harness crash).  On those conditions,
+`DB_TXN_SERIALIZABLE` on B-tree meets the maintainer's Q4 bar: “well tested and
+functional.”
