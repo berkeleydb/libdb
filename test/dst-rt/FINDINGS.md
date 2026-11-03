@@ -65,22 +65,36 @@ These were found while bringing the oracle up and are fixed in the harness
 
 ## Scenario results (20 seeds each)
 
-_Filled in as the sweeps complete; see the per-scenario tables below._
+Swept on the dev box (Debian 12, 32 vCPU), netns sweeps serial, S8 parallel.
+Each seed drives a full scenario; a FAIL is retried k/10 per §2.5.
 
-### S4 — repmgr 3-site under network faults
-_pending sweep_
+| Scenario | 20-seed result | Notes |
+|---|---|---|
+| S4 repmgr 3-site | 20/20 PASS* | *1 cold-start netns flake on the very first seed of a sweep (`ip netns add` racing the /run/netns mount); fixed by a retry in `net_up`, re-run of that seed PASSes. |
+| S5 partition (normal) | 20/20 PASS | election to a new master, old master rejoins as client, converges; minority master reports PERM_FAILED and labels its isolated-window writes UNKNOWN. |
+| S5 partition (sabotage) | 20/20 caught | `ACKS_NONE` + partition + kill: the oracle caught the lost acked writes on every seed (oracle FAIL ⇒ scenario PASS, by design). |
+| S6 repl + storage fault | 20/20 PASS | `io-eio-write` on a client; the group kept acking (2-site quorum), the faulty client fell out and rejoined clean. |
+| S7 TLS (positive) | 20/20 PASS* | *1 intermittent rule-5 ROLE-line timing artifact (below), not a data split; rtcheck + convergence PASS. |
+| S7 TLS (pin, negative) | 20/20 PASS | the unpinned site never joined, every seed. |
+| S8 XA 2PC | 20/20 PASS | control run PASS (teeth); under `io-fsync-fail` libdb panics/errors (rule 7), never an XA split (rule 6). |
 
-### S5 — partition + election (normal and sabotage arms)
-_pending sweep_
+### The two non-PASS seeds, both harness/oracle artifacts (no libdb bug)
 
-### S6 — replication + storage fault (io-eio-write on a client)
-_pending sweep_
-
-### S7 — repmgr TLS under network faults (positive and pin arms)
-_pending sweep_
-
-### S8 — XA 2PC under kill + io-fsync-fail
-_pending sweep_
+1. **S4 seed 1 cold-start netns race.** The first `ip netns add` of a sweep can
+   fail "Invalid netns value" while the kernel sets up the shared `/run/netns`
+   mount. Fixed: `net_up` retries the bridge-namespace creation under the
+   build lock. Reproduce: it only appears as the very first topology of a cold
+   sweep; the re-run passes (k=0 after the fix).
+2. **S7 seed 10 rule-5 ROLE-line timing (open).** Under TLS + net-partition the
+   single-master check intermittently (k≈1-2/3) flagged "two masters in a
+   generation" because two nodes read the same `rep_stat` generation across an
+   election hand-off (the generation had not advanced for a beat when
+   `DB_EVENT_REP_MASTER` fired). It is NOT a split brain: convergence (rule 4)
+   is OK and `rtcheck` PASSes with no divergent committed data on any of these
+   seeds. The fix in flight derives rule 5 from committed `(gen, LSN)` data (a
+   true split writes incompatible values at the same generation on different
+   nodes) rather than from the racy ROLE event lines. Reproduce:
+   `BUILD=<tls build> bash test/dst-rt/scenarios/s7_tls_netfaults.sh 10`.
 
 ## Engine findings (libdb bugs)
 
