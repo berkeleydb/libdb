@@ -466,6 +466,7 @@ db	run_recd_compact
 db	run_recd_handlers
 db	run_upgrade
 db	run_lock_priority_nullderef
+db	run_lock_stripe_exhaustion
 db	run_txn_remevent_leak
 db	run_compact_subdb_remove
 db	run_log_emfile_nopanic
