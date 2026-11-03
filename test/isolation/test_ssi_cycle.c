@@ -99,6 +99,11 @@
  *	CYC_PROCS      run as N processes instead of threads (default 0 = threads)
  *	CYC_MAXTXN     cap on recorded committed txns per seed (default 400000)
  *	CYC_VERBOSE    1 = print per-seed detail
+ *	CYC_MIN_COMMITS  SERIALIZABLE only: fail a seed that commits fewer than
+ *	               this many txns per measured second (default 50; 0 = off).
+ *	               A healthy run commits ~800/s at 2-16 threads; the #257
+ *	               livelock committed ~6/s and still reported "0
+ *	               non-serializable", so correctness alone was vacuous.
  *
  * EXIT
  *	0  every seed serializable under SSI, AND the SI anti-vacuity run found
@@ -137,6 +142,8 @@ static int	cyc_valpad = 200;	/* in-page value, several records/leaf */
 static int	cyc_procs = 0;
 static long	cyc_maxtxn = 400000;
 static int	cyc_verbose = 0;
+static int	cyc_min_commits = 50;	/* per second, SSI only; 0 = off */
+static int	cyc_floor_failed = 0;
 static DBTYPE	cyc_am = DB_BTREE;
 static char	cyc_home[512];
 
@@ -946,6 +953,14 @@ run_seed(unsigned seed, int *found_cycle_out)
 		printf("    seed=%u committed=%ld serializable=%s\n",
 		    seed, n, serializable ? "yes" : "NO");
 	*found_cycle_out = !serializable;
+	if (iso_level == DB_TXN_SERIALIZABLE && cyc_min_commits > 0 &&
+	    n < (long)cyc_min_commits * cyc_secs) {
+		printf("    seed=%u committed=%ld < floor %ld (%d/s x %ds): "
+		    "SSI made almost no progress -- a livelock, not a pass\n",
+		    seed, n, (long)cyc_min_commits * cyc_secs,
+		    cyc_min_commits, cyc_secs);
+		cyc_floor_failed = 1;
+	}
 	return (serializable);
 }
 
@@ -1092,6 +1107,7 @@ main(void)
 	cyc_procs = geti("CYC_PROCS", cyc_procs);
 	cyc_maxtxn = geti("CYC_MAXTXN", (int)cyc_maxtxn);
 	cyc_verbose = geti("CYC_VERBOSE", 0);
+	cyc_min_commits = geti("CYC_MIN_COMMITS", cyc_min_commits);
 	if ((am = getenv("CYC_AM")) != NULL && strcmp(am, "hash") == 0)
 		cyc_am = DB_HASH;
 	if (cyc_rset > CYC_MAXOPS) cyc_rset = CYC_MAXOPS;
@@ -1147,6 +1163,12 @@ main(void)
 		if (!serializable_all) {
 			printf("FAIL: a committed history under SSI is NOT "
 			    "serializable (cycle above)\n");
+			return (1);
+		}
+		if (cyc_floor_failed) {
+			printf("FAIL: a seed committed below the throughput floor "
+			    "(CYC_MIN_COMMITS=%d/s) -- serializable but not making "
+			    "progress\n", cyc_min_commits);
 			return (1);
 		}
 		printf("PASS: every seed serializable under SSI\n");
