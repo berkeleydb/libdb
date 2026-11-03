@@ -108,6 +108,24 @@ ev_emit(const char *fmt, ...)
 	pthread_mutex_unlock(&ev_mtx);
 }
 
+/* read the TRUE replication generation from rep_stat (st_gen).  The event
+ * callback's cached N.current_gen was laggy and, worse, DB_EVENT_REP_NEWMASTER's
+ * info is the new master's ENV-ID, not the generation -- so two nodes could log
+ * the same stale gen and look like a split brain (a false rule-5 violation).
+ * st_gen is the generation repmgr actually advanced to. */
+static int
+cur_gen(void)
+{
+	DB_REP_STAT *sp;
+	int g = N.current_gen;
+	if (N.env != NULL && N.env->rep_stat(N.env, &sp, 0) == 0) {
+		g = (int)sp->st_gen;
+		N.current_gen = g;
+		free(sp);
+	}
+	return (g);
+}
+
 /* repmgr event callback: translate master/client/elected into ROLE lines. */
 static void
 event_cb(DB_ENV *dbenv, u_int32_t which, void *info)
@@ -117,15 +135,16 @@ event_cb(DB_ENV *dbenv, u_int32_t which, void *info)
 	case DB_EVENT_REP_MASTER:
 	case DB_EVENT_REP_ELECTED:
 		N.is_master = 1;
-		ev_emit("ROLE master gen=%d", N.current_gen);
+		ev_emit("ROLE master gen=%d", cur_gen());
 		break;
 	case DB_EVENT_REP_CLIENT:
 		N.is_master = 0;
-		ev_emit("ROLE client gen=%d", N.current_gen);
+		ev_emit("ROLE client gen=%d", cur_gen());
 		break;
 	case DB_EVENT_REP_NEWMASTER:
-		N.current_gen = info ? *(int *)info : N.current_gen + 1;
-		ev_emit("ROLE newmaster gen=%d", N.current_gen);
+		/* info is the new master's env-id, NOT a generation; read the
+		 * real generation from rep_stat. */
+		ev_emit("ROLE newmaster gen=%d", cur_gen());
 		break;
 	case DB_EVENT_REP_PERM_FAILED:
 		/*
