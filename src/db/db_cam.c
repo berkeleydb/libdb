@@ -531,6 +531,7 @@ __db_cursor_cache_discard(env, dbp)
 	COMPQUIET(env, NULL);
 
 	/* 1. Drop this thread's own slots for the closing handle. */
+#ifndef DBC_CACHE_SABOTAGE
 	for (i = 0; i < DBC_CACHE_SLOTS; i++) {
 		e = &__dbc_cache[i];
 		if (e->dbp == dbp) {
@@ -539,6 +540,17 @@ __db_cursor_cache_discard(env, dbp)
 			e->dbc = NULL;
 		}
 	}
+#else
+	/*
+	 * SABOTAGE ARM: skip the closing thread's self-clear too.  With both
+	 * the self-clear (here) and the reconcile sweep (__db_cursor_cache_get)
+	 * disabled, a slot pointing at the just-closed handle survives, and a
+	 * reopened handle that reuses the freed DB/DBC memory then reuses a
+	 * destroyed cursor -- the use-after-free the test must catch.
+	 */
+	COMPQUIET(e, NULL);
+	COMPQUIET(i, 0);
+#endif
 
 	/* 2. Signal every thread that something closed. */
 	(void)__dbc_cache_epoch_now();		/* Ensure initialised. */
