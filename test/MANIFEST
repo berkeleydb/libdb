@@ -487,6 +487,8 @@ db	run_db_verify_multifile
 db	run_qam_readpath_bound
 db	run_curadj_dup_partition
 db	run_cursorcache_adjust
+db	run_cursorcache_orphan
+db	run_cursorcache_parkcost
 db	run_s7_stat_truth
 db	run_s3_mpool_counters
 db	run_s4_mvcc_mtx_reuse
