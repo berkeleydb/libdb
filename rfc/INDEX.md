@@ -21,6 +21,7 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0014](0014-typed-data-and-constraints.md) | Typed data and constraints: a codec socket ("modem") and a constraint layer, configure-time optional | Implemented (Phases 0–1), opt-in `--enable-typed`; see [inclusion evaluation](0014/INCLUSION-EVALUATION.md) |
 | [0015](0015-multicore-scalability.md) | Multi-core scalability audit: every serialisation point, and the order to remove them | Draft |
 | [0016](0016-rust-zig-bindings.md) | Rust and Zig language bindings: idiomatic, zero-copy-capable API shims over the C library, with native-format docs and tests | Draft |
+| [0019](0019-key-provider-and-verifier.md) | Key providers, a salted verifier, and TPM-backed key storage: remove the cleartext password from the region (PBKDF2-HMAC-SHA256 verifier), add a key-provider vtable (password/key-file/TPM 2.0), DEK/KEK key wrapping for rotation. Page cipher unchanged (AEAD is future) | Draft | Normative |
 
 <!-- Add a row per RFC. Keep the number 4-digit zero-padded and monotonic. -->
 

@@ -926,6 +926,10 @@ AC_CHECK_FUNCS(\
 # Neither is required: os_csprng.c falls back to reading /dev/urandom.
 AC_CHECK_FUNCS(getrandom arc4random_buf)
 
+# RFC 0019 key hygiene: zero secrets so the compiler cannot elide it, and lock
+# key pages out of swap.  All optional; sha256.c and os_mlock.c fall back.
+AC_CHECK_FUNCS(explicit_bzero memset_s mlock)
+
 AC_TIMERS
 
 # Ftruncate.
@@ -1220,6 +1224,27 @@ in the configured include path.]))
 	fi
 else
 	CRYPTO_OBJS="crypto_stub${o}"
+fi
+
+# The TPM 2.0 key provider (RFC 0019).  Off by default so the default build
+# gains no dependency.  Requires crypto and libtss2 ESAPI.
+if test "$db_cv_tpm" = "yes"; then
+	if test "$db_cv_build_cryptography" = "no"; then
+		AC_MSG_ERROR([--enable-tpm requires cryptography support])
+	fi
+	AC_CHECK_HEADER([tss2/tss2_esys.h], [],
+	    AC_MSG_ERROR([--enable-tpm requires the libtss2 ESAPI headers (tss2/tss2_esys.h)]))
+	AC_CHECK_LIB(tss2-esys, Esys_Initialize, [],
+	    AC_MSG_ERROR([--enable-tpm requires libtss2-esys]), [-ltss2-mu])
+	AC_CHECK_LIB(tss2-mu, Tss2_MU_TPM2B_PUBLIC_Marshal, [], [])
+	AC_DEFINE(HAVE_TPM)
+	AH_TEMPLATE(HAVE_TPM,
+	    [Define to 1 if building the TPM 2.0 key provider.])
+	# Append to the shared-library link line (LIBSO_LIBS), not only the
+	# autoconf LIBS, mirroring the liburing pattern above.
+	LIBSO_LIBS="$LIBSO_LIBS -ltss2-esys -ltss2-mu"
+	LIBS="$LIBS -ltss2-esys -ltss2-mu"
+	ADDITIONAL_OBJS="$ADDITIONAL_OBJS provider_tpm${o}"
 fi
 
 # The mutex code can be disabled, and if there aren't any mutexes, then there's

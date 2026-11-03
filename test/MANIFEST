@@ -476,6 +476,11 @@ db	run_qam_inorder_consume
 db	run_u9_serializable
 db	run_u8_backup_config
 db	run_handle_sizes
+db	run_crypto_secret_leak
+db	run_crypto_compat
+db	run_crypto_keyfile
+db	run_crypto_tpm
+db	run_crypto_mp_join
 db	run_s5_failchk_spin
 db	run_mutex_stress
 db	run_opt_null_sample

@@ -135,6 +135,9 @@
 /* Define to 1 if platform has EXIT_SUCCESS/EXIT_FAILURE #defines. */
 #undef HAVE_EXIT_SUCCESS
 
+/* Define to 1 if you have the 'explicit_bzero' function. */
+#undef HAVE_EXPLICIT_BZERO
+
 /* Define to 1 to build with SQLite-style malloc-failure injection hooks. */
 #undef HAVE_FAULT_INJECT
 
@@ -231,6 +234,12 @@
 /* Define to 1 if you have the 'isspace' function. */
 #undef HAVE_ISSPACE
 
+/* Define to 1 if you have the 'tss2-esys' library (-ltss2-esys). */
+#undef HAVE_LIBTSS2_ESYS
+
+/* Define to 1 if you have the 'tss2-mu' library (-ltss2-mu). */
+#undef HAVE_LIBTSS2_MU
+
 /* Define to 1 if you have localization function to support globalization. */
 #undef HAVE_LOCALIZATION
 
@@ -248,6 +257,9 @@
 
 /* Define to 1 if you have the 'memmove' function. */
 #undef HAVE_MEMMOVE
+
+/* Define to 1 if you have the 'memset_s' function. */
+#undef HAVE_MEMSET_S
 
 /* Define to 1 if you have the 'mlock' function. */
 #undef HAVE_MLOCK
@@ -584,6 +596,9 @@
 
 /* Define to 1 if you have the <time.h> header file. */
 #undef HAVE_TIME_H
+
+/* Define to 1 if building the TPM 2.0 key provider. */
+#undef HAVE_TPM
 
 /* Define to 1 to build the typed-data and constraint layer. */
 #undef HAVE_TYPED
