@@ -95,13 +95,16 @@ isolation	ssi_gc_pressure@serializable-default
 isolation	ssi_gc_pressure@serializable-1
 isolation	ssi_crash_pivot-default	optional
 isolation	ssi_crash_pivot-1	optional
+# Adya cycle checker, multi-leaf default (CYC_VALPAD=200): the gate that closes
+# the second write-skew miss (boundary fix + grant-path scans).  GATING for
+# btree at the default partition count.  parts=1 is advisory (a separate pre-
+# existing checker-HARNESS crash under the single-partition tier run; the engine
+# is verified serializable at parts=1 standalone, and the parts=1 engine path is
+# hard-gated by test_iso_anomaly + ssi_multiread_skew).  Hash is advisory too
+# (separate pre-existing concurrent-MVCC hang; Hash SSI is gated by ssi006).
 isolation	ssi_cycle_btree-default
-# Advisory (expected-fail until S2 / fix/ssi-second-miss lands): the Adya checker
-# with several records per leaf (CYC_VALPAD=200) exposes a second write-skew miss
-# pre-existing on master and LTS.  Emitted as skip so it does not fail the gate
-# while S2 is in flight; promote to a hard gate once the second miss is fixed.
-isolation	ssi_cycle_btree_valpad200-default	optional
-isolation	ssi_cycle_hash_valpad200-default	optional
+isolation	ssi_cycle_btree-1	optional
+isolation	ssi_cycle_hash-default	optional
 # ssi_multiread_skew is the regression gate for the cross-leaf write-skew fix
 # (SSI keeps its own SIREAD marker instead of dropping it on a same-page write
 # lock).  It FAILed on every pre-fix build and must now PASS.

@@ -54,9 +54,12 @@
  *	Berkeley DB keeps MVCC versions per *page*, not per record.  An earlier
  *	version of this file argued that with many records per leaf the per-key
  *	stamp oracle could report a "page-granularity artifact" cycle, and so
- *	defaulted CYC_VALPAD to ~1 record per leaf.  That argument was WRONG and
- *	is withdrawn.  The oracle is sound regardless of how many records share a
- *	leaf:
+ *	defaulted CYC_VALPAD to 1500 to get "~1 record per leaf".  That argument
+ *	was WRONG and is withdrawn -- and the 1500 default was doubly wrong: a
+ *	1500-byte value is stored as an OVERFLOW item, so all the keys fit as
+ *	small entries on a SINGLE leaf (verified: leaves=1 levels=1), which is
+ *	the one layout that hid the second write-skew miss.  The oracle is sound
+ *	regardless of how many records share a leaf:
  *	  - read-from is EXACT: the reader records the producer's unique stored
  *	    tag (stamp), so it names the precise version it saw;
  *	  - per-key version order is EXACT: it is commit order, taken under the
@@ -67,9 +70,10 @@
  *	    granularity.
  *	Page-granularity MVCC can only make SSI MORE conservative (more aborts);
  *	it can never cause this oracle to report a cycle that is not there.  So a
- *	cycle at ANY CYC_VALPAD is evidence of an engine bug.  Using several
- *	records per leaf (CYC_VALPAD=200) exercises the realistic configuration
- *	that ~1-record-per-leaf hid.
+ *	cycle at ANY CYC_VALPAD is evidence of an engine bug.  The default is now
+ *	CYC_VALPAD=200: an in-page value, several records per leaf, several
+ *	leaves -- the realistic multi-leaf layout that exercises the detector.
+ *	The per-seed header prints leaves/levels so the layout is visible.
  *
  * ANTI-VACUITY (the teeth)
  *	The identical workload run at ISO_LEVEL=snapshot (plain SI) MUST find a
@@ -90,8 +94,8 @@
  *	CYC_WSET       max writes per txn (default 2)
  *	CYC_AM         btree (default) | hash
  *	CYC_PAGESIZE   db page size, 0 = default (default 0)
- *	CYC_VALPAD     value padding bytes (default 1500 ≈ 1 record/leaf; set 200
- *	               for several records/leaf — the realistic, revealing case)
+ *	CYC_VALPAD     value padding bytes (default 200: in-page value, several
+ *	               records per leaf, several leaves -- the revealing layout)
  *	CYC_PROCS      run as N processes instead of threads (default 0 = threads)
  *	CYC_MAXTXN     cap on recorded committed txns per seed (default 400000)
  *	CYC_VERBOSE    1 = print per-seed detail
@@ -129,7 +133,7 @@ static int	cyc_keys = 64;
 static int	cyc_rset = 4;
 static int	cyc_wset = 2;
 static int	cyc_pagesize = 4096;
-static int	cyc_valpad = 1500;	/* default ≈ 1 record/leaf; set 200 for several */
+static int	cyc_valpad = 200;	/* in-page value, several records/leaf */
 static int	cyc_procs = 0;
 static long	cyc_maxtxn = 400000;
 static int	cyc_verbose = 0;
@@ -836,6 +840,25 @@ cyc_load(void)
 	for (k = 0; k < cyc_keys; k++)
 		if ((rc = cyc_write(NULL, k, 0)) != 0)	/* stamp 0 = load */
 			iso_die("initial load", rc);
+	/*
+	 * Print the tree layout once, so the reader can see that the default
+	 * (CYC_VALPAD=200) really is several records across several leaves --
+	 * not the single-overflow-leaf layout the old 1500 default produced.
+	 */
+	if (cyc_am == DB_BTREE) {
+		static int reported = 0;
+		DB_BTREE_STAT *bst;
+		if (!reported && db->stat(db, NULL, &bst, 0) == 0) {
+			reported = 1;
+			printf("    layout: %lu leaf pages, %lu levels, %lu ndata"
+			    " (~%.1f recs/leaf), valpad=%d\n",
+			    (u_long)bst->bt_leaf_pg, (u_long)bst->bt_levels,
+			    (u_long)bst->bt_ndata, bst->bt_leaf_pg ?
+			    (double)bst->bt_ndata / bst->bt_leaf_pg : 0.0,
+			    cyc_valpad);
+			free(bst);
+		}
+	}
 }
 
 /*
