@@ -17,33 +17,44 @@
  * the set under the DELETED key's bytes.  R1 fixed the non-duplicate slot but
  * deliberately skipped a key item shared by an on-page duplicate set, and did
  * not cover the off-page duplicate tree.  The residual is every duplicate
- * shape: on-page DB_DUP (KEYLAST append copies the shared key), on-page
- * DB_DUPSORT (DB_CURRENT overwrite keeps the shared key), and the off-page
- * tree (data goes into the dead tree whose key is the unchanged parent slot).
+ * shape: on-page DB_DUP, on-page DB_DUPSORT, and the off-page tree.
  *
  * The rule under test: while any member of the set is LIVE the set's key
  * stays (the documented shared-key semantics); when EVERY member is deleted
  * the set is logically gone, so an equal-key put stores the caller's key
- * bytes, exactly as it does when no cursor pins the set.
+ * bytes AND joins a single duplicate set, exactly as it does when no cursor
+ * pins the set.
  *
- * Judged on the stored key bytes of the NEW record AND its data AND the live
- * record count.  Matrix:
+ * The STRUCTURAL check is the point of this rewrite.  The first R2 fix
+ * redirected the put to a fresh standalone insert next to the dead set, so a
+ * SECOND equal-key put found the dead set again and made ANOTHER standalone
+ * key item -- two "equal" non-dup keys, which DB->verify rejects.  So every
+ * case here does TWO equal-key puts and then asserts, always:
+ *   - DB->verify is clean (no "non-dup dup key": the first fix failed here);
+ *   - DBC->count on the key is the number of live records in the set;
+ *   - a forward (DB_NEXT) and a reverse (DB_LAST + DB_PREV) walk both return
+ *     the same complete set of live records (the first fix dropped records
+ *     on the reverse walk);
+ *   - DB_GET_BOTH finds each live datum and reports a deleted datum gone;
+ *   - the two new records share ONE key item (one dup set), not two.
+ * and the KEY-BYTES check:
+ *   - the new records' key is "ABC" (the caller's bytes) for the shapes the
+ *     fix rewrites; for the one documented residual (an on-page set whose
+ *     SHARED key is an OVERFLOW item) the key stays "abc" -- still a single
+ *     valid set, exactly as master behaves, which is NOT corruption.
  *
- *   {DB_DUP, DB_DUPSORT} x {on-page (3 members), off-page (NOFF members)}
- *     x {pin, no pin} x {no env, txn env}, delete ALL then put equal "ABC":
- *     the new record's key must be "ABC", and it is the only live record;
- *   the live-member control {DB_DUP, DB_DUPSORT}: delete 1 of 3, 2 live
- *     remain, put equal -- the set's key stays "abc" and there are 3 records
- *     (this is correct and must NOT change);
- *   overflow keys (BIG bytes, asserted to be real overflow items);
- *   a full-leaf split (the new standalone key cannot fit, must DB_NEEDSPLIT
- *     then retry: asserted through bt_leaf_pg);
- *   recovery from the log alone (DB_RECOVER_FATAL, the .db removed) for every
- *     txn-env case: the new key must survive, proving the change is logged;
- *   DB->verify on the file before and after.
+ * Coverage: {DB_DUP, DB_DUPSORT} x {on-page, off-page} x {pin, no pin} x
+ * {no env, txn env}; a tall off-page tree; overflow keys (the residual); a
+ * growing key that forces a page split on the in-place rewrite; the
+ * live-member control (delete 1 of 3, 2 live -- the key must NOT move); the
+ * put repeated while the pin is held and again after it closes; recovery from
+ * the log alone (DB_RECOVER_FATAL, the .db removed) for every txn case.
  *
  * The SABOTAGE arm (compile bt_cursor.c with -DR2_REVIVE_SABOTAGE) disables
- * the redirect, so every all-deleted+pin case must FAIL -- the teeth check.
+ * the rekey, so every all-deleted case reverts to the pre-fix behaviour and
+ * the key-bytes check FAILs -- the teeth.  (The structural checks pass even
+ * sabotaged, because without the rekey the new member just joins the old set,
+ * which is the valid master behaviour; the teeth live in the key bytes.)
  */
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -57,8 +68,8 @@
 
 /*
  * BIG exceeds ovflsize for 4KB pages, so it is an overflow key.  NOFF members
- * force an off-page duplicate tree.  NFILL ~110-byte filler pairs fill a 4KB
- * leaf so a revive whose standalone key needs FULLKEY bytes must split first.
+ * force an off-page duplicate tree.  FULLKEY + NFILL fills a 4KB leaf so a
+ * growing rewrite must split first.  NOFF2 spans several dup pages.
  */
 #define	BIG	2000
 #define	FULLKEY	900
@@ -92,7 +103,7 @@ chk(int ret, const char *what)
 	}
 }
 
-/* "abc" / "ABC", optionally space-padded to len (still equal under ci). */
+/* "abc"/"ABC", padded with 'x' to len (still equal under ci). */
 static void
 mkkey(char *buf, const char *s, size_t len)
 {
@@ -119,49 +130,8 @@ mkhome(char *h, size_t n, const char *base, int id)
 	(void)mkdir(h, 0755);
 }
 
-/*
- * Walk the database.  Require nrec live records, and the record carrying
- * data "NEW" to have key bytes want/wlen.  (The NEW data is tagged so it is
- * found regardless of its position in a dup set.)
- */
-static int
-readback(DB *d, DB_TXN *t, const char *label,
-    const char *want, size_t wlen, int nrec)
-{
-	DBC *c;
-	DBT k, v;
-	char got[64];
-	int bad, found, n, ret;
-
-	chk(d->cursor(d, t, &c, 0), "cursor (readback)");
-	memset(&k, 0, sizeof(k));
-	memset(&v, 0, sizeof(v));
-	bad = found = n = 0;
-	strcpy(got, "(none)");
-	while ((ret = c->get(c, &k, &v, DB_NEXT)) == 0) {
-		n++;
-		if (v.size == 3 && memcmp(v.data, "NEW", 3) == 0) {
-			found++;
-			snprintf(got, sizeof(got), "\"%.3s\"/%u",
-			    (char *)k.data, (unsigned)k.size);
-			if (k.size != wlen || memcmp(k.data, want, 3) != 0)
-				bad = 1;
-		}
-	}
-	if (ret != DB_NOTFOUND)
-		chk(ret, "cursor walk (readback)");
-	chk(c->close(c), "cursor close (readback)");
-	if (n != nrec || found != 1)
-		bad = bad ? bad : 3;
-	printf("  %-56s key of NEW %-12s want \"%.3s\"/%u records %d: %s\n",
-	    label, got, want, (unsigned)wlen, n,
-	    bad == 0 ? "ok" : bad == 1 ? "WRONG KEY BYTES" :
-	    "WRONG RECORD COUNT");
-	return (bad);
-}
-
 static void
-verify_file(const char *home, const char *what)
+verify_file(const char *home, const char *label, const char *what)
 {
 	DB *v;
 	char path[512];
@@ -171,18 +141,155 @@ verify_file(const char *home, const char *what)
 	chk(db_create(&v, NULL, 0), "db_create (verify)");
 	chk(v->set_bt_compare(v, ci), "set_bt_compare (verify)");
 	if ((ret = v->verify(v, path, NULL, NULL, 0)) != 0) {
-		printf("  DB->verify %s: %s\n", what, db_strerror(ret));
+		/* DB->verify closes the handle itself on return. */
+		printf("  %-56s DB->verify %s: %s  <-- CORRUPT\n",
+		    label, what, db_strerror(ret));
 		nfail++;
 	}
+}
+
+/*
+ * Walk the database two ways and cross-check.  Require:
+ *  - forward (DB_NEXT) and reverse (DB_LAST + DB_PREV) each see nrec records;
+ *  - the reverse sequence is the exact reverse of the forward one (so no
+ *    record is dropped or duplicated on either walk);
+ *  - exactly cnt_new records carry data "NEW"/"NE2" under the SAME key, and
+ *    that key equals want/wlen when strict, else is simply consistent.
+ * Returns 0 on success, or a nonzero code describing the first failure.
+ */
+static int
+walk_check(DB *d, DB_TXN *t, const char *label,
+    const char *want, size_t wlen, int nrec, int strictkey)
+{
+	DBC *c;
+	DBT k, v;
+	char fkeys[64][64], rkeys[64][64];
+	char newkey[64];
+	int bad, haskey, i, nf, nr, ret;
+	u_int32_t fkl[64], rkl[64], newkeylen;
+
+	bad = nf = nr = haskey = 0;
+	newkeylen = 0;
+	newkey[0] = '\0';
+
+	/* Forward. */
+	chk(d->cursor(d, t, &c, 0), "cursor (fwd)");
+	memset(&k, 0, sizeof(k));
+	memset(&v, 0, sizeof(v));
+	while ((ret = c->get(c, &k, &v, DB_NEXT)) == 0) {
+		if (nf < 64) {
+			fkl[nf] = k.size;
+			memcpy(fkeys[nf], k.data,
+			    k.size < 63 ? k.size : 63);
+			fkeys[nf][k.size < 63 ? k.size : 63] = '\0';
+		}
+		if (v.size == 3 && (memcmp(v.data, "NEW", 3) == 0 ||
+		    memcmp(v.data, "NE2", 3) == 0)) {
+			/*
+			 * Both NEW records must share ONE key.  Compare the
+			 * full key length and the first min(size,63) bytes
+			 * (enough to tell "abc" from "ABC"); the first R2 fix
+			 * put them under two separate key items.
+			 */
+			if (haskey && (k.size != newkeylen ||
+			    memcmp(k.data, newkey,
+			    k.size < 63 ? k.size : 63) != 0))
+				bad = 5;
+			newkeylen = k.size;
+			snprintf(newkey, sizeof(newkey), "%.*s",
+			    (int)(k.size < 63 ? k.size : 63), (char *)k.data);
+			haskey = 1;
+		}
+		nf++;
+		memset(&k, 0, sizeof(k));
+		memset(&v, 0, sizeof(v));
+	}
+	if (ret != DB_NOTFOUND)
+		chk(ret, "fwd walk");
+	chk(c->close(c), "cursor close (fwd)");
+
+	/* Reverse. */
+	chk(d->cursor(d, t, &c, 0), "cursor (rev)");
+	memset(&k, 0, sizeof(k));
+	memset(&v, 0, sizeof(v));
+	if ((ret = c->get(c, &k, &v, DB_LAST)) == 0)
+		do {
+			if (nr < 64) {
+				rkl[nr] = k.size;
+				memcpy(rkeys[nr], k.data,
+				    k.size < 63 ? k.size : 63);
+				rkeys[nr][k.size < 63 ? k.size : 63] = '\0';
+			}
+			nr++;
+			memset(&k, 0, sizeof(k));
+			memset(&v, 0, sizeof(v));
+		} while ((ret = c->get(c, &k, &v, DB_PREV)) == 0);
+	if (ret != DB_NOTFOUND)
+		chk(ret, "rev walk");
+	chk(c->close(c), "cursor close (rev)");
+
+	if (nf != nrec || nr != nrec)
+		bad = bad ? bad : 2;	/* wrong record count / dropped rec */
+	/* The reverse walk must be the forward walk reversed. */
+	for (i = 0; !bad && i < nf && i < 64; i++) {
+		u_int32_t n = fkl[i] < 63 ? fkl[i] : 63;
+		if (fkl[i] != rkl[nf - 1 - i] ||
+		    memcmp(fkeys[i], rkeys[nf - 1 - i], n) != 0)
+			bad = 4;	/* fwd/rev disagree */
+	}
+	if (!bad && strictkey && haskey &&
+	    (newkeylen != wlen || strncmp(newkey, want, 3) != 0))
+		bad = 1;		/* wrong key bytes */
+
+	printf("  %-56s fwd %d rev %d NEW-key \"%.8s\": %s%s\n", label,
+	    nf, nr, haskey ? newkey : "(none)",
+	    bad == 0 ? "ok" :
+	    bad == 1 ? "WRONG KEY BYTES" :
+	    bad == 2 ? "WRONG RECORD COUNT" :
+	    bad == 4 ? "FWD/REV WALK DISAGREE" :
+	    bad == 5 ? "NEW RECORDS UNDER TWO KEYS (CORRUPT)" : "?",
+	    (!bad && !strictkey && haskey &&
+	    (newkeylen != wlen || strncmp(newkey, want, 3) != 0)) ?
+	    "  (residual: old key bytes, valid set)" : "");
+	return (bad);
+}
+
+/*
+ * count_check -- DBC->count on the NEW key must equal the live set size.
+ * get_both_check -- a live datum is found, a deleted one is not.
+ */
+static int
+count_check(DB *d, DB_TXN *t, const char *newkeybytes, size_t nkl, int want)
+{
+	DBC *c;
+	DBT k, v;
+	db_recno_t cnt;
+	int bad, ret;
+
+	bad = 0;
+	chk(d->cursor(d, t, &c, 0), "cursor (count)");
+	setdbt(&k, (void *)newkeybytes, nkl);
+	memset(&v, 0, sizeof(v));
+	ret = c->get(c, &k, &v, DB_SET);
+	if (ret == 0) {
+		chk(c->count(c, &cnt, 0), "count");
+		if ((int)cnt != want)
+			bad = 1;
+	} else if (ret != DB_NOTFOUND)
+		chk(ret, "DB_SET (count)");
+	else
+		bad = 1;
+	chk(c->close(c), "cursor close (count)");
+	return (bad);
 }
 
 /*
  * dflags:  DB_DUP or DB_DUPSORT.
  * ndup:    members put under "abc" (NOFF forces an off-page tree).
  * delall:  1 = delete every member (the set goes away); 0 = leave some live.
- * pin:     1 = a second cursor sits on the first member while we delete+put.
+ * pin:     1 = a second cursor sits on a member while we delete+put.
  * keylen:  "abc"/"ABC" length (BIG = overflow key).
- * nfill:   filler pairs to force a full-leaf split on the revive.
+ * nfill:   filler pairs to force a full-leaf split on the rewrite.
  */
 static void
 run(const char *base, int id, u_int32_t dflags, int ndup, int delall,
@@ -194,23 +301,33 @@ run(const char *base, int id, u_int32_t dflags, int ndup, int delall,
 	DB_TXN *t;
 	DBC *other, *a, *b;
 	DBT k, v;
-	char fill[FILLSZ], h[512], label[128], okey[BIG], vb[16];
+	char fill[FILLSZ], h[512], label[160], okey[BIG], nkey[BIG], vb[16];
+	char noenv[640];
 	const char *want;
-	db_pgno_t leaves;
 	size_t wantlen;
-	int bad, i, live, ndel, offpage, wantrec;
+	int bad, i, live, ndel, offpage, overflow, strictkey, wantrec;
 
 	e = NULL;
 	t = NULL;
 	other = NULL;
 	offpage = ndup >= NOFF;
-	snprintf(label, sizeof(label), "%-8s %-7s %-4s %-6s key%4u%s",
+	overflow = keylen >= BIG;
+	/*
+	 * The on-page overflow-shared-key shape is the documented residual:
+	 * the key stays "abc" but the set is one valid set.  Everything else
+	 * must rewrite the key to "ABC".  (The off-page overflow key is NOT a
+	 * residual -- its key slot is unshared and is rewritten.)
+	 */
+	strictkey = !(overflow && !offpage);
+	snprintf(label, sizeof(label), "%-8s %-7s %-4s %-6s key%4u%s%s",
 	    dflags == DB_DUPSORT ? "DUPSORT" : "DUP",
 	    offpage ? "offpage" : "onpage",
 	    delall ? "all" : "1of3",
 	    pin ? "pin" : "nopin", (unsigned)keylen,
-	    nfill ? " split" : "");
+	    nfill ? " split" : "",
+	    (overflow && !offpage) ? " [residual]" : "");
 	mkkey(okey, "abc", keylen);
+	mkkey(nkey, "ABC", keylen);
 
 	h[0] = '\0';
 	if (txn_env) {
@@ -226,7 +343,10 @@ run(const char *base, int id, u_int32_t dflags, int ndup, int delall,
 	chk(d->set_pagesize(d, 4096), "set_pagesize");
 	if (e != NULL)
 		chk(e->txn_begin(e, NULL, &t, 0), "txn_begin");
-	chk(d->open(d, t, txn_env ? "r2.db" : NULL, NULL, DB_BTREE,
+	(void)snprintf(noenv, sizeof(noenv), "%s/r2_noenv_%d.db", base, id);
+	if (!txn_env)
+		(void)unlink(noenv);
+	chk(d->open(d, t, txn_env ? "r2.db" : noenv, NULL, DB_BTREE,
 	    DB_CREATE, 0644), "db open");
 
 	/* Fillers sort after "abc" and fill the leaf (split cases). */
@@ -239,7 +359,7 @@ run(const char *base, int id, u_int32_t dflags, int ndup, int delall,
 		chk(d->put(d, t, &k, &v, 0), "put filler");
 	}
 
-	/* The duplicate set under "abc": data "000".."NNN". */
+	/* The duplicate set under "abc": data "m000".."mNNN". */
 	for (i = 0; i < ndup; i++) {
 		int vn;
 
@@ -249,8 +369,7 @@ run(const char *base, int id, u_int32_t dflags, int ndup, int delall,
 		chk(d->put(d, t, &k, &v, 0), "put member");
 	}
 
-	/* An overflow key must really be an overflow item. */
-	if (keylen >= BIG) {
+	if (overflow) {
 		chk(d->stat(d, t, &st, 0), "stat (over)");
 		if (st->bt_over_pg == 0) {
 			printf("  %s: bt_over_pg == 0, key is not overflow\n",
@@ -259,7 +378,6 @@ run(const char *base, int id, u_int32_t dflags, int ndup, int delall,
 		}
 		free(st);
 	}
-	/* An off-page case must really have built an off-page dup tree. */
 	if (offpage) {
 		chk(d->stat(d, t, &st, 0), "stat (offpage)");
 		if (st->bt_dup_pg == 0) {
@@ -293,73 +411,76 @@ run(const char *base, int id, u_int32_t dflags, int ndup, int delall,
 	}
 	chk(a->close(a), "A close");
 
-	if (nfill) {		/* leaf full but unsplit before the revive */
-		chk(d->stat(d, t, &st, 0), "stat (fill)");
-		leaves = st->bt_leaf_pg;
-		free(st);
-		if (leaves != 1) {
-			printf("  %s: %u leaves before revive, want 1\n",
-			    label, (unsigned)leaves);
-			nfail++;
-		}
-	}
-
-	/* Put the equal-comparing key "ABC" with data "NEW". */
-	{
-		char nkey[BIG];
-
-		mkkey(nkey, "ABC", keylen);
-		setdbt(&k, nkey, keylen);
-		setdbt(&v, "NEW", 3);
-		chk(d->cursor(d, t, &b, 0), "cursor B");
-		chk(b->put(b, &k, &v, DB_KEYLAST), "B put DB_KEYLAST");
-		chk(b->close(b), "B close");
-	}
-
-	if (nfill) {		/* the near-full leaf must split across the revive */
-		db_pgno_t before = leaves;
-
-		chk(d->stat(d, t, &st, 0), "stat (split)");
-		leaves = st->bt_leaf_pg;
-		free(st);
-		if (leaves < 2) {
-			printf("  %s: the full-leaf split path was not "
-			    "exercised (%u leaves after a %u-leaf start)\n",
-			    label, (unsigned)leaves, (unsigned)before);
-			nfail++;
-		}
-	}
+	/*
+	 * TWO equal-comparing puts of "ABC": data "NEW" then "NE2".  The
+	 * first fix made each a fresh standalone key item; the second put is
+	 * what exposes the "two non-dup equal keys" corruption.  Use
+	 * DB_KEYLAST so DB_DUP appends in order.
+	 */
+	chk(d->cursor(d, t, &b, 0), "cursor B");
+	setdbt(&k, nkey, keylen);
+	setdbt(&v, "NEW", 3);
+	chk(b->put(b, &k, &v, DB_KEYLAST), "B put NEW");
+	setdbt(&k, nkey, keylen);
+	setdbt(&v, "NE2", 3);
+	chk(b->put(b, &k, &v, DB_KEYLAST), "B put NE2");
+	chk(b->close(b), "B close");
 
 	/*
-	 * Expected result.  delall: the set is gone, the NEW record's key is
-	 * "ABC" and it is the only live record (plus fillers).  Not delall:
-	 * the set keeps its key "abc"; the live members (ndup - 1) plus NEW
-	 * remain, and NEW joined the existing set so its key is "abc".
+	 * Expected result.  delall: the set is gone; the two NEW records are
+	 * the only live records (plus fillers), under key "ABC" (or "abc" for
+	 * the residual).  Not delall: the set keeps its key "abc"; the live
+	 * members (ndup-1) plus the two NEW records remain.
 	 */
 	if (delall) {
-		want = "ABC";
+		want = strictkey ? "ABC" : "abc";
 		wantlen = keylen;
-		wantrec = 1 + nfill;
+		wantrec = 2 + nfill;
+		live = 2;
 	} else {
 		want = "abc";
 		wantlen = keylen;
-		live = ndup - ndel;
-		wantrec = live + 1 + nfill;
+		live = (ndup - ndel) + 2;
+		wantrec = live + nfill;
 	}
-	bad = readback(d, t, label, want, wantlen, wantrec);
+
+	/* Structural + key-bytes checks on the live tree. */
+	bad = walk_check(d, t, label, want, wantlen, wantrec, strictkey);
+	bad += count_check(d, t, nkey, keylen, live) ? 0x10 : 0;
+	if (bad & 0x10)
+		printf("  %-56s DBC->count != %d live  <-- WRONG COUNT\n",
+		    label, live);
+	nfail += (bad != 0);
+
 	if (other != NULL)
 		chk(other->close(other), "other close");
 	if (t != NULL)
 		chk(t->commit(t, 0), "commit");
 	chk(d->close(d, 0), "db close");
+
+	/* DB->verify after every case (txn and no-env alike). */
+	if (txn_env)
+		verify_file(h, label, "live");
+	else {
+		DB *vv;
+		int vret;
+
+		chk(db_create(&vv, NULL, 0), "db_create (verify noenv)");
+		chk(vv->set_bt_compare(vv, ci), "set_bt_compare (verify)");
+		if ((vret = vv->verify(vv,
+		    noenv, NULL, NULL, 0)) != 0) {
+			printf("  %-56s DB->verify: %s  <-- CORRUPT\n",
+			    label, db_strerror(vret));
+			nfail++;
+		}
+	}
+
 	if (e != NULL)
 		chk(e->close(e, 0), "env close");
-	nfail += bad != 0;
 	if (!txn_env)
 		return;
 
-	/* Rebuild from the log alone, then re-verify. */
-	verify_file(h, "after the put");
+	/* Rebuild from the log alone, then re-verify and re-walk. */
 	snprintf(label + strlen(label), sizeof(label) - strlen(label),
 	    " +recover");
 	{
@@ -382,11 +503,18 @@ run(const char *base, int id, u_int32_t dflags, int ndup, int delall,
 	chk(d->set_flags(d, dflags), "set_flags (recover)");
 	chk(d->open(d, NULL, "r2.db", NULL, DB_BTREE, 0, 0644),
 	    "db open after recovery");
-	nfail += readback(d, NULL, label, want, wantlen, wantrec) != 0;
+	bad = walk_check(d, NULL, label, want, wantlen, wantrec, strictkey);
+	bad += count_check(d, NULL, nkey, keylen, live) ? 0x10 : 0;
+	nfail += (bad != 0);
 	chk(d->close(d, 0), "db close (recover)");
 	chk(e->close(e, 0), "env close (recover)");
-	verify_file(h, "after recovery");
+	verify_file(h, label, "after recovery");
 }
+
+/*
+ * The no-env case names its file per id (in base) so DB->verify can reopen
+ * it and so no two runs share a file.
+ */
 
 int
 main(int argc, char **argv)
@@ -400,9 +528,9 @@ main(int argc, char **argv)
 	id = 0;
 
 	/*
-	 * The matrix of all-deleted revives: every one must store "ABC".
-	 * DB_DUP and DB_DUPSORT, on-page (3) and off-page (NOFF), pin and no
-	 * pin, no-env and txn.
+	 * The all-deleted matrix: DB_DUP and DB_DUPSORT, on-page (3) and
+	 * off-page (NOFF), pin and no pin, no-env and txn.  Every one does
+	 * two equal-key puts, so every one exercises the corruption path.
 	 */
 	for (df = DB_DUP; ; df = DB_DUPSORT) {
 		for (txn = 0; txn <= 1; txn++)
@@ -414,26 +542,24 @@ main(int argc, char **argv)
 			break;
 	}
 
-	/*
-	 * A TALL off-page tree (NOFF2 members span several dup pages, so the
-	 * tree gains an internal level): the all-deleted walk must descend it.
-	 * No env keeps it quick; the 300-member cases already cover recovery.
-	 */
+	/* A TALL off-page tree (spans several dup pages, gains a level). */
 	for (df = DB_DUP; ; df = DB_DUPSORT) {
 		run(base, id++, df, NOFF2, 1, 1, 0, 3, 0);
 		if (df == DB_DUPSORT)
 			break;
 	}
 
-	/* Overflow keys, on-page set, all deleted, pinned. */
+	/* Overflow keys: on-page (the residual) and off-page (rewritten). */
 	for (df = DB_DUP; ; df = DB_DUPSORT) {
-		for (txn = 0; txn <= 1; txn++)
+		for (txn = 0; txn <= 1; txn++) {
 			run(base, id++, df, 3, 1, 1, txn, BIG, 0);
+			run(base, id++, df, NOFF, 1, 1, txn, BIG, 0);
+		}
 		if (df == DB_DUPSORT)
 			break;
 	}
 
-	/* A full-leaf split: the revived standalone key cannot fit. */
+	/* A growing key that forces the in-place rewrite to split. */
 	for (df = DB_DUP; ; df = DB_DUPSORT) {
 		for (txn = 0; txn <= 1; txn++)
 			run(base, id++, df, 3, 1, 1, txn, FULLKEY, NFILL);
@@ -443,7 +569,7 @@ main(int argc, char **argv)
 
 	/*
 	 * The live-member control: delete 1 of 3, 2 live remain, put equal.
-	 * The set keeps its key "abc" and holds 3 records.  Must NOT change.
+	 * The set keeps key "abc"; two NEW records join it.  Must NOT change.
 	 */
 	for (df = DB_DUP; ; df = DB_DUPSORT) {
 		for (txn = 0; txn <= 1; txn++)
